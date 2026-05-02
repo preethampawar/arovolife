@@ -1,0 +1,19 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    # Pre-existing tech-debt is tracked in the baseline. New code is held
+    # to level 7. Burn the baseline down opportunistically (a fix-up day
+    # is itself a Phase 1 closing task).
+    - phpstan-baseline.neon
+
+parameters:
+    level: 7
+    paths:
+        - app
+        - database/seeders
+        - tests
+    excludePaths:
+        - vendor
+        - storage
+        - bootstrap/cache
+    treatPhpDocTypesAsCertain: false

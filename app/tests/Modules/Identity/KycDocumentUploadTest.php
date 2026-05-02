@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Services\WizardStateService;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+
+uses(RefreshDatabase::class);
+
+/**
+ * Step 7 of the registration wizard receives the actual identity & bank
+ * documents. The runtime contract these tests lock:
+ *  - All five doc types must be uploaded (PAN, Aadhaar, cheque, address front+back).
+ *  - Bad MIME or oversize must be rejected and nothing written.
+ *  - On success the wizard state holds disk paths + sha256 checksums for
+ *    each doc, ready for RegistrationService::finalise to insert kyc_documents rows.
+ */
+function kycSeedSession(): User
+{
+    Storage::fake('kyc');
+
+    $user = User::create([
+        'email' => 'kyc-'.rand(1000, 9999).'@test.com',
+        'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
+        'password_hash' => bcrypt('x'),
+        'status' => 'pending',
+    ]);
+
+    test()->actingAs($user);
+    test()->withSession([
+        'registration_wizard' => [
+            'step' => 7,
+            'user_id' => $user->id,
+            'sponsor_id' => 1,
+            'data' => [
+                'pan' => ['pan_number' => 'ABCDE1234F'],
+                'aadhaar' => ['ref' => 'STUB', 'last4' => '1234'],
+                'bank' => ['account_number' => '912345678012', 'ifsc' => 'HDFC0001234'],
+            ],
+        ],
+    ]);
+
+    return $user;
+}
+
+it('KYC-UP-01: step 7 accepts five required docs and persists paths to wizard state', function () {
+    $user = kycSeedSession();
+
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
+        'pan_doc' => UploadedFile::fake()->image('pan.jpg', 600, 400),
+        'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+        'cheque_doc' => UploadedFile::fake()->image('cheque.jpg', 600, 400),
+        'address_proof_front' => UploadedFile::fake()->image('addr_front.jpg', 600, 400),
+        'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
+    ]);
+
+    $response->assertRedirect('/register/placement');
+
+    $wizard = app(WizardStateService::class);
+    $docs = $wizard->getStepData(7)['documents'] ?? null;
+
+    expect($docs)->not->toBeNull()
+        ->and($docs)->toHaveKeys(['pan', 'aadhaar', 'cheque', 'address_proof_front', 'address_proof_back']);
+
+    foreach (['pan', 'aadhaar', 'cheque', 'address_proof_front', 'address_proof_back'] as $type) {
+        expect($docs[$type])->toHaveKeys(['path', 'sha256'])
+            ->and(strlen($docs[$type]['sha256']))->toBe(64);
+        Storage::disk('kyc')->assertExists($docs[$type]['path']);
+    }
+});
+
+it('KYC-UP-02: rejects an executable file even if extension says image', function () {
+    $user = kycSeedSession();
+
+    // 'create' (not 'image') so the file body is plain text not a real JPG.
+    // Note: Laravel's `mimetypes:` rule trusts the fake's declared mime in
+    // tests, so the rejection here is driven by ValidUploadedDocumentBytes
+    // (the magic-byte rule). In production, `mimetypes:` is also active and
+    // catches this via finfo. Both layers protect against the same attack.
+    $bogus = UploadedFile::fake()->create('pan.jpg', 50, 'image/jpeg');
+
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
+        'pan_doc' => $bogus,
+        'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+        'cheque_doc' => UploadedFile::fake()->image('cheque.jpg', 600, 400),
+        'address_proof_front' => UploadedFile::fake()->image('addr_front.jpg', 600, 400),
+        'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHasErrors('pan_doc');
+
+    // Step 7 must not have advanced.
+    $wizard = app(WizardStateService::class);
+    expect($wizard->getStepData(7))->toBeNull();
+});
+
+it('KYC-UP-03: rejects oversize file (>5 MB)', function () {
+    $user = kycSeedSession();
+
+    // Laravel's UploadedFile::fake()->image accepts width/height; for size we
+    // use ->create + a JPG body via the dimensions trick. Here we use a fake
+    // 6 MB stream typed image/jpeg.
+    $oversize = UploadedFile::fake()->create('big.jpg', 6 * 1024, 'image/jpeg');
+
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
+        'pan_doc' => $oversize,
+        'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+        'cheque_doc' => UploadedFile::fake()->image('cheque.jpg', 600, 400),
+        'address_proof_front' => UploadedFile::fake()->image('addr_front.jpg', 600, 400),
+        'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHasErrors('pan_doc');
+});

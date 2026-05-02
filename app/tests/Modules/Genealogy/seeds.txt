@@ -1,0 +1,13 @@
+# Failing property-test seeds
+#
+# Format: <test-id> <seed-value> <failure-description>
+# Seeds recorded here make random failures deterministic reproductions.
+# To replay: run `./vendor/bin/pest tests/Modules/Genealogy/PlacementPropertyTest.php --seed <value>`
+#
+# No seeds recorded yet — all property tests in PlacementPropertyTest.php are
+# deterministic (they use fixed sequences rather than randomised inputs).
+# If a randomised variant is added in future, record its seed here on first
+# failure so the regression can be replayed without luck.
+#
+# Example entry format:
+#   PROP-XX 1234567890 "description of what broke"

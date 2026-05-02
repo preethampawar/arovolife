@@ -1,0 +1,75 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Admin\Services;
+
+use App\Modules\Admin\Events\KycRejected;
+use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Carbon;
+
+/**
+ * Manual KYC rejection. Closes the distributor account ('terminated') and
+ * captures the admin's reason in audit_log so the applicant can be told why
+ * (and re-register cleanly if appropriate). The kyc_documents rows stay
+ * intact — reject is not "scrub the submission", it's "decline this one".
+ */
+final class RejectKycSubmission
+{
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
+
+    public function __invoke(int $distributorId, int $verifierUserId, string $reason): void
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new \InvalidArgumentException('Rejection reason cannot be empty.');
+        }
+
+        $this->db->connection()->transaction(function () use ($distributorId, $verifierUserId, $reason): void {
+            /** @var Distributor $distributor */
+            $distributor = Distributor::query()->lockForUpdate()->findOrFail($distributorId);
+
+            // Couple registrations are rejected as a unit. Always operate
+            // on the primary's row regardless of which the admin clicked.
+            if ($distributor->spouse_distributor_id !== null && ! $distributor->is_primary_couple) {
+                /** @var Distributor $primary */
+                $primary = Distributor::query()->lockForUpdate()->findOrFail($distributor->spouse_distributor_id);
+                $distributorId = (int) $primary->id;
+                $distributor = $primary;
+            }
+
+            $idsToReject = [$distributorId];
+            if ($distributor->is_primary_couple && $distributor->spouse_distributor_id !== null) {
+                $idsToReject[] = (int) $distributor->spouse_distributor_id;
+            }
+
+            $now = Carbon::now();
+
+            Distributor::query()
+                ->whereIn('id', $idsToReject)
+                ->with('user')
+                ->get()
+                ->each(fn (Distributor $d) => $d->user()->update(['status' => 'terminated']));
+
+            AuditLog::create([
+                'actor_id' => $verifierUserId,
+                'action' => 'admin.kyc.rejected',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributorId,
+                'details' => [
+                    'reason' => mb_substr($reason, 0, 1024),
+                    'rejected_at' => $now->toIso8601String(),
+                    'distributor_ids' => $idsToReject,
+                ],
+            ]);
+
+            foreach ($idsToReject as $id) {
+                KycRejected::dispatch($id, $verifierUserId, $reason, $now);
+            }
+        });
+    }
+}

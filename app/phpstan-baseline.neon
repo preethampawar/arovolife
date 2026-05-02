@@ -1,0 +1,1093 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property App\\Modules\\Identity\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Modules\\Identity\\Models\\User\>\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Admin/Http/Controllers/AdminDistributorController.php
+
+		-
+			message: '#^Call to an undefined method App\\Modules\\Identity\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Modules\\Identity\\Models\\User\>\:\:getOriginal\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Modules/Admin/Http/Controllers/AdminDistributorController.php
+
+		-
+			message: '#^Call to an undefined method App\\Modules\\Identity\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Modules\\Identity\\Models\\User\>\:\:update\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Modules/Admin/Http/Controllers/AdminDistributorController.php
+
+		-
+			message: '#^Method App\\Modules\\Admin\\Models\\Setting\:\:updatedBy\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Admin/Models/Setting.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\InventoryLevel\:\:\$on_hand\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Models/InventoryLevel.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\InventoryLevel\:\:\$reserved\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Models/InventoryLevel.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\InventoryLevel\:\:available\(\) should return int but returns float\|int\<0, max\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Modules/Catalog/Models/InventoryLevel.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\InventoryLevel\:\:variant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/InventoryLevel.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Models/Product.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:primaryVariant\(\) should return App\\Modules\\Catalog\\Models\\ProductVariant\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Modules/Catalog/Models/Product.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:variants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/Product.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$mrp_paise\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Catalog/Models/ProductVariant.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Catalog/Models/ProductVariant.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\ProductVariant\:\:inventory\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/ProductVariant.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\ProductVariant\:\:product\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/ProductVariant.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
+
+		-
+			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markDelivered\(\) expects int\|null, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
+
+		-
+			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markShipped\(\) expects int\|null, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Http\\Middleware\\CaptureAttribution\:\:handle\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Modules/Commerce/Http/Middleware/CaptureAttribution.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$gst_rate_bp\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$unit_price_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Cart\:\:items\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: \(float\|int\)\)\|string\|null, Closure\(App\\Modules\\Commerce\\Models\\CartItem\)\: \(float\|int\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: int\)\|string\|null, Closure\(App\\Modules\\Commerce\\Models\\CartItem\)\: int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/CartItem.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$unit_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/CartItem.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\CartItem\:\:cart\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/CartItem.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\CartItem\:\:variant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/CartItem.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Customer\:\:addresses\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Customer.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Customer\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Customer.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Customer\:\:orders\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Customer.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\CustomerAddress\:\:customer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/CustomerAddress.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:coolingOff\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:customer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:items\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/OrderCoolingOff.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/OrderCoolingOff.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/OrderCoolingOff.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\OrderItem\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/OrderItem.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\OrderItem\:\:variant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/OrderItem.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$gst_rate_bp\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$pv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Services\\CartService\:\:addItem\(\) should return App\\Modules\\Commerce\\Models\\CartItem but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Customer\:\:\$distributor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_rate_bp\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variant\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Binary operation "%%" between float\|int\|string and 100000 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Property App\\Modules\\Commerce\\Services\\CheckoutService\:\:\$attribution is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$gst_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$subtotal_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Method App\\Modules\\Compliance\\Models\\AuditLog\:\:actor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compliance/Models/AuditLog.php
+
+		-
+			message: '#^Method App\\Modules\\Compliance\\Models\\CoolingOffEvent\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compliance/Models/CoolingOffEvent.php
+
+		-
+			message: '#^Method App\\Modules\\Consent\\Models\\Agreement\:\:supersededBy\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Consent/Models/Agreement.php
+
+		-
+			message: '#^Method App\\Modules\\Consent\\Models\\Agreement\:\:supersedes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Consent/Models/Agreement.php
+
+		-
+			message: '#^Method App\\Modules\\Consent\\Models\\Consent\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Consent/Models/Consent.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Content\\Models\\ContentPage\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Content/Http/Controllers/Admin/AdminContentPageController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Content\\Models\\ContentPage\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Content/Http/Controllers/Admin/AdminContentPageController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Content\\Models\\ContentPage\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Content/Http/Controllers/Admin/AdminContentPageController.php
+
+		-
+			message: '#^Method App\\Modules\\Content\\Http\\Controllers\\Admin\\AdminContentPageController\:\:audit\(\) has parameter \$extra with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Content/Http/Controllers/Admin/AdminContentPageController.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Content/Http/Requests/ContentPageRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Content\\Http\\Requests\\ContentPageRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Content/Http/Requests/ContentPageRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Content\\Models\\ContentPage\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Content/Models/ContentPage.php
+
+		-
+			message: '#^Method App\\Modules\\Fulfilment\\Models\\Shipment\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Fulfilment/Models/Shipment.php
+
+		-
+			message: '#^Method App\\Modules\\Genealogy\\Models\\GenealogyClosure\:\:ancestor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Genealogy/Models/GenealogyClosure.php
+
+		-
+			message: '#^Method App\\Modules\\Genealogy\\Models\\GenealogyClosure\:\:descendant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Genealogy/Models/GenealogyClosure.php
+
+		-
+			message: '#^Method App\\Modules\\Genealogy\\Models\\LineChangeRequest\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Genealogy/Models/LineChangeRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Genealogy\\Models\\LineChangeRequest\:\:fromSponsor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Genealogy/Models/LineChangeRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Genealogy\\Models\\LineChangeRequest\:\:toSponsor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Genealogy/Models/LineChangeRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Genealogy\\Models\\Sponsorship\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Genealogy/Models/Sponsorship.php
+
+		-
+			message: '#^Method App\\Modules\\Genealogy\\Models\\Sponsorship\:\:sponsor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Genealogy/Models/Sponsorship.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Modules/Genealogy/Services/PlacementStrategyResolver.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Grievance\\Models\\Ticket\:\:\$sla_resolution_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Grievance/Models/Ticket.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Grievance\\Models\\Ticket\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Grievance/Models/Ticket.php
+
+		-
+			message: '#^Method App\\Modules\\Grievance\\Models\\Ticket\:\:events\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Grievance/Models/Ticket.php
+
+		-
+			message: '#^Method App\\Modules\\Grievance\\Models\\TicketEvent\:\:ticket\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Grievance/Models/TicketEvent.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:closureAncestors\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:closureDescendants\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:consents\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:coolingOff\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:kycDocuments\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:leftChild\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:lineChangeRequests\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:orientationViews\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:placementParent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:rightChild\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:sponsor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:sponsorship\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:spouse\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Models\\User\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/User.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Services\\WizardStateService\:\:get\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Identity/Services/WizardStateService.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Services\\WizardStateService\:\:getStepData\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Identity/Services/WizardStateService.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Services\\WizardStateService\:\:saveStepData\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Identity/Services/WizardStateService.php
+
+		-
+			message: '#^Method App\\Modules\\Ledger\\Models\\LedgerEntry\:\:account\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Ledger/Models/LedgerEntry.php
+
+		-
+			message: '#^Method App\\Modules\\Ledger\\Models\\LedgerEntry\:\:tx\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Ledger/Models/LedgerEntry.php
+
+		-
+			message: '#^Method App\\Modules\\Ledger\\Models\\LedgerTx\:\:entries\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Ledger/Models/LedgerTx.php
+
+		-
+			message: '#^Method App\\Modules\\Orientation\\Models\\OrientationView\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Orientation/Models/OrientationView.php
+
+		-
+			message: '#^Method App\\Modules\\Payments\\Models\\PaymentIntent\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Payments/Models/PaymentIntent.php
+
+		-
+			message: '#^Method App\\Modules\\Payments\\Models\\RefundIntent\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Payments/Models/RefundIntent.php
+
+		-
+			message: '#^Method App\\Modules\\Payments\\Models\\RefundIntent\:\:paymentIntent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Payments/Models/RefundIntent.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Payments/Services/StubGateway.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Payments\\Models\\PaymentIntent\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Payments/Services/StubGateway.php
+
+		-
+			message: '#^Parameter \#1 \$order of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markPaid\(\) expects App\\Modules\\Commerce\\Models\\Order, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Payments/Services/StubGateway.php
+
+		-
+			message: '#^Method App\\Modules\\Returns\\Models\\BuybackDecision\:\:returnRequest\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Returns/Models/BuybackDecision.php
+
+		-
+			message: '#^Method App\\Modules\\Returns\\Models\\ReturnInspection\:\:returnRequest\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Returns/Models/ReturnInspection.php
+
+		-
+			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:buybackDecision\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Returns/Models/ReturnRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:inspection\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Returns/Models/ReturnRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Returns/Models/ReturnRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:orderItem\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Returns/Models/ReturnRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Tax\\Models\\Invoice\:\:lines\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Tax/Models/Invoice.php
+
+		-
+			message: '#^Method App\\Modules\\Tax\\Models\\Invoice\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Tax/Models/Invoice.php
+
+		-
+			message: '#^Method App\\Modules\\Tax\\Models\\InvoiceLine\:\:invoice\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Tax/Models/InvoiceLine.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$gst_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$subtotal_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_rate_bp\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$hsn_code_snapshot\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$taxable_value_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Binary operation "%%" between float\|int\|string and 1000000 results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Modules/Tax/Services/InvoiceGenerator.php
+
+		-
+			message: '#^Offset ''image_url'' on array\{sku\: ''AV\-FD\-001'', slug\: ''herbal\-green\-tea'', category\: ''food'', name\: ''arovolife Herbal…'', short_description\: ''25 bags\. Tulsi &…'', description\: ''Daily wellness tea…'', hsn_code\: ''0902'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-HW\-001'', slug\: ''gentle\-hand\-wash'', category\: ''personal\-care'', name\: ''arovolife Gentle…'', short_description\: ''Aloe vera & neem\.…'', description\: ''A daily\-use hand…'', hsn_code\: ''3401'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-MV\-001'', slug\: ''multi\-vitamin'', category\: ''health'', name\: ''arovolife Multi…'', short_description\: ''30 tablets\. Daily…'', description\: ''Daily multivitamin…'', hsn_code\: ''2936'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-OL\-001'', slug\: ''hair\-essential\-oil'', category\: ''personal\-care'', name\: ''arovolife Hair…'', short_description\: ''Bhringraj & amla\.…'', description\: ''Traditional hair…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-SH\-001'', slug\: ''scalpcare\-shampoo'', category\: ''personal\-care'', name\: ''arovolife ScalpCare…'', short_description\: ''Anti\-dandruff…'', description\: ''Clinically tested…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/ProductCatalogSeeder.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 3
+			path: database/seeders/SettingsSeeder.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: tests/Feature/Compliance/CommissionHasProductSaleTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$opened_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
+
+		-
+			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: tests/Feature/Compliance/RegistrationHasZeroOrdersTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compliance\\Models\\AuditLog\:\:\$actor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminKycReviewTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminKycReviewTest.php
+
+		-
+			message: '#^Function akrSeedDistributorPending\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Admin/AdminKycReviewTest.php
+
+		-
+			message: '#^Function akrSeedDocuments\(\) has parameter \$types with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Admin/AdminKycReviewTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Admin/AdminKycReviewTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Admin/RegisterOfDirectSellersExportTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Admin/RegisterOfDirectSellersExportTest.php
+
+		-
+			message: '#^Function rdseSeedDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Admin/RegisterOfDirectSellersExportTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compliance\\Models\\AuditLog\:\:\$actor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Compliance/CoolingOffCancelTest.php
+
+		-
+			message: '#^Function seedActiveDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compliance/CoolingOffCancelTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Compliance/CoolingOffCancelTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compliance\\Models\\CoolingOffEvent\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Modules\\Compliance\\Models\\CoolingOffEvent\>\:\:\$reminder_d20_sent_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Compliance/CoolingOffReminderTest.php
+
+		-
+			message: '#^Function corSeed\(\) has parameter \$sent with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compliance/CoolingOffReminderTest.php
+
+		-
+			message: '#^Function corSeed\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compliance/CoolingOffReminderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$resolver\.$#'
+			identifier: property.notFound
+			count: 10
+			path: tests/Modules/Genealogy/PlacementStrategyResolverTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Genealogy/TreeViewTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/CoupleRegistrationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Identity/KycDocumentUploadTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/KycDocumentUploadTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/KycDocumentUploadTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/PasswordPolicyTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/PasswordPolicyTest.php
+
+		-
+			message: '#^Function ppRegister\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/PasswordPolicyTest.php
+
+		-
+			message: '#^Function ppRegister\(\) return type with generic class Illuminate\\Testing\\TestResponse does not specify its types\: TResponse$#'
+			identifier: missingType.generics
+			count: 1
+			path: tests/Modules/Identity/PasswordPolicyTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/PasswordResetTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/StateAgeRuleTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Identity/StateAgeRuleTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/StateAgeRuleTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/StateAgeRuleTest.php
+
+		-
+			message: '#^Function sarSeedSetting\(\) has parameter \$minimums with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/StateAgeRuleTest.php
+
+		-
+			message: '#^Function makeRecord\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Shared/PiiScrubberProcessorTest.php
+
+		-
+			message: '#^Function something\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Pest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/ExampleTest.php

@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* Fraunces — editorial display companion to Outfit. Used for wizard headings,
+   step numerals, and any moment that wants a touch of editorial warmth. */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..600&display=swap');
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@layer base {
+    html, body { background-color: #f4f7f6; color: #0f172a; }
+    input, select, textarea { color: #0f172a; }
+}
+
+@theme {
+    --font-sans: 'Outfit', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-display: 'Fraunces', 'Outfit', ui-serif, Georgia, serif;
+
+    /* Brand palette — sampled from the official arovolife blue logo
+       (logo-color-code.jpeg → #00B6EF). Hue ~194°, saturation tapered from
+       100% at the 500 step toward the deeper shades; lightness curve
+       follows a Tailwind-style smooth ramp so 50…950 reads cleanly. */
+    --color-brand-50:  #ecfaff;
+    --color-brand-100: #cff1fd;
+    --color-brand-200: #a3e5fc;
+    --color-brand-300: #5fd2f8;
+    --color-brand-400: #21bef1;
+    --color-brand-500: #00b6ef;  /* base — official brand blue */
+    --color-brand-600: #008cc7;
+    --color-brand-700: #0a719f;
+    --color-brand-800: #115d80;
+    --color-brand-900: #114a68;
+    --color-brand-950: #082f44;
+
+    /* leaf: green swoosh (#4fb435) — nav & growth accents */
+    --color-leaf-50:  #f1faec;
+    --color-leaf-100: #ddf3cf;
+    --color-leaf-200: #bce7a0;
+    --color-leaf-300: #98d96f;
+    --color-leaf-400: #73c846;
+    --color-leaf-500: #4fb435;
+    --color-leaf-600: #3f9228;
+    --color-leaf-700: #327220;
+    --color-leaf-800: #285a1a;
+    --color-leaf-900: #1f4515;
+    --color-leaf-950: #132c0c;
+
+    /* sunrise: orange swoosh (#f5922a) — CTAs & warnings */
+    --color-sunrise-50:  #fef4e5;
+    --color-sunrise-100: #fde3bd;
+    --color-sunrise-200: #fbd093;
+    --color-sunrise-300: #f9bd66;
+    --color-sunrise-400: #f7a83e;
+    --color-sunrise-500: #f5922a;
+    --color-sunrise-600: #d67920;
+    --color-sunrise-700: #b76017;
+    --color-sunrise-800: #8f4b11;
+    --color-sunrise-900: #66350c;
+}
+
+/* =====================================================================
+   Wizard — registration flow visual treatment.
+   "Refined editorial fintech": atmospheric mesh background, Fraunces
+   numerals for steps, card with brand-leaf-sunrise accent edge, soft
+   stagger reveal on first paint. The intent is calm seriousness — this
+   is a regulated KYC flow, not a marketing landing — but with enough
+   visual depth that the page doesn't read as plain.
+   ===================================================================== */
+
+.wizard-stage {
+    position: relative;
+    background:
+        radial-gradient(ellipse 60% 50% at 8% 0%,
+            color-mix(in oklab, var(--color-brand-100) 55%, transparent),
+            transparent 60%),
+        radial-gradient(ellipse 55% 45% at 96% 8%,
+            color-mix(in oklab, var(--color-sunrise-100) 35%, transparent),
+            transparent 60%),
+        radial-gradient(ellipse 70% 60% at 50% 100%,
+            color-mix(in oklab, var(--color-leaf-100) 35%, transparent),
+            transparent 65%),
+        #f4f7f6;
+}
+
+.wizard-stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(to right, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
+    z-index: 0;
+}
+
+.wizard-stage > * { position: relative; z-index: 1; }
+
+.text-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    letter-spacing: -0.015em;
+}
+
+.step-numeral {
+    font-family: var(--font-display);
+    font-feature-settings: "lnum", "ss01";
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 144;
+    letter-spacing: -0.04em;
+}
+
+.card-refined {
+    background: white;
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in oklab, var(--color-brand-100) 70%, white);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.6) inset,
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 8px 24px -8px rgba(15, 23, 42, 0.06),
+        0 24px 48px -28px rgba(15, 23, 42, 0.10);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-refined::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg,
+        var(--color-brand-500) 0%,
+        var(--color-leaf-500) 55%,
+        var(--color-sunrise-500) 100%);
+}
+
+.input-refined {
+    width: 100%;
+    border-radius: 0.65rem;
+    background: white;
+    border: 1px solid color-mix(in oklab, var(--color-brand-200) 50%, white);
+    padding: 0.75rem 0.95rem;
+    font-size: 0.9375rem;
+    color: #0f172a;
+    transition: border-color 150ms, box-shadow 150ms, background 150ms;
+}
+.input-refined::placeholder { color: #94a3b8; }
+.input-refined:hover { border-color: color-mix(in oklab, var(--color-brand-300) 70%, white); }
+.input-refined:focus {
+    outline: none;
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-brand-300) 25%, transparent);
+    background: color-mix(in oklab, var(--color-brand-50) 30%, white);
+}
+
+@keyframes lift-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.lift-in {
+    animation: lift-in 0.7s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+@keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-brand-500) 35%, transparent); }
+    50%      { box-shadow: 0 0 0 8px color-mix(in oklab, var(--color-brand-500) 0%,  transparent); }
+}
+.glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
+
+.btn-cta .btn-arrow {
+    transition: transform 220ms cubic-bezier(.2, .7, .2, 1);
+}
+.btn-cta:hover .btn-arrow {
+    transform: translateX(5px);
+}
+
+/* Diagonal pinstripe used for the trust badge — subtle texture */
+.bg-pinstripe {
+    background-image: repeating-linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--color-brand-100) 50%, transparent) 0,
+        color-mix(in oklab, var(--color-brand-100) 50%, transparent) 1px,
+        transparent 1px,
+        transparent 8px
+    );
+}

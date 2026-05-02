@@ -1,0 +1,111 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Admin\Http\Controllers;
+
+use App\Modules\Admin\Services\ApproveKycSubmission;
+use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
+use App\Modules\Admin\Services\RejectKycSubmission;
+use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
+use App\Modules\Kyc\Models\KycDocument;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+final class AdminKycController extends Controller
+{
+    public function __construct(
+        private readonly ApproveKycSubmission $approve,
+        private readonly RejectKycSubmission $reject,
+    ) {}
+
+    public function index(): View
+    {
+        // Distributors whose user.status is 'pending' AND who have at least
+        // one uploaded KYC document. Excludes pending-but-no-docs (those
+        // never finished registration) and active/frozen/terminated.
+        //
+        // Couple registrations: only the primary appears in the queue. The
+        // secondary is reviewed alongside the primary on the show page and
+        // approved/rejected as a unit. The filter `is_primary_couple OR
+        // spouse_distributor_id IS NULL` keeps solo distributors and primary
+        // halves of couples; it suppresses secondaries.
+        $pending = Distributor::query()
+            ->whereHas('user', fn ($q) => $q->where('status', 'pending'))
+            ->whereHas('kycDocuments')
+            ->where(function ($q) {
+                $q->whereNull('spouse_distributor_id')
+                    ->orWhere('is_primary_couple', true);
+            })
+            ->with('user')
+            ->withCount('kycDocuments')
+            ->orderBy('created_at')
+            ->paginate(50);
+
+        return view('admin.kyc.index', [
+            'pending' => $pending,
+        ]);
+    }
+
+    public function show(int $id): View
+    {
+        $distributor = Distributor::query()
+            ->with(['user', 'kycDocuments'])
+            ->findOrFail($id);
+
+        return view('admin.kyc.show', [
+            'distributor' => $distributor,
+        ]);
+    }
+
+    public function streamDocument(int $id, int $docId): StreamedResponse
+    {
+        $doc = KycDocument::query()
+            ->where('distributor_id', $id)
+            ->findOrFail($docId);
+
+        // Resolve the streamed response first so that if the file is missing
+        // on disk (orphaned row, key rotation, etc.), `Storage::response()`
+        // throws BEFORE we record an "admin viewed this" audit row that
+        // would otherwise mislead incident response.
+        $response = Storage::disk('kyc')->response($doc->object_storage_key);
+
+        AuditLog::create([
+            'actor_id' => Auth::id(),
+            'action' => 'admin.kyc.document_viewed',
+            'subject_type' => 'kyc_document',
+            'subject_id' => $doc->id,
+            'details' => ['type' => $doc->type],
+        ]);
+
+        return $response;
+    }
+
+    public function approve(int $id): RedirectResponse
+    {
+        try {
+            ($this->approve)($id, (int) Auth::id());
+        } catch (KycHasNoDocumentsError) {
+            return back()->withErrors(['kyc' => 'This distributor has no uploaded documents to approve.']);
+        }
+
+        return redirect()->route('admin.kyc.index')->with('status', 'KYC approved.');
+    }
+
+    public function reject(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:8', 'max:1024'],
+        ]);
+
+        ($this->reject)($id, (int) Auth::id(), $validated['reason']);
+
+        return redirect()->route('admin.kyc.index')->with('status', 'KYC rejected.');
+    }
+}

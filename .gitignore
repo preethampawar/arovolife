@@ -1,0 +1,63 @@
+# --- Laravel app (created by /bootstrap-laravel) ---
+app/vendor/
+app/node_modules/
+app/public/hot
+app/public/storage
+app/storage/*.key
+app/storage/app/*
+!app/storage/app/.gitkeep
+app/storage/framework/cache/data/*
+app/storage/framework/sessions/*
+app/storage/framework/testing/*
+app/storage/framework/views/*
+app/storage/logs/*
+app/bootstrap/cache/*.php
+app/.env
+app/.env.backup
+app/.phpunit.result.cache
+app/.phpunit.cache
+app/Homestead.json
+app/Homestead.yaml
+app/auth.json
+
+# Local SQLite databases (real PII may have been seeded into them)
+app/database/database.sqlite
+app/database/*.sqlite-journal
+app/arovolife
+
+# --- root-level secrets ---
+.env
+.env.*
+!.env.example
+
+# --- IDE / editors ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Docker volumes ---
+docker/volumes/
+docker/*.log
+
+# --- Build artefacts ---
+*.log
+coverage/
+build/
+dist/
+npm-debug.log
+yarn-error.log
+composer.phar
+
+# --- Claude Code local overrides ---
+.claude/local/
+.claude/*.local.*
+
+# --- Backup scratch ---
+*.bak
+*.orig
+
+# --- OS ---
+*~

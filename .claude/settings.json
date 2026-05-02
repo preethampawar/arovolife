@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "claude-sonnet-4-6",
+  "includeCoAuthoredBy": true,
+  "permissions": {
+    "allow": [
+      "Bash(composer:*)",
+      "Bash(php artisan:*)",
+      "Bash(php:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(docker:*)",
+      "Bash(docker compose:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(pwd:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(phpunit:*)",
+      "Bash(./vendor/bin/*)",
+      "Bash(vendor/bin/*)",
+      "Read(**)",
+      "Write(**)",
+      "Edit(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:laravel.com)",
+      "WebFetch(domain:docs.docker.com)",
+      "WebFetch(domain:consumeraffairs.nic.in)",
+      "WebFetch(domain:meity.gov.in)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(sudo:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Write(.env)",
+      "Write(**/.env)",
+      "Edit(.env)",
+      "Edit(**/.env)",
+      "Read(**/storage/logs/**)"
+    ],
+    "ask": [
+      "Bash(php artisan migrate:fresh:*)",
+      "Bash(php artisan db:seed:*)",
+      "Bash(docker compose down -v:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr merge:*)"
+    ]
+  },
+  "env": {
+    "AROVOLIFE_PROJECT": "arovolife",
+    "AROVOLIFE_PHASE": "1",
+    "AROVOLIFE_COMPLIANCE": "DSR_2021"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -e \"$CLAUDE_TOOL_PATH\" && grep -qE '\\b(AADHAAR|AADHAR)[A-Z0-9_]*\\s*=\\s*\"?[0-9]{12}' \"$CLAUDE_TOOL_PATH\" && { echo 'BLOCKED: raw Aadhaar number detected in file. Only store reference + last-4.' >&2; exit 2; } || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f \"$CLAUDE_TOOL_PATH\" && echo '[arovolife hook] wrote' \"$CLAUDE_TOOL_PATH\" >> .claude/local/write.log 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "echo \"$(git branch --show-current 2>/dev/null || echo no-git) | phase-1 | DSR-2021\""
+  }
+}
