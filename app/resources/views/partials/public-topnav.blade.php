@@ -12,8 +12,10 @@
 @endphp
 
 {{-- Utility strip: deep blue. Hidden below sm so the mobile header doesn't
-     stack two coloured strips. --}}
-<div class="hidden sm:block bg-brand-700 text-white text-xs">
+     stack two coloured strips. The `relative z-50` is what keeps the
+     profile-dropdown above the sticky <nav> below (which has its own
+     z-40 stacking context once it pins). --}}
+<div class="hidden sm:block bg-brand-700 text-white text-xs relative z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-end gap-3 sm:gap-4 flex-wrap">
         @guest
             <a href="{{ route('contact.show', ['reason' => 'join_us']) }}" class="hover:text-brand-50 transition-colors">Join Us</a>
@@ -39,7 +41,7 @@
                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
                 </button>
                 <div data-profile-panel hidden
-                     class="absolute right-0 mt-2 w-64 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900 z-50"
+                     class="absolute right-0 mt-2 w-64 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900 z-[60]"
                      role="menu">
                     <div class="px-4 py-3 border-b border-gray-100">
                         <p class="text-sm font-semibold leading-tight truncate">{{ $name }}</p>
