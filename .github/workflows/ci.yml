@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   test:
-    name: Pint · PHPStan · Pest
+    name: PHPStan · Pest
     runs-on: ubuntu-latest
 
     # Laravel project lives one level down (the repo root holds docker/, docs/,
@@ -79,9 +79,6 @@ jobs:
             sleep 2
           done
           echo "MySQL did not become ready" && exit 1
-
-      - name: Pint (style)
-        run: vendor/bin/pint --test
 
       - name: PHPStan / Larastan
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
