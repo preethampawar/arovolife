@@ -121,8 +121,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | If set, every outgoing email gets a hidden copy sent to this address (or
-    | comma-separated list of addresses). Wired via Mail::alwaysBcc() in
-    | AppServiceProvider::boot(). Leave empty on production.
+    | comma-separated list of addresses). Wired via a MessageSending event
+    | listener in AppServiceProvider::boot(). Leave empty on production.
     */
     'global_bcc' => env('MAIL_GLOBAL_BCC', ''),
 
