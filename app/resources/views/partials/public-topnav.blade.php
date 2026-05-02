@@ -39,8 +39,8 @@
                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
                 </button>
                 <div data-profile-panel hidden
-                     class="fixed w-64 rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900"
-                     style="z-index: 9999;"
+                     class="w-64 rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900"
+                     style="position: fixed; z-index: 9999;"
                      role="menu">
                     <div class="px-4 py-3 border-b border-gray-100">
                         <p class="text-sm font-semibold leading-tight truncate">{{ $name }}</p>
@@ -150,9 +150,10 @@
     </div>
 
     {{-- Profile-dropdown toggle (vanilla JS, no Alpine dependency). The
-         panel is `position: fixed` and gets its top/right placed from the
-         trigger's bounding rect — that way it escapes every parent
-         stacking context (sticky main nav, dashboard cards, etc). --}}
+         panel is teleported to <body> on first open so it isn't trapped
+         in `.wizard-stage > * { z-index: 1 }`'s stacking context. Once
+         it's a direct child of body, `position: fixed; z-index: 9999`
+         actually wins against the dashboard cards and the sticky nav. --}}
     @auth
     <script>
         (function () {
@@ -161,6 +162,15 @@
             const trigger = wrapper.querySelector('[data-profile-trigger]');
             const panel   = wrapper.querySelector('[data-profile-panel]');
 
+            // Move panel to <body> once so its z-index is compared at the
+            // document root, escaping the wizard-stage stacking trap.
+            let portalled = false;
+            const portal = () => {
+                if (portalled) return;
+                document.body.appendChild(panel);
+                portalled = true;
+            };
+
             const place = () => {
                 const r = trigger.getBoundingClientRect();
                 panel.style.top   = (r.bottom + 8) + 'px';
@@ -168,7 +178,8 @@
                 panel.style.left  = 'auto';
             };
             const close = () => { panel.hidden = true; trigger.setAttribute('aria-expanded', 'false'); };
-            const open  = () => { place(); panel.hidden = false; trigger.setAttribute('aria-expanded', 'true'); };
+            const open  = () => { portal(); place(); panel.hidden = false; trigger.setAttribute('aria-expanded', 'true'); };
+
             trigger.addEventListener('click', (e) => { e.stopPropagation(); panel.hidden ? open() : close(); });
             document.addEventListener('click', (e) => { if (!wrapper.contains(e.target) && !panel.contains(e.target)) close(); });
             document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
