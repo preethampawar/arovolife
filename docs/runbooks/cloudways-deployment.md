@@ -439,10 +439,14 @@ SUPPORT_EMAIL=support@arovolife.com
 
 # Storage (KYC docs)
 FILESYSTEM_DISK=s3
+FILESYSTEM_KYC_DISK=s3                # MUST set to 's3' on staging+prod or
+                                      # uploads land on the local box
 AWS_ACCESS_KEY_ID=<key>
 AWS_SECRET_ACCESS_KEY=<secret>
 AWS_DEFAULT_REGION=ap-south-1
 AWS_BUCKET=arovolife-kyc-prod
+KYC_S3_BUCKET=arovolife-kyc-prod      # optional override (else falls back to AWS_BUCKET)
+KYC_S3_PREFIX=kyc                     # objects land under bucket/<prefix>/...
 
 # KYC providers (live keys)
 KYC_PAN_PROVIDER=<vendor>

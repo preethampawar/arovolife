@@ -47,16 +47,34 @@ return [
             'report' => false,
         ],
 
-        // Private KYC bucket. Local for dev, swap to s3 (Mumbai) in prod via
-        // FILESYSTEM_KYC_DISK env. Never web-served — admins fetch via a
-        // signed in-app route after RBAC + audit.
-        'kyc' => [
-            'driver' => 'local',
-            'root' => storage_path('app/private/kyc'),
-            'visibility' => 'private',
-            'throw' => true,
-            'report' => false,
-        ],
+        // Private KYC bucket. Driver is env-driven:
+        //   FILESYSTEM_KYC_DISK=local  → storage/app/private/kyc (default; dev)
+        //   FILESYSTEM_KYC_DISK=s3     → AWS S3 (Mumbai), via the same AWS_*
+        //                                creds. Bucket can be overridden with
+        //                                KYC_S3_BUCKET (otherwise falls back
+        //                                to AWS_BUCKET).
+        // Never web-served — admins fetch via a signed in-app route after
+        // RBAC + audit logging.
+        'kyc' => env('FILESYSTEM_KYC_DISK', 'local') === 's3'
+            ? [
+                'driver' => 's3',
+                'key' => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                'region' => env('AWS_DEFAULT_REGION', 'ap-south-1'),
+                'bucket' => env('KYC_S3_BUCKET', env('AWS_BUCKET')),
+                'root' => env('KYC_S3_PREFIX', 'kyc'),
+                'endpoint' => env('AWS_ENDPOINT'),
+                'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+                'visibility' => 'private',
+                'throw' => true,
+            ]
+            : [
+                'driver' => 'local',
+                'root' => storage_path('app/private/kyc'),
+                'visibility' => 'private',
+                'throw' => true,
+                'report' => false,
+            ],
 
         's3' => [
             'driver' => 's3',

@@ -47,14 +47,31 @@
         @if($distributor->kycDocuments->isEmpty())
         <p class="text-sm text-gray-500">No documents uploaded.</p>
         @else
-        <ul class="text-sm space-y-2">
+        <ul class="text-sm space-y-3">
             @foreach($distributor->kycDocuments as $doc)
-            <li class="flex justify-between items-center">
-                <span class="text-gray-700">{{ str_replace('_', ' ', $doc->type) }}</span>
-                <a href="{{ route('admin.kyc.document', [$distributor->id, $doc->id]) }}"
-                    target="_blank"
-                    class="text-xs text-brand-600 hover:text-brand-700 underline">View →</a>
-            </li>
+                @php
+                    $ext = strtolower(pathinfo($doc->object_storage_key, PATHINFO_EXTENSION));
+                    $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+                    $url = route('admin.kyc.document', [$distributor->id, $doc->id]);
+                @endphp
+                <li class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="flex justify-between items-center px-3 py-2 bg-gray-50">
+                        <span class="text-gray-700 text-xs font-medium">{{ str_replace('_', ' ', $doc->type) }}</span>
+                        <a href="{{ $url }}" target="_blank"
+                            class="text-[11px] text-brand-600 hover:text-brand-700 underline">Open full size →</a>
+                    </div>
+                    @if($isImage)
+                        <a href="{{ $url }}" target="_blank" class="block bg-gray-100">
+                            <img src="{{ $url }}" alt="{{ $doc->type }}"
+                                 class="w-full h-40 object-contain bg-white"
+                                 onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'text-xs text-red-600 p-3',textContent:'Image could not be loaded — file may be missing on disk.'}))">
+                        </a>
+                    @else
+                        <div class="p-3 text-xs text-gray-500 bg-white">
+                            {{ strtoupper($ext) ?: 'File' }} document — open in new tab
+                        </div>
+                    @endif
+                </li>
             @endforeach
         </ul>
         @endif
