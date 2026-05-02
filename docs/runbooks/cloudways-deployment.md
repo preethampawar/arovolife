@@ -274,38 +274,27 @@ php artisan up
 > `/<secret>`. Skip it for code-only deploys; use it only when a
 > migration alters in-flight columns.
 
-### 2.1 Cloudways Git deployment (recommended)
+### 2.1 Cloudways Git deployment (alternative)
 
-Cloudways pulls the repo and then runs a post-deploy script you point it
-at. We ship that script in the repo at `scripts/deploy-staging.sh` so
-deploy logic is version-controlled alongside the code.
+If the team prefers Cloudways' built-in deployment over manual SSH:
 
 1. *Application → Deploy via Git → Deployment via Git → Settings*.
 2. Authorise the deploy key created in §1.3.
 3. Branch: `main`. Deployment path: leave blank (defaults to `public_html`).
-4. *Application → Application Settings → Deploy Hooks* — set the hook to:
+4. *Deploy now* — Cloudways pulls and runs the post-deploy script you
+   define under *Application → Application Settings → Deploy Hooks*. Use:
 
    ```bash
-   bash /home/master/applications/ahdhesuhty/public_html/scripts/deploy-staging.sh
+   cd /home/master/applications/ahdhesuhty/public_html/app
+   composer install --no-dev --optimize-autoloader --no-interaction
+   npm ci --silent && npm run build
+   php artisan migrate --force
+   php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache
+   php artisan queue:restart
    ```
 
-5. Hit *Deploy now*. The script does the rest: composer install, vite
-   build, migrations under maintenance mode, the idempotent
-   `ProductionSeeder`, cache rebuilds, queue restart, and an HTTP smoke
-   test against the public hostname.
-
-The script logs every step to `app/storage/logs/deploy.log` for
-post-mortem.
-
-### 2.2 Manual deploy (when SSH is your only option)
-
-```bash
-ssh master@<server-ip>
-bash /home/master/applications/ahdhesuhty/public_html/scripts/deploy-staging.sh
-```
-
-Same script, called by hand. The Cloudways hook and the manual path are
-identical; pick whichever is more convenient on the day.
+This trades raw control for a one-click button. Either approach is
+fine; pick one and document which is canonical for the team.
 
 ---
 
