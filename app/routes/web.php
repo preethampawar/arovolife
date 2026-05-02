@@ -22,6 +22,7 @@ use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
+use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Public\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
@@ -240,4 +241,10 @@ Route::middleware(['auth'])->group(function (): void {
 
     Route::get('/line-change', [LineChangeController::class, 'show'])->name('line-change.show');
     Route::post('/line-change', [LineChangeController::class, 'submit'])->name('line-change.submit');
+
+    // Profile + change-password (any logged-in user; admins included).
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profile/password', [ProfileController::class, 'showPasswordForm'])->name('profile.password.show');
+    Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 });
