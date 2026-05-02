@@ -476,6 +476,16 @@ PROD_ADMIN_PASSWORD=<strong-password>
 PROD_ADMIN_NAME=Arovolife Operations
 PROD_ADMIN_PHONE=+919999999999
 
+# L0 (genealogy root) — only created on first deploy, when the distributors
+# table is empty. The ADN below is the referral link the first real
+# recruits will use: https://APP_URL/register?ref=AL-0000000001
+PROD_ROOT_EMAIL=root@arovolife.com
+PROD_ROOT_NAME=Arovolife Company Root
+PROD_ROOT_PHONE=+919000000001
+PROD_ROOT_STATE=TG
+PROD_ROOT_ADN=AL-0000000001
+PROD_ROOT_PASSWORD=<long-random>     # only used if you ever need to log in as root
+
 # Auth hardening
 PASSWORD_MIN_LENGTH=12
 PASSWORD_HIBP_CHECK=true

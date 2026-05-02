@@ -11,6 +11,7 @@ use App\Modules\Content\Models\ContentPage;
 use App\Modules\Identity\Models\User;
 use App\Modules\Ledger\Models\LedgerAccount;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -43,6 +44,7 @@ final class ProductionSeeder extends Seeder
     {
         DB::transaction(function (): void {
             $this->seedRolesAndAdmin();
+            $this->seedRootDistributor();
             $this->seedSettings();
             $this->seedFeatureFlags();
             $this->seedContentPages();
@@ -93,6 +95,96 @@ final class ProductionSeeder extends Seeder
         $admin->syncRoles(['admin']);
 
         $this->command->info("Admin provisioned: {$email}");
+    }
+
+    /**
+     * Create the L0 (genealogy root) distributor on a fresh install.
+     *
+     * Per ADR-0003 every joiner registers via a referral link from an
+     * existing distributor — but a fresh DB has no distributors, so the
+     * platform is unreachable. We bootstrap one self-referencing root
+     * here whose ADN is shared with the company's first real recruits.
+     *
+     * Skipped (non-fatal warning) if PROD_ROOT_EMAIL is not set, or if any
+     * Distributor row already exists. The latter check makes this seeder
+     * safe to re-run after the company's first real registrations land.
+     */
+    private function seedRootDistributor(): void
+    {
+        if (DB::table('distributors')->exists()) {
+            return;
+        }
+
+        $email = env('PROD_ROOT_EMAIL');
+        if (! is_string($email) || $email === '') {
+            $this->command->warn('PROD_ROOT_EMAIL not set — skipping root distributor. Set it and re-run to bootstrap the genealogy.');
+
+            return;
+        }
+
+        $name = (string) env('PROD_ROOT_NAME', 'Arovolife Company Root');
+        $phone = (string) env('PROD_ROOT_PHONE', '+910000000001');
+        $state = strtoupper((string) env('PROD_ROOT_STATE', 'TG'));
+        $adn = (string) env('PROD_ROOT_ADN', 'AL-'.sprintf('%010d', 1));
+
+        $rootUser = User::query()->firstWhere('email', $email)
+            ?? User::create([
+                'full_name' => $name,
+                'email' => $email,
+                'phone_e164' => $phone,
+                'password_hash' => Hash::make(env('PROD_ROOT_PASSWORD', bin2hex(random_bytes(16)))),
+                'password_set_at' => now(),
+                'status' => 'active',
+                'email_verified_at' => now(),
+            ]);
+
+        $now = now()->format('Y-m-d H:i:s.v');
+
+        // Self-references on sponsor_id / placement_parent_id mean the FK
+        // can't be satisfied at INSERT time. We disable the check, write
+        // the row with a placeholder ID, then point the references back
+        // at the row's own id.
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            $rootId = DB::table('distributors')->insertGetId([
+                'user_id' => $rootUser->id,
+                'adn' => $adn,
+                'pan_hash' => random_bytes(32),
+                'pan_last4' => '0000',
+                'aadhaar_ref' => 'BOOTSTRAP_ROOT',
+                'aadhaar_last4' => '0000',
+                'bank_account_enc' => Crypt::encryptString('000000000000'),
+                'bank_ifsc' => 'HDFC0000000',
+                'sponsor_id' => 1,            // placeholder — rewritten below
+                'placement_parent_id' => 1,
+                'placement_side' => null,
+                'side_chosen_by' => 'referral_default',
+                'depth' => 0,
+                'effective_date' => $now,
+                'cooling_off_end_at' => now()->addDays(30)->format('Y-m-d H:i:s.v'),
+                'state' => $state,
+                'is_primary_couple' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            DB::table('distributors')->where('id', $rootId)->update([
+                'sponsor_id' => $rootId,
+                'placement_parent_id' => $rootId,
+            ]);
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        }
+
+        // genealogy_closure stores the transitive descendant set; every
+        // node has a self-edge at depth 0.
+        DB::table('genealogy_closure')->insert([
+            'ancestor_id' => $rootId,
+            'descendant_id' => $rootId,
+            'depth' => 0,
+        ]);
+
+        $this->command->info("Root distributor provisioned: {$adn} ({$email}). Share /register?ref={$adn} with the first recruits.");
     }
 
     /**
