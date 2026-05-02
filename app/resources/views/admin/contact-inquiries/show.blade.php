@@ -8,10 +8,6 @@
     <a href="{{ route('admin.contact-inquiries.index') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back to inbox</a>
 </div>
 
-@if(session('status'))
-<div class="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">{{ session('status') }}</div>
-@endif
-
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     {{-- Message body (main column) --}}

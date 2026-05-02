@@ -24,12 +24,6 @@
         </dl>
     </div>
 
-    @if(session('status'))
-    <div class="rounded-xl border border-green-200 bg-green-50 p-4 mb-6 text-sm text-green-800">
-        {{ session('status') }}
-    </div>
-    @endif
-
     @if($errors->any())
     <div class="rounded-xl border border-red-200 bg-red-50 p-4 mb-6 text-sm text-red-700">
         @foreach($errors->all() as $error)

@@ -4,10 +4,6 @@
 
 @section('content')
 
-@if(session('status'))
-<div class="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">{{ session('status') }}</div>
-@endif
-
 <p class="text-sm text-gray-600 mb-5">
     Submissions from the public <code class="bg-gray-100 px-1 rounded text-[11px]">/contact-us</code> form.
     Personal data is bound by DPDP §6 — it's deleted automatically by the daily retention sweep

@@ -4,12 +4,6 @@
 
 @section('content')
 
-@if(session('status'))
-<div class="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-    {{ session('status') }}
-</div>
-@endif
-
 <p class="text-sm text-gray-600 mb-6">
     Distributors who completed registration and are waiting for an admin to approve their
     PAN, Aadhaar, bank, and address-proof documents.
