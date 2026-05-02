@@ -121,22 +121,31 @@ site can't run without:
 - `KYC_*`, `SMS_*`, `WHATSAPP_*` — live provider keys
 - `FILESYSTEM_DISK=s3` plus AWS keys (KYC document encryption-at-rest)
 
-### 1.6 Database
+### 1.6 Database + first deploy
+
+The first deploy and every subsequent one go through the same artisan
+command, `php artisan app:deploy`. On a fresh install you only need to
+make sure `PROD_ADMIN_*` is in `.env` so the seeder can provision an
+initial admin user.
 
 ```bash
-# On Cloudways the DB is already provisioned; just run migrations.
 cd /home/master/applications/ahdhesuhty/public_html/app
-php artisan migrate --force          # --force is required in production
 
-# Optional: provision the admin user via env, then run the prod seeder.
-# Re-running this seeder is safe — it never overwrites existing rows.
-# Skip the export if PROD_ADMIN_EMAIL is already in .env.
-export PROD_ADMIN_EMAIL=ops@arovolife.com
-export PROD_ADMIN_PASSWORD='<strong-password>'
-export PROD_ADMIN_NAME='Arovolife Operations'
+# Confirm these are already set in .env (otherwise add them once):
+#   PROD_ADMIN_EMAIL=ops@arovolife.com
+#   PROD_ADMIN_PASSWORD=<strong-password>
+#   PROD_ADMIN_NAME=Arovolife Operations
 
-php artisan db:seed --class=ProductionSeeder --force
+php artisan app:deploy \
+    --maintenance \
+    --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
 ```
+
+The command runs composer install, vite build, `storage:link`,
+migrations under maintenance mode, the idempotent `ProductionSeeder`
+(which provisions the admin user from `PROD_ADMIN_*`, ledger accounts,
+settings, feature flags, placeholder content pages and a placeholder
+catalogue), cache rebuilds, queue restart, and an HTTP smoke test.
 
 > **Do not** run `db:seed` with the default seeder in production — it
 > seeds demo distributors with PII via `DemoDownlineSeeder`.
@@ -146,12 +155,14 @@ php artisan db:seed --class=ProductionSeeder --force
 > "create-if-missing" semantics so admin-edited values are never
 > overwritten on subsequent runs.
 
-### 1.7 Storage + permissions
+### 1.7 Storage + permissions (only if §1.6 reported a permissions error)
+
+`app:deploy` already calls `storage:link` and rebuilds caches, but it
+cannot `chown`. If you see "Permission denied" while writing to
+`storage/logs/` or `bootstrap/cache/`, run:
 
 ```bash
 cd /home/master/applications/ahdhesuhty/public_html/app
-
-php artisan storage:link
 
 # Master user runs PHP-FPM under `master`; storage and bootstrap/cache
 # must be writable by that user.
@@ -159,7 +170,10 @@ chmod -R 775 storage bootstrap/cache
 chown -R master:www-data storage bootstrap/cache 2>/dev/null || true
 ```
 
-### 1.8 First-boot caches
+You can also click **Application → Application Settings → Reset
+Permissions** in the Cloudways UI for the equivalent.
+
+### 1.8 First-boot caches (only if §1.6 was skipped)
 
 ```bash
 php artisan config:clear
@@ -236,65 +250,66 @@ Then in a browser:
 
 ## 2. Subsequent deploys (the routine path)
 
-Use this every time after the first one. ~30 seconds of degraded
-response, no real downtime as long as no migration is running.
+Every post-pull task is wrapped in a single artisan command,
+`php artisan app:deploy` (defined at
+`app/app/Console/Commands/DeployCommand.php`). It runs composer install
+`--no-dev`, `npm ci && npm run build`, `storage:link`, migrations
+(optionally inside maintenance mode), the idempotent `ProductionSeeder`,
+config/route/view/event cache rebuilds, `queue:restart`, and an HTTP
+smoke test against `--health-url`. Every line is teed to
+`storage/logs/deploy.log` with ISO-8601 timestamps. Refuses to run
+unless `APP_ENV` is `staging` or `production`.
+
+### 2.1 Manual SSH deploy (canonical)
 
 ```bash
 ssh master@<server-ip>
 cd /home/master/applications/ahdhesuhty/public_html/app
 
-# 1. Pull and lock the codebase
-php artisan down --render="errors::503" --secret="<random-token>"  # optional; only if migrations involved
-
+# 1. Pull
 git fetch origin main
 git reset --hard origin/main           # discards any drift on the server
 
-# 2. Dependencies (skip if composer.lock and package-lock.json unchanged)
-composer install --no-dev --optimize-autoloader --no-interaction
-npm ci && npm run build
-
-# 3. Migrations — review first
-php artisan migrate --pretend          # show what would run
-php artisan migrate --force            # apply
-
-# 4. Re-cache config, routes, views, events
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
-
-# 5. Restart queue workers so they pick up new code
-php artisan queue:restart
-
-# 6. Bring the site back up
-php artisan up
+# 2. One command for the rest
+php artisan app:deploy \
+    --maintenance \
+    --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
 ```
 
-> **Note**: `php artisan down` blocks all traffic except those who hit
-> `/<secret>`. Skip it for code-only deploys; use it only when a
-> migration alters in-flight columns.
+Watch it stream the `▶ <step>` / `✓` / `✘` lines. On success the last
+line is `✓ deploy complete`. On failure the command exits non-zero and
+the offending step is the one labelled `✘`.
 
-### 2.1 Cloudways Git deployment (alternative)
+Tail the log in another shell while it runs if you want a persisted
+copy:
 
-If the team prefers Cloudways' built-in deployment over manual SSH:
+```bash
+tail -F /home/master/applications/ahdhesuhty/public_html/app/storage/logs/deploy.log
+```
 
-1. *Application → Deploy via Git → Deployment via Git → Settings*.
-2. Authorise the deploy key created in §1.3.
-3. Branch: `main`. Deployment path: leave blank (defaults to `public_html`).
-4. *Deploy now* — Cloudways pulls and runs the post-deploy script you
-   define under *Application → Application Settings → Deploy Hooks*. Use:
+### 2.2 Useful flag combinations
 
-   ```bash
-   cd /home/master/applications/ahdhesuhty/public_html/app
-   composer install --no-dev --optimize-autoloader --no-interaction
-   npm ci --silent && npm run build
-   php artisan migrate --force
-   php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache
-   php artisan queue:restart
-   ```
+| Scenario | Command |
+|---|---|
+| Code-only redeploy (composer.lock + package-lock.json unchanged) | `php artisan app:deploy --skip-composer --skip-npm --health-url=…` |
+| Frontend-only redeploy | `php artisan app:deploy --skip-migrate --skip-seed --health-url=…` |
+| Hot-fix (no migrations, no maintenance window) | `php artisan app:deploy --skip-migrate --skip-seed --health-url=…` |
+| Dry inspection of what would run | `php artisan app:deploy --skip-composer --skip-npm --skip-migrate --skip-seed --skip-cache --skip-queue` |
 
-This trades raw control for a one-click button. Either approach is
-fine; pick one and document which is canonical for the team.
+### 2.3 Cloudways Deploy Hook (alternative — currently unused)
+
+The same command works as the Cloudways Deploy Hook if you ever want
+push-to-deploy. Configure under *Application → Application Settings →
+Deploy Hooks*:
+
+```bash
+cd /home/master/applications/ahdhesuhty/public_html/app && \
+  php artisan app:deploy --maintenance \
+    --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
+```
+
+Phase 1 keeps deploys manual (Section 2.1); revisit when the team is
+ready for hands-off CD.
 
 ---
 
@@ -311,11 +326,11 @@ cd /home/master/applications/ahdhesuhty/public_html/app
 git log --oneline -5                   # find the last-known-good commit
 git reset --hard <good-sha>
 
-composer install --no-dev --optimize-autoloader --no-interaction
-npm ci && npm run build
-
-php artisan config:cache && php artisan route:cache && php artisan view:cache
-php artisan queue:restart
+# Same deploy command, no migrations to re-run on a code-only rollback:
+php artisan app:deploy \
+    --skip-migrate \
+    --skip-seed \
+    --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
 ```
 
 ### 3b. Code + DB rollback
@@ -483,14 +498,16 @@ BCRYPT_ROUNDS=12
 SSH:          ssh master@<server-ip>
 App root:     /home/master/applications/ahdhesuhty/public_html/app
 Webroot:      /home/master/applications/ahdhesuhty/public_html/app/public
-Logs:         storage/logs/laravel.log
-Deploy:       cd app && git pull && composer install --no-dev -o && npm ci && npm run build && \
-              php artisan migrate --force && php artisan config:cache && \
-              php artisan route:cache && php artisan view:cache && \
-              php artisan queue:restart
-Rollback:     git reset --hard <good-sha> && repeat the build steps above
+App logs:     storage/logs/laravel.log
+Deploy log:   storage/logs/deploy.log
+Deploy:       cd app && git fetch origin main && git reset --hard origin/main && \
+              php artisan app:deploy --maintenance \
+                --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
+Code-only:    php artisan app:deploy --skip-composer --skip-npm --health-url=…
+Rollback:     git reset --hard <good-sha> && php artisan app:deploy --maintenance --health-url=…
 DB backup:    mysqldump … | gzip > ~/backups/<ts>.sql.gz
 Tail logs:    tail -F storage/logs/laravel.log
+Tail deploy:  tail -F storage/logs/deploy.log
 Failed jobs:  php artisan queue:failed
 Open tinker:  php artisan tinker
 ```
