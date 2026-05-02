@@ -10,16 +10,18 @@
 </head>
 <body class="min-h-full bg-[#f4f7f6] text-gray-900 antialiased flex">
 
-    {{-- Sidebar --}}
-    <aside class="w-60 min-h-screen bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-40">
-        <div class="px-5 py-5 border-b border-gray-200">
+    {{-- Sidebar — h-screen + flex-col keeps the logo header and the
+         user/sign-out footer pinned, while the middle <nav> takes the
+         remaining height and scrolls when there's more nav than fits. --}}
+    <aside class="w-60 h-screen bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-40">
+        <div class="px-5 py-5 border-b border-gray-200 shrink-0">
             <a href="{{ route('admin.dashboard') }}" class="block">
                 <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-10 w-auto">
             </a>
             <span class="block text-[11px] text-gray-500 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
         </div>
 
-        <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        <nav class="flex-1 min-h-0 px-3 py-4 space-y-0.5 overflow-y-auto">
             @php
                 // Unread Contact-inquiries count for the sidebar badge.
                 // Cached for 60s so this query doesn't run on every admin page.
@@ -63,7 +65,7 @@
             @endforeach
         </nav>
 
-        <div class="px-3 py-4 border-t border-gray-200">
+        <div class="px-3 py-4 border-t border-gray-200 shrink-0">
             <p class="text-xs text-gray-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
