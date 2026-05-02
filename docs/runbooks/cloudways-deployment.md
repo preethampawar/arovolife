@@ -432,6 +432,9 @@ MAIL_PASSWORD=<pass>
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=no-reply@arovolife.com
 MAIL_FROM_NAME="arovolife"
+# Optional: silently BCC every outgoing email on STAGING for inbox-side
+# verification. Comma-separated for multiple recipients. Leave UNSET on prod.
+MAIL_GLOBAL_BCC=preetham.pawar@gmail.com
 SUPPORT_EMAIL=support@arovolife.com
 
 # Storage (KYC docs)

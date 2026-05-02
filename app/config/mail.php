@@ -115,4 +115,15 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Global BCC (staging only)
+    |--------------------------------------------------------------------------
+    |
+    | If set, every outgoing email gets a hidden copy sent to this address (or
+    | comma-separated list of addresses). Wired via Mail::alwaysBcc() in
+    | AppServiceProvider::boot(). Leave empty on production.
+    */
+    'global_bcc' => env('MAIL_GLOBAL_BCC', ''),
+
 ];
