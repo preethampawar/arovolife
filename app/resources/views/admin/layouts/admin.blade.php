@@ -10,10 +10,13 @@
 </head>
 <body class="min-h-full bg-[#f4f7f6] text-gray-900 antialiased flex">
 
-    {{-- Sidebar — h-screen + flex-col keeps the logo header and the
-         user/sign-out footer pinned, while the middle <nav> takes the
-         remaining height and scrolls when there's more nav than fits. --}}
-    <aside class="w-60 h-screen bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-40">
+    {{-- Sidebar — top-0/bottom-0 stretches the aside to the full viewport
+         vertically (more robust than h-screen which can mis-resolve under
+         position: fixed in Tailwind v4). The logo header is pinned at top,
+         and a single scrollable region holds nav + footer; mt-auto pushes
+         the footer to the bottom of that region when content fits, and
+         scrolls it into view when the viewport is too short. --}}
+    <aside class="w-60 fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-gray-200 flex flex-col">
         <div class="px-5 py-5 border-b border-gray-200 shrink-0">
             <a href="{{ route('admin.dashboard') }}" class="block">
                 <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-10 w-auto">
@@ -21,7 +24,8 @@
             <span class="block text-[11px] text-gray-500 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
         </div>
 
-        <nav class="flex-1 min-h-0 px-3 py-4 space-y-0.5 overflow-y-auto">
+        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        <nav class="px-3 py-4 space-y-0.5">
             @php
                 // Unread Contact-inquiries count for the sidebar badge.
                 // Cached for 60s so this query doesn't run on every admin page.
@@ -65,15 +69,16 @@
             @endforeach
         </nav>
 
-        <div class="px-3 py-4 border-t border-gray-200 shrink-0">
-            <p class="text-xs text-gray-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit"
-                    class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 font-medium hover:bg-gray-50 hover:text-red-600 transition-colors">
-                    <span class="text-gray-500">⏻</span> Sign out
-                </button>
-            </form>
+            <div class="mt-auto px-3 py-4 border-t border-gray-200">
+                <p class="text-xs text-gray-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit"
+                        class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 font-medium hover:bg-gray-50 hover:text-red-600 transition-colors">
+                        <span class="text-gray-500">⏻</span> Sign out
+                    </button>
+                </form>
+            </div>
         </div>
     </aside>
 
