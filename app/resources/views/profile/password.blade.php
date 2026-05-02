@@ -27,7 +27,7 @@
             <label for="new_password" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">New password</label>
             <input type="password" id="new_password" name="new_password" required autocomplete="new-password"
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-            <p class="mt-1.5 text-xs text-gray-500">Minimum 12 characters with mixed case and at least one number.</p>
+            <p class="mt-1.5 text-xs text-gray-500">Minimum 8 characters; we also block passwords that have appeared in known breaches.</p>
         </div>
 
         <div>

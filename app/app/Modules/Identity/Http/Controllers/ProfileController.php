@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Http\Rules\NotPwned;
+use App\Modules\Identity\Http\Rules\StrongPassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 /**
@@ -81,9 +82,7 @@ final class ProfileController extends Controller
 
         $request->validate([
             'current_password' => ['required', 'string'],
-            'new_password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()->uncompromised()],
-        ], [
-            'new_password.uncompromised' => 'This password has appeared in a known data breach. Please choose a different one.',
+            'new_password' => ['required', 'string', 'min:8', 'confirmed', new StrongPassword, new NotPwned],
         ]);
 
         if (! Hash::check($request->string('current_password')->toString(), $user->password_hash)) {
