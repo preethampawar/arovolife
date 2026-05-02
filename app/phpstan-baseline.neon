@@ -529,12 +529,6 @@ parameters:
 			path: app/Modules/Genealogy/Models/Sponsorship.php
 
 		-
-			message: '#^Match expression does not handle remaining value\: string$#'
-			identifier: match.unhandled
-			count: 1
-			path: app/Modules/Genealogy/Services/PlacementStrategyResolver.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Grievance\\Models\\Ticket\:\:\$sla_resolution_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -727,6 +721,12 @@ parameters:
 			path: app/Modules/Payments/Services/StubGateway.php
 
 		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Modules/Public/Http/Controllers/ContactController.php
+
+		-
 			message: '#^Method App\\Modules\\Returns\\Models\\BuybackDecision\:\:returnRequest\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -849,7 +849,7 @@ parameters:
 		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 3
+			count: 1
 			path: database/seeders/SettingsSeeder.php
 
 		-
@@ -979,25 +979,19 @@ parameters:
 			path: tests/Modules/Compliance/CoolingOffReminderTest.php
 
 		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$resolver\.$#'
-			identifier: property.notFound
-			count: 10
-			path: tests/Modules/Genealogy/PlacementStrategyResolverTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 3
 			path: tests/Modules/Genealogy/TreeViewTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Identity/CoupleRegistrationTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 3
 			path: tests/Modules/Identity/KycDocumentUploadTest.php
@@ -1015,13 +1009,19 @@ parameters:
 			path: tests/Modules/Identity/KycDocumentUploadTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Identity/PasswordPolicyTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:post\(\)\.$#'
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/PasswordPolicyTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Identity/PasswordPolicyTest.php
@@ -1039,10 +1039,16 @@ parameters:
 			path: tests/Modules/Identity/PasswordPolicyTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Identity/PasswordResetTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 13
+			path: tests/Modules/Identity/RegistrationFlowTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -1051,7 +1057,7 @@ parameters:
 			path: tests/Modules/Identity/StateAgeRuleTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 6
 			path: tests/Modules/Identity/StateAgeRuleTest.php
@@ -1073,6 +1079,42 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Identity/StateAgeRuleTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Public/ContactFormTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 15
+			path: tests/Modules/Public/ContactFormTest.php
+
+		-
+			message: '#^Function conValidPayload\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Public/ContactFormTest.php
+
+		-
+			message: '#^Function conValidPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Public/ContactFormTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Public/ContactRetentionPurgeTest.php
+
+		-
+			message: '#^Function makeInquiry\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Public/ContactRetentionPurgeTest.php
 
 		-
 			message: '#^Function makeRecord\(\) has parameter \$context with no value type specified in iterable type array\.$#'

@@ -183,7 +183,11 @@ final class DeployCommand extends Command
         }
     }
 
-    /** Run a shell command (composer, npm) and stream output to the console + log. */
+    /**
+     * Run a shell command (composer, npm) and stream output to the console + log.
+     *
+     * @param  list<string>  $cmd
+     */
     private function runProcess(string $label, array $cmd): void
     {
         if ($this->failed) {

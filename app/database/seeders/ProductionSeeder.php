@@ -65,10 +65,10 @@ final class ProductionSeeder extends Seeder
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
 
-        $email = env('PROD_ADMIN_EMAIL');
-        $password = env('PROD_ADMIN_PASSWORD');
+        $email = (string) config('arovolife.seeder.admin.email', '');
+        $password = (string) config('arovolife.seeder.admin.password', '');
 
-        if (! is_string($email) || $email === '' || ! is_string($password) || $password === '') {
+        if ($email === '' || $password === '') {
             $this->command->warn('PROD_ADMIN_EMAIL / PROD_ADMIN_PASSWORD not set — skipping admin provisioning.');
 
             return;
@@ -85,8 +85,8 @@ final class ProductionSeeder extends Seeder
 
         $admin = User::create([
             'email' => $email,
-            'full_name' => env('PROD_ADMIN_NAME', 'Administrator'),
-            'phone_e164' => env('PROD_ADMIN_PHONE', '+910000000000'),
+            'full_name' => (string) config('arovolife.seeder.admin.name', 'Administrator'),
+            'phone_e164' => (string) config('arovolife.seeder.admin.phone', '+910000000000'),
             'password_hash' => Hash::make($password),
             'status' => 'active',
             'email_verified_at' => now(),
@@ -115,24 +115,25 @@ final class ProductionSeeder extends Seeder
             return;
         }
 
-        $email = env('PROD_ROOT_EMAIL');
-        if (! is_string($email) || $email === '') {
+        $email = (string) config('arovolife.seeder.root_distributor.email', '');
+        if ($email === '') {
             $this->command->warn('PROD_ROOT_EMAIL not set — skipping root distributor. Set it and re-run to bootstrap the genealogy.');
 
             return;
         }
 
-        $name = (string) env('PROD_ROOT_NAME', 'Arovolife Company Root');
-        $phone = (string) env('PROD_ROOT_PHONE', '+910000000001');
-        $state = strtoupper((string) env('PROD_ROOT_STATE', 'TG'));
-        $adn = (string) env('PROD_ROOT_ADN', 'AL-'.sprintf('%010d', 1));
+        $name = (string) config('arovolife.seeder.root_distributor.name', 'Arovolife Company Root');
+        $phone = (string) config('arovolife.seeder.root_distributor.phone', '+910000000001');
+        $state = strtoupper((string) config('arovolife.seeder.root_distributor.state', 'TG'));
+        $adn = (string) config('arovolife.seeder.root_distributor.adn', 'AL-0000000001');
+        $rootPassword = (string) (config('arovolife.seeder.root_distributor.password') ?? bin2hex(random_bytes(16)));
 
         $rootUser = User::query()->firstWhere('email', $email)
             ?? User::create([
                 'full_name' => $name,
                 'email' => $email,
                 'phone_e164' => $phone,
-                'password_hash' => Hash::make(env('PROD_ROOT_PASSWORD', bin2hex(random_bytes(16)))),
+                'password_hash' => Hash::make($rootPassword),
                 'password_set_at' => now(),
                 'status' => 'active',
                 'email_verified_at' => now(),
@@ -194,7 +195,7 @@ final class ProductionSeeder extends Seeder
     private function seedSettings(): void
     {
         $defaults = [
-            'compliance.state_age_minimums' => env('COMPLIANCE_STATE_AGE_MINIMUMS', '{"MH":21}'),
+            'compliance.state_age_minimums' => (string) config('arovolife.seeder.compliance.state_age_minimums', '{"MH":21}'),
         ];
 
         $this->insertSettingsIfMissing($defaults);
@@ -229,6 +230,7 @@ final class ProductionSeeder extends Seeder
         $this->insertSettingsIfMissing($defaults);
     }
 
+    /** @param  array<string, string>  $defaults */
     private function insertSettingsIfMissing(array $defaults): void
     {
         $existing = DB::table('settings')->whereIn('key', array_keys($defaults))->pluck('key')->all();

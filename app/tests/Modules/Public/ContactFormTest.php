@@ -187,7 +187,10 @@ it('CON-004g: POST with no fields at all returns multiple validation errors', fu
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
         ->post('/contact-us', []);
 
-    $response->assertSessionHasErrors(['name', 'email', 'phone_e164', 'address', 'purpose', 'message']);
+    // Address is optional (made nullable in
+    // 2026_05_02_000001_make_contact_inquiry_address_nullable), so it's
+    // deliberately not in the expected-errors list here.
+    $response->assertSessionHasErrors(['name', 'email', 'phone_e164', 'purpose', 'message']);
 });
 
 // ─── CON-005 ─────────────────────────────────────────────────────────────────
