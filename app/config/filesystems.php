@@ -47,34 +47,27 @@ return [
             'report' => false,
         ],
 
-        // Private KYC bucket. Driver is env-driven:
-        //   FILESYSTEM_KYC_DISK=local  → storage/app/private/kyc (default; dev)
-        //   FILESYSTEM_KYC_DISK=s3     → AWS S3 (Mumbai), via the same AWS_*
-        //                                creds. Bucket can be overridden with
-        //                                KYC_S3_BUCKET (otherwise falls back
-        //                                to AWS_BUCKET).
+        // Private KYC bucket — ALWAYS S3 (Mumbai). No local fallback by
+        // policy: KYC documents are PII and DPDP-2023-regulated; they
+        // must never live on a local server's filesystem where a server
+        // replacement / image rebuild would lose them, and where backup
+        // posture is per-machine rather than per-bucket. AppServiceProvider
+        // throws at boot if AWS_* / KYC_S3_BUCKET are not configured.
+        //
         // Never web-served — admins fetch via a signed in-app route after
         // RBAC + audit logging.
-        'kyc' => env('FILESYSTEM_KYC_DISK', 'local') === 's3'
-            ? [
-                'driver' => 's3',
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
-                'region' => env('AWS_DEFAULT_REGION', 'ap-south-1'),
-                'bucket' => env('KYC_S3_BUCKET', env('AWS_BUCKET')),
-                'root' => env('KYC_S3_PREFIX', 'kyc'),
-                'endpoint' => env('AWS_ENDPOINT'),
-                'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-                'visibility' => 'private',
-                'throw' => true,
-            ]
-            : [
-                'driver' => 'local',
-                'root' => storage_path('app/private/kyc'),
-                'visibility' => 'private',
-                'throw' => true,
-                'report' => false,
-            ],
+        'kyc' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'ap-south-1'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => 'kyc',
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
 
         's3' => [
             'driver' => 's3',
