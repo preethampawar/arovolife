@@ -127,12 +127,24 @@ site can't run without:
 # On Cloudways the DB is already provisioned; just run migrations.
 cd /home/master/applications/ahdhesuhty/public_html/app
 php artisan migrate --force          # --force is required in production
-php artisan db:seed --class=ProductionSeeder --force   # if a non-PII seeder exists
+
+# Optional: provision the admin user via env, then run the prod seeder.
+# Re-running this seeder is safe — it never overwrites existing rows.
+# Skip the export if PROD_ADMIN_EMAIL is already in .env.
+export PROD_ADMIN_EMAIL=ops@arovolife.com
+export PROD_ADMIN_PASSWORD='<strong-password>'
+export PROD_ADMIN_NAME='Arovolife Operations'
+
+php artisan db:seed --class=ProductionSeeder --force
 ```
 
 > **Do not** run `db:seed` with the default seeder in production — it
-> seeds demo distributors with PII. Phase 1 ships a `ProductionSeeder`
-> for content pages, settings, and the L0 root only.
+> seeds demo distributors with PII via `DemoDownlineSeeder`.
+> `ProductionSeeder` is the only seeder safe to run on prod: it inserts
+> roles, the admin (from env), settings, feature flags, content pages,
+> the chart of accounts, and a placeholder catalogue — all using
+> "create-if-missing" semantics so admin-edited values are never
+> overwritten on subsequent runs.
 
 ### 1.7 Storage + permissions
 
@@ -442,6 +454,12 @@ AGE_DEFAULT=18
 AGE_MAHARASHTRA=21
 PLACEMENT_DEFAULT_SIDE=L
 PLACEMENT_ALLOW_SPONSOR_OVERRIDE=true
+
+# Production seeder (only used by ProductionSeeder; ignore if seeding by hand)
+PROD_ADMIN_EMAIL=ops@arovolife.com
+PROD_ADMIN_PASSWORD=<strong-password>
+PROD_ADMIN_NAME=Arovolife Operations
+PROD_ADMIN_PHONE=+919999999999
 
 # Auth hardening
 PASSWORD_MIN_LENGTH=12
