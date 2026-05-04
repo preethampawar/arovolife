@@ -125,6 +125,21 @@ final class RegistrationWizardController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_e164' => ['required', 'regex:/^[6-9]\d{9}$/', 'unique:users,phone_e164'],
             'password' => ['required', 'string', 'min:8', 'confirmed', new StrongPassword, new NotPwned],
+        ], [
+            'full_name.required'   => 'Please enter your full name as it appears on your PAN card.',
+            'full_name.max'        => 'Full name must be at most 255 characters.',
+            'email.required'       => 'Please enter your email address.',
+            'email.email'          => 'That doesn’t look like a valid email — check for typos like missing @ or .com.',
+            'email.unique'         => 'An account already exists with this email. Try signing in, or use the "Forgot password" link.',
+            'phone_e164.required'  => 'Please enter your 10-digit Indian mobile number.',
+            'phone_e164.regex'     => 'Enter a 10-digit Indian mobile number (must start with 6, 7, 8, or 9).',
+            'phone_e164.unique'    => 'An account already exists with this mobile number.',
+            'password.required'    => 'Please choose a password.',
+            'password.min'         => 'Password must be at least 8 characters.',
+            'password.confirmed'   => 'The two passwords don’t match — please re-type them.',
+        ], [
+            'full_name'  => 'full name',
+            'phone_e164' => 'mobile number',
         ]);
 
         // Normalise phone — form sends digits only, DB stores E.164 with +91 prefix
@@ -169,6 +184,15 @@ final class RegistrationWizardController extends Controller
             'quiz_q2' => ['required', 'in:B'],
             'quiz_q3' => ['required', 'in:C'],
             'confirmed_watched' => ['required', 'accepted'],
+        ], [
+            'quiz_q1.required'           => 'Please answer Question 1.',
+            'quiz_q1.in'                 => 'Question 1: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q2.required'           => 'Please answer Question 2.',
+            'quiz_q2.in'                 => 'Question 2: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q3.required'           => 'Please answer Question 3.',
+            'quiz_q3.in'                 => 'Question 3: that’s not the correct answer. Please re-read the orientation and try again.',
+            'confirmed_watched.required' => 'Please confirm you have watched the full orientation video.',
+            'confirmed_watched.accepted' => 'You must confirm watching the orientation video before continuing.',
         ]);
 
         $this->wizard->saveStepData(2, [
@@ -196,6 +220,15 @@ final class RegistrationWizardController extends Controller
             'state' => ['required', 'in:'.implode(',', array_keys($this->indianStates()))],
             'address' => ['required', 'string', 'max:1000'],
             'register_with_spouse' => ['nullable', 'in:yes'],
+        ], [
+            'date_of_birth.required' => 'Please enter your date of birth.',
+            'date_of_birth.date'     => 'Please enter a valid date of birth (YYYY-MM-DD).',
+            'state.required'         => 'Please pick the state you live in.',
+            'state.in'                => 'Please pick a valid Indian state from the list.',
+            'address.required'       => 'Please enter your full residential address.',
+            'address.max'            => 'Address must be at most 1000 characters.',
+        ], [
+            'date_of_birth' => 'date of birth',
         ]);
 
         // Per US-1.12 the minimum age is admin-configurable per-state. The
@@ -259,10 +292,20 @@ final class RegistrationWizardController extends Controller
                 'spouse_email' => ['required', 'email', 'max:255', 'unique:users,email'],
                 'spouse_phone_e164' => ['required', 'regex:/^\+91[6-9]\d{9}$/', 'unique:users,phone_e164'],
             ], [
-                'spouse_dob.before' => "Spouse must be at least {$minAge} years old in this state.",
-                'spouse_email.unique' => 'A user with this email already exists.',
-                'spouse_phone_e164.regex' => 'Spouse phone must be a 10-digit Indian mobile number.',
-                'spouse_phone_e164.unique' => 'A user with this phone number already exists.',
+                'spouse_full_name.required' => 'Please enter your spouse’s full name.',
+                'spouse_dob.required'       => 'Please enter your spouse’s date of birth.',
+                'spouse_dob.date'           => 'Please enter a valid spouse date of birth (YYYY-MM-DD).',
+                'spouse_dob.before'         => "Spouse must be at least {$minAge} years old in this state.",
+                'spouse_email.required'     => 'Please enter your spouse’s email address.',
+                'spouse_email.email'        => 'That doesn’t look like a valid spouse email — check for typos.',
+                'spouse_email.unique'       => 'An account already exists with this spouse email.',
+                'spouse_phone_e164.required' => 'Please enter your spouse’s mobile number.',
+                'spouse_phone_e164.regex'    => 'Spouse mobile must be a 10-digit Indian number (starting with 6, 7, 8, or 9).',
+                'spouse_phone_e164.unique'   => 'An account already exists with this spouse mobile number.',
+            ], [
+                'spouse_full_name'   => 'spouse full name',
+                'spouse_dob'         => 'spouse date of birth',
+                'spouse_phone_e164'  => 'spouse mobile number',
             ]);
         }
 
@@ -313,7 +356,14 @@ final class RegistrationWizardController extends Controller
             $rules['spouse_pan_number'] = ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/', 'different:pan_number'];
         }
         $validated = $request->validate($rules, [
-            'spouse_pan_number.different' => 'Spouse PAN must differ from yours.',
+            'pan_number.required'         => 'Please enter your PAN number.',
+            'pan_number.regex'            => 'PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
+            'spouse_pan_number.required'  => 'Please enter your spouse’s PAN number.',
+            'spouse_pan_number.regex'     => 'Spouse PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
+            'spouse_pan_number.different' => 'Spouse PAN must differ from yours — one PAN can only register once.',
+        ], [
+            'pan_number'        => 'PAN',
+            'spouse_pan_number' => 'spouse PAN',
         ]);
 
         // Hard rule #6: one PAN = one ADN. The dedup query covers BOTH primary
@@ -361,7 +411,17 @@ final class RegistrationWizardController extends Controller
             $rules['spouse_aadhaar_last4'] = ['required', 'digits:4', 'different:aadhaar_last4'];
         }
         $validated = $request->validate($rules, [
+            'aadhaar_last4.required'         => 'Please enter the last 4 digits of your Aadhaar number.',
+            'aadhaar_last4.digits'           => 'Please enter exactly 4 digits.',
+            'consent_aadhaar.required'       => 'Please consent to UIDAI verification before continuing.',
+            'consent_aadhaar.accepted'       => 'You must consent to Aadhaar verification by our UIDAI partner to proceed.',
+            'spouse_aadhaar_last4.required'  => 'Please enter the last 4 digits of your spouse’s Aadhaar.',
+            'spouse_aadhaar_last4.digits'    => 'Please enter exactly 4 digits for spouse Aadhaar.',
             'spouse_aadhaar_last4.different' => 'Spouse Aadhaar last-4 must differ from yours.',
+        ], [
+            'aadhaar_last4'         => 'Aadhaar last 4 digits',
+            'spouse_aadhaar_last4'  => 'spouse Aadhaar last 4 digits',
+            'consent_aadhaar'       => 'Aadhaar consent',
         ]);
 
         // Phase 1 stub: generate reference IDs (real implementation uses UIDAI AUA/KUA partner)
@@ -392,6 +452,16 @@ final class RegistrationWizardController extends Controller
         $validated = $request->validate([
             'account_number' => ['required', 'string', 'min:9', 'max:18', 'regex:/^\d+$/'],
             'ifsc' => ['required', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'],
+        ], [
+            'account_number.required' => 'Please enter your bank account number.',
+            'account_number.min'      => 'Bank account number must be at least 9 digits.',
+            'account_number.max'      => 'Bank account number must be at most 18 digits.',
+            'account_number.regex'    => 'Bank account number must contain digits only — no spaces or letters.',
+            'ifsc.required'           => 'Please enter your bank’s IFSC code.',
+            'ifsc.regex'              => 'IFSC must be 11 characters: 4 letters, 0, then 6 alphanumeric (e.g. HDFC0001234).',
+        ], [
+            'account_number' => 'bank account number',
+            'ifsc'           => 'IFSC code',
         ]);
 
         $this->wizard->saveStepData(6, $validated);
@@ -447,7 +517,23 @@ final class RegistrationWizardController extends Controller
                 ];
             }
         }
-        $request->validate($rules);
+        // Bare rule names (not `*.rule`) are Laravel's "apply to every field
+        // with this rule" form. We can use that here because every field in
+        // $rules uses the same rule set.
+        $request->validate($rules, [
+            'required'   => 'Please upload :attribute (JPG, PNG, or PDF, max 5 MB).',
+            'file'       => 'The :attribute upload was incomplete — please try again.',
+            'max'        => 'The :attribute file is too large (max 5 MB).',
+            'mimetypes'  => 'The :attribute must be a JPG, PNG, or PDF file.',
+        ], [
+            'pan_doc'             => 'your PAN scan',
+            'aadhaar_doc'         => 'your Aadhaar scan',
+            'cheque_doc'          => 'a cancelled cheque scan',
+            'address_proof_front' => 'your address proof (front side)',
+            'address_proof_back'  => 'your address proof (back side)',
+            'spouse_pan_doc'      => 'your spouse’s PAN scan',
+            'spouse_aadhaar_doc'  => 'your spouse’s Aadhaar scan',
+        ]);
 
         $userId = (int) Auth::id();
         $disk = Storage::disk('kyc');
@@ -543,6 +629,15 @@ final class RegistrationWizardController extends Controller
             'consent_ethics' => ['required', 'accepted'],
             'consent_plan' => ['required', 'accepted'],
             'consent_privacy' => ['required', 'accepted'],
+        ], [
+            'consent_tnc.required'      => 'Please tick the Terms & Conditions consent.',
+            'consent_tnc.accepted'      => 'You must accept the Direct Seller Agreement & Terms of Service to continue.',
+            'consent_ethics.required'   => 'Please tick the Code of Ethics consent.',
+            'consent_ethics.accepted'   => 'You must accept the Code of Ethics to continue.',
+            'consent_plan.required'     => 'Please tick the Compensation Plan consent.',
+            'consent_plan.accepted'     => 'You must acknowledge the Compensation Plan to continue.',
+            'consent_privacy.required'  => 'Please tick the Privacy Policy consent.',
+            'consent_privacy.accepted'  => 'You must accept the Privacy Policy to continue.',
         ]);
 
         $this->wizard->saveStepData(9, [

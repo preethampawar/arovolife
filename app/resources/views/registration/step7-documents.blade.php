@@ -11,14 +11,6 @@
         registration becomes active.
     </p>
 
-    @if($errors->any())
-    <div class="rounded-xl border border-red-200 bg-red-50 p-4 mb-6 text-sm text-red-700">
-        @foreach($errors->all() as $error)
-        <p>{{ $error }}</p>
-        @endforeach
-    </div>
-    @endif
-
     <form method="POST" action="{{ url('/register/documents') }}" enctype="multipart/form-data" class="bg-white rounded-2xl border border-gray-200 p-8 space-y-6">
         @csrf
 
