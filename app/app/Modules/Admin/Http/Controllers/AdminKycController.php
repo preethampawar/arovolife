@@ -16,7 +16,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 final class AdminKycController extends Controller
 {
@@ -64,17 +64,20 @@ final class AdminKycController extends Controller
         ]);
     }
 
-    public function streamDocument(int $id, int $docId): StreamedResponse
+    public function streamDocument(int $id, int $docId): Response
     {
         $doc = KycDocument::query()
             ->where('distributor_id', $id)
             ->findOrFail($docId);
 
-        // Resolve the streamed response first so that if the file is missing
-        // on disk (orphaned row, key rotation, etc.), `Storage::response()`
-        // throws BEFORE we record an "admin viewed this" audit row that
-        // would otherwise mislead incident response.
-        $response = Storage::disk('kyc')->response($doc->object_storage_key);
+        $disk = Storage::disk('kyc');
+
+        // Confirm the object actually exists before logging "admin viewed
+        // this" — an orphaned DB row shouldn't produce a misleading audit
+        // entry. Surfaces a clean 404 for the <img> onerror handler too.
+        if (! $disk->exists($doc->object_storage_key)) {
+            abort(404, 'KYC document file not found.');
+        }
 
         AuditLog::create([
             'actor_id' => Auth::id(),
@@ -84,7 +87,22 @@ final class AdminKycController extends Controller
             'details' => ['type' => $doc->type],
         ]);
 
-        return $response;
+        // For S3, redirect to a short-lived signed URL. Streaming via
+        // Storage::response() worked locally but failed on Cloudways
+        // PHP-FPM (combination of output buffering + S3 SDK stream
+        // wrapper). The browser follows the 302 transparently — no
+        // change to the <img src> consumer.
+        if (config('filesystems.disks.kyc.driver') === 's3') {
+            $url = (string) $disk->temporaryUrl(
+                $doc->object_storage_key,
+                now()->addMinutes(15),
+            );
+
+            return redirect()->away($url);
+        }
+
+        // Local disk (dev) — keep the byte-stream pattern.
+        return $disk->response($doc->object_storage_key);
     }
 
     public function approve(int $id): RedirectResponse
