@@ -64,21 +64,13 @@
                     $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
                     $auditedUrl = route('admin.kyc.document', [$distributor->id, $doc->id]);
 
-                    // Direct-from-S3 URL for the inline thumbnail. On the
-                    // local disk (dev) we fall back to the audited route.
-                    $directUrl = $auditedUrl;
-                    if ($isS3Disk && $diskKyc->exists($doc->object_storage_key)) {
-                        try {
-                            $directUrl = (string) $diskKyc->temporaryUrl(
-                                $doc->object_storage_key,
-                                now()->addMinutes(30),
-                            );
-                        } catch (\Throwable $e) {
-                            // If pre-signing fails for any reason fall back to
-                            // the controller route so the page still renders.
-                            $directUrl = $auditedUrl;
-                        }
-                    }
+                    // Direct-from-S3 signed URL for the inline thumbnail.
+                    // temporaryUrl() is pure SigV4 math — no S3 round-trip —
+                    // so this stays cheap even with 7 docs in a couple unit.
+                    // Local disk (dev) falls back to the audited route.
+                    $directUrl = $isS3Disk
+                        ? (string) $diskKyc->temporaryUrl($doc->object_storage_key, now()->addMinutes(30))
+                        : $auditedUrl;
                 @endphp
                 <li class="border border-gray-200 rounded-lg overflow-hidden">
                     <div class="flex justify-between items-center px-3 py-2 bg-gray-50">
