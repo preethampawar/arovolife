@@ -47,22 +47,48 @@
         @if($distributor->kycDocuments->isEmpty())
         <p class="text-sm text-gray-500">No documents uploaded.</p>
         @else
+        @php
+            // Pre-sign one URL per document up front, valid for 30 minutes,
+            // so the <img> tag points straight at S3 (or local) and the
+            // browser doesn't have to round-trip through the streamDocument
+            // controller for every image. The "Open full size" link still
+            // hits the controller so admin clicks are audit-logged and
+            // RBAC-checked at view time.
+            $diskKyc = \Illuminate\Support\Facades\Storage::disk('kyc');
+            $isS3Disk = config('filesystems.disks.kyc.driver') === 's3';
+        @endphp
         <ul class="text-sm space-y-3">
             @foreach($distributor->kycDocuments as $doc)
                 @php
                     $ext = strtolower(pathinfo($doc->object_storage_key, PATHINFO_EXTENSION));
                     $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
-                    $url = route('admin.kyc.document', [$distributor->id, $doc->id]);
+                    $auditedUrl = route('admin.kyc.document', [$distributor->id, $doc->id]);
+
+                    // Direct-from-S3 URL for the inline thumbnail. On the
+                    // local disk (dev) we fall back to the audited route.
+                    $directUrl = $auditedUrl;
+                    if ($isS3Disk && $diskKyc->exists($doc->object_storage_key)) {
+                        try {
+                            $directUrl = (string) $diskKyc->temporaryUrl(
+                                $doc->object_storage_key,
+                                now()->addMinutes(30),
+                            );
+                        } catch (\Throwable $e) {
+                            // If pre-signing fails for any reason fall back to
+                            // the controller route so the page still renders.
+                            $directUrl = $auditedUrl;
+                        }
+                    }
                 @endphp
                 <li class="border border-gray-200 rounded-lg overflow-hidden">
                     <div class="flex justify-between items-center px-3 py-2 bg-gray-50">
                         <span class="text-gray-700 text-xs font-medium">{{ str_replace('_', ' ', $doc->type) }}</span>
-                        <a href="{{ $url }}" target="_blank"
+                        <a href="{{ $auditedUrl }}" target="_blank"
                             class="text-[11px] text-brand-600 hover:text-brand-700 underline">Open full size →</a>
                     </div>
                     @if($isImage)
-                        <a href="{{ $url }}" target="_blank" class="block bg-gray-100">
-                            <img src="{{ $url }}" alt="{{ $doc->type }}"
+                        <a href="{{ $auditedUrl }}" target="_blank" class="block bg-gray-100">
+                            <img src="{{ $directUrl }}" alt="{{ $doc->type }}"
                                  class="w-full h-40 object-contain bg-white"
                                  onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'text-xs text-red-600 p-3',textContent:'Image could not be loaded — file may be missing on disk.'}))">
                         </a>
