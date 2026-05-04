@@ -53,10 +53,16 @@
 
     <form method="POST" action="{{ url('/register/complete') }}">
         @csrf
-        <button type="submit"
-            class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
-            Confirm & Issue My ADN →
-        </button>
+        <div class="flex items-center justify-between gap-3">
+            <a href="{{ route('register.consent') }}"
+               class="inline-flex items-center px-5 py-4 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-base font-semibold transition-colors">
+                ← Back
+            </a>
+            <button type="submit"
+                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                Confirm & Issue My ADN →
+            </button>
+        </div>
     </form>
 
     <p class="mt-4 text-center text-xs text-gray-400">

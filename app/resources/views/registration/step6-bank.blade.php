@@ -49,10 +49,16 @@
             </p>
         </div>
 
-        <button type="submit"
-            class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
-            Save Bank Details & Continue →
-        </button>
+        <div class="flex items-center justify-between gap-3 pt-2">
+            <a href="{{ route('register.aadhaar') }}"
+               class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
+                ← Back
+            </a>
+            <button type="submit"
+                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                Save Bank Details & Continue →
+            </button>
+        </div>
     </form>
 </div>
 @endsection

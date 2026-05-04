@@ -44,16 +44,22 @@
         </div>
         @endif
 
-        <button type="submit"
-            class="btn-cta group w-full rounded-full bg-brand-500 hover:bg-brand-600 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
-            style="animation-delay: 440ms;">
-            <span class="inline-flex items-center justify-center gap-2.5">
-                Continue to consent
-                <svg class="btn-arrow w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 8h11M9 4l4 4-4 4"/>
-                </svg>
-            </span>
-        </button>
+        <div class="flex items-center justify-between gap-3 pt-2">
+            <a href="{{ route('register.documents') }}"
+               class="inline-flex items-center px-5 py-3 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
+                ← Back
+            </a>
+            <button type="submit"
+                class="btn-cta group flex-1 rounded-full bg-brand-500 hover:bg-brand-600 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
+                style="animation-delay: 440ms;">
+                <span class="inline-flex items-center justify-center gap-2.5">
+                    Continue to consent
+                    <svg class="btn-arrow w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 8h11M9 4l4 4-4 4"/>
+                    </svg>
+                </span>
+            </button>
+        </div>
     </form>
 </div>
 @endsection
