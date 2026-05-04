@@ -54,10 +54,6 @@
                 <span class="text-gray-600">Position</span>
                 <span class="font-medium">{{ $distributor->placement_side === 'L' ? '← Left' : '→ Right' }} leg</span>
             </div>
-            <div class="flex justify-between">
-                <span class="text-gray-600">Depth</span>
-                <span class="font-medium">Level {{ $distributor->depth }}</span>
-            </div>
         </div>
         <div class="mt-4 flex flex-col gap-1.5 text-xs">
             <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">View my binary tree →</a>

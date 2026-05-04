@@ -146,6 +146,7 @@
                     'level'             => 0,
                     'maxDepth'          => $maxDepth,
                     'childByParentSide' => $childByParentSide,
+                    'adminContext'      => $adminContext,
                 ])
             </div>
         </div>

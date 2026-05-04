@@ -24,7 +24,6 @@
                 <th class="px-5 py-3">ADN</th>
                 <th class="px-5 py-3">Joined</th>
                 <th class="px-5 py-3">Side</th>
-                <th class="px-5 py-3">Depth</th>
             </tr>
         </thead>
         <tbody>
@@ -33,7 +32,6 @@
                 <td class="px-5 py-3 font-mono font-bold text-brand-600 tracking-widest">{{ $row->adn }}</td>
                 <td class="px-5 py-3 text-gray-700">{{ $row->effective_date->format('d M Y') }}</td>
                 <td class="px-5 py-3 text-gray-700">{{ $row->placement_side === 'L' ? 'Left' : ($row->placement_side === 'R' ? 'Right' : '—') }}</td>
-                <td class="px-5 py-3 text-gray-700">Level {{ $row->depth }}</td>
             </tr>
             @endforeach
         </tbody>

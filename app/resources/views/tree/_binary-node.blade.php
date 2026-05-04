@@ -1,4 +1,5 @@
 @php
+    $adminContext = $adminContext ?? false;
     $left  = $childByParentSide[$node->id]['L'] ?? null;
     $right = $childByParentSide[$node->id]['R'] ?? null;
     $isSelf = isset($self) && $self->id === $node->id;
@@ -56,7 +57,9 @@
                 </svg>
             </button>
         </div>
-        <p class="text-[10px] text-gray-500 mt-0.5">Level {{ $node->depth }}</p>
+        @if($adminContext)
+            <p class="text-[10px] text-gray-500 mt-0.5">Level {{ $node->depth }}</p>
+        @endif
     </div>
 
     @if($renderInlineChildren)
@@ -76,6 +79,7 @@
                         'level'             => $level + 1,
                         'maxDepth'          => $maxDepth,
                         'childByParentSide' => $childByParentSide,
+                        'adminContext'      => $adminContext,
                     ])
                 @else
                     @include('tree._empty-slot', ['parent' => $node, 'side' => 'L'])
@@ -90,6 +94,7 @@
                         'level'             => $level + 1,
                         'maxDepth'          => $maxDepth,
                         'childByParentSide' => $childByParentSide,
+                        'adminContext'      => $adminContext,
                     ])
                 @else
                     @include('tree._empty-slot', ['parent' => $node, 'side' => 'R'])
