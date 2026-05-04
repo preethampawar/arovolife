@@ -156,8 +156,32 @@ document.querySelector('[name="state"]').addEventListener('change', function() {
     const checkbox = document.getElementById('register_with_spouse');
     const panel = document.getElementById('spouse-fields');
     if (!checkbox || !panel) return;
+
+    // If the user has already saved spouse data (couple_enabled == true on
+    // initial render), un-checking the box deletes all spouse fields AND
+    // any spouse KYC files already uploaded. Confirm before allowing it.
+    const startedAsCouple = {{ ($data['couple_enabled'] ?? false) ? 'true' : 'false' }};
+
     checkbox.addEventListener('change', function () {
+        if (!this.checked && startedAsCouple) {
+            const ok = window.confirm(
+                "Are you sure?\n\n" +
+                "Unchecking this will permanently delete all the spouse details you have entered " +
+                "(name, date of birth, email, mobile, PAN, Aadhaar) and any spouse KYC documents " +
+                "you have uploaded. This cannot be undone.\n\n" +
+                "Click OK to proceed, or Cancel to keep the spouse registration."
+            );
+            if (!ok) {
+                this.checked = true;
+                return;
+            }
+        }
         panel.classList.toggle('hidden', !this.checked);
+        // When the user un-checks, also clear the in-form spouse inputs so
+        // a stray submit doesn't carry stale strings into the request body.
+        if (!this.checked) {
+            panel.querySelectorAll('input').forEach((el) => { el.value = ''; });
+        }
     });
 })();
 </script>

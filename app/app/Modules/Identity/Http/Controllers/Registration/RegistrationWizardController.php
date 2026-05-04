@@ -309,6 +309,16 @@ final class RegistrationWizardController extends Controller
             ]);
         }
 
+        // If the user previously enabled couple registration but has now
+        // unchecked it, wipe every trace of spouse data: form fields in
+        // steps 3-5, and the spouse upload files in step 7. The frontend
+        // already forces a confirm() on uncheck so the user has explicitly
+        // opted in to losing this data.
+        $wasCoupleBefore = (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false);
+        if ($wasCoupleBefore && ! $isCouple) {
+            $this->clearSpouseData();
+        }
+
         $this->wizard->saveStepData(3, [
             'date_of_birth' => $validated['date_of_birth'],
             'state' => $validated['state'],
@@ -318,6 +328,53 @@ final class RegistrationWizardController extends Controller
         ]);
 
         return redirect()->route('register.pan');
+    }
+
+    /**
+     * Wipe spouse data from steps 4, 5 and 7, including any uploaded files
+     * on the kyc disk. Used when the user un-checks "register with spouse"
+     * after having previously filled in spouse details.
+     */
+    private function clearSpouseData(): void
+    {
+        $disk = Storage::disk('kyc');
+
+        // Step 7 — delete uploaded spouse files first so we don't leave
+        // them orphaned on S3 when the wizard data is cleared.
+        $step7 = $this->wizard->getStepData(7) ?? [];
+        $spouseDocs = (array) ($step7['spouse_documents'] ?? []);
+        foreach ($spouseDocs as $doc) {
+            $path = (string) ($doc['path'] ?? '');
+            if ($path !== '' && $disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
+        if ($step7 !== []) {
+            $this->wizard->saveStepData(7, [
+                'documents' => $step7['documents'] ?? [],
+                'spouse_documents' => [],
+            ]);
+        }
+
+        // Step 5 — strip spouse Aadhaar fields.
+        $step5 = $this->wizard->getStepData(5);
+        if ($step5 !== null) {
+            $this->wizard->saveStepData(5, [
+                'last4' => $step5['last4'] ?? null,
+                'ref' => $step5['ref'] ?? null,
+                'spouse_last4' => null,
+                'spouse_ref' => null,
+            ]);
+        }
+
+        // Step 4 — strip spouse PAN.
+        $step4 = $this->wizard->getStepData(4);
+        if ($step4 !== null) {
+            $this->wizard->saveStepData(4, [
+                'pan_number' => $step4['pan_number'] ?? null,
+                'spouse_pan_number' => null,
+            ]);
+        }
     }
 
     private function minimumAgeForState(string $state): int
