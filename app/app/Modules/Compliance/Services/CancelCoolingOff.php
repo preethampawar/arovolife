@@ -107,7 +107,12 @@ final class CancelCoolingOff
         $event->cancelled_at = $now;
         $event->save();
 
-        $distributor->user()->update(['status' => 'terminated']);
+        // Scoped to this distributor's user only. Calling ->user()->update()
+        // on a BelongsTo runs unscoped on some Laravel versions and would
+        // terminate every user; updating the loaded model directly is safe.
+        if ($distributor->user !== null) {
+            $distributor->user->update(['status' => 'terminated']);
+        }
 
         AuditLog::create([
             'actor_id' => $actorUserId,

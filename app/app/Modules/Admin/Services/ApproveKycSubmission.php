@@ -8,6 +8,7 @@ use App\Modules\Admin\Events\KycApproved;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -72,11 +73,27 @@ final class ApproveKycSubmission
 
             // Flip user.status='active' on every distributor in the unit
             // (one row for solo, two for couples).
-            Distributor::query()
+            //
+            // IMPORTANT: do NOT use `$d->user()->update(...)` here — calling
+            // update() on a BelongsTo builder has historically been an
+            // unscoped UPDATE in some Laravel versions (the `users.id = ?`
+            // constraint isn't always applied to the update query), which
+            // would flip every user.status='pending' row to 'active' and
+            // approve every queued KYC. Pluck the specific user_ids first
+            // and run one explicit whereIn update.
+            $userIds = Distributor::query()
                 ->whereIn('id', $idsToApprove)
-                ->with('user')
-                ->get()
-                ->each(fn (Distributor $d) => $d->user()->update(['status' => 'active']));
+                ->pluck('user_id')
+                ->filter()
+                ->map(fn ($v) => (int) $v)
+                ->values()
+                ->all();
+
+            if ($userIds !== []) {
+                User::query()
+                    ->whereIn('id', $userIds)
+                    ->update(['status' => 'active']);
+            }
 
             AuditLog::create([
                 'actor_id' => $verifierUserId,

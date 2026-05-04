@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Services;
 use App\Modules\Admin\Events\KycRejected;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 
@@ -49,11 +50,21 @@ final class RejectKycSubmission
 
             $now = Carbon::now();
 
-            Distributor::query()
+            // Same scoped-update bugfix as ApproveKycSubmission — never call
+            // ->user()->update() on a BelongsTo, which can run unscoped.
+            $userIds = Distributor::query()
                 ->whereIn('id', $idsToReject)
-                ->with('user')
-                ->get()
-                ->each(fn (Distributor $d) => $d->user()->update(['status' => 'terminated']));
+                ->pluck('user_id')
+                ->filter()
+                ->map(fn ($v) => (int) $v)
+                ->values()
+                ->all();
+
+            if ($userIds !== []) {
+                User::query()
+                    ->whereIn('id', $userIds)
+                    ->update(['status' => 'terminated']);
+            }
 
             AuditLog::create([
                 'actor_id' => $verifierUserId,
