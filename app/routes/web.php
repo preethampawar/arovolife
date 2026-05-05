@@ -36,10 +36,22 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 
-    // Public registration entry — referral-link gated per ADR-0003. Direct
-    // visits redirect to Contact Us; valid links stash intent + advance to
-    // /register/account.
+    // Public registration entry. Two ways to enter:
+    //   /register?sponsor=X&placement=Y — original referral-link form (ADR-0003)
+    //   /join                            — manual ADN entry, then routes through /register
+    // Both stash the same intent and advance to step 1 (orientation).
     Route::get('/register', [RegistrationWizardController::class, 'start'])->name('register');
+    Route::get('/join', [RegistrationWizardController::class, 'showJoin'])->name('join.show');
+    Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])->name('join.submit');
+
+    // Step 1 — orientation. Public so the prospect can watch the video and
+    // pass the quiz BEFORE creating an account. Requires the referral-link
+    // intent to be in session; missing intent → /contact-us.
+    Route::get('/register/orientation', [RegistrationWizardController::class, 'showOrientation'])->name('register.orientation');
+    Route::post('/register/orientation', [RegistrationWizardController::class, 'handleOrientation']);
+
+    // Step 2 — create account. Requires both the intent AND the orientation
+    // session flag from step 1.
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
     Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])->name('register.post');
 
@@ -64,14 +76,9 @@ Route::get('/activate/{user}', [SpouseActivationController::class, 'show'])
 Route::post('/activate/{user}', [SpouseActivationController::class, 'submit'])
     ->middleware('signed')->name('spouse.activate.submit');
 
-// ── Registration Wizard (steps 2-10) ─────────────────────────────────────────
+// ── Registration Wizard (steps 3-10, auth-gated) ─────────────────────────────
 
 Route::middleware(['auth'])->group(function (): void {
-    Route::get('/register/orientation', [RegistrationWizardController::class, 'showOrientation'])
-        ->middleware('wizard.progress:2')->name('register.orientation');
-    Route::post('/register/orientation', [RegistrationWizardController::class, 'handleOrientation'])
-        ->middleware('wizard.progress:2');
-
     Route::get('/register/personal', [RegistrationWizardController::class, 'showPersonal'])
         ->middleware('wizard.progress:3')->name('register.personal');
     Route::post('/register/personal', [RegistrationWizardController::class, 'handlePersonal'])

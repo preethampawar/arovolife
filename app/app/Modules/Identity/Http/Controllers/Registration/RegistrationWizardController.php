@@ -94,16 +94,50 @@ final class RegistrationWizardController extends Controller
             ],
         );
 
-        return redirect()->route('register.account.show');
+        return redirect()->route('register.orientation');
     }
 
-    // ── Step 1: Account ────────────────────────────────────────────────────
+    // ── /join — manual sponsor + placement ADN entry ─────────────────────
 
-    public function showAccount(): View|RedirectResponse
+    public function showJoin(): View
+    {
+        return view('registration.join', [
+            'sponsorAdn' => old('sponsor_adn', request()->query('sponsor', '')),
+            'placementAdn' => old('placement_adn', request()->query('placement', '')),
+        ]);
+    }
+
+    public function handleJoin(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'sponsor_adn' => ['required', 'string', 'regex:/^(?=.*[A-Z0-9])[A-Z0-9-]{6,18}$/i'],
+            'placement_adn' => ['required', 'string', 'regex:/^(?=.*[A-Z0-9])[A-Z0-9-]{6,18}$/i'],
+        ], [
+            'sponsor_adn.required'   => 'Please enter the sponsor ADN — the person who invited you.',
+            'sponsor_adn.regex'      => 'Sponsor ADN must be in the form AL-XXXXXXXXXX.',
+            'placement_adn.required' => 'Please enter the placement ADN — usually the same as your sponsor.',
+            'placement_adn.regex'    => 'Placement ADN must be in the form AL-XXXXXXXXXX.',
+        ]);
+
+        // Re-route through the canonical referral-link entry so all the
+        // existence / cross-line / open-slot checks happen in one place.
+        return redirect()->route('register', [
+            'sponsor' => strtoupper(trim((string) $validated['sponsor_adn'])),
+            'placement' => strtoupper(trim((string) $validated['placement_adn'])),
+        ]);
+    }
+
+    // ── Step 2: Account ────────────────────────────────────────────────────
+
+    public function showAccount(Request $request): View|RedirectResponse
     {
         $intent = $this->wizard->intent();
         if ($intent === null) {
             return redirect('/contact-us?reason=referral_link_required');
+        }
+
+        if (! $request->session()->has('orientation_passed_at')) {
+            return redirect()->route('register.orientation');
         }
 
         return view('registration.step1-account', [
@@ -118,6 +152,10 @@ final class RegistrationWizardController extends Controller
         $intent = $this->wizard->intent();
         if ($intent === null) {
             return redirect('/contact-us?reason=referral_link_required');
+        }
+
+        if (! $request->session()->has('orientation_passed_at')) {
+            return redirect()->route('register.orientation');
         }
 
         $validated = $request->validate([
@@ -167,18 +205,36 @@ final class RegistrationWizardController extends Controller
             sideOpt: $intent['side_opt'] ?? null,
         );
 
-        return redirect()->route('register.orientation');
+        // Orientation is now step 1 (passed in session before account
+        // creation). Mark the wizard's step-2-orientation block as
+        // complete so the existing finalise() logic finds quiz_passed.
+        $this->wizard->saveStepData(2, [
+            'quiz_passed' => true,
+            'watched_at' => $request->session()->get('orientation_passed_at'),
+        ]);
+
+        return redirect()->route('register.personal');
     }
 
-    // ── Step 2: Orientation ────────────────────────────────────────────────
+    // ── Step 1: Orientation (public — runs BEFORE account creation) ─────
 
-    public function showOrientation(): View
+    public function showOrientation(): View|RedirectResponse
     {
+        $intent = $this->wizard->intent();
+        if ($intent === null) {
+            return redirect('/contact-us?reason=referral_link_required');
+        }
+
         return view('registration.step2-orientation');
     }
 
     public function handleOrientation(Request $request): RedirectResponse
     {
+        $intent = $this->wizard->intent();
+        if ($intent === null) {
+            return redirect('/contact-us?reason=referral_link_required');
+        }
+
         $request->validate([
             'quiz_q1' => ['required', 'in:A'],
             'quiz_q2' => ['required', 'in:B'],
@@ -195,12 +251,14 @@ final class RegistrationWizardController extends Controller
             'confirmed_watched.accepted' => 'You must confirm watching the orientation video before continuing.',
         ]);
 
-        $this->wizard->saveStepData(2, [
-            'quiz_passed' => true,
-            'watched_at' => now()->toISOString(),
-        ]);
+        // Orientation runs BEFORE account creation, so the user row doesn't
+        // exist yet — we can't write to wizard state here. Stash a session
+        // flag instead. handleAccount() copies this into wizard step-2 data
+        // after the User row is created so RegistrationService::finalise()
+        // still finds the canonical orientation block.
+        $request->session()->put('orientation_passed_at', now()->toIso8601String());
 
-        return redirect()->route('register.personal');
+        return redirect()->route('register.account.show');
     }
 
     // ── Step 3: Personal Details ───────────────────────────────────────────

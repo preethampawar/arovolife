@@ -13,8 +13,8 @@
 
     @php
         $steps = [
-            1  => ['label' => 'Account',     'route' => 'register'],
-            2  => ['label' => 'Orientation', 'route' => 'register.orientation'],
+            1  => ['label' => 'Orientation', 'route' => 'register.orientation'],
+            2  => ['label' => 'Account',     'route' => 'register.account.show'],
             3  => ['label' => 'Personal',    'route' => 'register.personal'],
             4  => ['label' => 'PAN',         'route' => 'register.pan'],
             5  => ['label' => 'Aadhaar',     'route' => 'register.aadhaar'],

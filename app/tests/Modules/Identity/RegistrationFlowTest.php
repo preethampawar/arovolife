@@ -235,12 +235,14 @@ it('REG-004b: GET /register where both slots are taken (no side given) redirects
 
 // ─── REG-005 ─────────────────────────────────────────────────────────────────
 
-it('REG-005: happy path GET /register with valid sponsor, placement in downline, open L slot → redirects to /register/account', function () {
+it('REG-005: happy path GET /register with valid sponsor, placement in downline, open L slot → redirects to /register/orientation', function () {
     $sponsor = regSeedRoot();
 
     $response = $this->get('/register?sponsor='.$sponsor['adn'].'&placement='.$sponsor['adn'].'&side=L');
 
-    $response->assertRedirect(route('register.account.show'));
+    // Orientation is now step 1 (public, before account creation), so the
+    // referral-link entry now lands the user on the orientation page.
+    $response->assertRedirect(route('register.orientation'));
 });
 
 it('REG-005b: happy path stashes sponsor_id and placement_id in the wizard session intent', function () {
@@ -275,5 +277,5 @@ it('REG-005d: happy path with placement_id deep in sponsor downline is accepted'
 
     $response = $this->get('/register?sponsor='.$sponsor['adn'].'&placement='.$child['adn'].'&side=R');
 
-    $response->assertRedirect(route('register.account.show'));
+    $response->assertRedirect(route('register.orientation'));
 });

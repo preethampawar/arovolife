@@ -80,8 +80,13 @@ final class WizardStateService
 
     public function start(int $userId, int $sponsorId, int $placementId, ?string $sideOpt = null): void
     {
+        // Orientation is now step 1 (public, before account creation), so the
+        // wizard state opens at step 3 — the first auth-gated step. Step 2
+        // (account) is implicit (the User row's existence is the proof).
+        // handleAccount() backfills the step-2 orientation block immediately
+        // after this call so the wizard data reads coherently downstream.
         $this->session->put(self::KEY, [
-            'step' => 2,
+            'step' => 3,
             'user_id' => $userId,
             'sponsor_id' => $sponsorId,
             'placement_id' => $placementId,

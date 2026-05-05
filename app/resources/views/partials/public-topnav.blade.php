@@ -16,7 +16,7 @@
 <div class="hidden sm:block bg-brand-700 text-white text-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-end gap-3 sm:gap-4 flex-wrap">
         @guest
-            <a href="{{ route('contact.show', ['reason' => 'join_us']) }}" class="hover:text-brand-50 transition-colors">Join Us</a>
+            <a href="{{ route('join.show') }}" class="hover:text-brand-50 transition-colors">Join Us</a>
             <span class="text-brand-400">|</span>
             <a href="{{ route('login') }}" class="hover:text-brand-50 transition-colors">Sign in</a>
         @else

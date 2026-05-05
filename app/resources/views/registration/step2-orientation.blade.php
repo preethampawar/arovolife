@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
-@section('title', 'Step 2 — Orientation')
-@php $currentStep = 2; @endphp
+@section('title', 'Step 1 — Orientation')
+@php $currentStep = 1; @endphp
 
 @section('content')
 <div class="max-w-2xl mx-auto">
@@ -88,7 +88,7 @@
 
         <button type="submit"
             class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
-            Continue to Personal Details →
+            Continue to Create Account →
         </button>
     </form>
 </div>
