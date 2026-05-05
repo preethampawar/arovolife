@@ -85,6 +85,87 @@
         @endif
     </div>
 
+    {{-- ── My Team — genealogy + status summary ─────────────────────── --}}
+    @if($teamStats !== null)
+    <div class="bg-white rounded-2xl border border-gray-200 p-6 col-span-full">
+        <div class="flex items-baseline justify-between mb-4 gap-3 flex-wrap">
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-1 font-semibold">My Team</p>
+                <p class="text-sm text-gray-600">A live view of your binary downline and direct referrals.</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+                <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">Binary tree →</a>
+                <span class="text-gray-300">·</span>
+                <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">Direct referrals →</a>
+            </div>
+        </div>
+
+        {{-- Top row: the four headline numbers --}}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+                <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total team</p>
+                <p class="text-3xl font-bold text-brand-700 leading-none">{{ number_format($teamStats['total_team']) }}</p>
+                <p class="text-[11px] text-gray-500 mt-1.5">members in your binary downline</p>
+            </div>
+            <div class="rounded-xl border border-leaf-200 bg-leaf-50/60 p-4">
+                <p class="text-[11px] text-leaf-700 uppercase tracking-wider font-semibold mb-1">Direct referrals</p>
+                <p class="text-3xl font-bold text-leaf-700 leading-none">{{ number_format($teamStats['direct_referrals']) }}</p>
+                <p class="text-[11px] text-gray-500 mt-1.5">people you personally invited</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4">
+                <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1">← Left team</p>
+                <p class="text-3xl font-bold text-gray-900 leading-none">{{ number_format($teamStats['left_team']) }}</p>
+                <p class="text-[11px] text-gray-500 mt-1.5">members under your left leg</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4">
+                <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Right team →</p>
+                <p class="text-3xl font-bold text-gray-900 leading-none">{{ number_format($teamStats['right_team']) }}</p>
+                <p class="text-[11px] text-gray-500 mt-1.5">members under your right leg</p>
+            </div>
+        </div>
+
+        {{-- Status breakdown row --}}
+        @php
+            $statuses = [
+                ['key' => 'active',     'label' => 'Active',     'count' => $teamStats['active'],     'cls' => 'bg-green-50 text-green-700 border-green-200',     'dot' => 'bg-green-500'],
+                ['key' => 'pending',    'label' => 'Pending',    'count' => $teamStats['pending'],    'cls' => 'bg-amber-50 text-amber-700 border-amber-200',     'dot' => 'bg-amber-500'],
+                ['key' => 'frozen',     'label' => 'Blocked',    'count' => $teamStats['frozen'],     'cls' => 'bg-sunrise-50 text-sunrise-800 border-sunrise-200', 'dot' => 'bg-sunrise-500'],
+                ['key' => 'terminated', 'label' => 'Inactive',   'count' => $teamStats['terminated'], 'cls' => 'bg-gray-100 text-gray-600 border-gray-200',       'dot' => 'bg-gray-400'],
+            ];
+        @endphp
+        <div class="border-t border-gray-100 pt-4">
+            <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-3">By status</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                @foreach($statuses as $s)
+                    <div class="flex items-center justify-between gap-3 rounded-lg border {{ $s['cls'] }} px-3 py-2.5">
+                        <span class="inline-flex items-center gap-2 text-xs font-semibold">
+                            <span class="w-2 h-2 rounded-full {{ $s['dot'] }}"></span>
+                            {{ $s['label'] }}
+                        </span>
+                        <span class="text-lg font-bold leading-none">{{ number_format($s['count']) }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Activity row --}}
+        <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
+                <span class="text-xs text-gray-600 font-medium">Joined this week</span>
+                <span class="text-base font-bold text-gray-900">{{ number_format($teamStats['joined_this_week']) }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
+                <span class="text-xs text-gray-600 font-medium">Joined this month</span>
+                <span class="text-base font-bold text-gray-900">{{ number_format($teamStats['joined_this_month']) }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
+                <span class="text-xs text-gray-600 font-medium">Cooling-off active</span>
+                <span class="text-base font-bold text-gray-900">{{ number_format($teamStats['cooling_off']) }}</span>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- My Referral Link — slot-aware widget.
          Three states keyed on $leftOpen / $rightOpen which the dashboard
          route computed via PlacementEngine::hasOpenSlot(). --}}

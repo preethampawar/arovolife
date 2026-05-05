@@ -22,6 +22,7 @@ use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
+use App\Modules\Identity\Http\Controllers\DashboardController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Public\Http\Controllers\ContactController;
@@ -214,31 +215,7 @@ Route::middleware('capture.attribution')->group(function (): void {
 // ── Authenticated App ────────────────────────────────────────────────────────
 
 Route::middleware(['auth'])->group(function (): void {
-    Route::get('/dashboard', function () {
-        $user = auth()->user();
-        $distributor = $user->distributor;
-
-        // Slot-state for the referral-link widget. Per ADR-0003 the
-        // dashboard's default link routes new joiners under the user's own
-        // ADN; once both direct slots are taken, that link silently fails.
-        // Read both slots up front so the view can render the correct copy.
-        $leftOpen = $rightOpen = false;
-        $maxObservedDepth = 0;
-        if ($distributor !== null) {
-            $engine = app(\App\Modules\Genealogy\Services\PlacementEngine::class);
-            $leftOpen  = $engine->hasOpenSlot($distributor->id, 'L');
-            $rightOpen = $engine->hasOpenSlot($distributor->id, 'R');
-
-            // Used by the "Open my tree" button so the tree view jumps
-            // straight to the user's actual depth instead of the default 4.
-            $maxObservedDepth = (int) \Illuminate\Support\Facades\DB::table('genealogy_closure')
-                ->where('ancestor_id', $distributor->id)
-                ->where('depth', '>', 0)
-                ->max('depth');
-        }
-
-        return view('dashboard.index', compact('user', 'distributor', 'leftOpen', 'rightOpen', 'maxObservedDepth'));
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/cooling-off', [CoolingOffController::class, 'show'])->name('cooling-off.show');
     Route::post('/cooling-off/cancel', [CoolingOffController::class, 'cancel'])->name('cooling-off.cancel');
