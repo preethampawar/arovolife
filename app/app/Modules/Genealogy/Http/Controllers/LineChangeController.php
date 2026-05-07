@@ -7,6 +7,7 @@ namespace App\Modules\Genealogy\Http\Controllers;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNewSponsorTooNewError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeWindowExpiredError;
 use App\Modules\Genealogy\Services\RequestLineChange;
 use App\Modules\Identity\Models\Distributor;
@@ -105,6 +106,11 @@ final class LineChangeController extends Controller
             return back()->withErrors(['line_change' => 'You already have referrals in your tree; line-change is not available.']);
         } catch (LineChangeAlreadyRequestedError) {
             return back()->withErrors(['line_change' => 'A line-change request is already pending for your account.']);
+        } catch (LineChangeNewSponsorTooNewError) {
+            return back()->withErrors(['to_sponsor_adn' =>
+                'You can only move under a sponsor who joined the platform before you. '
+                .'Please pick someone who registered earlier than your own joining date.',
+            ])->withInput();
         }
 
         return redirect()->route('line-change.show')->with(

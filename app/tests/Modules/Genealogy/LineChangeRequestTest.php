@@ -7,6 +7,7 @@ use App\Modules\Genealogy\Events\LineChangeRequested;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNewSponsorTooNewError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeWindowExpiredError;
 use App\Modules\Genealogy\Services\RequestLineChange;
 use App\Modules\Identity\Models\User;
@@ -85,11 +86,15 @@ function lcrUser(string $tag): User
 it('LCR-01: request within 5 business days creates pending row + event + audit', function () {
     Event::fake();
 
+    // Senior-sponsor rule: the new sponsor must have joined BEFORE the
+    // applicant. Real registrations always satisfy this; test setup
+    // mirrors that ordering explicitly so the LineChangeNewSponsorTooNew
+    // guard isn't tripped.
     $rootUser = lcrUser('root');
-    $rootId = lcrSeed($rootUser->id, effectiveAtBusinessDaysAgo: null);
+    $rootId = lcrSeed($rootUser->id, effectiveAtBusinessDaysAgo: 30);
 
     $newSponsorUser = lcrUser('newSp');
-    $newSponsorId = lcrSeed($newSponsorUser->id, effectiveAtBusinessDaysAgo: null);
+    $newSponsorId = lcrSeed($newSponsorUser->id, effectiveAtBusinessDaysAgo: 10);
 
     $applicantUser = lcrUser('app');
     $applicantId = lcrSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 2, sponsorId: $rootId);
@@ -149,8 +154,10 @@ it('LCR-03: request rejected when distributor has any descendants', function () 
 it('LCR-05: 5 weekdays + a few hours still inside the window (boundary-floor semantics)', function () {
     // Effective date is 5 weekdays + 4 hours ago. diffInWeekdays returns
     // ~5.17 → (int) 5 → still <= 5. The window is inclusive at the boundary.
-    $rootId = lcrSeed(lcrUser('root')->id);
-    $newSponsorId = lcrSeed(lcrUser('newSp')->id);
+    $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    // New sponsor joined ~10 weekdays ago, before the applicant's
+    // 5-weekday-and-4-hour effective_date.
+    $newSponsorId = lcrSeed(lcrUser('newSp')->id, effectiveAtBusinessDaysAgo: 10);
 
     $applicantUser = lcrUser('app');
     $applicantId = lcrSeed($applicantUser->id, sponsorId: $rootId);
@@ -168,8 +175,9 @@ it('LCR-05: 5 weekdays + a few hours still inside the window (boundary-floor sem
 });
 
 it('LCR-04: cannot request twice while one is pending', function () {
-    $rootId = lcrSeed(lcrUser('root')->id);
-    $newSponsorId = lcrSeed(lcrUser('newSp')->id);
+    $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    // newSponsor joined before the applicant — required by LCR-06.
+    $newSponsorId = lcrSeed(lcrUser('newSp')->id, effectiveAtBusinessDaysAgo: 10);
 
     $applicantUser = lcrUser('app');
     $applicantId = lcrSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 2, sponsorId: $rootId);
@@ -185,4 +193,47 @@ it('LCR-04: cannot request twice while one is pending', function () {
         toSponsorId: $newSponsorId,
         actorUserId: $applicantUser->id,
     ))->toThrow(LineChangeAlreadyRequestedError::class);
+});
+
+it('LCR-06: rejects a new sponsor whose effective_date is later than the applicant', function () {
+    // Applicant joined 4 weekdays ago (still inside the 5-day window).
+    // Candidate "new sponsor" joined just 1 weekday ago — strictly newer
+    // than the applicant. Should throw before any row is written.
+    $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    $newerSponsorId = lcrSeed(lcrUser('newer')->id, effectiveAtBusinessDaysAgo: 1);
+
+    $applicantUser = lcrUser('app');
+    $applicantId = lcrSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 4, sponsorId: $rootId);
+
+    expect(fn () => app(RequestLineChange::class)(
+        distributorId: $applicantId,
+        toSponsorId: $newerSponsorId,
+        actorUserId: $applicantUser->id,
+    ))->toThrow(LineChangeNewSponsorTooNewError::class);
+
+    // No row written; this is what enforces the "no abuse" property —
+    // the request never enters the queue.
+    expect(LineChangeRequest::where('distributor_id', $applicantId)->count())->toBe(0);
+});
+
+it('LCR-07: rejects a new sponsor whose effective_date EQUALS the applicant (strict)', function () {
+    // Equal-second ties count as "not earlier" and are rejected by
+    // policy. We mirror the timestamps exactly to verify the boundary.
+    $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    $sameDayId = lcrSeed(lcrUser('same')->id, effectiveAtBusinessDaysAgo: 2);
+
+    $applicantUser = lcrUser('app');
+    $applicantId = lcrSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 2, sponsorId: $rootId);
+
+    // Force exact-match effective_date so .lessThan returns false.
+    $sharedDate = now()->subWeekdays(2)->format('Y-m-d H:i:s.v');
+    DB::table('distributors')->whereIn('id', [$sameDayId, $applicantId])->update([
+        'effective_date' => $sharedDate,
+    ]);
+
+    expect(fn () => app(RequestLineChange::class)(
+        distributorId: $applicantId,
+        toSponsorId: $sameDayId,
+        actorUserId: $applicantUser->id,
+    ))->toThrow(LineChangeNewSponsorTooNewError::class);
 });

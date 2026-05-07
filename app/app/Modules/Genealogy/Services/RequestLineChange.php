@@ -10,6 +10,7 @@ use App\Modules\Genealogy\Models\GenealogyClosure;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNewSponsorTooNewError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeWindowExpiredError;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\DatabaseManager;
@@ -81,6 +82,24 @@ final class RequestLineChange
                 );
             }
 
+            // Senior-sponsor rule: the new sponsor must have joined the
+            // platform STRICTLY before the requesting distributor. Without
+            // this guard, a recently-joined distributor could move under a
+            // peer who registered later — breaking the "older joiner
+            // sponsors newer joiner" invariant the binary tree relies on.
+            // Lock the new sponsor's row so a concurrent mutation can't
+            // change their effective_date mid-check.
+            /** @var Distributor $newSponsor */
+            $newSponsor = Distributor::query()->lockForUpdate()->findOrFail($toSponsorId);
+
+            if (! $newSponsor->effective_date->lessThan($distributor->effective_date)) {
+                throw new LineChangeNewSponsorTooNewError(
+                    "Distributor {$distributorId} (joined {$distributor->effective_date->toDateString()}) "
+                    ."cannot move under sponsor {$toSponsorId} (joined {$newSponsor->effective_date->toDateString()}); "
+                    .'the new sponsor must have joined earlier.'
+                );
+            }
+
             $request = LineChangeRequest::create([
                 'distributor_id' => $distributorId,
                 'from_sponsor_id' => (int) $distributor->sponsor_id,
@@ -99,6 +118,8 @@ final class RequestLineChange
                     'request_id' => $request->id,
                     'from_sponsor_id' => (int) $distributor->sponsor_id,
                     'to_sponsor_id' => $toSponsorId,
+                    'to_sponsor_effective_date' => $newSponsor->effective_date->toIso8601String(),
+                    'requester_effective_date' => $distributor->effective_date->toIso8601String(),
                     'business_days_since_join' => $businessDaysSince,
                 ],
             ]);
