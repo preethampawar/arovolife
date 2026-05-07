@@ -26,7 +26,10 @@
             <label for="sponsor_adn" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Sponsor ADN <span class="text-red-700">*</span></label>
             <input type="text" id="sponsor_adn" name="sponsor_adn" required
                    value="{{ $sponsorAdn }}"
-                   placeholder="AL-1234567890"
+                   placeholder="111222333"
+                   inputmode="numeric"
+                   pattern="^[0-9]{9}(-S)?$"
+                   maxlength="11"
                    autocomplete="off"
                    spellcheck="false"
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
@@ -37,7 +40,10 @@
             <label for="placement_adn" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Placement ADN <span class="text-red-700">*</span></label>
             <input type="text" id="placement_adn" name="placement_adn" required
                    value="{{ $placementAdn }}"
-                   placeholder="AL-1234567890"
+                   placeholder="111222333"
+                   inputmode="numeric"
+                   pattern="^[0-9]{9}(-S)?$"
+                   maxlength="11"
                    autocomplete="off"
                    spellcheck="false"
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
@@ -58,13 +64,13 @@
 </div>
 
 <script>
-// Force-uppercase + auto-strip whitespace as the user types so they can paste
-// "al-1234..." without an upstream "format invalid" error from the backend.
+// ADNs are 9 digits (with an optional `-S` suffix for couple-secondaries).
+// Strip spaces and force the trailing 'S' to uppercase as the user types.
 ['sponsor_adn', 'placement_adn'].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', () => {
-        el.value = el.value.toUpperCase().replace(/\s+/g, '');
+        el.value = el.value.replace(/\s+/g, '').replace(/s$/, 'S');
     });
 });
 </script>

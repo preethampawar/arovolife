@@ -57,9 +57,8 @@ final class RegistrationWizardController extends Controller
 
         // Validate ADN shape before hitting the DB so a malformed query
         // string (e.g. an injection attempt) is rejected without a row scan.
-        // Lookahead requires at least one alphanumeric so all-dash strings
-        // like `------` don't waste a query.
-        $adnRegex = '/^(?=.*[A-Z0-9])[A-Z0-9-]{6,18}$/';
+        // 9 digits primary, optional `-S` couple-secondary suffix.
+        $adnRegex = '/^[0-9]{9}(-S)?$/i';
         if (! preg_match($adnRegex, $sponsorAdn) || ! preg_match($adnRegex, $placementAdn)) {
             return redirect('/contact-us?reason=invalid_referral_link');
         }
@@ -110,13 +109,17 @@ final class RegistrationWizardController extends Controller
     public function handleJoin(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'sponsor_adn' => ['required', 'string', 'regex:/^(?=.*[A-Z0-9])[A-Z0-9-]{6,18}$/i'],
-            'placement_adn' => ['required', 'string', 'regex:/^(?=.*[A-Z0-9])[A-Z0-9-]{6,18}$/i'],
+            // 9 digits for the primary ADN, optionally followed by `-S` for
+            // the couple-secondary record (still 11 chars max). Allow `-S`
+            // here only because someone might paste a spouse's ADN; the
+            // controller lookup will then redirect onto the primary anyway.
+            'sponsor_adn'   => ['required', 'string', 'regex:/^[0-9]{9}(-S)?$/i'],
+            'placement_adn' => ['required', 'string', 'regex:/^[0-9]{9}(-S)?$/i'],
         ], [
             'sponsor_adn.required'   => 'Please enter the sponsor ADN — the person who invited you.',
-            'sponsor_adn.regex'      => 'Sponsor ADN must be in the form AL-XXXXXXXXXX.',
+            'sponsor_adn.regex'      => 'Sponsor ADN must be exactly 9 digits, e.g. 111222333.',
             'placement_adn.required' => 'Please enter the placement ADN — usually the same as your sponsor.',
-            'placement_adn.regex'    => 'Placement ADN must be in the form AL-XXXXXXXXXX.',
+            'placement_adn.regex'    => 'Placement ADN must be exactly 9 digits, e.g. 111222333.',
         ]);
 
         // Re-route through the canonical referral-link entry so all the

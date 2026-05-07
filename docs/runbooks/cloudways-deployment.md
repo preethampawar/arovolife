@@ -242,7 +242,7 @@ curl -fsSL https://app.arovolife.com/contact-us | grep -q csrf  # confirms Blade
 Then in a browser:
 
 1. Hit `/contact-us`, submit a real inquiry — confirm it lands in the admin inbox.
-2. Hit `/register?ref=AL-0000000001` (the L0 ADN) — confirm referral resolves.
+2. Hit `/register?sponsor=111222333&placement=111222333` (the L0 ADN) — confirm referral resolves.
 3. Sign in as the admin seed user, click any distributor → "Impersonate" → confirm banner shows and "Return to admin" works.
 4. Open `/admin/tree` — confirm the company tree renders.
 
@@ -485,12 +485,14 @@ PROD_ADMIN_PHONE=+919999999999
 
 # L0 (genealogy root) — only created on first deploy, when the distributors
 # table is empty. The ADN below is the referral link the first real
-# recruits will use: https://APP_URL/register?ref=AL-0000000001
+# recruits will use: https://APP_URL/register?sponsor=111222333&placement=111222333
+# ADNs are 9-digit numeric values; new joiners are allocated in ascending
+# order from this seed (next = 111222334, then 111222335, …).
 PROD_ROOT_EMAIL=root@arovolife.com
 PROD_ROOT_NAME=Arovolife Company Root
 PROD_ROOT_PHONE=+919000000001
 PROD_ROOT_STATE=TG
-PROD_ROOT_ADN=AL-0000000001
+PROD_ROOT_ADN=111222333
 PROD_ROOT_PASSWORD=<long-random>     # only used if you ever need to log in as root
 
 # Auth hardening

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Hash;
  * Builds a small wide demo tree under a synthetic L0 root, exercising the
  * single-level placement engine introduced in ADR-0003. Resulting shape:
  *
- *                 L0  (root, ARODEMO000)
+ *                 L0  (root, 111222333)
  *               /    \
  *             J1      J2
  *           /   \    /
@@ -57,7 +57,7 @@ final class DemoDownlineSeeder extends Seeder
         try {
             $rootId = DB::table('distributors')->insertGetId([
                 'user_id' => $rootUser->id,
-                'adn' => 'ARODEMO000',
+                'adn' => '111222333',
                 'pan_hash' => random_bytes(32),
                 'pan_last4' => '0000',
                 'aadhaar_ref' => 'STUB_DEMO_L0',
@@ -91,7 +91,7 @@ final class DemoDownlineSeeder extends Seeder
             'depth' => 0,
         ]);
 
-        $created = [['L0', $rootUser->email, 'ARODEMO000', $rootId, 'root']];
+        $created = [['L0', $rootUser->email, '111222333', $rootId, 'root']];
 
         // ── J1..J5 placed via the engine. We vary placement_id so the tree
         // grows wide rather than chaining (single-level placement means each

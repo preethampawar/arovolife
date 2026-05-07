@@ -66,7 +66,7 @@ function propSeedRoot(?int $userId = null, int $depth = 0): int
     try {
         $id = DB::table('distributors')->insertGetId([
             'user_id' => $userId,
-            'adn' => 'PRP'.rand(100000, 999999),
+            'adn' => (string) rand(100000000, 999999999),
             'pan_hash' => random_bytes(32),
             'pan_last4' => '0000',
             'bank_account_enc' => random_bytes(32),

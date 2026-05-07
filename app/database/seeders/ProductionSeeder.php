@@ -125,7 +125,7 @@ final class ProductionSeeder extends Seeder
         $name = (string) config('arovolife.seeder.root_distributor.name', 'Arovolife Company Root');
         $phone = (string) config('arovolife.seeder.root_distributor.phone', '+910000000001');
         $state = strtoupper((string) config('arovolife.seeder.root_distributor.state', 'TG'));
-        $adn = (string) config('arovolife.seeder.root_distributor.adn', 'AL-0000000001');
+        $adn = (string) config('arovolife.seeder.root_distributor.adn', '111222333');
         $rootPassword = (string) (config('arovolife.seeder.root_distributor.password') ?? bin2hex(random_bytes(16)));
 
         $rootUser = User::query()->firstWhere('email', $email)

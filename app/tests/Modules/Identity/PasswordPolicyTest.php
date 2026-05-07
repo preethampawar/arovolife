@@ -36,7 +36,7 @@ function ppRegister(array $overrides = []): TestResponse
 
         $sponsorId = DB::table('distributors')->insertGetId([
             'user_id' => $sponsorUser->id,
-            'adn' => 'AROSPONS'.str_pad((string) rand(1, 9999), 4, '0', STR_PAD_LEFT),
+            'adn' => (string) rand(100000000, 999999999),
             'pan_hash' => random_bytes(32),
             'pan_last4' => '0000',
             'bank_account_enc' => 'stub',

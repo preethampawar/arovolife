@@ -34,7 +34,7 @@ return [
             'name' => env('PROD_ROOT_NAME', 'Arovolife Company Root'),
             'phone' => env('PROD_ROOT_PHONE', '+910000000001'),
             'state' => env('PROD_ROOT_STATE', 'TG'),
-            'adn' => env('PROD_ROOT_ADN', 'AL-0000000001'),
+            'adn' => env('PROD_ROOT_ADN', '111222333'),
         ],
 
         'compliance' => [

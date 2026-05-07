@@ -36,7 +36,7 @@ function regSeedRoot(?int $userId = null): array
 
     DB::statement('SET FOREIGN_KEY_CHECKS=0');
     try {
-        $adn = 'REG'.str_pad((string) rand(1, 999999), 6, '0', STR_PAD_LEFT);
+        $adn = (string) rand(100000000, 999999999);
 
         $id = DB::table('distributors')->insertGetId([
             'user_id' => $userId,
@@ -96,7 +96,7 @@ function regSeedUser(): int
  */
 function regPlaceUnder(int $sponsorId, int $parentId, string $side, int $parentDepth): array
 {
-    $adn = 'C'.str_pad((string) rand(1, 999999), 7, '0', STR_PAD_LEFT);
+    $adn = (string) rand(100000000, 999999999);
     $userId = regSeedUser();
 
     DB::statement('SET FOREIGN_KEY_CHECKS=0');
@@ -190,7 +190,10 @@ it('REG-002c: side param that is neither L nor R redirects to invalid_referral_l
 it('REG-002d: existing sponsor ADN but non-existent placement ADN redirects to invalid_referral_link', function () {
     $sponsor = regSeedRoot();
 
-    $response = $this->get('/register?sponsor='.$sponsor['adn'].'&placement=NONEXIST99');
+    // 999999999 passes the 9-digit regex but won't be in the DB (the
+    // sponsor's adn is generated below it via rand). Tests the
+    // DB-lookup-fail branch of start(), not the regex branch.
+    $response = $this->get('/register?sponsor='.$sponsor['adn'].'&placement=999999999');
 
     $response->assertRedirect('/contact-us?reason=invalid_referral_link');
 });

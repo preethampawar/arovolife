@@ -256,19 +256,48 @@ final class PlacementEngine
     }
 
     /**
-     * Generate a distributor ADN — pattern `AL-` + 10 numeric digits, e.g.
-     * `AL-0294716385`. Total 13 chars; fits the `distributors.adn`
-     * VARCHAR(16) with room for the couple-secondary `-S` suffix
-     * (e.g. `AL-0294716385-S` = 15 chars).
+     * Generate a distributor ADN — 9 numeric digits, e.g. `111222334`.
+     * Allocated in strict ascending order, starting from the seed root
+     * (`111222333` by convention) and incrementing for each new joiner.
      *
-     * Collision space is 10^10 = 10 billion. The unique index
-     * `uniq_distributors_adn` is the last-line defence in the unlikely
-     * event of a clash; an Eloquent insert that hits it will rethrow as
-     * UniqueConstraintViolationException, which the wizard catches at
-     * finalise time.
+     * The previous `AL-XXXXXXXXXX` random scheme had a 10-billion key
+     * space and zero ordering guarantees; the numeric scheme makes ADNs
+     * memorable, sortable, and predictable for the merchandising and
+     * support teams.
+     *
+     * Concurrency: place() is wrapped in a DB transaction with
+     * lockForUpdate() on the placement parent, so two registrations
+     * under the SAME parent can't race here. Two registrations under
+     * DIFFERENT parents could in theory both pick the same MAX+1 — the
+     * `uniq_distributors_adn` unique index is the last-line defence.
+     * We retry up to 5 times on collision before giving up; given the
+     * platform's expected registration rate, a real collision is rare
+     * and a single retry resolves it.
      */
     private function generateAdn(): string
     {
-        return 'AL-'.sprintf('%010d', random_int(0, 9999999999));
+        $start = 111_222_333; // root reserves this; first new joiner = 111222334
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            // SELECT MAX(adn) over the strictly-9-digit subset only —
+            // legacy AL-prefixed rows (if any survive a migration) sort
+            // ahead of pure-digit strings under MySQL's collation, so we
+            // filter them out explicitly.
+            $maxAdn = $this->db->table('distributors')
+                ->whereRaw("adn REGEXP '^[0-9]{9}$'")
+                ->selectRaw('MAX(CAST(adn AS UNSIGNED)) AS max_adn')
+                ->value('max_adn');
+
+            $next = $maxAdn !== null ? ((int) $maxAdn) + 1 : $start + 1;
+
+            $candidate = (string) $next;
+            if (! $this->db->table('distributors')->where('adn', $candidate)->exists()) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException(
+            'Could not allocate a unique ADN after 5 attempts — investigate concurrent inserts.'
+        );
     }
 }

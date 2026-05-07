@@ -55,8 +55,12 @@ final class LineChangeController extends Controller
             'to_sponsor_adn' => strtoupper(trim((string) $request->input('to_sponsor_adn', ''))),
         ]);
         $validated = $request->validate([
-            'to_sponsor_adn' => ['required', 'string', 'min:6', 'max:16', 'regex:/^[A-Z0-9\-]+$/'],
+            // 9-digit numeric ADN; secondary `-S` not accepted here because
+            // line-change requests must target a primary record.
+            'to_sponsor_adn' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
             'reason' => ['nullable', 'string', 'max:512'],
+        ], [
+            'to_sponsor_adn.regex' => 'New sponsor ADN must be exactly 9 digits, e.g. 111222333.',
         ]);
 
         $self = Auth::user()?->distributor;
