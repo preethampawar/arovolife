@@ -38,7 +38,7 @@
         $status     = $node->user?->status ?? 'pending';
         $statusInfo = $statusMap[$status] ?? $statusMap['pending'];
     @endphp
-    <div class="relative rounded-xl border {{ $statusInfo['border'] }} {{ $statusInfo['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-3 py-2 text-center min-w-[160px] max-w-[200px] shadow-sm">
+    <div class="relative rounded-xl border {{ $statusInfo['border'] }} {{ $statusInfo['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-3 py-2 text-center min-w-[140px] max-w-[180px] shadow-sm">
         <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full {{ $statusInfo['dot'] }} ring-2 ring-white" title="{{ $statusInfo['label'] }}"></span>
         <p class="text-[10px] uppercase tracking-wider {{ $isSelf ? 'text-brand-600 font-semibold' : 'text-gray-400' }}">{{ $title }}</p>
         @php $fullName = $node->user?->full_name; @endphp
@@ -71,7 +71,7 @@
             before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-4 before:bg-slate-300
             after:content-[''] after:absolute after:top-4 after:left-1/4 after:right-1/4 after:h-[2px] after:bg-slate-300">
 
-            <div class="relative pt-4 flex justify-center px-3
+            <div class="relative pt-4 flex justify-center px-1
                 before:content-[''] before:absolute before:top-[-1rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-8 before:bg-slate-300">
                 @if($left)
                     @include('tree._binary-node', [
@@ -86,7 +86,7 @@
                 @endif
             </div>
 
-            <div class="relative pt-4 flex justify-center px-3
+            <div class="relative pt-4 flex justify-center px-1
                 before:content-[''] before:absolute before:top-[-1rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-8 before:bg-slate-300">
                 @if($right)
                     @include('tree._binary-node', [

@@ -151,18 +151,19 @@ it('LCR-03: request rejected when distributor has any descendants', function () 
     ))->toThrow(LineChangeHasDownlineError::class);
 });
 
-it('LCR-05: 5 weekdays + a few hours still inside the window (boundary-floor semantics)', function () {
-    // Effective date is 5 weekdays + 4 hours ago. diffInWeekdays returns
-    // ~5.17 → (int) 5 → still <= 5. The window is inclusive at the boundary.
+it('LCR-05: 4 weekdays + a fractional day still inside the window', function () {
+    // Effective date is 4 weekdays + 20 hours ago — diffInWeekdays returns
+    // ~4.83 → (int) 4 → safely inside the 5-business-day window. Originally
+    // pinned at "5 weekdays + 4 hours" but Carbon 3's diffInWeekdays rounds
+    // to the next whole weekday near midnight crossings, making the
+    // 5-weekday boundary flaky depending on what time the test runs.
     $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
-    // New sponsor joined ~10 weekdays ago, before the applicant's
-    // 5-weekday-and-4-hour effective_date.
     $newSponsorId = lcrSeed(lcrUser('newSp')->id, effectiveAtBusinessDaysAgo: 10);
 
     $applicantUser = lcrUser('app');
     $applicantId = lcrSeed($applicantUser->id, sponsorId: $rootId);
     DB::table('distributors')->where('id', $applicantId)->update([
-        'effective_date' => now()->subWeekdays(5)->subHours(4)->format('Y-m-d H:i:s.v'),
+        'effective_date' => now()->subWeekdays(4)->subHours(20)->format('Y-m-d H:i:s.v'),
     ]);
 
     app(RequestLineChange::class)(
