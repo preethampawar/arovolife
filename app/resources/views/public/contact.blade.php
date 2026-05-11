@@ -115,12 +115,61 @@
                 <div class="lift-in" style="animation-delay: 500ms;">
                     <label for="address" class="flex items-baseline justify-between mb-1.5">
                         <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">Address</span>
-                        <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Optional</span>
+                        <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
                     </label>
-                    <textarea id="address" name="address" maxlength="500" rows="2"
+                    <textarea id="address" name="address" required maxlength="500" rows="2"
                         autocomplete="street-address"
-                        placeholder="Building / street / city / state / PIN (optional)"
+                        placeholder="Building name / street / locality"
                         class="input-refined resize-y">{{ old('address') }}</textarea>
+                </div>
+
+                <div class="lift-in grid grid-cols-1 sm:grid-cols-2 gap-4" style="animation-delay: 520ms;">
+                    <div>
+                        <label for="city" class="flex items-baseline justify-between mb-1.5">
+                            <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">City</span>
+                            <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
+                        </label>
+                        <input id="city" name="city" type="text" required maxlength="120"
+                            value="{{ old('city') }}"
+                            autocomplete="address-level2"
+                            class="input-refined">
+                    </div>
+                    <div>
+                        <label for="district" class="flex items-baseline justify-between mb-1.5">
+                            <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">District</span>
+                            <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
+                        </label>
+                        <input id="district" name="district" type="text" required maxlength="120"
+                            value="{{ old('district') }}"
+                            class="input-refined">
+                    </div>
+                </div>
+
+                <div class="lift-in grid grid-cols-1 sm:grid-cols-2 gap-4" style="animation-delay: 540ms;">
+                    <div>
+                        <label for="state" class="flex items-baseline justify-between mb-1.5">
+                            <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">State</span>
+                            <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
+                        </label>
+                        <select id="state" name="state" required class="input-refined">
+                            <option value="" disabled {{ old('state') === '' || old('state') === null ? 'selected' : '' }}>Pick your state…</option>
+                            @foreach($states as $code => $name)
+                                <option value="{{ $code }}" {{ old('state') === $code ? 'selected' : '' }}>{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="pin_code" class="flex items-baseline justify-between mb-1.5">
+                            <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">PIN code</span>
+                            <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
+                        </label>
+                        <input id="pin_code" name="pin_code" type="text" required maxlength="6"
+                            inputmode="numeric" pattern="^[1-9][0-9]{5}$"
+                            value="{{ old('pin_code') }}"
+                            placeholder="e.g. 500032"
+                            autocomplete="postal-code"
+                            class="input-refined font-mono">
+                    </div>
                 </div>
 
                 <div class="lift-in" style="animation-delay: 560ms;">

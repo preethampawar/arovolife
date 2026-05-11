@@ -36,7 +36,11 @@ function conValidPayload(array $overrides = []): array
         'name' => 'Ravi Kumar',
         'email' => 'ravi.kumar@example.com',
         'phone_e164' => '9876543210',
-        'address' => '12 MG Road, Hyderabad, TS',
+        'address' => '12 MG Road',
+        'city' => 'Hyderabad',
+        'district' => 'Hyderabad',
+        'state' => 'TG',
+        'pin_code' => '500001',
         'purpose' => 'become_distributor',
         'message' => 'I would like to know how to join as a distributor.',
         // DPDP Act 2023 §6 — explicit privacy consent is mandatory.
@@ -187,10 +191,14 @@ it('CON-004g: POST with no fields at all returns multiple validation errors', fu
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
         ->post('/contact-us', []);
 
-    // Address is optional (made nullable in
-    // 2026_05_02_000001_make_contact_inquiry_address_nullable), so it's
-    // deliberately not in the expected-errors list here.
-    $response->assertSessionHasErrors(['name', 'email', 'phone_e164', 'purpose', 'message']);
+    // Address is required again (re-tightened in 2026_05_11_000001_make_address_
+    // required_and_add_city_district_state_pin_to_contact_inquiries) along
+    // with four new postal-address fields (city, district, state, pin_code).
+    $response->assertSessionHasErrors([
+        'name', 'email', 'phone_e164',
+        'address', 'city', 'district', 'state', 'pin_code',
+        'purpose', 'message',
+    ]);
 });
 
 // ─── CON-005 ─────────────────────────────────────────────────────────────────

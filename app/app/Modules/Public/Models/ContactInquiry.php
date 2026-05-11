@@ -13,6 +13,10 @@ use Illuminate\Support\Carbon;
  * @property string $email
  * @property string $phone_e164
  * @property string $address
+ * @property string $city
+ * @property string $district
+ * @property string $state
+ * @property string $pin_code
  * @property string $purpose
  * @property string $message
  * @property string|null $reason
@@ -33,6 +37,10 @@ final class ContactInquiry extends Model
         'email',
         'phone_e164',
         'address',
+        'city',
+        'district',
+        'state',
+        'pin_code',
         'purpose',
         'message',
         'reason',
