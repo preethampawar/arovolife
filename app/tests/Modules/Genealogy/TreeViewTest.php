@@ -157,3 +157,43 @@ it('TV-03: /tree/sponsorship lists direct referrals (sponsor_id = self) only', f
     // Indirect referrals are NOT direct, so the sponsorship list must skip them.
     $response->assertDontSee($iAdn);
 });
+
+it('TV-04: /tree/{adn} re-roots at a descendant ADN — root and sibling are hidden', function () {
+    $rootUser = tvUser('root');
+    $rootId = tvSeedRoot($rootUser->id);
+
+    $middleId = tvPlace($rootId, tvUser('mid'), 'L');
+    $siblingId = tvPlace($rootId, tvUser('sib'), 'R');
+    $leafId = tvPlace($middleId, tvUser('leaf'));
+
+    $middleAdn = DB::table('distributors')->where('id', $middleId)->value('adn');
+    $rootAdn = DB::table('distributors')->where('id', $rootId)->value('adn');
+    $siblingAdn = DB::table('distributors')->where('id', $siblingId)->value('adn');
+    $leafAdn = DB::table('distributors')->where('id', $leafId)->value('adn');
+
+    $response = $this->actingAs($rootUser->refresh())->get('/tree/'.$middleAdn);
+    $response->assertOk();
+
+    // The new root (middle) AND its leaf are visible;
+    // the original root and the sibling-subtree are not in this pivot.
+    $response->assertSee($middleAdn);
+    $response->assertSee($leafAdn);
+    $response->assertDontSee($rootAdn);
+    $response->assertDontSee($siblingAdn);
+});
+
+it('TV-05: /tree/{adn} for a foreign ADN bounces back to /tree (no leak)', function () {
+    // Two separate trees, no shared ancestry.
+    $treeAuser = tvUser('a-root');
+    $treeAroot = tvSeedRoot($treeAuser->id);
+
+    $treeBuser = tvUser('b-root');
+    $treeBroot = tvSeedRoot($treeBuser->id);
+
+    $treeBadn = DB::table('distributors')->where('id', $treeBroot)->value('adn');
+
+    // Acting as tree-A's root, ask for tree-B's ADN — must not render it.
+    $response = $this->actingAs($treeAuser->refresh())->get('/tree/'.$treeBadn);
+
+    $response->assertRedirect(route('tree.binary'));
+});

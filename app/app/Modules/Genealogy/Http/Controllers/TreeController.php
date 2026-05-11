@@ -13,25 +13,58 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
- * Distributor-facing genealogy. Always rooted at the auth'd user's own
- * distributor record — there is no public ?distributor=N parameter, so a
- * distributor can never read another's tree even by URL tampering.
+ * Distributor-facing genealogy. By default the tree is rooted at the
+ * auth'd user. An optional /tree/{adn} segment can re-root the view at
+ * any descendant — but only descendants of the auth'd user; foreign
+ * ADNs return a redirect with a flash message rather than expose a
+ * neighbour's data.
  */
 final class TreeController extends Controller
 {
     /** Default depth shown when the user hasn't picked a value. */
     private const DEFAULT_DEPTH = 4;
 
-    public function binary(Request $request): View|RedirectResponse
+    public function binary(Request $request, ?string $adn = null): View|RedirectResponse
     {
-        $self = Auth::user()?->distributor;
-        if ($self === null) {
+        $authDistributor = Auth::user()?->distributor;
+        if ($authDistributor === null) {
             return redirect()->route('dashboard');
+        }
+
+        $self = $authDistributor;
+
+        if ($adn !== null) {
+            // Re-root at the requested ADN, but ONLY if it's the auth user's
+            // self-row or a descendant. Anything else is treated as a
+            // tampered URL and silently bounces back to /tree.
+            $candidate = Distributor::query()
+                ->with(['user:id,full_name'])
+                ->where('adn', $adn)
+                ->first();
+
+            if ($candidate === null) {
+                return redirect()->route('tree.binary')->with('status', 'That distributor was not found in your tree.');
+            }
+
+            $inMySubtree = (int) $candidate->id === (int) $authDistributor->id
+                || DB::table('genealogy_closure')
+                    ->where('ancestor_id', $authDistributor->id)
+                    ->where('descendant_id', $candidate->id)
+                    ->where('depth', '>', 0)
+                    ->exists();
+
+            if (! $inMySubtree) {
+                return redirect()->route('tree.binary')->with('status', 'You can only view distributors in your own downline.');
+            }
+
+            $self = $candidate;
         }
 
         // Inject the auth'd user back into the distributor's `user` relation
         // so the tree partial can show the self-name without an extra query.
-        $self->setRelation('user', Auth::user());
+        if ((int) $self->id === (int) $authDistributor->id) {
+            $self->setRelation('user', Auth::user());
+        }
 
         // Compute the user's actual max depth first so the view can
         // suggest sensible options + render up to that depth on demand.

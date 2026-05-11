@@ -40,6 +40,41 @@
     @endphp
     <div class="relative rounded-xl border {{ $statusInfo['border'] }} {{ $statusInfo['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[120px] max-w-[150px] shadow-sm">
         <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full {{ $statusInfo['dot'] }} ring-2 ring-white" title="{{ $statusInfo['label'] }}"></span>
+
+        @php
+            // The "show only this person's tree" pivot URL.
+            // Admin context: /admin/tree/{id}; distributor context: /tree/{adn}.
+            // Plain <a href>'s create real history entries — no JS routing needed
+            // for the "tracked in browser history" requirement.
+            $pivotUrl = $adminContext
+                ? route('admin.tree.show', $node->id)
+                : route('tree.binary', $node->adn);
+        @endphp
+        <div class="absolute top-1.5 left-1.5" data-node-menu>
+            <button type="button" data-node-menu-trigger
+                onclick="event.stopPropagation(); toggleNodeMenu(this);"
+                title="More actions"
+                class="w-4 h-4 inline-flex items-center justify-center rounded text-gray-400 hover:text-brand-700 hover:bg-white/80 transition-colors leading-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z"/>
+                </svg>
+            </button>
+            <div data-node-menu-panel hidden
+                class="absolute left-0 top-full mt-1 min-w-[180px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 z-50 text-left">
+                <a href="{{ $pivotUrl }}"
+                    class="block px-3 py-2 text-[11px] text-gray-700 hover:bg-brand-50 hover:text-brand-700 rounded-lg">
+                    <span class="block font-semibold">Show only this person's tree</span>
+                    <span class="block text-[10px] text-gray-400 mt-0.5">Hide siblings and parent; root here</span>
+                </a>
+                @if($adminContext)
+                <a href="{{ route('admin.distributors.show', $node->id) }}"
+                    class="block px-3 py-2 text-[11px] text-gray-700 hover:bg-brand-50 hover:text-brand-700 rounded-b-lg border-t border-gray-100">
+                    <span class="block font-semibold">View profile</span>
+                    <span class="block text-[10px] text-gray-400 mt-0.5">Open the distributor profile</span>
+                </a>
+                @endif
+            </div>
+        </div>
         <p class="text-[10px] uppercase tracking-wider {{ $isSelf ? 'text-brand-600 font-semibold' : 'text-gray-400' }}">{{ $title }}</p>
         @php $fullName = $node->user?->full_name; @endphp
         @if($fullName)

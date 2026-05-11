@@ -280,6 +280,29 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeInviteModal(); });
 })();
 
+// Per-node 3-dots menu. Opens the panel sibling, closes any other open
+// panel + closes-on-outside-click. Menu items are plain <a href>'s so
+// browser history records each subtree pivot — back/forward Just Works.
+window.toggleNodeMenu = (btn) => {
+    const wrapper = btn.closest('[data-node-menu]');
+    if (!wrapper) return;
+    const panel = wrapper.querySelector('[data-node-menu-panel]');
+    if (!panel) return;
+    const wasHidden = panel.hidden;
+    // Close every other open menu first.
+    document.querySelectorAll('[data-node-menu-panel]').forEach((p) => { p.hidden = true; });
+    panel.hidden = ! wasHidden;
+};
+document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-node-menu]')) return;
+    document.querySelectorAll('[data-node-menu-panel]').forEach((p) => { p.hidden = true; });
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('[data-node-menu-panel]').forEach((p) => { p.hidden = true; });
+    }
+});
+
 window.copyAdn = (btn) => {
     const adn = btn.dataset.copyAdn;
     if (!adn) return;

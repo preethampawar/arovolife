@@ -226,7 +226,15 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/cooling-off', [CoolingOffController::class, 'show'])->name('cooling-off.show');
     Route::post('/cooling-off/cancel', [CoolingOffController::class, 'cancel'])->name('cooling-off.cancel');
 
-    Route::get('/tree', [TreeController::class, 'binary'])->name('tree.binary');
+    // /tree           → tree rooted at the auth user (default)
+    // /tree/{adn}     → re-rooted at any of their descendants (server-side
+    //                   enforces "must be in my subtree"). The ADN appears
+    //                   in the URL so each subtree-pivot creates a fresh
+    //                   browser-history entry, and back/forward navigation
+    //                   Just Works.
+    Route::get('/tree/{adn?}', [TreeController::class, 'binary'])
+        ->where('adn', '[0-9]{9}(-S)?')
+        ->name('tree.binary');
     Route::get('/tree/sponsorship', [TreeController::class, 'sponsorship'])->name('tree.sponsorship');
 
     Route::get('/line-change', [LineChangeController::class, 'show'])->name('line-change.show');
