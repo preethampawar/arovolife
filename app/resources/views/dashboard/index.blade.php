@@ -166,119 +166,57 @@
     </div>
     @endif
 
-    {{-- My Referral Link — slot-aware widget.
-         Three states keyed on $leftOpen / $rightOpen which the dashboard
-         route computed via PlacementEngine::hasOpenSlot(). --}}
+    {{-- My Referral Link — sponsor-only.
+         The dashboard link ships JUST the sponsor ADN; the prospect picks
+         their own placement on the /join page (where both sponsor and
+         placement get resolved to friendly names before submission).
+         Tree-view "invite at this leaf" links keep their full
+         sponsor+placement+side encoding — that's a different flow. --}}
     @php
-        $inviteBase  = url('/register').'?sponsor='.$distributor->adn.'&placement='.$distributor->adn;
-        $inviteLeft  = $inviteBase.'&side=L';
-        $inviteRight = $inviteBase.'&side=R';
-        $bothOpen    = $leftOpen && $rightOpen;
-        $bothFull    = ! $leftOpen && ! $rightOpen;
-        $oneOpen     = ! $bothOpen && ! $bothFull;
-        $openSide    = $leftOpen ? 'L' : 'R';
-        $closedSide  = $leftOpen ? 'R' : 'L';
-        $invitePinned = $bothOpen
-            ? $inviteBase
-            : ($oneOpen ? $inviteBase.'&side='.$openSide : null);
+        $inviteUrl = url('/join').'?sponsor='.$distributor->adn;
+        $bothFull  = ! $leftOpen && ! $rightOpen;
     @endphp
     <div class="bg-white rounded-2xl border border-brand-200 p-6 col-span-full md:col-span-2 lg:col-span-3">
         <div class="flex items-start justify-between mb-3 gap-4">
             <div>
                 <p class="text-xs text-brand-700 uppercase tracking-wider mb-1 font-semibold">My Referral Link</p>
                 <p class="text-sm text-gray-600">
-                    @if($bothFull)
-                        Both your direct slots are filled. To invite more, pick a placement deeper in your tree.
-                    @elseif($oneOpen)
-                        Your <strong>{{ $closedSide === 'L' ? 'left' : 'right' }}</strong> direct slot is filled — this link routes new joiners to your <strong>{{ $openSide === 'L' ? 'left' : 'right' }}</strong> leg only.
-                    @else
-                        Share this with anyone you invite. They register through it; you become their sponsor and placement target.
-                    @endif
+                    Share this with anyone you invite. They open the page, see your
+                    name as the sponsor, and pick the placement ADN themselves.
                 </p>
             </div>
-            @if($bothFull)
-                <span class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-sunrise-50 text-sunrise-700 border border-sunrise-200">
-                    <span class="w-1.5 h-1.5 rounded-full bg-sunrise-500"></span>Direct slots full
-                </span>
-            @else
-                <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-brand-50 text-brand-700 border border-brand-200">Personal invite</span>
-            @endif
+            <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-brand-50 text-brand-700 border border-brand-200">Personal invite</span>
         </div>
 
-        @if($bothFull)
-            {{-- State: both direct slots taken --}}
-            <div class="rounded-xl border border-sunrise-200 bg-sunrise-50/60 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div class="shrink-0 w-10 h-10 rounded-full bg-white border border-sunrise-200 flex items-center justify-center text-sunrise-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 0v3.75m0-3.75h3.75M12 12.75H8.25M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                    </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm text-gray-800 font-medium leading-snug mb-1">Pick any leaf in your tree to invite there.</p>
-                    <p class="text-[12px] text-gray-600 leading-snug">Hover any open slot in the tree view, click <em>Invite</em>, and a new referral link is generated for that exact placement.</p>
-                </div>
-                <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
-                    class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
-                    Open my tree
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
-                    </svg>
-                </a>
+        <div class="space-y-2">
+            <div class="flex items-stretch gap-2">
+                <input type="text" readonly value="{{ $inviteUrl }}"
+                    class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    onclick="this.select()">
+                <button type="button"
+                    onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
+                    class="px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition-colors">
+                    Copy
+                </button>
             </div>
 
-        @else
-            {{-- State: both open OR one open. Show the (pinned) default link.
-                 In one-open mode the URL already carries the open side. --}}
-            <div class="space-y-2">
-                <div class="flex items-stretch gap-2">
-                    <input type="text" readonly value="{{ $invitePinned }}"
-                        class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        onclick="this.select()">
-                    <button type="button"
-                        onclick="navigator.clipboard.writeText('{{ $invitePinned }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-                        class="px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition-colors">
-                        Copy
-                    </button>
+            @if($bothFull)
+                <div class="flex items-center gap-2 pt-1 text-[11px] text-sunrise-700">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sunrise-50 border border-sunrise-200 font-semibold">
+                        <span class="w-1.5 h-1.5 rounded-full bg-sunrise-500"></span>Your direct slots are full
+                    </span>
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
+                        class="ml-auto text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">
+                        Invite at a specific deeper slot — open my tree →
+                    </a>
                 </div>
-
-                @if($bothOpen)
-                    {{-- Both legs available — keep the L/R advanced section. --}}
-                    <details class="text-xs text-gray-600">
-                        <summary class="cursor-pointer hover:text-brand-700">Advanced — pin a specific leg</summary>
-                        <div class="mt-3 space-y-2">
-                            <div class="flex items-stretch gap-2">
-                                <span class="inline-flex items-center px-2.5 rounded-l-lg bg-brand-50 text-brand-700 text-[10px] font-semibold uppercase tracking-wider border border-r-0 border-brand-200">Left</span>
-                                <input type="text" readonly value="{{ $inviteLeft }}" class="flex-1 rounded-r-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500" onclick="this.select()">
-                                <button type="button" onclick="navigator.clipboard.writeText('{{ $inviteLeft }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);" class="px-3 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold transition-colors">Copy</button>
-                            </div>
-                            <div class="flex items-stretch gap-2">
-                                <span class="inline-flex items-center px-2.5 rounded-l-lg bg-brand-50 text-brand-700 text-[10px] font-semibold uppercase tracking-wider border border-r-0 border-brand-200">Right</span>
-                                <input type="text" readonly value="{{ $inviteRight }}" class="flex-1 rounded-r-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500" onclick="this.select()">
-                                <button type="button" onclick="navigator.clipboard.writeText('{{ $inviteRight }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);" class="px-3 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold transition-colors">Copy</button>
-                            </div>
-                            <p class="text-[11px] text-gray-500 leading-relaxed">
-                                Pinned-leg links let you tell the engine which slot to use; if that slot is full the link returns the visitor to Contact Us.
-                            </p>
-                        </div>
-                    </details>
-                @else
-                    {{-- One open: show the open leg as a chip (already pinned in the
-                         default URL above) and the closed leg as disabled. --}}
-                    <div class="flex flex-wrap items-center gap-2 pt-1">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-leaf-50 text-leaf-700 text-[11px] font-semibold border border-leaf-200">
-                            <span class="w-1.5 h-1.5 rounded-full bg-leaf-500"></span>{{ $openSide === 'L' ? 'Left' : 'Right' }} leg open
-                        </span>
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 text-[11px] font-semibold border border-gray-200">
-                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>{{ $closedSide === 'L' ? 'Left' : 'Right' }} leg taken
-                        </span>
-                        <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
-                            class="ml-auto text-[11px] text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">
-                            Want to invite deeper? Open my tree →
-                        </a>
-                    </div>
-                @endif
-            </div>
-        @endif
+            @else
+                <p class="pt-1 text-[11px] text-gray-500">
+                    Want to drop someone at a specific deeper slot instead?
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">Open my tree →</a>
+                </p>
+            @endif
+        </div>
     </div>
 
     @else

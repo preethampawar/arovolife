@@ -282,3 +282,52 @@ it('REG-005d: happy path with placement_id deep in sponsor downline is accepted'
 
     $response->assertRedirect(route('register.orientation'));
 });
+
+// ── /join + ADN-lookup endpoint ──────────────────────────────────────────────
+
+it('JOIN-01: GET /join?sponsor=<adn> pre-fills + locks the sponsor field', function () {
+    $sponsor = regSeedRoot();
+
+    $response = $this->get('/join?sponsor='.$sponsor['adn']);
+
+    $response->assertOk();
+    // The sponsor input is pre-filled AND rendered readonly (the user
+    // can't edit it client-side; the form still POSTs the value).
+    $response->assertSee('value="'.$sponsor['adn'].'"', escape: false);
+    $response->assertSee('readonly', escape: false);
+});
+
+it('JOIN-LOOKUP-01: returns the name for a valid ADN', function () {
+    $sponsor = regSeedRoot();
+    // The regSeed helpers create a User without a full_name; backfill
+    // one so we can assert the controller surfaces it correctly.
+    DB::table('users')
+        ->where('id', DB::table('distributors')->where('id', $sponsor['id'])->value('user_id'))
+        ->update(['full_name' => 'Aarti Sharma']);
+
+    $response = $this->getJson('/join/lookup?adn='.$sponsor['adn']);
+
+    $response->assertOk();
+    $response->assertJson([
+        'found' => true,
+        'name' => 'Aarti Sharma',
+        'is_secondary' => false,
+    ]);
+});
+
+it('JOIN-LOOKUP-02: returns found=false for an unknown but well-formed ADN', function () {
+    regSeedRoot();
+
+    // 999999999 passes the regex but isn't seeded.
+    $response = $this->getJson('/join/lookup?adn=999999999');
+
+    $response->assertOk();
+    $response->assertExactJson(['found' => false]);
+});
+
+it('JOIN-LOOKUP-03: rejects malformed ADN without touching the DB', function () {
+    $response = $this->getJson('/join/lookup?adn=garbage');
+
+    $response->assertOk();
+    $response->assertExactJson(['found' => false]);
+});

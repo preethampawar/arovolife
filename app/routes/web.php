@@ -45,6 +45,12 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/join', [RegistrationWizardController::class, 'showJoin'])->name('join.show');
     Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])->name('join.submit');
 
+    // ADN-name lookup (used by /join's live name-resolution UI).
+    // Throttled to 30 req/min/IP — generous for keystroke-debounced
+    // lookups, tight enough to deter enumeration.
+    Route::get('/join/lookup', [RegistrationWizardController::class, 'lookupAdn'])
+        ->middleware('throttle:30,1')->name('join.lookup');
+
     // Step 1 — orientation. Public so the prospect can watch the video and
     // pass the quiz BEFORE creating an account. Requires the referral-link
     // intent to be in session; missing intent → /contact-us.

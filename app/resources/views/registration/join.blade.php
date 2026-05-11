@@ -5,9 +5,16 @@
 <div class="max-w-md mx-auto">
     <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Join arovolife</h1>
     <p class="text-sm text-gray-600 mb-6">
-        Enter the ADN of the Direct Seller who invited you, plus the placement ADN under
-        whose binary tree you'd like to be placed. They're often the same.
-        Your sponsor can find both numbers in their dashboard.
+        @if($sponsorLocked)
+            You've been invited by an existing Direct Seller — their ADN is filled
+            in below. Enter the placement ADN (often the same person, or someone
+            else in their tree) and we'll show you their name to confirm before
+            you continue.
+        @else
+            Enter the ADN of the Direct Seller who invited you, plus the placement
+            ADN under whose binary tree you'd like to be placed. They're often the
+            same. Your sponsor can find both numbers in their dashboard.
+        @endif
     </p>
 
     @if($errors->any())
@@ -32,8 +39,16 @@
                    maxlength="11"
                    autocomplete="off"
                    spellcheck="false"
-                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-            <p class="mt-1.5 text-xs text-gray-500">The Direct Seller who invited you.</p>
+                   data-adn-input="sponsor"
+                   @if($sponsorLocked) readonly tabindex="-1" @endif
+                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 @if($sponsorLocked) bg-gray-50 text-gray-700 cursor-not-allowed @endif">
+            <p data-adn-name="sponsor" class="mt-1.5 text-xs text-gray-500 min-h-[1.25rem]">
+                @if($sponsorLocked)
+                    Looking up sponsor name…
+                @else
+                    The Direct Seller who invited you.
+                @endif
+            </p>
         </div>
 
         <div>
@@ -46,8 +61,11 @@
                    maxlength="11"
                    autocomplete="off"
                    spellcheck="false"
+                   data-adn-input="placement"
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-            <p class="mt-1.5 text-xs text-gray-500">Often the same as the Sponsor ADN. Ask your sponsor if you're unsure.</p>
+            <p data-adn-name="placement" class="mt-1.5 text-xs text-gray-500 min-h-[1.25rem]">
+                Often the same as the Sponsor ADN. Ask your sponsor if you're unsure.
+            </p>
         </div>
 
         <button type="submit"
@@ -64,14 +82,88 @@
 </div>
 
 <script>
-// ADNs are 9 digits (with an optional `-S` suffix for couple-secondaries).
-// Strip spaces and force the trailing 'S' to uppercase as the user types.
-['sponsor_adn', 'placement_adn'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('input', () => {
-        el.value = el.value.replace(/\s+/g, '').replace(/s$/, 'S');
+(function () {
+    // ADNs are 9 digits (optional `-S` couple-secondary suffix).
+    // Strip spaces and force trailing 'S' uppercase as the user types.
+    document.querySelectorAll('[data-adn-input]').forEach((el) => {
+        el.addEventListener('input', () => {
+            el.value = el.value.replace(/\s+/g, '').replace(/s$/, 'S');
+            scheduleLookup(el);
+        });
     });
-});
+
+    // Debounced live lookup against /join/lookup. Renders the resolved
+    // distributor name into the matching <p data-adn-name="…"> sibling.
+    const lookupUrl = @json(route('join.lookup'));
+    const timers = {};
+    const idleCopy = {
+        sponsor:   "The Direct Seller who invited you.",
+        placement: "Often the same as the Sponsor ADN. Ask your sponsor if you're unsure.",
+    };
+
+    function nameEl(key) {
+        return document.querySelector('[data-adn-name="' + key + '"]');
+    }
+
+    function paint(key, state, text) {
+        const el = nameEl(key);
+        if (!el) return;
+        el.classList.remove('text-gray-500', 'text-green-700', 'text-red-600', 'text-amber-700');
+        el.classList.add(
+            state === 'ok'       ? 'text-green-700'
+            : state === 'bad'    ? 'text-red-600'
+            : state === 'warn'   ? 'text-amber-700'
+            : 'text-gray-500'
+        );
+        el.textContent = text;
+    }
+
+    function scheduleLookup(input) {
+        const key = input.getAttribute('data-adn-input');
+        const adn = input.value.trim();
+        clearTimeout(timers[key]);
+
+        if (adn === '') {
+            paint(key, 'idle', idleCopy[key] || '');
+            return;
+        }
+        if (!/^[0-9]{9}(-S)?$/i.test(adn)) {
+            paint(key, 'bad', 'ADN must be exactly 9 digits.');
+            return;
+        }
+
+        paint(key, 'idle', 'Looking up name…');
+        timers[key] = setTimeout(() => doLookup(key, adn), 300);
+    }
+
+    function doLookup(key, adn) {
+        fetch(lookupUrl + '?adn=' + encodeURIComponent(adn), { headers: { Accept: 'application/json' } })
+            .then((r) => r.ok ? r.json() : null)
+            .then((json) => {
+                if (!json) {
+                    paint(key, 'idle', idleCopy[key] || '');
+                    return;
+                }
+                if (!json.found) {
+                    paint(key, 'bad', 'No distributor with that ADN.');
+                    return;
+                }
+                if (json.is_secondary) {
+                    paint(key, 'warn', '✓ ' + json.name + ' (couple-secondary — use the primary spouse\'s ADN instead).');
+                    return;
+                }
+                paint(key, 'ok', '✓ ' + json.name);
+            })
+            .catch(() => paint(key, 'idle', idleCopy[key] || ''));
+    }
+
+    // On page load, if the sponsor came in pre-filled (locked) or the
+    // user is editing pre-populated input, kick the lookups immediately.
+    document.querySelectorAll('[data-adn-input]').forEach((el) => {
+        if (el.value.trim() !== '') {
+            scheduleLookup(el);
+        }
+    });
+})();
 </script>
 @endsection

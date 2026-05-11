@@ -100,9 +100,54 @@ final class RegistrationWizardController extends Controller
 
     public function showJoin(): View
     {
+        // When the sponsor ADN comes in on the URL (the dashboard's "share
+        // this link" widget emits sponsor-only links now), the field is
+        // rendered readonly and a hidden input belt-and-braces the value
+        // through submission. The placement ADN remains free-text.
+        $sponsorFromQuery = request()->query('sponsor');
+
         return view('registration.join', [
-            'sponsorAdn' => old('sponsor_adn', request()->query('sponsor', '')),
+            'sponsorAdn' => old('sponsor_adn', $sponsorFromQuery ?? ''),
             'placementAdn' => old('placement_adn', request()->query('placement', '')),
+            'sponsorLocked' => is_string($sponsorFromQuery) && $sponsorFromQuery !== '',
+        ]);
+    }
+
+    /**
+     * Live ADN → distributor-name lookup used by the /join page.
+     *
+     * Public + throttled. The query is one indexed lookup against
+     * `distributors.adn` joined to `users.full_name`; we surface no
+     * other PII. Couple-secondary records (the spouse `-S` rows) get a
+     * flag so the frontend can suggest the primary instead.
+     */
+    public function lookupAdn(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $adn = strtoupper(trim((string) $request->query('adn', '')));
+
+        // Reject malformed input without touching the DB so enumeration
+        // scrapers can't tax it with garbage. Same shape rule used by
+        // handleJoin's validator.
+        if (! preg_match('/^[0-9]{9}(-S)?$/i', $adn)) {
+            return response()->json(['found' => false]);
+        }
+
+        $row = DB::table('distributors as d')
+            ->join('users as u', 'u.id', '=', 'd.user_id')
+            ->where('d.adn', $adn)
+            ->select('u.full_name', 'd.spouse_distributor_id', 'd.is_primary_couple', 'd.state')
+            ->first();
+
+        if ($row === null) {
+            return response()->json(['found' => false]);
+        }
+
+        $isSecondary = $row->spouse_distributor_id !== null && (int) $row->is_primary_couple !== 1;
+
+        return response()->json([
+            'found' => true,
+            'name' => (string) $row->full_name,
+            'is_secondary' => $isSecondary,
         ]);
     }
 

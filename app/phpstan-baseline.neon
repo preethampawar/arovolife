@@ -1047,7 +1047,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 13
+			count: 14
+			path: tests/Modules/Identity/RegistrationFlowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:getJson\(\)\.$#'
+			identifier: method.notFound
+			count: 3
 			path: tests/Modules/Identity/RegistrationFlowTest.php
 
 		-
