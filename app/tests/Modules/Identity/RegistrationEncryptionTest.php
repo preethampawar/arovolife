@@ -117,3 +117,42 @@ it('ENC-01: bank account is encrypted at rest, never stored as plaintext', funct
         ->and($stored)->not->toContain($plaintext, 'plaintext must not appear in ciphertext')
         ->and(Crypt::decryptString($stored))->toBe($plaintext, 'ciphertext must round-trip via Laravel Crypt');
 });
+
+it('ENC-02: full PAN + Aadhaar are persisted encrypted; ciphertext does not contain plaintext', function () {
+    // Pre-purge state — what we hold while admin reviews the upload. After
+    // KYC verification, pan_encrypted / aadhaar_encrypted are nulled
+    // (see AKR-05); this test exclusively covers the pre-verify window.
+    seedSettings();
+    $rootUser = makeUser('root');
+    $rootId = seedRoot($rootUser->id);
+
+    $applicant = makeUser('applicant-pii');
+    $panPlain = 'ABCDE1234F';
+    $aadhaarPlain = '123456789012';
+
+    makeService()->finalise([
+        'sponsor_id' => $rootId,
+        'personal' => ['state' => 'TS', 'date_of_birth' => '1990-01-01'],
+        'pan' => ['pan_number' => $panPlain],
+        'aadhaar' => ['aadhaar_number' => $aadhaarPlain, 'ref' => 'AADH-REF-XYZ'],
+        'bank' => ['account_number' => '999999999', 'ifsc' => 'HDFC0001234'],
+        'placement' => [],
+        'consent' => ['ip' => '127.0.0.1', 'user_agent' => 'pest'],
+        'orientation' => [],
+    ], $applicant);
+
+    $row = DB::table('distributors')
+        ->where('user_id', $applicant->id)
+        ->select('pan_encrypted', 'aadhaar_encrypted', 'pan_last4', 'aadhaar_last4')
+        ->first();
+
+    expect($row)->not->toBeNull()
+        ->and($row->pan_encrypted)->not->toBeNull('pan_encrypted must be persisted')
+        ->and($row->pan_encrypted)->not->toContain($panPlain, 'PAN plaintext must not appear in ciphertext')
+        ->and(Crypt::decryptString($row->pan_encrypted))->toBe($panPlain)
+        ->and($row->pan_last4)->toBe('234F')
+        ->and($row->aadhaar_encrypted)->not->toBeNull('aadhaar_encrypted must be persisted')
+        ->and($row->aadhaar_encrypted)->not->toContain($aadhaarPlain, 'Aadhaar plaintext must not appear in ciphertext')
+        ->and(Crypt::decryptString($row->aadhaar_encrypted))->toBe($aadhaarPlain)
+        ->and($row->aadhaar_last4)->toBe('9012');
+});

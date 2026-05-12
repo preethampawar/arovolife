@@ -58,22 +58,36 @@ final class RegistrationService
         // the wizard state from the referral link (RegistrationWizardController::start()).
         $placementId = (int) ($placement['placement_id'] ?? $sponsorId);
 
-        $panHash = hash('sha256', strtoupper(trim($pan['pan_number'] ?? '')), true);
+        $panNumber = strtoupper(trim($pan['pan_number'] ?? ''));
+        $panHash = hash('sha256', $panNumber, true);
         $bankAccountEnc = $this->encryptBankAccount($bank['account_number'] ?? '');
+
+        // Full PAN + Aadhaar are encrypted at rest pending KYC review. After
+        // ApproveKycSubmission flips verified_at NOT NULL, those columns are
+        // nulled and the uploaded files are purged; only last-4 survives.
+        // This is accepted risk logged in docs/compliance/risk-register.md.
+        $panEncrypted = $panNumber !== '' ? Crypt::encryptString($panNumber) : null;
+        $aadhaarNumber = preg_replace('/\D+/', '', (string) ($aadhaar['aadhaar_number'] ?? '')) ?? '';
+        $aadhaarEncrypted = $aadhaarNumber !== '' ? Crypt::encryptString($aadhaarNumber) : null;
+        $aadhaarLast4 = $aadhaarNumber !== ''
+            ? substr($aadhaarNumber, -4)
+            : ($aadhaar['last4'] ?? '0000');
 
         $input = new PlaceDistributorInput(
             userId: $user->id,
             sponsorId: $sponsorId,
             placementId: $placementId,
             panHash: $panHash,
-            panLast4: strtoupper(substr($pan['pan_number'] ?? '0000', -4)),
+            panLast4: strtoupper(substr($panNumber !== '' ? $panNumber : '0000', -4)),
             bankAccountEnc: $bankAccountEnc,
             bankIfsc: strtoupper($bank['ifsc'] ?? ''),
             state: $personal['state'] ?? '',
             sideOpt: ! empty($placement['side']) ? $placement['side'] : null,
             aadhaarRef: $aadhaar['ref'] ?? 'STUB_REF_'.strtoupper(uniqid()),
-            aadhaarLast4: $aadhaar['last4'] ?? '0000',
+            aadhaarLast4: $aadhaarLast4,
             isPrimaryCouple: false,
+            panEncrypted: $panEncrypted,
+            aadhaarEncrypted: $aadhaarEncrypted,
         );
 
         // Atomic finalisation: placement + cooling_off_events + kyc_documents

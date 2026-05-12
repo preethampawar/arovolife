@@ -412,27 +412,34 @@ final class RegistrationWizardController extends Controller
 
     public function handleAadhaar(Request $request): RedirectResponse
     {
+        // Strip the auto-grouping spaces from the input ("1234 5678 9012" → "123456789012")
+        // before validation so the digits-only rule applies cleanly.
+        $rawAadhaar = preg_replace('/\D+/', '', (string) $request->input('aadhaar_number', '')) ?? '';
+        $request->merge(['aadhaar_number' => $rawAadhaar]);
+
         $validated = $request->validate([
-            'aadhaar_last4' => ['required', 'digits:4'],
+            'aadhaar_number'  => ['required', 'digits:12'],
             'consent_aadhaar' => ['required', 'accepted'],
         ], [
-            'aadhaar_last4.required'   => 'Please enter the last 4 digits of your Aadhaar number.',
-            'aadhaar_last4.digits'     => 'Please enter exactly 4 digits.',
-            'consent_aadhaar.required' => 'Please consent to UIDAI verification before continuing.',
-            'consent_aadhaar.accepted' => 'You must consent to Aadhaar verification by our UIDAI partner to proceed.',
+            'aadhaar_number.required'  => 'Please enter your 12-digit Aadhaar number.',
+            'aadhaar_number.digits'    => 'Aadhaar must be exactly 12 digits.',
+            'consent_aadhaar.required' => 'Please consent to Aadhaar storage before continuing.',
+            'consent_aadhaar.accepted' => 'You must consent to Aadhaar storage and post-verification purge to proceed.',
         ], [
-            'aadhaar_last4'   => 'Aadhaar last 4 digits',
+            'aadhaar_number'  => 'Aadhaar number',
             'consent_aadhaar' => 'Aadhaar consent',
         ]);
 
-        // Phase 1 stub: generate reference ID (real implementation uses UIDAI AUA/KUA partner)
+        // Phase 1 stub reference token. Real implementation calls a vendor
+        // (Hyperverge / IDFY / DigiLocker) and stores the returned ref.
         $ref = 'STUB_'.strtoupper(uniqid('REF', true));
 
         $this->wizard->saveStepData(6, [
-            'last4' => $validated['aadhaar_last4'],
-            'ref' => $ref,
-            'spouse_last4' => null,
-            'spouse_ref' => null,
+            'aadhaar_number' => $validated['aadhaar_number'],
+            'last4'          => substr($validated['aadhaar_number'], -4),
+            'ref'            => $ref,
+            'spouse_last4'   => null,
+            'spouse_ref'     => null,
         ]);
 
         return redirect()->route('register.bank');

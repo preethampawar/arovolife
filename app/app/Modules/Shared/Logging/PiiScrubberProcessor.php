@@ -36,8 +36,8 @@ final class PiiScrubberProcessor implements ProcessorInterface
         'api_key', 'api_secret', 'secret', 'access_token', 'refresh_token',
         'authorization',
         // Arovolife PII column / form names
-        'pan', 'pan_number', 'pan_hash',
-        'aadhaar', 'aadhaar_number', 'aadhaar_ref',
+        'pan', 'pan_number', 'pan_hash', 'pan_encrypted',
+        'aadhaar', 'aadhaar_number', 'aadhaar_ref', 'aadhaar_encrypted',
         'account_number', 'bank_account', 'bank_account_enc',
     ];
 

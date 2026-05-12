@@ -13,6 +13,7 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -238,6 +239,7 @@ it('CR-05: solo registration (no couple block) leaves spouse_distributor_id NULL
 });
 
 it('CR-07: admin Approve KYC on a couple flips BOTH spouses to active', function () {
+    Storage::fake('kyc'); // approve purges PAN/Aadhaar files via the kyc disk
     crSeedSettings();
     $rootUser = crUser('root');
     $rootId = crSeedRoot($rootUser->id);
@@ -262,6 +264,7 @@ it('CR-07: admin Approve KYC on a couple flips BOTH spouses to active', function
 });
 
 it('CR-08: admin Approve invoked on the SECONDARY still flips both', function () {
+    Storage::fake('kyc');
     crSeedSettings();
     $rootUser = crUser('root');
     $rootId = crSeedRoot($rootUser->id);

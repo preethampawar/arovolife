@@ -11,6 +11,7 @@ use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Models\Sponsorship;
 use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Orientation\Models\OrientationView;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,8 +25,10 @@ use Illuminate\Support\Carbon;
  * @property string $adn
  * @property string|null $pan_hash
  * @property string $pan_last4
+ * @property string|null $pan_encrypted
  * @property string|null $aadhaar_ref
  * @property string|null $aadhaar_last4
+ * @property string|null $aadhaar_encrypted
  * @property string $bank_account_enc
  * @property string $bank_ifsc
  * @property int $sponsor_id
@@ -41,6 +44,8 @@ use Illuminate\Support\Carbon;
  * @property bool $is_primary_couple
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property-read string|null $pan_masked
+ * @property-read string|null $aadhaar_masked
  * @property-read User $user
  * @property-read Collection<int, KycDocument> $kycDocuments
  */
@@ -53,8 +58,10 @@ final class Distributor extends Model
         'adn',
         'pan_hash',
         'pan_last4',
+        'pan_encrypted',
         'aadhaar_ref',
         'aadhaar_last4',
+        'aadhaar_encrypted',
         'bank_account_enc',
         'bank_ifsc',
         'sponsor_id',
@@ -72,6 +79,8 @@ final class Distributor extends Model
 
     protected $hidden = [
         'pan_hash',
+        'pan_encrypted',
+        'aadhaar_encrypted',
         'bank_account_enc',
     ];
 
@@ -82,7 +91,43 @@ final class Distributor extends Model
             'cooling_off_end_at' => 'datetime',
             'is_primary_couple' => 'boolean',
             'depth' => 'integer',
+            // Laravel decrypts on read, encrypts on write. Backed by VARBINARY(512).
+            // Nulled by ApproveKycSubmission after admin KYC verification — at
+            // which point pan_last4 / aadhaar_last4 remain the only on-disk
+            // representation of the number.
+            'pan_encrypted' => 'encrypted',
+            'aadhaar_encrypted' => 'encrypted',
         ];
+    }
+
+    /**
+     * Display-safe PAN: mask all but the last 4 (e.g. "XXXXXX234F").
+     * Reads pan_last4 (never the encrypted column) so it works post-purge.
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function panMasked(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?string => $this->pan_last4 !== null && $this->pan_last4 !== ''
+                ? str_repeat('X', 6).$this->pan_last4
+                : null,
+        );
+    }
+
+    /**
+     * Display-safe Aadhaar: mask all but the last 4 (e.g. "XXXX XXXX 1234").
+     * Reads aadhaar_last4 so it works post-purge.
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function aadhaarMasked(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?string => $this->aadhaar_last4 !== null && $this->aadhaar_last4 !== ''
+                ? 'XXXX XXXX '.$this->aadhaar_last4
+                : null,
+        );
     }
 
     public function user(): BelongsTo

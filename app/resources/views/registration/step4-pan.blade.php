@@ -7,7 +7,8 @@
     <h2 class="text-2xl font-bold mb-2">PAN Verification</h2>
     <p class="text-gray-600 text-sm mb-8">
         One PAN can only be linked to one arovolife Distributor Number (ADN).
-        Your PAN is stored as an encrypted hash — the raw number is never stored.
+        Your PAN is held encrypted while our compliance team verifies your KYC documents,
+        then dropped — only the last 4 digits remain afterwards.
     </p>
 
     <form method="POST" action="{{ url('/register/kyc/pan') }}" class="space-y-5 bg-white rounded-2xl border border-gray-200 p-8">
@@ -43,8 +44,9 @@
 
         <div class="rounded-lg bg-brand-50 border border-brand-200 p-4">
             <p class="text-xs text-brand-700">
-                🔒 Both PANs are hashed using SHA-256 before storage. The original numbers are never retained in our database.
-                Name verification is performed server-side via an approved gateway.
+                🔒 Your PAN is encrypted at rest until your KYC documents are verified by our compliance team
+                (typically within 24–48 hours). After verification it is purged from our database; only the last 4
+                digits and a one-way hash remain for duplicate-prevention.
             </p>
         </div>
 
