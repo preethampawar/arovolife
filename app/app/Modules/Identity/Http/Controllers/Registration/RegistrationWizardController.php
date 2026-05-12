@@ -93,10 +93,14 @@ final class RegistrationWizardController extends Controller
             ],
         );
 
-        // Step 1 is "Sponsor & Placement" — even when the referral link is
-        // valid we send the user through this confirmation page so they
-        // see who they're being placed under before creating an account.
-        return redirect()->route('join.show');
+        // Step 1 (Sponsor & Placement) is the /join form. Link visitors
+        // ALREADY have those values, so they skip step 1 and advance to
+        // step 2 (Account). Manual-entry users come in via /join, submit
+        // it, get redirected to /register (here), and likewise advance
+        // to /register/account.show after validation. Avoid redirecting
+        // to /join again to prevent an infinite handleJoin → start →
+        // join → handleJoin loop.
+        return redirect()->route('register.account.show');
     }
 
     // ── Step 1: Sponsor & Placement (the /join page) ────────────────────
@@ -357,36 +361,27 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step4-pan', [
             'data' => $this->wizard->getStepData(5) ?? [],
-            'isCouple' => (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false),
+            'isCouple' => false /* couple registration disabled — see handlePersonal */,
         ]);
     }
 
     public function handlePan(Request $request): RedirectResponse
     {
-        $isCouple = (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false);
-
         // Auto-uppercase before regex check so a curl POST with lowercase
         // doesn't get a confusing "format invalid" message — PAN is a
         // case-insensitive identifier in practice (the dedup hash strips
         // case anyway).
         $request->merge([
             'pan_number' => strtoupper(trim((string) $request->input('pan_number', ''))),
-            'spouse_pan_number' => strtoupper(trim((string) $request->input('spouse_pan_number', ''))),
         ]);
 
-        $rules = ['pan_number' => ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/']];
-        if ($isCouple) {
-            $rules['spouse_pan_number'] = ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/', 'different:pan_number'];
-        }
-        $validated = $request->validate($rules, [
-            'pan_number.required'         => 'Please enter your PAN number.',
-            'pan_number.regex'            => 'PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
-            'spouse_pan_number.required'  => 'Please enter your spouse’s PAN number.',
-            'spouse_pan_number.regex'     => 'Spouse PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
-            'spouse_pan_number.different' => 'Spouse PAN must differ from yours — one PAN can only register once.',
+        $validated = $request->validate([
+            'pan_number' => ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/'],
         ], [
-            'pan_number'        => 'PAN',
-            'spouse_pan_number' => 'spouse PAN',
+            'pan_number.required' => 'Please enter your PAN number.',
+            'pan_number.regex'    => 'PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
+        ], [
+            'pan_number' => 'PAN',
         ]);
 
         // Hard rule #6: one PAN = one ADN. The dedup query covers BOTH primary
@@ -397,16 +392,9 @@ final class RegistrationWizardController extends Controller
             return back()->withErrors(['pan_number' => 'A Direct Seller account already exists for this PAN.']);
         }
 
-        if ($isCouple) {
-            $spouseHash = hash('sha256', strtoupper(trim($validated['spouse_pan_number'])), true);
-            if (DB::table('distributors')->where('pan_hash', $spouseHash)->exists()) {
-                return back()->withErrors(['spouse_pan_number' => 'A Direct Seller account already exists for this PAN.']);
-            }
-        }
-
         $this->wizard->saveStepData(5, [
             'pan_number' => $validated['pan_number'],
-            'spouse_pan_number' => $isCouple ? $validated['spouse_pan_number'] : null,
+            'spouse_pan_number' => null,
         ]);
 
         return redirect()->route('register.aadhaar');
@@ -418,44 +406,33 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step5-aadhaar', [
             'data' => $this->wizard->getStepData(6) ?? [],
-            'isCouple' => (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false),
+            'isCouple' => false /* couple registration disabled — see handlePersonal */,
         ]);
     }
 
     public function handleAadhaar(Request $request): RedirectResponse
     {
-        $isCouple = (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false);
-
-        $rules = [
+        $validated = $request->validate([
             'aadhaar_last4' => ['required', 'digits:4'],
             'consent_aadhaar' => ['required', 'accepted'],
-        ];
-        if ($isCouple) {
-            $rules['spouse_aadhaar_last4'] = ['required', 'digits:4', 'different:aadhaar_last4'];
-        }
-        $validated = $request->validate($rules, [
-            'aadhaar_last4.required'         => 'Please enter the last 4 digits of your Aadhaar number.',
-            'aadhaar_last4.digits'           => 'Please enter exactly 4 digits.',
-            'consent_aadhaar.required'       => 'Please consent to UIDAI verification before continuing.',
-            'consent_aadhaar.accepted'       => 'You must consent to Aadhaar verification by our UIDAI partner to proceed.',
-            'spouse_aadhaar_last4.required'  => 'Please enter the last 4 digits of your spouse’s Aadhaar.',
-            'spouse_aadhaar_last4.digits'    => 'Please enter exactly 4 digits for spouse Aadhaar.',
-            'spouse_aadhaar_last4.different' => 'Spouse Aadhaar last-4 must differ from yours.',
         ], [
-            'aadhaar_last4'         => 'Aadhaar last 4 digits',
-            'spouse_aadhaar_last4'  => 'spouse Aadhaar last 4 digits',
-            'consent_aadhaar'       => 'Aadhaar consent',
+            'aadhaar_last4.required'   => 'Please enter the last 4 digits of your Aadhaar number.',
+            'aadhaar_last4.digits'     => 'Please enter exactly 4 digits.',
+            'consent_aadhaar.required' => 'Please consent to UIDAI verification before continuing.',
+            'consent_aadhaar.accepted' => 'You must consent to Aadhaar verification by our UIDAI partner to proceed.',
+        ], [
+            'aadhaar_last4'   => 'Aadhaar last 4 digits',
+            'consent_aadhaar' => 'Aadhaar consent',
         ]);
 
-        // Phase 1 stub: generate reference IDs (real implementation uses UIDAI AUA/KUA partner)
+        // Phase 1 stub: generate reference ID (real implementation uses UIDAI AUA/KUA partner)
         $ref = 'STUB_'.strtoupper(uniqid('REF', true));
-        $spouseRef = $isCouple ? 'STUB_'.strtoupper(uniqid('REFS', true)) : null;
 
         $this->wizard->saveStepData(6, [
             'last4' => $validated['aadhaar_last4'],
             'ref' => $ref,
-            'spouse_last4' => $isCouple ? $validated['spouse_aadhaar_last4'] : null,
-            'spouse_ref' => $spouseRef,
+            'spouse_last4' => null,
+            'spouse_ref' => null,
         ]);
 
         return redirect()->route('register.bank');
@@ -498,7 +475,7 @@ final class RegistrationWizardController extends Controller
     public function showDocuments(): View
     {
         return view('registration.step7-documents', [
-            'isCouple' => (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false),
+            'isCouple' => false /* couple registration disabled — see handlePersonal */,
         ]);
     }
 
@@ -511,16 +488,9 @@ final class RegistrationWizardController extends Controller
         'address_proof_back' => 'address_proof_back',
     ];
 
-    /** @var array<string, string> Spouse-only doc fields (couple registrations) */
-    private const KYC_SPOUSE_DOC_FIELDS = [
-        'pan' => 'spouse_pan_doc',
-        'aadhaar' => 'spouse_aadhaar_doc',
-    ];
 
     public function handleDocuments(Request $request): RedirectResponse
     {
-        $isCouple = (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false);
-
         // mimetypes (not just mimes) checks actual file bytes via finfo —
         // a renamed text file labelled image/jpeg is rejected. max:5120 KB
         // matches the 5 MB cap from the master plan.
@@ -532,15 +502,9 @@ final class RegistrationWizardController extends Controller
                 new ValidUploadedDocumentBytes,
             ];
         }
-        if ($isCouple) {
-            foreach (self::KYC_SPOUSE_DOC_FIELDS as $field) {
-                $rules[$field] = [
-                    'required', 'file', 'max:5120',
-                    'mimetypes:image/jpeg,image/png,application/pdf',
-                    new ValidUploadedDocumentBytes,
-                ];
-            }
-        }
+        // Spouse-doc fields are not collected while couple registration is
+        // disabled (see handlePersonal). The KYC_SPOUSE_DOC_FIELDS constant
+        // is kept for the re-enable path.
         // Bare rule names (not `*.rule`) are Laravel's "apply to every field
         // with this rule" form. We can use that here because every field in
         // $rules uses the same rule set.
@@ -563,13 +527,9 @@ final class RegistrationWizardController extends Controller
         $disk = Storage::disk('kyc');
 
         $stored = $this->storeKycFiles($request, self::KYC_DOC_FIELDS, "user_{$userId}", $disk);
-        $spouseStored = $isCouple
-            ? $this->storeKycFiles($request, self::KYC_SPOUSE_DOC_FIELDS, "user_{$userId}/spouse", $disk)
-            : [];
-
         $this->wizard->saveStepData(9, [
             'documents' => $stored,
-            'spouse_documents' => $spouseStored,
+            'spouse_documents' => [],
         ]);
 
         // After Documents → Complete (the old placement step has been

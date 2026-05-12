@@ -13,22 +13,26 @@ final class EnsureRegistrationProgress
 {
     public function __construct(private readonly WizardStateService $wizard) {}
 
+    // Step → route map for the redirect-on-skip path. Mirrors the canonical
+    // 2026-05 step order (see WizardStateService::STEPS). Step 1 (sponsor &
+    // placement) and step 2 (account) live in public routes and aren't
+    // gated by this middleware; both are absent here.
     private const STEP_ROUTES = [
-        2 => 'register.orientation',
-        3 => 'register.personal',
-        4 => 'register.pan',
-        5 => 'register.aadhaar',
-        6 => 'register.bank',
-        7 => 'register.documents',
-        8 => 'register.placement',
-        9 => 'register.consent',
+        3 => 'register.orientation',
+        4 => 'register.consent',
+        5 => 'register.pan',
+        6 => 'register.aadhaar',
+        7 => 'register.bank',
+        8 => 'register.personal',
+        9 => 'register.documents',
         10 => 'register.complete',
     ];
 
     public function handle(Request $request, Closure $next, int $requiredStep): Response
     {
-        // Step 1 (account) needs no prior state
-        if ($requiredStep <= 1) {
+        // Steps 1 (sponsor & placement) and 2 (account) are public — this
+        // middleware never gates them.
+        if ($requiredStep <= 2) {
             return $next($request);
         }
 
@@ -49,7 +53,9 @@ final class EnsureRegistrationProgress
         $furthestAllowed = $this->wizard->currentStep();
 
         if ($requiredStep > $furthestAllowed) {
-            $redirectStep = max(2, min($furthestAllowed, 10));
+            // Clamp to the gated range (3..10). The route map covers exactly
+            // those entries; fall back to /register if the math drifts.
+            $redirectStep = max(3, min($furthestAllowed, 10));
             $route = self::STEP_ROUTES[$redirectStep] ?? 'register';
 
             return redirect()->route($route);

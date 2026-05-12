@@ -149,7 +149,15 @@ final class WizardStateService
 
     public function isStepComplete(int $step): bool
     {
+        // Steps 1 (sponsor & placement) and 2 (account) have no per-step
+        // data in the wizard session — step 1 lives in `registration_intent`,
+        // step 2 proof is the User row. Both are complete once start() has
+        // run; userId() is the canonical "we got past account creation"
+        // signal.
         if ($step === 1) {
+            return $this->intent() !== null;
+        }
+        if ($step === 2) {
             return $this->userId() !== null;
         }
 
