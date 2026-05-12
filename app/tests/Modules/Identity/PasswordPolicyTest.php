@@ -74,10 +74,6 @@ function ppRegister(array $overrides = []): TestResponse
             'sponsor_adn' => $sponsorAdn,
             'placement_adn' => $sponsorAdn,
         ],
-        // Orientation now runs as step 1 (public, before account creation)
-        // and writes this flag on success. Seed it directly so this test
-        // can target the password policy without walking through the quiz.
-        'orientation_passed_at' => now()->toIso8601String(),
     ]);
 
     $defaults = [

@@ -13,16 +13,16 @@
 
     @php
         $steps = [
-            1  => ['label' => 'Orientation', 'route' => 'register.orientation'],
-            2  => ['label' => 'Account',     'route' => 'register.account.show'],
-            3  => ['label' => 'Personal',    'route' => 'register.personal'],
-            4  => ['label' => 'PAN',         'route' => 'register.pan'],
-            5  => ['label' => 'Aadhaar',     'route' => 'register.aadhaar'],
-            6  => ['label' => 'Bank',        'route' => 'register.bank'],
-            7  => ['label' => 'Documents',   'route' => 'register.documents'],
-            8  => ['label' => 'Placement',   'route' => 'register.placement'],
-            9  => ['label' => 'Consent',     'route' => 'register.consent'],
-            10 => ['label' => 'Complete',    'route' => 'register.complete'],
+            1  => ['label' => 'Sponsor & Placement', 'route' => 'join.show'],
+            2  => ['label' => 'Account',             'route' => 'register.account.show'],
+            3  => ['label' => 'Orientation',         'route' => 'register.orientation'],
+            4  => ['label' => 'Consent',             'route' => 'register.consent'],
+            5  => ['label' => 'PAN',                 'route' => 'register.pan'],
+            6  => ['label' => 'Aadhaar',             'route' => 'register.aadhaar'],
+            7  => ['label' => 'Bank',                'route' => 'register.bank'],
+            8  => ['label' => 'Personal',            'route' => 'register.personal'],
+            9  => ['label' => 'Documents',           'route' => 'register.documents'],
+            10 => ['label' => 'Complete',            'route' => 'register.complete'],
         ];
         $current = $currentStep ?? 1;
     @endphp

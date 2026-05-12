@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
 @section('title', 'Step 4 — PAN Verification')
-@php $currentStep = 4; @endphp
+@php $currentStep = 5; @endphp
 
 @section('content')
 <div class="max-w-xl mx-auto">
@@ -49,7 +49,7 @@
         </div>
 
         <div class="flex items-center justify-between gap-3 pt-2">
-            <a href="{{ route('register.personal') }}"
+            <a href="{{ route('register.consent') }}"
                class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
                 ← Back
             </a>

@@ -27,7 +27,8 @@ function sarSeedSession(): User
     test()->actingAs($user);
     test()->withSession([
         'registration_wizard' => [
-            'step' => 3,
+            // Personal is step 8 in the canonical 2026-05 order.
+            'step' => 8,
             'user_id' => $user->id,
             'sponsor_id' => 1,
             'data' => [],
@@ -55,7 +56,7 @@ it('SAR-01: 19 year old in TG (default rule = 18) is accepted', function () {
         'address' => 'somewhere',
     ]);
 
-    $response->assertRedirect('/register/kyc/pan');
+    $response->assertRedirect('/register/documents');
     $response->assertSessionHasNoErrors();
 });
 
@@ -83,7 +84,7 @@ it('SAR-03: admin lowers MH override to 19 → 19 year old is then accepted', fu
         'address' => 'Mumbai somewhere',
     ]);
 
-    $response->assertRedirect('/register/kyc/pan');
+    $response->assertRedirect('/register/documents');
     $response->assertSessionHasNoErrors();
 });
 

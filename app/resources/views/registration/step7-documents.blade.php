@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
 @section('title', 'Step 7 — Documents')
-@php $currentStep = 7; @endphp
+@php $currentStep = 9; @endphp
 
 @section('content')
 <div class="max-w-xl mx-auto">
@@ -57,7 +57,7 @@
         @endif
 
         <div class="flex items-center justify-between gap-3 pt-2">
-            <a href="{{ route('register.bank') }}"
+            <a href="{{ route('register.personal') }}"
                class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
                 ← Back
             </a>

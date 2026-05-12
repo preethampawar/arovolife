@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
 @section('title', 'Step 3 — Personal Details')
-@php $currentStep = 3; @endphp
+@php $currentStep = 8; @endphp
 
 @section('content')
 <div class="max-w-xl mx-auto">
@@ -112,7 +112,7 @@
 
         <button type="submit"
             class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
-            Continue to PAN Verification →
+            Continue to Documents →
         </button>
     </form>
 </div>

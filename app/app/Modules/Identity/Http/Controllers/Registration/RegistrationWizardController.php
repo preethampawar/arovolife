@@ -93,10 +93,13 @@ final class RegistrationWizardController extends Controller
             ],
         );
 
-        return redirect()->route('register.orientation');
+        // Step 1 is "Sponsor & Placement" — even when the referral link is
+        // valid we send the user through this confirmation page so they
+        // see who they're being placed under before creating an account.
+        return redirect()->route('join.show');
     }
 
-    // ── /join — manual sponsor + placement ADN entry ─────────────────────
+    // ── Step 1: Sponsor & Placement (the /join page) ────────────────────
 
     public function showJoin(): View
     {
@@ -184,10 +187,6 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=referral_link_required');
         }
 
-        if (! $request->session()->has('orientation_passed_at')) {
-            return redirect()->route('register.orientation');
-        }
-
         return view('registration.step1-account', [
             'sponsorAdn' => $intent['sponsor_adn'] ?? '',
             'placementAdn' => $intent['placement_adn'] ?? '',
@@ -200,10 +199,6 @@ final class RegistrationWizardController extends Controller
         $intent = $this->wizard->intent();
         if ($intent === null) {
             return redirect('/contact-us?reason=referral_link_required');
-        }
-
-        if (! $request->session()->has('orientation_passed_at')) {
-            return redirect()->route('register.orientation');
         }
 
         $validated = $request->validate([
@@ -253,36 +248,19 @@ final class RegistrationWizardController extends Controller
             sideOpt: $intent['side_opt'] ?? null,
         );
 
-        // Orientation is now step 1 (passed in session before account
-        // creation). Mark the wizard's step-2-orientation block as
-        // complete so the existing finalise() logic finds quiz_passed.
-        $this->wizard->saveStepData(2, [
-            'quiz_passed' => true,
-            'watched_at' => $request->session()->get('orientation_passed_at'),
-        ]);
-
-        return redirect()->route('register.personal');
+        // Step 2 done; the next auth-gated step is Orientation.
+        return redirect()->route('register.orientation');
     }
 
-    // ── Step 1: Orientation (public — runs BEFORE account creation) ─────
+    // ── Step 3: Orientation (auth-gated; quiz + video confirmation) ─────
 
-    public function showOrientation(): View|RedirectResponse
+    public function showOrientation(): View
     {
-        $intent = $this->wizard->intent();
-        if ($intent === null) {
-            return redirect('/contact-us?reason=referral_link_required');
-        }
-
         return view('registration.step2-orientation');
     }
 
     public function handleOrientation(Request $request): RedirectResponse
     {
-        $intent = $this->wizard->intent();
-        if ($intent === null) {
-            return redirect('/contact-us?reason=referral_link_required');
-        }
-
         $request->validate([
             'quiz_q1' => ['required', 'in:A'],
             'quiz_q2' => ['required', 'in:B'],
@@ -299,23 +277,21 @@ final class RegistrationWizardController extends Controller
             'confirmed_watched.accepted' => 'You must confirm watching the orientation video before continuing.',
         ]);
 
-        // Orientation runs BEFORE account creation, so the user row doesn't
-        // exist yet — we can't write to wizard state here. Stash a session
-        // flag instead. handleAccount() copies this into wizard step-2 data
-        // after the User row is created so RegistrationService::finalise()
-        // still finds the canonical orientation block.
-        $request->session()->put('orientation_passed_at', now()->toIso8601String());
+        $this->wizard->saveStepData(3, [
+            'quiz_passed' => true,
+            'watched_at' => now()->toISOString(),
+        ]);
 
-        return redirect()->route('register.account.show');
+        return redirect()->route('register.consent');
     }
 
-    // ── Step 3: Personal Details ───────────────────────────────────────────
+    // ── Step 8: Personal Details ──────────────────────────────────────────
 
     public function showPersonal(): View
     {
         return view('registration.step3-personal', [
             'states' => $this->indianStates(),
-            'data' => $this->wizard->getStepData(3) ?? [],
+            'data' => $this->wizard->getStepData(8) ?? [],
         ]);
     }
 
@@ -347,85 +323,16 @@ final class RegistrationWizardController extends Controller
             'date_of_birth.before' => "Direct Sellers in this state must be at least {$minAge} years old.",
         ]);
 
-        $isCouple = ($validated['register_with_spouse'] ?? null) === 'yes';
+        // Couple registration is temporarily disabled in this step-order
+        // reorder — Personal moved AFTER PAN/Aadhaar/Documents, so the
+        // toggle would land too late to gate spouse data collection.
+        // To re-enable, move the toggle to Step 2 / Account so the
+        // earlier steps can conditionally show spouse fields again. See
+        // US-1.13 in the deferred list.
+        $isCouple = false;
         $spouse = null;
 
-        if ($isCouple) {
-            // Spouse identity must differ from primary's. We check this
-            // BEFORE the validator so the user gets the targeted message
-            // ("must differ from your own") rather than a generic
-            // "already exists" — the primary's user row is already in the
-            // table at step 1, so a `unique:users,email` rule would
-            // mis-blame "already exists" for what is really "you typed
-            // your own email."
-            $primary = Auth::user();
-            $primaryEmail = $primary !== null ? strtolower((string) $primary->email) : '';
-            $primaryPhone = $primary !== null ? (string) $primary->phone_e164 : '';
-
-            $rawSpouseEmail = strtolower((string) $request->input('spouse_email', ''));
-            $rawSpousePhone = (string) $request->input('spouse_phone_e164', '');
-            // Stored phone is +91-prefixed E.164; the form sends the bare
-            // 10-digit number. Normalise BEFORE comparing or running the
-            // unique-check, otherwise a spouse can re-use the primary's
-            // phone undetected.
-            $normalisedSpousePhone = str_starts_with($rawSpousePhone, '+')
-                ? $rawSpousePhone
-                : '+91'.ltrim($rawSpousePhone, '0');
-
-            $earlyErrors = [];
-            if ($rawSpouseEmail !== '' && $rawSpouseEmail === $primaryEmail) {
-                $earlyErrors['spouse_email'] = 'Spouse email must differ from your own.';
-            }
-            // $normalisedSpousePhone is always at least '+91' by construction;
-            // skip the equality check when the raw input was empty.
-            if ($rawSpousePhone !== '' && $normalisedSpousePhone === $primaryPhone) {
-                $earlyErrors['spouse_phone_e164'] = 'Spouse phone must differ from your own.';
-            }
-            if (! empty($earlyErrors)) {
-                return back()->withInput()->withErrors($earlyErrors);
-            }
-
-            // Replace the bare 10-digit phone in the request with its
-            // E.164 form so the `unique:users,phone_e164` rule queries the
-            // right shape.
-            $request->merge(['spouse_phone_e164' => $normalisedSpousePhone]);
-
-            // Spouse data validated against the SAME state-age rule — both
-            // adults must be of age in the registering state.
-            $spouse = $request->validate([
-                'spouse_full_name' => ['required', 'string', 'max:255'],
-                'spouse_dob' => ['required', 'date', 'before:-'.$minAge.' years'],
-                'spouse_email' => ['required', 'email', 'max:255', 'unique:users,email'],
-                'spouse_phone_e164' => ['required', 'regex:/^\+91[6-9]\d{9}$/', 'unique:users,phone_e164'],
-            ], [
-                'spouse_full_name.required' => 'Please enter your spouse’s full name.',
-                'spouse_dob.required'       => 'Please enter your spouse’s date of birth.',
-                'spouse_dob.date'           => 'Please enter a valid spouse date of birth (YYYY-MM-DD).',
-                'spouse_dob.before'         => "Spouse must be at least {$minAge} years old in this state.",
-                'spouse_email.required'     => 'Please enter your spouse’s email address.',
-                'spouse_email.email'        => 'That doesn’t look like a valid spouse email — check for typos.',
-                'spouse_email.unique'       => 'An account already exists with this spouse email.',
-                'spouse_phone_e164.required' => 'Please enter your spouse’s mobile number.',
-                'spouse_phone_e164.regex'    => 'Spouse mobile must be a 10-digit Indian number (starting with 6, 7, 8, or 9).',
-                'spouse_phone_e164.unique'   => 'An account already exists with this spouse mobile number.',
-            ], [
-                'spouse_full_name'   => 'spouse full name',
-                'spouse_dob'         => 'spouse date of birth',
-                'spouse_phone_e164'  => 'spouse mobile number',
-            ]);
-        }
-
-        // If the user previously enabled couple registration but has now
-        // unchecked it, wipe every trace of spouse data: form fields in
-        // steps 3-5, and the spouse upload files in step 7. The frontend
-        // already forces a confirm() on uncheck so the user has explicitly
-        // opted in to losing this data.
-        $wasCoupleBefore = (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false);
-        if ($wasCoupleBefore && ! $isCouple) {
-            $this->clearSpouseData();
-        }
-
-        $this->wizard->saveStepData(3, [
+        $this->wizard->saveStepData(8, [
             'date_of_birth' => $validated['date_of_birth'],
             'state' => $validated['state'],
             'address' => $validated['address'],
@@ -433,54 +340,7 @@ final class RegistrationWizardController extends Controller
             'spouse' => $spouse,
         ]);
 
-        return redirect()->route('register.pan');
-    }
-
-    /**
-     * Wipe spouse data from steps 4, 5 and 7, including any uploaded files
-     * on the kyc disk. Used when the user un-checks "register with spouse"
-     * after having previously filled in spouse details.
-     */
-    private function clearSpouseData(): void
-    {
-        $disk = Storage::disk('kyc');
-
-        // Step 7 — delete uploaded spouse files first so we don't leave
-        // them orphaned on S3 when the wizard data is cleared.
-        $step7 = $this->wizard->getStepData(7) ?? [];
-        $spouseDocs = (array) ($step7['spouse_documents'] ?? []);
-        foreach ($spouseDocs as $doc) {
-            $path = (string) ($doc['path'] ?? '');
-            if ($path !== '' && $disk->exists($path)) {
-                $disk->delete($path);
-            }
-        }
-        if ($step7 !== []) {
-            $this->wizard->saveStepData(7, [
-                'documents' => $step7['documents'] ?? [],
-                'spouse_documents' => [],
-            ]);
-        }
-
-        // Step 5 — strip spouse Aadhaar fields.
-        $step5 = $this->wizard->getStepData(5);
-        if ($step5 !== null) {
-            $this->wizard->saveStepData(5, [
-                'last4' => $step5['last4'] ?? null,
-                'ref' => $step5['ref'] ?? null,
-                'spouse_last4' => null,
-                'spouse_ref' => null,
-            ]);
-        }
-
-        // Step 4 — strip spouse PAN.
-        $step4 = $this->wizard->getStepData(4);
-        if ($step4 !== null) {
-            $this->wizard->saveStepData(4, [
-                'pan_number' => $step4['pan_number'] ?? null,
-                'spouse_pan_number' => null,
-            ]);
-        }
+        return redirect()->route('register.documents');
     }
 
     private function minimumAgeForState(string $state): int
@@ -496,14 +356,14 @@ final class RegistrationWizardController extends Controller
     public function showPan(): View
     {
         return view('registration.step4-pan', [
-            'data' => $this->wizard->getStepData(4) ?? [],
-            'isCouple' => (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false),
+            'data' => $this->wizard->getStepData(5) ?? [],
+            'isCouple' => (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false),
         ]);
     }
 
     public function handlePan(Request $request): RedirectResponse
     {
-        $isCouple = (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false);
+        $isCouple = (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false);
 
         // Auto-uppercase before regex check so a curl POST with lowercase
         // doesn't get a confusing "format invalid" message — PAN is a
@@ -544,7 +404,7 @@ final class RegistrationWizardController extends Controller
             }
         }
 
-        $this->wizard->saveStepData(4, [
+        $this->wizard->saveStepData(5, [
             'pan_number' => $validated['pan_number'],
             'spouse_pan_number' => $isCouple ? $validated['spouse_pan_number'] : null,
         ]);
@@ -552,19 +412,19 @@ final class RegistrationWizardController extends Controller
         return redirect()->route('register.aadhaar');
     }
 
-    // ── Step 5: Aadhaar KYC ────────────────────────────────────────────────
+    // ── Step 6: Aadhaar KYC ────────────────────────────────────────────────
 
     public function showAadhaar(): View
     {
         return view('registration.step5-aadhaar', [
-            'data' => $this->wizard->getStepData(5) ?? [],
-            'isCouple' => (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false),
+            'data' => $this->wizard->getStepData(6) ?? [],
+            'isCouple' => (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false),
         ]);
     }
 
     public function handleAadhaar(Request $request): RedirectResponse
     {
-        $isCouple = (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false);
+        $isCouple = (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false);
 
         $rules = [
             'aadhaar_last4' => ['required', 'digits:4'],
@@ -591,7 +451,7 @@ final class RegistrationWizardController extends Controller
         $ref = 'STUB_'.strtoupper(uniqid('REF', true));
         $spouseRef = $isCouple ? 'STUB_'.strtoupper(uniqid('REFS', true)) : null;
 
-        $this->wizard->saveStepData(5, [
+        $this->wizard->saveStepData(6, [
             'last4' => $validated['aadhaar_last4'],
             'ref' => $ref,
             'spouse_last4' => $isCouple ? $validated['spouse_aadhaar_last4'] : null,
@@ -601,12 +461,12 @@ final class RegistrationWizardController extends Controller
         return redirect()->route('register.bank');
     }
 
-    // ── Step 6: Bank KYC ──────────────────────────────────────────────────
+    // ── Step 7: Bank KYC ──────────────────────────────────────────────────
 
     public function showBank(): View
     {
         return view('registration.step6-bank', [
-            'data' => $this->wizard->getStepData(6) ?? [],
+            'data' => $this->wizard->getStepData(7) ?? [],
         ]);
     }
 
@@ -627,17 +487,18 @@ final class RegistrationWizardController extends Controller
             'ifsc'           => 'IFSC code',
         ]);
 
-        $this->wizard->saveStepData(6, $validated);
+        $this->wizard->saveStepData(7, $validated);
 
-        return redirect()->route('register.documents');
+        // After Bank → Personal (was Documents in the old order).
+        return redirect()->route('register.personal');
     }
 
-    // ── Step 7: Documents ─────────────────────────────────────────────────
+    // ── Step 9: Documents ─────────────────────────────────────────────────
 
     public function showDocuments(): View
     {
         return view('registration.step7-documents', [
-            'isCouple' => (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false),
+            'isCouple' => (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false),
         ]);
     }
 
@@ -658,7 +519,7 @@ final class RegistrationWizardController extends Controller
 
     public function handleDocuments(Request $request): RedirectResponse
     {
-        $isCouple = (bool) ($this->wizard->getStepData(3)['couple_enabled'] ?? false);
+        $isCouple = (bool) ($this->wizard->getStepData(8)['couple_enabled'] ?? false);
 
         // mimetypes (not just mimes) checks actual file bytes via finfo —
         // a renamed text file labelled image/jpeg is rejected. max:5120 KB
@@ -706,12 +567,14 @@ final class RegistrationWizardController extends Controller
             ? $this->storeKycFiles($request, self::KYC_SPOUSE_DOC_FIELDS, "user_{$userId}/spouse", $disk)
             : [];
 
-        $this->wizard->saveStepData(7, [
+        $this->wizard->saveStepData(9, [
             'documents' => $stored,
             'spouse_documents' => $spouseStored,
         ]);
 
-        return redirect()->route('register.placement');
+        // After Documents → Complete (the old placement step has been
+        // folded into step 1, so it's no longer in the post-Documents chain).
+        return redirect()->route('register.complete');
     }
 
     /**
@@ -743,42 +606,7 @@ final class RegistrationWizardController extends Controller
         return $stored;
     }
 
-    // ── Step 8: Placement (read-only summary; resolved at link time) ───────
-
-    public function showPlacement(): View
-    {
-        $sponsorId = $this->wizard->sponsorId();
-        $sponsor = $sponsorId
-            ? DB::table('distributors')->where('id', $sponsorId)->first()
-            : null;
-
-        $placementId = $this->wizard->placementId();
-        $placement = $placementId
-            ? DB::table('distributors')->where('id', $placementId)->first()
-            : null;
-
-        return view('registration.step8-placement', [
-            'sponsor' => $sponsor,
-            'placement' => $placement,
-            'sideOpt' => $this->wizard->placementSideOpt(),
-        ]);
-    }
-
-    public function handlePlacement(Request $request): RedirectResponse
-    {
-        // Per ADR-0003 the placement target is locked at referral-link
-        // open time. Step 8 is a read-only summary that simply advances.
-        if ($this->wizard->getStepData(8) === null) {
-            $this->wizard->saveStepData(8, [
-                'placement_id' => $this->wizard->placementId(),
-                'side' => $this->wizard->placementSideOpt(),
-            ]);
-        }
-
-        return redirect()->route('register.consent');
-    }
-
-    // ── Step 9: Consent ───────────────────────────────────────────────────
+    // ── Step 4: Consent ──────────────────────────────────────────────────
 
     public function showConsent(): View
     {
@@ -803,14 +631,14 @@ final class RegistrationWizardController extends Controller
             'consent_privacy.accepted'  => 'You must accept the Privacy Policy to continue.',
         ]);
 
-        $this->wizard->saveStepData(9, [
+        $this->wizard->saveStepData(4, [
             'accepted' => true,
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent() ?? '',
             'at' => now()->toISOString(),
         ]);
 
-        return redirect()->route('register.complete');
+        return redirect()->route('register.pan');
     }
 
     // ── Step 10: Complete ─────────────────────────────────────────────────
@@ -845,8 +673,17 @@ final class RegistrationWizardController extends Controller
         // drop a step's data block; finalise would silently fall back to
         // empty defaults and write `pan_last4 = '0000'` etc. Refuse to
         // proceed unless every required step has data, and bounce the
-        // user back to the missing step.
-        foreach ([2 => 'orientation', 3 => 'personal', 4 => 'pan', 5 => 'aadhaar', 6 => 'bank', 7 => 'documents', 8 => 'placement', 9 => 'consent'] as $stepNum => $key) {
+        // user back to the missing step. Step numbers track the canonical
+        // 2026-05 order; route names below mirror them.
+        foreach ([
+            3 => 'orientation',
+            4 => 'consent',
+            5 => 'pan',
+            6 => 'aadhaar',
+            7 => 'bank',
+            8 => 'personal',
+            9 => 'documents',
+        ] as $stepNum => $key) {
             if (($state['data'][$key] ?? null) === null) {
                 return redirect()->route('register.'.$key)->withErrors([
                     'wizard' => "We could not find your {$key} data — please re-submit this step.",

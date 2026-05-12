@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
 @section('title', 'Step 5 — Aadhaar Verification')
-@php $currentStep = 5; @endphp
+@php $currentStep = 6; @endphp
 
 @section('content')
 <div class="max-w-xl mx-auto">

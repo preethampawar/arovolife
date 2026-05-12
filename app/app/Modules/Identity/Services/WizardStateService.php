@@ -13,15 +13,15 @@ final class WizardStateService
     private const INTENT_KEY = 'registration_intent';
 
     public const STEPS = [
-        1 => 'account',
-        2 => 'orientation',
-        3 => 'personal',
-        4 => 'pan',
-        5 => 'aadhaar',
-        6 => 'bank',
-        7 => 'documents',
-        8 => 'placement',
-        9 => 'consent',
+        1 => 'sponsor_placement',
+        2 => 'account',
+        3 => 'orientation',
+        4 => 'consent',
+        5 => 'pan',
+        6 => 'aadhaar',
+        7 => 'bank',
+        8 => 'personal',
+        9 => 'documents',
         10 => 'complete',
     ];
 
@@ -80,11 +80,11 @@ final class WizardStateService
 
     public function start(int $userId, int $sponsorId, int $placementId, ?string $sideOpt = null): void
     {
-        // Orientation is now step 1 (public, before account creation), so the
-        // wizard state opens at step 3 — the first auth-gated step. Step 2
-        // (account) is implicit (the User row's existence is the proof).
-        // handleAccount() backfills the step-2 orientation block immediately
-        // after this call so the wizard data reads coherently downstream.
+        // After account creation (step 2), the next auth-gated step is
+        // Orientation (step 3). Steps 1 (sponsor/placement) and 2 (account)
+        // are implicit by the time start() is called: step 1's data lives
+        // in `registration_intent` from the public sponsor-placement form,
+        // and step 2's data IS the User row whose existence is the proof.
         $this->session->put(self::KEY, [
             'step' => 3,
             'user_id' => $userId,

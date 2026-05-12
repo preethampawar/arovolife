@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
 @section('title', 'Step 9 — Legal Consent')
-@php $currentStep = 9; @endphp
+@php $currentStep = 4; @endphp
 
 @section('content')
 <div class="max-w-2xl mx-auto">
@@ -109,7 +109,7 @@
         </div>
 
         <div class="flex items-center justify-between gap-3 pt-2">
-            <a href="{{ route('register.placement') }}"
+            <a href="{{ route('register.orientation') }}"
                class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
                 ← Back
             </a>

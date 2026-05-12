@@ -37,28 +37,20 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 
-    // Public registration entry. Two ways to enter:
-    //   /register?sponsor=X&placement=Y — original referral-link form (ADR-0003)
-    //   /join                            — manual ADN entry, then routes through /register
-    // Both stash the same intent and advance to step 1 (orientation).
+    // Public registration entry.
+    //   /register?sponsor=X&placement=Y — referral-link form (ADR-0003);
+    //                                     stashes intent, redirects to step 1
+    //   /join                            — back-compat alias for the
+    //                                     step-1 sponsor-placement form
     Route::get('/register', [RegistrationWizardController::class, 'start'])->name('register');
     Route::get('/join', [RegistrationWizardController::class, 'showJoin'])->name('join.show');
     Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])->name('join.submit');
 
-    // ADN-name lookup (used by /join's live name-resolution UI).
-    // Throttled to 30 req/min/IP — generous for keystroke-debounced
-    // lookups, tight enough to deter enumeration.
+    // ADN-name lookup used by step 1's live name-resolution UI.
     Route::get('/join/lookup', [RegistrationWizardController::class, 'lookupAdn'])
         ->middleware('throttle:30,1')->name('join.lookup');
 
-    // Step 1 — orientation. Public so the prospect can watch the video and
-    // pass the quiz BEFORE creating an account. Requires the referral-link
-    // intent to be in session; missing intent → /contact-us.
-    Route::get('/register/orientation', [RegistrationWizardController::class, 'showOrientation'])->name('register.orientation');
-    Route::post('/register/orientation', [RegistrationWizardController::class, 'handleOrientation']);
-
-    // Step 2 — create account. Requires both the intent AND the orientation
-    // session flag from step 1.
+    // Step 2 — create account. Requires the intent from step 1.
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
     Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])->name('register.post');
 
@@ -84,41 +76,53 @@ Route::post('/activate/{user}', [SpouseActivationController::class, 'submit'])
     ->middleware('signed')->name('spouse.activate.submit');
 
 // ── Registration Wizard (steps 3-10, auth-gated) ─────────────────────────────
+//
+// New step order (2026-05):
+//   1. Sponsor & Placement   /register (start → /join)            public
+//   2. Account               /register/account                    public
+//   3. Orientation           /register/orientation                auth
+//   4. Consent               /register/consent                    auth
+//   5. PAN                   /register/kyc/pan                    auth
+//   6. Aadhaar               /register/kyc/aadhaar                auth
+//   7. Bank                  /register/kyc/bank                   auth
+//   8. Personal              /register/personal                   auth
+//   9. Documents             /register/documents                  auth
+//  10. Complete              /register/complete                   auth
 
 Route::middleware(['auth'])->group(function (): void {
-    Route::get('/register/personal', [RegistrationWizardController::class, 'showPersonal'])
-        ->middleware('wizard.progress:3')->name('register.personal');
-    Route::post('/register/personal', [RegistrationWizardController::class, 'handlePersonal'])
+    Route::get('/register/orientation', [RegistrationWizardController::class, 'showOrientation'])
+        ->middleware('wizard.progress:3')->name('register.orientation');
+    Route::post('/register/orientation', [RegistrationWizardController::class, 'handleOrientation'])
         ->middleware('wizard.progress:3');
 
-    Route::get('/register/kyc/pan', [RegistrationWizardController::class, 'showPan'])
-        ->middleware('wizard.progress:4')->name('register.pan');
-    Route::post('/register/kyc/pan', [RegistrationWizardController::class, 'handlePan'])
+    Route::get('/register/consent', [RegistrationWizardController::class, 'showConsent'])
+        ->middleware('wizard.progress:4')->name('register.consent');
+    Route::post('/register/consent', [RegistrationWizardController::class, 'handleConsent'])
         ->middleware('wizard.progress:4');
 
-    Route::get('/register/kyc/aadhaar', [RegistrationWizardController::class, 'showAadhaar'])
-        ->middleware('wizard.progress:5')->name('register.aadhaar');
-    Route::post('/register/kyc/aadhaar', [RegistrationWizardController::class, 'handleAadhaar'])
+    Route::get('/register/kyc/pan', [RegistrationWizardController::class, 'showPan'])
+        ->middleware('wizard.progress:5')->name('register.pan');
+    Route::post('/register/kyc/pan', [RegistrationWizardController::class, 'handlePan'])
         ->middleware('wizard.progress:5');
 
-    Route::get('/register/kyc/bank', [RegistrationWizardController::class, 'showBank'])
-        ->middleware('wizard.progress:6')->name('register.bank');
-    Route::post('/register/kyc/bank', [RegistrationWizardController::class, 'handleBank'])
+    Route::get('/register/kyc/aadhaar', [RegistrationWizardController::class, 'showAadhaar'])
+        ->middleware('wizard.progress:6')->name('register.aadhaar');
+    Route::post('/register/kyc/aadhaar', [RegistrationWizardController::class, 'handleAadhaar'])
         ->middleware('wizard.progress:6');
 
-    Route::get('/register/documents', [RegistrationWizardController::class, 'showDocuments'])
-        ->middleware('wizard.progress:7')->name('register.documents');
-    Route::post('/register/documents', [RegistrationWizardController::class, 'handleDocuments'])
+    Route::get('/register/kyc/bank', [RegistrationWizardController::class, 'showBank'])
+        ->middleware('wizard.progress:7')->name('register.bank');
+    Route::post('/register/kyc/bank', [RegistrationWizardController::class, 'handleBank'])
         ->middleware('wizard.progress:7');
 
-    Route::get('/register/placement', [RegistrationWizardController::class, 'showPlacement'])
-        ->middleware('wizard.progress:8')->name('register.placement');
-    Route::post('/register/placement', [RegistrationWizardController::class, 'handlePlacement'])
+    Route::get('/register/personal', [RegistrationWizardController::class, 'showPersonal'])
+        ->middleware('wizard.progress:8')->name('register.personal');
+    Route::post('/register/personal', [RegistrationWizardController::class, 'handlePersonal'])
         ->middleware('wizard.progress:8');
 
-    Route::get('/register/consent', [RegistrationWizardController::class, 'showConsent'])
-        ->middleware('wizard.progress:9')->name('register.consent');
-    Route::post('/register/consent', [RegistrationWizardController::class, 'handleConsent'])
+    Route::get('/register/documents', [RegistrationWizardController::class, 'showDocuments'])
+        ->middleware('wizard.progress:9')->name('register.documents');
+    Route::post('/register/documents', [RegistrationWizardController::class, 'handleDocuments'])
         ->middleware('wizard.progress:9');
 
     Route::get('/register/complete', [RegistrationWizardController::class, 'showComplete'])

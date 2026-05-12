@@ -54,7 +54,7 @@
     <form method="POST" action="{{ url('/register/complete') }}">
         @csrf
         <div class="flex items-center justify-between gap-3">
-            <a href="{{ route('register.consent') }}"
+            <a href="{{ route('register.documents') }}"
                class="inline-flex items-center px-5 py-4 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-base font-semibold transition-colors">
                 ← Back
             </a>

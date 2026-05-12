@@ -114,7 +114,7 @@
         </p>
 
         <div class="flex items-center justify-between gap-3 pt-2">
-            <a href="{{ route('register.orientation') }}"
+            <a href="{{ route('join.show') }}"
                class="inline-flex items-center px-5 py-3 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
                 ← Back
             </a>

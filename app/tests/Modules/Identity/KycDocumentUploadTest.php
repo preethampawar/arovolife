@@ -33,13 +33,15 @@ function kycSeedSession(): User
     test()->actingAs($user);
     test()->withSession([
         'registration_wizard' => [
-            'step' => 7,
+            // Documents is step 9 in the canonical 2026-05 order.
+            'step' => 9,
             'user_id' => $user->id,
             'sponsor_id' => 1,
             'data' => [
                 'pan' => ['pan_number' => 'ABCDE1234F'],
                 'aadhaar' => ['ref' => 'STUB', 'last4' => '1234'],
                 'bank' => ['account_number' => '912345678012', 'ifsc' => 'HDFC0001234'],
+                'personal' => ['date_of_birth' => '1990-01-01', 'state' => 'TG', 'address' => '12 MG Road'],
             ],
         ],
     ]);
@@ -58,10 +60,10 @@ it('KYC-UP-01: step 7 accepts five required docs and persists paths to wizard st
         'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
     ]);
 
-    $response->assertRedirect('/register/placement');
+    $response->assertRedirect('/register/complete');
 
     $wizard = app(WizardStateService::class);
-    $docs = $wizard->getStepData(7)['documents'] ?? null;
+    $docs = $wizard->getStepData(9)['documents'] ?? null;
 
     expect($docs)->not->toBeNull()
         ->and($docs)->toHaveKeys(['pan', 'aadhaar', 'cheque', 'address_proof_front', 'address_proof_back']);
@@ -94,9 +96,9 @@ it('KYC-UP-02: rejects an executable file even if extension says image', functio
     $response->assertRedirect();
     $response->assertSessionHasErrors('pan_doc');
 
-    // Step 7 must not have advanced.
+    // Documents step (9) must not have advanced.
     $wizard = app(WizardStateService::class);
-    expect($wizard->getStepData(7))->toBeNull();
+    expect($wizard->getStepData(9))->toBeNull();
 });
 
 it('KYC-UP-03: rejects oversize file (>5 MB)', function () {
