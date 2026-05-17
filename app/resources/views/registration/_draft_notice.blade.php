@@ -1,7 +1,7 @@
 @php
-    $daysLeft = $draftExpiresAt?->diffInDays(now());
+    $daysLeft = $draftExpiresAt !== null ? (int) now()->diffInDays($draftExpiresAt, false) : null;
 @endphp
-@if ($draftExpiresAt !== null)
+@if ($draftExpiresAt !== null && $daysLeft >= 0)
     @if ($daysLeft === 0)
         <div class="mt-6 rounded-md bg-red-50 border border-red-200 p-4">
             <p class="text-sm text-red-800 font-medium">

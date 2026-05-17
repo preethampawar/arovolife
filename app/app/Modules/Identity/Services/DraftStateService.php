@@ -14,7 +14,7 @@ final class DraftStateService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(int $userId, int $sponsorId, int $placementId, ?string $sideOpt, array $data): string
+    public function create(int $userId, int $sponsorId, int $placementId, ?string $sideOpt, array $data, int $currentStep = 3): string
     {
         // Delete any existing draft so the unique constraint is not violated.
         $this->delete($userId);
@@ -24,7 +24,7 @@ final class DraftStateService
         RegistrationDraft::create([
             'user_id' => $userId,
             'draft_token_hash' => hash('sha256', $rawToken, true),
-            'current_step' => 3,
+            'current_step' => $currentStep,
             'sponsor_id' => $sponsorId,
             'placement_id' => $placementId,
             'side_opt' => $sideOpt,

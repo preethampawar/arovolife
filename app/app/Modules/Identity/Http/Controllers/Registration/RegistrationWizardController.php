@@ -322,6 +322,7 @@ final class RegistrationWizardController extends Controller
                     $activeDraft->placement_id,
                     $activeDraft->side_opt,
                     json_decode(Crypt::decryptString($activeDraft->payload_enc), true) ?? [],
+                    $activeDraft->current_step,
                 );
 
                 return redirect()
@@ -568,7 +569,20 @@ final class RegistrationWizardController extends Controller
             'spouse_last4' => null,
             'spouse_ref' => null,
         ]);
-        $this->syncDraft(6);
+
+        // Sync a redacted copy to the draft — raw Aadhaar must never be stored (CLAUDE.md Rule #8).
+        $draftData = $this->wizard->get()['data'] ?? [];
+        if (isset($draftData['aadhaar']['aadhaar_number'])) {
+            unset($draftData['aadhaar']['aadhaar_number']);
+        }
+        // Also strip spouse aadhaar if present (couple flow)
+        if (isset($draftData['couple']['spouse_aadhaar_number'])) {
+            unset($draftData['couple']['spouse_aadhaar_number']);
+        }
+        $userId = $this->wizard->userId();
+        if ($userId !== null) {
+            $this->drafts->sync($userId, 7, $draftData);  // next step is 7
+        }
 
         return redirect()->route('register.bank');
     }

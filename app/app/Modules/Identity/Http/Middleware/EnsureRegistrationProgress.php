@@ -72,6 +72,8 @@ final class EnsureRegistrationProgress
                                 ->with('status', 'The placement position from your original invitation is no longer available. Please choose a new one.');
                         }
 
+                        Auth::loginUsingId($draft->user_id);
+                        $request->session()->regenerate();
                         $this->drafts->restoreToWizard($draft, $this->wizard);
 
                         // If the required step is beyond the draft's current step, redirect

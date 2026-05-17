@@ -29,6 +29,11 @@ final class DraftResumeController extends Controller
                 ->with('status', 'This resume link has expired. Please use your referral link to start a new registration.');
         }
 
+        if (Auth::check() && Auth::id() !== $draft->user_id) {
+            return redirect()->route('login')
+                ->with('status', 'This registration link belongs to a different account. Please sign in to the correct account first.');
+        }
+
         // Check whether the placement position is still available.
         $takenSlots = (int) DB::table('distributors')
             ->where('placement_parent_id', $draft->placement_id)
@@ -52,6 +57,7 @@ final class DraftResumeController extends Controller
             $draft->placement_id,
             $draft->side_opt,
             json_decode(Crypt::decryptString($draft->payload_enc), true) ?? [],
+            $draft->current_step,
         );
 
         return redirect()
