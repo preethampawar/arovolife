@@ -23,6 +23,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -304,6 +305,7 @@ final class RegistrationWizardController extends Controller
             'quiz_passed' => true,
             'watched_at' => now()->toISOString(),
         ]);
+        $this->syncDraft(3);
 
         return redirect()->route('register.consent');
     }
@@ -362,6 +364,7 @@ final class RegistrationWizardController extends Controller
             'couple_enabled' => $isCouple,
             'spouse' => $spouse,
         ]);
+        $this->syncDraft(8);
 
         return redirect()->route('register.documents');
     }
@@ -415,6 +418,7 @@ final class RegistrationWizardController extends Controller
             'pan_number' => $validated['pan_number'],
             'spouse_pan_number' => null,
         ]);
+        $this->syncDraft(5);
 
         return redirect()->route('register.aadhaar');
     }
@@ -460,6 +464,7 @@ final class RegistrationWizardController extends Controller
             'spouse_last4' => null,
             'spouse_ref' => null,
         ]);
+        $this->syncDraft(6);
 
         return redirect()->route('register.bank');
     }
@@ -491,6 +496,7 @@ final class RegistrationWizardController extends Controller
         ]);
 
         $this->wizard->saveStepData(7, $validated);
+        $this->syncDraft(7);
 
         // After Bank → Personal (was Documents in the old order).
         return redirect()->route('register.personal');
@@ -556,6 +562,7 @@ final class RegistrationWizardController extends Controller
             'documents' => $stored,
             'spouse_documents' => [],
         ]);
+        $this->syncDraft(9);
 
         // After Documents → Complete (the old placement step has been
         // folded into step 1, so it's no longer in the post-Documents chain).
@@ -622,6 +629,7 @@ final class RegistrationWizardController extends Controller
             'user_agent' => $request->userAgent() ?? '',
             'at' => now()->toISOString(),
         ]);
+        $this->syncDraft(4);
 
         return redirect()->route('register.pan');
     }
@@ -730,9 +738,23 @@ final class RegistrationWizardController extends Controller
                 ->with('status', 'The placement we reserved for you was claimed by another registration before yours completed. Please contact support; your details are safe and we can resume your registration with a fresh placement.');
         }
 
+        $userId = $user->id;
         $this->wizard->clear();
+        $this->drafts->delete($userId);
 
-        return redirect()->route('dashboard')->with('adn_issued', $result->distributorId);
+        return redirect()->route('dashboard')
+            ->with('adn_issued', $result->distributorId)
+            ->withCookie(Cookie::forget('av_draft'));
+    }
+
+    private function syncDraft(int $step): void
+    {
+        $userId = $this->wizard->userId();
+        if ($userId === null) {
+            return;
+        }
+        $stateData = $this->wizard->get()['data'] ?? [];
+        $this->drafts->sync($userId, $step + 1, $stateData);
     }
 
     /** @return array<string, string> */
