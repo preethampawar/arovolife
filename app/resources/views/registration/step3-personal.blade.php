@@ -51,6 +51,8 @@
              Re-enable by moving the toggle to step 2 (Account) and undoing
              this hide + the controller hardcoded flag (search US-1.13). --}}
 
+        @include('registration._draft_notice')
+
         <div class="flex items-center justify-between gap-3 pt-2">
             <a href="{{ route('register.bank') }}"
                class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">

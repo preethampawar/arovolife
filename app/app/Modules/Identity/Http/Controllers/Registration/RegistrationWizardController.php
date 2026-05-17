@@ -16,6 +16,7 @@ use App\Modules\Identity\Notifications\DraftResumeNotification;
 use App\Modules\Identity\Services\DraftStateService;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\WizardStateService;
+use Carbon\Carbon;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -377,7 +378,9 @@ final class RegistrationWizardController extends Controller
 
     public function showOrientation(): View
     {
-        return view('registration.step2-orientation');
+        return view('registration.step2-orientation', [
+            'draftExpiresAt' => $this->draftExpiresAt(),
+        ]);
     }
 
     public function handleOrientation(Request $request): RedirectResponse
@@ -414,6 +417,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step3-personal', [
             'states' => $this->indianStates(),
             'data' => $this->wizard->getStepData(8) ?? [],
+            'draftExpiresAt' => $this->draftExpiresAt(),
         ]);
     }
 
@@ -481,6 +485,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step4-pan', [
             'data' => $this->wizard->getStepData(5) ?? [],
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
+            'draftExpiresAt' => $this->draftExpiresAt(),
         ]);
     }
 
@@ -527,6 +532,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step5-aadhaar', [
             'data' => $this->wizard->getStepData(6) ?? [],
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
+            'draftExpiresAt' => $this->draftExpiresAt(),
         ]);
     }
 
@@ -572,6 +578,7 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step6-bank', [
             'data' => $this->wizard->getStepData(7) ?? [],
+            'draftExpiresAt' => $this->draftExpiresAt(),
         ]);
     }
 
@@ -605,6 +612,7 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step7-documents', [
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
+            'draftExpiresAt' => $this->draftExpiresAt(),
         ]);
     }
 
@@ -699,7 +707,9 @@ final class RegistrationWizardController extends Controller
 
     public function showConsent(): View
     {
-        return view('registration.step9-consent');
+        return view('registration.step9-consent', [
+            'draftExpiresAt' => $this->draftExpiresAt(),
+        ]);
     }
 
     public function handleConsent(Request $request): RedirectResponse
@@ -842,6 +852,16 @@ final class RegistrationWizardController extends Controller
         return redirect()->route('dashboard')
             ->with('adn_issued', $result->distributorId)
             ->withCookie(Cookie::forget('av_draft'));
+    }
+
+    private function draftExpiresAt(): ?Carbon
+    {
+        $userId = Auth::id();
+        if ($userId === null) {
+            return null;
+        }
+
+        return $this->drafts->findActiveByUserId((int) $userId)?->expires_at;
     }
 
     private function syncDraft(int $step): void

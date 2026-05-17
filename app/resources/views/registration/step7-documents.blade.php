@@ -56,6 +56,8 @@
         </div>
         @endif
 
+        @include('registration._draft_notice')
+
         <div class="flex items-center justify-between gap-3 pt-2">
             <a href="{{ route('register.personal') }}"
                class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">

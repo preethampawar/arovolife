@@ -86,6 +86,8 @@
             </div>
         </div>
 
+        @include('registration._draft_notice')
+
         <button type="submit"
             class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
             Continue to Consent →
