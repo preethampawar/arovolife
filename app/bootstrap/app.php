@@ -3,6 +3,7 @@
 use App\Modules\Commerce\Http\Middleware\CaptureAttribution;
 use App\Modules\Identity\Http\Middleware\EnsureRegistrationProgress;
 use App\Modules\Identity\Http\Middleware\RequireKycApproval;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,4 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('drafts:purge')->daily();
+    })
+    ->create();
