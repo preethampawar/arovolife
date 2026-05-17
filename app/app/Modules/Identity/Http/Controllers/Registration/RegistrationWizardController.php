@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -225,7 +226,7 @@ final class RegistrationWizardController extends Controller
 
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255'],
             'phone_e164' => ['required', 'regex:/^[6-9]\d{9}$/', 'unique:users,phone_e164'],
             'password' => ['required', 'string', 'min:8', 'confirmed', new StrongPassword, new NotPwned],
         ], [
@@ -233,7 +234,6 @@ final class RegistrationWizardController extends Controller
             'full_name.max' => 'Full name must be at most 255 characters.',
             'email.required' => 'Please enter your email address.',
             'email.email' => 'That doesn’t look like a valid email — check for typos like missing @ or .com.',
-            'email.unique' => 'An account already exists with this email. Try signing in, or use the "Forgot password" link.',
             'phone_e164.required' => 'Please enter your 10-digit Indian mobile number.',
             'phone_e164.regex' => 'Enter a 10-digit Indian mobile number (must start with 6, 7, 8, or 9).',
             'phone_e164.unique' => 'An account already exists with this mobile number.',
@@ -244,6 +244,43 @@ final class RegistrationWizardController extends Controller
             'full_name' => 'full name',
             'phone_e164' => 'mobile number',
         ]);
+
+        // ── Returning-user path ────────────────────────────────────────────
+        // If the email already exists in users, we must NOT create a second
+        // account. Instead:
+        //   • active draft  → authenticate the user with their password and
+        //                     resume the wizard where they left off.
+        //   • no active draft → the account is fully registered (or the draft
+        //                       has expired); surface an "email taken" error.
+        $existingUser = User::where('email', $validated['email'])->first();
+
+        if ($existingUser !== null) {
+            $activeDraft = $this->drafts->findActiveByUserId($existingUser->id);
+
+            if ($activeDraft !== null) {
+                if (! Hash::check($validated['password'], $existingUser->password_hash)) {
+                    return back()->withErrors(['password' => 'Incorrect password. Try again or use the Forgot Password link.']);
+                }
+
+                Auth::login($existingUser);
+                $this->drafts->restoreToWizard($activeDraft, $this->wizard);
+
+                $newRawToken = $this->drafts->create(
+                    $existingUser->id,
+                    $activeDraft->sponsor_id,
+                    $activeDraft->placement_id,
+                    $activeDraft->side_opt,
+                    json_decode(Crypt::decryptString($activeDraft->payload_enc), true) ?? [],
+                );
+
+                return redirect()
+                    ->route(WizardStateService::stepRoute($activeDraft->current_step))
+                    ->withCookie(cookie('av_draft', $newRawToken, 7 * 24 * 60, '/', null, true, true));
+            }
+
+            // No active draft — standard "email taken" error.
+            return back()->withErrors(['email' => 'An account with this email already exists. Please sign in.']);
+        }
 
         // Normalise phone — form sends digits only, DB stores E.164 with +91 prefix
         $phone = $validated['phone_e164'];
