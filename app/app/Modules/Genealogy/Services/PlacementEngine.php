@@ -15,7 +15,6 @@ use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Str;
 
 /**
  * ADR-0003 — referral-link single-level placement.

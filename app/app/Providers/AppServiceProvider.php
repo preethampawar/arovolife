@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Console\Commands\DeployCommand;
+use App\Console\Commands\ResetAdnsCommand;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -26,8 +28,8 @@ class AppServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \App\Console\Commands\DeployCommand::class,
-                \App\Console\Commands\ResetAdnsCommand::class,
+                DeployCommand::class,
+                ResetAdnsCommand::class,
             ]);
         }
 
@@ -63,10 +65,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $required = [
-            'AWS_ACCESS_KEY_ID'     => config('filesystems.disks.kyc.key'),
+            'AWS_ACCESS_KEY_ID' => config('filesystems.disks.kyc.key'),
             'AWS_SECRET_ACCESS_KEY' => config('filesystems.disks.kyc.secret'),
-            'AWS_DEFAULT_REGION'    => config('filesystems.disks.kyc.region'),
-            'AWS_BUCKET'            => config('filesystems.disks.kyc.bucket'),
+            'AWS_DEFAULT_REGION' => config('filesystems.disks.kyc.region'),
+            'AWS_BUCKET' => config('filesystems.disks.kyc.bucket'),
         ];
 
         $missing = array_keys(array_filter($required, fn ($v) => ! is_string($v) || $v === ''));

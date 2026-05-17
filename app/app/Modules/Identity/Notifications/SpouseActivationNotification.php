@@ -46,9 +46,9 @@ final class SpouseActivationNotification extends Notification implements ShouldQ
         return (new MailMessage)
             ->subject('Activate your arovolife co-distributor account')
             ->view('emails.spouse-activation', [
-                'url'             => $url,
+                'url' => $url,
                 'primaryFullName' => $this->primaryFullName,
-                'primaryAdn'      => $this->primaryAdn,
+                'primaryAdn' => $this->primaryAdn,
             ]);
     }
 }

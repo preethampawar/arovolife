@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError;
 use App\Modules\Genealogy\Services\PlacementEngine;
@@ -69,7 +70,7 @@ it('SRR-01: side=L collision raises PlacementSlotFullError, not a generic 500', 
     $engine = app(PlacementEngine::class);
 
     // First registration claims root.L
-    $engine->place(new \App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput(
+    $engine->place(new PlaceDistributorInput(
         userId: DB::table('users')->insertGetId([
             'email' => 'srr-a-'.uniqid().'@test.com',
             'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
@@ -89,7 +90,7 @@ it('SRR-01: side=L collision raises PlacementSlotFullError, not a generic 500', 
     ));
 
     // Second registration targets the SAME slot — this is the C1 race.
-    expect(fn () => $engine->place(new \App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput(
+    expect(fn () => $engine->place(new PlaceDistributorInput(
         userId: DB::table('users')->insertGetId([
             'email' => 'srr-b-'.uniqid().'@test.com',
             'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
@@ -114,7 +115,7 @@ it('SRR-02: no side and both slots taken raises PlacementSlotsExhaustedError', f
     $engine = app(PlacementEngine::class);
 
     foreach (['L', 'R'] as $side) {
-        $engine->place(new \App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput(
+        $engine->place(new PlaceDistributorInput(
             userId: DB::table('users')->insertGetId([
                 'email' => 'srr-'.$side.'-'.uniqid().'@test.com',
                 'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
@@ -134,7 +135,7 @@ it('SRR-02: no side and both slots taken raises PlacementSlotsExhaustedError', f
         ));
     }
 
-    expect(fn () => $engine->place(new \App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput(
+    expect(fn () => $engine->place(new PlaceDistributorInput(
         userId: DB::table('users')->insertGetId([
             'email' => 'srr-x-'.uniqid().'@test.com',
             'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),

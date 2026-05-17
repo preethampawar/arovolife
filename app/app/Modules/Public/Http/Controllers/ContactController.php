@@ -70,18 +70,18 @@ final class ContactController extends Controller
             // DPDP Act 2023 §6 — explicit, dated consent before processing.
             'consent_privacy' => ['required', 'accepted'],
         ], [
-            'address.required'         => 'Please enter your full postal address.',
-            'city.required'            => 'Please enter your city.',
-            'district.required'        => 'Please enter your district.',
-            'state.required'           => 'Please pick your state.',
-            'state.in'                 => 'Please pick a valid Indian state.',
-            'pin_code.required'        => 'Please enter your 6-digit PIN code.',
-            'pin_code.regex'           => 'PIN code must be exactly 6 digits, e.g. 500032.',
+            'address.required' => 'Please enter your full postal address.',
+            'city.required' => 'Please enter your city.',
+            'district.required' => 'Please enter your district.',
+            'state.required' => 'Please pick your state.',
+            'state.in' => 'Please pick a valid Indian state.',
+            'pin_code.required' => 'Please enter your 6-digit PIN code.',
+            'pin_code.regex' => 'PIN code must be exactly 6 digits, e.g. 500032.',
             'consent_privacy.required' => 'Please agree to the privacy notice before sending your message.',
             'consent_privacy.accepted' => 'Please agree to the privacy notice before sending your message.',
         ], [
             'phone_e164' => 'mobile number',
-            'pin_code'   => 'PIN code',
+            'pin_code' => 'PIN code',
         ]);
 
         // Normalise phone to +91XXXXXXXXXX so admin views are consistent.

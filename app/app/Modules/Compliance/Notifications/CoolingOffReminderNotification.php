@@ -38,8 +38,8 @@ final class CoolingOffReminderNotification extends Notification implements Shoul
         return (new MailMessage)
             ->subject("Your arovolife cooling-off period ends in {$this->daysRemaining} day{$plural}")
             ->view('emails.cooling-off-reminder', [
-                'daysRemaining'    => $this->daysRemaining,
-                'adn'              => $this->adn,
+                'daysRemaining' => $this->daysRemaining,
+                'adn' => $this->adn,
                 'coolingOffEndsAt' => $this->coolingOffEndsAt,
             ]);
     }

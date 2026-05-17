@@ -39,14 +39,14 @@ uses(RefreshDatabase::class);
 function drftSeedDistributorRoot(): array
 {
     $userId = DB::table('users')->insertGetId([
-        'email'           => 'sponsor-'.uniqid().'@test.com',
-        'phone_e164'      => '+919'.rand(100000000, 999999999),
-        'password_hash'   => bcrypt('password'),
+        'email' => 'sponsor-'.uniqid().'@test.com',
+        'phone_e164' => '+919'.rand(100000000, 999999999),
+        'password_hash' => bcrypt('password'),
         'password_set_at' => now(),
-        'full_name'       => 'Sponsor User',
-        'status'          => 'active',
-        'created_at'      => now(),
-        'updated_at'      => now(),
+        'full_name' => 'Sponsor User',
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
     DB::statement('SET FOREIGN_KEY_CHECKS=0');
@@ -54,27 +54,27 @@ function drftSeedDistributorRoot(): array
         $adn = (string) rand(100000000, 999999999);
 
         $id = DB::table('distributors')->insertGetId([
-            'user_id'               => $userId,
-            'adn'                   => $adn,
-            'pan_hash'              => random_bytes(32),
-            'pan_last4'             => '0000',
-            'bank_account_enc'      => random_bytes(32),
-            'bank_ifsc'             => 'SBIN0000000',
-            'sponsor_id'            => 0,
-            'placement_parent_id'   => 0,
-            'placement_side'        => null,
-            'side_chosen_by'        => 'referral_default',
-            'depth'                 => 0,
-            'effective_date'        => now()->format('Y-m-d H:i:s.v'),
-            'cooling_off_end_at'    => now()->addDays(30)->format('Y-m-d H:i:s.v'),
-            'state'                 => 'TS',
-            'is_primary_couple'     => 0,
-            'created_at'            => now()->format('Y-m-d H:i:s.v'),
-            'updated_at'            => now()->format('Y-m-d H:i:s.v'),
+            'user_id' => $userId,
+            'adn' => $adn,
+            'pan_hash' => random_bytes(32),
+            'pan_last4' => '0000',
+            'bank_account_enc' => random_bytes(32),
+            'bank_ifsc' => 'SBIN0000000',
+            'sponsor_id' => 0,
+            'placement_parent_id' => 0,
+            'placement_side' => null,
+            'side_chosen_by' => 'referral_default',
+            'depth' => 0,
+            'effective_date' => now()->format('Y-m-d H:i:s.v'),
+            'cooling_off_end_at' => now()->addDays(30)->format('Y-m-d H:i:s.v'),
+            'state' => 'TS',
+            'is_primary_couple' => 0,
+            'created_at' => now()->format('Y-m-d H:i:s.v'),
+            'updated_at' => now()->format('Y-m-d H:i:s.v'),
         ]);
 
         DB::table('distributors')->where('id', $id)->update([
-            'sponsor_id'          => $id,
+            'sponsor_id' => $id,
             'placement_parent_id' => $id,
         ]);
     } finally {
@@ -82,9 +82,9 @@ function drftSeedDistributorRoot(): array
     }
 
     DB::table('genealogy_closure')->insert([
-        'ancestor_id'   => $id,
+        'ancestor_id' => $id,
         'descendant_id' => $id,
-        'depth'         => 0,
+        'depth' => 0,
     ]);
 
     return ['sponsor_id' => $id, 'placement_id' => $id];
@@ -94,22 +94,22 @@ function drftSeedDistributorRoot(): array
  * Create a pending (non-distributor) user with a known password and an
  * active registration draft.
  *
- * @return array{user: User, raw_token: string, draft: RegistrationDraft}
+ * @return array{user: User, rawToken: string, draft: RegistrationDraft}
  */
 function drftSeedUserWithDraft(int $sponsorId, int $placementId, string $password = 'Zr9!mQwXvL#2023Test'): array
 {
     $user = User::create([
-        'full_name'       => 'Test Returner',
-        'email'           => 'returner-'.uniqid().'@example.com',
-        'phone_e164'      => '+919'.rand(100000000, 999999999),
-        'password_hash'   => Hash::make($password),
+        'full_name' => 'Test Returner',
+        'email' => 'returner-'.uniqid().'@example.com',
+        'phone_e164' => '+919'.rand(100000000, 999999999),
+        'password_hash' => Hash::make($password),
         'password_set_at' => now(),
-        'status'          => 'pending',
+        'status' => 'pending',
     ]);
 
-    $drafts   = app(DraftStateService::class);
+    $drafts = app(DraftStateService::class);
     $rawToken = $drafts->create($user->id, $sponsorId, $placementId, 'L', []);
-    $draft    = RegistrationDraft::where('user_id', $user->id)->firstOrFail();
+    $draft = RegistrationDraft::where('user_id', $user->id)->firstOrFail();
 
     return compact('user', 'rawToken', 'draft');
 }
@@ -122,11 +122,11 @@ function drftStashIntent(int $sponsorId, int $placementId): void
 {
     $wizard = app(WizardStateService::class);
     $wizard->stashIntent(
-        sponsorId:   $sponsorId,
+        sponsorId: $sponsorId,
         placementId: $placementId,
-        sideOpt:     'L',
-        extras:      [
-            'sponsor_adn'   => '111111111',
+        sideOpt: 'L',
+        extras: [
+            'sponsor_adn' => '111111111',
             'placement_adn' => '111111111',
         ],
     );
@@ -165,9 +165,9 @@ function drftFakeHibp(): void
 it('DRFT-001: correct password with active draft → redirects to saved step, sets av_draft cookie, no duplicate user', function (): void {
     drftFakeHibp();
 
-    $dist  = drftSeedDistributorRoot();
-    $data  = drftSeedUserWithDraft($dist['sponsor_id'], $dist['placement_id']);
-    $user  = $data['user'];
+    $dist = drftSeedDistributorRoot();
+    $data = drftSeedUserWithDraft($dist['sponsor_id'], $dist['placement_id']);
+    $user = $data['user'];
     $draft = $data['draft'];
 
     // Stash the wizard intent so handleAccount() does not bail early.
@@ -176,14 +176,14 @@ it('DRFT-001: correct password with active draft → redirects to saved step, se
     $expectedRoute = WizardStateService::stepRoute($draft->current_step);
 
     $response = $this->post(route('register.post'), [
-        'full_name'             => $user->full_name,
+        'full_name' => $user->full_name,
         // Use a NEW phone number — the existing user's phone is already in
         // the DB and would fail unique:users,phone_e164 if sent. The
         // returning-user path authenticates by email+password; phone is
         // only relevant for brand-new account creation.
-        'phone_e164'            => drftUniquePhone(),
-        'email'                 => $user->email,
-        'password'              => 'Zr9!mQwXvL#2023Test',
+        'phone_e164' => drftUniquePhone(),
+        'email' => $user->email,
+        'password' => 'Zr9!mQwXvL#2023Test',
         'password_confirmation' => 'Zr9!mQwXvL#2023Test',
     ]);
 
@@ -212,10 +212,10 @@ it('DRFT-002: wrong password with active draft → redirects back with session e
     // actual password — should be rejected by Hash::check in the returning-user
     // block, not by StrongPassword / NotPwned validation rules.
     $response = $this->post(route('register.post'), [
-        'full_name'             => $user->full_name,
-        'phone_e164'            => drftUniquePhone(),
-        'email'                 => $user->email,
-        'password'              => 'Zr9!mQwXvL#2023Wrong',
+        'full_name' => $user->full_name,
+        'phone_e164' => drftUniquePhone(),
+        'email' => $user->email,
+        'password' => 'Zr9!mQwXvL#2023Wrong',
         'password_confirmation' => 'Zr9!mQwXvL#2023Wrong',
     ]);
 
@@ -236,21 +236,21 @@ it('DRFT-003: fully registered user (no active draft) → email validation error
     // Create a user WITHOUT any draft (simulates a fully-registered or
     // expired-draft account — no active draft row in registration_drafts).
     $user = User::create([
-        'full_name'       => 'Registered Person',
-        'email'           => 'registered-'.uniqid().'@example.com',
-        'phone_e164'      => '+919'.rand(100000000, 999999999),
-        'password_hash'   => Hash::make('Zr9!mQwXvL#2023Test'),
+        'full_name' => 'Registered Person',
+        'email' => 'registered-'.uniqid().'@example.com',
+        'phone_e164' => '+919'.rand(100000000, 999999999),
+        'password_hash' => Hash::make('Zr9!mQwXvL#2023Test'),
         'password_set_at' => now(),
-        'status'          => 'active',
+        'status' => 'active',
     ]);
 
     drftStashIntent($dist['sponsor_id'], $dist['placement_id']);
 
     $response = $this->post(route('register.post'), [
-        'full_name'             => 'Any Name',
-        'email'                 => $user->email,
-        'phone_e164'            => drftUniquePhone(),
-        'password'              => 'Zr9!mQwXvL#2023Test',
+        'full_name' => 'Any Name',
+        'email' => $user->email,
+        'phone_e164' => drftUniquePhone(),
+        'password' => 'Zr9!mQwXvL#2023Test',
         'password_confirmation' => 'Zr9!mQwXvL#2023Test',
     ]);
 

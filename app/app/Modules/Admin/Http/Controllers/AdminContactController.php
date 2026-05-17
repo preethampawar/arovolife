@@ -56,7 +56,7 @@ final class AdminContactController extends Controller
 
         // Counts for the filter chips — single round trip via two GROUP BY queries
         $unhandledCount = ContactInquiry::query()->whereNull('handled_at')->count();
-        $handledCount   = ContactInquiry::query()->whereNotNull('handled_at')->count();
+        $handledCount = ContactInquiry::query()->whereNotNull('handled_at')->count();
 
         return view('admin.contact-inquiries.index', [
             'inquiries' => $inquiries,

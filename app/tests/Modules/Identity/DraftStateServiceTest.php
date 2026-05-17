@@ -15,14 +15,14 @@ uses(RefreshDatabase::class);
 function draftSeedUser(): int
 {
     return (int) DB::table('users')->insertGetId([
-        'email'           => 'draft-test-'.uniqid().'@example.com',
-        'phone_e164'      => '+919'.rand(100000000, 999999999),
-        'password_hash'   => bcrypt('secret'),
+        'email' => 'draft-test-'.uniqid().'@example.com',
+        'phone_e164' => '+919'.rand(100000000, 999999999),
+        'password_hash' => bcrypt('secret'),
         'password_set_at' => now(),
-        'full_name'       => 'Draft User',
-        'status'          => 'pending',
-        'created_at'      => now(),
-        'updated_at'      => now(),
+        'full_name' => 'Draft User',
+        'status' => 'pending',
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 }
 
@@ -141,7 +141,7 @@ it('restores wizard session from a draft', function (): void {
     $draft = RegistrationDraft::where('user_id', $userId)->first();
 
     $session = app(Session::class);
-    $wizard  = new WizardStateService($session);
+    $wizard = new WizardStateService($session);
     $service->restoreToWizard($draft, $wizard);
 
     expect($wizard->sponsorId())->toBe(10);

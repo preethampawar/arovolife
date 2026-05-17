@@ -11,6 +11,9 @@ final class DraftStateService
 {
     private const TTL_DAYS = 7;
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
     public function create(int $userId, int $sponsorId, int $placementId, ?string $sideOpt, array $data): string
     {
         // Delete any existing draft so the unique constraint is not violated.
@@ -25,18 +28,21 @@ final class DraftStateService
             'sponsor_id' => $sponsorId,
             'placement_id' => $placementId,
             'side_opt' => $sideOpt,
-            'payload_enc' => Crypt::encryptString(json_encode($data)),
+            'payload_enc' => Crypt::encryptString((string) json_encode($data)),
             'expires_at' => now()->addDays(self::TTL_DAYS),
         ]);
 
         return $rawToken;
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
     public function sync(int $userId, int $currentStep, array $data): void
     {
         RegistrationDraft::where('user_id', $userId)->update([
             'current_step' => $currentStep,
-            'payload_enc' => Crypt::encryptString(json_encode($data)),
+            'payload_enc' => Crypt::encryptString((string) json_encode($data)),
         ]);
     }
 

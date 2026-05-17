@@ -36,9 +36,9 @@ final class CoolingOffCancelledNotification extends Notification implements Shou
         return (new MailMessage)
             ->subject('Your arovolife registration has been cancelled')
             ->view('emails.cooling-off-cancelled', [
-                'adn'                 => $this->adn,
-                'cancelledAtFormatted'=> $this->cancelledAtFormatted,
-                'cascaded'            => $this->cascaded,
+                'adn' => $this->adn,
+                'cancelledAtFormatted' => $this->cancelledAtFormatted,
+                'cascaded' => $this->cascaded,
             ]);
     }
 }

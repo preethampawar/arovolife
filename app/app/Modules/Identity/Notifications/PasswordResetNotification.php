@@ -33,7 +33,7 @@ final class PasswordResetNotification extends Notification implements ShouldQueu
         return (new MailMessage)
             ->subject('Reset your arovolife password')
             ->view('emails.password-reset', [
-                'resetUrl'       => $this->resetUrl,
+                'resetUrl' => $this->resetUrl,
                 'expiresMinutes' => $this->expiresMinutes,
             ]);
     }

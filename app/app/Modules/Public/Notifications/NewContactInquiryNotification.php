@@ -58,9 +58,9 @@ final class NewContactInquiryNotification extends Notification implements Should
         return (new MailMessage)
             ->subject('New contact form submission — '.$inquiry->purpose)
             ->view('emails.contact-inquiry', [
-                'inquiry'     => $inquiry,
+                'inquiry' => $inquiry,
                 'reasonLabel' => $reasonLabel,
-                'adminUrl'    => $adminUrl,
+                'adminUrl' => $adminUrl,
             ]);
     }
 }

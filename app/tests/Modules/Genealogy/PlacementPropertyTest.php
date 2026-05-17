@@ -26,9 +26,11 @@ use App\Modules\Genealogy\Events\PlacementCreated;
 use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\Exceptions\CrossLinePlacementError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
+use App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -236,7 +238,7 @@ it('PROP-06: depth column is NOT NULL — the DB schema enforces a non-null dept
 
     // Attempting to set depth=null on the root row must throw a DB error.
     expect(fn () => DB::table('distributors')->where('id', $root)->update(['depth' => null]))
-        ->toThrow(\Illuminate\Database\QueryException::class);
+        ->toThrow(QueryException::class);
 });
 
 it('PROP-06b: root at depth=0 produces child at depth=1 (baseline arithmetic)', function () {
@@ -295,7 +297,7 @@ it('RACE-01b: no-side placement fills L first then R; a third attempt throws Pla
         ->and($r2->side)->toBe('R');
 
     expect(fn () => $engine->place(propMakeInput(propSeedUser(), $root, $root, null)))
-        ->toThrow(\App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError::class);
+        ->toThrow(PlacementSlotsExhaustedError::class);
 });
 
 // ─── SELF-REFERENCE: sponsor == placement_id (demo seeder bootstraps L0 this way) ─

@@ -4,10 +4,25 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $draft_token_hash
+ * @property int $current_step
+ * @property int $sponsor_id
+ * @property int $placement_id
+ * @property string|null $side_opt
+ * @property string $payload_enc
+ * @property Carbon|null $resume_link_sent_at
+ * @property Carbon $expires_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
 final class RegistrationDraft extends Model
 {
     protected $fillable = [
@@ -36,7 +51,7 @@ final class RegistrationDraft extends Model
         $query->where('expires_at', '>', now());
     }
 
-    /** @return BelongsTo<User, RegistrationDraft> */
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

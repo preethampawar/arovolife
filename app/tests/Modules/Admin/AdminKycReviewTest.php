@@ -8,6 +8,7 @@ use App\Modules\Admin\Services\ApproveKycSubmission;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Admin\Services\RejectKycSubmission;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -222,8 +223,8 @@ it('AKR-06: distributor.pan_masked / aadhaar_masked return XXXXXX-prefixed strin
         'aadhaar_last4' => '9012',
     ]);
 
-    /** @var \App\Modules\Identity\Models\Distributor $d */
-    $d = \App\Modules\Identity\Models\Distributor::query()->findOrFail($id);
+    /** @var Distributor $d */
+    $d = Distributor::query()->findOrFail($id);
 
     expect($d->pan_masked)->toBe('XXXXXX234F')
         ->and($d->aadhaar_masked)->toBe('XXXX XXXX 9012');
