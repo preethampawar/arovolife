@@ -169,4 +169,39 @@ final class WizardStateService
         $this->session->forget(self::KEY);
         $this->session->forget(self::INTENT_KEY);
     }
+
+    /**
+     * Restore wizard session from a persisted draft (cookie-restore or signed-link path).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function restore(int $userId, int $sponsorId, int $placementId, ?string $sideOpt, array $data, int $currentStep): void
+    {
+        $this->session->put(self::KEY, [
+            'step' => $currentStep,
+            'user_id' => $userId,
+            'sponsor_id' => $sponsorId,
+            'placement_id' => $placementId,
+            'side_opt' => $sideOpt,
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * Map a wizard step number to its named route.
+     * Used after draft restoration so we know where to redirect.
+     */
+    public static function stepRoute(int $step): string
+    {
+        return match (true) {
+            $step <= 3 => 'register.orientation',
+            $step === 4 => 'register.consent',
+            $step === 5 => 'register.pan',
+            $step === 6 => 'register.aadhaar',
+            $step === 7 => 'register.bank',
+            $step === 8 => 'register.personal',
+            $step === 9 => 'register.documents',
+            default => 'register.complete',
+        };
+    }
 }
