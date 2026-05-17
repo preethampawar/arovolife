@@ -24,6 +24,7 @@ use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
 use App\Modules\Identity\Http\Controllers\DashboardController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
+use App\Modules\Identity\Http\Controllers\Registration\DraftResumeController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Public\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +75,12 @@ Route::get('/activate/{user}', [SpouseActivationController::class, 'show'])
     ->middleware('signed')->name('spouse.activate.show');
 Route::post('/activate/{user}', [SpouseActivationController::class, 'submit'])
     ->middleware('signed')->name('spouse.activate.submit');
+
+// Draft resume — signed magic link that re-hydrates the wizard session so a
+// registrant can continue on a new device / browser.
+Route::get('/register/resume/{draft}', [DraftResumeController::class, 'show'])
+    ->name('register.resume')
+    ->middleware('signed');
 
 // ── Registration Wizard (steps 3-10, auth-gated) ─────────────────────────────
 //
