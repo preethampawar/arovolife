@@ -10,17 +10,22 @@ use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
+use App\Modules\Identity\Models\RegistrationDraft;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Notifications\DraftResumeNotification;
+use App\Modules\Identity\Services\DraftStateService;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\WizardStateService;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -29,6 +34,7 @@ final class RegistrationWizardController extends Controller
     public function __construct(
         private readonly WizardStateService $wizard,
         private readonly RegistrationService $registrationService,
+        private readonly DraftStateService $drafts,
     ) {}
 
     // ── Entry: parse referral link query params and stash in session ──────
@@ -128,7 +134,7 @@ final class RegistrationWizardController extends Controller
      * other PII. Couple-secondary records (the spouse `-S` rows) get a
      * flag so the frontend can suggest the primary instead.
      */
-    public function lookupAdn(Request $request): \Illuminate\Http\JsonResponse
+    public function lookupAdn(Request $request): JsonResponse
     {
         $adn = strtoupper(trim((string) $request->query('adn', '')));
 
@@ -165,13 +171,13 @@ final class RegistrationWizardController extends Controller
             // the couple-secondary record (still 11 chars max). Allow `-S`
             // here only because someone might paste a spouse's ADN; the
             // controller lookup will then redirect onto the primary anyway.
-            'sponsor_adn'   => ['required', 'string', 'regex:/^[0-9]{9}(-S)?$/i'],
+            'sponsor_adn' => ['required', 'string', 'regex:/^[0-9]{9}(-S)?$/i'],
             'placement_adn' => ['required', 'string', 'regex:/^[0-9]{9}(-S)?$/i'],
         ], [
-            'sponsor_adn.required'   => 'Please enter the sponsor ADN — the person who invited you.',
-            'sponsor_adn.regex'      => 'Sponsor ADN must be exactly 9 digits, e.g. 111222333.',
+            'sponsor_adn.required' => 'Please enter the sponsor ADN — the person who invited you.',
+            'sponsor_adn.regex' => 'Sponsor ADN must be exactly 9 digits, e.g. 111222333.',
             'placement_adn.required' => 'Please enter the placement ADN — usually the same as your sponsor.',
-            'placement_adn.regex'    => 'Placement ADN must be exactly 9 digits, e.g. 111222333.',
+            'placement_adn.regex' => 'Placement ADN must be exactly 9 digits, e.g. 111222333.',
         ]);
 
         // Re-route through the canonical referral-link entry so all the
@@ -211,19 +217,19 @@ final class RegistrationWizardController extends Controller
             'phone_e164' => ['required', 'regex:/^[6-9]\d{9}$/', 'unique:users,phone_e164'],
             'password' => ['required', 'string', 'min:8', 'confirmed', new StrongPassword, new NotPwned],
         ], [
-            'full_name.required'   => 'Please enter your full name as it appears on your PAN card.',
-            'full_name.max'        => 'Full name must be at most 255 characters.',
-            'email.required'       => 'Please enter your email address.',
-            'email.email'          => 'That doesn’t look like a valid email — check for typos like missing @ or .com.',
-            'email.unique'         => 'An account already exists with this email. Try signing in, or use the "Forgot password" link.',
-            'phone_e164.required'  => 'Please enter your 10-digit Indian mobile number.',
-            'phone_e164.regex'     => 'Enter a 10-digit Indian mobile number (must start with 6, 7, 8, or 9).',
-            'phone_e164.unique'    => 'An account already exists with this mobile number.',
-            'password.required'    => 'Please choose a password.',
-            'password.min'         => 'Password must be at least 8 characters.',
-            'password.confirmed'   => 'The two passwords don’t match — please re-type them.',
+            'full_name.required' => 'Please enter your full name as it appears on your PAN card.',
+            'full_name.max' => 'Full name must be at most 255 characters.',
+            'email.required' => 'Please enter your email address.',
+            'email.email' => 'That doesn’t look like a valid email — check for typos like missing @ or .com.',
+            'email.unique' => 'An account already exists with this email. Try signing in, or use the "Forgot password" link.',
+            'phone_e164.required' => 'Please enter your 10-digit Indian mobile number.',
+            'phone_e164.regex' => 'Enter a 10-digit Indian mobile number (must start with 6, 7, 8, or 9).',
+            'phone_e164.unique' => 'An account already exists with this mobile number.',
+            'password.required' => 'Please choose a password.',
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.confirmed' => 'The two passwords don’t match — please re-type them.',
         ], [
-            'full_name'  => 'full name',
+            'full_name' => 'full name',
             'phone_e164' => 'mobile number',
         ]);
 
@@ -252,8 +258,21 @@ final class RegistrationWizardController extends Controller
             sideOpt: $intent['side_opt'] ?? null,
         );
 
+        $rawToken = $this->drafts->create(
+            $user->id,
+            (int) $intent['sponsor_id'],
+            (int) $intent['placement_id'],
+            $intent['side_opt'] ?? null,
+            [],
+        );
+
+        $draftId = RegistrationDraft::where('user_id', $user->id)->value('id');
+
+        Notification::send($user, new DraftResumeNotification((int) $draftId));
+
         // Step 2 done; the next auth-gated step is Orientation.
-        return redirect()->route('register.orientation');
+        return redirect()->route('register.orientation')
+            ->withCookie(cookie('av_draft', $rawToken, 7 * 24 * 60, '/', null, true, true));
     }
 
     // ── Step 3: Orientation (auth-gated; quiz + video confirmation) ─────
@@ -271,12 +290,12 @@ final class RegistrationWizardController extends Controller
             'quiz_q3' => ['required', 'in:C'],
             'confirmed_watched' => ['required', 'accepted'],
         ], [
-            'quiz_q1.required'           => 'Please answer Question 1.',
-            'quiz_q1.in'                 => 'Question 1: that’s not the correct answer. Please re-read the orientation and try again.',
-            'quiz_q2.required'           => 'Please answer Question 2.',
-            'quiz_q2.in'                 => 'Question 2: that’s not the correct answer. Please re-read the orientation and try again.',
-            'quiz_q3.required'           => 'Please answer Question 3.',
-            'quiz_q3.in'                 => 'Question 3: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q1.required' => 'Please answer Question 1.',
+            'quiz_q1.in' => 'Question 1: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q2.required' => 'Please answer Question 2.',
+            'quiz_q2.in' => 'Question 2: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q3.required' => 'Please answer Question 3.',
+            'quiz_q3.in' => 'Question 3: that’s not the correct answer. Please re-read the orientation and try again.',
             'confirmed_watched.required' => 'Please confirm you have watched the full orientation video.',
             'confirmed_watched.accepted' => 'You must confirm watching the orientation video before continuing.',
         ]);
@@ -308,11 +327,11 @@ final class RegistrationWizardController extends Controller
             'register_with_spouse' => ['nullable', 'in:yes'],
         ], [
             'date_of_birth.required' => 'Please enter your date of birth.',
-            'date_of_birth.date'     => 'Please enter a valid date of birth (YYYY-MM-DD).',
-            'state.required'         => 'Please pick the state you live in.',
-            'state.in'                => 'Please pick a valid Indian state from the list.',
-            'address.required'       => 'Please enter your full residential address.',
-            'address.max'            => 'Address must be at most 1000 characters.',
+            'date_of_birth.date' => 'Please enter a valid date of birth (YYYY-MM-DD).',
+            'state.required' => 'Please pick the state you live in.',
+            'state.in' => 'Please pick a valid Indian state from the list.',
+            'address.required' => 'Please enter your full residential address.',
+            'address.max' => 'Address must be at most 1000 characters.',
         ], [
             'date_of_birth' => 'date of birth',
         ]);
@@ -379,7 +398,7 @@ final class RegistrationWizardController extends Controller
             'pan_number' => ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/'],
         ], [
             'pan_number.required' => 'Please enter your PAN number.',
-            'pan_number.regex'    => 'PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
+            'pan_number.regex' => 'PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
         ], [
             'pan_number' => 'PAN',
         ]);
@@ -418,15 +437,15 @@ final class RegistrationWizardController extends Controller
         $request->merge(['aadhaar_number' => $rawAadhaar]);
 
         $validated = $request->validate([
-            'aadhaar_number'  => ['required', 'digits:12'],
+            'aadhaar_number' => ['required', 'digits:12'],
             'consent_aadhaar' => ['required', 'accepted'],
         ], [
-            'aadhaar_number.required'  => 'Please enter your 12-digit Aadhaar number.',
-            'aadhaar_number.digits'    => 'Aadhaar must be exactly 12 digits.',
+            'aadhaar_number.required' => 'Please enter your 12-digit Aadhaar number.',
+            'aadhaar_number.digits' => 'Aadhaar must be exactly 12 digits.',
             'consent_aadhaar.required' => 'Please consent to Aadhaar storage before continuing.',
             'consent_aadhaar.accepted' => 'You must consent to Aadhaar storage and post-verification purge to proceed.',
         ], [
-            'aadhaar_number'  => 'Aadhaar number',
+            'aadhaar_number' => 'Aadhaar number',
             'consent_aadhaar' => 'Aadhaar consent',
         ]);
 
@@ -436,10 +455,10 @@ final class RegistrationWizardController extends Controller
 
         $this->wizard->saveStepData(6, [
             'aadhaar_number' => $validated['aadhaar_number'],
-            'last4'          => substr($validated['aadhaar_number'], -4),
-            'ref'            => $ref,
-            'spouse_last4'   => null,
-            'spouse_ref'     => null,
+            'last4' => substr($validated['aadhaar_number'], -4),
+            'ref' => $ref,
+            'spouse_last4' => null,
+            'spouse_ref' => null,
         ]);
 
         return redirect()->route('register.bank');
@@ -461,14 +480,14 @@ final class RegistrationWizardController extends Controller
             'ifsc' => ['required', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'],
         ], [
             'account_number.required' => 'Please enter your bank account number.',
-            'account_number.min'      => 'Bank account number must be at least 9 digits.',
-            'account_number.max'      => 'Bank account number must be at most 18 digits.',
-            'account_number.regex'    => 'Bank account number must contain digits only — no spaces or letters.',
-            'ifsc.required'           => 'Please enter your bank’s IFSC code.',
-            'ifsc.regex'              => 'IFSC must be 11 characters: 4 letters, 0, then 6 alphanumeric (e.g. HDFC0001234).',
+            'account_number.min' => 'Bank account number must be at least 9 digits.',
+            'account_number.max' => 'Bank account number must be at most 18 digits.',
+            'account_number.regex' => 'Bank account number must contain digits only — no spaces or letters.',
+            'ifsc.required' => 'Please enter your bank’s IFSC code.',
+            'ifsc.regex' => 'IFSC must be 11 characters: 4 letters, 0, then 6 alphanumeric (e.g. HDFC0001234).',
         ], [
             'account_number' => 'bank account number',
-            'ifsc'           => 'IFSC code',
+            'ifsc' => 'IFSC code',
         ]);
 
         $this->wizard->saveStepData(7, $validated);
@@ -495,7 +514,6 @@ final class RegistrationWizardController extends Controller
         'address_proof_back' => 'address_proof_back',
     ];
 
-
     public function handleDocuments(Request $request): RedirectResponse
     {
         // mimetypes (not just mimes) checks actual file bytes via finfo —
@@ -516,18 +534,18 @@ final class RegistrationWizardController extends Controller
         // with this rule" form. We can use that here because every field in
         // $rules uses the same rule set.
         $request->validate($rules, [
-            'required'   => 'Please upload :attribute (JPG, PNG, or PDF, max 5 MB).',
-            'file'       => 'The :attribute upload was incomplete — please try again.',
-            'max'        => 'The :attribute file is too large (max 5 MB).',
-            'mimetypes'  => 'The :attribute must be a JPG, PNG, or PDF file.',
+            'required' => 'Please upload :attribute (JPG, PNG, or PDF, max 5 MB).',
+            'file' => 'The :attribute upload was incomplete — please try again.',
+            'max' => 'The :attribute file is too large (max 5 MB).',
+            'mimetypes' => 'The :attribute must be a JPG, PNG, or PDF file.',
         ], [
-            'pan_doc'             => 'your PAN scan',
-            'aadhaar_doc'         => 'your Aadhaar scan',
-            'cheque_doc'          => 'a cancelled cheque scan',
+            'pan_doc' => 'your PAN scan',
+            'aadhaar_doc' => 'your Aadhaar scan',
+            'cheque_doc' => 'a cancelled cheque scan',
             'address_proof_front' => 'your address proof (front side)',
-            'address_proof_back'  => 'your address proof (back side)',
-            'spouse_pan_doc'      => 'your spouse’s PAN scan',
-            'spouse_aadhaar_doc'  => 'your spouse’s Aadhaar scan',
+            'address_proof_back' => 'your address proof (back side)',
+            'spouse_pan_doc' => 'your spouse’s PAN scan',
+            'spouse_aadhaar_doc' => 'your spouse’s Aadhaar scan',
         ]);
 
         $userId = (int) Auth::id();
@@ -588,14 +606,14 @@ final class RegistrationWizardController extends Controller
             'consent_plan' => ['required', 'accepted'],
             'consent_privacy' => ['required', 'accepted'],
         ], [
-            'consent_tnc.required'      => 'Please tick the Terms & Conditions consent.',
-            'consent_tnc.accepted'      => 'You must accept the Direct Seller Agreement & Terms of Service to continue.',
-            'consent_ethics.required'   => 'Please tick the Code of Ethics consent.',
-            'consent_ethics.accepted'   => 'You must accept the Code of Ethics to continue.',
-            'consent_plan.required'     => 'Please tick the Compensation Plan consent.',
-            'consent_plan.accepted'     => 'You must acknowledge the Compensation Plan to continue.',
-            'consent_privacy.required'  => 'Please tick the Privacy Policy consent.',
-            'consent_privacy.accepted'  => 'You must accept the Privacy Policy to continue.',
+            'consent_tnc.required' => 'Please tick the Terms & Conditions consent.',
+            'consent_tnc.accepted' => 'You must accept the Direct Seller Agreement & Terms of Service to continue.',
+            'consent_ethics.required' => 'Please tick the Code of Ethics consent.',
+            'consent_ethics.accepted' => 'You must accept the Code of Ethics to continue.',
+            'consent_plan.required' => 'Please tick the Compensation Plan consent.',
+            'consent_plan.accepted' => 'You must acknowledge the Compensation Plan to continue.',
+            'consent_privacy.required' => 'Please tick the Privacy Policy consent.',
+            'consent_privacy.accepted' => 'You must accept the Privacy Policy to continue.',
         ]);
 
         $this->wizard->saveStepData(4, [
