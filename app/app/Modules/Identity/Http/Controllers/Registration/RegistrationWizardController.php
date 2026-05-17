@@ -91,6 +91,33 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=invalid_referral_link');
         }
 
+        // ── Draft-conflict guard ───────────────────────────────────────────
+        // If the visitor already has an active draft under a DIFFERENT
+        // sponsor or placement, show the conflict screen instead of
+        // silently overwriting the session intent.
+        $rawToken = $request->cookie('av_draft');
+        if (is_string($rawToken)) {
+            $existingDraft = $this->drafts->resolveFromToken($rawToken);
+            if ($existingDraft !== null
+                && ($existingDraft->sponsor_id !== (int) $sponsor->id
+                    || $existingDraft->placement_id !== (int) $placement->id)
+            ) {
+                $existingAdn = (string) DB::table('distributors')
+                    ->where('id', $existingDraft->sponsor_id)
+                    ->value('adn');
+                $newAdn = (string) DB::table('distributors')
+                    ->where('id', $sponsor->id)
+                    ->value('adn');
+
+                return response()->view('registration.draft-conflict', [
+                    'existingAdn' => $existingAdn ?: 'Unknown',
+                    'newAdn' => $newAdn ?: 'Unknown',
+                    'resumeRoute' => route(WizardStateService::stepRoute($existingDraft->current_step)),
+                    'discardRoute' => route('register.draft.discard'),
+                ]);
+            }
+        }
+
         $this->wizard->stashIntent(
             sponsorId: (int) $sponsor->id,
             placementId: (int) $placement->id,
@@ -188,6 +215,28 @@ final class RegistrationWizardController extends Controller
             'sponsor' => strtoupper(trim((string) $validated['sponsor_adn'])),
             'placement' => strtoupper(trim((string) $validated['placement_adn'])),
         ]);
+    }
+
+    /**
+     * POST /register/draft/discard
+     *
+     * Destroys the active draft identified by the av_draft cookie so the
+     * visitor can start a fresh registration under a new sponsor/placement.
+     * The cookie is forgotten on the response so the browser removes it.
+     */
+    public function discardDraft(Request $request): RedirectResponse
+    {
+        $rawToken = $request->cookie('av_draft');
+        if (is_string($rawToken)) {
+            $draft = $this->drafts->resolveFromToken($rawToken);
+            if ($draft !== null) {
+                $this->drafts->delete($draft->user_id);
+            }
+        }
+
+        return redirect()
+            ->route('register')
+            ->withCookie(Cookie::forget('av_draft'));
     }
 
     // ── Step 2: Account ────────────────────────────────────────────────────

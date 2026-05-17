@@ -55,6 +55,11 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
     Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])->name('register.post');
 
+    // Draft-conflict resolution — discard an existing draft so the visitor
+    // can start fresh under a new sponsor/placement referral link.
+    Route::post('/register/draft/discard', [RegistrationWizardController::class, 'discardDraft'])
+        ->name('register.draft.discard');
+
     // Forgot-password flow. The send-link endpoint is throttled (3 requests
     // per 10 min per IP) so an attacker can't spam reset emails to a victim.
     Route::get('/forgot-password', [PasswordResetController::class, 'showRequest'])->name('password.request');
