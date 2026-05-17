@@ -198,10 +198,21 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=referral_link_required');
         }
 
+        $existingUser = null;
+        $rawToken = $request->cookie('av_draft');
+
+        if (is_string($rawToken)) {
+            $draft = $this->drafts->resolveFromToken($rawToken);
+            if ($draft !== null) {
+                $existingUser = User::find($draft->user_id);
+            }
+        }
+
         return view('registration.step1-account', [
             'sponsorAdn' => $intent['sponsor_adn'] ?? '',
             'placementAdn' => $intent['placement_adn'] ?? '',
             'sideOpt' => $intent['side_opt'] ?? null,
+            'existingUser' => $existingUser,
         ]);
     }
 

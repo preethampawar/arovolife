@@ -42,6 +42,14 @@
     <form method="POST" action="{{ route('register.post') }}" class="card-refined p-7 sm:p-9 space-y-5 lift-in" style="animation-delay: 200ms;">
         @csrf
 
+        @if ($existingUser)
+            <div class="rounded-md bg-blue-50 border border-blue-200 p-4 mb-6">
+                <p class="text-sm text-blue-800">
+                    Welcome back. Enter your password to continue your registration.
+                </p>
+            </div>
+        @endif
+
         {{-- Field grid — small caps eyebrow + refined input --}}
         <div class="lift-in" style="animation-delay: 320ms;">
             <label class="flex items-baseline justify-between mb-1.5">
@@ -49,7 +57,7 @@
                 <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
             </label>
             <input name="full_name" type="text" required autocomplete="name"
-                value="{{ old('full_name') }}"
+                value="{{ old('full_name', $existingUser?->full_name ?? '') }}"
                 placeholder="Enter your full name"
                 class="input-refined">
             @error('full_name')<p class="mt-1.5 text-xs text-red-700">{{ $message }}</p>@enderror
@@ -61,7 +69,7 @@
                 <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
             </label>
             <input name="email" type="email" required autocomplete="email"
-                value="{{ old('email') }}"
+                value="{{ old('email', $existingUser?->email ?? '') }}"
                 placeholder="you@example.com"
                 maxlength="255"
                 class="input-refined">
@@ -76,7 +84,7 @@
             <div class="flex">
                 <span class="inline-flex items-center px-3.5 rounded-l-[0.65rem] border border-r-0 border-brand-200/50 bg-gradient-to-b from-brand-50 to-white text-slate-700 text-sm font-medium select-none">+91</span>
                 <input name="phone_e164" type="tel" required autocomplete="tel"
-                    value="{{ preg_replace('/^\+?91/', '', old('phone_e164', '')) }}"
+                    value="{{ preg_replace('/^\+?91/', '', old('phone_e164', $existingUser?->phone_e164 ?? '')) }}"
                     placeholder="9876543210"
                     maxlength="10"
                     pattern="[6-9][0-9]{9}"
