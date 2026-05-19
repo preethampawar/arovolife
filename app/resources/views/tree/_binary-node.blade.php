@@ -39,7 +39,10 @@
         $statusInfo = $statusMap[$status] ?? $statusMap['pending'];
     @endphp
     <div class="relative rounded-xl border {{ $statusInfo['border'] }} {{ $statusInfo['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[120px] max-w-[150px] shadow-sm">
-        <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full {{ $statusInfo['dot'] }} ring-2 ring-white" title="{{ $statusInfo['label'] }}"></span>
+        {{-- Status dot moved to top-LEFT so the 3-dots "more actions" menu
+             can occupy the top-RIGHT corner, which is the conventional
+             location and where the user expects it. --}}
+        <span class="absolute top-1.5 left-1.5 w-2 h-2 rounded-full {{ $statusInfo['dot'] }} ring-2 ring-white" title="{{ $statusInfo['label'] }}"></span>
 
         @php
             // The "show only this person's tree" pivot URL.
@@ -50,7 +53,7 @@
                 ? route('admin.tree.show', $node->id)
                 : route('tree.binary', $node->adn);
         @endphp
-        <div class="absolute top-1.5 left-1.5" data-node-menu>
+        <div class="absolute top-1.5 right-1.5" data-node-menu>
             <button type="button" data-node-menu-trigger
                 onclick="event.stopPropagation(); toggleNodeMenu(this);"
                 title="More actions"
@@ -59,8 +62,11 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z"/>
                 </svg>
             </button>
+            {{-- right-0 anchors the panel to the right edge of the trigger so
+                 it opens leftward, keeping it inside the card / viewport
+                 instead of clipping past the right boundary. --}}
             <div data-node-menu-panel hidden
-                class="absolute left-0 top-full mt-1 min-w-[180px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 z-50 text-left">
+                class="absolute right-0 top-full mt-1 min-w-[180px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 z-50 text-left">
                 <a href="{{ $pivotUrl }}"
                     class="block px-3 py-2 text-[11px] text-gray-700 hover:bg-brand-50 hover:text-brand-700 rounded-lg">
                     <span class="block font-semibold">Show only this person's tree</span>
