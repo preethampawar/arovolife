@@ -114,6 +114,27 @@
 
     <span class="mx-1 h-5 w-px bg-gray-200 hidden md:inline-block"></span>
 
+    {{-- View toggle: Binary tree (placement, L/R) vs Direct (sponsorship,
+         many children per parent). Skipped in admin context for now — the
+         admin tree page only exposes the binary view. --}}
+    @if(! ($adminContext ?? false))
+    @php
+        $isSponsorshipView = ($mode ?? 'binary') === 'sponsorship';
+        $binaryHref = isset($self) && $self ? route('tree.binary', $self->adn) : route('tree.binary');
+        $directHref = isset($self) && $self ? route('tree.sponsorship', $self->adn) : route('tree.sponsorship');
+    @endphp
+    <span class="inline-flex items-center rounded-lg border border-gray-300 bg-white p-0.5 text-[11px] font-semibold">
+        <a href="{{ $binaryHref }}"
+            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ ! $isSponsorshipView ? 'bg-brand-500 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
+            title="Binary placement tree (L/R)">Binary</a>
+        <a href="{{ $directHref }}"
+            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ $isSponsorshipView ? 'bg-brand-500 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
+            title="Sponsorship tree — distributors you directly introduced">Direct</a>
+    </span>
+
+    <span class="mx-1 h-5 w-px bg-gray-200 hidden md:inline-block"></span>
+    @endif
+
     <span class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-0.5">
         <button type="button" onclick="treeZoom(-0.1)" class="w-7 h-7 rounded-md hover:bg-gray-50 text-gray-700 font-semibold inline-flex items-center justify-center transition-colors" title="Zoom out">−</button>
         <span id="treeZoomLabel" class="text-gray-700 font-mono w-11 text-center text-[11px]">100%</span>
@@ -141,13 +162,24 @@
         style="background-image: radial-gradient(circle at 1px 1px, rgba(15,23,42,0.06) 1px, transparent 0); background-size: 18px 18px;">
         <div id="treeStage" class="inline-block min-w-full min-h-full">
             <div id="treeCanvas" class="inline-block min-w-max p-8 origin-top-left">
-                @include('tree._binary-node', [
-                    'node'              => $self,
-                    'level'             => 0,
-                    'maxDepth'          => $maxDepth,
-                    'childByParentSide' => $childByParentSide,
-                    'adminContext'      => $adminContext,
-                ])
+                @php $mode = $mode ?? 'binary'; @endphp
+                @if($mode === 'sponsorship')
+                    @include('tree._sponsorship-node', [
+                        'node'              => $self,
+                        'level'             => 0,
+                        'maxDepth'          => $maxDepth,
+                        'childrenByParent'  => $childrenByParent,
+                        'adminContext'      => $adminContext,
+                    ])
+                @else
+                    @include('tree._binary-node', [
+                        'node'              => $self,
+                        'level'             => 0,
+                        'maxDepth'          => $maxDepth,
+                        'childByParentSide' => $childByParentSide,
+                        'adminContext'      => $adminContext,
+                    ])
+                @endif
             </div>
         </div>
     </div>

@@ -137,7 +137,7 @@ it('TV-02: distributor /tree shows ONLY own subtree, never an ancestor or siblin
     $response->assertDontSee($siblingAdn);
 });
 
-it('TV-03: /tree/sponsorship lists direct referrals (sponsor_id = self) only', function () {
+it('TV-03: /tree/sponsorship renders the recursive sponsorship tree (direct + their direct)', function () {
     $rootUser = tvUser('root');
     $rootId = tvSeedRoot($rootUser->id);
 
@@ -152,9 +152,29 @@ it('TV-03: /tree/sponsorship lists direct referrals (sponsor_id = self) only', f
     $bAdn = DB::table('distributors')->where('id', $directB)->value('adn');
     $iAdn = DB::table('distributors')->where('id', $indirect)->value('adn');
 
+    // Both direct referrals visible at depth 1.
     $response->assertSee($aAdn);
     $response->assertSee($bAdn);
-    // Indirect referrals are NOT direct, so the sponsorship list must skip them.
+    // Indirect referral (sponsored by directA) visible at depth 2 in the
+    // recursive tree — the view shows multi-level downline now, not a
+    // single-level list.
+    $response->assertSee($iAdn);
+});
+
+it('TV-03b: /tree/sponsorship?levels=1 caps depth — indirect referrals hidden', function () {
+    $rootUser = tvUser('root');
+    $rootId = tvSeedRoot($rootUser->id);
+
+    $directA = tvPlace($rootId, tvUser('dirA'), 'L');
+    $indirect = tvPlace($directA, tvUser('indir'));
+
+    $response = $this->actingAs($rootUser->refresh())->get('/tree/sponsorship?levels=1');
+    $response->assertOk();
+
+    $aAdn = DB::table('distributors')->where('id', $directA)->value('adn');
+    $iAdn = DB::table('distributors')->where('id', $indirect)->value('adn');
+
+    $response->assertSee($aAdn);
     $response->assertDontSee($iAdn);
 });
 

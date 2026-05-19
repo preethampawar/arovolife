@@ -119,22 +119,99 @@ final class TreeController extends Controller
         ]);
     }
 
-    public function sponsorship(): View|RedirectResponse
+    public function sponsorship(Request $request, ?string $adn = null): View|RedirectResponse
     {
-        $self = Auth::user()?->distributor;
-        if ($self === null) {
+        $authDistributor = Auth::user()?->distributor;
+        if ($authDistributor === null) {
             return redirect()->route('dashboard');
         }
 
-        $directReferrals = Distributor::query()
-            ->where('sponsor_id', $self->id)
-            ->where('id', '!=', $self->id) // exclude the self-row from root seed
-            ->orderByDesc('created_at')
-            ->paginate(50);
+        $self = $authDistributor;
+
+        if ($adn !== null) {
+            // Re-root the sponsorship view at an ADN — must be the auth
+            // user's own row, a binary descendant, or a sponsorship
+            // descendant. Anything else returns to the user's own root.
+            $candidate = Distributor::query()
+                ->with(['user:id,full_name'])
+                ->where('adn', $adn)
+                ->first();
+            if ($candidate === null) {
+                return redirect()->route('tree.sponsorship')->with('status', 'That distributor was not found in your tree.');
+            }
+
+            $inMyBinary = (int) $candidate->id === (int) $authDistributor->id
+                || DB::table('genealogy_closure')
+                    ->where('ancestor_id', $authDistributor->id)
+                    ->where('descendant_id', $candidate->id)
+                    ->where('depth', '>', 0)
+                    ->exists();
+
+            if (! $inMyBinary) {
+                return redirect()->route('tree.sponsorship')->with('status', 'You can only view distributors in your own downline.');
+            }
+            $self = $candidate;
+        }
+
+        if ((int) $self->id === (int) $authDistributor->id) {
+            $self->setRelation('user', Auth::user());
+        }
+
+        $requested = $request->query('levels');
+        $levels = ($requested === null || $requested === '')
+            ? self::DEFAULT_DEPTH
+            : max(1, (int) $requested);
+
+        // Walk the sponsorship graph breadth-first from $self for $levels.
+        // Each ring is one SELECT against distributors WHERE sponsor_id IN
+        // (...) — bounded by the user's actual fan-out, not the whole
+        // table. Self-rows are excluded (sponsor_id == id) because the L0
+        // root sponsors itself in the seed data.
+        $childrenByParent = [];
+        $allDescendantIds = [];
+        $observedDepth = 0;
+        $frontier = [(int) $self->id];
+        for ($depth = 1; $depth <= $levels && ! empty($frontier); $depth++) {
+            $rows = Distributor::query()
+                ->with(['user:id,full_name,status'])
+                ->whereIn('sponsor_id', $frontier)
+                ->whereColumn('id', '!=', 'sponsor_id')
+                ->get();
+            if ($rows->isEmpty()) {
+                break;
+            }
+            $observedDepth = $depth;
+            $next = [];
+            foreach ($rows as $row) {
+                $childrenByParent[(int) $row->sponsor_id][] = $row;
+                $allDescendantIds[] = (int) $row->id;
+                $next[] = (int) $row->id;
+            }
+            $frontier = $next;
+        }
+
+        $totalDescendants = count($allDescendantIds);
+
+        // Probe whether there is more below the requested depth so the
+        // "observed depth" hint in the toolbar matches reality (this is a
+        // cheap aggregate — one SELECT, no fetch).
+        $maxObservedDepth = $observedDepth;
+        if ($observedDepth === $levels && ! empty($frontier)) {
+            $hasMoreBelow = Distributor::query()
+                ->whereIn('sponsor_id', $frontier)
+                ->whereColumn('id', '!=', 'sponsor_id')
+                ->exists();
+            if ($hasMoreBelow) {
+                $maxObservedDepth = $observedDepth + 1;
+            }
+        }
 
         return view('tree.sponsorship', [
-            'self' => $self,
-            'direct' => $directReferrals,
+            'self'             => $self,
+            'childrenByParent' => $childrenByParent,
+            'maxDepth'         => $levels,
+            'totalDescendants' => $totalDescendants,
+            'maxObservedDepth' => $maxObservedDepth,
         ]);
     }
 }

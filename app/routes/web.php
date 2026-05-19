@@ -259,10 +259,15 @@ Route::middleware(['auth'])->group(function (): void {
     //                   in the URL so each subtree-pivot creates a fresh
     //                   browser-history entry, and back/forward navigation
     //                   Just Works.
+    // Sponsorship view declared BEFORE the binary catchall so a literal
+    // "sponsorship" path segment is matched here rather than failing the
+    // binary route's [0-9]{9}(-S)? guard.
+    Route::get('/tree/sponsorship/{adn?}', [TreeController::class, 'sponsorship'])
+        ->where('adn', '[0-9]{9}(-S)?')
+        ->name('tree.sponsorship');
     Route::get('/tree/{adn?}', [TreeController::class, 'binary'])
         ->where('adn', '[0-9]{9}(-S)?')
         ->name('tree.binary');
-    Route::get('/tree/sponsorship', [TreeController::class, 'sponsorship'])->name('tree.sponsorship');
 
     Route::get('/line-change', [LineChangeController::class, 'show'])->name('line-change.show');
     Route::post('/line-change', [LineChangeController::class, 'submit'])->name('line-change.submit');

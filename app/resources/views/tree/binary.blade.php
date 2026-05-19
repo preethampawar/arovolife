@@ -8,5 +8,6 @@
     'maxDepth'          => $maxDepth,
     'totalDescendants'  => $totalDescendants,
     'maxObservedDepth'  => $maxObservedDepth,
+    'mode'              => 'binary',
 ])
 @endsection
