@@ -124,6 +124,15 @@ final class PlatformResetAction
             })->filter()->unique()->values();
 
             foreach ($prefixes as $prefix) {
+                // Allowlist: the KYC uploader only writes to `user_<id>/`.
+                // Anything else is corrupt data or an injection attempt —
+                // skip rather than risk wiping unrelated bucket contents
+                // (the s3 disk targets real AWS in staging/prod).
+                if (! is_string($prefix) || preg_match('/^user_\d+$/', $prefix) !== 1) {
+                    $log(sprintf('  s3: skipping non-allowlisted prefix %s', (string) $prefix));
+
+                    continue;
+                }
                 $log(sprintf('  s3:deleteDirectory %s', $prefix));
                 Storage::disk('s3')->deleteDirectory($prefix);
             }
@@ -163,7 +172,12 @@ final class PlatformResetAction
     private function buildReservedTree(): void
     {
         $now = now()->format('Y-m-d H:i:s.v');
-        $coolingOffEnd = now()->addDays(30)->format('Y-m-d H:i:s.v');
+        // Reserved company nodes have no cooling-off rights — they exist to
+        // block tree slots, not to participate in commerce. Setting the end
+        // date equal to effective_date renders the cooling-off period as
+        // already-expired in the admin UI (matches operator expectation)
+        // and ensures any accidental cancellation attempt is a no-op.
+        $coolingOffEnd = $now;
         $adns = ReservedAdns::all(); // index 0 = root, 1..30 = level-2..level-5 in BFS
 
         // The distributors table has NOT NULL self-FKs on sponsor_id and
