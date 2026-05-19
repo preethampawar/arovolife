@@ -257,48 +257,30 @@ final class PlacementEngine
     }
 
     /**
-     * Generate a distributor ADN — 9 numeric digits, e.g. `111222334`.
-     * Allocated in strict ascending order, starting from the seed root
-     * (`111222333` by convention) and incrementing for each new joiner.
+     * Generate a distributor ADN — random 9-digit integer in
+     * (100000000, 999999999]. Root ADN 100000000 is permanently reserved
+     * for the platform's L0 company node (seeded by `platform:reset`) and
+     * is never re-issued.
      *
-     * The previous `AL-XXXXXXXXXX` random scheme had a 10-billion key
-     * space and zero ordering guarantees; the numeric scheme makes ADNs
-     * memorable, sortable, and predictable for the merchandising and
-     * support teams.
-     *
-     * Concurrency: place() is wrapped in a DB transaction with
-     * lockForUpdate() on the placement parent, so two registrations
-     * under the SAME parent can't race here. Two registrations under
-     * DIFFERENT parents could in theory both pick the same MAX+1 — the
-     * `uniq_distributors_adn` unique index is the last-line defence.
-     * We retry up to 5 times on collision before giving up; given the
-     * platform's expected registration rate, a real collision is rare
-     * and a single retry resolves it.
+     * Random allocation (rather than monotonic) prevents enumeration of
+     * the user base via sequential URL probing. Collision probability for
+     * any single pick is well under 1-in-1M once the table fills with
+     * even hundreds of thousands of rows; the retry loop and the
+     * `uniq_distributors_adn` unique index together guarantee uniqueness.
      */
     private function generateAdn(): string
     {
-        $start = 111_222_333; // root reserves this; first new joiner = 111222334
+        for ($attempt = 0; $attempt < 8; $attempt++) {
+            // 100000001..999999999 inclusive — root 100000000 is reserved.
+            $candidate = (string) random_int(100_000_001, 999_999_999);
 
-        for ($attempt = 0; $attempt < 5; $attempt++) {
-            // SELECT MAX(adn) over the strictly-9-digit subset only —
-            // legacy AL-prefixed rows (if any survive a migration) sort
-            // ahead of pure-digit strings under MySQL's collation, so we
-            // filter them out explicitly.
-            $maxAdn = $this->db->table('distributors')
-                ->whereRaw("adn REGEXP '^[0-9]{9}$'")
-                ->selectRaw('MAX(CAST(adn AS UNSIGNED)) AS max_adn')
-                ->value('max_adn');
-
-            $next = $maxAdn !== null ? ((int) $maxAdn) + 1 : $start + 1;
-
-            $candidate = (string) $next;
             if (! $this->db->table('distributors')->where('adn', $candidate)->exists()) {
                 return $candidate;
             }
         }
 
         throw new \RuntimeException(
-            'Could not allocate a unique ADN after 5 attempts — investigate concurrent inserts.'
+            'Could not allocate a unique ADN after 8 attempts — investigate concurrent inserts.'
         );
     }
 }
