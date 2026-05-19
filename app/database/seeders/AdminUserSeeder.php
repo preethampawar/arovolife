@@ -21,6 +21,10 @@ final class AdminUserSeeder extends Seeder
                 'full_name' => 'Test Admin',
                 'phone_e164' => '+919999999999',
                 'password_hash' => Hash::make('admin12345'),
+                // LoginController gates on password_set_at !== null (used to
+                // lock invited spouse accounts that haven't activated yet).
+                // Without this, the seeded admin can't log in.
+                'password_set_at' => now(),
                 'status' => 'active',
                 'email_verified_at' => now(),
             ],
