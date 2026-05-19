@@ -221,9 +221,13 @@
     let naturalW = 0, naturalH = 0;
     const measureNatural = () => { canvas.style.transform = ''; naturalW = canvas.offsetWidth; naturalH = canvas.offsetHeight; };
     measureNatural();
+    // Zoom range: 5% to 200%. The 5% floor is intentional — on very wide
+    // trees (16+ leaves at depth 4) the user needs to be able to zoom out
+    // enough to see the whole shape without resorting to the minimap.
+    const MIN_SCALE = 0.05, MAX_SCALE = 2.0;
     let scale = 1;
     const setScale = (s) => {
-        scale = Math.max(0.3, Math.min(2.0, s));
+        scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
         canvas.style.transformOrigin = 'top left';
         canvas.style.transform = `scale(${scale})`;
         stage.style.width  = (naturalW * scale) + 'px';
@@ -233,18 +237,30 @@
         if (fsLabel) fsLabel.textContent = txt;
         if (window._minimapRefresh) window._minimapRefresh();
     };
+    // Button step is adaptive: 5% increments below 30%, 10% above. Keeps
+    // the - / + buttons usable when the floor was widened to 5% — without
+    // adaptive stepping you'd otherwise overshoot past the readable range
+    // in two clicks.
+    const stepFor = (current) => current <= 0.3 ? 0.05 : 0.1;
     const fitToView = () => {
         if (naturalW <= 0) measureNatural();
         const vw = viewport.clientWidth - 4;
         const fit = vw / Math.max(naturalW, 1);
-        setScale(Math.max(0.3, Math.min(1, fit)));
+        setScale(Math.max(MIN_SCALE, Math.min(1, fit)));
         requestAnimationFrame(() => {
             const stageW = stage.offsetWidth;
             viewport.scrollLeft = Math.max(0, (stageW - viewport.clientWidth) / 2);
             viewport.scrollTop  = 0;
         });
     };
-    window.treeZoom      = (delta) => setScale(scale + delta);
+    // The buttons pass +/-0.1 historically. When the user is zoomed out
+    // below 30% (post-MIN_SCALE drop), translate that into the adaptive
+    // step so each click moves in 5% increments instead of overshooting.
+    window.treeZoom      = (delta) => {
+        const step = stepFor(scale);
+        const sign = delta === 0 ? 0 : (delta > 0 ? 1 : -1);
+        setScale(scale + sign * step);
+    };
     window.treeZoomReset = ()      => setScale(1);
     window.treeFit       = ()      => fitToView();
     requestAnimationFrame(fitToView);
