@@ -154,6 +154,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->name('distributors.freeze');
     Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->name('distributors.unfreeze');
     Route::post('/distributors/{id}/terminate', [AdminDistributorController::class, 'terminate'])->name('distributors.terminate');
+    Route::post('/distributors/{id}/activate', [AdminDistributorController::class, 'activate'])->name('distributors.activate');
+    Route::post('/distributors/{id}/deactivate', [AdminDistributorController::class, 'deactivate'])->name('distributors.deactivate');
 
     Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
     Route::post('/settings/age-rules', [AdminSettingsController::class, 'updateStateAgeMinimums'])->name('settings.age-rules');

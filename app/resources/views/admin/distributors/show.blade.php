@@ -35,13 +35,22 @@
                 <p class="text-3xl font-mono font-bold text-brand-600">{{ $distributor->adn }}</p>
                 <p class="text-sm text-gray-600 mt-1">{{ $distributor->full_name ?: 'No name recorded' }}</p>
             </div>
-            <span class="px-3 py-1 rounded-full text-sm border
-                {{ $distributor->status === 'active'     ? 'bg-green-50 text-green-700 border-green-200'
-                 : ($distributor->status === 'frozen'    ? 'bg-red-50 text-red-700 border-red-200'
-                 : ($distributor->status === 'terminated'? 'bg-white text-gray-500 border-gray-200'
-                 : 'bg-amber-50 text-amber-700 border-amber-200')) }}">
-                {{ ucfirst($distributor->status) }}
-            </span>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-3 py-1 rounded-full text-sm border
+                    {{ $distributor->status === 'active'     ? 'bg-green-50 text-green-700 border-green-200'
+                     : ($distributor->status === 'frozen'    ? 'bg-red-50 text-red-700 border-red-200'
+                     : ($distributor->status === 'terminated'? 'bg-white text-gray-500 border-gray-200'
+                     : 'bg-amber-50 text-amber-700 border-amber-200')) }}">
+                    {{ ucfirst($distributor->status) }}
+                </span>
+                <span class="px-3 py-1 rounded-full text-xs border
+                    {{ $distributor->distributor_status === 'active'
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'bg-gray-100 text-gray-600 border-gray-200' }}"
+                    title="Distributor record status (distributors.status)">
+                    Distributor: {{ ucfirst($distributor->distributor_status) }}
+                </span>
+            </div>
         </div>
         <div class="grid grid-cols-2 gap-4 text-sm">
             <div><p class="text-xs text-gray-500 mb-0.5">Email</p><p class="text-gray-800">{{ $distributor->email }}</p></div>
@@ -173,6 +182,26 @@
             class="px-4 py-2 rounded-lg bg-red-800 hover:bg-red-700 text-white text-sm font-medium transition-colors">
             ✕ Terminate
         </button>
+
+        @if($distributor->distributor_status === 'active')
+        <form method="POST" action="{{ route('admin.distributors.deactivate', $distributor->id) }}">
+            @csrf
+            <button type="submit"
+                class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
+                title="Mark distributor record inactive (distributors.status = inactive)">
+                ⏸ Deactivate Distributor
+            </button>
+        </form>
+        @else
+        <form method="POST" action="{{ route('admin.distributors.activate', $distributor->id) }}">
+            @csrf
+            <button type="submit"
+                class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
+                title="Mark distributor record active (distributors.status = active)">
+                ▶ Activate Distributor
+            </button>
+        </form>
+        @endif
     </div>
 
     <form id="freeze-form" method="POST"

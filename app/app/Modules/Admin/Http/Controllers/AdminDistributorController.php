@@ -63,7 +63,8 @@ final class AdminDistributorController extends Controller
     {
         $distributor = DB::table('distributors')
             ->join('users', 'distributors.user_id', '=', 'users.id')
-            ->select('distributors.*', 'users.email', 'users.full_name', 'users.status',
+            ->select('distributors.*', 'distributors.status as distributor_status',
+                'users.email', 'users.full_name', 'users.status',
                 'users.phone_e164', 'users.date_of_birth', 'users.created_at as user_created_at')
             ->where('distributors.id', $id)
             ->firstOrFail();
@@ -284,5 +285,54 @@ final class AdminDistributorController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="register-of-direct-sellers-'.now()->format('Y-m-d').'.csv"',
         ]);
+    }
+
+    /**
+     * Flip the distributor row's own status enum to 'active'. This is the
+     * distributor-record-level flag (`distributors.status`), distinct from
+     * the broader user-account lifecycle (`users.status`) which freeze /
+     * unfreeze / terminate operate on. Used to put a reserved-block or
+     * non-trading node out of circulation without touching the user account.
+     */
+    public function activate(Request $request, int $id): RedirectResponse
+    {
+        return $this->toggleDistributorStatus($request, $id, 'active');
+    }
+
+    /**
+     * Flip the distributor row's own status enum to 'inactive'. See {@see activate()}.
+     */
+    public function deactivate(Request $request, int $id): RedirectResponse
+    {
+        return $this->toggleDistributorStatus($request, $id, 'inactive');
+    }
+
+    private function toggleDistributorStatus(Request $request, int $id, string $status): RedirectResponse
+    {
+        $row = DB::table('distributors')->where('id', $id)->first(['id', 'status', 'adn']);
+        if ($row === null) {
+            abort(404);
+        }
+
+        $previous = (string) $row->status;
+        if ($previous === $status) {
+            return back()->with('status', sprintf('Distributor %s is already %s.', $row->adn, $status));
+        }
+
+        DB::table('distributors')->where('id', $id)->update([
+            'status' => $status,
+            'updated_at' => now(),
+        ]);
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'distributor.status_changed',
+            'subject_type' => 'distributor',
+            'subject_id' => $id,
+            'details' => ['from' => $previous, 'to' => $status, 'adn' => $row->adn],
+            'ip' => $request->ip(),
+        ]);
+
+        return back()->with('status', sprintf('Distributor %s set to %s.', $row->adn, $status));
     }
 }
