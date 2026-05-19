@@ -152,12 +152,20 @@
         </div>
     </div>
 
-    <aside id="treeMinimap" class="hidden absolute bottom-3 right-3 z-30 rounded-lg border border-gray-300 bg-white shadow-lg overflow-hidden cursor-pointer" style="width: 220px; height: 160px;">
+    {{-- Minimap: click-to-jump anywhere, or drag the blue rectangle to pan.
+         Bumped to 280x200 for an easier hit target on the indicator (which
+         can get very thin/short on wide-aspect trees), with a min-size on
+         the indicator itself so the user always has at least 24x24px of
+         drag handle even when zoomed all the way out. --}}
+    <aside id="treeMinimap" class="hidden absolute bottom-3 right-3 z-30 rounded-lg border border-gray-300 bg-white shadow-lg overflow-hidden cursor-crosshair select-none" style="width: 280px; height: 200px;">
         <div class="absolute inset-0 overflow-hidden">
             <div id="minimapContent" class="absolute top-0 left-0 origin-top-left pointer-events-none"></div>
-            <div id="minimapViewport" class="absolute border-2 border-brand-500 bg-brand-500/15 pointer-events-none rounded-sm" style="left:0; top:0; width:50px; height:40px;"></div>
+            <div id="minimapViewport"
+                class="absolute border-2 border-brand-500 bg-brand-500/20 rounded-sm cursor-grab hover:bg-brand-500/30 transition-colors shadow-[0_0_0_1px_rgba(255,255,255,0.6)]"
+                style="left:0; top:0; width:50px; height:40px; min-width:24px; min-height:24px; touch-action:none;"
+                aria-label="Drag to pan, or click anywhere on the minimap to jump"></div>
         </div>
-        <div class="absolute top-0 left-0 right-0 px-2 py-1 bg-gradient-to-b from-white/90 to-transparent text-[9px] uppercase tracking-wider text-gray-500 font-semibold pointer-events-none">Minimap</div>
+        <div class="absolute top-0 left-0 right-0 px-2 py-1 bg-gradient-to-b from-white/95 to-transparent text-[9px] uppercase tracking-wider text-gray-500 font-semibold pointer-events-none">Minimap · drag rectangle or click to jump</div>
     </aside>
 
     <div id="treeFsToolbar" class="hidden absolute top-3 right-3 z-40 rounded-xl bg-white/95 backdrop-blur shadow-lg border border-gray-200 px-2 py-1.5 flex items-center gap-1.5">
@@ -337,8 +345,18 @@ window.copyAdn = (btn) => {
     const stage    = document.getElementById('treeStage');
     const canvas   = document.getElementById('treeCanvas');
     const label    = document.getElementById('treeMinimapLabel');
-    const MAP_W = 220, MAP_H = 160;
+    const MAP_W = 280, MAP_H = 200;
     let cloned = false, mapScale = 0.1;
+
+    // Pan the main viewport so a given minimap point (fx, fy in [0..1]
+    // of the minimap) maps to the centre of the visible area.
+    const panToFraction = (fx, fy) => {
+        const sw = stage.offsetWidth, sh = stage.offsetHeight;
+        if (sw === 0 || sh === 0) return;
+        viewport.scrollLeft = Math.max(0, Math.min(sw - viewport.clientWidth,  fx * sw - viewport.clientWidth  / 2));
+        viewport.scrollTop  = Math.max(0, Math.min(sh - viewport.clientHeight, fy * sh - viewport.clientHeight / 2));
+    };
+
     const refresh = () => {
         if (aside.classList.contains('hidden') || !cloned) return;
         const sw = stage.offsetWidth, sh = stage.offsetHeight;
@@ -347,10 +365,15 @@ window.copyAdn = (btn) => {
         const fw = viewport.clientWidth / sw, fh = viewport.clientHeight / sh;
         indicator.style.left = (fx * MAP_W) + 'px';
         indicator.style.top  = (fy * MAP_H) + 'px';
+        // The CSS min-width / min-height rules guarantee a 24x24 hit
+        // target even when the natural projection is smaller (e.g. a wide
+        // tree projected into a 280-wide minimap can give a 6px-wide
+        // indicator — too thin to grab reliably).
         indicator.style.width  = Math.min(MAP_W, fw * MAP_W) + 'px';
         indicator.style.height = Math.min(MAP_H, fh * MAP_H) + 'px';
     };
     window._minimapRefresh = refresh;
+
     const cloneCanvas = () => {
         content.innerHTML = '';
         const clone = canvas.cloneNode(true);
@@ -371,12 +394,71 @@ window.copyAdn = (btn) => {
         label.textContent = willOpen ? 'Hide Minimap' : 'Minimap';
         if (willOpen) cloneCanvas();
     };
+
+    // ── Interactions ────────────────────────────────────────────────────
+    // Two complementary patterns:
+    //   1. Click anywhere on the minimap (NOT on the indicator) → centre
+    //      the viewport at that point. Quick fly-to.
+    //   2. Drag the indicator → continuously pan the viewport. Fine control.
+    let dragging = false;
+    let suppressClick = false;
+    let dragGrabOffsetPx = { x: 0, y: 0 }; // where inside the indicator the user grabbed
+
+    const onIndicatorPointerDown = (e) => {
+        if (e.button !== undefined && e.button !== 0) return; // ignore middle / right
+        e.preventDefault();
+        e.stopPropagation();
+        indicator.setPointerCapture?.(e.pointerId);
+        const asideRect = aside.getBoundingClientRect();
+        const indRect   = indicator.getBoundingClientRect();
+        dragGrabOffsetPx.x = (e.clientX - asideRect.left) - parseFloat(indicator.style.left || '0');
+        dragGrabOffsetPx.y = (e.clientY - asideRect.top)  - parseFloat(indicator.style.top  || '0');
+        dragging = true;
+        indicator.classList.remove('cursor-grab'); indicator.classList.add('cursor-grabbing');
+        document.body.style.userSelect = 'none';
+    };
+    const onIndicatorPointerMove = (e) => {
+        if (! dragging) return;
+        e.preventDefault();
+        const asideRect = aside.getBoundingClientRect();
+        const indW = indicator.offsetWidth, indH = indicator.offsetHeight;
+        // Where the user wants the top-left of the indicator to land:
+        let left = (e.clientX - asideRect.left) - dragGrabOffsetPx.x;
+        let top  = (e.clientY - asideRect.top)  - dragGrabOffsetPx.y;
+        left = Math.max(0, Math.min(MAP_W - indW, left));
+        top  = Math.max(0, Math.min(MAP_H - indH, top));
+        // Translate top-left position back into a scroll offset on the main viewport.
+        const sw = stage.offsetWidth, sh = stage.offsetHeight;
+        viewport.scrollLeft = (left / MAP_W) * sw;
+        viewport.scrollTop  = (top  / MAP_H) * sh;
+    };
+    const onIndicatorPointerUp = (e) => {
+        if (! dragging) return;
+        dragging = false;
+        suppressClick = true;
+        // Eat the synthetic click that follows the pointerup so it
+        // doesn't reach the aside-level click-to-centre handler.
+        setTimeout(() => { suppressClick = false; }, 0);
+        indicator.classList.remove('cursor-grabbing'); indicator.classList.add('cursor-grab');
+        document.body.style.userSelect = '';
+        indicator.releasePointerCapture?.(e.pointerId);
+    };
+
+    indicator.addEventListener('pointerdown', onIndicatorPointerDown);
+    indicator.addEventListener('pointermove', onIndicatorPointerMove);
+    indicator.addEventListener('pointerup', onIndicatorPointerUp);
+    indicator.addEventListener('pointercancel', onIndicatorPointerUp);
+
     aside.addEventListener('click', (e) => {
+        if (suppressClick) return;
+        // If the click landed on the indicator (and we got here without a
+        // drag), still centre — feels natural and harmless.
         const rect = aside.getBoundingClientRect();
-        const fx = (e.clientX - rect.left) / rect.width, fy = (e.clientY - rect.top) / rect.height;
-        viewport.scrollLeft = fx * stage.offsetWidth - viewport.clientWidth / 2;
-        viewport.scrollTop  = fy * stage.offsetHeight - viewport.clientHeight / 2;
+        const fx = (e.clientX - rect.left) / rect.width;
+        const fy = (e.clientY - rect.top)  / rect.height;
+        panToFraction(fx, fy);
     });
+
     window.addEventListener('resize', () => { if (!aside.classList.contains('hidden')) cloneCanvas(); });
 })();
 
