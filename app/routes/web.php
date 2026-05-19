@@ -6,6 +6,7 @@ use App\Modules\Admin\Http\Controllers\AdminAuditLogController;
 use App\Modules\Admin\Http\Controllers\AdminContactController;
 use App\Modules\Admin\Http\Controllers\AdminDashboardController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorController;
+use App\Modules\Admin\Http\Controllers\AdminFeatureFlagController;
 use App\Modules\Admin\Http\Controllers\AdminImpersonationController;
 use App\Modules\Admin\Http\Controllers\AdminKycController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
@@ -161,6 +162,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/settings/age-rules', [AdminSettingsController::class, 'updateStateAgeMinimums'])->name('settings.age-rules');
 
     Route::get('/audit-log', [AdminAuditLogController::class, 'index'])->name('audit-log');
+
+    // Feature flags — admin-toggleable runtime switches (T-5.4). Includes the
+    // registration killswitch; every toggle writes an audit_log entry.
+    Route::get('/feature-flags', [AdminFeatureFlagController::class, 'index'])
+        ->name('feature-flags.index');
+    Route::post('/feature-flags/{key}', [AdminFeatureFlagController::class, 'toggle'])
+        ->where('key', '[a-z0-9_.-]+')
+        ->name('feature-flags.toggle');
 
     // Contact inquiries — admin inbox for the public /contact-us form
     Route::get('/contact-inquiries', [AdminContactController::class, 'index'])->name('contact-inquiries.index');

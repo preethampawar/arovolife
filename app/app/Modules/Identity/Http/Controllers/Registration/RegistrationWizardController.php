@@ -15,6 +15,7 @@ use App\Modules\Identity\Notifications\DraftResumeNotification;
 use App\Modules\Identity\Services\DraftStateService;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\WizardStateService;
+use App\Modules\Shared\Features\RegistrationKillswitch;
 use Carbon\Carbon;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Laravel\Pennant\Feature;
 
 final class RegistrationWizardController extends Controller
 {
@@ -40,6 +42,21 @@ final class RegistrationWizardController extends Controller
         private readonly RegistrationService $registrationService,
         private readonly DraftStateService $drafts,
     ) {}
+
+    /**
+     * Returns false when the RegistrationKillswitch feature flag is OFF.
+     * Admins flip the flag from /admin/feature-flags for incident response —
+     * compliance holds, payment-gateway outages, or product launches paused.
+     *
+     * Only the public-facing surfaces (start, showJoin, handleJoin, the
+     * Account step) consult this. In-progress wizards past the Account
+     * step intentionally bypass the killswitch so users mid-flow can
+     * finish — see registration.closed.blade.php copy.
+     */
+    private function registrationIsOpen(): bool
+    {
+        return Feature::active(RegistrationKillswitch::class);
+    }
 
     // ── Entry: parse referral link query params and stash in session ──────
 
@@ -50,6 +67,10 @@ final class RegistrationWizardController extends Controller
      */
     public function start(Request $request): RedirectResponse|Response
     {
+        if (! $this->registrationIsOpen()) {
+            return response()->view('registration.closed', [], 503);
+        }
+
         $sponsorAdn = strtoupper(trim((string) $request->query('sponsor', '')));
         $placementAdn = strtoupper(trim((string) $request->query('placement', '')));
         $sideOpt = strtoupper(trim((string) $request->query('side', '')));
@@ -142,8 +163,12 @@ final class RegistrationWizardController extends Controller
 
     // ── Step 1: Sponsor & Placement (the /join page) ────────────────────
 
-    public function showJoin(): View
+    public function showJoin(): View|Response
     {
+        if (! $this->registrationIsOpen()) {
+            return response()->view('registration.closed', [], 503);
+        }
+
         // When the sponsor ADN comes in on the URL (the dashboard's "share
         // this link" widget emits sponsor-only links now), the field is
         // rendered readonly and a hidden input belt-and-braces the value
@@ -195,8 +220,12 @@ final class RegistrationWizardController extends Controller
         ]);
     }
 
-    public function handleJoin(Request $request): RedirectResponse
+    public function handleJoin(Request $request): RedirectResponse|Response
     {
+        if (! $this->registrationIsOpen()) {
+            return response()->view('registration.closed', [], 503);
+        }
+
         $validated = $request->validate([
             // 9 digits for the primary ADN, optionally followed by `-S` for
             // the couple-secondary record (still 11 chars max). Allow `-S`
@@ -243,8 +272,12 @@ final class RegistrationWizardController extends Controller
 
     // ── Step 2: Account ────────────────────────────────────────────────────
 
-    public function showAccount(Request $request): View|RedirectResponse
+    public function showAccount(Request $request): View|RedirectResponse|Response
     {
+        if (! $this->registrationIsOpen()) {
+            return response()->view('registration.closed', [], 503);
+        }
+
         $intent = $this->wizard->intent();
         if ($intent === null) {
             return redirect('/contact-us?reason=referral_link_required');
@@ -268,8 +301,12 @@ final class RegistrationWizardController extends Controller
         ]);
     }
 
-    public function handleAccount(Request $request): RedirectResponse
+    public function handleAccount(Request $request): RedirectResponse|Response
     {
+        if (! $this->registrationIsOpen()) {
+            return response()->view('registration.closed', [], 503);
+        }
+
         $intent = $this->wizard->intent();
         if ($intent === null) {
             return redirect('/contact-us?reason=referral_link_required');

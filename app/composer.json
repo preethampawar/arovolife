@@ -9,6 +9,7 @@
         "php": "^8.3",
         "bjeavons/zxcvbn-php": "^1.4",
         "laravel/framework": "^13.0",
+        "laravel/pennant": "^1.23",
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "^3.0",
         "mews/purifier": "^3.4",
