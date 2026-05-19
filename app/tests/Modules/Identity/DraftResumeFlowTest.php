@@ -19,12 +19,18 @@ use App\Modules\Identity\Models\RegistrationDraft;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\DraftStateService;
 use App\Modules\Identity\Services\WizardStateService;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
+
+// CSRF middleware is enabled on the web routes — disable per-test below so the
+// POSTs from these tests aren't rejected with 419. The middleware itself is
+// covered by Laravel's own tests; what we care about here is the returning-
+// user authentication branch in RegistrationWizardController::handleAccount().
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -175,7 +181,7 @@ it('DRFT-001: correct password with active draft → redirects to saved step, se
 
     $expectedRoute = WizardStateService::stepRoute($draft->current_step);
 
-    $response = $this->post(route('register.post'), [
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post(route('register.post'), [
         'full_name' => $user->full_name,
         // Use a NEW phone number — the existing user's phone is already in
         // the DB and would fail unique:users,phone_e164 if sent. The
@@ -211,7 +217,7 @@ it('DRFT-002: wrong password with active draft → redirects back with session e
     // A password that is strong (zxcvbn score >= 3) but is NOT the user's
     // actual password — should be rejected by Hash::check in the returning-user
     // block, not by StrongPassword / NotPwned validation rules.
-    $response = $this->post(route('register.post'), [
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post(route('register.post'), [
         'full_name' => $user->full_name,
         'phone_e164' => drftUniquePhone(),
         'email' => $user->email,
@@ -246,7 +252,7 @@ it('DRFT-003: fully registered user (no active draft) → email validation error
 
     drftStashIntent($dist['sponsor_id'], $dist['placement_id']);
 
-    $response = $this->post(route('register.post'), [
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post(route('register.post'), [
         'full_name' => 'Any Name',
         'email' => $user->email,
         'phone_e164' => drftUniquePhone(),
