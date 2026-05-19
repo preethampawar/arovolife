@@ -74,10 +74,26 @@
                 </a>
                 @if($adminContext)
                 <a href="{{ route('admin.distributors.show', $node->id) }}"
-                    class="block px-3 py-2 text-[11px] text-gray-700 hover:bg-brand-50 hover:text-brand-700 rounded-b-lg border-t border-gray-100">
+                    class="block px-3 py-2 text-[11px] text-gray-700 hover:bg-brand-50 hover:text-brand-700 border-t border-gray-100">
                     <span class="block font-semibold">View profile</span>
                     <span class="block text-[10px] text-gray-400 mt-0.5">Open the distributor profile</span>
                 </a>
+                {{-- Impersonate: only inside admin context, only when the
+                     target is not the currently-logged-in admin (defensive
+                     — admins don't have a distributor row, but the guard
+                     mirrors the one on the admin distributor profile page),
+                     and only when the node has a user_id (some legacy /
+                     synthetic rows might not). --}}
+                @if($node->user_id && auth()->id() !== (int) $node->user_id)
+                <form method="POST" action="{{ route('admin.impersonate.start', $node->user_id) }}" class="block">
+                    @csrf
+                    <button type="submit"
+                        class="block w-full text-left px-3 py-2 text-[11px] text-sunrise-700 hover:bg-sunrise-50 rounded-b-lg border-t border-gray-100">
+                        <span class="block font-semibold">Impersonate</span>
+                        <span class="block text-[10px] text-sunrise-600/70 mt-0.5">Log in as this distributor for support</span>
+                    </button>
+                </form>
+                @endif
                 @endif
             </div>
         </div>
