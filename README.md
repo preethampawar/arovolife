@@ -123,23 +123,46 @@ Backlog: [`backlog/phase-1-backlog.md`](backlog/phase-1-backlog.md).
 
 ---
 
-## Local development (after `/bootstrap-laravel`)
+## Local development
+
+Step-by-step fresh install + DB reset procedures live in
+[`docs/runbooks/fresh-install-and-reset.md`](docs/runbooks/fresh-install-and-reset.md).
+Cloudways production deployment lives in
+[`docs/runbooks/cloudways-deployment.md`](docs/runbooks/cloudways-deployment.md).
+
+Quick start (assumes Docker + Node 20+ on the host):
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
-docker compose exec app php artisan migrate --seed
-docker compose exec app php artisan test
+cp app/.env.example app/.env
+make up                                                # start stack
+docker exec arovolife-app composer install             # PHP deps
+docker exec arovolife-app php artisan key:generate
+make migrate                                           # schema
+(cd app && npm install) && make build                  # front-end assets
+make reset-force                                       # seed admin + 31 reserved distributors
 ```
+
+Default admin: `admin@arovolife.test` / `admin12345` (dev only — re-seeded
+by every `make reset-force`).
+
+To wipe test data and rebuild the canonical bootstrap state at any time:
+
+```bash
+make reset            # interactive y/n prompt
+make reset-force      # skip the prompt
+```
+
+Run `make help` for the full list of dev commands.
 
 Services:
 
 | Service   | URL                     | Notes                              |
 | --------- | ----------------------- | ---------------------------------- |
-| App       | http://localhost:8080   | nginx → php-fpm                    |
-| Adminer   | http://localhost:8081   | DB GUI                             |
-| Mailpit   | http://localhost:8025   | catches all outbound mail          |
-| MySQL     | localhost:3306          | user `arovolife` / pwd `secret`    |
-| Redis     | localhost:6379          | cache + future queue               |
+| App       | http://localhost:8084   | nginx → php-fpm                    |
+| Adminer   | http://localhost:8083   | DB GUI                             |
+| Mailpit   | http://localhost:8027   | catches all outbound mail          |
+| MySQL     | localhost:3307          | user `arovolife` / pwd `secret`    |
+| Redis     | localhost:6379          | cache + queue                      |
 
 ---
 

@@ -314,8 +314,44 @@ window.toggleNodeMenu = (btn) => {
     if (!panel) return;
     const wasHidden = panel.hidden;
     // Close every other open menu first.
-    document.querySelectorAll('[data-node-menu-panel]').forEach((p) => { p.hidden = true; });
-    panel.hidden = ! wasHidden;
+    document.querySelectorAll('[data-node-menu-panel]').forEach((p) => {
+        p.hidden = true;
+        // Reset positioning so the next open starts from the canonical
+        // downward state.
+        p.classList.remove('bottom-full', 'mb-1');
+        p.classList.add('top-full', 'mt-1');
+    });
+
+    if (! wasHidden) {
+        // We just closed it. Nothing else to do.
+        return;
+    }
+
+    // Open in the default downward direction first so we can measure.
+    panel.classList.remove('bottom-full', 'mb-1');
+    panel.classList.add('top-full', 'mt-1');
+    panel.hidden = false;
+
+    // After layout, check whether the panel runs past the viewport
+    // bottom. If so, flip it to open upward instead (bottom-full).
+    // requestAnimationFrame gives the browser a tick to compute the
+    // panel's box now that hidden=false.
+    requestAnimationFrame(() => {
+        const rect = panel.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        const bottomMargin = 8;
+        if (rect.bottom > vh - bottomMargin) {
+            const trigger = wrapper.querySelector('[data-node-menu-trigger]');
+            const triggerTop = trigger ? trigger.getBoundingClientRect().top : rect.top;
+            // Only flip if there is meaningfully more room above the
+            // trigger than below — otherwise the flipped panel would just
+            // clip past the TOP of the viewport instead.
+            if (triggerTop > (vh - rect.bottom)) {
+                panel.classList.remove('top-full', 'mt-1');
+                panel.classList.add('bottom-full', 'mb-1');
+            }
+        }
+    });
 };
 document.addEventListener('click', (e) => {
     if (e.target.closest('[data-node-menu]')) return;
