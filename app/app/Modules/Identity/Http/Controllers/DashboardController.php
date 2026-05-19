@@ -90,9 +90,13 @@ final class DashboardController extends Controller
             : 0;
 
         // ── Direct referrals (sponsorship, regardless of placement) ──
+        // The `sponsorship` table is flat — one row per (sponsor → directly-
+        // introduced distributor) edge — so every row already represents a
+        // direct referral. The legacy `->where('depth', 1)` referenced a
+        // column that does not exist on this table (it exists on
+        // `genealogy_closure` which is the multi-level placement closure).
         $directReferrals = (int) DB::table('sponsorship')
             ->where('sponsor_id', $myId)
-            ->where('depth', 1)
             ->count();
 
         // ── Status breakdown of the binary downline (excludes self) ──
