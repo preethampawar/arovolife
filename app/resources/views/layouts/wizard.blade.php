@@ -7,7 +7,7 @@
     <title>@yield('title', 'Registration') — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-full text-gray-900 antialiased wizard-stage">
+<body class="min-h-full text-gray-900 antialiased wizard-stage overflow-x-hidden">
 
     @include('partials.public-topnav')
 
@@ -46,8 +46,10 @@
     </div>
     @endif
 
-    {{-- Two-column layout (lg+): vertical step nav on the left + form on the right --}}
-    <div class="max-w-7xl mx-auto px-4 lg:px-8 py-8 lg:py-12 lg:grid lg:grid-cols-[260px_1fr] lg:gap-12">
+    {{-- Two-column layout (lg+): vertical step nav on the left + form on the right.
+         min-w-0 keeps wide form content (image grids, document upload previews,
+         the tree on review steps) from pushing past the viewport. --}}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 lg:grid lg:grid-cols-[260px_1fr] lg:gap-12 min-w-0 max-w-full">
 
         {{-- Vertical step sidebar (lg+) --}}
         @if(isset($currentStep))

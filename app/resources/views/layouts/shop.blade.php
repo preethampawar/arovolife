@@ -7,19 +7,20 @@
     <title>@yield('title', 'Shop') — arovolife</title>
     @vite(['resources/css/app.css'])
 </head>
-<body class="min-h-full text-gray-900 antialiased wizard-stage">
+<body class="min-h-full text-gray-900 antialiased wizard-stage overflow-x-hidden">
 
     @include('partials.public-topnav')
 
     {{-- Flash messages --}}
     @if(session('status'))
-    <div class="max-w-7xl mx-auto px-6 mt-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 mt-4">
         <div class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{{ session('status') }}</div>
     </div>
     @endif
 
-    {{-- Main content --}}
-    <main class="max-w-7xl mx-auto px-6 py-8">
+    {{-- Main content. min-w-0 keeps wide content (product grids, tree, etc.)
+         inside their own scroll containers instead of widening the page. --}}
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-w-0 max-w-full">
         @yield('content')
     </main>
 
