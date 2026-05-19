@@ -45,7 +45,7 @@ function rdseSeedDistributor(string $adn, string $email, ?int $sponsorId = null)
         'date_of_birth' => '1990-01-01',
     ]);
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $id = DB::table('distributors')->insertGetId([
             'user_id' => $u->id,
@@ -74,7 +74,7 @@ function rdseSeedDistributor(string $adn, string $email, ?int $sponsorId = null)
             ]);
         }
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([

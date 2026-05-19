@@ -27,9 +27,17 @@ return new class extends Migration
             $table->index('expires_at', 'idx_drafts_expires');
         });
 
-        // BLOB placeholder → fixed-width BINARY(32)
-        DB::statement('ALTER TABLE registration_drafts MODIFY draft_token_hash BINARY(32) NOT NULL');
-        DB::statement('ALTER TABLE registration_drafts ADD UNIQUE uniq_drafts_token (draft_token_hash)');
+        if (DB::getDriverName() === 'mysql') {
+            // BLOB placeholder → fixed-width BINARY(32)
+            DB::statement('ALTER TABLE registration_drafts MODIFY draft_token_hash BINARY(32) NOT NULL');
+            DB::statement('ALTER TABLE registration_drafts ADD UNIQUE uniq_drafts_token (draft_token_hash)');
+        } else {
+            // SQLite path — keep the Blueprint BLOB type and add the unique
+            // index portably so the test driver enforces the same constraint.
+            Schema::table('registration_drafts', static function (Blueprint $table): void {
+                $table->unique('draft_token_hash', 'uniq_drafts_token');
+            });
+        }
     }
 
     public function down(): void

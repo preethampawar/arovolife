@@ -28,7 +28,7 @@ function corSeed(int $daysFromNow, ?array $sent = null): array
         'full_name' => 'Cor Test',
     ]);
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         // $daysFromNow = days the distributor has already been in the window.
         // So end_at lands at now + (30 - daysFromNow) and "days remaining" =
@@ -58,7 +58,7 @@ function corSeed(int $daysFromNow, ?array $sent = null): array
             'sponsor_id' => $id, 'placement_parent_id' => $id,
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([

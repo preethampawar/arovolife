@@ -26,16 +26,18 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="mysql"/>
-        <env name="DB_HOST" value="127.0.0.1"/>
-        <env name="DB_PORT" value="3307"/>
-        <!-- force=true so a stray DB_DATABASE in the parent process (e.g. the
-             arovolife-app container's docker-compose env) cannot point tests
-             at the dev database and let RefreshDatabase blast it. -->
-        <env name="DB_DATABASE" value="arovolife_test" force="true"/>
-        <env name="DB_USERNAME" value="arovolife"/>
-        <env name="DB_PASSWORD" value="secret"/>
-        <env name="DB_URL" value=""/>
+        <!-- Tests run on SQLite :memory: so they cannot reach (or wipe) the
+             dev/staging MySQL bindings under any circumstance. Every migration
+             guards its MySQL-specific raw SQL with a driver check; everything
+             else is portable Laravel Schema Builder. -->
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="DB_FOREIGN_KEYS" value="true" force="true"/>
+        <env name="DB_HOST" value="" force="true"/>
+        <env name="DB_PORT" value="" force="true"/>
+        <env name="DB_USERNAME" value="" force="true"/>
+        <env name="DB_PASSWORD" value="" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

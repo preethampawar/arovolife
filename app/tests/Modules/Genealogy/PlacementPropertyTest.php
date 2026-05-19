@@ -64,7 +64,7 @@ function propSeedRoot(?int $userId = null, int $depth = 0): int
 {
     $userId = $userId ?? propSeedUser();
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $id = DB::table('distributors')->insertGetId([
             'user_id' => $userId,
@@ -91,7 +91,7 @@ function propSeedRoot(?int $userId = null, int $depth = 0): int
             'placement_parent_id' => $id,
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -25,7 +26,9 @@ return new class extends Migration
             $table->dateTime('updated_at', 3)->useCurrent()->useCurrentOnUpdate();
         });
 
-        DB::statement('ALTER TABLE users MODIFY mfa_secret_enc VARBINARY(512) NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE users MODIFY mfa_secret_enc VARBINARY(512) NULL');
+        }
     }
 
     public function down(): void

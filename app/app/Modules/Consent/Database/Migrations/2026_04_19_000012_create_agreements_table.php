@@ -26,7 +26,9 @@ return new class extends Migration
                 ->references('id')->on('agreements')->nullOnDelete();
         });
 
-        DB::statement('ALTER TABLE agreements MODIFY pdf_hash BINARY(32) NOT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE agreements MODIFY pdf_hash BINARY(32) NOT NULL');
+        }
     }
 
     public function down(): void

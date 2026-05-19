@@ -41,8 +41,10 @@ return new class extends Migration
             $table->index('state', 'idx_distributors_state');
         });
 
-        DB::statement('ALTER TABLE distributors MODIFY pan_hash BINARY(32) NOT NULL');
-        DB::statement('ALTER TABLE distributors MODIFY bank_account_enc VARBINARY(512) NOT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE distributors MODIFY pan_hash BINARY(32) NOT NULL');
+            DB::statement('ALTER TABLE distributors MODIFY bank_account_enc VARBINARY(512) NOT NULL');
+        }
 
         Schema::table('distributors', function (Blueprint $table) {
             $table->foreign('sponsor_id', 'fk_distributors_sponsor')

@@ -25,7 +25,9 @@ return new class extends Migration
             $table->dateTime('updated_at', 3)->useCurrent()->useCurrentOnUpdate();
         });
 
-        DB::statement('ALTER TABLE kyc_documents MODIFY checksum_sha256 BINARY(32) NOT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE kyc_documents MODIFY checksum_sha256 BINARY(32) NOT NULL');
+        }
     }
 
     public function down(): void

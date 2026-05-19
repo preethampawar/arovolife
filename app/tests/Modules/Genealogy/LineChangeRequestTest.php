@@ -24,7 +24,7 @@ uses(RefreshDatabase::class);
  */
 function lcrSeed(int $userId, ?int $effectiveAtBusinessDaysAgo = null, ?int $sponsorId = null): int
 {
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $effective = $effectiveAtBusinessDaysAgo === null
             ? now()
@@ -56,7 +56,7 @@ function lcrSeed(int $userId, ?int $effectiveAtBusinessDaysAgo = null, ?int $spo
             ]);
         }
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([

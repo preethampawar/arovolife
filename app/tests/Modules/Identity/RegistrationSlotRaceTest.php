@@ -21,7 +21,7 @@ uses(RefreshDatabase::class);
  */
 function srrSeedRoot(): int
 {
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $userId = DB::table('users')->insertGetId([
             'email' => 'srr-root-'.uniqid().'@test.com',
@@ -55,7 +55,7 @@ function srrSeedRoot(): int
             'sponsor_id' => $id, 'placement_parent_id' => $id,
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([

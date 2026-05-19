@@ -55,7 +55,7 @@ function drftSeedDistributorRoot(): array
         'updated_at' => now(),
     ]);
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $adn = (string) rand(100000000, 999999999);
 
@@ -84,7 +84,7 @@ function drftSeedDistributorRoot(): array
             'placement_parent_id' => $id,
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([

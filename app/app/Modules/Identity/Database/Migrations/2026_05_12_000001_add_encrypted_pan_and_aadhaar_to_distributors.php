@@ -22,8 +22,10 @@ return new class extends Migration
             $table->binary('aadhaar_encrypted')->nullable()->after('aadhaar_last4');
         });
 
-        DB::statement('ALTER TABLE distributors MODIFY pan_encrypted VARBINARY(512) NULL');
-        DB::statement('ALTER TABLE distributors MODIFY aadhaar_encrypted VARBINARY(512) NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE distributors MODIFY pan_encrypted VARBINARY(512) NULL');
+            DB::statement('ALTER TABLE distributors MODIFY aadhaar_encrypted VARBINARY(512) NULL');
+        }
     }
 
     public function down(): void

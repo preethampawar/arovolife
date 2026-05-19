@@ -24,7 +24,9 @@ return new class extends Migration
             $table->string('user_agent', 512);
         });
 
-        DB::statement('ALTER TABLE consents MODIFY doc_hash_sha256 BINARY(32) NOT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE consents MODIFY doc_hash_sha256 BINARY(32) NOT NULL');
+        }
     }
 
     public function down(): void

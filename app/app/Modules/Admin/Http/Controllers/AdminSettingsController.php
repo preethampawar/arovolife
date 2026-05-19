@@ -54,15 +54,35 @@ final class AdminSettingsController extends Controller
         // logical map.
         ksort($decoded);
         $canonical = json_encode($decoded, JSON_UNESCAPED_UNICODE);
-        $old = DB::table('settings')->where('key', 'compliance.state_age_minimums')->value('value');
 
-        DB::table('settings')->upsert([[
-            'key' => 'compliance.state_age_minimums',
-            'value' => $canonical,
-            'version' => DB::raw('version + 1'),
-            'updated_by' => auth()->id(),
-            'updated_at' => now(),
-        ]], ['key'], ['value', 'version', 'updated_by', 'updated_at']);
+        // Read-update-or-insert. We previously used upsert(..., version =>
+        // DB::raw('version + 1')), but the raw expression is non-portable
+        // across drivers (MySQL evaluates `version + 1` against the
+        // existing row in the UPDATE branch; SQLite's ON CONFLICT DO
+        // UPDATE references the excluded.version literal and explodes).
+        // A small fetch + branch is portable and the table is single-row
+        // per key so there's no hot-path concern.
+        $existing = DB::table('settings')->where('key', 'compliance.state_age_minimums')->first();
+        $old = $existing->value ?? null;
+
+        if ($existing === null) {
+            DB::table('settings')->insert([
+                'key' => 'compliance.state_age_minimums',
+                'value' => $canonical,
+                'version' => 1,
+                'updated_by' => auth()->id(),
+                'updated_at' => now(),
+            ]);
+        } else {
+            DB::table('settings')
+                ->where('key', 'compliance.state_age_minimums')
+                ->update([
+                    'value' => $canonical,
+                    'version' => ((int) ($existing->version ?? 0)) + 1,
+                    'updated_by' => auth()->id(),
+                    'updated_at' => now(),
+                ]);
+        }
 
         AuditLog::create([
             'actor_id' => auth()->id(),

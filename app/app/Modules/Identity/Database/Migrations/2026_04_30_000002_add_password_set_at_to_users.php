@@ -24,7 +24,12 @@ return new class extends Migration
 
         // Backfill existing users — anyone created before this migration
         // chose their own password at registration, so stamp the column.
-        DB::statement('UPDATE users SET password_set_at = COALESCE(created_at, NOW()) WHERE password_set_at IS NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('UPDATE users SET password_set_at = COALESCE(created_at, NOW()) WHERE password_set_at IS NULL');
+        } else {
+            // SQLite uses CURRENT_TIMESTAMP instead of NOW().
+            DB::statement("UPDATE users SET password_set_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE password_set_at IS NULL");
+        }
     }
 
     public function down(): void

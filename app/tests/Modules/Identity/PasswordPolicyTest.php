@@ -25,7 +25,7 @@ uses(RefreshDatabase::class);
 function ppRegister(array $overrides = []): TestResponse
 {
     // Seed a sponsor so the registration form's referral-link entry succeeds.
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $sponsorUser = User::create([
             'email' => 'spons-'.rand(1000, 9999).'@test.com',
@@ -57,7 +57,7 @@ function ppRegister(array $overrides = []): TestResponse
             'sponsor_id' => $sponsorId, 'placement_parent_id' => $sponsorId,
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     $sponsorAdn = DB::table('distributors')->where('id', $sponsorId)->value('adn');

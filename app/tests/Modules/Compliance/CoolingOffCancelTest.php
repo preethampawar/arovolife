@@ -29,7 +29,7 @@ function seedActiveDistributor(int $daysSinceJoin = 5): array
         'status' => 'active',
     ]);
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $id = DB::table('distributors')->insertGetId([
             'user_id' => $user->id,
@@ -55,7 +55,7 @@ function seedActiveDistributor(int $daysSinceJoin = 5): array
             'placement_parent_id' => $id,
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([

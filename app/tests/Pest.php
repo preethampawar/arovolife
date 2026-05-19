@@ -46,3 +46,41 @@ function something()
 {
     // ..
 }
+
+/**
+ * Disable foreign-key enforcement on the active test connection.
+ *
+ * Tests seed self-referential rows (root distributors whose sponsor_id /
+ * placement_parent_id point at their own id), which is impossible while
+ * the FK constraints are armed.
+ *
+ *  - On MySQL we flip the session-level `FOREIGN_KEY_CHECKS` switch.
+ *  - On SQLite the `PRAGMA foreign_keys` knob is ignored inside an active
+ *    transaction (and `RefreshDatabase` wraps every test in one), so we
+ *    use `PRAGMA defer_foreign_keys = ON` instead. That flag defers FK
+ *    validation until COMMIT, by which time the seed code has stamped
+ *    sponsor_id / placement_parent_id back to the row's own id and the
+ *    constraint is satisfied. The flag auto-resets at transaction end,
+ *    so the matching `enableTestForeignKeys()` is a no-op on SQLite but
+ *    still required on MySQL.
+ */
+function disableTestForeignKeys(): void
+{
+    $driver = \Illuminate\Support\Facades\DB::getDriverName();
+
+    if ($driver === 'mysql') {
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    } elseif ($driver === 'sqlite') {
+        \Illuminate\Support\Facades\DB::statement('PRAGMA defer_foreign_keys = ON');
+    }
+}
+
+function enableTestForeignKeys(): void
+{
+    $driver = \Illuminate\Support\Facades\DB::getDriverName();
+
+    if ($driver === 'mysql') {
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1');
+    }
+    // SQLite: defer_foreign_keys auto-resets at the end of the txn.
+}

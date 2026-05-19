@@ -64,12 +64,20 @@ final class PlacementEngine
             //    only one wins at insert time, so we'd surface the second's
             //    failure as an opaque DB error rather than the dedicated
             //    PlacementSlotsExhaustedError.
-            $acquired = $this->db->selectOne(
-                'SELECT GET_LOCK(?, 5) AS got',
-                ["placement:{$in->placementId}"]
-            );
-            if ((int) ($acquired->got ?? 0) !== 1) {
-                throw new PlacementSlotsExhaustedError($in->placementId);
+            // SQLite (test driver) does not implement GET_LOCK / RELEASE_LOCK.
+            // The test suite is single-threaded, the :memory: PDO is
+            // exclusive to the process, and the unique index on
+            // (placement_parent_id, placement_side) is still the
+            // last-line defence — so we safely skip the advisory lock
+            // off MySQL.
+            if ($this->db->connection()->getDriverName() === 'mysql') {
+                $acquired = $this->db->selectOne(
+                    'SELECT GET_LOCK(?, 5) AS got',
+                    ["placement:{$in->placementId}"]
+                );
+                if ((int) ($acquired->got ?? 0) !== 1) {
+                    throw new PlacementSlotsExhaustedError($in->placementId);
+                }
             }
 
             try {
@@ -151,7 +159,9 @@ final class PlacementEngine
 
                 return $result;
             } finally {
-                $this->db->statement('SELECT RELEASE_LOCK(?)', ["placement:{$in->placementId}"]);
+                if ($this->db->connection()->getDriverName() === 'mysql') {
+                    $this->db->statement('SELECT RELEASE_LOCK(?)', ["placement:{$in->placementId}"]);
+                }
             }
         });
     }

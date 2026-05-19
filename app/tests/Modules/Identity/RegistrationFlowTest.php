@@ -34,7 +34,7 @@ function regSeedRoot(?int $userId = null): array
 {
     $userId = $userId ?? regSeedUser();
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $adn = (string) rand(100000000, 999999999);
 
@@ -63,7 +63,7 @@ function regSeedRoot(?int $userId = null): array
             'placement_parent_id' => $id,
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     DB::table('genealogy_closure')->insert([
@@ -99,7 +99,7 @@ function regPlaceUnder(int $sponsorId, int $parentId, string $side, int $parentD
     $adn = (string) rand(100000000, 999999999);
     $userId = regSeedUser();
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    disableTestForeignKeys();
     try {
         $id = DB::table('distributors')->insertGetId([
             'user_id' => $userId,
@@ -122,7 +122,7 @@ function regPlaceUnder(int $sponsorId, int $parentId, string $side, int $parentD
             'updated_at' => now()->format('Y-m-d H:i:s.v'),
         ]);
     } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        enableTestForeignKeys();
     }
 
     // Self-row

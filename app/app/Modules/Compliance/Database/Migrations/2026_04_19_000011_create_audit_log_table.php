@@ -27,8 +27,10 @@ return new class extends Migration
             $table->index(['action', 'created_at'], 'idx_audit_action_time');
         });
 
-        DB::statement('ALTER TABLE audit_log MODIFY before_hash BINARY(32) NULL');
-        DB::statement('ALTER TABLE audit_log MODIFY after_hash BINARY(32) NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE audit_log MODIFY before_hash BINARY(32) NULL');
+            DB::statement('ALTER TABLE audit_log MODIFY after_hash BINARY(32) NULL');
+        }
     }
 
     public function down(): void
