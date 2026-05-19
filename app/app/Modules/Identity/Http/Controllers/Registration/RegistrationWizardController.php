@@ -569,20 +569,7 @@ final class RegistrationWizardController extends Controller
             'spouse_last4' => null,
             'spouse_ref' => null,
         ]);
-
-        // Sync a redacted copy to the draft — raw Aadhaar must never be stored (CLAUDE.md Rule #8).
-        $draftData = $this->wizard->get()['data'] ?? [];
-        if (isset($draftData['aadhaar']['aadhaar_number'])) {
-            unset($draftData['aadhaar']['aadhaar_number']);
-        }
-        // Also strip spouse aadhaar if present (couple flow)
-        if (isset($draftData['couple']['spouse_aadhaar_number'])) {
-            unset($draftData['couple']['spouse_aadhaar_number']);
-        }
-        $userId = $this->wizard->userId();
-        if ($userId !== null) {
-            $this->drafts->sync($userId, 7, $draftData);  // next step is 7
-        }
+        $this->syncDraft(6);
 
         return redirect()->route('register.bank');
     }
@@ -886,6 +873,15 @@ final class RegistrationWizardController extends Controller
             return;
         }
         $stateData = $this->wizard->get()['data'] ?? [];
+
+        // CLAUDE.md Hard Rule #8: raw Aadhaar must NEVER be stored.
+        // Strip it from every draft sync — the unredacted value lives only
+        // in the transient PHP session for the duration of registration.
+        unset(
+            $stateData['aadhaar']['aadhaar_number'],
+            $stateData['couple']['spouse_aadhaar_number'],
+        );
+
         $this->drafts->sync($userId, $step + 1, $stateData);
     }
 

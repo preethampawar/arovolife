@@ -47,7 +47,12 @@ final class DraftResumeController extends Controller
                 ->with('status', 'The placement position from your original invitation is no longer available. Please choose a new one.');
         }
 
-        Auth::loginUsingId($draft->user_id);
+        if (Auth::loginUsingId($draft->user_id) === false) {
+            return redirect()->route('login')
+                ->with('status', 'We could not restore your registration session. Please sign in.');
+        }
+
+        $request->session()->regenerate();
         $this->drafts->restoreToWizard($draft, $this->wizard);
 
         // Re-issue a new raw token so the cookie works on this new device.
