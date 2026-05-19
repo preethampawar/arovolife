@@ -10,7 +10,6 @@ use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
-use App\Modules\Identity\Models\RegistrationDraft;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Notifications\DraftResumeNotification;
 use App\Modules\Identity\Services\DraftStateService;
@@ -29,6 +28,7 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -316,7 +316,7 @@ final class RegistrationWizardController extends Controller
                 Auth::login($existingUser);
                 $this->drafts->restoreToWizard($activeDraft, $this->wizard);
 
-                $newRawToken = $this->drafts->create(
+                $newDraft = $this->drafts->create(
                     $existingUser->id,
                     $activeDraft->sponsor_id,
                     $activeDraft->placement_id,
@@ -327,7 +327,7 @@ final class RegistrationWizardController extends Controller
 
                 return redirect()
                     ->route(WizardStateService::stepRoute($activeDraft->current_step))
-                    ->withCookie(cookie('av_draft', $newRawToken, 7 * 24 * 60, '/', null, true, true));
+                    ->withCookie(cookie('av_draft', $newDraft->raw_token, 7 * 24 * 60, '/', null, true, true));
             }
 
             // No active draft — standard "email taken" error.
@@ -359,7 +359,7 @@ final class RegistrationWizardController extends Controller
             sideOpt: $intent['side_opt'] ?? null,
         );
 
-        $rawToken = $this->drafts->create(
+        $draft = $this->drafts->create(
             $user->id,
             (int) $intent['sponsor_id'],
             (int) $intent['placement_id'],
@@ -367,13 +367,11 @@ final class RegistrationWizardController extends Controller
             [],
         );
 
-        $draftId = RegistrationDraft::where('user_id', $user->id)->value('id');
-
-        Notification::send($user, new DraftResumeNotification((int) $draftId));
+        Notification::send($user, new DraftResumeNotification($draft->id));
 
         // Step 2 done; the next auth-gated step is Orientation.
         return redirect()->route('register.orientation')
-            ->withCookie(cookie('av_draft', $rawToken, 7 * 24 * 60, '/', null, true, true));
+            ->withCookie(cookie('av_draft', $draft->raw_token, 7 * 24 * 60, '/', null, true, true));
     }
 
     // ── Step 3: Orientation (auth-gated; quiz + video confirmation) ─────
@@ -870,6 +868,10 @@ final class RegistrationWizardController extends Controller
     {
         $userId = $this->wizard->userId();
         if ($userId === null) {
+            // Silent skip masks lost wizard state in production. Log a
+            // structured warning so the unexpected case is observable.
+            Log::warning('syncDraft called with null userId', ['step' => $step]);
+
             return;
         }
         $stateData = $this->wizard->get()['data'] ?? [];

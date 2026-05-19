@@ -108,8 +108,8 @@ function drftSeedUserWithDraft(int $sponsorId, int $placementId, string $passwor
     ]);
 
     $drafts = app(DraftStateService::class);
-    $rawToken = $drafts->create($user->id, $sponsorId, $placementId, 'L', []);
-    $draft = RegistrationDraft::where('user_id', $user->id)->firstOrFail();
+    $draft = $drafts->create($user->id, $sponsorId, $placementId, 'L', []);
+    $rawToken = $draft->raw_token;
 
     return compact('user', 'rawToken', 'draft');
 }

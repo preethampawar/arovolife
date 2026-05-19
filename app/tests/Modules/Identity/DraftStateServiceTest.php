@@ -31,13 +31,14 @@ function makeDraftService(): DraftStateService
     return app(DraftStateService::class);
 }
 
-it('creates a draft and returns a raw token', function (): void {
+it('creates a draft and returns a model with a raw token attribute', function (): void {
     $userId = draftSeedUser();
     $service = makeDraftService();
 
-    $rawToken = $service->create($userId, 1, 2, 'L', []);
+    $draft = $service->create($userId, 1, 2, 'L', []);
 
-    expect($rawToken)->toBeString()->toHaveLength(64);
+    expect($draft)->toBeInstanceOf(RegistrationDraft::class);
+    expect($draft->raw_token)->toBeString()->toHaveLength(64);
     expect(RegistrationDraft::where('user_id', $userId)->exists())->toBeTrue();
 });
 
@@ -57,7 +58,7 @@ it('resolves a draft from a valid raw token', function (): void {
     $userId = draftSeedUser();
     $service = makeDraftService();
 
-    $rawToken = $service->create($userId, 1, 2, null, []);
+    $rawToken = $service->create($userId, 1, 2, null, [])->raw_token;
     $draft = $service->resolveFromToken($rawToken);
 
     expect($draft)->not->toBeNull();
@@ -68,7 +69,7 @@ it('returns null for an expired draft token', function (): void {
     $userId = draftSeedUser();
     $service = makeDraftService();
 
-    $rawToken = $service->create($userId, 1, 2, null, []);
+    $rawToken = $service->create($userId, 1, 2, null, [])->raw_token;
     RegistrationDraft::where('user_id', $userId)->update(['expires_at' => now()->subDay()]);
 
     expect($service->resolveFromToken($rawToken))->toBeNull();

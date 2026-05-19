@@ -56,7 +56,7 @@ final class DraftResumeController extends Controller
         $this->drafts->restoreToWizard($draft, $this->wizard);
 
         // Re-issue a new raw token so the cookie works on this new device.
-        $newRawToken = $this->drafts->create(
+        $newDraft = $this->drafts->create(
             $draft->user_id,
             $draft->sponsor_id,
             $draft->placement_id,
@@ -67,6 +67,6 @@ final class DraftResumeController extends Controller
 
         return redirect()
             ->route(WizardStateService::stepRoute($draft->current_step))
-            ->withCookie(cookie('av_draft', $newRawToken, 7 * 24 * 60, '/', null, true, true));
+            ->withCookie(cookie('av_draft', $newDraft->raw_token, 7 * 24 * 60, '/', null, true, true));
     }
 }

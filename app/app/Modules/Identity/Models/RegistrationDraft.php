@@ -22,6 +22,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ *
+ * Non-persisted attribute attached by DraftStateService::create() so callers
+ * can fetch the raw token without a second query:
+ * @property-read string|null $raw_token
  */
 final class RegistrationDraft extends Model
 {
