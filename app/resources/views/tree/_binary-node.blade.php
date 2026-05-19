@@ -106,7 +106,16 @@
             before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-4 before:bg-slate-300
             after:content-[''] after:absolute after:top-4 after:left-1/4 after:right-1/4 after:h-[2px] after:bg-slate-300">
 
-            <div class="relative pt-4 flex justify-center px-0.5
+            {{-- px-{N} = horizontal padding around each child subtree. The
+                 grid is recursive, so this padding cascades: leaves at the
+                 deepest level get 2*N px between siblings; upper levels
+                 inherit additional whitespace because every ancestor wraps
+                 its children with the same padding, so two adjacent subtrees
+                 are separated by their own padding PLUS their children's
+                 padding all the way down. px-3 (12px each side, 24px gap)
+                 is the minimum that keeps the densest level (16 leaves at
+                 depth 4) from touching at 100% zoom. --}}
+            <div class="relative pt-4 flex justify-center px-3
                 before:content-[''] before:absolute before:top-[-1rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-8 before:bg-slate-300">
                 @if($left)
                     @include('tree._binary-node', [
@@ -121,7 +130,16 @@
                 @endif
             </div>
 
-            <div class="relative pt-4 flex justify-center px-0.5
+            {{-- px-{N} = horizontal padding around each child subtree. The
+                 grid is recursive, so this padding cascades: leaves at the
+                 deepest level get 2*N px between siblings; upper levels
+                 inherit additional whitespace because every ancestor wraps
+                 its children with the same padding, so two adjacent subtrees
+                 are separated by their own padding PLUS their children's
+                 padding all the way down. px-3 (12px each side, 24px gap)
+                 is the minimum that keeps the densest level (16 leaves at
+                 depth 4) from touching at 100% zoom. --}}
+            <div class="relative pt-4 flex justify-center px-3
                 before:content-[''] before:absolute before:top-[-1rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-8 before:bg-slate-300">
                 @if($right)
                     @include('tree._binary-node', [
