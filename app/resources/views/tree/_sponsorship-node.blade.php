@@ -106,6 +106,17 @@
         @endif
     </div>
 
+    @if($level === 0 && $childCount === 0)
+        {{-- Empty-state copy: distributors can legitimately have a populated
+             binary downline (via spillover from upline) while having zero
+             personal sponsees, which would otherwise show as just a lone
+             card with no indication of what's going on. --}}
+        <div class="mt-6 max-w-md text-center text-sm text-gray-500">
+            <p>You haven't directly introduced any distributors yet.</p>
+            <p class="mt-1 text-xs">Share your referral link from the dashboard to start growing your sponsorship tree.</p>
+        </div>
+    @endif
+
     @if($renderInlineChildren)
         {{-- Connectors:
              container::before — vertical from parent's bottom down to bus
