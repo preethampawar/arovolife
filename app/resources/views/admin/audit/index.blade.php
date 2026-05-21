@@ -42,60 +42,74 @@
 </div>
 @endif
 
-{{-- Log table --}}
+{{-- Log table — Action/Subject/Actor collapsed into one friendly
+     "Activity" column rendered via AuditLogPresenter. Technical
+     event key + raw subject row are still discoverable inside the
+     Details popover so engineers can still grep them. --}}
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
-                    <th class="text-left px-4 py-3 text-xs text-gray-700">Time</th>
-                    <th class="text-left px-4 py-3 text-xs text-gray-700">Action</th>
-                    <th class="text-left px-4 py-3 text-xs text-gray-700">Subject</th>
-                    <th class="text-left px-4 py-3 text-xs text-gray-700">Actor</th>
-                    <th class="text-left px-4 py-3 text-xs text-gray-700">Details</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-700 uppercase tracking-wider w-36">Time</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-700 uppercase tracking-wider">Activity</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-700 uppercase tracking-wider w-24">Details</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-800">
+            <tbody class="divide-y divide-gray-200">
                 @forelse($logs as $log)
-                <tr class="hover:bg-white/40 transition-colors">
-                    <td class="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
-                        {{ \Carbon\Carbon::parse($log->created_at)->format('d M Y') }}<br>
-                        <span class="text-gray-600">{{ \Carbon\Carbon::parse($log->created_at)->format('H:i:s') }}</span>
+                <tr class="hover:bg-gray-50/50 transition-colors align-top">
+                    <td class="px-4 py-4 text-xs text-gray-700 whitespace-nowrap">
+                        <p class="text-gray-800 font-medium">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y') }}</p>
+                        <p class="text-gray-600">{{ \Carbon\Carbon::parse($log->created_at)->format('H:i:s') }}</p>
                     </td>
-                    <td class="px-4 py-3">
-                        <span class="font-mono text-xs
-                            {{ str_contains($log->action, 'rejected') || str_contains($log->action, 'frozen') || str_contains($log->action, 'terminated') ? 'text-red-700'
-                             : (str_contains($log->action, 'created') || str_contains($log->action, 'completed') ? 'text-green-700'
-                             : (str_contains($log->action, 'changed') || str_contains($log->action, 'exported') ? 'text-amber-700'
-                             : 'text-gray-800')) }}">
-                            {{ $log->action }}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-xs text-gray-800">
-                        {{ $log->subject_type }}
-                        @if($log->subject_id)
-                            @if($log->subject_type === 'distributor')
-                            <a href="{{ route('admin.distributors.show', $log->subject_id) }}" class="text-brand-600 hover:underline">#{{ $log->subject_id }}</a>
-                            @else
-                            <span>#{{ $log->subject_id }}</span>
-                            @endif
+                    <td class="px-4 py-4">
+                        <p class="text-sm text-gray-900 leading-snug">{{ $log->display_title }}</p>
+                        @if($log->display_subtitle)
+                            <p class="text-xs text-gray-600 mt-1">{{ $log->display_subtitle }}</p>
+                        @endif
+                        {{-- Quick-jump link to the distributor record when
+                             the subject points at one. Non-distributor
+                             subjects show only the friendly title. --}}
+                        @if($log->subject_type === 'distributor' && $log->subject_id)
+                            <a href="{{ route('admin.distributors.show', $log->subject_id) }}"
+                               class="text-xs text-brand-600 hover:underline mt-1 inline-block">
+                                Open distributor →
+                            </a>
                         @endif
                     </td>
-                    <td class="px-4 py-3 text-xs text-gray-700">{{ $log->actor_email ?? 'system' }}</td>
-                    <td class="px-4 py-3 text-xs">
-                        @if($log->details)
-                        <details>
-                            <summary class="text-gray-700 cursor-pointer hover:text-gray-900">view</summary>
-                            <pre class="mt-1 text-gray-700 bg-white rounded p-2 text-xs overflow-x-auto max-w-xs">{{ json_encode(json_decode($log->details), JSON_PRETTY_PRINT) }}</pre>
+                    <td class="px-4 py-4 text-xs">
+                        <details class="group">
+                            <summary class="cursor-pointer text-gray-600 hover:text-gray-900 select-none">
+                                <span class="group-open:hidden">Show</span>
+                                <span class="hidden group-open:inline">Hide</span>
+                            </summary>
+                            <div class="mt-2 space-y-2 max-w-xs">
+                                <div class="text-gray-700">
+                                    <span class="font-semibold text-gray-500">Event key:</span>
+                                    <code class="font-mono text-[11px] text-gray-800 break-all">{{ $log->action }}</code>
+                                </div>
+                                <div class="text-gray-700">
+                                    <span class="font-semibold text-gray-500">Subject:</span>
+                                    <code class="font-mono text-[11px] text-gray-800">{{ $log->subject_type }}{{ $log->subject_id ? '#'.$log->subject_id : '' }}</code>
+                                </div>
+                                <div class="text-gray-700">
+                                    <span class="font-semibold text-gray-500">Actor:</span>
+                                    <code class="font-mono text-[11px] text-gray-800">{{ $log->actor_email ?? 'system' }}</code>
+                                </div>
+                                @if($log->details)
+                                    <div class="text-gray-700">
+                                        <span class="font-semibold text-gray-500 block mb-1">Payload:</span>
+                                        <pre class="text-gray-800 bg-gray-50 rounded p-2 text-[11px] overflow-x-auto">{{ json_encode(json_decode($log->details), JSON_PRETTY_PRINT) }}</pre>
+                                    </div>
+                                @endif
+                            </div>
                         </details>
-                        @else
-                        <span class="text-gray-500">—</span>
-                        @endif
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-700">No audit entries found.</td>
+                    <td colspan="3" class="px-4 py-8 text-center text-sm text-gray-700">No audit entries found.</td>
                 </tr>
                 @endforelse
             </tbody>
