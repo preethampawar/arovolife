@@ -150,10 +150,13 @@
                 inset: 0;
             }
 
-            /* Animation panel — transparent backdrop; padding only reserves
-               clearance around the 320px orbit so the dots don't clip. */
+            /* Animation panel — soft brand-tinted backdrop (brand-100 → 200).
+               Padding reserves clearance around the 320px orbit so the
+               5 spark dots don't clip at the panel edge. */
             .hero-animation {
                 padding: 1.5rem;
+                border-radius: 1.5rem;
+                background: linear-gradient(135deg, #cff1fd 0%, #a3e5fc 100%);
             }
 
             /* Pulsing rings emanating outward */
