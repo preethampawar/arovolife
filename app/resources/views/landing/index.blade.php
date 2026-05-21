@@ -119,18 +119,18 @@
                          inside it. --}}
                     <div class="absolute inset-4 bg-brand-500 rounded-full shadow-xl shadow-brand-900/30"></div>
 
-                    {{-- Continuous ripple — 6 rings × 6s cycle × 1s stagger =
-                         1 ripple emitted every 1 second with continuous
-                         coverage. Spark-matched hues but at 0.32 alpha for
-                         a subtle, atmospheric tone instead of a saturated
-                         line (gold → amber → violet → azure → deep blue,
-                         then cycling gold). --}}
-                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.32);"></div>
-                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(232, 142, 26, 0.32);"></div>
-                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.32);"></div>
-                    <div class="hero-ring hero-ring-4 absolute inset-0 rounded-full border-2" style="border-color: rgba(28, 128, 227, 0.32);"></div>
-                    <div class="hero-ring hero-ring-5 absolute inset-0 rounded-full border-2" style="border-color: rgba(11, 66, 122, 0.32);"></div>
-                    <div class="hero-ring hero-ring-6 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.32);"></div>
+                    {{-- Ripple — 3 rings × 4s cycle × 1.33s stagger.
+                         Exactly 3 visible at any moment (each ring's
+                         full lifetime spans 3 stagger windows), and the
+                         opacity now fades linearly across the full
+                         lifetime so rings don't linger as ghost outlines.
+                         3 colours picked from the spark palette for
+                         visual distinction (gold / violet / deep blue;
+                         amber + brand-azure dropped to avoid hue
+                         overlap with their neighbours). --}}
+                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.5);"></div>
+                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.5);"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(11, 66, 122, 0.5);"></div>
 
                     {{-- Inner WHITE disc with the blue arovolife logo, nested
                          inside the blue outer disc. inset-10 = 240px container,
@@ -181,23 +181,21 @@
                 padding: 1.5rem;
             }
 
-            /* Ripple rings — 6 rings × 7.98s cycle ÷ 1.33s stagger = 1 new
-               ripple emitted every 1.33s with continuous coverage (loop
-               closes cleanly: 6 × 1.33 ≈ 7.98s). */
+            /* Ripple rings — 3 rings × 4s cycle ÷ 1.33s stagger = 1 new
+               ripple emitted every 1.33s, with exactly 3 rings alive at
+               any moment (4s ÷ 1.33s ≈ 3 staggered slices). Opacity
+               fades linearly from full to 0 across the full lifetime so
+               rings exit cleanly rather than lingering as faint ghosts. */
             .hero-ring {
-                animation: heroPulseRing 7.98s ease-out infinite;
+                animation: heroPulseRing 4s ease-out infinite;
                 opacity: 0;
             }
             .hero-ring-1 { animation-delay: 0s;    }
             .hero-ring-2 { animation-delay: 1.33s; }
             .hero-ring-3 { animation-delay: 2.66s; }
-            .hero-ring-4 { animation-delay: 3.99s; }
-            .hero-ring-5 { animation-delay: 5.32s; }
-            .hero-ring-6 { animation-delay: 6.65s; }
             @keyframes heroPulseRing {
-                0%   { transform: scale(1);  opacity: 1; }
-                80%  { opacity: 0.15; }
-                100% { transform: scale(1.9); opacity: 0; }
+                0%   { transform: scale(1);   opacity: 0.9; }
+                100% { transform: scale(1.9); opacity: 0;   }
             }
 
             /* Outer halo breathes */
