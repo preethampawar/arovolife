@@ -101,19 +101,20 @@
             <div class="hero-animation hidden md:flex justify-center items-center"
                  aria-hidden="true">
                 <div class="hero-circle relative w-80 h-80">
-                    {{-- Pulsing rings (emanate outward) --}}
-                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
-                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
-                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
+                    {{-- Pulsing rings (emanate outward) — darker, more opaque
+                         so the orbit reads without a panel backdrop --}}
+                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-[3px] border-brand-600/70"></div>
+                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-[3px] border-brand-600/70"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-[3px] border-brand-600/70"></div>
 
-                    {{-- Outer gradient halo --}}
-                    <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full opacity-20"></div>
+                    {{-- Outer gradient halo (darker brand 500 → 700) --}}
+                    <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-500 to-brand-700 rounded-full opacity-40"></div>
 
-                    {{-- Glow backdrop --}}
-                    <div class="hero-glow absolute inset-4 bg-brand-300/40 rounded-full blur-2xl"></div>
+                    {{-- Glow backdrop (brand-500 instead of brand-300) --}}
+                    <div class="hero-glow absolute inset-4 bg-brand-500/50 rounded-full blur-2xl"></div>
 
                     {{-- Inner white disc with the blue brand logo --}}
-                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-500/30 flex items-center justify-center">
+                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-700/50 flex items-center justify-center">
                         <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
                     </div>
 
@@ -150,13 +151,11 @@
                 inset: 0;
             }
 
-            /* Animation panel — soft brand-tinted backdrop (brand-100 → 200).
-               Padding reserves clearance around the 320px orbit so the
-               5 spark dots don't clip at the panel edge. */
+            /* Animation panel — transparent backdrop; padding only reserves
+               clearance around the 320px orbit so the 5 spark dots don't
+               clip at the panel edge. */
             .hero-animation {
                 padding: 1.5rem;
-                border-radius: 1.5rem;
-                background: linear-gradient(135deg, #cff1fd 0%, #a3e5fc 100%);
             }
 
             /* Pulsing rings emanating outward */
@@ -168,23 +167,23 @@
             .hero-ring-2 { animation-delay: 1s; }
             .hero-ring-3 { animation-delay: 2s; }
             @keyframes heroPulseRing {
-                0%   { transform: scale(1);   opacity: 0.7; }
-                80%  { opacity: 0.1; }
+                0%   { transform: scale(1);   opacity: 1; }
+                80%  { opacity: 0.15; }
                 100% { transform: scale(1.35); opacity: 0; }
             }
 
             /* Outer halo breathes */
             .hero-halo { animation: heroHaloBreathe 4s ease-in-out infinite; }
             @keyframes heroHaloBreathe {
-                0%, 100% { opacity: 0.18; transform: scale(1); }
-                50%      { opacity: 0.32; transform: scale(1.03); }
+                0%, 100% { opacity: 0.35; transform: scale(1); }
+                50%      { opacity: 0.55; transform: scale(1.03); }
             }
 
             /* Behind-the-disc glow pulses */
             .hero-glow { animation: heroGlowPulse 3.5s ease-in-out infinite; }
             @keyframes heroGlowPulse {
-                0%, 100% { opacity: 0.4; transform: scale(1); }
-                50%      { opacity: 0.7; transform: scale(1.08); }
+                0%, 100% { opacity: 0.6; transform: scale(1); }
+                50%      { opacity: 0.9; transform: scale(1.08); }
             }
 
             /* Inner white disc gently floats */
