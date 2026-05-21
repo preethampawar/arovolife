@@ -59,24 +59,32 @@
         </div>
     </div>
 
-    {{-- Bank details --}}
+    {{-- Bank details (optional) --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-4">Bank details</h3>
-        <p class="text-xs text-gray-700 mb-4">The current account number is encrypted at rest. To rotate it, enter the new account number below; leave blank to keep the existing value.</p>
+        <h3 class="font-semibold text-gray-800 mb-1">Bank details <span class="text-gray-500 text-sm font-normal">(optional)</span></h3>
+        <p class="text-xs text-gray-700 mb-4">
+            The current account number is encrypted at rest. To rotate it,
+            enter a new account number; leave it blank to keep the existing
+            value. To <strong>remove</strong> bank entirely (e.g. distributor
+            doesn't have a bank account on file yet), clear the IFSC field —
+            both fields will be set to NULL.
+        </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs text-gray-700 mb-1" for="bank_account">Bank account number (leave blank to keep current)</label>
                 <input type="text" id="bank_account" name="bank_account"
-                    minlength="9" maxlength="18" inputmode="numeric" pattern="\d+"
+                    maxlength="18" inputmode="numeric" pattern="\d{9,18}"
                     placeholder="Enter new account number to rotate"
                     autocomplete="off"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="bank_ifsc">Bank IFSC</label>
-                <input type="text" id="bank_ifsc" name="bank_ifsc" required maxlength="11" minlength="11"
+                <label class="block text-xs text-gray-700 mb-1" for="bank_ifsc">Bank IFSC <span class="text-gray-500">(clear to detach bank)</span></label>
+                <input type="text" id="bank_ifsc" name="bank_ifsc"
+                    maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}"
                     value="{{ old('bank_ifsc', $distributor->bank_ifsc) }}"
                     style="text-transform: uppercase"
+                    placeholder="HDFC0001234 (or blank to detach)"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>

@@ -109,24 +109,37 @@
         </div>
     </div>
 
-    {{-- Bank --}}
+    {{-- Bank (optional — server-side rule is nullable + required_with;
+         leave both fields blank to skip, or fill both to record bank). --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-4">Bank</h3>
+        <h3 class="font-semibold text-gray-800 mb-1">Bank <span class="text-gray-500 text-sm font-normal">(optional)</span></h3>
+        <p class="text-xs text-gray-600 mb-4">
+            Leave both fields blank if the distributor hasn't shared bank
+            details yet — they can be added later from the edit page.
+            If you fill one, both are required.
+        </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs text-gray-700 mb-1" for="bank_account">Bank account number</label>
-                <input type="text" id="bank_account" name="bank_account" required
-                    minlength="9" maxlength="18" inputmode="numeric" pattern="\d+"
+                {{-- maxlength + pattern stay so digit-only typing is still
+                     enforced when present; required + minlength removed
+                     so blank values pass the browser check. The server
+                     re-validates with required_with so a half-filled bank
+                     (account but no IFSC) still gets rejected. --}}
+                <input type="text" id="bank_account" name="bank_account"
+                    maxlength="18" inputmode="numeric" pattern="\d{9,18}"
                     value="{{ old('bank_account') }}"
                     autocomplete="off"
+                    placeholder="9–18 digits, or leave blank"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
             <div>
                 <label class="block text-xs text-gray-700 mb-1" for="bank_ifsc">Bank IFSC</label>
-                <input type="text" id="bank_ifsc" name="bank_ifsc" required maxlength="11" minlength="11"
+                <input type="text" id="bank_ifsc" name="bank_ifsc"
+                    maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}"
                     value="{{ old('bank_ifsc') }}"
                     style="text-transform: uppercase"
-                    placeholder="HDFC0001234"
+                    placeholder="HDFC0001234 (or blank)"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>

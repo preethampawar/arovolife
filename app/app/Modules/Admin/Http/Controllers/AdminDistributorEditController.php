@@ -85,10 +85,13 @@ final class AdminDistributorEditController extends Controller
             ],
             'date_of_birth' => ['nullable', 'date'],
             'state' => ['required', 'string', 'max:64'],
-            'bank_ifsc' => ['required', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/i'],
-            // Optional — empty = unchanged. When provided, the value is
-            // re-encrypted via Crypt::encryptString and the audit-log diff
-            // shows the redacted last-4 only.
+            // Bank is optional. IFSC is nullable; if the admin types one
+            // it must validate. The pre-existing account_number field was
+            // already nullable + format-validated. Clearing the IFSC
+            // (submitting blank) is the explicit way to detach bank from
+            // a distributor — the controller below writes null + null in
+            // that case.
+            'bank_ifsc' => ['nullable', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/i'],
             'bank_account' => ['nullable', 'string', 'min:9', 'max:18', 'regex:/^\d+$/'],
         ], [
             'phone_e164.required' => 'Please enter a phone number.',
@@ -97,7 +100,6 @@ final class AdminDistributorEditController extends Controller
             'email.email' => 'That doesn\'t look like a valid email.',
             'email.unique' => 'Another distributor already uses this email.',
             'state.required' => 'Please pick the state.',
-            'bank_ifsc.required' => 'Please enter the bank IFSC.',
             'bank_ifsc.regex' => 'IFSC must be 11 characters: 4 letters, 0, then 6 alphanumeric.',
             'bank_account.regex' => 'Bank account number must contain digits only.',
             'bank_account.min' => 'Bank account number must be at least 9 digits.',
@@ -132,10 +134,21 @@ final class AdminDistributorEditController extends Controller
 
             $distributorUpdate = [
                 'state' => $validated['state'],
-                'bank_ifsc' => strtoupper($validated['bank_ifsc']),
             ];
-            if (! empty($validated['bank_account'])) {
-                $distributorUpdate['bank_account_enc'] = Crypt::encryptString($validated['bank_account']);
+            // Bank IFSC: blank submission detaches bank from the
+            // distributor (also clears the encrypted account number).
+            // Non-blank submission updates IFSC (and account if provided).
+            $ifscInput = trim((string) ($validated['bank_ifsc'] ?? ''));
+            $accountInput = trim((string) ($validated['bank_account'] ?? ''));
+
+            if ($ifscInput === '') {
+                $distributorUpdate['bank_ifsc'] = null;
+                $distributorUpdate['bank_account_enc'] = null;
+            } else {
+                $distributorUpdate['bank_ifsc'] = strtoupper($ifscInput);
+                if ($accountInput !== '') {
+                    $distributorUpdate['bank_account_enc'] = Crypt::encryptString($accountInput);
+                }
             }
             $distributor->update($distributorUpdate);
         });
