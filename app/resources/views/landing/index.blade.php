@@ -104,10 +104,23 @@
             <div class="hero-animation hidden md:flex justify-center items-center"
                  aria-hidden="true">
                 <div class="hero-circle relative w-80 h-80 rounded-full bg-[#008cc7]">
-                    {{-- Pulsing rings (emanate outward) — white on dark blue --}}
+                    {{-- Continuous ripple — 6 inner rings staggered at 0.5s
+                         intervals so a wave emanates from the rim every
+                         half-second, plus 3 thinner outer ripples that
+                         travel further for depth. --}}
                     <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
                     <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
                     <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
+                    <div class="hero-ring hero-ring-4 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
+                    <div class="hero-ring hero-ring-5 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
+                    <div class="hero-ring hero-ring-6 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
+
+                    {{-- Outer ripples — thinner border, travel further out
+                         (scale 1.7x over 4s) so the orbit feels like it
+                         keeps echoing past the inner ring stack. --}}
+                    <div class="hero-ripple hero-ripple-1 absolute inset-0 rounded-full border border-white/50"></div>
+                    <div class="hero-ripple hero-ripple-2 absolute inset-0 rounded-full border border-white/50"></div>
+                    <div class="hero-ripple hero-ripple-3 absolute inset-0 rounded-full border border-white/50"></div>
 
                     {{-- Outer gradient halo (brand-200 → white, soft on dark blue) --}}
                     <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-100 to-white rounded-full opacity-30"></div>
@@ -162,18 +175,36 @@
                 padding: 1.5rem;
             }
 
-            /* Pulsing rings emanating outward */
+            /* Inner ripple rings — emanate from the rim outward to 1.35x
+               over 3s; 6 rings staggered every 0.5s = continuous wave. */
             .hero-ring {
                 animation: heroPulseRing 3s ease-out infinite;
                 opacity: 0;
             }
-            .hero-ring-1 { animation-delay: 0s; }
-            .hero-ring-2 { animation-delay: 1s; }
-            .hero-ring-3 { animation-delay: 2s; }
+            .hero-ring-1 { animation-delay: 0s;   }
+            .hero-ring-2 { animation-delay: 0.5s; }
+            .hero-ring-3 { animation-delay: 1s;   }
+            .hero-ring-4 { animation-delay: 1.5s; }
+            .hero-ring-5 { animation-delay: 2s;   }
+            .hero-ring-6 { animation-delay: 2.5s; }
             @keyframes heroPulseRing {
                 0%   { transform: scale(1);   opacity: 1; }
                 80%  { opacity: 0.15; }
                 100% { transform: scale(1.35); opacity: 0; }
+            }
+
+            /* Outer ripples — thinner, travel further (scale to 1.7x over
+               4s), staggered every ~1.33s so the echo never fully stops. */
+            .hero-ripple {
+                animation: heroPulseRipple 4s ease-out infinite;
+                opacity: 0;
+            }
+            .hero-ripple-1 { animation-delay: 0s;    }
+            .hero-ripple-2 { animation-delay: 1.33s; }
+            .hero-ripple-3 { animation-delay: 2.66s; }
+            @keyframes heroPulseRipple {
+                0%   { transform: scale(1);   opacity: 0.6; }
+                100% { transform: scale(1.7); opacity: 0; }
             }
 
             /* Outer halo breathes */
@@ -222,7 +253,7 @@
             .hero-circle:hover { transform: scale(1.03); }
 
             @media (prefers-reduced-motion: reduce) {
-                .hero-ring, .hero-halo, .hero-glow, .hero-logo-disc, .hero-spark { animation: none !important; }
+                .hero-ring, .hero-ripple, .hero-halo, .hero-glow, .hero-logo-disc, .hero-spark { animation: none !important; }
                 .hero-text-stack > .hero-slide-text { transition: none !important; }
             }
         </style>
