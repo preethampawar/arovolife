@@ -113,25 +113,25 @@
                          right at the rim of the white disc. --}}
                     <div class="hero-halo absolute inset-2 bg-gradient-to-br from-brand-300 to-brand-500 rounded-full opacity-50 blur-md"></div>
 
-                    {{-- Outer translucent brand-blue disc — sits inside the
-                         ripple zone (inset-4 = 288px). 80% alpha lets the
-                         soft blue halo behind bleed through subtly. The
-                         animated rings emanate outward from its edge; the
-                         inner white disc nests inside it. --}}
-                    <div class="absolute inset-4 bg-brand-500/80 rounded-full shadow-xl shadow-brand-900/30"></div>
+                    {{-- Outer light-brand-blue disc — sits inside the ripple
+                         zone (inset-4 = 288px). brand-300 (#5fd2f8) at
+                         85% alpha so the soft halo behind bleeds through
+                         subtly. The animated rings emanate outward from
+                         its edge; the inner white disc nests inside it. --}}
+                    <div class="absolute inset-4 bg-brand-300/85 rounded-full shadow-xl shadow-brand-700/25"></div>
 
                     {{-- Ripple — 3 rings × 4s cycle × 1.33s stagger.
                          Exactly 3 visible at any moment (each ring's
                          full lifetime spans 3 stagger windows), and the
-                         opacity now fades linearly across the full
-                         lifetime so rings don't linger as ghost outlines.
-                         3 colours picked from the spark palette for
-                         visual distinction (gold / violet / deep blue;
-                         amber + brand-azure dropped to avoid hue
-                         overlap with their neighbours). --}}
+                         opacity fades linearly across the full lifetime
+                         so rings don't linger as ghost outlines.
+                         Colours: gold + violet + brand-blue (deep navy
+                         was too dark against the light brand-300 disc;
+                         brand-500 #00b6ef ties back to the platform
+                         primary). --}}
                     <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.5);"></div>
                     <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.5);"></div>
-                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(11, 66, 122, 0.5);"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(0, 182, 239, 0.5);"></div>
 
                     {{-- Inner WHITE disc with the blue arovolife logo, nested
                          inside the blue outer disc. inset-10 = 240px container,
