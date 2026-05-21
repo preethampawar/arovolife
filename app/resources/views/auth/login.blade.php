@@ -7,6 +7,7 @@
     <title>Sign in — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._font-size-fouc')
+    @include('partials._google-analytics')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage">
 

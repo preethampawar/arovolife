@@ -9,6 +9,7 @@
     @endif
     @vite(['resources/css/app.css'])
     @include('partials._font-size-fouc')
+    @include('partials._google-analytics')
     <style>
         .page-body h1 { font-size: 2rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: #111827; }
         .page-body h2 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #111827; }

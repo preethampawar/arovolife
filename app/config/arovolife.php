@@ -48,4 +48,23 @@ return [
     |--------------------------------------------------------------------------
     */
     'support_email' => env('SUPPORT_EMAIL', 'support@arovolife.com'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Analytics
+    |--------------------------------------------------------------------------
+    |
+    | Google Analytics 4 (gtag.js) measurement ID. When set, the
+    | partials._google-analytics snippet emits the loader + config on
+    | public-facing pages. Leave empty in environments without consent
+    | infrastructure (dev / staging) to keep the snippet from firing at all.
+    |
+    | DPDP NOTE: GA stores IP address + device fingerprint, which qualify
+    | as personal data under the DPDP Act 2023. Before public launch we
+    | owe users a cookie-consent banner that defers gtag init until the
+    | user accepts (or short-circuits to "analytics off" if they decline).
+    */
+    'analytics' => [
+        'google_id' => env('GOOGLE_ANALYTICS_ID'),
+    ],
 ];

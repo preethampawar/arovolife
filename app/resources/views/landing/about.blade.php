@@ -8,6 +8,7 @@
     <meta name="description" content="Born in India, 2026 — arovolife is a customer-first direct selling company offering best-in-class nutraceutical and personal-care products with industry-leading distributor growth pathways.">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._font-size-fouc')
+    @include('partials._google-analytics')
     <style>
         /* Reveal-on-scroll baseline. Elements with data-reveal start hidden
            and slide in once they enter the viewport (added via tiny IO below). */
