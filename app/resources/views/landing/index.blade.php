@@ -195,9 +195,9 @@
             .hero-ring-5 { animation-delay: 5.32s; }
             .hero-ring-6 { animation-delay: 6.65s; }
             @keyframes heroPulseRing {
-                0%   { transform: scale(1);   opacity: 1; }
+                0%   { transform: scale(1);  opacity: 1; }
                 80%  { opacity: 0.15; }
-                100% { transform: scale(1.35); opacity: 0; }
+                100% { transform: scale(1.9); opacity: 0; }
             }
 
             /* Outer halo breathes */
