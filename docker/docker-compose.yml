@@ -1,5 +1,22 @@
 name: arovolife
 
+# =============================================================================
+# arovolife — Service Access Reference
+# =============================================================================
+# Web app             http://localhost:8084
+# Adminer             http://localhost:8083    (server: db, user: arovolife, pass: secret)
+# Mailpit UI          http://localhost:8027    (SMTP from host: localhost:1027)
+#
+# MySQL  (host: localhost:3307 from host, db:3306 from containers)
+#   arovolife / secret      (app DB user)
+#   root      / rootsecret  (DB admin)
+#
+# Redis  (host: localhost:6379 from host, redis:6379 from containers)
+#
+# NOTE: a `summary` service prints the same info on `docker compose up`.
+#       For detached startup (`up -d`), view it via `docker compose logs summary`.
+# =============================================================================
+
 services:
   app:
     build:
@@ -74,9 +91,12 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     container_name: arovolife-mailpit
+    # Host ports remapped to avoid clash with docker-multi-projects mailhog (1025/8025)
+    # and karonix-codex mailpit (1026/8026). Container-internal ports unchanged, so
+    # the app still uses MAIL_HOST=mailpit, MAIL_PORT=1025 over the docker network.
     ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # UI
+      - "1027:1025"   # SMTP — host 1027 → container 1025
+      - "8027:8025"   # UI   — http://localhost:8027
     networks: [arovolife]
 
   adminer:
@@ -132,6 +152,47 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks: [arovolife]
+
+  # ---------------------------------------------------------------------------
+  # Summary — runs once on `docker compose up`, prints access info, then exits.
+  # ---------------------------------------------------------------------------
+  summary:
+    image: busybox:1.36
+    container_name: arovolife-summary
+    restart: "no"
+    depends_on:
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      adminer:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    command:
+      - sh
+      - -c
+      - |
+        echo ""
+        echo "==============================================="
+        echo "🚀  arovolife — running"
+        echo "==============================================="
+        echo ""
+        echo "🌐  Web app             http://localhost:8084"
+        echo "🛠️  Adminer             http://localhost:8083"
+        echo "                        server: db   user: arovolife   pass: secret"
+        echo "📧  Mailpit UI          http://localhost:8027"
+        echo "                        SMTP from host: localhost:1027"
+        echo ""
+        echo "🗄️  MySQL  (host: localhost:3307, container: db:3306)"
+        echo "    arovolife / secret      (app)"
+        echo "    root      / rootsecret  (admin)"
+        echo ""
+        echo "📦  Redis  (host: localhost:6379, container: redis:6379)"
+        echo ""
     networks: [arovolife]
 
 networks:
