@@ -13,7 +13,7 @@ The arovolife Grievance Officer is the single point of contact for complaints th
 | Name | Grievance Officer, arovolife *(TODO: replace with named officer before launch)* |
 | Email | `grievance@arovolife.in` *(TODO: confirm domain and provision mailbox before launch)* |
 | Phone | *TODO: provision toll-free or 10-digit helpline before launch.* Hours: 10:00 – 18:00 IST, Monday to Saturday, excluding national holidays. |
-| Post | The Grievance Officer, Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India. |
+| Post | The Grievance Officer, Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India. *(This is the registered office and correspondence address.)* |
 | In-app | Dashboard → Help → "Raise a Grievance". |
 | Web form | `/contact-us` with reason "Grievance / Complaint". A `/p/grievance/form` page will be added in Phase 2 to provide a dedicated structured form with ticket-number issuance. |
 

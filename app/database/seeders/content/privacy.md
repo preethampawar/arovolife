@@ -10,7 +10,7 @@ This Policy applies to all data processed by arovolife — through the website, 
 |---|---|
 | Legal name | **Arovolife Private Limited** |
 | CIN | U46909TS2026PTC210896 |
-| Registered office | H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India (as on the MCA / Income Tax Department record) |
+| Registered office & correspondence address | H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India (as on the MCA / Income Tax Department record; this is also the address for all postal correspondence) |
 | Capacity under DPDP Act | Data Fiduciary |
 | Data Protection Officer (DPO) | `dpo@arovolife.in` *(TODO: provision mailbox and name the DPO before launch)* |
 | Grievance Officer (privacy matters) | `grievance@arovolife.in` *(TODO: same)* |
