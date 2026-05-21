@@ -29,12 +29,23 @@
             <path d="M9 13h6"/>
             <circle cx="12" cy="6" r="3"/>
         </svg>
-        <div class="text-[13px] leading-snug">
+        <div class="text-[13px] leading-snug flex-1">
             <p class="text-slate-600">You were referred by</p>
-            <p class="font-mono text-brand-700 font-semibold tracking-wider">{{ $sponsorAdn }}</p>
+            @if(!empty($sponsorName))
+                <p class="text-slate-900 font-semibold text-sm">{{ $sponsorName }}</p>
+                <p class="font-mono text-brand-700 text-[12px] tracking-wider mt-0.5">
+                    ADN {{ $sponsorAdn }}
+                    @if(!empty($sponsorEmailMasked))
+                        <span class="text-slate-400 ml-1">·</span>
+                        <span class="text-slate-500 normal-case tracking-normal ml-1">{{ $sponsorEmailMasked }}</span>
+                    @endif
+                </p>
+            @else
+                <p class="font-mono text-brand-700 font-semibold tracking-wider">{{ $sponsorAdn }}</p>
+            @endif
         </div>
         @if($sideOpt)
-            <span class="ml-auto text-[11px] uppercase tracking-wider text-brand-700/70 font-semibold">Placed on the {{ $sideOpt === 'L' ? 'left' : 'right' }} leg</span>
+            <span class="ml-auto text-[11px] uppercase tracking-wider text-brand-700/70 font-semibold whitespace-nowrap">Placed on the {{ $sideOpt === 'L' ? 'left' : 'right' }} leg</span>
         @endif
     </div>
     @endif

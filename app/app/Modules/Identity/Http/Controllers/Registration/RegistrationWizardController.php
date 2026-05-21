@@ -204,7 +204,7 @@ final class RegistrationWizardController extends Controller
         $row = DB::table('distributors as d')
             ->join('users as u', 'u.id', '=', 'd.user_id')
             ->where('d.adn', $adn)
-            ->select('u.full_name', 'd.spouse_distributor_id', 'd.is_primary_couple', 'd.state')
+            ->select('u.full_name', 'u.email', 'd.spouse_distributor_id', 'd.is_primary_couple', 'd.state')
             ->first();
 
         if ($row === null) {
@@ -216,6 +216,7 @@ final class RegistrationWizardController extends Controller
         return response()->json([
             'found' => true,
             'name' => (string) $row->full_name,
+            'email_masked' => \App\Modules\Identity\Support\SponsorPreview::maskEmail((string) $row->email),
             'is_secondary' => $isSecondary,
         ]);
     }
@@ -293,11 +294,18 @@ final class RegistrationWizardController extends Controller
             }
         }
 
+        $sponsorAdn = (string) ($intent['sponsor_adn'] ?? '');
+        $sponsorPreview = $sponsorAdn !== ''
+            ? \App\Modules\Identity\Support\SponsorPreview::resolve($sponsorAdn)
+            : null;
+
         return view('registration.step1-account', [
-            'sponsorAdn' => $intent['sponsor_adn'] ?? '',
+            'sponsorAdn' => $sponsorAdn,
             'placementAdn' => $intent['placement_adn'] ?? '',
             'sideOpt' => $intent['side_opt'] ?? null,
             'existingUser' => $existingUser,
+            'sponsorName' => $sponsorPreview['name'] ?? null,
+            'sponsorEmailMasked' => $sponsorPreview['email_masked'] ?? null,
         ]);
     }
 
