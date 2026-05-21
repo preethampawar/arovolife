@@ -16,7 +16,7 @@
 <div class="hidden sm:block bg-brand-700 text-white text-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-end gap-3 sm:gap-4 flex-wrap">
         @guest
-            <a href="{{ route('join.show') }}" class="hover:text-brand-50 transition-colors">Join Us</a>
+            <a href="{{ route('join.show') }}" class="hover:text-brand-50 transition-colors">Register with us</a>
             <span class="text-brand-400">|</span>
             <a href="{{ route('login') }}" class="hover:text-brand-50 transition-colors">Sign in</a>
         @else
@@ -83,11 +83,94 @@
             </div>
         @endguest
         <span class="text-brand-400">|</span>
-        <a href="{{ route('about') }}" class="hover:text-brand-50 transition-colors">About Us</a>
+
+        {{-- A11y: Font-size adjuster. Sets the root <html> font-size as a
+             percentage (90 / 100 / 115 / 130). Because the rest of the
+             codebase already uses rem-based / `text-*` Tailwind classes,
+             every page scales from this single property. Choice persists
+             in localStorage under `arovolife_root_font_size_pct` and is
+             also restored in the layout <head> to prevent FOUC. --}}
+        <div class="font-size-adjuster inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-brand-600/40"
+             role="group" aria-label="Adjust font size" data-font-size-adjuster>
+            <button type="button" data-font-size="90"
+                    class="w-7 h-6 inline-flex items-center justify-center rounded-full text-[11px] font-semibold text-white/90 hover:text-white hover:bg-brand-700 transition-colors data-[active=true]:bg-white data-[active=true]:text-brand-700 data-[active=true]:ring-2 data-[active=true]:ring-sunrise-300"
+                    title="Smaller text (90%)" aria-label="Smaller text">A<span class="text-[9px]">−</span></button>
+            <button type="button" data-font-size="100"
+                    class="w-7 h-6 inline-flex items-center justify-center rounded-full text-[11px] font-semibold text-white/90 hover:text-white hover:bg-brand-700 transition-colors data-[active=true]:bg-white data-[active=true]:text-brand-700 data-[active=true]:ring-2 data-[active=true]:ring-sunrise-300"
+                    title="Default text (100%)" aria-label="Default text">A</button>
+            <button type="button" data-font-size="115"
+                    class="w-7 h-6 inline-flex items-center justify-center rounded-full text-[11px] font-semibold text-white/90 hover:text-white hover:bg-brand-700 transition-colors data-[active=true]:bg-white data-[active=true]:text-brand-700 data-[active=true]:ring-2 data-[active=true]:ring-sunrise-300"
+                    title="Larger text (115%)" aria-label="Larger text">A<span class="text-[12px]">+</span></button>
+            <button type="button" data-font-size="130"
+                    class="w-7 h-6 inline-flex items-center justify-center rounded-full text-[11px] font-semibold text-white/90 hover:text-white hover:bg-brand-700 transition-colors data-[active=true]:bg-white data-[active=true]:text-brand-700 data-[active=true]:ring-2 data-[active=true]:ring-sunrise-300"
+                    title="Largest text (130%)" aria-label="Largest text">A<span class="text-[14px]">++</span></button>
+            <button type="button" data-font-size="100" data-font-size-reset
+                    class="w-7 h-6 inline-flex items-center justify-center rounded-full text-[13px] font-semibold text-white/90 hover:text-white hover:bg-brand-700 transition-colors"
+                    title="Reset to default" aria-label="Reset font size">↺</button>
+        </div>
+        <span class="text-brand-400">|</span>
+
+        @auth
+            {{-- Admins jump to their console; distributors jump to their
+                 dashboard ("My Office"). Guests keep the About Us link
+                 since they have no dashboard to jump to. --}}
+            @if(auth()->user()->hasRole('admin'))
+                <a href="{{ route('admin.dashboard') }}" class="hover:text-brand-50 transition-colors">Admin Console</a>
+            @else
+                <a href="{{ route('dashboard') }}" class="hover:text-brand-50 transition-colors">My Office</a>
+            @endif
+        @else
+            <a href="{{ route('about') }}" class="hover:text-brand-50 transition-colors">About Us</a>
+        @endauth
         <span class="text-brand-400">|</span>
         <span>India 🇮🇳</span>
     </div>
 </div>
+
+{{-- Font-size adjuster JS: applies the saved value on every page load AND
+     wires up the buttons. The same `apply` call is also inlined into the
+     <head> of every layout that uses this nav, to prevent FOUC (no flash
+     of the wrong size before this script runs). --}}
+<script>
+    (() => {
+        const root = document.documentElement;
+        const KEY = 'arovolife_root_font_size_pct';
+        const VALID = [90, 100, 115, 130];
+        const groups = document.querySelectorAll('[data-font-size-adjuster]');
+        if (groups.length === 0) return;
+
+        const readSaved = () => {
+            const raw = parseInt(localStorage.getItem(KEY) || '100', 10);
+            return VALID.includes(raw) ? raw : 100;
+        };
+        const markActive = (pct) => {
+            groups.forEach((g) => {
+                g.querySelectorAll('[data-font-size]').forEach((btn) => {
+                    const isReset = btn.hasAttribute('data-font-size-reset');
+                    btn.dataset.active = (!isReset && parseInt(btn.dataset.fontSize, 10) === pct) ? 'true' : 'false';
+                });
+            });
+        };
+        const apply = (pct) => {
+            root.style.fontSize = pct + '%';
+            try { localStorage.setItem(KEY, String(pct)); } catch (e) { /* private mode */ }
+            markActive(pct);
+        };
+
+        // Initial sync — the <head> inline script has already set the inline
+        // style; this just paints the active-button highlight.
+        apply(readSaved());
+
+        groups.forEach((g) => {
+            g.querySelectorAll('[data-font-size]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const pct = parseInt(btn.dataset.fontSize, 10);
+                    if (VALID.includes(pct)) apply(pct);
+                });
+            });
+        });
+    })();
+</script>
 
 {{-- Main header --}}
 <nav class="bg-brand-500 border-b border-brand-600 sticky top-0 z-40">
@@ -113,6 +196,8 @@
                 </a>
             @endforeach
 
+            @include('partials._notification-bell', ['bellLayout' => 'flex items-center py-5'])
+
             <a href="{{ route('shop.cart') }}"
                class="relative flex items-center gap-2 text-brand-50 hover:text-white transition-colors py-5"
                aria-label="Cart">
@@ -129,8 +214,10 @@
             @endguest
         </div>
 
-        {{-- Mobile/tablet right side: cart + hamburger --}}
+        {{-- Mobile/tablet right side: bell + cart + hamburger --}}
         <div class="flex lg:hidden items-center gap-1 ml-auto">
+            @include('partials._notification-bell', ['bellLayout' => 'w-10 h-10 inline-flex items-center justify-center'])
+
             <a href="{{ route('shop.cart') }}"
                class="relative w-10 h-10 inline-flex items-center justify-center text-brand-50 hover:text-white transition-colors"
                aria-label="Cart">

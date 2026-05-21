@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Choose a new password — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._font-size-fouc')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage">
 

@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Shop') — arovolife</title>
     @vite(['resources/css/app.css'])
+    @include('partials._font-size-fouc')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage overflow-x-hidden">
 

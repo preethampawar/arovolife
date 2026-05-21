@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Registration') — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._font-size-fouc')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage overflow-x-hidden">
 
@@ -36,7 +37,7 @@
                     <div class="flex-1 text-center">
                         <div class="h-1 rounded-full mb-1
                             {{ $n < $current ? 'bg-brand-500' : ($n === $current ? 'bg-brand-400' : 'bg-gray-100') }}"></div>
-                        <span class="text-[10px] {{ $n === $current ? 'text-brand-600 font-semibold' : 'text-gray-400' }}">
+                        <span class="text-[11px] {{ $n === $current ? 'text-brand-600 font-semibold' : 'text-gray-600' }}">
                             {{ $meta['label'] }}
                         </span>
                     </div>
@@ -116,7 +117,7 @@
 
                                     {{-- Label + caption --}}
                                     <div class="min-w-0">
-                                        <p class="text-[9px] uppercase tracking-[0.18em] {{ $captionClass }} font-semibold leading-none mb-0.5">{{ $caption }}</p>
+                                        <p class="text-[10px] uppercase tracking-[0.18em] {{ $captionClass }} font-semibold leading-none mb-0.5">{{ $caption }}</p>
                                         <p class="text-sm leading-tight
                                             {{ $isActive ? 'text-slate-900 font-semibold' :
                                                ($isDone ? 'text-slate-700 group-hover:text-brand-700' : 'text-slate-400') }}">
@@ -138,7 +139,7 @@
                 <div class="mt-8 lift-in p-4 rounded-xl border border-slate-200/70 bg-white/60 backdrop-blur-sm" style="animation-delay: 600ms;">
                     <p class="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-semibold mb-3">A note on signing up</p>
                     <ul class="space-y-2.5 text-[12px] text-slate-600 leading-snug">
-                        <li class="flex gap-2"><span class="text-leaf-500 font-bold">·</span><span>Joining is <strong class="text-slate-800">free of charge</strong>.</span></li>
+                        <li class="flex gap-2"><span class="text-leaf-500 font-bold">·</span><span>Registration is <strong class="text-slate-800">free of charge</strong>.</span></li>
                         <li class="flex gap-2"><span class="text-brand-500 font-bold">·</span><span>30-day cooling-off, one-click cancel.</span></li>
                         <li class="flex gap-2"><span class="text-sunrise-500 font-bold">·</span><span>PAN/Aadhaar are encrypted at rest.</span></li>
                         <li class="flex gap-2"><span class="text-slate-400 font-bold">·</span><span>Backed by India's DSR&nbsp;2021.</span></li>
@@ -171,14 +172,14 @@
     </div>
 
     {{-- Footer --}}
-    <footer class="border-t border-gray-200 mt-16 px-6 py-6 text-center text-xs text-gray-400">
-        Joining arovolife is <strong class="text-gray-500">free of charge</strong>.
+    <footer class="border-t border-gray-200 mt-16 px-6 py-6 text-center text-xs text-gray-700">
+        Registering with arovolife is <strong class="text-gray-900">free of charge</strong>.
         No payment is required at registration.
         <div class="mt-2 space-x-4">
-            <a href="{{ route('content.show', 'terms') }}" class="underline hover:text-gray-600">Terms</a>
-            <a href="{{ route('content.show', 'privacy') }}" class="underline hover:text-gray-600">Privacy</a>
-            <a href="{{ route('content.show', 'ethics') }}" class="underline hover:text-gray-600">Code of Ethics</a>
-            <a href="{{ route('content.show', 'grievance') }}" class="underline hover:text-gray-600">Grievance</a>
+            <a href="{{ route('content.show', 'terms') }}" class="underline hover:text-gray-900">Terms</a>
+            <a href="{{ route('content.show', 'privacy') }}" class="underline hover:text-gray-900">Privacy</a>
+            <a href="{{ route('content.show', 'ethics') }}" class="underline hover:text-gray-900">Code of Ethics</a>
+            <a href="{{ route('content.show', 'grievance') }}" class="underline hover:text-gray-900">Grievance</a>
         </div>
     </footer>
 

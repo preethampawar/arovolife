@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._font-size-fouc')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage overflow-x-hidden">
 
@@ -26,14 +27,14 @@
         @yield('content')
     </main>
 
-    <footer class="border-t border-gray-200 mt-12 sm:mt-16 px-4 sm:px-6 py-6 text-center text-xs text-gray-500">
+    <footer class="border-t border-gray-200 mt-12 sm:mt-16 px-4 sm:px-6 py-6 text-center text-xs text-gray-700">
         <div class="flex flex-wrap justify-center gap-x-4 gap-y-1">
-            <a href="{{ route('content.show', 'terms') }}" class="hover:text-gray-700">Terms</a>
-            <a href="{{ route('content.show', 'privacy') }}" class="hover:text-gray-700">Privacy</a>
-            <a href="{{ route('content.show', 'ethics') }}" class="hover:text-gray-700">Code of Ethics</a>
-            <a href="{{ route('content.show', 'grievance') }}" class="hover:text-gray-700">Grievance</a>
+            <a href="{{ route('content.show', 'terms') }}" class="hover:text-gray-900">Terms</a>
+            <a href="{{ route('content.show', 'privacy') }}" class="hover:text-gray-900">Privacy</a>
+            <a href="{{ route('content.show', 'ethics') }}" class="hover:text-gray-900">Code of Ethics</a>
+            <a href="{{ route('content.show', 'grievance') }}" class="hover:text-gray-900">Grievance</a>
         </div>
-        <p class="mt-3 text-gray-400">Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
+        <p class="mt-3 text-gray-600">Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
     </footer>
 
 </body>
