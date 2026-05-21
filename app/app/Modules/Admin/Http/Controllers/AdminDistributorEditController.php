@@ -109,10 +109,7 @@ final class AdminDistributorEditController extends Controller
      */
     public function setPassword(Request $request, int $id): RedirectResponse
     {
-        $distributor = Distributor::with('user')->findOrFail($id);
-        $user = $distributor->user;
-        abort_if($user === null, 404);
-
+        // Validate first so client errors don't open a useless transaction.
         $request->validate([
             'new_password' => ['required', 'string', 'min:12', new StrongPassword(), new NotPwned()],
             'new_password_confirmation' => ['required', 'string', 'same:new_password'],
@@ -123,29 +120,48 @@ final class AdminDistributorEditController extends Controller
             'new_password_confirmation.same' => 'The two passwords don\'t match.',
         ]);
 
-        $user->update([
-            'password_hash' => Hash::make($request->input('new_password')),
-            'password_set_at' => now(),
-        ]);
+        $newPasswordHash = Hash::make($request->input('new_password'));
+        $ip = $request->ip();
 
-        // Revoke any active password-reset tokens so the link the admin
-        // (or anyone else) may have emailed earlier becomes unusable —
-        // an admin-set password is the canonical fresh credential.
-        DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+        $email = DB::transaction(function () use ($id, $newPasswordHash, $ip): string {
+            // Lock the distributor row + user row so two admins cannot
+            // race a credential reset on the same account.
+            $distributor = Distributor::with('user')->lockForUpdate()->findOrFail($id);
+            $user = $distributor->user;
+            abort_if($user === null, 404);
 
-        AuditLog::create([
-            'actor_id' => Auth::id(),
-            'action' => 'admin.distributor.password_set',
-            'subject_type' => 'user',
-            'subject_id' => $user->id,
-            // NEVER log raw or hashed passwords — only the fact that one
-            // was set. Audit reviewers see "admin X set a password for
-            // user Y on date Z" and nothing more.
-            'details' => ['email' => $user->email, 'method' => 'direct'],
-            'ip' => $request->ip(),
-        ]);
+            // Lock the user row too (the with() loaded it but didn't
+            // acquire a lock). A direct lockForUpdate query guarantees
+            // the row is held for the duration of this transaction.
+            User::query()->where('id', $user->id)->lockForUpdate()->first();
 
-        return back()->with('status', 'New password set for '.$user->email.'. The previous password and any pending reset link are now invalid.');
+            $user->update([
+                'password_hash' => $newPasswordHash,
+                'password_set_at' => now(),
+            ]);
+
+            // Revoke any active password-reset tokens so the link the
+            // admin (or anyone else) may have emailed earlier becomes
+            // unusable — an admin-set password is the canonical fresh
+            // credential.
+            DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+
+            AuditLog::create([
+                'actor_id' => Auth::id(),
+                'action' => 'admin.distributor.password_set',
+                'subject_type' => 'user',
+                'subject_id' => $user->id,
+                // NEVER log raw or hashed passwords — only the fact
+                // that one was set. Audit reviewers see "admin X set a
+                // password for user Y on date Z" and nothing more.
+                'details' => ['email' => $user->email, 'method' => 'direct'],
+                'ip' => $ip,
+            ]);
+
+            return (string) $user->email;
+        });
+
+        return back()->with('status', 'New password set for '.$email.'. The previous password and any pending reset link are now invalid.');
     }
 
     /**
@@ -172,10 +188,7 @@ final class AdminDistributorEditController extends Controller
      */
     public function updateIdentity(Request $request, int $id): RedirectResponse
     {
-        $distributor = Distributor::with('user')->findOrFail($id);
-        $user = $distributor->user;
-        abort_if($user === null, 404);
-
+        // Cheap validation runs first — failures don't open a transaction.
         $validated = $request->validate([
             'pan_number' => ['nullable', 'string', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/i'],
             'aadhaar_number' => ['nullable', 'string', 'digits:12'],
@@ -185,98 +198,130 @@ final class AdminDistributorEditController extends Controller
         ]);
 
         $newPan = isset($validated['pan_number']) ? strtoupper(trim($validated['pan_number'])) : '';
-        $newAadhaar = isset($validated['aadhaar_number']) ? preg_replace('/\D+/', '', $validated['aadhaar_number']) : '';
+        $newAadhaar = isset($validated['aadhaar_number']) ? preg_replace('/\D+/', '', (string) $validated['aadhaar_number']) : '';
 
         if ($newPan === '' && $newAadhaar === '') {
-            return back()->withErrors(['identity' => 'Enter a new PAN, a new Aadhaar, or both. Nothing to update.']);
+            return back()->withErrors(['identity' => 'Enter a new PAN, a new Aadhaar, or both. Nothing to update.'])->withInput();
         }
 
-        // PAN dedup against every OTHER distributor (Hard rule #6). The
-        // current row is excluded so re-saving an unchanged PAN doesn't
-        // false-positive on itself.
-        if ($newPan !== '') {
-            $panHash = hash('sha256', $newPan, true);
-            $clashes = DB::table('distributors')
-                ->where('pan_hash', $panHash)
-                ->where('id', '!=', $distributor->id)
-                ->exists();
-            if ($clashes) {
-                return back()->withErrors(['pan_number' => 'Another Direct Seller account already exists for this PAN.']);
-            }
+        $ip = $request->ip();
+
+        try {
+            $result = DB::transaction(function () use ($id, $newPan, $newAadhaar, $ip): array {
+                // Lock the distributor + user rows so two admins can't
+                // race a PAN edit on the same account, and so the dedup
+                // check below isn't undermined by a concurrent UPDATE
+                // on the same row.
+                $distributor = Distributor::with('user')->lockForUpdate()->findOrFail($id);
+                $user = $distributor->user;
+                abort_if($user === null, 404);
+                User::query()->where('id', $user->id)->lockForUpdate()->first();
+
+                // PAN dedup against every OTHER distributor (Hard rule #6).
+                // The current row is excluded so re-saving an unchanged
+                // PAN doesn't false-positive on itself. A concurrent admin
+                // creating a different distributor with the SAME PAN is
+                // caught by the uniq_distributors_pan_hash index on commit;
+                // wrapping THIS exception in a friendly error is overkill
+                // for what's effectively a sub-millisecond collision.
+                if ($newPan !== '') {
+                    $panHash = hash('sha256', $newPan, true);
+                    $clashes = DB::table('distributors')
+                        ->where('pan_hash', $panHash)
+                        ->where('id', '!=', $distributor->id)
+                        ->exists();
+                    if ($clashes) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'pan_number' => 'Another Direct Seller account already exists for this PAN.',
+                        ]);
+                    }
+                }
+
+                $before = [
+                    'pan_last4' => $distributor->pan_last4,
+                    'aadhaar_last4' => $distributor->aadhaar_last4,
+                ];
+
+                // Distributor model has `encrypted` casts on pan_encrypted +
+                // aadhaar_encrypted, so we assign plaintext here and the
+                // cast handles AES round-tripping. Pre-encrypting would
+                // double-wrap (encrypt(encrypt(value))) and break decrypt.
+                $update = [];
+                if ($newPan !== '') {
+                    $update['pan_hash'] = hash('sha256', $newPan, true);
+                    $update['pan_last4'] = substr($newPan, -4);
+                    $update['pan_encrypted'] = $newPan;
+                }
+                if ($newAadhaar !== '') {
+                    $update['aadhaar_last4'] = substr($newAadhaar, -4);
+                    $update['aadhaar_encrypted'] = $newAadhaar;
+                    // Phase 1 stub ref — replaced by the AUA/KUA partner
+                    // response in Phase 2+. The new ref invalidates any
+                    // earlier audit references to the prior submission.
+                    $update['aadhaar_ref'] = 'STUB_'.strtoupper(uniqid('REF', true));
+                }
+                $distributor->update($update);
+
+                // Reset KYC review state on every document attached to
+                // this distributor. The admin must re-approve via
+                // /admin/kyc/{id}.
+                KycDocument::query()
+                    ->where('distributor_id', $distributor->id)
+                    ->whereNotNull('verified_at')
+                    ->update(['verified_at' => null, 'verifier_id' => null]);
+
+                // Mirror the re-review state on the user row so the
+                // dashboard and distributor list reflect "pending" until
+                // the admin re-approves. activated_at is preserved as
+                // historical record; ApproveKycSubmission overwrites it
+                // next time.
+                if ($user->status === 'active') {
+                    User::query()->where('id', $user->id)->update(['status' => 'pending']);
+                }
+
+                $distributor->refresh();
+                $after = [
+                    'pan_last4' => $distributor->pan_last4,
+                    'aadhaar_last4' => $distributor->aadhaar_last4,
+                ];
+
+                AuditLog::create([
+                    'actor_id' => Auth::id(),
+                    'action' => 'admin.distributor.identity_updated',
+                    'subject_type' => 'distributor',
+                    'subject_id' => $distributor->id,
+                    'details' => [
+                        'pan_changed' => $newPan !== '',
+                        'aadhaar_changed' => $newAadhaar !== '',
+                        'before' => $before,
+                        'after' => $after,
+                        'kyc_reset' => true,
+                    ],
+                    'ip' => $ip,
+                ]);
+
+                return [
+                    'distributor_id' => (int) $distributor->id,
+                    'pan_changed' => $newPan !== '',
+                    'aadhaar_changed' => $newAadhaar !== '',
+                ];
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Bubble out of the transaction as a normal 422 redirect.
+            return back()->withErrors($e->errors())->withInput();
         }
-
-        $before = [
-            'pan_last4' => $distributor->pan_last4,
-            'aadhaar_last4' => $distributor->aadhaar_last4,
-        ];
-
-        DB::transaction(function () use ($distributor, $user, $newPan, $newAadhaar): void {
-            $update = [];
-            if ($newPan !== '') {
-                $update['pan_hash'] = hash('sha256', $newPan, true);
-                $update['pan_last4'] = substr($newPan, -4);
-                $update['pan_encrypted'] = Crypt::encryptString($newPan);
-            }
-            if ($newAadhaar !== '') {
-                $update['aadhaar_last4'] = substr($newAadhaar, -4);
-                $update['aadhaar_encrypted'] = Crypt::encryptString($newAadhaar);
-                // Phase 1 stub ref — replaced by the AUA/KUA partner
-                // response in Phase 2+. The new ref invalidates any
-                // earlier audit references to the prior submission.
-                $update['aadhaar_ref'] = 'STUB_'.strtoupper(uniqid('REF', true));
-            }
-            $distributor->update($update);
-
-            // Reset KYC review state on every document attached to this
-            // distributor. The admin must re-approve via /admin/kyc/{id}.
-            KycDocument::query()
-                ->where('distributor_id', $distributor->id)
-                ->whereNotNull('verified_at')
-                ->update(['verified_at' => null, 'verifier_id' => null]);
-
-            // Mirror the re-review state on the user row so the dashboard
-            // and distributor list reflect "pending" until the admin
-            // re-approves. activated_at is preserved as historical record;
-            // ApproveKycSubmission overwrites it next time.
-            if ($user->status === 'active') {
-                User::query()->where('id', $user->id)->update(['status' => 'pending']);
-            }
-        });
-
-        // Refresh for the after-snapshot. last4 fields are non-PII so
-        // safe to log.
-        $distributor->refresh();
-        $after = [
-            'pan_last4' => $distributor->pan_last4,
-            'aadhaar_last4' => $distributor->aadhaar_last4,
-        ];
-
-        AuditLog::create([
-            'actor_id' => Auth::id(),
-            'action' => 'admin.distributor.identity_updated',
-            'subject_type' => 'distributor',
-            'subject_id' => $distributor->id,
-            'details' => [
-                'pan_changed' => $newPan !== '',
-                'aadhaar_changed' => $newAadhaar !== '',
-                'before' => $before,
-                'after' => $after,
-                'kyc_reset' => true,
-            ],
-            'ip' => $request->ip(),
-        ]);
 
         $changed = [];
-        if ($newPan !== '') {
+        if ($result['pan_changed']) {
             $changed[] = 'PAN';
         }
-        if ($newAadhaar !== '') {
+        if ($result['aadhaar_changed']) {
             $changed[] = 'Aadhaar';
         }
 
         return back()->with(
             'status',
-            implode(' + ', $changed).' updated. KYC has been reset to pending — re-approve at /admin/kyc/'.$distributor->id.'.'
+            implode(' + ', $changed).' updated. KYC has been reset to pending — re-approve at /admin/kyc/'.$result['distributor_id'].'.'
         );
     }
 
@@ -331,6 +376,13 @@ final class AdminDistributorEditController extends Controller
         ];
 
         DB::transaction(function () use ($user, $distributor, $validated): void {
+            // Lock both rows so two admins can't last-write-wins a
+            // routine profile edit. The fetched models above were
+            // already read once; re-locking by id is the cheapest way
+            // to acquire the lock without duplicating model state.
+            Distributor::query()->where('id', $distributor->id)->lockForUpdate()->first();
+            User::query()->where('id', $user->id)->lockForUpdate()->first();
+
             $userUpdate = [
                 'phone_e164' => $validated['phone_e164'],
                 'email' => strtolower($validated['email']),
