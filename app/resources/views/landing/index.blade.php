@@ -510,37 +510,69 @@
                 <p class="text-gray-800">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @php
-                    // Each gradient and shadow tone is shifted ONE Tailwind
-                    // shade lighter than the previous saturated form
-                    // (500/600/700 → 400/500/600) and the shadow opacity
-                    // dropped from /30 → /20 so the three product cards
-                    // sit more gently on the cream background.
+                    // Heroicons outline paths. Stroke = currentColor =
+                    // white (each card's body text is white on a gradient).
+                    $iconHeart    = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.099 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/>';
+                    $iconSparkles = '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>';
+                    $iconBeaker   = '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>';
+                    $iconHome     = '<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>';
+                    $iconScissors = '<path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 1 1-5.196-3 3 3 0 0 1 5.196 3zm1.536.887a2.165 2.165 0 0 1 1.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 1 1-5.196 3 3 3 0 0 1 5.196-3zm1.536-.887a2.165 2.165 0 0 0 1.083-1.838c.005-.352.054-.695.14-1.025m-1.223 2.863 2.077-1.199m0-3.328a4.323 4.323 0 0 1 2.068-1.379l5.325-1.628a4.5 4.5 0 0 1 2.48-.044l.803.215-7.794 4.5m-2.882-1.664A4.331 4.331 0 0 0 10.607 12m3.736 0 7.794 4.5-.802.215a4.5 4.5 0 0 1-2.48-.043l-5.326-1.629a4.323 4.323 0 0 1-2.068-1.379M14.343 12l-2.882 1.664"/>';
+                    $iconSun      = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>';
+
+                    // Six categories, each with a distinct hue across the
+                    // brand + Tailwind palette so no two cards share a colour
+                    // family (leaf vs emerald would clash — picked teal for
+                    // Home Care instead).
                     $categories = [
                         [
-                            'title' => 'Nutraceuticals',
-                            'subtitle' => 'Wellness, formulated with intent',
-                            'body' => 'Daily-essential supplements, immunity blends, Ayurveda-inspired formulations. Every milligram on the label.',
+                            'title' => 'Health Care',
+                            'subtitle' => 'Evidence-led wellness',
+                            'body' => 'Daily supplements, immunity blends, and Ayurveda-inspired formulations. Every milligram declared on the label, every batch independently tested.',
                             'gradient' => 'from-leaf-400 via-leaf-500 to-leaf-600',
                             'glow' => 'shadow-leaf-500/20',
-                            'icon' => '🌿',
+                            'icon' => $iconHeart,
+                        ],
+                        [
+                            'title' => 'Skin and Beauty',
+                            'subtitle' => 'Radiance, responsibly made',
+                            'body' => 'Cleansers, serums, and treatments formulated for Indian skin. Paraben-free, cruelty-free, dermatologically reviewed before launch.',
+                            'gradient' => 'from-rose-400 via-rose-500 to-rose-600',
+                            'glow' => 'shadow-rose-500/20',
+                            'icon' => $iconSparkles,
                         ],
                         [
                             'title' => 'Personal Care',
-                            'subtitle' => 'Skin, hair, body — done honestly',
-                            'body' => 'Skin care, hair care, daily essentials — paraben-free where it matters, cruelty-free everywhere.',
-                            'gradient' => 'from-sunrise-300 via-sunrise-400 to-sunrise-500',
-                            'glow' => 'shadow-sunrise-500/20',
-                            'icon' => '☀',
-                        ],
-                        [
-                            'title' => 'Wellness Bundles',
-                            'subtitle' => 'Curated for everyday life',
-                            'body' => 'Hand-picked combinations of our most-loved products — a smarter starting point for the wellness-curious.',
+                            'subtitle' => 'Daily essentials, done honestly',
+                            'body' => 'Toothpaste, soaps, deodorants, and body wash — clean ingredient lists, no hidden fragrances, no surprise SLS.',
                             'gradient' => 'from-brand-400 via-brand-500 to-brand-600',
                             'glow' => 'shadow-brand-500/20',
-                            'icon' => '✨',
+                            'icon' => $iconBeaker,
+                        ],
+                        [
+                            'title' => 'Home Care',
+                            'subtitle' => 'A home that breathes clean',
+                            'body' => 'Plant-based dishwash, laundry, and surface cleaners. Tough on grime, gentle on hands, biodegradable at the drain.',
+                            'gradient' => 'from-teal-400 via-teal-500 to-teal-600',
+                            'glow' => 'shadow-teal-500/20',
+                            'icon' => $iconHome,
+                        ],
+                        [
+                            'title' => 'Hair Care',
+                            'subtitle' => 'Rooted in botanicals',
+                            'body' => 'Shampoos, conditioners, oils, and masks built around plant actives. Sulphate-free options for every hair type.',
+                            'gradient' => 'from-amber-400 via-amber-500 to-amber-600',
+                            'glow' => 'shadow-amber-500/20',
+                            'icon' => $iconScissors,
+                        ],
+                        [
+                            'title' => 'Lifestyle',
+                            'subtitle' => 'Wellness, beyond the bottle',
+                            'body' => 'Curated bundles, wellness journals, and lifestyle accessories — the everyday companions that turn a routine into a habit.',
+                            'gradient' => 'from-violet-400 via-violet-500 to-violet-600',
+                            'glow' => 'shadow-violet-500/20',
+                            'icon' => $iconSun,
                         ],
                     ];
                 @endphp
@@ -548,7 +580,11 @@
                 <a href="{{ route('shop.index') }}" class="group relative rounded-3xl overflow-hidden bg-gradient-to-br {{ $cat['gradient'] }} p-7 shadow-xl {{ $cat['glow'] }} hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-white block">
                     <div class="absolute -top-12 -right-12 w-40 h-40 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
                     <div class="relative">
-                        <div class="text-4xl mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/20 backdrop-blur">{{ $cat['icon'] }}</div>
+                        <div class="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/20 backdrop-blur">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-7 h-7" aria-hidden="true">
+                                {!! $cat['icon'] !!}
+                            </svg>
+                        </div>
                         <p class="text-[11px] uppercase tracking-wider text-white/80 font-semibold mb-1">{{ $cat['subtitle'] }}</p>
                         <h3 class="text-2xl font-bold mb-3 leading-tight">{{ $cat['title'] }}</h3>
                         <p class="text-sm text-white/90 leading-relaxed mb-5">{{ $cat['body'] }}</p>
