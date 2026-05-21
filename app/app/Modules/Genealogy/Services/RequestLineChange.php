@@ -82,11 +82,11 @@ final class RequestLineChange
                 );
             }
 
-            // Senior-sponsor rule: the new sponsor must have joined the
-            // platform STRICTLY before the requesting distributor. Without
-            // this guard, a recently-joined distributor could move under a
-            // peer who registered later — breaking the "older joiner
-            // sponsors newer joiner" invariant the binary tree relies on.
+            // Senior-sponsor rule: the new sponsor must have registered with
+            // the platform STRICTLY before the requesting distributor. Without
+            // this guard, a recently-registered distributor could move under a
+            // peer who registered later — breaking the "older registrant
+            // sponsors newer registrant" invariant the binary tree relies on.
             // Lock the new sponsor's row so a concurrent mutation can't
             // change their effective_date mid-check.
             /** @var Distributor $newSponsor */

@@ -137,7 +137,7 @@ it('TV-02: distributor /tree shows ONLY own subtree, never an ancestor or siblin
     $response->assertDontSee($siblingAdn);
 });
 
-it('TV-03: /tree/sponsorship renders the recursive sponsorship tree (direct + their direct)', function () {
+it('TV-03: /tree/sponsorship default depth shows ONLY direct referrals (depth 1)', function () {
     $rootUser = tvUser('root');
     $rootId = tvSeedRoot($rootUser->id);
 
@@ -152,29 +152,32 @@ it('TV-03: /tree/sponsorship renders the recursive sponsorship tree (direct + th
     $bAdn = DB::table('distributors')->where('id', $directB)->value('adn');
     $iAdn = DB::table('distributors')->where('id', $indirect)->value('adn');
 
-    // Both direct referrals visible at depth 1.
+    // Default behavior: selected distributor + their direct sponsorees only.
     $response->assertSee($aAdn);
     $response->assertSee($bAdn);
-    // Indirect referral (sponsored by directA) visible at depth 2 in the
-    // recursive tree — the view shows multi-level downline now, not a
-    // single-level list.
-    $response->assertSee($iAdn);
+    // Indirect referrals (sponsored by direct sponsorees) are NOT shown by
+    // default — user must explicitly opt in by increasing the Depth picker.
+    $response->assertDontSee($iAdn);
 });
 
-it('TV-03b: /tree/sponsorship?levels=1 caps depth — indirect referrals hidden', function () {
+it('TV-03b: /tree/sponsorship hard-caps at 1 level — ?levels=2 is ignored', function () {
     $rootUser = tvUser('root');
     $rootId = tvSeedRoot($rootUser->id);
 
     $directA = tvPlace($rootId, tvUser('dirA'), 'L');
     $indirect = tvPlace($directA, tvUser('indir'));
 
-    $response = $this->actingAs($rootUser->refresh())->get('/tree/sponsorship?levels=1');
+    // Hand-edited URL trying to opt into deeper levels — the controller
+    // discards `levels` for the sponsorship view and locks the depth at 1.
+    $response = $this->actingAs($rootUser->refresh())->get('/tree/sponsorship?levels=2');
     $response->assertOk();
 
     $aAdn = DB::table('distributors')->where('id', $directA)->value('adn');
     $iAdn = DB::table('distributors')->where('id', $indirect)->value('adn');
 
     $response->assertSee($aAdn);
+    // indirect must NOT appear — controller forces $levels = 1 regardless
+    // of the query param.
     $response->assertDontSee($iAdn);
 });
 

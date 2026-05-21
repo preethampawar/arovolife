@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Modules\Genealogy\Services\PlacementEngine;
+use App\Modules\Identity\Services\DistributorIdCardStats;
+use App\Modules\Identity\Services\TeamStatsService;
+use App\Modules\Messaging\Models\Message;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,17 +22,35 @@ use Illuminate\View\View;
  * a slot-aware referral-link widget, and a team summary covering both
  * the sponsorship tree (people they personally recruited) and the
  * binary genealogy (their full downline by leg + status breakdown).
+ *
+ * All stat assembly is delegated to {@see TeamStatsService} and
+ * {@see DistributorIdCardStats} — the same services power the tree-view
+ * card display and the Details popup, so every surface reads from a
+ * single source of truth.
  */
 final class DashboardController extends Controller
 {
-    public function index(PlacementEngine $engine): View
-    {
+    public function index(
+        PlacementEngine $engine,
+        TeamStatsService $teamStatsService,
+        DistributorIdCardStats $idCardService,
+    ): View|RedirectResponse {
         $user = Auth::user();
+
+        // Admin accounts have no distributor row, so the dashboard would
+        // otherwise render the "Registration not yet complete" prompt at
+        // them. They have their own console — send them there instead.
+        if ($user !== null && $user->hasRole('admin')) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $distributor = $user?->distributor;
 
         $leftOpen = $rightOpen = false;
         $maxObservedDepth = 0;
         $teamStats = null;
+        $idCardStats = null;
+        $idPhotoUrl = null;
 
         if ($distributor !== null) {
             $leftOpen = $engine->hasOpenSlot($distributor->id, 'L');
@@ -39,8 +61,25 @@ final class DashboardController extends Controller
                 ->where('depth', '>', 0)
                 ->max('depth');
 
-            $teamStats = $this->buildTeamStats((int) $distributor->id);
+            $teamStats = $teamStatsService->full($distributor);
+            $idCardStats = $idCardService->full($distributor);
+            $idPhotoUrl = $idCardService->photoUrl($distributor);
         }
+
+        // Messages card — unread count + latest received message preview.
+        // The eager-load on fromUser is cheap (one extra SELECT for one row)
+        // and keeps the Blade simple: $latestMessage->fromUser->full_name.
+        $unreadMessagesCount = $user !== null
+            ? (int) Message::unreadFor((int) $user->id)->count()
+            : 0;
+
+        $latestMessage = $user !== null
+            ? Message::query()
+                ->where('to_user_id', $user->id)
+                ->with(['fromUser:id,full_name,email'])
+                ->latest('created_at')
+                ->first()
+            : null;
 
         return view('dashboard.index', [
             'user' => $user,
@@ -49,102 +88,10 @@ final class DashboardController extends Controller
             'rightOpen' => $rightOpen,
             'maxObservedDepth' => $maxObservedDepth,
             'teamStats' => $teamStats,
+            'idCardStats' => $idCardStats,
+            'idPhotoUrl' => $idPhotoUrl,
+            'unreadMessagesCount' => $unreadMessagesCount,
+            'latestMessage' => $latestMessage,
         ]);
-    }
-
-    /**
-     * Single round-trip per stat. Genealogy closure is the source of
-     * truth for the binary tree (descendant counts by leg); the
-     * `sponsorship` table is the source for direct referrals (which
-     * may differ from immediate placement children — sponsor and
-     * placement target need not be the same person).
-     *
-     * @return array<string, int>
-     */
-    private function buildTeamStats(int $myId): array
-    {
-        // ── Binary tree counts ────────────────────────────────────────
-        $totalBinary = (int) DB::table('genealogy_closure')
-            ->where('ancestor_id', $myId)
-            ->where('depth', '>', 0)
-            ->count();
-
-        $leftChildId = DB::table('distributors')
-            ->where('placement_parent_id', $myId)
-            ->where('placement_side', 'L')
-            ->where('id', '!=', $myId)
-            ->value('id');
-
-        $rightChildId = DB::table('distributors')
-            ->where('placement_parent_id', $myId)
-            ->where('placement_side', 'R')
-            ->where('id', '!=', $myId)
-            ->value('id');
-
-        $leftTeam = $leftChildId !== null
-            ? (int) DB::table('genealogy_closure')->where('ancestor_id', $leftChildId)->count()
-            : 0;
-
-        $rightTeam = $rightChildId !== null
-            ? (int) DB::table('genealogy_closure')->where('ancestor_id', $rightChildId)->count()
-            : 0;
-
-        // ── Direct referrals (sponsorship, regardless of placement) ──
-        // The `sponsorship` table is flat — one row per (sponsor → directly-
-        // introduced distributor) edge — so every row already represents a
-        // direct referral. The legacy `->where('depth', 1)` referenced a
-        // column that does not exist on this table (it exists on
-        // `genealogy_closure` which is the multi-level placement closure).
-        $directReferrals = (int) DB::table('sponsorship')
-            ->where('sponsor_id', $myId)
-            ->count();
-
-        // ── Status breakdown of the binary downline (excludes self) ──
-        $byStatus = DB::table('genealogy_closure as gc')
-            ->join('distributors as d', 'd.id', '=', 'gc.descendant_id')
-            ->join('users as u', 'u.id', '=', 'd.user_id')
-            ->where('gc.ancestor_id', $myId)
-            ->where('gc.depth', '>', 0)
-            ->groupBy('u.status')
-            ->select('u.status', DB::raw('COUNT(*) as n'))
-            ->pluck('n', 'status')
-            ->all();
-
-        // ── Joined recently ──────────────────────────────────────────
-        $joinedThisWeek = (int) DB::table('distributors as d')
-            ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'd.id')
-            ->where('gc.ancestor_id', $myId)
-            ->where('gc.depth', '>', 0)
-            ->where('d.effective_date', '>=', now()->startOfWeek())
-            ->count();
-
-        $joinedThisMonth = (int) DB::table('distributors as d')
-            ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'd.id')
-            ->where('gc.ancestor_id', $myId)
-            ->where('gc.depth', '>', 0)
-            ->where('d.effective_date', '>=', now()->startOfMonth())
-            ->count();
-
-        // ── Cooling-off active in the team (within 30-day window) ────
-        $coolingOff = (int) DB::table('distributors as d')
-            ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'd.id')
-            ->where('gc.ancestor_id', $myId)
-            ->where('gc.depth', '>', 0)
-            ->where('d.cooling_off_end_at', '>', now())
-            ->count();
-
-        return [
-            'total_team' => $totalBinary,
-            'direct_referrals' => $directReferrals,
-            'left_team' => $leftTeam,
-            'right_team' => $rightTeam,
-            'active' => (int) ($byStatus['active'] ?? 0),
-            'pending' => (int) ($byStatus['pending'] ?? 0),
-            'frozen' => (int) ($byStatus['frozen'] ?? 0),
-            'terminated' => (int) ($byStatus['terminated'] ?? 0),
-            'joined_this_week' => $joinedThisWeek,
-            'joined_this_month' => $joinedThisMonth,
-            'cooling_off' => $coolingOff,
-        ];
     }
 }

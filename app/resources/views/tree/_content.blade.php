@@ -38,6 +38,7 @@
         </p>
     </div>
 
+    @php $isSponsorshipMode = ($mode ?? 'binary') === 'sponsorship'; @endphp
     <form method="GET" action="{{ request()->url() }}" class="flex items-end gap-2">
         @foreach(request()->query() as $k => $v)
             @if($k !== 'levels' && is_string($v))
@@ -46,11 +47,20 @@
         @endforeach
         <div>
             <label for="levels" class="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Depth</label>
+            {{-- In direct-referral mode the depth is structurally fixed at 1
+                 (the literal meaning of "direct"). The input is rendered
+                 readonly so the depth control still communicates intent
+                 but the user can't pretend to dial it up — the controller
+                 also hard-caps the value, so even a hand-edited URL would
+                 land back on 1. --}}
             <input id="levels" name="levels" type="number" min="1" step="1"
                 value="{{ $maxDepth }}"
-                class="w-16 sm:w-20 rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500">
+                @if($isSponsorshipMode) readonly aria-readonly="true" title="Direct referrals is always 1 level deep" @endif
+                class="w-16 sm:w-20 rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500 {{ $isSponsorshipMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white' }}">
         </div>
-        <button type="submit" class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Apply</button>
+        @unless($isSponsorshipMode)
+            <button type="submit" class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Apply</button>
+        @endunless
     </form>
 </div>
 
@@ -92,6 +102,10 @@
 @endphp
 
 <div class="flex flex-wrap items-center gap-2 mb-3 text-xs">
+    {{-- Expand / Collapse manipulate the `levels` query param. In direct-
+         referral mode that param is locked at 1, so these controls would
+         be no-ops — hide them rather than mislead the user. --}}
+    @unless($isSponsorshipMode)
     <a href="{{ $expandAllUrl }}"
         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border {{ $maxDepth >= max(1, $maxObservedDepth) ? 'border-leaf-300 bg-leaf-50 text-leaf-700' : 'border-gray-300 bg-white hover:bg-gray-50 text-gray-700' }} transition-colors">
         <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -106,6 +120,7 @@
         </svg>
         Collapse All
     </a>
+    @endunless
 
     <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border {{ $stateClass }} text-[11px] font-semibold">
         <span class="w-1.5 h-1.5 rounded-full bg-current opacity-75"></span>
@@ -184,6 +199,10 @@
         </div>
     </div>
 
+    @include('partials._id-card-modal')
+    @include('partials._send-message-modal')
+    @include('partials._toast-container')
+
     {{-- Minimap: click-to-jump anywhere, or drag the blue rectangle to pan.
          Bumped to 280x200 for an easier hit target on the indicator (which
          can get very thin/short on wide-aspect trees), with a min-size on
@@ -197,7 +216,7 @@
                 style="left:0; top:0; width:50px; height:40px; min-width:24px; min-height:24px; touch-action:none;"
                 aria-label="Drag to pan, or click anywhere on the minimap to jump"></div>
         </div>
-        <div class="absolute top-0 left-0 right-0 px-2 py-1 bg-gradient-to-b from-white/95 to-transparent text-[9px] uppercase tracking-wider text-gray-500 font-semibold pointer-events-none">Minimap · drag rectangle or click to jump</div>
+        <div class="absolute top-0 left-0 right-0 px-2 py-1 bg-gradient-to-b from-white/95 to-transparent text-[10px] uppercase tracking-wider text-gray-700 font-semibold pointer-events-none">Minimap · drag rectangle or click to jump</div>
     </aside>
 
     <div id="treeFsToolbar" class="hidden absolute top-3 right-3 z-40 rounded-xl bg-white/95 backdrop-blur shadow-lg border border-gray-200 px-2 py-1.5 flex items-center gap-1.5">
@@ -229,7 +248,7 @@
         </div>
         <div class="p-5">
             <p class="text-sm text-slate-600 mb-4 leading-relaxed">
-                Anyone joining via this link is sponsored by
+                Anyone registering via this link is sponsored by
                 <span class="font-mono font-semibold text-brand-700">{{ $self->adn }}</span>
                 and placed at
                 <span id="invitePlacement" class="font-mono font-semibold text-brand-700"></span>.

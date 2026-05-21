@@ -20,7 +20,7 @@ use Illuminate\Database\DatabaseManager;
 /**
  * ADR-0003 — referral-link single-level placement.
  *
- * The new joiner is placed *exactly* at `placement_id.<side>`. The engine
+ * The new registrant is placed *exactly* at `placement_id.<side>`. The engine
  * never descends. If the targeted slot is full, the registration is
  * rejected upward; the wizard surfaces this as the generic
  * `invalid_referral_link` Contact Us redirect.
@@ -270,8 +270,8 @@ final class PlacementEngine
     /**
      * Generate a distributor ADN — random 9-digit integer in
      * (100000000, 999999999]. The 31 ADNs in {@see ReservedAdns::all()}
-     * (root + 30 company-blocked nodes seeded by `platform:reset`) are
-     * permanently reserved and never re-issued to organic distributors.
+     * (root `444555666` + 30 company-blocked nodes seeded by `platform:reset`)
+     * are permanently reserved and never re-issued to organic distributors.
      *
      * Random allocation (rather than monotonic) prevents enumeration of
      * the user base via sequential URL probing. Collision probability for
@@ -283,7 +283,8 @@ final class PlacementEngine
     private function generateAdn(): string
     {
         for ($attempt = 0; $attempt < 8; $attempt++) {
-            // 100000001..999999999 inclusive — root 100000000 is reserved.
+            // 100000001..999999999 inclusive — root 444555666 (and 30 fixed
+            // children) are filtered out below by ReservedAdns::isReserved().
             $candidate = (string) random_int(100_000_001, 999_999_999);
 
             if (ReservedAdns::isReserved($candidate)) {

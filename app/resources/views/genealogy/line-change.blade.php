@@ -19,7 +19,7 @@
             <dt class="text-gray-600">Effective date</dt>
             <dd class="text-gray-900 font-medium">{{ $self->effective_date->format('d M Y') }}</dd>
 
-            <dt class="text-gray-600">Working days since join</dt>
+            <dt class="text-gray-600">Working days since registration</dt>
             <dd class="text-gray-900 font-medium">{{ $businessDaysSince }} of 5</dd>
         </dl>
     </div>

@@ -10,7 +10,7 @@
     'maxObservedDepth'    => $maxObservedDepth,
     'mode'                => 'sponsorship',
     'contextTitle'        => 'My direct referrals',
-    'contextSubtitlePre'  => 'Showing the distributors you directly introduced (and theirs) up to ',
+    'contextSubtitlePre'  => 'The distributors you directly sponsored — exactly ',
     'showSponsorshipLink' => false,
 ])
 @endsection

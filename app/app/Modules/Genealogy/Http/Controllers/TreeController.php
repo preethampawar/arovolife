@@ -38,7 +38,7 @@ final class TreeController extends Controller
             // self-row or a descendant. Anything else is treated as a
             // tampered URL and silently bounces back to /tree.
             $candidate = Distributor::query()
-                ->with(['user:id,full_name'])
+                ->with(['user:id,full_name,status,activated_at'])
                 ->where('adn', $adn)
                 ->first();
 
@@ -94,7 +94,7 @@ final class TreeController extends Controller
             ->pluck('descendant_id', 'descendant_id');
 
         $nodesById = Distributor::query()
-            ->with(['user:id,full_name'])
+            ->with(['user:id,full_name,status,activated_at'])
             ->whereIn('id', $descendantIds)
             ->get()
             ->keyBy('id');
@@ -133,7 +133,7 @@ final class TreeController extends Controller
             // user's own row, a binary descendant, or a sponsorship
             // descendant. Anything else returns to the user's own root.
             $candidate = Distributor::query()
-                ->with(['user:id,full_name'])
+                ->with(['user:id,full_name,status,activated_at'])
                 ->where('adn', $adn)
                 ->first();
             if ($candidate === null) {
@@ -157,10 +157,12 @@ final class TreeController extends Controller
             $self->setRelation('user', Auth::user());
         }
 
-        $requested = $request->query('levels');
-        $levels = ($requested === null || $requested === '')
-            ? self::DEFAULT_DEPTH
-            : max(1, (int) $requested);
+        // Direct-referral view is intentionally 1 level deep — only the
+        // distributors literally sponsored by $self. The depth picker is
+        // surfaced as readonly in the toolbar to telegraph the fixed
+        // semantic; any `?levels=` query param is ignored. The binary tree
+        // remains the canonical multi-level view.
+        $levels = 1;
 
         // Walk the sponsorship graph breadth-first from $self for $levels.
         // Each ring is one SELECT against distributors WHERE sponsor_id IN
@@ -173,7 +175,7 @@ final class TreeController extends Controller
         $frontier = [(int) $self->id];
         for ($depth = 1; $depth <= $levels && ! empty($frontier); $depth++) {
             $rows = Distributor::query()
-                ->with(['user:id,full_name,status'])
+                ->with(['user:id,full_name,status,activated_at'])
                 ->whereIn('sponsor_id', $frontier)
                 ->whereColumn('id', '!=', 'sponsor_id')
                 ->get();
@@ -192,24 +194,17 @@ final class TreeController extends Controller
 
         $totalDescendants = count($allDescendantIds);
 
-        // Probe whether there is more below the requested depth so the
-        // "observed depth" hint in the toolbar matches reality (this is a
-        // cheap aggregate — one SELECT, no fetch).
+        // Depth is hard-capped at 1 for direct referrals so the "max
+        // observed depth" reported to the toolbar is exactly what we
+        // fetched. No probe past the cap — the user is opted out of
+        // deeper levels and we don't want the state badge teasing
+        // levels they cannot reach from this view.
         $maxObservedDepth = $observedDepth;
-        if ($observedDepth === $levels && ! empty($frontier)) {
-            $hasMoreBelow = Distributor::query()
-                ->whereIn('sponsor_id', $frontier)
-                ->whereColumn('id', '!=', 'sponsor_id')
-                ->exists();
-            if ($hasMoreBelow) {
-                $maxObservedDepth = $observedDepth + 1;
-            }
-        }
 
         return view('tree.sponsorship', [
-            'self'             => $self,
+            'self' => $self,
             'childrenByParent' => $childrenByParent,
-            'maxDepth'         => $levels,
+            'maxDepth' => $levels,
             'totalDescendants' => $totalDescendants,
             'maxObservedDepth' => $maxObservedDepth,
         ]);
