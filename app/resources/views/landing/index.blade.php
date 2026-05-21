@@ -455,22 +455,35 @@
             </div>
 
             @php
+                // Heroicons outline SVG paths. Stroke = currentColor =
+                // white (the colored circle has `text-white`).
+                $iconUsers    = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>';
+                $iconUserPlus = '<path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/>';
+                $iconPlay     = '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>';
+                $iconId       = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/>';
+                $iconBadge    = '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>';
+
                 $steps = [
-                    ['1', 'Placement',      'Confirm your sponsor + leg.', 'bg-brand-500',   'shadow-brand-500/30'],
-                    ['2', 'Create Account', 'Name, email, phone, password.', 'bg-leaf-500',   'shadow-leaf-500/30'],
-                    ['3', 'Orientation',    'Watch the video, pass the quiz.', 'bg-sunrise-500','shadow-sunrise-500/30'],
-                    ['4', 'KYC',            'PAN + Aadhaar (verified gateway).', 'bg-violet-500', 'shadow-violet-500/30'],
-                    ['5', 'Get Your ADN',   'Distributor Number issued instantly.', 'bg-brand-700', 'shadow-brand-700/30'],
+                    ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + leg.',          'bg' => 'bg-brand-500',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
+                    ['n' => '2', 'title' => 'Create Account', 'body' => 'Name, email, phone, password.',        'bg' => 'bg-leaf-500',    'shadow' => 'shadow-leaf-500/30',    'icon' => $iconUserPlus],
+                    ['n' => '3', 'title' => 'Orientation',    'body' => 'Watch the video, pass the quiz.',      'bg' => 'bg-sunrise-500', 'shadow' => 'shadow-sunrise-500/30', 'icon' => $iconPlay],
+                    ['n' => '4', 'title' => 'KYC',            'body' => 'PAN + Aadhaar (verified gateway).',    'bg' => 'bg-violet-500',  'shadow' => 'shadow-violet-500/30',  'icon' => $iconId],
+                    ['n' => '5', 'title' => 'Get Your ADN',   'body' => 'Distributor Number issued instantly.', 'bg' => 'bg-brand-700',   'shadow' => 'shadow-brand-700/30',   'icon' => $iconBadge],
                 ];
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 @foreach($steps as $step)
                 <div class="relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                    <div class="w-10 h-10 rounded-full {{ $step[3] }} text-white flex items-center justify-center font-bold text-sm mb-3 shadow-lg {{ $step[4] }}">
-                        {{ $step[0] }}
+                    {{-- Step-number badge sits in the top-right corner so
+                         the sequence stays visible alongside the icon. --}}
+                    <span class="absolute top-3 right-3 text-sm font-semibold text-gray-400">{{ $step['n'] }}</span>
+                    <div class="w-10 h-10 rounded-full {{ $step['bg'] }} text-white flex items-center justify-center mb-3 shadow-lg {{ $step['shadow'] }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5" aria-hidden="true">
+                            {!! $step['icon'] !!}
+                        </svg>
                     </div>
-                    <h4 class="font-semibold text-gray-900 mb-1 text-sm">{{ $step[1] }}</h4>
-                    <p class="text-sm text-gray-800 leading-relaxed">{{ $step[2] }}</p>
+                    <h4 class="font-semibold text-gray-900 mb-1 text-sm">{{ $step['title'] }}</h4>
+                    <p class="text-sm text-gray-800 leading-relaxed">{{ $step['body'] }}</p>
                 </div>
                 @endforeach
             </div>
