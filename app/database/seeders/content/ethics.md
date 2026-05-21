@@ -80,7 +80,7 @@ If a Distributor, customer, employee or member of the public observes conduct th
 
 - **Email:** `ethics@arovolife.in` (monitored daily; TBD — replace with real address before launch)
 - **Web form:** `/contact-us` with reason "Ethics / Compliance"
-- **Post:** Compliance Officer, Arovolife Private Limited, Registered Office, Hyderabad, Telangana (full address TBD)
+- **Post:** Compliance Officer, Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India
 - **Phone:** Grievance helpline (TBD — replace before launch)
 
 Reports may be made anonymously. arovolife guarantees:
