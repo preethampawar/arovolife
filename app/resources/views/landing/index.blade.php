@@ -113,11 +113,12 @@
                          right at the rim of the white disc. --}}
                     <div class="hero-halo absolute inset-2 bg-gradient-to-br from-brand-300 to-brand-500 rounded-full opacity-50 blur-md"></div>
 
-                    {{-- Outer SOLID brand-blue disc — sits inside the ripple
-                         zone (inset-4 = 288px). The animated rings emanate
-                         outward from its edge; the inner white disc nests
-                         inside it. --}}
-                    <div class="absolute inset-4 bg-brand-500 rounded-full shadow-xl shadow-brand-900/30"></div>
+                    {{-- Outer translucent brand-blue disc — sits inside the
+                         ripple zone (inset-4 = 288px). 80% alpha lets the
+                         soft blue halo behind bleed through subtly. The
+                         animated rings emanate outward from its edge; the
+                         inner white disc nests inside it. --}}
+                    <div class="absolute inset-4 bg-brand-500/80 rounded-full shadow-xl shadow-brand-900/30"></div>
 
                     {{-- Ripple — 3 rings × 4s cycle × 1.33s stagger.
                          Exactly 3 visible at any moment (each ring's
@@ -194,8 +195,8 @@
             .hero-ring-2 { animation-delay: 1.33s; }
             .hero-ring-3 { animation-delay: 2.66s; }
             @keyframes heroPulseRing {
-                0%   { transform: scale(1);   opacity: 0.9; }
-                100% { transform: scale(1.9); opacity: 0;   }
+                0%   { transform: scale(1);    opacity: 0.9; }
+                100% { transform: scale(1.45); opacity: 0;   }
             }
 
             /* Outer halo breathes */
