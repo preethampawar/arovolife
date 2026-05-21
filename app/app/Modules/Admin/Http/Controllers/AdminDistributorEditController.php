@@ -6,6 +6,8 @@ namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
+use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Identity\Services\IdPhotoDecodeError;
 use App\Modules\Identity\Services\IdPhotoStorage;
 use App\Modules\Identity\Http\Rules\NotPwned;
@@ -68,12 +70,29 @@ final class AdminDistributorEditController extends Controller
         // Null when no photo has been uploaded yet.
         $idPhotoUrl = app(DistributorIdCardStats::class)->photoUrl($distributor);
 
+        // KYC review snapshot — count docs total + verified so the edit
+        // page can render an inline status pill ("3 docs pending review"
+        // / "All approved on 21 May 2026") with a one-click jump to the
+        // dedicated /admin/kyc/{id} review page. Counts only — the
+        // document list itself stays on the KYC review page where the
+        // streaming endpoint enforces its own audit log.
+        $kycDocs = KycDocument::query()
+            ->where('distributor_id', $distributor->id)
+            ->selectRaw('count(*) as total, sum(case when verified_at is not null then 1 else 0 end) as verified, max(verified_at) as latest_verified_at')
+            ->first();
+        $kycStatus = [
+            'total' => (int) ($kycDocs->total ?? 0),
+            'verified' => (int) ($kycDocs->verified ?? 0),
+            'latest_verified_at' => $kycDocs->latest_verified_at ?? null,
+        ];
+
         return view('admin.distributors.edit', [
             'distributor' => $distributor,
             'states' => self::indianStates(),
             'sponsorAdn' => $sponsorAdn,
             'placementParentAdn' => $placementParentAdn,
             'idPhotoUrl' => $idPhotoUrl,
+            'kycStatus' => $kycStatus,
         ]);
     }
 
@@ -127,6 +146,138 @@ final class AdminDistributorEditController extends Controller
         ]);
 
         return back()->with('status', 'New password set for '.$user->email.'. The previous password and any pending reset link are now invalid.');
+    }
+
+    /**
+     * Admin updates the distributor's PAN and/or Aadhaar.
+     *
+     * Hard rule #6 (one PAN = one ADN) is enforced via a sha256-hash
+     * lookup that excludes the current row. Either field may be
+     * submitted independently; both are optional. If either changes:
+     *
+     *   - The full value is re-encrypted (Crypt::encryptString) and
+     *     stored on pan_encrypted / aadhaar_encrypted; the sha256 hash
+     *     (PAN) and the last-4 columns are updated atomically.
+     *   - All kyc_documents for this distributor have verified_at
+     *     reset to NULL — the identity has changed, the existing
+     *     KYC sign-off no longer applies. The admin must re-review.
+     *   - The user row's status flips from 'active' → 'pending' so
+     *     dashboards reflect the re-review requirement.
+     *   - Audit log records before/after last-4 only (never the full
+     *     PAN / Aadhaar — per CLAUDE.md logging rule).
+     *
+     * Aadhaar regenerates a fresh stub aadhaar_ref because Phase 1
+     * doesn't have a live AUA/KUA partner; in Phase 2+ this is where
+     * the partner re-verification call lands.
+     */
+    public function updateIdentity(Request $request, int $id): RedirectResponse
+    {
+        $distributor = Distributor::with('user')->findOrFail($id);
+        $user = $distributor->user;
+        abort_if($user === null, 404);
+
+        $validated = $request->validate([
+            'pan_number' => ['nullable', 'string', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/i'],
+            'aadhaar_number' => ['nullable', 'string', 'digits:12'],
+        ], [
+            'pan_number.regex' => 'PAN must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F).',
+            'aadhaar_number.digits' => 'Aadhaar must be exactly 12 digits.',
+        ]);
+
+        $newPan = isset($validated['pan_number']) ? strtoupper(trim($validated['pan_number'])) : '';
+        $newAadhaar = isset($validated['aadhaar_number']) ? preg_replace('/\D+/', '', $validated['aadhaar_number']) : '';
+
+        if ($newPan === '' && $newAadhaar === '') {
+            return back()->withErrors(['identity' => 'Enter a new PAN, a new Aadhaar, or both. Nothing to update.']);
+        }
+
+        // PAN dedup against every OTHER distributor (Hard rule #6). The
+        // current row is excluded so re-saving an unchanged PAN doesn't
+        // false-positive on itself.
+        if ($newPan !== '') {
+            $panHash = hash('sha256', $newPan, true);
+            $clashes = DB::table('distributors')
+                ->where('pan_hash', $panHash)
+                ->where('id', '!=', $distributor->id)
+                ->exists();
+            if ($clashes) {
+                return back()->withErrors(['pan_number' => 'Another Direct Seller account already exists for this PAN.']);
+            }
+        }
+
+        $before = [
+            'pan_last4' => $distributor->pan_last4,
+            'aadhaar_last4' => $distributor->aadhaar_last4,
+        ];
+
+        DB::transaction(function () use ($distributor, $user, $newPan, $newAadhaar): void {
+            $update = [];
+            if ($newPan !== '') {
+                $update['pan_hash'] = hash('sha256', $newPan, true);
+                $update['pan_last4'] = substr($newPan, -4);
+                $update['pan_encrypted'] = Crypt::encryptString($newPan);
+            }
+            if ($newAadhaar !== '') {
+                $update['aadhaar_last4'] = substr($newAadhaar, -4);
+                $update['aadhaar_encrypted'] = Crypt::encryptString($newAadhaar);
+                // Phase 1 stub ref — replaced by the AUA/KUA partner
+                // response in Phase 2+. The new ref invalidates any
+                // earlier audit references to the prior submission.
+                $update['aadhaar_ref'] = 'STUB_'.strtoupper(uniqid('REF', true));
+            }
+            $distributor->update($update);
+
+            // Reset KYC review state on every document attached to this
+            // distributor. The admin must re-approve via /admin/kyc/{id}.
+            KycDocument::query()
+                ->where('distributor_id', $distributor->id)
+                ->whereNotNull('verified_at')
+                ->update(['verified_at' => null, 'verifier_id' => null]);
+
+            // Mirror the re-review state on the user row so the dashboard
+            // and distributor list reflect "pending" until the admin
+            // re-approves. activated_at is preserved as historical record;
+            // ApproveKycSubmission overwrites it next time.
+            if ($user->status === 'active') {
+                User::query()->where('id', $user->id)->update(['status' => 'pending']);
+            }
+        });
+
+        // Refresh for the after-snapshot. last4 fields are non-PII so
+        // safe to log.
+        $distributor->refresh();
+        $after = [
+            'pan_last4' => $distributor->pan_last4,
+            'aadhaar_last4' => $distributor->aadhaar_last4,
+        ];
+
+        AuditLog::create([
+            'actor_id' => Auth::id(),
+            'action' => 'admin.distributor.identity_updated',
+            'subject_type' => 'distributor',
+            'subject_id' => $distributor->id,
+            'details' => [
+                'pan_changed' => $newPan !== '',
+                'aadhaar_changed' => $newAadhaar !== '',
+                'before' => $before,
+                'after' => $after,
+                'kyc_reset' => true,
+            ],
+            'ip' => $request->ip(),
+        ]);
+
+        $changed = [];
+        if ($newPan !== '') {
+            $changed[] = 'PAN';
+        }
+        if ($newAadhaar !== '') {
+            $changed[] = 'Aadhaar';
+        }
+
+        return back()->with(
+            'status',
+            implode(' + ', $changed).' updated. KYC has been reset to pending — re-approve at /admin/kyc/'.$distributor->id.'.'
+        );
     }
 
     public function update(Request $request, int $id): RedirectResponse

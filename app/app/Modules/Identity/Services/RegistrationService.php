@@ -104,7 +104,7 @@ final class RegistrationService
         // Laravel nests cleanly via savepoints.
         return $this->db->connection()->transaction(function () use (
             $input, $documents, $consent, $personal, $user,
-            $bank, $couple, $isCouple, $bankAccountEnc, $bankIfscFinal
+            $couple, $isCouple, $bankAccountEnc, $bankIfscFinal
         ): PlacementResult {
             $result = $this->engine->place($input);
 

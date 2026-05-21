@@ -90,24 +90,17 @@
         </div>
     </div>
 
-    {{-- Locked information --}}
+    {{-- Tree position (truly immutable — ADN, sponsor, placement
+         define the binary tree structure and cannot be re-keyed). --}}
     <div class="bg-gray-50 rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-2">Locked information</h3>
+        <h3 class="font-semibold text-gray-800 mb-2">Tree position</h3>
         <p class="text-xs text-gray-700 mb-4">
-            These fields are immutable for compliance reasons (DSR 2021 + DPDP 2023 + one-PAN-one-ADN). They are shown here for reference only.
+            ADN, sponsor, and placement are immutable — they define this distributor's position in the binary tree. Shown for reference only.
         </p>
         <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
                 <p class="text-xs text-gray-700 mb-0.5">ADN</p>
                 <p class="text-gray-800 font-mono">{{ $distributor->adn }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-700 mb-0.5">PAN (last 4)</p>
-                <p class="text-gray-800 font-mono">XXXXXX{{ $distributor->pan_last4 }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-700 mb-0.5">Aadhaar (last 4)</p>
-                <p class="text-gray-800 font-mono">XXXX XXXX {{ $distributor->aadhaar_last4 ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-xs text-gray-700 mb-0.5">Sponsor ADN</p>
@@ -148,6 +141,134 @@
      endpoints (each with its own audit_log entry) — embedding them as
      buttons inside the edit form would conflate the diff scope. --}}
 <div class="mt-8 space-y-4">
+
+    {{-- Identity (PAN + Aadhaar) — compliance-sensitive edits.
+         Posts to its own endpoint so the audit trail can record an
+         identity_updated event independent of the routine name/email
+         update. Updating either field resets KYC review state across
+         every kyc_document attached to this distributor. --}}
+    <div class="bg-white rounded-2xl border border-amber-300 p-6">
+        <h3 class="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            Identity (PAN + Aadhaar)
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Compliance-sensitive</span>
+        </h3>
+        <p class="text-xs text-gray-700 mb-4 leading-relaxed">
+            Use only to correct a registration typo or replace a wrongly captured number.
+            Either field may be updated independently — leave the other blank to keep
+            the existing value. Saving here will:
+        </p>
+        <ul class="text-xs text-gray-700 mb-4 list-disc pl-5 space-y-1">
+            <li>Re-encrypt the full value (Crypt::encryptString) and refresh the SHA-256 hash + last-4.</li>
+            <li>Re-check PAN uniqueness — Hard rule #6 (<span class="font-mono">one PAN = one ADN</span>).</li>
+            <li>Reset <span class="font-mono">verified_at</span> on every uploaded KYC document for this distributor; status flips back to <em>pending</em>. The admin must re-approve via <span class="font-mono">/admin/kyc/{{ $distributor->id }}</span>.</li>
+            <li>Audit-log the change — before/after <em>last 4 only</em>; the full PAN / Aadhaar never enters the log.</li>
+        </ul>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-xs text-gray-700">
+            <div>
+                <p class="text-gray-500 mb-0.5">Current PAN (last 4)</p>
+                <p class="text-gray-800 font-mono text-sm">XXXXXX{{ $distributor->pan_last4 }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 mb-0.5">Current Aadhaar (last 4)</p>
+                <p class="text-gray-800 font-mono text-sm">XXXX XXXX {{ $distributor->aadhaar_last4 ?? '—' }}</p>
+            </div>
+        </div>
+        <form method="POST" action="{{ route('admin.distributors.identity', $distributor->id) }}" class="space-y-3" autocomplete="off">
+            @csrf
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-700 mb-1" for="pan_number">New PAN (leave blank to keep current)</label>
+                    <input type="text" id="pan_number" name="pan_number"
+                        maxlength="10" pattern="[A-Za-z]{5}[0-9]{4}[A-Za-z]"
+                        placeholder="ABCDE1234F"
+                        style="text-transform: uppercase"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    @error('pan_number')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-700 mb-1" for="aadhaar_number">New Aadhaar (12 digits, leave blank to keep current)</label>
+                    <input type="text" id="aadhaar_number" name="aadhaar_number"
+                        maxlength="14" inputmode="numeric"
+                        placeholder="1234 5678 9012"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    @error('aadhaar_number')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                </div>
+            </div>
+            @error('identity')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
+            <button type="submit"
+                onclick="return confirm('This will reset KYC review state for this distributor and require re-approval. Continue?');"
+                class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors">
+                Update identity & reset KYC
+            </button>
+        </form>
+    </div>
+
+    {{-- KYC review status + inline actions. The full document list +
+         streaming endpoints live on /admin/kyc/{id} so each document
+         view stays inside that page's audit boundary. --}}
+    @php
+        $allVerified = $kycStatus['total'] > 0 && $kycStatus['verified'] === $kycStatus['total'];
+        $partVerified = $kycStatus['verified'] > 0 && $kycStatus['verified'] < $kycStatus['total'];
+    @endphp
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+        <div class="flex items-start justify-between gap-3 mb-3">
+            <h3 class="font-semibold text-gray-800">KYC review</h3>
+            @if($kycStatus['total'] === 0)
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-600 bg-gray-100 px-2 py-1 rounded">No documents</span>
+            @elseif($allVerified)
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-green-700 bg-green-50 px-2 py-1 rounded">All approved</span>
+            @elseif($partVerified)
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-1 rounded">Partial</span>
+            @else
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-red-700 bg-red-50 px-2 py-1 rounded">Pending</span>
+            @endif
+        </div>
+        <p class="text-xs text-gray-700 mb-4">
+            @if($kycStatus['total'] === 0)
+                The distributor hasn't uploaded any KYC documents yet — they need to complete the documents step of registration before approval is possible.
+            @else
+                <span class="font-semibold">{{ $kycStatus['verified'] }}</span> of <span class="font-semibold">{{ $kycStatus['total'] }}</span> documents reviewed.
+                @if($allVerified)
+                    Last approval: {{ optional($kycStatus['latest_verified_at'])->format('d M Y, H:i') ?? '—' }}.
+                @endif
+            @endif
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+            <a href="{{ route('admin.kyc.show', $distributor->id) }}"
+               class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+                Open KYC review →
+            </a>
+            @if(!$allVerified && $kycStatus['total'] > 0)
+                <form method="POST" action="{{ route('admin.kyc.approve', $distributor->id) }}" class="inline">
+                    @csrf
+                    <button type="submit"
+                        onclick="return confirm('Approve all {{ $kycStatus['total'] }} KYC documents for this distributor? This will flip status to active and purge the stored full PAN/Aadhaar.');"
+                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors">
+                            Approve all documents
+                    </button>
+                </form>
+                <details class="inline-block">
+                    <summary class="cursor-pointer px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors list-none">
+                        Reject…
+                    </summary>
+                    <form method="POST" action="{{ route('admin.kyc.reject', $distributor->id) }}" class="mt-2 space-y-2 p-3 rounded-lg border border-red-200 bg-red-50">
+                        @csrf
+                        <label class="block text-xs text-gray-700">Rejection reason (will be emailed to the distributor)</label>
+                        <textarea name="reason" required maxlength="500" rows="3"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+                        <button type="submit"
+                            class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition-colors">
+                            Confirm reject
+                        </button>
+                    </form>
+                </details>
+            @endif
+        </div>
+        <p class="text-xs text-gray-500 mt-3">
+            Document uploads + per-document view/approve live on the dedicated KYC review page.
+        </p>
+    </div>
+
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h3 class="font-semibold text-gray-800 mb-2">Password</h3>
         <p class="text-xs text-gray-700 mb-4">
