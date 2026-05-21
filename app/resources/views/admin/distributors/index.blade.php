@@ -76,7 +76,7 @@
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">ADN</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Name / Email</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Name / Contact</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">State</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Depth</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Effective Date</th>
@@ -95,6 +95,9 @@
                     <td class="px-4 py-3">
                         <p class="text-gray-800">{{ $d->full_name ?: '—' }}</p>
                         <p class="text-xs text-gray-700">{{ $d->email }}</p>
+                        @if(!empty($d->phone_e164))
+                            <p class="text-xs text-gray-600 font-mono tracking-tight">{{ $d->phone_e164 }}</p>
+                        @endif
                     </td>
                     <td class="px-4 py-3 text-gray-800">{{ $d->state }}</td>
                     <td class="px-4 py-3 text-gray-800">{{ $d->depth }}</td>
