@@ -96,13 +96,14 @@
                 @endforeach
             </div>
 
-            {{-- RIGHT: persistent animation on a solid brand-600 panel —
-                 the orbit graphic itself never unmounts or translates.
-                 Ring / halo / glow colours flip to light tones so they
-                 read against the dark blue backdrop. --}}
+            {{-- RIGHT: persistent animation. The dark brand-600 colour
+                 is applied to the circular orbit itself (.hero-circle),
+                 not the surrounding rectangle, so the panel reads as a
+                 disc against the page rather than as a card. Ring /
+                 halo / glow stay light so they read on the dark blue. --}}
             <div class="hero-animation hidden md:flex justify-center items-center"
                  aria-hidden="true">
-                <div class="hero-circle relative w-80 h-80">
+                <div class="hero-circle relative w-80 h-80 rounded-full bg-[#008cc7]">
                     {{-- Pulsing rings (emanate outward) — white on dark blue --}}
                     <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
                     <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
@@ -152,13 +153,13 @@
                 inset: 0;
             }
 
-            /* Animation panel — solid brand-600 (#008cc7) panel.
-               Padding reserves clearance around the 320px orbit so the
+            /* Animation panel — transparent rectangle; the dark brand-600
+               (#008cc7) colour now lives on the circular orbit itself
+               (.hero-circle) rather than the surrounding card. Padding
+               reserves clearance around the 320px orbit so the
                5 spark dots don't clip at the panel edge. */
             .hero-animation {
                 padding: 1.5rem;
-                border-radius: 1.5rem;
-                background: #008cc7;
             }
 
             /* Pulsing rings emanating outward */
