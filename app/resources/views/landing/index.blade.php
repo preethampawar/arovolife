@@ -113,11 +113,11 @@
                          right at the rim of the white disc. --}}
                     <div class="hero-halo absolute inset-2 bg-gradient-to-br from-brand-300 to-brand-500 rounded-full opacity-50 blur-md"></div>
 
-                    {{-- Continuous ripple — 6 inner rings staggered at 0.5s
-                         intervals so a wave emanates from the rim every
-                         half-second. Each ring borrows the colour of one
-                         of the 5 orbit spark dots (gold → amber → violet
-                         → azure → deep blue, then cycling gold). --}}
+                    {{-- Continuous ripple — 6 rings staggered every 0.5s on
+                         a 3s cycle = exactly 1 ripple emitted per 500ms.
+                         Each ring borrows the colour of one of the 5 orbit
+                         spark dots (gold → amber → violet → azure → deep
+                         blue, then cycling gold). --}}
                     <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.65);"></div>
                     <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(232, 142, 26, 0.65);"></div>
                     <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.65);"></div>
@@ -125,18 +125,9 @@
                     <div class="hero-ring hero-ring-5 absolute inset-0 rounded-full border-2" style="border-color: rgba(11, 66, 122, 0.65);"></div>
                     <div class="hero-ring hero-ring-6 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.65);"></div>
 
-                    {{-- Outer ripples — thinner border, travel further out
-                         (scale 1.7x over 4s) so the orbit feels like it
-                         keeps echoing past the inner ring stack. Three
-                         picked from the spark palette (gold / violet /
-                         deep blue) to spread the colour across the echo. --}}
-                    <div class="hero-ripple hero-ripple-1 absolute inset-0 rounded-full border" style="border-color: rgba(212, 160, 23, 0.5);"></div>
-                    <div class="hero-ripple hero-ripple-2 absolute inset-0 rounded-full border" style="border-color: rgba(124, 94, 189, 0.5);"></div>
-                    <div class="hero-ripple hero-ripple-3 absolute inset-0 rounded-full border" style="border-color: rgba(11, 66, 122, 0.5);"></div>
-
-                    {{-- Inner white disc with the blue brand logo --}}
-                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-600/30 flex items-center justify-center">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
+                    {{-- Inner brand-blue disc with the white arovolife logo --}}
+                    <div class="hero-logo-disc absolute inset-8 bg-brand-500 rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="w-56 h-auto">
                     </div>
 
                     {{-- 5 floating dots around the ring — curcuma gold → deep blue gradient --}}
@@ -181,36 +172,23 @@
                 padding: 1.5rem;
             }
 
-            /* Inner ripple rings — emanate from the rim outward to 1.35x
-               over 3s; 6 rings staggered every 0.5s = continuous wave. */
+            /* Ripple rings — 6 rings × 4.8s cycle ÷ 800ms stagger = exactly
+               1 new ripple emitted every 800ms with continuous coverage
+               (loop closes cleanly: 6 × 0.8 = 4.8s). */
             .hero-ring {
-                animation: heroPulseRing 3s ease-out infinite;
+                animation: heroPulseRing 4.8s ease-out infinite;
                 opacity: 0;
             }
             .hero-ring-1 { animation-delay: 0s;   }
-            .hero-ring-2 { animation-delay: 0.5s; }
-            .hero-ring-3 { animation-delay: 1s;   }
-            .hero-ring-4 { animation-delay: 1.5s; }
-            .hero-ring-5 { animation-delay: 2s;   }
-            .hero-ring-6 { animation-delay: 2.5s; }
+            .hero-ring-2 { animation-delay: 0.8s; }
+            .hero-ring-3 { animation-delay: 1.6s; }
+            .hero-ring-4 { animation-delay: 2.4s; }
+            .hero-ring-5 { animation-delay: 3.2s; }
+            .hero-ring-6 { animation-delay: 4.0s; }
             @keyframes heroPulseRing {
                 0%   { transform: scale(1);   opacity: 1; }
                 80%  { opacity: 0.15; }
                 100% { transform: scale(1.35); opacity: 0; }
-            }
-
-            /* Outer ripples — thinner, travel further (scale to 1.7x over
-               4s), staggered every ~1.33s so the echo never fully stops. */
-            .hero-ripple {
-                animation: heroPulseRipple 4s ease-out infinite;
-                opacity: 0;
-            }
-            .hero-ripple-1 { animation-delay: 0s;    }
-            .hero-ripple-2 { animation-delay: 1.33s; }
-            .hero-ripple-3 { animation-delay: 2.66s; }
-            @keyframes heroPulseRipple {
-                0%   { transform: scale(1);   opacity: 0.6; }
-                100% { transform: scale(1.7); opacity: 0; }
             }
 
             /* Outer halo breathes */
@@ -259,7 +237,7 @@
             .hero-circle:hover { transform: scale(1.03); }
 
             @media (prefers-reduced-motion: reduce) {
-                .hero-ring, .hero-ripple, .hero-halo, .hero-glow, .hero-logo-disc, .hero-spark { animation: none !important; }
+                .hero-ring, .hero-halo, .hero-glow, .hero-logo-disc, .hero-spark { animation: none !important; }
                 .hero-text-stack > .hero-slide-text { transition: none !important; }
             }
         </style>
