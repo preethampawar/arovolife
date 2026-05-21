@@ -25,7 +25,7 @@
                 As a Direct Seller you agree to: (1) sell arovolife products only to end consumers directly; (2) not charge any joining fees;
                 (3) comply with the Consumer Protection (Direct Selling) Rules, 2021; (4) maintain ethical conduct per the Code of Ethics;
                 (5) honour the 30-day cooling-off right of any person you recruit.
-                Joining is free of cost. No forced purchase is required. Income is derived solely from product sales, not recruitment.
+                Registration is free of cost. No forced purchase is required. Income is derived solely from product sales, not recruitment.
             </div>
             <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200 hover:border-brand-500 transition-colors">
                 <input type="checkbox" name="consent_tnc" value="1" required

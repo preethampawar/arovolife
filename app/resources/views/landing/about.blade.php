@@ -7,6 +7,7 @@
     <title>About arovolife — Direct Selling, Done Right</title>
     <meta name="description" content="Born in India, 2026 — arovolife is a customer-first direct selling company offering best-in-class nutraceutical and personal-care products with industry-leading distributor growth pathways.">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._font-size-fouc')
     <style>
         /* Reveal-on-scroll baseline. Elements with data-reveal start hidden
            and slide in once they enter the viewport (added via tiny IO below). */
@@ -57,7 +58,7 @@
                         Explore products
                     </a>
                 </div>
-                <p class="text-xs text-gray-500 mt-5">Free to join · 30-day cooling-off · Compliant with India's DSR 2021.</p>
+                <p class="text-xs text-gray-500 mt-5">Free to register · 30-day cooling-off · Compliant with India's DSR 2021.</p>
             </div>
 
             <div class="relative" data-reveal data-reveal-delay="200">
@@ -242,7 +243,7 @@
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 @foreach([
-                    ['title' => 'Free to join', 'body' => 'Statutory — joining is always free. No SKU, no kit fee.'],
+                    ['title' => 'Free to register', 'body' => 'Statutory — registration is always free. No SKU, no kit fee.'],
                     ['title' => '30-day cooling-off', 'body' => 'One-click cancellation, full refund, no questions asked.'],
                     ['title' => 'Sale-only earnings', 'body' => 'Every rupee tied to a real product sale. Transparent. Auditable.'],
                     ['title' => 'No upline tax', 'body' => 'You keep what you earn. We don\'t skim, we don\'t hide.'],
@@ -369,14 +370,14 @@
         </div>
     </section>
 
-    {{-- ── 10. JOIN US CTA ──────────────────────────────────────────────── --}}
+    {{-- ── 10. REGISTER WITH US CTA ─────────────────────────────────────── --}}
     <section class="relative py-20 overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-br from-leaf-50 via-white to-brand-50 pointer-events-none"></div>
         <div class="absolute -top-20 right-1/4 w-[300px] h-[300px] bg-brand-200/40 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-20 left-1/4 w-[300px] h-[300px] bg-leaf-200/40 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="max-w-4xl mx-auto px-6 relative text-center" data-reveal>
-            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Join us</p>
+            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Register with us</p>
             <h2 class="text-4xl md:text-5xl font-bold text-gray-900 leading-[1.1] mb-5">
                 Two paths in. <br class="hidden sm:inline">One promise of <span class="text-brand-600">trust</span>.
             </h2>
@@ -396,7 +397,7 @@
                 <a href="{{ route('contact.show') }}" class="group rounded-2xl bg-brand-500 hover:bg-brand-600 text-white p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1 shadow-lg shadow-brand-500/30">
                     <p class="text-[11px] uppercase tracking-wider text-brand-100 font-semibold mb-1">For aspiring distributors</p>
                     <p class="text-xl font-bold mb-2">Become a Direct Seller</p>
-                    <p class="text-sm text-brand-50 mb-3">Free to join. Industry-leading support. Earn from real product sales.</p>
+                    <p class="text-sm text-brand-50 mb-3">Free to register. Industry-leading support. Earn from real product sales.</p>
                     <p class="text-sm font-semibold group-hover:translate-x-1 transition-transform">Talk to our team →</p>
                 </a>
             </div>

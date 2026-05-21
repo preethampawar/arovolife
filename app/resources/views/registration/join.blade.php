@@ -1,9 +1,9 @@
 @extends('layouts.app')
-@section('title', 'Join arovolife')
+@section('title', 'Register with arovolife')
 
 @section('content')
 <div class="max-w-md mx-auto">
-    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Join arovolife</h1>
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Register with arovolife</h1>
     <p class="text-sm text-gray-600 mb-6">
         @if($sponsorLocked)
             You've been invited by an existing Direct Seller — their ADN is filled

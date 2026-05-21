@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Contact arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._font-size-fouc')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage">
 
@@ -24,7 +25,7 @@
             <div class="card-refined p-5 sm:p-6 mb-6 bg-amber-50 border border-amber-200 lift-in" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-amber-900 mb-1.5">A referral link is required to register</p>
                 <p class="text-sm text-amber-800 leading-relaxed">
-                    Joining arovolife as a Direct Seller requires a personal invite from an existing distributor.
+                    Registering with arovolife as a Direct Seller requires a personal invite from an existing distributor.
                     Leave your details below and our team will reach out within one business day to help you get started.
                 </p>
             </div>
@@ -40,7 +41,7 @@
             <div class="card-refined p-5 sm:p-6 mb-6 bg-leaf-50 border border-leaf-200 lift-in" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-leaf-800 mb-1.5">Welcome — let's get you started</p>
                 <p class="text-sm text-leaf-800 leading-relaxed">
-                    Joining arovolife as a Direct Seller is free and protected by India's Direct Selling Rules, 2021.
+                    Registering with arovolife as a Direct Seller is free and protected by India's Direct Selling Rules, 2021.
                     Tell us a bit about yourself and we'll connect you with a sponsor within one business day.
                 </p>
             </div>

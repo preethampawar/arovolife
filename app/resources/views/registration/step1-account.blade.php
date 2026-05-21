@@ -14,7 +14,7 @@
             Create your <span class="text-brand-600">Direct Seller</span> account.
         </h1>
         <p class="text-lg text-gray-600 max-w-lg">
-            Joining is <strong class="text-gray-800 font-semibold">free of charge</strong> and backed by India's
+            Registration is <strong class="text-gray-800 font-semibold">free of charge</strong> and backed by India's
             Direct Selling Rules, 2021.
         </p>
     </div>

@@ -44,7 +44,7 @@
         <div class="rounded-lg bg-brand-50 border border-brand-500/50 p-4">
             <p class="text-xs text-brand-500 font-medium">30-Day Cooling-Off Period</p>
             <p class="text-xs text-brand-600 mt-1">
-                After registration you have <strong>30 days</strong> to cancel with no penalty. Joining is free of
+                After registration you have <strong>30 days</strong> to cancel with no penalty. Registration is free of
                 charge — there is nothing to refund at registration; once paid memberships exist, any fees paid
                 during the window will be returned in full. One-click cancellation is available from your dashboard.
             </p>
