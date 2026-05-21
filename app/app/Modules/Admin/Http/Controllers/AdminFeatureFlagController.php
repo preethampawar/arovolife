@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Features\HibpPasswordCheck;
 use App\Modules\Shared\Features\RegistrationKillswitch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,11 @@ final class AdminFeatureFlagController extends Controller
                 'class' => RegistrationKillswitch::class,
                 'label' => 'Registration killswitch',
                 'description' => 'When OFF, the public /register and /join entry points return a "temporarily closed" page. In-progress wizards continue.',
+            ],
+            'password.hibp_check' => [
+                'class' => HibpPasswordCheck::class,
+                'label' => 'HIBP password breach check',
+                'description' => 'Extra layer of password security. When ON, every new/changed password is checked against the Have-I-Been-Pwned breach database via k-anonymity API (api.pwnedpasswords.com). When OFF, the breach check is skipped — only the zxcvbn entropy gate runs. Keep ON in production; safe to turn OFF on offline staging boxes or for demo seeding.',
             ],
         ];
     }

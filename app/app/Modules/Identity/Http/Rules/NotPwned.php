@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Rules;
 
+use App\Modules\Shared\Features\HibpPasswordCheck;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pennant\Feature;
 
 /**
  * HaveIBeenPwned k-anonymity check. We send only the first 5 hex chars of
@@ -18,6 +20,11 @@ use Illuminate\Support\Facades\Log;
  * If the API is unreachable the rule fails OPEN (logs a warning, lets the
  * registration through). Failing closed would let a network outage block
  * all registrations — disproportionate to the marginal risk.
+ *
+ * Gated by the HibpPasswordCheck feature flag — admins can disable the
+ * check from /admin/feature-flags (e.g. for offline staging environments
+ * or demo seeding). When the flag is OFF, this rule short-circuits to
+ * a no-op; zxcvbn (StrongPassword) still runs.
  */
 final class NotPwned implements ValidationRule
 {
@@ -27,6 +34,12 @@ final class NotPwned implements ValidationRule
     {
         if (! is_string($value) || $value === '') {
             return; // other rules will catch the missing/empty case
+        }
+
+        // Feature flag — when admin has disabled the HIBP check, skip
+        // the upstream call entirely. zxcvbn still enforces entropy.
+        if (! Feature::active(HibpPasswordCheck::class)) {
+            return;
         }
 
         $sha1 = strtoupper(sha1($value));
