@@ -28,7 +28,7 @@ return new class extends Migration
             DB::statement('UPDATE users SET password_set_at = COALESCE(created_at, NOW()) WHERE password_set_at IS NULL');
         } else {
             // SQLite uses CURRENT_TIMESTAMP instead of NOW().
-            DB::statement("UPDATE users SET password_set_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE password_set_at IS NULL");
+            DB::statement('UPDATE users SET password_set_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE password_set_at IS NULL');
         }
     }
 

@@ -80,7 +80,7 @@ make reset-force
 The admin user is re-created by `AdminUserSeeder` on every `platform:reset`,
 so the password above is always the canonical dev credential.
 
-**Reserved distributor tree**: 31 nodes (root `100000000` + 30 fixed
+**Reserved distributor tree**: 31 nodes (root `444555666` + 30 fixed
 deterministic ADNs from `App\Modules\Genealogy\Support\ReservedAdns`),
 all owned by 31 users with `full_name = "Arovolife Private Limited"` and
 `password_set_at = NULL` (locked out — they exist only to block tree slots).
@@ -179,7 +179,7 @@ distributors:        31
 users (incl admin):  32
 genealogy_closure:   129
 audit_log:           1
-root adn:            100000000
+root adn:            444555666
 ```
 
 ### When to run it

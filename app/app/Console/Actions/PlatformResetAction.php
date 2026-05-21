@@ -212,6 +212,13 @@ final class PlatformResetAction
                 'password_hash' => Hash::make('reserved-'.bin2hex(random_bytes(16))),
                 'password_set_at' => null,
                 'email_verified_at' => $now,
+                // Reserved nodes skip the KYC funnel that normally writes
+                // `activated_at` (see ApproveKycSubmission), so set it
+                // explicitly here so the dashboard "Activation Date"
+                // stat reads a real date rather than `—`. Conceptually
+                // the reserved tree is "activated" the moment it's
+                // seeded — there's no human KYC review to defer to.
+                'activated_at' => $now,
                 'status' => 'active',
                 'created_at' => $now,
                 'updated_at' => $now,

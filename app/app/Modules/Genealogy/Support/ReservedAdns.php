@@ -26,7 +26,7 @@ use App\Modules\Genealogy\Services\PlacementEngine;
 final class ReservedAdns
 {
     /** Root L0 company node. Permanently reserved, never re-issued. */
-    public const ROOT = '100000000';
+    public const ROOT = '444555666';
 
     /**
      * 30 fixed ADNs for the 5-level binary subtree under the root.

@@ -92,9 +92,17 @@ final class ApproveKycSubmission
                 ->all();
 
             if ($userIds !== []) {
+                // The status flip and the activation timestamp move together
+                // by definition — `activated_at` is the audit-trail twin of
+                // `status='active'`. Captured here (not in the audit_log) so
+                // the dashboard's "Activation Date" stat is a cheap column
+                // read rather than a join against audit_log.
                 User::query()
                     ->whereIn('id', $userIds)
-                    ->update(['status' => 'active']);
+                    ->update([
+                        'status' => 'active',
+                        'activated_at' => $now,
+                    ]);
             }
 
             // Post-verification PII purge (accepted-risk design from 2026-05).
