@@ -103,33 +103,39 @@
                  halo / glow stay light so they read on the dark blue. --}}
             <div class="hero-animation hidden md:flex justify-center items-center"
                  aria-hidden="true">
-                <div class="hero-circle relative w-80 h-80 rounded-full bg-[#008cc7]">
+                <div class="hero-circle relative w-80 h-80">
+                    {{-- Soft blue halo (largest blur, sits behind everything) —
+                         creates the diffuse blue ring around the white disc
+                         that you see in the reference image. --}}
+                    <div class="hero-glow absolute -inset-4 bg-brand-400/60 rounded-full blur-3xl"></div>
+
+                    {{-- Tighter blue halo gradient — concentrates the colour
+                         right at the rim of the white disc. --}}
+                    <div class="hero-halo absolute inset-2 bg-gradient-to-br from-brand-300 to-brand-500 rounded-full opacity-50 blur-md"></div>
+
                     {{-- Continuous ripple — 6 inner rings staggered at 0.5s
                          intervals so a wave emanates from the rim every
-                         half-second, plus 3 thinner outer ripples that
-                         travel further for depth. --}}
-                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
-                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
-                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
-                    <div class="hero-ring hero-ring-4 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
-                    <div class="hero-ring hero-ring-5 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
-                    <div class="hero-ring hero-ring-6 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
+                         half-second. Each ring borrows the colour of one
+                         of the 5 orbit spark dots (gold → amber → violet
+                         → azure → deep blue, then cycling gold). --}}
+                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.65);"></div>
+                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(232, 142, 26, 0.65);"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.65);"></div>
+                    <div class="hero-ring hero-ring-4 absolute inset-0 rounded-full border-2" style="border-color: rgba(28, 128, 227, 0.65);"></div>
+                    <div class="hero-ring hero-ring-5 absolute inset-0 rounded-full border-2" style="border-color: rgba(11, 66, 122, 0.65);"></div>
+                    <div class="hero-ring hero-ring-6 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.65);"></div>
 
                     {{-- Outer ripples — thinner border, travel further out
                          (scale 1.7x over 4s) so the orbit feels like it
-                         keeps echoing past the inner ring stack. --}}
-                    <div class="hero-ripple hero-ripple-1 absolute inset-0 rounded-full border border-white/50"></div>
-                    <div class="hero-ripple hero-ripple-2 absolute inset-0 rounded-full border border-white/50"></div>
-                    <div class="hero-ripple hero-ripple-3 absolute inset-0 rounded-full border border-white/50"></div>
-
-                    {{-- Outer gradient halo (brand-200 → white, soft on dark blue) --}}
-                    <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-100 to-white rounded-full opacity-30"></div>
-
-                    {{-- Glow backdrop (white wash so the disc sits in a pool of light) --}}
-                    <div class="hero-glow absolute inset-4 bg-white/40 rounded-full blur-2xl"></div>
+                         keeps echoing past the inner ring stack. Three
+                         picked from the spark palette (gold / violet /
+                         deep blue) to spread the colour across the echo. --}}
+                    <div class="hero-ripple hero-ripple-1 absolute inset-0 rounded-full border" style="border-color: rgba(212, 160, 23, 0.5);"></div>
+                    <div class="hero-ripple hero-ripple-2 absolute inset-0 rounded-full border" style="border-color: rgba(124, 94, 189, 0.5);"></div>
+                    <div class="hero-ripple hero-ripple-3 absolute inset-0 rounded-full border" style="border-color: rgba(11, 66, 122, 0.5);"></div>
 
                     {{-- Inner white disc with the blue brand logo --}}
-                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
+                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-600/30 flex items-center justify-center">
                         <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
                     </div>
 
