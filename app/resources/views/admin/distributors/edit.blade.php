@@ -149,30 +149,93 @@
      buttons inside the edit form would conflate the diff scope. --}}
 <div class="mt-8 space-y-4">
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-2">Password reset</h3>
+        <h3 class="font-semibold text-gray-800 mb-2">Password</h3>
         <p class="text-xs text-gray-700 mb-4">
-            Sends a 60-minute password reset link to <span class="font-mono">{{ $distributor->user->email }}</span>.
-            If the account has never activated a password, this will silently no-op (the prospect should use the activation link instead).
+            Two ways to recover access for <span class="font-mono">{{ $distributor->user->email }}</span> —
+            email a reset link (distributor chooses their own new password)
+            or set one directly (admin-driven, useful when the distributor
+            has no email access right now).
         </p>
-        <form method="POST" action="{{ route('admin.distributors.password-reset', $distributor->id) }}">
-            @csrf
-            <button type="submit" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors">
-                Send password reset link
-            </button>
-        </form>
+
+        {{-- A) Email reset link --}}
+        <div class="mb-5 pb-5 border-b border-gray-200">
+            <p class="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Option A — Email a reset link</p>
+            <p class="text-xs text-gray-600 mb-3">
+                Sends a 60-minute reset link. If the account has never activated a password, this silently no-ops
+                (the prospect should use the activation link instead).
+            </p>
+            <form method="POST" action="{{ route('admin.distributors.password-reset', $distributor->id) }}">
+                @csrf
+                <button type="submit" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors">
+                    Send password reset link
+                </button>
+            </form>
+        </div>
+
+        {{-- B) Direct set --}}
+        <div>
+            <p class="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Option B — Set a new password directly</p>
+            <p class="text-xs text-gray-600 mb-3">
+                Minimum 12 characters. Same strength rules the public form uses (rejects common phrases + known-breached passwords).
+                Any pending reset link is invalidated immediately. Audit-logged as <span class="font-mono">admin.distributor.password_set</span>.
+            </p>
+            <form method="POST" action="{{ route('admin.distributors.set-password', $distributor->id) }}" class="space-y-3" autocomplete="off">
+                @csrf
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-700 mb-1" for="new_password">New password</label>
+                        <input type="password" id="new_password" name="new_password" required minlength="12"
+                            autocomplete="new-password"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        @error('new_password')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-700 mb-1" for="new_password_confirmation">Confirm new password</label>
+                        <input type="password" id="new_password_confirmation" name="new_password_confirmation" required minlength="12"
+                            autocomplete="new-password"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        @error('new_password_confirmation')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                    </div>
+                </div>
+                <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">
+                    Set new password
+                </button>
+            </form>
+        </div>
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-2">Replace ID photo</h3>
+        <h3 class="font-semibold text-gray-800 mb-2">ID photo</h3>
         <p class="text-xs text-gray-700 mb-4">
-            JPG or PNG, between 200×200 and 4000×4000 pixels, max 5 MB. The image is EXIF-stripped and the previous photo (if any) is deleted from storage.
+            JPG or PNG, between 200×200 and 4000×4000 pixels, max 5 MB. The image is EXIF-stripped on upload and the previous photo (if any) is deleted from storage.
         </p>
+
+        @if(!empty($idPhotoUrl))
+            <div class="mb-4 flex items-start gap-4">
+                <div class="shrink-0">
+                    <img src="{{ $idPhotoUrl }}"
+                         alt="Current ID photo"
+                         class="w-32 h-32 object-cover rounded-lg border border-gray-300 bg-gray-50">
+                </div>
+                <div class="text-xs text-gray-700 leading-relaxed">
+                    <p class="font-semibold text-gray-800 mb-1">Current photo on file</p>
+                    <p>This is what the distributor sees on their dashboard ID card and what KYC reviewers see in the queue.</p>
+                    <p class="mt-2 text-gray-500">Pre-signed link valid for 15 minutes.</p>
+                </div>
+            </div>
+        @else
+            <div class="mb-4 flex items-center gap-4 rounded-lg bg-gray-50 border border-dashed border-gray-300 p-4">
+                <div class="w-32 h-32 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-500 text-center px-2">No photo<br>uploaded yet</div>
+                <p class="text-xs text-gray-700">The distributor hasn't uploaded an ID photo. Upload one below on their behalf if needed.</p>
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('admin.distributors.id-photo', $distributor->id) }}" enctype="multipart/form-data" class="flex items-center gap-3">
             @csrf
             <input type="file" name="photo" accept="image/jpeg,image/png" required
                 class="text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-gray-200">
             <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
-                Upload
+                {{ !empty($idPhotoUrl) ? 'Replace photo' : 'Upload photo' }}
             </button>
         </form>
     </div>

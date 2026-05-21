@@ -8,6 +8,9 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Services\IdPhotoDecodeError;
 use App\Modules\Identity\Services\IdPhotoStorage;
+use App\Modules\Identity\Http\Rules\NotPwned;
+use App\Modules\Identity\Http\Rules\StrongPassword;
+use App\Modules\Identity\Services\DistributorIdCardStats;
 use App\Modules\Identity\Services\RequestPasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +18,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -59,12 +63,70 @@ final class AdminDistributorEditController extends Controller
                 ? DB::table('distributors')->where('id', $distributor->placement_parent_id)->value('adn')
                 : null;
 
+        // Pre-signed S3 URL for the current ID photo so the edit page can
+        // render a preview above the "Replace ID photo" upload field.
+        // Null when no photo has been uploaded yet.
+        $idPhotoUrl = app(DistributorIdCardStats::class)->photoUrl($distributor);
+
         return view('admin.distributors.edit', [
             'distributor' => $distributor,
             'states' => self::indianStates(),
             'sponsorAdn' => $sponsorAdn,
             'placementParentAdn' => $placementParentAdn,
+            'idPhotoUrl' => $idPhotoUrl,
         ]);
+    }
+
+    /**
+     * Admin directly sets a new password on the distributor's user
+     * account. Bypasses the email reset flow — useful when the
+     * distributor doesn't have email access right now (e.g. phone-led
+     * onboarding) or the admin is sitting next to them.
+     *
+     * Same StrongPassword + NotPwned rules the public registration
+     * form uses, so the bar doesn't drop just because an admin is
+     * setting it. The user's password_set_at timestamp is updated so
+     * LoginController gates pass.
+     */
+    public function setPassword(Request $request, int $id): RedirectResponse
+    {
+        $distributor = Distributor::with('user')->findOrFail($id);
+        $user = $distributor->user;
+        abort_if($user === null, 404);
+
+        $request->validate([
+            'new_password' => ['required', 'string', 'min:12', new StrongPassword(), new NotPwned()],
+            'new_password_confirmation' => ['required', 'string', 'same:new_password'],
+        ], [
+            'new_password.required' => 'Please enter a new password.',
+            'new_password.min' => 'Password must be at least 12 characters.',
+            'new_password_confirmation.required' => 'Please re-enter the new password to confirm.',
+            'new_password_confirmation.same' => 'The two passwords don\'t match.',
+        ]);
+
+        $user->update([
+            'password_hash' => Hash::make($request->input('new_password')),
+            'password_set_at' => now(),
+        ]);
+
+        // Revoke any active password-reset tokens so the link the admin
+        // (or anyone else) may have emailed earlier becomes unusable —
+        // an admin-set password is the canonical fresh credential.
+        DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+
+        AuditLog::create([
+            'actor_id' => Auth::id(),
+            'action' => 'admin.distributor.password_set',
+            'subject_type' => 'user',
+            'subject_id' => $user->id,
+            // NEVER log raw or hashed passwords — only the fact that one
+            // was set. Audit reviewers see "admin X set a password for
+            // user Y on date Z" and nothing more.
+            'details' => ['email' => $user->email, 'method' => 'direct'],
+            'ip' => $request->ip(),
+        ]);
+
+        return back()->with('status', 'New password set for '.$user->email.'. The previous password and any pending reset link are now invalid.');
     }
 
     public function update(Request $request, int $id): RedirectResponse

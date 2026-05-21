@@ -167,6 +167,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/distributors/{id}/edit', [AdminDistributorEditController::class, 'edit'])->whereNumber('id')->name('distributors.edit');
     Route::patch('/distributors/{id}', [AdminDistributorEditController::class, 'update'])->whereNumber('id')->name('distributors.update');
     Route::post('/distributors/{id}/password-reset', [AdminDistributorEditController::class, 'sendPasswordReset'])->whereNumber('id')->name('distributors.password-reset');
+    Route::post('/distributors/{id}/set-password', [AdminDistributorEditController::class, 'setPassword'])->whereNumber('id')->name('distributors.set-password');
     Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
     Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->name('distributors.freeze');
     Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->name('distributors.unfreeze');
