@@ -621,15 +621,31 @@ final class RegistrationWizardController extends Controller
 
     public function handleBank(Request $request): RedirectResponse
     {
+        // Bank is OPTIONAL at registration. If both fields are blank the
+        // step is skipped and the distributor row is created with NULL
+        // bank columns; they can add bank later from their dashboard.
+        // If EITHER field is filled, both must validate — partial bank
+        // rows would be misleading and unable to receive a payout.
+        $accountFilled = trim((string) $request->input('account_number', '')) !== '';
+        $ifscFilled    = trim((string) $request->input('ifsc', '')) !== '';
+        $bothBlank     = ! $accountFilled && ! $ifscFilled;
+
+        if ($bothBlank) {
+            $this->wizard->saveStepData(7, ['account_number' => null, 'ifsc' => null]);
+            $this->syncDraft(7);
+
+            return redirect()->route('register.personal');
+        }
+
         $validated = $request->validate([
             'account_number' => ['required', 'string', 'min:9', 'max:18', 'regex:/^\d+$/'],
             'ifsc' => ['required', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'],
         ], [
-            'account_number.required' => 'Please enter your bank account number.',
+            'account_number.required' => 'Please enter your bank account number (or clear the IFSC field to skip this step).',
             'account_number.min' => 'Bank account number must be at least 9 digits.',
             'account_number.max' => 'Bank account number must be at most 18 digits.',
             'account_number.regex' => 'Bank account number must contain digits only — no spaces or letters.',
-            'ifsc.required' => 'Please enter your bank’s IFSC code.',
+            'ifsc.required' => 'Please enter your bank’s IFSC code (or clear the account number to skip this step).',
             'ifsc.regex' => 'IFSC must be 11 characters: 4 letters, 0, then 6 alphanumeric (e.g. HDFC0001234).',
         ], [
             'account_number' => 'bank account number',

@@ -60,7 +60,15 @@ final class RegistrationService
 
         $panNumber = strtoupper(trim($pan['pan_number'] ?? ''));
         $panHash = hash('sha256', $panNumber, true);
-        $bankAccountEnc = $this->encryptBankAccount($bank['account_number'] ?? '');
+        // Bank is optional. Encrypt only when an account number was
+        // provided; otherwise pass null down so the distributor row is
+        // created with bank_account_enc + bank_ifsc = NULL. The distributor
+        // can add bank later from their dashboard before any payout.
+        $bankAccountRaw = trim((string) ($bank['account_number'] ?? ''));
+        $bankIfscRaw    = strtoupper(trim((string) ($bank['ifsc'] ?? '')));
+        $bankProvided   = $bankAccountRaw !== '' && $bankIfscRaw !== '';
+        $bankAccountEnc = $bankProvided ? $this->encryptBankAccount($bankAccountRaw) : null;
+        $bankIfscFinal  = $bankProvided ? $bankIfscRaw : null;
 
         // Full PAN + Aadhaar are encrypted at rest pending KYC review. After
         // ApproveKycSubmission flips verified_at NOT NULL, those columns are
@@ -80,7 +88,7 @@ final class RegistrationService
             panHash: $panHash,
             panLast4: strtoupper(substr($panNumber !== '' ? $panNumber : '0000', -4)),
             bankAccountEnc: $bankAccountEnc,
-            bankIfsc: strtoupper($bank['ifsc'] ?? ''),
+            bankIfsc: $bankIfscFinal,
             state: $personal['state'] ?? '',
             sideOpt: ! empty($placement['side']) ? $placement['side'] : null,
             aadhaarRef: $aadhaar['ref'] ?? 'STUB_REF_'.strtoupper(uniqid()),
@@ -96,7 +104,7 @@ final class RegistrationService
         // Laravel nests cleanly via savepoints.
         return $this->db->connection()->transaction(function () use (
             $input, $documents, $consent, $personal, $user,
-            $bank, $couple, $isCouple
+            $bank, $couple, $isCouple, $bankAccountEnc, $bankIfscFinal
         ): PlacementResult {
             $result = $this->engine->place($input);
 
@@ -182,8 +190,8 @@ final class RegistrationService
                         'effective_date' => now()->format('Y-m-d H:i:s.v'),
                         'cooling_off_end_at' => now()->addDays(30)->format('Y-m-d H:i:s.v'),
                         'state' => $personal['state'] ?? '',
-                        'bank_ifsc' => strtoupper($bank['ifsc'] ?? ''),
-                        'bank_account_enc' => $this->encryptBankAccount($bank['account_number'] ?? ''),
+                        'bank_ifsc' => $bankIfscFinal,
+                        'bank_account_enc' => $bankAccountEnc,
                     ],
                     couple: $couple,
                     consent: $consent,

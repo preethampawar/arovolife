@@ -70,8 +70,11 @@ final class AdminDistributorCreateController extends Controller
             // surfaced for audit only.
             'aadhaar_number' => ['required', 'digits:12'],
 
-            'bank_account' => ['required', 'string', 'min:9', 'max:18', 'regex:/^\d+$/'],
-            'bank_ifsc' => ['required', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'],
+            // Bank is optional — admin can record offline-docs distributors
+            // who haven't shared bank details yet. required_with enforces
+            // all-or-nothing: if either field is filled, both must validate.
+            'bank_account' => ['nullable', 'string', 'min:9', 'max:18', 'regex:/^\d+$/', 'required_with:bank_ifsc'],
+            'bank_ifsc' => ['nullable', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/', 'required_with:bank_account'],
 
             'state' => ['required', 'in:'.implode(',', array_keys(AdminDistributorEditController::indianStates()))],
         ], [

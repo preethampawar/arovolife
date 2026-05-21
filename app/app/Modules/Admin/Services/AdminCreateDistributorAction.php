@@ -130,8 +130,15 @@ final class AdminCreateDistributorAction
             ]);
         }
 
-        $bankAccount = (string) $input['bank_account'];
-        $bankAccountEnc = Crypt::encryptString($bankAccount);
+        // Bank is optional. Only encrypt when both fields were supplied;
+        // otherwise the distributor row is created with NULL bank columns
+        // and the admin / distributor can add bank later from the edit
+        // form before any payout.
+        $bankAccountRaw = trim((string) ($input['bank_account'] ?? ''));
+        $bankIfscRaw    = strtoupper(trim((string) ($input['bank_ifsc'] ?? '')));
+        $bankProvided   = $bankAccountRaw !== '' && $bankIfscRaw !== '';
+        $bankAccountEnc = $bankProvided ? Crypt::encryptString($bankAccountRaw) : null;
+        $bankIfscFinal  = $bankProvided ? $bankIfscRaw : null;
 
         // Phase 1 stub Aadhaar ref — same shape RegistrationService uses
         // until the UIDAI-approved AUA/KUA partner is wired in.
@@ -157,7 +164,7 @@ final class AdminCreateDistributorAction
             panHash: $panHash,
             panLast4: strtoupper(substr($panNumber, -4)),
             bankAccountEnc: $bankAccountEnc,
-            bankIfsc: strtoupper((string) $input['bank_ifsc']),
+            bankIfsc: $bankIfscFinal,
             state: (string) $input['state'],
             sideOpt: ! empty($input['side']) ? $input['side'] : null,
             aadhaarRef: $aadhaarRef,
@@ -176,7 +183,7 @@ final class AdminCreateDistributorAction
         try {
             $result = $this->db->connection()->transaction(function () use (
                 $placeInput, $user, $adminUserId, $sponsorAdn, $placementAdn,
-                $input, $panNumber, $aadhaarNumber
+                $input, $panNumber, $aadhaarNumber, $bankIfscFinal
             ): PlacementResult {
                 $result = $this->engine->place($placeInput);
 
@@ -250,7 +257,7 @@ final class AdminCreateDistributorAction
                             'phone_e164' => $user->phone_e164,
                             'date_of_birth' => $input['date_of_birth'] ?? null,
                             'state' => $input['state'] ?? null,
-                            'bank_ifsc' => strtoupper((string) $input['bank_ifsc']),
+                            'bank_ifsc' => $bankIfscFinal,
                             'pan_last4' => strtoupper(substr($panNumber, -4)),
                             'aadhaar_last4' => substr($aadhaarNumber, -4),
                         ],
