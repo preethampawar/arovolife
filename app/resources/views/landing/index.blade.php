@@ -413,18 +413,27 @@
             </div>
 
             @php
+                // Heroicons outline SVG paths. Stored as path-data only so
+                // currentColor stroke picks up the iconBg's text colour.
+                $iconGift     = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>';
+                $iconShield   = '<path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 2.25 2.25 6-6m-3.75 12c4.142 0 7.5-3.358 7.5-7.5 0-2.343-1.07-4.44-2.756-5.812L13.5 2.25 6.506 7.688A7.46 7.46 0 0 0 3.75 13.5c0 4.142 3.358 7.5 7.5 7.5Z"/>';
+                $iconClock    = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>';
+                $iconRupee    = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 8.25H9m6 3H9m3 6-3-3h1.5a3 3 0 1 0 0-6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>';
+
                 $whyCards = [
-                    ['title' => 'Free Registration',           'body' => 'Zero joining fee. No payment required at signup — ever.',                       'icon' => '🎁', 'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
-                    ['title' => 'Your Data, Protected',        'body' => 'PAN stored as hash. Raw Aadhaar never touches our database. Full audit log.',  'icon' => '🛡', 'bg' => 'bg-violet-50',  'border' => 'border-violet-200',  'iconBg' => 'bg-violet-100 text-violet-700',   'titleClr' => 'text-violet-700'],
-                    ['title' => '30-Day Cooling-Off',          'body' => 'One-click cancellation with full refund during the cooling-off period.',       'icon' => '☀',  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-700'],
-                    ['title' => 'Real Sales Earnings',         'body' => 'Commissions are paid on actual product sales, never on recruiting alone.',     'icon' => '🌱', 'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
+                    ['title' => 'Free Registration',    'body' => 'Zero joining fee. No payment required at signup — ever.',                      'icon' => $iconGift,   'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
+                    ['title' => 'Your Data, Protected', 'body' => 'PAN stored as hash. Raw Aadhaar never touches our database. Full audit log.', 'icon' => $iconShield, 'bg' => 'bg-violet-50',  'border' => 'border-violet-200',  'iconBg' => 'bg-violet-100 text-violet-700',   'titleClr' => 'text-violet-700'],
+                    ['title' => '30-Day Cooling-Off',   'body' => 'One-click cancellation with full refund during the cooling-off period.',      'icon' => $iconClock,  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-700'],
+                    ['title' => 'Real Sales Earnings',  'body' => 'Commissions are paid on actual product sales, never on recruiting alone.',    'icon' => $iconRupee,  'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
                 ];
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach($whyCards as $card)
                 <div class="rounded-2xl border-2 {{ $card['border'] }} {{ $card['bg'] }} p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                    <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $card['iconBg'] }} text-2xl mb-4 shadow-sm">
-                        {{ $card['icon'] }}
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $card['iconBg'] }} mb-4 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-6 h-6" aria-hidden="true">
+                            {!! $card['icon'] !!}
+                        </svg>
                     </div>
                     <h3 class="font-bold {{ $card['titleClr'] }} mb-1.5">{{ $card['title'] }}</h3>
                     <p class="text-sm text-gray-700 leading-relaxed">{{ $card['body'] }}</p>
