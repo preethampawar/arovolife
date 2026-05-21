@@ -4,14 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>arovolife — Direct Selling, Done Right</title>
-    <meta name="description" content="arovolife is a direct-selling company compliant with India's DSR 2021. Free to join, 30-day cooling-off, no income projections.">
+    <meta name="description" content="arovolife is a direct-selling company compliant with India's DSR 2021. Free to register, 30-day cooling-off, no income projections.">
     @vite(['resources/css/app.css'])
+    @include('partials._font-size-fouc')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage">
 
     @include('partials.public-topnav')
 
     {{-- Hero banner --}}
+    {{--
+        Layout: a single 2-column grid. The LEFT column is a stack of text
+        slides that cross-fade (opacity-only) between rotations. The RIGHT
+        column hosts the persistent orbit animation; only the column's
+        background gradient changes per slide so the graphic itself never
+        translates or rebuilds.
+    --}}
     <section id="hero-slider" class="relative overflow-hidden" aria-roledescription="carousel" aria-label="arovolife hero">
         {{-- Soft brand-tinted blobs sit on top of the body's wizard-stage
              grid pattern. The opaque gradient layer that used to cover the
@@ -21,15 +29,21 @@
 
         {{-- Slides --}}
         @php
+            // Per-slide background tints for the orbit panel. Hex values are
+            // sampled from the existing palette in resources/css/app.css so
+            // they stay coherent with the rest of the page. Each entry is a
+            // 135° gradient from a 50-step → 100-step shade.
             $slides = [
                 [
                     'eyebrow' => 'Direct Selling, Done Right',
                     'title_plain' => 'Start Your Direct Selling Journey with',
                     'title_accent' => 'arovolife',
-                    'body' => 'Free to join. 30-day cooling-off with one-click cancellation. Fully compliant with India\'s Consumer Protection (Direct Selling) Rules, 2021.',
+                    'body' => 'Free to register. 30-day cooling-off with one-click cancellation. Fully compliant with India\'s Consumer Protection (Direct Selling) Rules, 2021.',
                     'cta_primary' => ['label' => 'Become a Direct Seller →', 'url' => route('contact.show')],
                     'cta_secondary' => ['label' => 'How It Works', 'url' => '#how-it-works'],
-                    'note' => 'Joining is free. No payment required at registration.',
+                    'note' => 'Registration is free. No payment required to sign up.',
+                    // brand-50 → brand-100 (the original cool blue)
+                    'tint' => 'linear-gradient(135deg, #ecfaff 0%, #cff1fd 100%)',
                 ],
                 [
                     'eyebrow' => 'arovolife Shopping Mall',
@@ -39,6 +53,8 @@
                     'cta_primary' => ['label' => 'Shop Now →', 'url' => route('shop.index')],
                     'cta_secondary' => ['label' => 'Browse Categories', 'url' => route('shop.index')],
                     'note' => '30-day return window on every order.',
+                    // sunrise-50 → sunrise-100 (warm sunrise)
+                    'tint' => 'linear-gradient(135deg, #fef4e5 0%, #fde3bd 100%)',
                 ],
                 [
                     'eyebrow' => 'Compliance-First',
@@ -48,83 +64,111 @@
                     'cta_primary' => ['label' => 'Read Our Commitment →', 'url' => route('content.show', 'ethics')],
                     'cta_secondary' => ['label' => 'Privacy Policy', 'url' => route('content.show', 'privacy')],
                     'note' => 'Complaint SLA: 24h acknowledgement, 7-day resolution.',
+                    // leaf-50 → leaf-100 (leaf green)
+                    'tint' => 'linear-gradient(135deg, #f1faec 0%, #ddf3cf 100%)',
                 ],
             ];
+            $tintsJson = json_encode(array_column($slides, 'tint'), JSON_UNESCAPED_SLASHES);
         @endphp
 
-        {{-- Sliding track: horizontally translates between slides --}}
-        <div class="relative overflow-hidden">
-            <div class="hero-track flex transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform">
+        {{-- Two-column hero. LEFT: rotating text stack. RIGHT: fixed orbit
+             with per-slide tinted backdrop. --}}
+        <div class="relative max-w-7xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 items-center gap-10">
+
+            {{-- LEFT: stacked text slides, only one visible at a time. --}}
+            <div class="hero-text-stack relative" data-hero-stack
+                 aria-live="polite" aria-atomic="true">
                 @foreach($slides as $i => $s)
-                <div data-slide="{{ $i }}"
+                <div data-slide-index="{{ $i }}"
+                     data-active="{{ $i === 0 ? 'true' : 'false' }}"
                      role="group" aria-roledescription="slide" aria-label="Slide {{ $i + 1 }} of {{ count($slides) }}"
-                     class="hero-slide shrink-0 w-full">
-
-                    <div class="relative max-w-7xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 items-center gap-10">
-                        <div class="hero-slide-content">
-                            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">{{ $s['eyebrow'] }}</p>
-                            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
-                                {{ $s['title_plain'] }}
-                                @if($s['title_accent'])
-                                <span class="text-brand-600">{{ $s['title_accent'] }}</span>
-                                @endif
-                            </h1>
-                            <p class="text-lg text-gray-600 mb-8 max-w-lg">{{ $s['body'] }}</p>
-                            <div class="flex flex-wrap items-center gap-4">
-                                <a href="{{ $s['cta_primary']['url'] }}"
-                                   class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-lg shadow-brand-500/30">
-                                    {{ $s['cta_primary']['label'] }}
-                                </a>
-                                <a href="{{ $s['cta_secondary']['url'] }}"
-                                   class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-gray-300 hover:border-brand-500 text-gray-700 hover:text-brand-800 text-sm font-semibold transition-colors">
-                                    {{ $s['cta_secondary']['label'] }}
-                                </a>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-5">{{ $s['note'] }}</p>
-                        </div>
-
-                        <div class="hero-slide-visual hidden md:flex justify-center">
-                            <div class="hero-circle relative w-80 h-80">
-                                {{-- Pulsing rings (emanate outward) --}}
-                                <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
-                                <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
-                                <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
-
-                                {{-- Outer gradient halo --}}
-                                <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full opacity-20"></div>
-
-                                {{-- Glow backdrop --}}
-                                <div class="hero-glow absolute inset-4 bg-brand-300/40 rounded-full blur-2xl"></div>
-
-                                {{-- Inner white disc with the blue brand logo --}}
-                                <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-500/30 flex items-center justify-center">
-                                    <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
-                                </div>
-
-                                {{-- 5 floating dots around the ring — curcuma gold → deep blue gradient --}}
-                                <span class="hero-spark hero-spark-1 absolute w-3 h-3 rounded-full"  style="background:#d4a017;color:#d4a017;"></span>
-                                <span class="hero-spark hero-spark-2 absolute w-2.5 h-2.5 rounded-full" style="background:#e88e1a;color:#e88e1a;"></span>
-                                <span class="hero-spark hero-spark-3 absolute w-2 h-2 rounded-full" style="background:#7c5ebd;color:#7c5ebd;"></span>
-                                <span class="hero-spark hero-spark-4 absolute w-2.5 h-2.5 rounded-full" style="background:#1c80e3;color:#1c80e3;"></span>
-                                <span class="hero-spark hero-spark-5 absolute w-3 h-3 rounded-full" style="background:#0b427a;color:#0b427a;"></span>
-                            </div>
-                        </div>
+                     @if($i !== 0) inert @endif
+                     class="hero-slide-text">
+                    <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">{{ $s['eyebrow'] }}</p>
+                    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
+                        {{ $s['title_plain'] }}
+                        @if($s['title_accent'])
+                        <span class="text-brand-600">{{ $s['title_accent'] }}</span>
+                        @endif
+                    </h1>
+                    <p class="text-lg text-gray-800 mb-8 max-w-lg">{{ $s['body'] }}</p>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <a href="{{ $s['cta_primary']['url'] }}"
+                           class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-lg shadow-brand-500/30">
+                            {{ $s['cta_primary']['label'] }}
+                        </a>
+                        <a href="{{ $s['cta_secondary']['url'] }}"
+                           class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-gray-300 hover:border-brand-500 text-gray-700 hover:text-brand-800 text-sm font-semibold transition-colors">
+                            {{ $s['cta_secondary']['label'] }}
+                        </a>
                     </div>
+                    <p class="text-xs text-gray-700 mt-5">{{ $s['note'] }}</p>
                 </div>
                 @endforeach
+            </div>
+
+            {{-- RIGHT: persistent animation. Only its background tint
+                 cross-fades between slides; the orbit graphic itself never
+                 unmounts or translates. --}}
+            <div class="hero-animation hidden md:flex justify-center items-center"
+                 data-hero-bg
+                 aria-hidden="true"
+                 style="background: {{ $slides[0]['tint'] }};">
+                <div class="hero-circle relative w-80 h-80">
+                    {{-- Pulsing rings (emanate outward) --}}
+                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
+                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
+
+                    {{-- Outer gradient halo --}}
+                    <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full opacity-20"></div>
+
+                    {{-- Glow backdrop --}}
+                    <div class="hero-glow absolute inset-4 bg-brand-300/40 rounded-full blur-2xl"></div>
+
+                    {{-- Inner white disc with the blue brand logo --}}
+                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-500/30 flex items-center justify-center">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
+                    </div>
+
+                    {{-- 5 floating dots around the ring — curcuma gold → deep blue gradient --}}
+                    <span class="hero-spark hero-spark-1 absolute w-3 h-3 rounded-full"  style="background:#d4a017;color:#d4a017;"></span>
+                    <span class="hero-spark hero-spark-2 absolute w-2.5 h-2.5 rounded-full" style="background:#e88e1a;color:#e88e1a;"></span>
+                    <span class="hero-spark hero-spark-3 absolute w-2 h-2 rounded-full" style="background:#7c5ebd;color:#7c5ebd;"></span>
+                    <span class="hero-spark hero-spark-4 absolute w-2.5 h-2.5 rounded-full" style="background:#1c80e3;color:#1c80e3;"></span>
+                    <span class="hero-spark hero-spark-5 absolute w-3 h-3 rounded-full" style="background:#0b427a;color:#0b427a;"></span>
+                </div>
             </div>
         </div>
 
         <style>
-            .hero-slide[data-active="true"] .hero-slide-content { animation: heroFadeUp 700ms cubic-bezier(0.4, 0, 0.2, 1) 100ms both; }
-            .hero-slide[data-active="true"] .hero-slide-visual  { animation: heroZoomIn 700ms cubic-bezier(0.4, 0, 0.2, 1) 200ms both; }
-            @keyframes heroFadeUp {
-                0%   { opacity: 0; transform: translateY(20px); }
-                100% { opacity: 1; transform: translateY(0); }
+            /* Cross-fade stack: every text slide is absolutely positioned on
+               top of the first one (which anchors the stack's height); only
+               the active slide is opaque. */
+            .hero-text-stack { min-height: 1px; }
+            .hero-text-stack > .hero-slide-text {
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+                transition: opacity 600ms ease-in-out, visibility 0s linear 600ms;
             }
-            @keyframes heroZoomIn {
-                0%   { opacity: 0; transform: scale(0.9); }
-                100% { opacity: 1; transform: scale(1); }
+            .hero-text-stack > .hero-slide-text[data-active="true"] {
+                opacity: 1;
+                visibility: visible;
+                pointer-events: auto;
+                transition: opacity 600ms ease-in-out, visibility 0s linear 0s;
+                position: relative; /* the active slide defines stack height */
+            }
+            .hero-text-stack > .hero-slide-text:not([data-active="true"]) {
+                position: absolute;
+                inset: 0;
+            }
+
+            /* Animation panel: only the background tint transitions. */
+            .hero-animation {
+                border-radius: 1.5rem;
+                transition: background 800ms ease-in-out;
+                padding: 1.5rem;
             }
 
             /* Pulsing rings emanating outward */
@@ -188,6 +232,8 @@
 
             @media (prefers-reduced-motion: reduce) {
                 .hero-ring, .hero-halo, .hero-glow, .hero-logo-disc, .hero-spark { animation: none !important; }
+                .hero-text-stack > .hero-slide-text { transition: none !important; }
+                .hero-animation { transition: none !important; }
             }
         </style>
 
@@ -206,7 +252,9 @@
             <span data-slider-counter>1/{{ count($slides) }}</span>
             <div class="flex items-center gap-1.5" data-slider-dots>
                 @foreach($slides as $i => $s)
-                <button type="button" data-goto="{{ $i }}" aria-label="Go to slide {{ $i + 1 }}"
+                <button type="button" data-hero-dot data-goto="{{ $i }}"
+                        data-active="{{ $i === 0 ? 'true' : 'false' }}"
+                        aria-label="Go to slide {{ $i + 1 }}"
                         class="hero-dot h-1.5 rounded-full transition-all {{ $i === 0 ? 'w-8 bg-brand-500' : 'w-2 bg-brand-300 hover:bg-brand-400' }}"></button>
                 @endforeach
             </div>
@@ -217,50 +265,55 @@
     (function() {
         const root = document.getElementById('hero-slider');
         if (!root) return;
-        const track = root.querySelector('.hero-track');
-        const slides = root.querySelectorAll('.hero-slide');
-        const dots = root.querySelectorAll('.hero-dot');
+        const stack = root.querySelector('[data-hero-stack]');
+        const animBg = root.querySelector('[data-hero-bg]');
+        const slides = stack ? stack.querySelectorAll('[data-slide-index]') : [];
+        const dots = root.querySelectorAll('[data-hero-dot]');
         const counter = root.querySelector('[data-slider-counter]');
         const total = slides.length;
+        if (!total) return;
+
+        // Per-slide background tints injected from PHP so the palette stays
+        // the single source of truth in the Blade template.
+        const TINTS = {!! $tintsJson !!};
+        const TICK_MS = 5000;
         let idx = 0;
         let timer = null;
 
-        // Initial state
-        slides[0]?.setAttribute('data-active', 'true');
+        function apply(next) {
+            idx = ((next % total) + total) % total;
 
-        function show(i) {
-            const prev = idx;
-            idx = ((i % total) + total) % total;
-
-            // Translate the track
-            if (track) track.style.transform = `translateX(-${idx * 100}%)`;
-
-            // Restart content animations on the new slide
             slides.forEach((el, k) => {
-                if (k === idx) {
-                    el.removeAttribute('data-active');
-                    // Force reflow so the animation restarts
-                    void el.offsetWidth;
-                    el.setAttribute('data-active', 'true');
+                const active = k === idx;
+                el.setAttribute('data-active', active ? 'true' : 'false');
+                // `inert` keeps inactive (invisible) slides out of the tab
+                // order and away from screen readers.
+                if (active) {
+                    el.removeAttribute('inert');
                 } else {
-                    el.removeAttribute('data-active');
+                    el.setAttribute('inert', '');
                 }
             });
 
             dots.forEach((dot, k) => {
                 const active = k === idx;
+                dot.setAttribute('data-active', active ? 'true' : 'false');
                 dot.className = 'hero-dot h-1.5 rounded-full transition-all ' +
                     (active ? 'w-8 bg-brand-500' : 'w-2 bg-brand-300 hover:bg-brand-400');
             });
+
+            if (animBg && TINTS[idx]) {
+                animBg.style.background = TINTS[idx];
+            }
             if (counter) counter.textContent = (idx + 1) + '/' + total;
         }
 
-        function next() { show(idx + 1); }
-        function prev() { show(idx - 1); }
+        function next() { apply(idx + 1); }
+        function prev() { apply(idx - 1); }
 
         function start() {
             stop();
-            timer = setInterval(next, 6000);
+            timer = setInterval(next, TICK_MS);
         }
         function stop() {
             if (timer) { clearInterval(timer); timer = null; }
@@ -269,7 +322,7 @@
         root.querySelector('[data-slider-prev]')?.addEventListener('click', () => { prev(); start(); });
         root.querySelector('[data-slider-next]')?.addEventListener('click', () => { next(); start(); });
         dots.forEach(dot => dot.addEventListener('click', () => {
-            show(Number(dot.getAttribute('data-goto')));
+            apply(Number(dot.getAttribute('data-goto')));
             start();
         }));
 
@@ -284,7 +337,8 @@
             if (e.key === 'ArrowRight') { next(); start(); }
         });
 
-        // Basic touch/swipe support
+        // Basic touch/swipe support (kept for parity with the previous UX
+        // even though the visual no longer slides horizontally).
         let touchStartX = null;
         root.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
@@ -298,11 +352,6 @@
             start();
         }, { passive: true });
 
-        // Respect reduced-motion preference
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            if (track) track.style.transitionDuration = '0ms';
-        }
-
         start();
     })();
     </script>
@@ -313,7 +362,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-6">
                 @php
                     $pillars = [
-                        ['label' => 'Free to Join',       'tone' => 'brand',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />'],
+                        ['label' => 'Free to Register',   'tone' => 'brand',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />'],
                         ['label' => '30-Day Cooling-Off', 'tone' => 'sky',    'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />'],
                         ['label' => 'Mandatory Orientation','tone'=>'violet','icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />'],
                         ['label' => 'DPDP-Compliant',     'tone' => 'green',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />'],
@@ -354,15 +403,15 @@
             <div class="text-center mb-10">
                 <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-2">Why arovolife</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Compliant by design — <span class="text-brand-600">customer-first</span> by belief.</h2>
-                <p class="text-gray-600">Four promises, every transaction, every day.</p>
+                <p class="text-gray-800">Four promises, every transaction, every day.</p>
             </div>
 
             @php
                 $whyCards = [
                     ['title' => 'Free Registration',           'body' => 'Zero joining fee. No payment required at signup — ever.',                       'icon' => '🎁', 'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
-                    ['title' => 'Real Sales Earnings',         'body' => 'Commissions are paid on actual product sales, never on recruiting alone.',     'icon' => '🌱', 'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
-                    ['title' => '30-Day Cooling-Off',          'body' => 'One-click cancellation with full refund during the cooling-off period.',       'icon' => '☀',  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-700'],
                     ['title' => 'Your Data, Protected',        'body' => 'PAN stored as hash. Raw Aadhaar never touches our database. Full audit log.',  'icon' => '🛡', 'bg' => 'bg-violet-50',  'border' => 'border-violet-200',  'iconBg' => 'bg-violet-100 text-violet-700',   'titleClr' => 'text-violet-700'],
+                    ['title' => '30-Day Cooling-Off',          'body' => 'One-click cancellation with full refund during the cooling-off period.',       'icon' => '☀',  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-700'],
+                    ['title' => 'Real Sales Earnings',         'body' => 'Commissions are paid on actual product sales, never on recruiting alone.',     'icon' => '🌱', 'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
                 ];
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -387,15 +436,15 @@
             <div class="text-center mb-12">
                 <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-2">How to register</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Five quick steps. <span class="text-leaf-600">Fifteen minutes</span> start to finish.</h2>
-                <p class="text-gray-600">From referral link to live ADN — no surprises along the way.</p>
+                <p class="text-gray-800">From referral link to live ADN — no surprises along the way.</p>
             </div>
 
             @php
                 $steps = [
-                    ['1', 'Create Account', 'Name, email, phone, password.', 'bg-brand-500',   'shadow-brand-500/30'],
-                    ['2', 'Orientation',    'Watch the video, pass the quiz.', 'bg-leaf-500',   'shadow-leaf-500/30'],
-                    ['3', 'KYC',            'PAN + Aadhaar (verified gateway).', 'bg-sunrise-500','shadow-sunrise-500/30'],
-                    ['4', 'Placement',      'Confirm your sponsor + leg.', 'bg-violet-500', 'shadow-violet-500/30'],
+                    ['1', 'Placement',      'Confirm your sponsor + leg.', 'bg-brand-500',   'shadow-brand-500/30'],
+                    ['2', 'Create Account', 'Name, email, phone, password.', 'bg-leaf-500',   'shadow-leaf-500/30'],
+                    ['3', 'Orientation',    'Watch the video, pass the quiz.', 'bg-sunrise-500','shadow-sunrise-500/30'],
+                    ['4', 'KYC',            'PAN + Aadhaar (verified gateway).', 'bg-violet-500', 'shadow-violet-500/30'],
                     ['5', 'Get Your ADN',   'Distributor Number issued instantly.', 'bg-brand-700', 'shadow-brand-700/30'],
                 ];
             @endphp
@@ -406,7 +455,7 @@
                         {{ $step[0] }}
                     </div>
                     <h4 class="font-semibold text-gray-900 mb-1 text-sm">{{ $step[1] }}</h4>
-                    <p class="text-xs text-gray-600 leading-relaxed">{{ $step[2] }}</p>
+                    <p class="text-xs text-gray-800 leading-relaxed">{{ $step[2] }}</p>
                 </div>
                 @endforeach
             </div>
@@ -416,8 +465,8 @@
                    class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 hover:from-brand-600 hover:to-brand-800 text-white text-sm font-semibold transition-all shadow-lg shadow-brand-500/40 hover:shadow-xl hover:shadow-brand-500/50">
                     Talk to our team →
                 </a>
-                <p class="mt-3 text-xs text-gray-500">
-                    Joining is by personal referral only — leave your details and we'll connect you with a sponsor.
+                <p class="mt-3 text-xs text-gray-700">
+                    Registration is by personal referral only — leave your details and we'll connect you with a sponsor.
                 </p>
             </div>
         </div>
@@ -430,34 +479,39 @@
             <div class="text-center mb-10 max-w-2xl mx-auto">
                 <p class="text-sm font-medium text-leaf-600 uppercase tracking-wider mb-2">Our products</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Best-in-class. <span class="text-leaf-600">Best for life.</span></h2>
-                <p class="text-gray-600">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
+                <p class="text-gray-800">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 @php
+                    // Each gradient and shadow tone is shifted ONE Tailwind
+                    // shade lighter than the previous saturated form
+                    // (500/600/700 → 400/500/600) and the shadow opacity
+                    // dropped from /30 → /20 so the three product cards
+                    // sit more gently on the cream background.
                     $categories = [
                         [
                             'title' => 'Nutraceuticals',
                             'subtitle' => 'Wellness, formulated with intent',
                             'body' => 'Daily-essential supplements, immunity blends, Ayurveda-inspired formulations. Every milligram on the label.',
-                            'gradient' => 'from-leaf-500 via-leaf-600 to-leaf-700',
-                            'glow' => 'shadow-leaf-500/30',
+                            'gradient' => 'from-leaf-400 via-leaf-500 to-leaf-600',
+                            'glow' => 'shadow-leaf-500/20',
                             'icon' => '🌿',
                         ],
                         [
                             'title' => 'Personal Care',
                             'subtitle' => 'Skin, hair, body — done honestly',
                             'body' => 'Skin care, hair care, daily essentials — paraben-free where it matters, cruelty-free everywhere.',
-                            'gradient' => 'from-sunrise-400 via-sunrise-500 to-sunrise-600',
-                            'glow' => 'shadow-sunrise-500/30',
+                            'gradient' => 'from-sunrise-300 via-sunrise-400 to-sunrise-500',
+                            'glow' => 'shadow-sunrise-500/20',
                             'icon' => '☀',
                         ],
                         [
                             'title' => 'Wellness Bundles',
                             'subtitle' => 'Curated for everyday life',
                             'body' => 'Hand-picked combinations of our most-loved products — a smarter starting point for the wellness-curious.',
-                            'gradient' => 'from-brand-500 via-brand-600 to-brand-700',
-                            'glow' => 'shadow-brand-500/30',
+                            'gradient' => 'from-brand-400 via-brand-500 to-brand-600',
+                            'glow' => 'shadow-brand-500/20',
                             'icon' => '✨',
                         ],
                     ];
@@ -554,7 +608,7 @@
             <div class="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
                 <p>&copy; {{ date('Y') }} Arovolife Private Limited. All rights reserved.</p>
                 <p class="text-gray-500">
-                    <strong class="text-gray-400">Joining is free.</strong> No payment required at registration.
+                    <strong class="text-gray-400">Registration is free.</strong> No payment required at signup.
                 </p>
             </div>
         </div>
