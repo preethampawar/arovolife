@@ -29,10 +29,6 @@
 
         {{-- Slides --}}
         @php
-            // Per-slide background tints for the orbit panel. Hex values are
-            // sampled from the existing palette in resources/css/app.css so
-            // they stay coherent with the rest of the page. Each entry is a
-            // 135° gradient from a 50-step → 100-step shade.
             $slides = [
                 [
                     'eyebrow' => 'Direct Selling, Done Right',
@@ -42,8 +38,6 @@
                     'cta_primary' => ['label' => 'Become a Direct Seller →', 'url' => route('contact.show')],
                     'cta_secondary' => ['label' => 'How It Works', 'url' => '#how-it-works'],
                     'note' => 'Registration is free. No payment required to sign up.',
-                    // brand-50 → brand-100 (the original cool blue)
-                    'tint' => 'linear-gradient(135deg, #ecfaff 0%, #cff1fd 100%)',
                 ],
                 [
                     'eyebrow' => 'arovolife Shopping Mall',
@@ -53,8 +47,6 @@
                     'cta_primary' => ['label' => 'Shop Now →', 'url' => route('shop.index')],
                     'cta_secondary' => ['label' => 'Browse Categories', 'url' => route('shop.index')],
                     'note' => '30-day return window on every order.',
-                    // sunrise-50 → sunrise-100 (warm sunrise)
-                    'tint' => 'linear-gradient(135deg, #fef4e5 0%, #fde3bd 100%)',
                 ],
                 [
                     'eyebrow' => 'Compliance-First',
@@ -64,11 +56,8 @@
                     'cta_primary' => ['label' => 'Read Our Commitment →', 'url' => route('content.show', 'ethics')],
                     'cta_secondary' => ['label' => 'Privacy Policy', 'url' => route('content.show', 'privacy')],
                     'note' => 'Complaint SLA: 24h acknowledgement, 7-day resolution.',
-                    // leaf-50 → leaf-100 (leaf green)
-                    'tint' => 'linear-gradient(135deg, #f1faec 0%, #ddf3cf 100%)',
                 ],
             ];
-            $tintsJson = json_encode(array_column($slides, 'tint'), JSON_UNESCAPED_SLASHES);
         @endphp
 
         {{-- Two-column hero. LEFT: rotating text stack. RIGHT: fixed orbit
@@ -107,13 +96,10 @@
                 @endforeach
             </div>
 
-            {{-- RIGHT: persistent animation. Only its background tint
-                 cross-fades between slides; the orbit graphic itself never
-                 unmounts or translates. --}}
+            {{-- RIGHT: persistent animation on a transparent backdrop —
+                 the orbit graphic itself never unmounts or translates. --}}
             <div class="hero-animation hidden md:flex justify-center items-center"
-                 data-hero-bg
-                 aria-hidden="true"
-                 style="background: {{ $slides[0]['tint'] }};">
+                 aria-hidden="true">
                 <div class="hero-circle relative w-80 h-80">
                     {{-- Pulsing rings (emanate outward) --}}
                     <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2 border-brand-400/40"></div>
@@ -164,10 +150,9 @@
                 inset: 0;
             }
 
-            /* Animation panel: only the background tint transitions. */
+            /* Animation panel — transparent backdrop; padding only reserves
+               clearance around the 320px orbit so the dots don't clip. */
             .hero-animation {
-                border-radius: 1.5rem;
-                transition: background 800ms ease-in-out;
                 padding: 1.5rem;
             }
 
@@ -233,7 +218,6 @@
             @media (prefers-reduced-motion: reduce) {
                 .hero-ring, .hero-halo, .hero-glow, .hero-logo-disc, .hero-spark { animation: none !important; }
                 .hero-text-stack > .hero-slide-text { transition: none !important; }
-                .hero-animation { transition: none !important; }
             }
         </style>
 
@@ -266,16 +250,12 @@
         const root = document.getElementById('hero-slider');
         if (!root) return;
         const stack = root.querySelector('[data-hero-stack]');
-        const animBg = root.querySelector('[data-hero-bg]');
         const slides = stack ? stack.querySelectorAll('[data-slide-index]') : [];
         const dots = root.querySelectorAll('[data-hero-dot]');
         const counter = root.querySelector('[data-slider-counter]');
         const total = slides.length;
         if (!total) return;
 
-        // Per-slide background tints injected from PHP so the palette stays
-        // the single source of truth in the Blade template.
-        const TINTS = {!! $tintsJson !!};
         const TICK_MS = 5000;
         let idx = 0;
         let timer = null;
@@ -302,9 +282,6 @@
                     (active ? 'w-8 bg-brand-500' : 'w-2 bg-brand-300 hover:bg-brand-400');
             });
 
-            if (animBg && TINTS[idx]) {
-                animBg.style.background = TINTS[idx];
-            }
             if (counter) counter.textContent = (idx + 1) + '/' + total;
         }
 

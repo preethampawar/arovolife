@@ -30,8 +30,7 @@ class ExampleTest extends TestCase
         $response->assertSee('Start Your Direct Selling Journey with', false);
         $response->assertSee('Quality Essentials', false);
         $response->assertSee('Your Trust,', false);
-        // Markers proving the refactored stack-and-tint structure is live.
+        // Marker proving the refactored stack structure is live.
         $response->assertSee('data-hero-stack', false);
-        $response->assertSee('data-hero-bg', false);
     }
 }
