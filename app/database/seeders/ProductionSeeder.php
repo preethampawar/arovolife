@@ -100,7 +100,7 @@ final class ProductionSeeder extends Seeder
     /**
      * Create the L0 (genealogy root) distributor on a fresh install.
      *
-     * Per ADR-0003 every joiner registers via a referral link from an
+     * Per ADR-0003 every registrant registers via a referral link from an
      * existing distributor — but a fresh DB has no distributors, so the
      * platform is unreachable. We bootstrap one self-referencing root
      * here whose ADN is shared with the company's first real recruits.
