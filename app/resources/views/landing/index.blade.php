@@ -96,25 +96,26 @@
                 @endforeach
             </div>
 
-            {{-- RIGHT: persistent animation on a transparent backdrop —
-                 the orbit graphic itself never unmounts or translates. --}}
+            {{-- RIGHT: persistent animation on a solid brand-600 panel —
+                 the orbit graphic itself never unmounts or translates.
+                 Ring / halo / glow colours flip to light tones so they
+                 read against the dark blue backdrop. --}}
             <div class="hero-animation hidden md:flex justify-center items-center"
                  aria-hidden="true">
                 <div class="hero-circle relative w-80 h-80">
-                    {{-- Pulsing rings (emanate outward) — darker, more opaque
-                         so the orbit reads without a panel backdrop --}}
-                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-[3px] border-brand-600/70"></div>
-                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-[3px] border-brand-600/70"></div>
-                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-[3px] border-brand-600/70"></div>
+                    {{-- Pulsing rings (emanate outward) — white on dark blue --}}
+                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
+                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-[3px] border-white/70"></div>
 
-                    {{-- Outer gradient halo (darker brand 500 → 700) --}}
-                    <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-500 to-brand-700 rounded-full opacity-40"></div>
+                    {{-- Outer gradient halo (brand-200 → white, soft on dark blue) --}}
+                    <div class="hero-halo absolute inset-0 bg-gradient-to-br from-brand-100 to-white rounded-full opacity-30"></div>
 
-                    {{-- Glow backdrop (brand-500 instead of brand-300) --}}
-                    <div class="hero-glow absolute inset-4 bg-brand-500/50 rounded-full blur-2xl"></div>
+                    {{-- Glow backdrop (white wash so the disc sits in a pool of light) --}}
+                    <div class="hero-glow absolute inset-4 bg-white/40 rounded-full blur-2xl"></div>
 
                     {{-- Inner white disc with the blue brand logo --}}
-                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-700/50 flex items-center justify-center">
+                    <div class="hero-logo-disc absolute inset-8 bg-white rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
                         <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
                     </div>
 
@@ -151,11 +152,13 @@
                 inset: 0;
             }
 
-            /* Animation panel — transparent backdrop; padding only reserves
-               clearance around the 320px orbit so the 5 spark dots don't
-               clip at the panel edge. */
+            /* Animation panel — solid brand-600 (#008cc7) panel.
+               Padding reserves clearance around the 320px orbit so the
+               5 spark dots don't clip at the panel edge. */
             .hero-animation {
                 padding: 1.5rem;
+                border-radius: 1.5rem;
+                background: #008cc7;
             }
 
             /* Pulsing rings emanating outward */
