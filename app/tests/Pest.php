@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /*
@@ -66,21 +67,21 @@ function something()
  */
 function disableTestForeignKeys(): void
 {
-    $driver = \Illuminate\Support\Facades\DB::getDriverName();
+    $driver = DB::getDriverName();
 
     if ($driver === 'mysql') {
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
     } elseif ($driver === 'sqlite') {
-        \Illuminate\Support\Facades\DB::statement('PRAGMA defer_foreign_keys = ON');
+        DB::statement('PRAGMA defer_foreign_keys = ON');
     }
 }
 
 function enableTestForeignKeys(): void
 {
-    $driver = \Illuminate\Support\Facades\DB::getDriverName();
+    $driver = DB::getDriverName();
 
     if ($driver === 'mysql') {
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
     }
     // SQLite: defer_foreign_keys auto-resets at the end of the txn.
 }

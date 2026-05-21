@@ -35,7 +35,7 @@ final class AdminTreeController extends Controller
             $self = Distributor::query()
                 ->whereColumn('sponsor_id', 'id')
                 ->orderBy('id')
-                ->with(['user:id,full_name,status'])
+                ->with(['user:id,full_name,status,activated_at'])
                 ->first();
 
             if ($self === null) {
@@ -44,7 +44,7 @@ final class AdminTreeController extends Controller
             }
         } else {
             $self = Distributor::query()
-                ->with(['user:id,full_name,status'])
+                ->with(['user:id,full_name,status,activated_at'])
                 ->findOrFail($id);
         }
 
@@ -68,7 +68,7 @@ final class AdminTreeController extends Controller
             ->pluck('descendant_id', 'descendant_id');
 
         $nodesById = Distributor::query()
-            ->with(['user:id,full_name,status'])
+            ->with(['user:id,full_name,status,activated_at'])
             ->whereIn('id', $descendantIds)
             ->get()
             ->keyBy('id');

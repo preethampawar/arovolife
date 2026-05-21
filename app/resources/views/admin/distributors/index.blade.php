@@ -36,9 +36,13 @@
         </a>
     @endforeach
     @if(request()->query('status'))
-    <a href="{{ route('admin.distributors.index') }}" class="text-xs text-gray-500 hover:text-gray-700">✕ Clear</a>
+    <a href="{{ route('admin.distributors.index') }}" class="text-xs text-gray-700 hover:text-gray-900">✕ Clear</a>
     @endif
-    <div class="ml-auto">
+    <div class="ml-auto flex items-center gap-2">
+        <a href="{{ route('admin.distributors.create') }}"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm">
+            + Add Distributor
+        </a>
         <a href="{{ route('admin.distributors.export') }}"
            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
             ↓ Export CSV (DSR Register)
@@ -59,7 +63,7 @@
     </button>
     @if(request()->query('q'))
     <a href="{{ route('admin.distributors.index', array_diff_key(request()->query(), ['q'=>''])) }}"
-       class="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 hover:text-white transition-colors">
+       class="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-800 hover:text-white transition-colors">
         Clear
     </a>
     @endif
@@ -71,27 +75,30 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ADN</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name / Email</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">State</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Depth</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Effective Date</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Cooling Off</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">ADN</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Name / Email</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">State</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Depth</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Effective Date</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Cooling Off</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
                     <th class="px-4 py-3"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-800">
                 @forelse($distributors as $d)
                 <tr class="hover:bg-white/40 transition-colors">
-                    <td class="px-4 py-3 font-mono text-brand-600 font-medium">{{ $d->adn }}</td>
+                    <td class="px-4 py-3 font-mono font-medium">
+                        <a href="{{ route('admin.distributors.show', $d->id) }}"
+                           class="text-brand-600 hover:text-brand-700 hover:underline transition-colors">{{ $d->adn }}</a>
+                    </td>
                     <td class="px-4 py-3">
                         <p class="text-gray-800">{{ $d->full_name ?: '—' }}</p>
-                        <p class="text-xs text-gray-500">{{ $d->email }}</p>
+                        <p class="text-xs text-gray-700">{{ $d->email }}</p>
                     </td>
-                    <td class="px-4 py-3 text-gray-600">{{ $d->state }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ $d->depth }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">
+                    <td class="px-4 py-3 text-gray-800">{{ $d->state }}</td>
+                    <td class="px-4 py-3 text-gray-800">{{ $d->depth }}</td>
+                    <td class="px-4 py-3 text-gray-700 text-xs">
                         {{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y') }}
                     </td>
                     <td class="px-4 py-3 text-xs">
@@ -101,7 +108,7 @@
                             {{ (int)$daysLeft }}d left
                         </span>
                         @else
-                        <span class="text-gray-400">Expired</span>
+                        <span class="text-gray-600">Expired</span>
                         @endif
                     </td>
                     <td class="px-4 py-3">
@@ -120,7 +127,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-700">
                         No distributors found.
                     </td>
                 </tr>

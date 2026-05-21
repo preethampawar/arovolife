@@ -5,9 +5,14 @@
 @section('content')
 
 <div class="mb-6 flex items-center justify-between gap-3 flex-wrap">
-    <a href="{{ route('admin.distributors.index') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back to Distributors</a>
+    <a href="{{ route('admin.distributors.index') }}" class="text-sm text-gray-700 hover:text-gray-900">← Back to Distributors</a>
 
     <div class="flex items-center gap-2">
+        <a href="{{ route('admin.distributors.edit', $distributor->id) }}"
+           class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487 18.549 2.799a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>
+            Edit profile
+        </a>
         <a href="{{ route('admin.tree.show', $distributor->id) }}"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3"/></svg>
@@ -33,7 +38,7 @@
         <div class="flex items-start justify-between mb-4">
             <div>
                 <p class="text-3xl font-mono font-bold text-brand-600">{{ $distributor->adn }}</p>
-                <p class="text-sm text-gray-600 mt-1">{{ $distributor->full_name ?: 'No name recorded' }}</p>
+                <p class="text-sm text-gray-800 mt-1">{{ $distributor->full_name ?: 'No name recorded' }}</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="px-3 py-1 rounded-full text-sm border
@@ -53,36 +58,36 @@
             </div>
         </div>
         <div class="grid grid-cols-2 gap-4 text-sm">
-            <div><p class="text-xs text-gray-500 mb-0.5">Email</p><p class="text-gray-800">{{ $distributor->email }}</p></div>
-            <div><p class="text-xs text-gray-500 mb-0.5">Phone</p><p class="text-gray-800">{{ $distributor->phone_e164 }}</p></div>
-            <div><p class="text-xs text-gray-500 mb-0.5">State</p><p class="text-gray-800">{{ $distributor->state }}</p></div>
-            <div><p class="text-xs text-gray-500 mb-0.5">Date of Birth</p><p class="text-gray-800">{{ $distributor->date_of_birth ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-500 mb-0.5">PAN (last 4)</p><p class="text-gray-800 font-mono">XXXXXX{{ $distributor->pan_last4 }}</p></div>
-            <div><p class="text-xs text-gray-500 mb-0.5">Aadhaar (last 4)</p><p class="text-gray-800 font-mono">XXXXXXXX{{ $distributor->aadhaar_last4 ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-500 mb-0.5">Bank IFSC</p><p class="text-gray-800 font-mono">{{ $distributor->bank_ifsc }}</p></div>
-            <div><p class="text-xs text-gray-500 mb-0.5">Registered</p><p class="text-gray-800">{{ \Carbon\Carbon::parse($distributor->user_created_at)->format('d M Y') }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">Email</p><p class="text-gray-800">{{ $distributor->email }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">Phone</p><p class="text-gray-800">{{ $distributor->phone_e164 }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">State</p><p class="text-gray-800">{{ $distributor->state }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">Date of Birth</p><p class="text-gray-800">{{ $distributor->date_of_birth ?? '—' }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">PAN (last 4)</p><p class="text-gray-800 font-mono">XXXXXX{{ $distributor->pan_last4 }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">Aadhaar (last 4)</p><p class="text-gray-800 font-mono">XXXXXXXX{{ $distributor->aadhaar_last4 ?? '—' }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">Bank IFSC</p><p class="text-gray-800 font-mono">{{ $distributor->bank_ifsc }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">Registered</p><p class="text-gray-800">{{ \Carbon\Carbon::parse($distributor->user_created_at)->format('d M Y') }}</p></div>
         </div>
     </div>
 
     {{-- Placement Card --}}
     <div class="space-y-4">
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
-            <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Placement</p>
+            <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Placement</p>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
-                    <span class="text-gray-600">Depth</span>
+                    <span class="text-gray-800">Depth</span>
                     <span class="font-medium">Level {{ $distributor->depth }}</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-600">Side</span>
+                    <span class="text-gray-800">Side</span>
                     <span class="font-medium">{{ $distributor->placement_side === 'L' ? '← Left' : ($distributor->placement_side === 'R' ? '→ Right' : 'Root') }}</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-600">Chosen by</span>
+                    <span class="text-gray-800">Chosen by</span>
                     <span class="font-mono text-xs text-gray-700">{{ $distributor->side_chosen_by }}</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-600">Downline total</span>
+                    <span class="text-gray-800">Downline total</span>
                     <span class="font-medium">{{ $downlineCount }}</span>
                 </div>
             </div>
@@ -90,32 +95,36 @@
 
         {{-- Binary Children --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
-            <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Direct Children</p>
+            <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Direct Children</p>
             <div class="flex gap-3">
                 <div class="flex-1 rounded-lg p-3 border {{ $leftChild ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white/50' }}">
-                    <p class="text-xs text-gray-500 mb-1">Left (L)</p>
+                    <p class="text-xs text-gray-700 mb-1">Left (L)</p>
                     @if($leftChild)
                     <a href="{{ route('admin.distributors.show', $leftChild->id) }}" class="text-xs font-mono text-brand-600 hover:underline">{{ $leftChild->adn }}</a>
                     @else
-                    <span class="text-xs text-gray-400">Empty</span>
+                    <span class="text-xs text-gray-600">Empty</span>
                     @endif
                 </div>
                 <div class="flex-1 rounded-lg p-3 border {{ $rightChild ? 'border-blue-700 bg-blue-900/10' : 'border-gray-200 bg-white/50' }}">
-                    <p class="text-xs text-gray-500 mb-1">Right (R)</p>
+                    <p class="text-xs text-gray-700 mb-1">Right (R)</p>
                     @if($rightChild)
                     <a href="{{ route('admin.distributors.show', $rightChild->id) }}" class="text-xs font-mono text-brand-700 hover:underline">{{ $rightChild->adn }}</a>
                     @else
-                    <span class="text-xs text-gray-400">Empty</span>
+                    <span class="text-xs text-gray-600">Empty</span>
                     @endif
                 </div>
             </div>
         </div>
 
-        {{-- Referral link generator (admin can hand a link to a prospect) --}}
-        @php $inviteAuto = url('/register').'?sponsor='.$distributor->adn.'&placement='.$distributor->adn; @endphp
+        {{-- Referral link generator (admin can hand a link to a prospect).
+             Sponsor-only — placement is resolved on the public /join page
+             after the prospect sees the sponsor's name. Tree-view "invite
+             at this slot" links keep their full sponsor+placement+side
+             form; this is the sponsor-link surface only. --}}
+        @php $inviteAuto = url('/join').'?sponsor='.$distributor->adn; @endphp
         <div class="bg-white rounded-2xl border border-brand-200 p-5">
             <p class="text-xs text-brand-700 uppercase tracking-wider mb-2 font-semibold">Referral link for this distributor</p>
-            <p class="text-xs text-gray-600 mb-2">Give this URL to anyone they're inviting; the new joiner will be sponsored by — and placed under — this distributor.</p>
+            <p class="text-xs text-gray-800 mb-2">Give this URL to anyone they're inviting. The new registrant picks their own placement on the registration page after seeing this distributor's name as sponsor.</p>
             <div class="flex items-stretch gap-2">
                 <input type="text" readonly value="{{ $inviteAuto }}"
                     class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-2 py-1.5 text-[11px] font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -130,7 +139,7 @@
 
         {{-- Cooling-Off --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
-            <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Cooling-Off</p>
+            <p class="text-xs text-gray-700 uppercase tracking-wider mb-2">Cooling-Off</p>
             @php $daysLeft = now()->diffInDays($distributor->cooling_off_end_at, false); @endphp
             <p class="text-sm">
                 Ends: <span class="font-medium">{{ \Carbon\Carbon::parse($distributor->cooling_off_end_at)->format('d M Y') }}</span>
@@ -140,7 +149,7 @@
                 {{ (int)$daysLeft }} days remaining
             </p>
             @else
-            <p class="text-xs text-gray-400 mt-1">Period expired</p>
+            <p class="text-xs text-gray-600 mt-1">Period expired</p>
             @endif
         </div>
     </div>
@@ -149,9 +158,9 @@
 {{-- Sponsor --}}
 @if($sponsor)
 <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-    <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Sponsor</p>
+    <p class="text-xs text-gray-700 uppercase tracking-wider mb-2">Sponsor</p>
     <p class="text-sm font-mono text-brand-600">{{ $sponsor->adn }}</p>
-    <p class="text-xs text-gray-500">{{ $sponsor->full_name }} · {{ $sponsor->email }}</p>
+    <p class="text-xs text-gray-700">{{ $sponsor->full_name }} · {{ $sponsor->email }}</p>
 </div>
 @endif
 
@@ -240,19 +249,19 @@
     <table class="w-full text-sm">
         <thead>
             <tr class="border-b border-gray-200 bg-gray-50/50">
-                <th class="text-left px-4 py-2 text-xs text-gray-500">Document</th>
-                <th class="text-left px-4 py-2 text-xs text-gray-500">Version</th>
-                <th class="text-left px-4 py-2 text-xs text-gray-500">Accepted At</th>
-                <th class="text-left px-4 py-2 text-xs text-gray-500">IP</th>
+                <th class="text-left px-4 py-2 text-xs text-gray-700">Document</th>
+                <th class="text-left px-4 py-2 text-xs text-gray-700">Version</th>
+                <th class="text-left px-4 py-2 text-xs text-gray-700">Accepted At</th>
+                <th class="text-left px-4 py-2 text-xs text-gray-700">IP</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-800">
             @foreach($consents as $c)
             <tr>
-                <td class="px-4 py-2 font-medium text-gray-700">{{ strtoupper($c->document_type) }}</td>
-                <td class="px-4 py-2 font-mono text-gray-600 text-xs">{{ $c->document_version }}</td>
-                <td class="px-4 py-2 text-gray-600 text-xs">{{ $c->accepted_at }}</td>
-                <td class="px-4 py-2 text-gray-500 text-xs">{{ $c->ip }}</td>
+                <td class="px-4 py-2 font-medium text-gray-800">{{ strtoupper($c->document_type) }}</td>
+                <td class="px-4 py-2 font-mono text-gray-800 text-xs">{{ $c->document_version }}</td>
+                <td class="px-4 py-2 text-gray-800 text-xs">{{ $c->accepted_at }}</td>
+                <td class="px-4 py-2 text-gray-700 text-xs">{{ $c->ip }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -269,21 +278,21 @@
         @forelse($auditLogs as $log)
         <div class="px-6 py-3">
             <div class="flex items-start justify-between">
-                <span class="text-xs font-mono text-gray-700">{{ $log->action }}</span>
-                <span class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i:s') }}</span>
+                <span class="text-xs font-mono text-gray-800">{{ $log->action }}</span>
+                <span class="text-xs text-gray-600">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i:s') }}</span>
             </div>
             @if($log->actor_email)
-            <p class="text-xs text-gray-500 mt-0.5">by {{ $log->actor_email }}</p>
+            <p class="text-xs text-gray-700 mt-0.5">by {{ $log->actor_email }}</p>
             @endif
             @if($log->details)
             <details class="mt-1">
-                <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-600">details</summary>
-                <pre class="text-xs text-gray-500 mt-1 bg-white rounded p-2 overflow-x-auto">{{ json_encode(json_decode($log->details), JSON_PRETTY_PRINT) }}</pre>
+                <summary class="text-xs text-gray-600 cursor-pointer hover:text-gray-800">details</summary>
+                <pre class="text-xs text-gray-700 mt-1 bg-white rounded p-2 overflow-x-auto">{{ json_encode(json_decode($log->details), JSON_PRETTY_PRINT) }}</pre>
             </details>
             @endif
         </div>
         @empty
-        <p class="px-6 py-4 text-sm text-gray-500">No audit entries.</p>
+        <p class="px-6 py-4 text-sm text-gray-700">No audit entries.</p>
         @endforelse
     </div>
 </div>

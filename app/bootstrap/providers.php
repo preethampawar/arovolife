@@ -12,6 +12,7 @@ use App\Modules\Grievance\GrievanceServiceProvider;
 use App\Modules\Identity\IdentityServiceProvider;
 use App\Modules\Kyc\KycServiceProvider;
 use App\Modules\Ledger\LedgerServiceProvider;
+use App\Modules\Messaging\MessagingServiceProvider;
 use App\Modules\Orientation\OrientationServiceProvider;
 use App\Modules\Payments\PaymentsServiceProvider;
 use App\Modules\Public\PublicServiceProvider;
@@ -40,4 +41,5 @@ return [
     ReturnsServiceProvider::class,
     GrievanceServiceProvider::class,
     PublicServiceProvider::class,
+    MessagingServiceProvider::class,
 ];

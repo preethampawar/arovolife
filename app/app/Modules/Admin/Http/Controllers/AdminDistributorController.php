@@ -21,6 +21,7 @@ final class AdminDistributorController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'status' => ['nullable', 'in:pending,active,frozen,terminated'],
             'state' => ['nullable', 'regex:/^[A-Z]{2}$/'],
+            'cooling_off' => ['nullable', 'in:active,expiring'],
         ]);
 
         $query = DB::table('distributors')
@@ -47,6 +48,18 @@ final class AdminDistributorController extends Controller
 
         if ($state = $request->query('state')) {
             $query->where('distributors.state', $state);
+        }
+
+        // Click-through filters from the dashboard "Cooling-Off Active" and
+        // "Expiring (7 days)" stat tiles. Both predicates mirror exactly the
+        // SQL used in AdminDashboardController::index so the row counts
+        // shown on the dashboard match the rows shown here.
+        if ($coolingOff = $request->query('cooling_off')) {
+            if ($coolingOff === 'active') {
+                $query->where('distributors.cooling_off_end_at', '>', now());
+            } elseif ($coolingOff === 'expiring') {
+                $query->whereBetween('distributors.cooling_off_end_at', [now(), now()->addDays(7)]);
+            }
         }
 
         $distributors = $query->orderByDesc('distributors.id')->paginate(20)->withQueryString();

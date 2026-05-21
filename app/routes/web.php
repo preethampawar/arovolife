@@ -6,6 +6,8 @@ use App\Modules\Admin\Http\Controllers\AdminAuditLogController;
 use App\Modules\Admin\Http\Controllers\AdminContactController;
 use App\Modules\Admin\Http\Controllers\AdminDashboardController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorController;
+use App\Modules\Admin\Http\Controllers\AdminDistributorCreateController;
+use App\Modules\Admin\Http\Controllers\AdminDistributorEditController;
 use App\Modules\Admin\Http\Controllers\AdminFeatureFlagController;
 use App\Modules\Admin\Http\Controllers\AdminImpersonationController;
 use App\Modules\Admin\Http\Controllers\AdminKycController;
@@ -24,9 +26,12 @@ use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
 use App\Modules\Identity\Http\Controllers\DashboardController;
+use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
+use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\Registration\DraftResumeController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
+use App\Modules\Messaging\Http\Controllers\MessageController;
 use App\Modules\Public\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
 
@@ -151,15 +156,32 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/distributors', [AdminDistributorController::class, 'index'])->name('distributors.index');
     Route::get('/distributors/export', [AdminDistributorController::class, 'export'])->name('distributors.export');
-    Route::get('/distributors/{id}', [AdminDistributorController::class, 'show'])->name('distributors.show');
-    Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->name('distributors.freeze');
-    Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->name('distributors.unfreeze');
-    Route::post('/distributors/{id}/terminate', [AdminDistributorController::class, 'terminate'])->name('distributors.terminate');
-    Route::post('/distributors/{id}/activate', [AdminDistributorController::class, 'activate'])->name('distributors.activate');
-    Route::post('/distributors/{id}/deactivate', [AdminDistributorController::class, 'deactivate'])->name('distributors.deactivate');
+
+    // Admin-created distributor (paper-onboarding flow). MUST appear before
+    // the /distributors/{id} catch-all so `/create` doesn't resolve to an
+    // id of "create".
+    Route::get('/distributors/create', [AdminDistributorCreateController::class, 'create'])->name('distributors.create');
+    Route::post('/distributors', [AdminDistributorCreateController::class, 'store'])->name('distributors.store');
+
+    Route::get('/distributors/{id}', [AdminDistributorController::class, 'show'])->whereNumber('id')->name('distributors.show');
+    Route::get('/distributors/{id}/edit', [AdminDistributorEditController::class, 'edit'])->whereNumber('id')->name('distributors.edit');
+    Route::patch('/distributors/{id}', [AdminDistributorEditController::class, 'update'])->whereNumber('id')->name('distributors.update');
+    Route::post('/distributors/{id}/password-reset', [AdminDistributorEditController::class, 'sendPasswordReset'])->whereNumber('id')->name('distributors.password-reset');
+    Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
+    Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->name('distributors.freeze');
+    Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->name('distributors.unfreeze');
+    Route::post('/distributors/{id}/terminate', [AdminDistributorController::class, 'terminate'])->whereNumber('id')->name('distributors.terminate');
+    Route::post('/distributors/{id}/activate', [AdminDistributorController::class, 'activate'])->whereNumber('id')->name('distributors.activate');
+    Route::post('/distributors/{id}/deactivate', [AdminDistributorController::class, 'deactivate'])->whereNumber('id')->name('distributors.deactivate');
 
     Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
     Route::post('/settings/age-rules', [AdminSettingsController::class, 'updateStateAgeMinimums'])->name('settings.age-rules');
+    // Per-setting update from the friendly UI cards. The {key} param is the
+    // dotted setting key (e.g. commerce.checkout.enabled). The controller
+    // matches it against the registry and aborts 404 if not registered.
+    Route::post('/settings/{key}', [AdminSettingsController::class, 'update'])
+        ->where('key', '[a-z0-9_.-]+')
+        ->name('settings.update');
 
     Route::get('/audit-log', [AdminAuditLogController::class, 'index'])->name('audit-log');
 
@@ -277,4 +299,23 @@ Route::middleware(['auth'])->group(function (): void {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/profile/password', [ProfileController::class, 'showPasswordForm'])->name('profile.password.show');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
+    // ID-card photo — self-uploaded, surfaced on the dashboard.
+    Route::post('/profile/id-photo', [IdPhotoController::class, 'update'])->name('profile.id-photo.update');
+    Route::delete('/profile/id-photo', [IdPhotoController::class, 'destroy'])->name('profile.id-photo.destroy');
+
+    // Returns the Blade-rendered ID-card panel for any distributor the
+    // requester is authorized to see (self, descendant, or admin).
+    // Consumed by the tree-view "Details" modal — same source-of-truth
+    // service as the dashboard panel.
+    Route::get('/distributors/{distributor}/id-card-panel', [DistributorDetailsController::class, 'show'])
+        ->name('distributor.id-card-panel');
+
+    // Direct messages — auth-only, no further restriction beyond "you
+    // can only read threads you're part of" inside the controller.
+    Route::get('/messages', [MessageController::class, 'index'])->name('messages.index');
+    Route::get('/messages/{user}', [MessageController::class, 'show'])
+        ->whereNumber('user')->name('messages.show');
+    Route::post('/messages/{user}', [MessageController::class, 'store'])
+        ->whereNumber('user')->name('messages.store');
 });

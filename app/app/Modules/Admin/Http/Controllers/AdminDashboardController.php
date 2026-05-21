@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Compliance\Services\AuditLogPresenter;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 final class AdminDashboardController extends Controller
 {
-    public function index(): View
+    public function index(AuditLogPresenter $presenter): View
     {
         $stats = [
             'total_users' => DB::table('users')->count(),
@@ -34,6 +35,16 @@ final class AdminDashboardController extends Controller
             ->orderByDesc('audit_log.created_at')
             ->limit(10)
             ->get();
+
+        // Pre-warm name/ADN lookups for every referenced distributor / user
+        // in one batch (one SELECT each), then attach the rendered
+        // {title, subtitle} pair to each row so the Blade is dumb.
+        $presenter->warmCaches($recentAudit);
+        foreach ($recentAudit as $row) {
+            $rendered = $presenter->present($row);
+            $row->display_title = $rendered['title'];
+            $row->display_subtitle = $rendered['subtitle'];
+        }
 
         $recentDistributors = DB::table('distributors')
             ->join('users', 'distributors.user_id', '=', 'users.id')
