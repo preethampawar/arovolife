@@ -91,7 +91,7 @@
                             {{ $s['cta_secondary']['label'] }}
                         </a>
                     </div>
-                    <p class="text-xs text-gray-700 mt-5">{{ $s['note'] }}</p>
+                    <p class="text-sm text-gray-700 mt-5">{{ $s['note'] }}</p>
                 </div>
                 @endforeach
             </div>
@@ -261,7 +261,7 @@
         </button>
 
         {{-- Indicator dots --}}
-        <div class="absolute bottom-6 right-6 flex items-center gap-3 text-brand-700 text-xs font-medium z-10">
+        <div class="absolute bottom-6 right-6 flex items-center gap-3 text-brand-700 text-sm font-medium z-10">
             <span data-slider-counter>1/{{ count($slides) }}</span>
             <div class="flex items-center gap-1.5" data-slider-dots>
                 @foreach($slides as $i => $s)
@@ -394,7 +394,7 @@
                             {!! $p['icon'] !!}
                         </svg>
                     </div>
-                    <span class="text-xs text-gray-700 font-medium leading-tight">{{ $p['label'] }}</span>
+                    <span class="text-sm text-gray-700 font-medium leading-tight">{{ $p['label'] }}</span>
                 </div>
                 @endforeach
             </div>
@@ -461,7 +461,7 @@
                         {{ $step[0] }}
                     </div>
                     <h4 class="font-semibold text-gray-900 mb-1 text-sm">{{ $step[1] }}</h4>
-                    <p class="text-xs text-gray-800 leading-relaxed">{{ $step[2] }}</p>
+                    <p class="text-sm text-gray-800 leading-relaxed">{{ $step[2] }}</p>
                 </div>
                 @endforeach
             </div>
@@ -471,7 +471,7 @@
                    class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 hover:from-brand-600 hover:to-brand-800 text-white text-sm font-semibold transition-all shadow-lg shadow-brand-500/40 hover:shadow-xl hover:shadow-brand-500/50">
                     Talk to our team →
                 </a>
-                <p class="mt-3 text-xs text-gray-700">
+                <p class="mt-3 text-sm text-gray-700">
                     Registration is by personal referral only — leave your details and we'll connect you with a sponsor.
                 </p>
             </div>
@@ -560,7 +560,7 @@
                     ['Audit Trail',  'Every admin action logged'],
                 ] as $item)
                 <div class="bg-white/10 backdrop-blur rounded-xl border border-white/20 p-5">
-                    <p class="text-xs uppercase tracking-wider text-brand-100 mb-1 font-medium">Statute</p>
+                    <p class="text-sm uppercase tracking-wider text-brand-100 mb-1 font-medium">Statute</p>
                     <p class="font-bold text-lg">{{ $item[0] }}</p>
                     <p class="text-sm text-brand-50 mt-1">{{ $item[1] }}</p>
                 </div>
@@ -582,14 +582,14 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                 <div>
                     <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mb-3">
-                    <p class="text-xs leading-relaxed">
+                    <p class="text-sm leading-relaxed">
                         Arovolife Private Limited — a direct-selling company incorporated in India.
                         CIN U46909TS2026PTC210896.
                     </p>
                 </div>
                 <div>
                     <h4 class="text-white text-sm font-semibold mb-3">Company</h4>
-                    <ul class="space-y-2 text-xs">
+                    <ul class="space-y-2 text-sm">
                         <li><a href="{{ route('about') }}" class="hover:text-white">About arovolife</a></li>
                         <li><a href="{{ route('content.show', 'ethics') }}" class="hover:text-white">Code of Ethics</a></li>
                         <li><a href="#how-it-works" class="hover:text-white">How It Works</a></li>
@@ -597,7 +597,7 @@
                 </div>
                 <div>
                     <h4 class="text-white text-sm font-semibold mb-3">Legal</h4>
-                    <ul class="space-y-2 text-xs">
+                    <ul class="space-y-2 text-sm">
                         <li><a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Direct Seller Agreement</a></li>
                         <li><a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy Policy</a></li>
                         <li><a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a></li>
@@ -605,13 +605,13 @@
                 </div>
                 <div>
                     <h4 class="text-white text-sm font-semibold mb-3">Get Started</h4>
-                    <ul class="space-y-2 text-xs">
+                    <ul class="space-y-2 text-sm">
                         <li><a href="{{ route('contact.show') }}" class="hover:text-white">Become a Direct Seller</a></li>
                         <li><a href="{{ route('login') }}" class="hover:text-white">Sign In</a></li>
                     </ul>
                 </div>
             </div>
-            <div class="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+            <div class="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm">
                 <p>&copy; {{ date('Y') }} Arovolife Private Limited. All rights reserved.</p>
                 <p class="text-gray-500">
                     <strong class="text-gray-400">Registration is free.</strong> No payment required at signup.
