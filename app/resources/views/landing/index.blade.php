@@ -113,21 +113,30 @@
                          right at the rim of the white disc. --}}
                     <div class="hero-halo absolute inset-2 bg-gradient-to-br from-brand-300 to-brand-500 rounded-full opacity-50 blur-md"></div>
 
-                    {{-- Continuous ripple — 6 rings staggered every 0.5s on
-                         a 3s cycle = exactly 1 ripple emitted per 500ms.
-                         Each ring borrows the colour of one of the 5 orbit
-                         spark dots (gold → amber → violet → azure → deep
-                         blue, then cycling gold). --}}
-                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.65);"></div>
-                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(232, 142, 26, 0.65);"></div>
-                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.65);"></div>
-                    <div class="hero-ring hero-ring-4 absolute inset-0 rounded-full border-2" style="border-color: rgba(28, 128, 227, 0.65);"></div>
-                    <div class="hero-ring hero-ring-5 absolute inset-0 rounded-full border-2" style="border-color: rgba(11, 66, 122, 0.65);"></div>
-                    <div class="hero-ring hero-ring-6 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.65);"></div>
+                    {{-- Outer SOLID brand-blue disc — sits inside the ripple
+                         zone (inset-4 = 288px). The animated rings emanate
+                         outward from its edge; the inner white disc nests
+                         inside it. --}}
+                    <div class="absolute inset-4 bg-brand-500 rounded-full shadow-xl shadow-brand-900/30"></div>
 
-                    {{-- Inner brand-blue disc with the white arovolife logo --}}
-                    <div class="hero-logo-disc absolute inset-8 bg-brand-500 rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="w-56 h-auto">
+                    {{-- Continuous ripple — 6 rings × 6s cycle × 1s stagger =
+                         1 ripple emitted every 1 second with continuous
+                         coverage. Spark-matched hues but at 0.32 alpha for
+                         a subtle, atmospheric tone instead of a saturated
+                         line (gold → amber → violet → azure → deep blue,
+                         then cycling gold). --}}
+                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.32);"></div>
+                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(232, 142, 26, 0.32);"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.32);"></div>
+                    <div class="hero-ring hero-ring-4 absolute inset-0 rounded-full border-2" style="border-color: rgba(28, 128, 227, 0.32);"></div>
+                    <div class="hero-ring hero-ring-5 absolute inset-0 rounded-full border-2" style="border-color: rgba(11, 66, 122, 0.32);"></div>
+                    <div class="hero-ring hero-ring-6 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.32);"></div>
+
+                    {{-- Inner WHITE disc with the blue arovolife logo, nested
+                         inside the blue outer disc. inset-10 = 240px container,
+                         logo at w-56 = 224px → 8px breathing room. --}}
+                    <div class="hero-logo-disc absolute inset-10 bg-white rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
                     </div>
 
                     {{-- 5 floating dots around the ring — curcuma gold → deep blue gradient --}}
@@ -172,19 +181,19 @@
                 padding: 1.5rem;
             }
 
-            /* Ripple rings — 6 rings × 4.8s cycle ÷ 800ms stagger = exactly
-               1 new ripple emitted every 800ms with continuous coverage
-               (loop closes cleanly: 6 × 0.8 = 4.8s). */
+            /* Ripple rings — 6 rings × 7.98s cycle ÷ 1.33s stagger = 1 new
+               ripple emitted every 1.33s with continuous coverage (loop
+               closes cleanly: 6 × 1.33 ≈ 7.98s). */
             .hero-ring {
-                animation: heroPulseRing 4.8s ease-out infinite;
+                animation: heroPulseRing 7.98s ease-out infinite;
                 opacity: 0;
             }
-            .hero-ring-1 { animation-delay: 0s;   }
-            .hero-ring-2 { animation-delay: 0.8s; }
-            .hero-ring-3 { animation-delay: 1.6s; }
-            .hero-ring-4 { animation-delay: 2.4s; }
-            .hero-ring-5 { animation-delay: 3.2s; }
-            .hero-ring-6 { animation-delay: 4.0s; }
+            .hero-ring-1 { animation-delay: 0s;    }
+            .hero-ring-2 { animation-delay: 1.33s; }
+            .hero-ring-3 { animation-delay: 2.66s; }
+            .hero-ring-4 { animation-delay: 3.99s; }
+            .hero-ring-5 { animation-delay: 5.32s; }
+            .hero-ring-6 { animation-delay: 6.65s; }
             @keyframes heroPulseRing {
                 0%   { transform: scale(1);   opacity: 1; }
                 80%  { opacity: 0.15; }
