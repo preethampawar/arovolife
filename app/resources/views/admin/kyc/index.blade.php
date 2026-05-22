@@ -29,12 +29,27 @@
                 <td class="px-5 py-3 font-mono font-bold text-brand-600 tracking-widest">{{ $row->adn }}</td>
                 <td class="px-5 py-3 text-gray-700">{{ $row->user->email }}</td>
                 <td class="px-5 py-3 text-gray-700">{{ $row->created_at->format('d M Y H:i') }}</td>
-                <td class="px-5 py-3 text-gray-700">{{ $row->kyc_documents_count }}</td>
+                <td class="px-5 py-3 text-gray-700">
+                    @if($row->kyc_documents_count === 0)
+                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                            Awaiting documents
+                        </span>
+                    @else
+                        {{ $row->kyc_documents_count }}
+                    @endif
+                </td>
                 <td class="px-5 py-3 text-right">
-                    <a href="{{ route('admin.kyc.show', $row->id) }}"
-                        class="inline-flex items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-3 py-1.5 text-xs transition-colors">
-                        Review →
-                    </a>
+                    @if($row->kyc_documents_count === 0)
+                        <a href="{{ route('admin.distributors.show', $row->id) }}"
+                            class="inline-flex items-center rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium px-3 py-1.5 text-xs transition-colors">
+                            View profile →
+                        </a>
+                    @else
+                        <a href="{{ route('admin.kyc.show', $row->id) }}"
+                            class="inline-flex items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-3 py-1.5 text-xs transition-colors">
+                            Review →
+                        </a>
+                    @endif
                 </td>
             </tr>
             @endforeach

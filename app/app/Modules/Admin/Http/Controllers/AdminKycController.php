@@ -27,18 +27,24 @@ final class AdminKycController extends Controller
 
     public function index(): View
     {
-        // Distributors whose user.status is 'pending' AND who have at least
-        // one uploaded KYC document. Excludes pending-but-no-docs (those
-        // never finished registration) and active/frozen/terminated.
+        // All distributors whose user.status is 'pending', regardless of
+        // whether they've uploaded KYC documents yet. The previous
+        // `whereHas('kycDocuments')` filter hid users who'd completed
+        // step 2 (account) but not yet reached step 9 (documents),
+        // producing a discrepancy with the dashboard's "Pending
+        // Registration" tile — the dashboard counted them, this list
+        // didn't. The Blade now renders an "Awaiting documents" badge
+        // for rows where kyc_documents_count = 0 so the admin can see
+        // the full pipeline.
         //
-        // Couple registrations: only the primary appears in the queue. The
-        // secondary is reviewed alongside the primary on the show page and
-        // approved/rejected as a unit. The filter `is_primary_couple OR
-        // spouse_distributor_id IS NULL` keeps solo distributors and primary
-        // halves of couples; it suppresses secondaries.
+        // Couple registrations: only the primary appears in the queue.
+        // The secondary is reviewed alongside the primary on the show
+        // page and approved/rejected as a unit. The filter
+        // `is_primary_couple OR spouse_distributor_id IS NULL` keeps
+        // solo distributors and primary halves of couples; it
+        // suppresses secondaries.
         $pending = Distributor::query()
             ->whereHas('user', fn ($q) => $q->where('status', 'pending'))
-            ->whereHas('kycDocuments')
             ->where(function ($q) {
                 $q->whereNull('spouse_distributor_id')
                     ->orWhere('is_primary_couple', true);

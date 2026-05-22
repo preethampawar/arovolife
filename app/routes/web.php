@@ -107,7 +107,17 @@ Route::get('/register/resume/{draft}', [DraftResumeController::class, 'show'])
 //   9. Documents             /register/documents                  auth
 //  10. Complete              /register/complete                   auth
 
-Route::middleware(['auth'])->group(function (): void {
+// Wizard steps 3..10 are gated by `wizard.progress` ONLY — not the
+// generic `auth` middleware. EnsureRegistrationProgress itself
+// (a) restores the session from the `av_draft` cookie when a valid
+// draft is found and calls Auth::loginUsingId, and (b) falls through
+// to a login redirect when no draft + no session exists. Wrapping
+// these routes in `Route::middleware(['auth'])` would bounce the
+// user to login BEFORE the cookie-based draft resume gets a chance
+// to fire — which is the bug that broke "Continue with registration"
+// from the draft-conflict screen for users whose session expired
+// but whose av_draft cookie was still valid.
+Route::middleware([])->group(function (): void {
     Route::get('/register/orientation', [RegistrationWizardController::class, 'showOrientation'])
         ->middleware('wizard.progress:3')->name('register.orientation');
     Route::post('/register/orientation', [RegistrationWizardController::class, 'handleOrientation'])
