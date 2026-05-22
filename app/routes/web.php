@@ -218,6 +218,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
 
+    // Pending registrations (admin finishes on customer's behalf)
+    Route::get('/pending-registrations', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'index'])->name('pending-registrations.index');
+    Route::get('/pending-registrations/{user}', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'show'])->whereNumber('user')->name('pending-registrations.show');
+    Route::post('/pending-registrations/{user}/upload', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'upload'])->whereNumber('user')->name('pending-registrations.upload');
+    Route::post('/pending-registrations/{user}/finalise', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'finalise'])->whereNumber('user')->name('pending-registrations.finalise');
+
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');
     Route::get('/commerce/orders/{order}', [AdminOrderController::class, 'show'])->name('commerce.orders.show');

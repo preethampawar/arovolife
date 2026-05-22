@@ -55,6 +55,7 @@
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => '◉'],
                     ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => '⌬', 'prefix' => 'admin.tree'],
                     ['route' => 'admin.kyc.index',                'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc'],
+                    ['route' => 'admin.pending-registrations.index', 'label' => 'Pending registrations', 'icon' => '◷', 'prefix' => 'admin.pending-registrations'],
                     ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => '✉', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
                     ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => '🛒', 'prefix' => 'admin.commerce'],
                     ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => '📄', 'prefix' => 'admin.content'],
