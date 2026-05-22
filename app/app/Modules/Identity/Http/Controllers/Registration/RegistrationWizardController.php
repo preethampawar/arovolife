@@ -320,10 +320,23 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=referral_link_required');
         }
 
+        // Normalise BEFORE validation so the unique-check and
+        // returning-user lookup compare against the format we actually
+        // store. Phone form input is 10 digits ("9876543210"); the DB
+        // stores E.164 ("+919876543210"). Email is stored lowercase so
+        // "Ravi@x.com" matches an existing "ravi@x.com".
+        $request->merge([
+            'email' => strtolower(trim((string) $request->input('email', ''))),
+        ]);
+
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone_e164' => ['required', 'regex:/^[6-9]\d{9}$/', 'unique:users,phone_e164'],
+            // Format check only — uniqueness is enforced explicitly below
+            // against the normalised E.164 form so a returning user can
+            // pass through to the resume path without tripping over their
+            // own phone row.
+            'phone_e164' => ['required', 'regex:/^[6-9]\d{9}$/'],
             'password' => ['required', 'string', 'min:8', 'confirmed', new StrongPassword, new NotPwned],
         ], [
             'full_name.required' => 'Please enter your full name as it appears on your PAN card.',
@@ -332,7 +345,6 @@ final class RegistrationWizardController extends Controller
             'email.email' => 'That doesn’t look like a valid email — check for typos like missing @ or .com.',
             'phone_e164.required' => 'Please enter your 10-digit Indian mobile number.',
             'phone_e164.regex' => 'Enter a 10-digit Indian mobile number (must start with 6, 7, 8, or 9).',
-            'phone_e164.unique' => 'An account already exists with this mobile number.',
             'password.required' => 'Please choose a password.',
             'password.min' => 'Password must be at least 8 characters.',
             'password.confirmed' => 'The two passwords don’t match — please re-type them.',
@@ -340,6 +352,8 @@ final class RegistrationWizardController extends Controller
             'full_name' => 'full name',
             'phone_e164' => 'mobile number',
         ]);
+
+        $normalisedPhone = '+91'.ltrim($validated['phone_e164'], '0');
 
         // ── Returning-user path ────────────────────────────────────────────
         // If the email already exists in users, we must NOT create a second
@@ -349,6 +363,19 @@ final class RegistrationWizardController extends Controller
         //   • no active draft → the account is fully registered (or the draft
         //                       has expired); surface an "email taken" error.
         $existingUser = User::where('email', $validated['email'])->first();
+
+        // ── Phone uniqueness check ─────────────────────────────────────────
+        // Only enforce when this is NOT a returning-user submission. A
+        // returning user typing their own phone matches their own row and
+        // would otherwise be bounced before the resume flow could run. A
+        // returning user typing a phone owned by SOMEONE ELSE is still
+        // blocked (the phone collision belongs to a different user_id).
+        $phoneOwnerId = (int) (DB::table('users')->where('phone_e164', $normalisedPhone)->value('id') ?? 0);
+        if ($phoneOwnerId !== 0 && $phoneOwnerId !== ($existingUser?->id ?? 0)) {
+            return back()
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->withErrors(['phone_e164' => 'An account already exists with this mobile number.']);
+        }
 
         if ($existingUser !== null) {
             $activeDraft = $this->drafts->findActiveByUserId($existingUser->id);
@@ -379,16 +406,10 @@ final class RegistrationWizardController extends Controller
             return back()->withErrors(['email' => 'An account with this email already exists. Please sign in.']);
         }
 
-        // Normalise phone — form sends digits only, DB stores E.164 with +91 prefix
-        $phone = $validated['phone_e164'];
-        if (! str_starts_with($phone, '+')) {
-            $phone = '+91'.ltrim($phone, '0');
-        }
-
         $user = User::create([
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
-            'phone_e164' => $phone,
+            'phone_e164' => $normalisedPhone,
             'password_hash' => Hash::make($validated['password']),
             'password_set_at' => now(),
             'status' => 'pending',

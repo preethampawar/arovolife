@@ -43,8 +43,13 @@ final class AdminDistributorCreateController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        // Normalise inputs BEFORE validation so the regex rules apply to
-        // canonical forms (uppercase ADN/PAN/IFSC, digits-only Aadhaar).
+        // Normalise inputs BEFORE validation so the regex rules + unique
+        // checks apply to canonical forms. Phone goes from 10-digit form
+        // input to E.164 (+91XXXXXXXXXX) so the unique-lookup matches the
+        // DB's stored format; email is lowercased so "Ravi@x.com" matches
+        // an existing "ravi@x.com".
+        $rawPhone = preg_replace('/\D+/', '', (string) $request->input('phone_e164', '')) ?? '';
+        $normalisedPhone = $rawPhone !== '' ? '+91'.ltrim($rawPhone, '0') : '';
         $request->merge([
             'sponsor_adn' => strtoupper(trim((string) $request->input('sponsor_adn', ''))),
             'placement_adn' => strtoupper(trim((string) $request->input('placement_adn', ''))),
@@ -52,6 +57,8 @@ final class AdminDistributorCreateController extends Controller
             'aadhaar_number' => preg_replace('/\D+/', '', (string) $request->input('aadhaar_number', '')) ?? '',
             'bank_ifsc' => strtoupper(trim((string) $request->input('bank_ifsc', ''))),
             'side' => strtoupper(trim((string) $request->input('side', ''))) ?: null,
+            'email' => strtolower(trim((string) $request->input('email', ''))),
+            'phone_e164' => $normalisedPhone,
         ]);
 
         $validated = $request->validate([
@@ -61,7 +68,9 @@ final class AdminDistributorCreateController extends Controller
 
             'full_name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:191', 'unique:users,email'],
-            'phone_e164' => ['required', 'regex:/^[6-9]\d{9}$/', 'unique:users,phone_e164'],
+            // Validate the normalised E.164 form so the unique check
+            // actually catches duplicates against the stored values.
+            'phone_e164' => ['required', 'regex:/^\+91[6-9]\d{9}$/', 'unique:users,phone_e164'],
             'date_of_birth' => ['required', 'date', 'before:-18 years'],
 
             'pan_number' => ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/'],
