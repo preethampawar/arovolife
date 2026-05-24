@@ -120,3 +120,71 @@ it('KYC-UP-03: rejects oversize file (>5 MB)', function () {
     $response->assertRedirect();
     $response->assertSessionHasErrors('pan_doc');
 });
+
+it('KYC-UP-04: step 7 accepts ONLY PAN + Aadhaar (cheque + address-proof are optional)', function () {
+    // Cancelled cheque + address-proof front/back were made optional —
+    // the customer can supply them later via the dashboard or by the
+    // admin via the pending-registration tool. Asserts the wizard now
+    // advances when only the two required docs are attached.
+    $user = kycSeedSession();
+
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
+        'pan_doc' => UploadedFile::fake()->image('pan.jpg', 600, 400),
+        'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+    ]);
+
+    $response->assertRedirect('/register/complete');
+    $response->assertSessionHasNoErrors();
+
+    $wizard = app(WizardStateService::class);
+    $docs = $wizard->getStepData(9)['documents'] ?? null;
+    expect($docs)->not->toBeNull()
+        ->and($docs)->toHaveKeys(['pan', 'aadhaar'])
+        // The omitted optional fields must NOT appear as ghost keys.
+        ->and($docs)->not->toHaveKey('cheque')
+        ->and($docs)->not->toHaveKey('address_proof_front')
+        ->and($docs)->not->toHaveKey('address_proof_back');
+});
+
+it('KYC-UP-05: step 7 still rejects when PAN is missing (PAN remains mandatory)', function () {
+    $user = kycSeedSession();
+
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
+        // pan_doc omitted on purpose
+        'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHasErrors('pan_doc');
+});
+
+it('KYC-UP-06: step 7 still rejects when Aadhaar is missing (Aadhaar remains mandatory)', function () {
+    $user = kycSeedSession();
+
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
+        'pan_doc' => UploadedFile::fake()->image('pan.jpg', 600, 400),
+        // aadhaar_doc omitted on purpose
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHasErrors('aadhaar_doc');
+});
+
+it('KYC-UP-07: a partial mix (PAN + Aadhaar + address-proof-front only) is accepted', function () {
+    // Realistic case: customer has their address proof handy but not
+    // a cancelled cheque. The wizard must let them progress with the
+    // subset they have.
+    $user = kycSeedSession();
+
+    $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
+        'pan_doc' => UploadedFile::fake()->image('pan.jpg', 600, 400),
+        'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+        'address_proof_front' => UploadedFile::fake()->image('addr.jpg', 600, 400),
+    ]);
+
+    $response->assertRedirect('/register/complete');
+    $docs = app(WizardStateService::class)->getStepData(9)['documents'] ?? [];
+    expect($docs)->toHaveKeys(['pan', 'aadhaar', 'address_proof_front'])
+        ->and($docs)->not->toHaveKey('cheque')
+        ->and($docs)->not->toHaveKey('address_proof_back');
+});

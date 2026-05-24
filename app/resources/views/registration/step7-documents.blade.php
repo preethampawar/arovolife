@@ -15,19 +15,32 @@
         @csrf
 
         @php
+            // Only PAN + Aadhaar are statutorily required at registration.
+            // Cancelled cheque (needed only when bank is on file — bank is
+            // optional too) and address proof can be supplied later via
+            // the dashboard or by the admin via the pending-registration
+            // tool. Marked here as optional so we don't block signup on
+            // documents the customer can email or upload after the fact.
             $fields = [
-                'pan_doc'             => ['label' => 'PAN card',                 'help' => 'Front side, clearly readable.'],
-                'aadhaar_doc'         => ['label' => 'Aadhaar (front)',          'help' => 'Or e-Aadhaar PDF from UIDAI.'],
-                'cheque_doc'          => ['label' => 'Cancelled cheque or passbook page', 'help' => 'Account number and IFSC must be visible.'],
-                'address_proof_front' => ['label' => 'Address proof (front)',    'help' => 'Aadhaar, passport, voter ID, driving licence, or utility bill (last 3 months).'],
-                'address_proof_back'  => ['label' => 'Address proof (back)',     'help' => 'Back of the same document.'],
+                'pan_doc'             => ['label' => 'PAN card',                              'help' => 'Front side, clearly readable.',                                                                'required' => true],
+                'aadhaar_doc'         => ['label' => 'Aadhaar (front)',                        'help' => 'Or e-Aadhaar PDF from UIDAI.',                                                                  'required' => true],
+                'cheque_doc'          => ['label' => 'Cancelled cheque or passbook page',     'help' => 'Account number and IFSC must be visible. Skip if you’ll add bank details later.',                  'required' => false],
+                'address_proof_front' => ['label' => 'Address proof (front)',                  'help' => 'Aadhaar, passport, voter ID, driving licence, or utility bill (last 3 months). Optional at signup.', 'required' => false],
+                'address_proof_back'  => ['label' => 'Address proof (back)',                   'help' => 'Back of the same document. Optional at signup.',                                                'required' => false],
             ];
         @endphp
 
         @foreach($fields as $name => $meta)
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ $meta['label'] }} <span class="text-red-700">*</span></label>
-            <input type="file" name="{{ $name }}" accept="image/jpeg,image/png,application/pdf" required
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                {{ $meta['label'] }}
+                @if($meta['required'])
+                    <span class="text-red-700">*</span>
+                @else
+                    <span class="text-gray-500 text-xs font-normal">(optional)</span>
+                @endif
+            </label>
+            <input type="file" name="{{ $name }}" accept="image/jpeg,image/png,application/pdf" @if($meta['required']) required @endif
                 class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 @error($name) ring-1 ring-red-300 rounded-lg @enderror">
             <p class="text-xs text-gray-500 mt-1">{{ $meta['help'] }}</p>
             @error($name)<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror

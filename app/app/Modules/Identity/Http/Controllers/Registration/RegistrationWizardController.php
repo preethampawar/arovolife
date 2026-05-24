@@ -707,15 +707,37 @@ final class RegistrationWizardController extends Controller
         'address_proof_back' => 'address_proof_back',
     ];
 
+    /**
+     * Documents the wizard requires before placement. Only PAN and
+     * Aadhaar are statutorily mandatory for KYC (DSR 2021 + UIDAI
+     * verification). Cancelled cheque is needed only when bank
+     * details are on file (and bank itself is optional now), and
+     * address proof is collected at admin discretion — both can
+     * be supplied later via the customer dashboard or by the admin
+     * via the pending-registration tool, so we accept them
+     * optionally at registration.
+     *
+     * @var array<string, string>
+     */
+    private const KYC_DOC_REQUIRED_FIELDS = [
+        'pan' => 'pan_doc',
+        'aadhaar' => 'aadhaar_doc',
+    ];
+
     public function handleDocuments(Request $request): RedirectResponse
     {
         // mimetypes (not just mimes) checks actual file bytes via finfo —
         // a renamed text file labelled image/jpeg is rejected. max:5120 KB
         // matches the 5 MB cap from the master plan.
+        //
+        // PAN + Aadhaar are required; cheque + address-proof are optional
+        // (sometimes:file — only validated when actually attached).
         $rules = [];
-        foreach (self::KYC_DOC_FIELDS as $field) {
+        foreach (self::KYC_DOC_FIELDS as $type => $field) {
+            $isRequired = isset(self::KYC_DOC_REQUIRED_FIELDS[$type]);
             $rules[$field] = [
-                'required', 'file', 'max:5120',
+                $isRequired ? 'required' : 'sometimes',
+                'file', 'max:5120',
                 'mimetypes:image/jpeg,image/png,application/pdf',
                 new ValidUploadedDocumentBytes,
             ];
@@ -768,6 +790,13 @@ final class RegistrationWizardController extends Controller
     ): array {
         $stored = [];
         foreach ($fields as $type => $field) {
+            // Skip optional fields that weren't attached. The wizard's
+            // validator allows cheque + address-proof to be omitted;
+            // the loop just walks the configured fields list, so guard
+            // against $request->file() returning null on those omissions.
+            if (! $request->hasFile($field)) {
+                continue;
+            }
             $file = $request->file($field);
             $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
             $sha256 = (string) hash_file('sha256', $file->getRealPath());
