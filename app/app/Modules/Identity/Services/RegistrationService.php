@@ -112,13 +112,18 @@ class RegistrationService
                     );
                 }
 
+                // status=pending until admin reviews + approves the KYC
+                // documents at /admin/kyc/{id}. ApproveKycSubmission flips
+                // this to 'active'. Creating with 'active' here would skip
+                // the entire review queue (the queue filters by status=pending)
+                // and let unverified distributors transact immediately.
                 $user = User::create([
                     'email' => $account['email'],
                     'phone_e164' => $account['phone_e164'],
                     'password_hash' => $account['password_hash'],
                     'password_set_at' => now(),
                     'full_name' => $account['full_name'] ?? null,
-                    'status' => 'active',
+                    'status' => 'pending',
                 ]);
             }
 
