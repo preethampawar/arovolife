@@ -1006,7 +1006,7 @@ final class RegistrationWizardController extends Controller
             $stateData['couple']['spouse_aadhaar_number'],
         );
 
-        $this->drafts->sync($userId, $step + 1, $stateData);
+        $this->drafts->sync($userId, $step, $stateData);
     }
 
     /** @return array<string, string> */
