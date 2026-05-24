@@ -42,7 +42,10 @@ final class AdminFeatureFlagController extends Controller
         $flags = [];
         foreach ($this->registry() as $key => $meta) {
             $flags[$key] = $meta + [
-                'active' => Feature::active($meta['class']),
+                // Read against the global (null) scope so admins see the same
+                // state that unauthenticated registration visitors see, not
+                // an accidental admin-scoped override from before the fix.
+                'active' => Feature::for(null)->active($meta['class']),
             ];
         }
 
@@ -55,17 +58,24 @@ final class AdminFeatureFlagController extends Controller
         abort_unless(isset($registry[$key]), 404);
 
         $class = $registry[$key]['class'];
-        $before = Feature::active($class);
+        // Read against global scope (null) — without this, Pennant defaults to
+        // the current authenticated user, so the admin saw their own override
+        // instead of the global state that registration (unauthenticated) sees.
+        $before = Feature::for(null)->active($class);
         $action = $request->input('action');
         abort_unless(in_array($action, ['activate', 'deactivate'], true), 422);
 
+        // Admin-toggleable flags must affect ALL users, including unauthenticated
+        // visitors on the registration wizard. Pennant defaults to the currently
+        // authenticated user's scope; without `for(null)` we'd store an override
+        // scoped to the admin alone, leaving the global default untouched.
         if ($action === 'activate') {
-            Feature::activate($class);
+            Feature::for(null)->activate($class);
         } else {
-            Feature::deactivate($class);
+            Feature::for(null)->deactivate($class);
         }
 
-        $after = Feature::active($class);
+        $after = Feature::for(null)->active($class);
 
         AuditLog::create([
             'actor_id' => auth()->id(),
