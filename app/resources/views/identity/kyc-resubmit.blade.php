@@ -88,7 +88,7 @@
 
     <p class="text-xs text-gray-500 text-center">
         Need help? Write to <a href="mailto:support@arovolife.com" class="text-brand-600 hover:text-brand-700 underline">support@arovolife.com</a>
-        or visit our <a href="{{ route('p.grievance') ?? '/p/grievance' }}" class="text-brand-600 hover:text-brand-700 underline">grievance page</a>.
+        or visit our <a href="/p/grievance" class="text-brand-600 hover:text-brand-700 underline">grievance page</a>.
     </p>
 
     <form method="POST" action="{{ route('logout') }}" class="text-center mt-4">
