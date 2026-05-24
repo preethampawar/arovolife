@@ -119,11 +119,14 @@ it('WPM-01: av_draft cookie + NO active session → middleware restores → page
     expect(auth()->id())->toBe($user->id);
 });
 
-it('WPM-02: NO session + NO cookie → middleware redirects to /login', function (): void {
-    // The fallback path — no way to identify which wizard belongs to
-    // the visitor, so bounce to login.
+it('WPM-02: NO session + NO cookie → middleware redirects to /join (not /login)', function (): void {
+    // The fallback path — no way to identify which wizard belongs to the
+    // visitor. A fresh user mid-wizard whose session vanished has no account
+    // to log in to yet, so we send them to /join (the start of the funnel)
+    // with a session-expired notice. The previous behaviour redirected to
+    // /login, which stranded fresh users on a page they couldn't use.
     $response = $this->get(route('register.orientation'));
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('join.show'));
 });
 
 it('WPM-03: active wizard session + correct step → passthrough', function (): void {
@@ -143,12 +146,14 @@ it('WPM-03: active wizard session + correct step → passthrough', function (): 
     $response->assertStatus(200);
 });
 
-it('WPM-04: garbage av_draft cookie (no matching draft) → middleware ignores it + bounces to /login', function (): void {
+it('WPM-04: garbage av_draft cookie (no matching draft) → middleware ignores it + bounces to /join', function (): void {
     // Defensive: a tampered or stale cookie value mustn't promote the
-    // visitor into a stranger's session.
+    // visitor into a stranger's session. Like WPM-02, the destination is
+    // /join (the funnel start) rather than /login — a tampered cookie
+    // doesn't imply the visitor has an account to log into.
     $response = $this->withCookies(['av_draft' => bin2hex(random_bytes(32))])
         ->get(route('register.orientation'));
 
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('join.show'));
     expect(auth()->check())->toBeFalse();
 });
