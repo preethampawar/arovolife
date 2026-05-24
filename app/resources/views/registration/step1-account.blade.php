@@ -161,4 +161,22 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    const fields = form.querySelectorAll('input[name="full_name"], input[name="email"], input[name="phone_e164"], input[name="password"], input[name="password_confirmation"]');
+
+    fields.forEach(field => {
+        field.addEventListener('input', function() {
+            const errorElement = this.parentElement.nextElementSibling;
+            if (errorElement && errorElement.tagName === 'P' && errorElement.classList.contains('text-red-700')) {
+                errorElement.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 @endsection
