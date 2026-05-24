@@ -106,7 +106,7 @@ class RegistrationService
 
                 // Validate required account data exists
                 if (empty($account['email']) || empty($account['phone_e164']) || empty($account['password_hash'])) {
-                    throw new \RuntimeException(
+                    throw new \App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError(
                         'Registration incomplete: missing required account data (email, phone, or password). '
                         . 'Please return to the registration wizard and complete all steps.'
                     );

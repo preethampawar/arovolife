@@ -800,8 +800,18 @@ final class RegistrationWizardController extends Controller
 
         $user = Auth::user();
 
+        // Stash the placement target (set at step 1 from the referral link /
+        // join form, persisted on the wizard state by WizardStateService::start())
+        // into wizardData so RegistrationService::finalise() places the new
+        // distributor under the chosen placement node. Without this, finalise
+        // silently falls back to sponsor_id and tries to place under the root,
+        // which usually fails with PlacementSlotsExhaustedError.
         $wizardData = array_merge($state['data'], [
             'sponsor_id' => $state['sponsor_id'],
+            'placement' => [
+                'placement_id' => $state['placement_id'] ?? $state['sponsor_id'],
+                'side' => $state['side_opt'] ?? null,
+            ],
         ]);
 
         // Stitch the couple block from the per-step fragments saved across
@@ -829,13 +839,15 @@ final class RegistrationWizardController extends Controller
 
         try {
             $result = $this->registrationService->finalise($wizardData, null);
-        } catch (\RuntimeException $e) {
+        } catch (\App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError $e) {
             // Account data validation failed (missing email, phone, or password)
             // User needs to return to earlier steps to complete required fields
             Log::warning('Registration finalisation: incomplete account data', [
                 'error' => $e->getMessage(),
             ]);
-            return redirect('/contact-us?reason=registration_incomplete');
+            return redirect()->route('register.account.show')->withErrors([
+                'wizard' => 'Some required details (email, phone, or password) were missing — please re-enter them.',
+            ]);
         } catch (UniqueConstraintViolationException $e) {
             // The C-1 race: a concurrent registration committed the same
             // PAN between step-4 dedup and now. The unique index on
