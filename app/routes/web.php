@@ -29,7 +29,6 @@ use App\Modules\Identity\Http\Controllers\DashboardController;
 use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
 use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
-use App\Modules\Identity\Http\Controllers\Registration\DraftResumeController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
 use App\Modules\Public\Http\Controllers\ContactController;
@@ -61,11 +60,6 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
     Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])->name('register.post');
 
-    // Draft-conflict resolution — discard an existing draft so the visitor
-    // can start fresh under a new sponsor/placement referral link.
-    Route::post('/register/draft/discard', [RegistrationWizardController::class, 'discardDraft'])
-        ->name('register.draft.discard');
-
     // Forgot-password flow. The send-link endpoint is throttled (3 requests
     // per 10 min per IP) so an attacker can't spam reset emails to a victim.
     Route::get('/forgot-password', [PasswordResetController::class, 'showRequest'])->name('password.request');
@@ -87,12 +81,6 @@ Route::get('/activate/{user}', [SpouseActivationController::class, 'show'])
 Route::post('/activate/{user}', [SpouseActivationController::class, 'submit'])
     ->middleware('signed')->name('spouse.activate.submit');
 
-// Draft resume — signed magic link that re-hydrates the wizard session so a
-// registrant can continue on a new device / browser.
-Route::get('/register/resume/{draft}', [DraftResumeController::class, 'show'])
-    ->name('register.resume')
-    ->middleware('signed');
-
 // ── Registration Wizard (steps 3-10, auth-gated) ─────────────────────────────
 //
 // New step order (2026-05):
@@ -107,16 +95,9 @@ Route::get('/register/resume/{draft}', [DraftResumeController::class, 'show'])
 //   9. Documents             /register/documents                  auth
 //  10. Complete              /register/complete                   auth
 
-// Wizard steps 3..10 are gated by `wizard.progress` ONLY — not the
-// generic `auth` middleware. EnsureRegistrationProgress itself
-// (a) restores the session from the `av_draft` cookie when a valid
-// draft is found and calls Auth::loginUsingId, and (b) falls through
-// to a login redirect when no draft + no session exists. Wrapping
-// these routes in `Route::middleware(['auth'])` would bounce the
-// user to login BEFORE the cookie-based draft resume gets a chance
-// to fire — which is the bug that broke "Continue with registration"
-// from the draft-conflict screen for users whose session expired
-// but whose av_draft cookie was still valid.
+// Wizard steps 3..10 are gated by `wizard.progress` middleware. The session
+// must be active and have valid wizard state at each step — users mid-flow
+// who lose their session must restart from step 1.
 Route::middleware([])->group(function (): void {
     Route::get('/register/orientation', [RegistrationWizardController::class, 'showOrientation'])
         ->middleware('wizard.progress:3')->name('register.orientation');
@@ -217,12 +198,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/kyc/{id}/documents/{docId}', [AdminKycController::class, 'streamDocument'])->name('kyc.document');
     Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
-
-    // Pending registrations (admin finishes on customer's behalf)
-    Route::get('/pending-registrations', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'index'])->name('pending-registrations.index');
-    Route::get('/pending-registrations/{user}', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'show'])->whereNumber('user')->name('pending-registrations.show');
-    Route::post('/pending-registrations/{user}/upload', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'upload'])->whereNumber('user')->name('pending-registrations.upload');
-    Route::post('/pending-registrations/{user}/finalise', [App\Modules\Admin\Http\Controllers\AdminPendingRegistrationController::class, 'finalise'])->whereNumber('user')->name('pending-registrations.finalise');
 
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');

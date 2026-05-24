@@ -29,6 +29,6 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('drafts:purge')->daily();
+        //
     })
     ->create();

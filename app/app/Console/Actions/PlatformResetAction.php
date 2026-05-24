@@ -46,7 +46,6 @@ final class PlatformResetAction
         'orientation_views',
         'cooling_off_events',
         'kyc_documents',
-        'registration_drafts',
         'line_change_requests',
         // Tree + main
         'sponsorship',
@@ -124,11 +123,11 @@ final class PlatformResetAction
             })->filter()->unique()->values();
 
             foreach ($prefixes as $prefix) {
-                // Allowlist: the KYC uploader only writes to `user_<id>/`.
+                // Allowlist: the KYC uploader writes to `user_<id>/` or `reg_<sessionId>/`.
                 // Anything else is corrupt data or an injection attempt —
                 // skip rather than risk wiping unrelated bucket contents
                 // (the s3 disk targets real AWS in staging/prod).
-                if (! is_string($prefix) || preg_match('/^user_\d+$/', $prefix) !== 1) {
+                if (! is_string($prefix) || ! preg_match('/^(user_\d+|reg_[a-f0-9]+)$/', $prefix)) {
                     $log(sprintf('  s3: skipping non-allowlisted prefix %s', (string) $prefix));
 
                     continue;
