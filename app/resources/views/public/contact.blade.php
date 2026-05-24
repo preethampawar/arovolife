@@ -38,6 +38,13 @@
                     Leave your details below and we'll help you complete your registration.
                 </p>
             </div>
+        @elseif($reason === 'placement_taken')
+            <div class="card-refined p-5 sm:p-6 mb-6 bg-amber-50 border border-amber-200 lift-in" style="animation-delay: 120ms;">
+                <p class="text-sm font-semibold text-amber-900 mb-1.5">Your placement slot was just claimed by another distributor</p>
+                <p class="text-sm text-amber-800 leading-relaxed">
+                    Your registration is otherwise complete — we have your PAN, Aadhaar, and KYC documents safely on file. The placement slot you chose at the start filled up while you were finishing the wizard. Leave your details below; support will assign you a new placement and complete your ADN issuance within one business day.
+                </p>
+            </div>
         @elseif($reason === 'join_us')
             <div class="card-refined p-5 sm:p-6 mb-6 bg-leaf-50 border border-leaf-200 lift-in" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-leaf-800 mb-1.5">Welcome — let's get you started</p>
@@ -181,8 +188,17 @@
                     </label>
                     <select id="purpose" name="purpose" required class="input-refined">
                         @php
-                            $autoPurposeReasons = ['referral_link_required', 'invalid_referral_link', 'join_us'];
-                            $oldPurpose = old('purpose', in_array($reason, $autoPurposeReasons, true) ? 'become_distributor' : '');
+                            // Pre-pick the most relevant purpose based on the
+                            // reason the visitor arrived with. placement_taken
+                            // implies the visitor has a partially-finished
+                            // registration that support needs to repair —
+                            // "Account or KYC support" routes the inquiry to
+                            // the right team.
+                            $autoBecomeDistributor = ['referral_link_required', 'invalid_referral_link', 'join_us'];
+                            $autoSupport = ['placement_taken'];
+                            $defaultPurpose = in_array($reason, $autoBecomeDistributor, true) ? 'become_distributor'
+                                : (in_array($reason, $autoSupport, true) ? 'support' : '');
+                            $oldPurpose = old('purpose', $defaultPurpose);
                         @endphp
                         <option value="" disabled {{ $oldPurpose === '' ? 'selected' : '' }}>Pick one…</option>
                         <option value="become_distributor" {{ $oldPurpose === 'become_distributor' ? 'selected' : '' }}>Become a Direct Seller</option>

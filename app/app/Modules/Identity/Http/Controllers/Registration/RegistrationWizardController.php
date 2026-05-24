@@ -947,13 +947,14 @@ final class RegistrationWizardController extends Controller
             // the user was completing the wizard (race against another
             // registration sharing the same placement_id). The user has
             // already submitted PAN/Aadhaar/bank — we cannot silently
-            // remap them. Clear the wizard, drop them on Contact Us with a
-            // dedicated reason so support can either issue a new link or
-            // hand-place them, and audit the event for the support trail.
-            $this->wizard->clear();
-
-            return redirect('/contact-us?reason=invalid_referral_link')
-                ->with('status', 'The placement we reserved for you was claimed by another registration before yours completed. Please contact support; your details are safe and we can resume your registration with a fresh placement.');
+            // remap them. Drop them on Contact Us with the dedicated
+            // `placement_taken` reason (NOT `invalid_referral_link` —
+            // their link was fine; the slot got raced) so the page
+            // copy explains what's actually happening. Wizard state +
+            // draft are preserved so support can either reassign the
+            // placement and trigger an admin finalise on their behalf,
+            // or guide the customer to resume with a fresh placement.
+            return redirect('/contact-us?reason=placement_taken');
         }
 
         $userId = $user->id;

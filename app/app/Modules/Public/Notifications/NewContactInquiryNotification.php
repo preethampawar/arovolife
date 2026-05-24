@@ -49,6 +49,8 @@ final class NewContactInquiryNotification extends Notification implements Should
         $reasonLabel = match ($inquiry->reason) {
             'referral_link_required' => 'Tried to register without a referral link',
             'invalid_referral_link' => 'Referral link could not be verified',
+            'placement_taken' => 'Placement slot was claimed during registration — needs admin reassignment',
+            'join_us' => 'Used the public "Register with us" link',
             'general' => 'General contact form',
             default => 'No reason recorded',
         };

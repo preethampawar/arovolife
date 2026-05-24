@@ -16,7 +16,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
-final class RegistrationService
+/*
+ * Intentionally NOT marked `final` so the test suite can swap a
+ * Mockery stub in for placement-race failure-path testing
+ * (see PlacementRaceMessageTest). Production callers should treat
+ * this as effectively final — extending for behaviour change would
+ * bypass the audit + transaction guarantees finalise() makes.
+ */
+class RegistrationService
 {
     private const DOCUMENT_VERSIONS = [
         'tnc' => '1.0.0',
