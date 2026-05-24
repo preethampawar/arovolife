@@ -563,10 +563,9 @@ final class RegistrationWizardController extends Controller
      * Aadhaar are statutorily mandatory for KYC (DSR 2021 + UIDAI
      * verification). Cancelled cheque is needed only when bank
      * details are on file (and bank itself is optional now), and
-     * address proof is collected at admin discretion — both can
-     * be supplied later via the customer dashboard or by the admin
-     * via the pending-registration tool, so we accept them
-     * optionally at registration.
+     * address proof is collected at admin discretion. Both can
+     * be supplied optionally at registration; additional docs
+     * can be uploaded from the customer dashboard post-registration.
      *
      * @var array<string, string>
      */

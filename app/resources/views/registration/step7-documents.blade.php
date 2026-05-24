@@ -18,9 +18,8 @@
             // Only PAN + Aadhaar are statutorily required at registration.
             // Cancelled cheque (needed only when bank is on file — bank is
             // optional too) and address proof can be supplied later via
-            // the dashboard or by the admin via the pending-registration
-            // tool. Marked here as optional so we don't block signup on
-            // documents the customer can email or upload after the fact.
+            // the customer dashboard. Marked here as optional so we don't
+            // block signup on documents the customer can upload after the fact.
             $fields = [
                 'pan_doc'             => ['label' => 'PAN card',                              'help' => 'Front side, clearly readable.',                                                                'required' => true],
                 'aadhaar_doc'         => ['label' => 'Aadhaar (front)',                        'help' => 'Or e-Aadhaar PDF from UIDAI.',                                                                  'required' => true],
