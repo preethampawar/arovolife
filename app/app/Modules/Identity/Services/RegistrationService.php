@@ -48,7 +48,7 @@ class RegistrationService
     /**
      * @param  array<string, mixed>  $wizardData
      */
-    public function finalise(array $wizardData, User $user): PlacementResult
+    public function finalise(array $wizardData, ?User $user = null): PlacementResult
     {
         $personal = $wizardData['personal'] ?? [];
         $pan = $wizardData['pan'] ?? [];
@@ -106,13 +106,43 @@ class RegistrationService
         );
 
         // Atomic finalisation: placement + cooling_off_events + kyc_documents
-        // + orientation_views + consents + user.update + audit_log all live
+        // + orientation_views + consents + user.create + audit_log all live
         // or all roll back. The placement engine starts its own transaction;
         // Laravel nests cleanly via savepoints.
         return $this->db->connection()->transaction(function () use (
-            $input, $documents, $consent, $personal, $user,
+            $input, $documents, $consent, $personal, $user, $wizardData,
             $couple, $isCouple, $bankAccountEnc, $bankIfscFinal
         ): PlacementResult {
+            // Create user inside transaction if not already created
+            if ($user === null) {
+                $account = $wizardData['account'] ?? [];
+                $user = User::create([
+                    'email' => $account['email'] ?? '',
+                    'phone_e164' => $account['phone_e164'] ?? '',
+                    'password_hash' => $account['password_hash'] ?? '',
+                    'password_set_at' => now(),
+                    'full_name' => $account['full_name'] ?? null,
+                    'status' => 'active',
+                ]);
+                // Reconstruct input with the newly created user_id
+                $input = new PlaceDistributorInput(
+                    userId: $user->id,
+                    sponsorId: $input->sponsorId,
+                    placementId: $input->placementId,
+                    panHash: $input->panHash,
+                    panLast4: $input->panLast4,
+                    bankAccountEnc: $input->bankAccountEnc,
+                    bankIfsc: $input->bankIfsc,
+                    state: $input->state,
+                    sideOpt: $input->sideOpt,
+                    aadhaarRef: $input->aadhaarRef,
+                    aadhaarLast4: $input->aadhaarLast4,
+                    isPrimaryCouple: $input->isPrimaryCouple,
+                    panEncrypted: $input->panEncrypted,
+                    aadhaarEncrypted: $input->aadhaarEncrypted,
+                );
+            }
+
             $result = $this->engine->place($input);
 
             $now = now()->format('Y-m-d H:i:s.v');

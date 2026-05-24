@@ -78,16 +78,13 @@ final class WizardStateService
         $this->session->forget(self::INTENT_KEY);
     }
 
-    public function start(int $userId, int $sponsorId, int $placementId, ?string $sideOpt = null): void
+    public function start(int $sponsorId, int $placementId, ?string $sideOpt = null): void
     {
-        // After account creation (step 2), the next auth-gated step is
-        // Orientation (step 3). Steps 1 (sponsor/placement) and 2 (account)
-        // are implicit by the time start() is called: step 1's data lives
-        // in `registration_intent` from the public sponsor-placement form,
-        // and step 2's data IS the User row whose existence is the proof.
+        // Pure session-based wizard: no user_id stored. User is created
+        // atomically at step 10 finalisation. Step 2 data (account) is
+        // saved to session like all other steps.
         $this->session->put(self::KEY, [
-            'step' => 3,
-            'user_id' => $userId,
+            'step' => 2,
             'sponsor_id' => $sponsorId,
             'placement_id' => $placementId,
             'side_opt' => $sideOpt,
@@ -105,11 +102,9 @@ final class WizardStateService
         return (int) ($this->get()['step'] ?? 1);
     }
 
-    public function userId(): ?int
+    public function registrationSessionId(): string
     {
-        $state = $this->get();
-
-        return $state ? (int) $state['user_id'] : null;
+        return $this->session->getId();
     }
 
     public function sponsorId(): ?int
@@ -136,7 +131,7 @@ final class WizardStateService
 
     public function saveStepData(int $step, array $data): void
     {
-        $state = $this->get() ?? ['step' => $step, 'user_id' => null, 'sponsor_id' => null, 'data' => []];
+        $state = $this->get() ?? ['step' => $step, 'sponsor_id' => null, 'placement_id' => null, 'side_opt' => null, 'data' => []];
         $state['data'][self::STEPS[$step]] = $data;
         $state['step'] = max($state['step'], $step + 1);
         $this->session->put(self::KEY, $state);
@@ -149,16 +144,9 @@ final class WizardStateService
 
     public function isStepComplete(int $step): bool
     {
-        // Steps 1 (sponsor & placement) and 2 (account) have no per-step
-        // data in the wizard session — step 1 lives in `registration_intent`,
-        // step 2 proof is the User row. Both are complete once start() has
-        // run; userId() is the canonical "we got past account creation"
-        // signal.
+        // Step 1 lives in `registration_intent`; steps 2+ live in session data.
         if ($step === 1) {
             return $this->intent() !== null;
-        }
-        if ($step === 2) {
-            return $this->userId() !== null;
         }
 
         return $this->getStepData($step) !== null;
@@ -170,22 +158,6 @@ final class WizardStateService
         $this->session->forget(self::INTENT_KEY);
     }
 
-    /**
-     * Restore wizard session from a persisted draft (cookie-restore or signed-link path).
-     *
-     * @param  array<string, mixed>  $data
-     */
-    public function restore(int $userId, int $sponsorId, int $placementId, ?string $sideOpt, array $data, int $currentStep): void
-    {
-        $this->session->put(self::KEY, [
-            'step' => $currentStep,
-            'user_id' => $userId,
-            'sponsor_id' => $sponsorId,
-            'placement_id' => $placementId,
-            'side_opt' => $sideOpt,
-            'data' => $data,
-        ]);
-    }
 
     /**
      * Map a wizard step number to its named route.
