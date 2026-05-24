@@ -12,6 +12,33 @@
 </div>
 @endif
 
+{{-- User-status banner. The KYC queue index filters by status='pending' so
+     anyone reaching this page directly may be in a non-standard state. Make
+     it obvious so the admin doesn't accidentally re-approve a closed account
+     or re-reject an active one. --}}
+@php
+    $status = $distributor->user?->status ?? 'unknown';
+    $statusMeta = [
+        'pending'    => ['bg' => 'bg-amber-50',  'border' => 'border-amber-200',  'text' => 'text-amber-900',  'label' => 'Pending review',     'note' => $hasPriorRejection ? 'This is a RE-SUBMISSION — the applicant previously had documents rejected and uploaded replacements.' : 'New submission awaiting review.'],
+        'active'     => ['bg' => 'bg-green-50',  'border' => 'border-green-200',  'text' => 'text-green-900',  'label' => 'Already approved',   'note' => 'This distributor was already approved. Re-approving will reset their activation timestamp.'],
+        'rejected'   => ['bg' => 'bg-red-50',    'border' => 'border-red-200',    'text' => 'text-red-900',    'label' => 'Rejected',           'note' => 'The applicant was previously rejected and has not yet resubmitted. They can log in and re-upload at /kyc/resubmit.'],
+        'terminated' => ['bg' => 'bg-gray-100',  'border' => 'border-gray-300',   'text' => 'text-gray-900',   'label' => 'Account closed',     'note' => 'This account is permanently terminated. No further action is normally appropriate here.'],
+        'frozen'     => ['bg' => 'bg-purple-50', 'border' => 'border-purple-200', 'text' => 'text-purple-900', 'label' => 'Frozen (hold)',      'note' => 'This account is on a compliance hold.'],
+    ][$status] ?? ['bg' => 'bg-gray-50', 'border' => 'border-gray-200', 'text' => 'text-gray-900', 'label' => ucfirst($status), 'note' => ''];
+@endphp
+<div class="rounded-xl border {{ $statusMeta['border'] }} {{ $statusMeta['bg'] }} p-4 mb-6">
+    <p class="text-sm font-semibold {{ $statusMeta['text'] }}">{{ $statusMeta['label'] }}</p>
+    @if($statusMeta['note'])
+    <p class="text-xs {{ $statusMeta['text'] }} mt-1 leading-relaxed">{{ $statusMeta['note'] }}</p>
+    @endif
+    @if($hasPriorRejection && $lastRejectionReason)
+    <div class="mt-3 rounded-lg border border-amber-200 bg-white p-3 text-xs text-amber-900">
+        <p class="font-semibold uppercase tracking-wider text-[10px] text-amber-700 mb-1">Last rejection reason</p>
+        <p class="leading-relaxed">{{ $lastRejectionReason }}</p>
+    </div>
+    @endif
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
     <div class="rounded-2xl border border-gray-200 bg-white p-6 lg:col-span-2">
         <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Applicant</p>
@@ -114,20 +141,48 @@
     <form method="POST" action="{{ route('admin.kyc.reject', $distributor->id) }}"
         class="rounded-2xl border border-red-200 bg-red-50 p-6 space-y-3">
         @csrf
-        <p class="text-base font-semibold text-red-800">Reject KYC</p>
+        <p class="text-base font-semibold text-red-800">Reject KYC (recoverable)</p>
         <p class="text-xs text-red-700">
-            The distributor's account will be terminated and the reason will be recorded
-            in the audit log. Required: a brief, accurate reason (8–1024 characters).
+            The distributor's status flips to <strong>rejected</strong>. They are emailed the reason
+            and a link to re-upload corrected documents. Required: a brief, accurate reason
+            (8–1024 characters, included verbatim in the email).
         </p>
         <textarea name="reason" required minlength="8" maxlength="1024" rows="3"
             class="w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
             placeholder="e.g. Aadhaar image is unreadable; cheque image does not match the IFSC entered."></textarea>
         <button type="submit"
             class="w-full inline-flex justify-center items-center rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2.5 text-sm transition-colors">
-            Reject
+            Reject and request re-upload
         </button>
     </form>
 </div>
+
+{{-- Permanent closure action — distinct from Reject. Use for fraud,
+     repeat rejections, or any case where the applicant should not be
+     allowed to retry. The Reject card above is the right tool for
+     "fix and resubmit" cases. --}}
+<details class="mt-6 rounded-2xl border border-gray-300 bg-gray-50 p-6">
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">
+        Terminate account permanently (irreversible) &nbsp;⤓
+    </summary>
+    <form method="POST" action="{{ route('admin.kyc.terminate', $distributor->id) }}" class="mt-4 space-y-3">
+        @csrf
+        <p class="text-xs text-gray-600 leading-relaxed">
+            Use this only when reject + resubmit is not appropriate: confirmed fraud, repeat
+            rejections of the same issue, or any other end-of-relationship case. The distributor
+            is emailed the closure notice and the audit log records the reason. There is no
+            recovery path from this state — the applicant cannot sign in afterwards.
+        </p>
+        <textarea name="reason" required minlength="8" maxlength="1024" rows="3"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-500 focus:ring-gray-500"
+            placeholder="e.g. Fraudulent PAN — does not match the name on the Aadhaar card. Multiple inconsistencies after re-upload."></textarea>
+        <button type="submit"
+            class="w-full sm:w-auto inline-flex justify-center items-center rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium px-4 py-2.5 text-sm transition-colors"
+            onclick="return confirm('Terminate this account permanently? The distributor will not be able to sign in afterwards.');">
+            Terminate account permanently
+        </button>
+    </form>
+</details>
 
 {{-- Admin document upload --}}
 <div class="mt-6 rounded-2xl border border-gray-200 bg-white p-6">

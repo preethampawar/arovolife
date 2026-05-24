@@ -12,10 +12,17 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 
 /**
- * Manual KYC rejection. Closes the distributor account ('terminated') and
- * captures the admin's reason in audit_log so the applicant can be told why
- * (and re-register cleanly if appropriate). The kyc_documents rows stay
- * intact — reject is not "scrub the submission", it's "decline this one".
+ * Manual KYC rejection. Sets the user's status to 'rejected' — a recoverable
+ * state: the applicant can log in, see the reason on a re-upload page, and
+ * resubmit replacement documents. Once they do, status flips back to 'pending'
+ * and they reappear in the admin queue.
+ *
+ * The 'terminated' status is reserved for permanent closures (fraud, cooling-
+ * off cancellation, repeat offenders) and is not what reject does any more.
+ *
+ * kyc_documents rows stay intact — reject is "decline this submission", not
+ * "scrub everything". The KycRejected event fires the rejection email so the
+ * applicant knows why and where to go next.
  */
 final class RejectKycSubmission
 {
@@ -63,7 +70,7 @@ final class RejectKycSubmission
             if ($userIds !== []) {
                 User::query()
                     ->whereIn('id', $userIds)
-                    ->update(['status' => 'terminated']);
+                    ->update(['status' => 'rejected']);
             }
 
             AuditLog::create([

@@ -2,6 +2,7 @@
 
 use App\Modules\Commerce\Http\Middleware\CaptureAttribution;
 use App\Modules\Identity\Http\Middleware\EnsureRegistrationProgress;
+use App\Modules\Identity\Http\Middleware\RedirectRejectedToResubmit;
 use App\Modules\Identity\Http\Middleware\RequireKycApproval;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'wizard.progress' => EnsureRegistrationProgress::class,
             'kyc.approved' => RequireKycApproval::class,
+            'kyc.rejected.resubmit' => RedirectRejectedToResubmit::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'capture.attribution' => CaptureAttribution::class,

@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Admin\Services\ApproveKycSubmission;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Admin\Services\RejectKycSubmission;
+use App\Modules\Admin\Services\TerminateDistributor;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
@@ -27,19 +28,16 @@ final class AdminKycController extends Controller
     public function __construct(
         private readonly ApproveKycSubmission $approve,
         private readonly RejectKycSubmission $reject,
+        private readonly TerminateDistributor $terminate,
     ) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        // All distributors whose user.status is 'pending', regardless of
-        // whether they've uploaded KYC documents yet. The previous
-        // `whereHas('kycDocuments')` filter hid users who'd completed
-        // step 2 (account) but not yet reached step 9 (documents),
-        // producing a discrepancy with the dashboard's "Pending
-        // Registration" tile — the dashboard counted them, this list
-        // didn't. The Blade now renders an "Awaiting documents" badge
-        // for rows where kyc_documents_count = 0 so the admin can see
-        // the full pipeline.
+        // Queue surfaces both 'pending' (new + resubmitted) and 'rejected'
+        // (awaiting the applicant's re-upload) so admins can find and reopen
+        // cases that were previously declined but never resubmitted. Tabs:
+        //   ?tab=pending  — pending review (default)
+        //   ?tab=rejected — declined, awaiting applicant resubmission
         //
         // Couple registrations: only the primary appears in the queue.
         // The secondary is reviewed alongside the primary on the show
@@ -47,19 +45,48 @@ final class AdminKycController extends Controller
         // `is_primary_couple OR spouse_distributor_id IS NULL` keeps
         // solo distributors and primary halves of couples; it
         // suppresses secondaries.
-        $pending = Distributor::query()
-            ->whereHas('user', fn ($q) => $q->where('status', 'pending'))
+        $tab = $request->query('tab', 'pending');
+        $statusFilter = $tab === 'rejected' ? 'rejected' : 'pending';
+
+        $base = Distributor::query()
+            ->whereHas('user', fn ($q) => $q->where('status', $statusFilter))
             ->where(function ($q) {
                 $q->whereNull('spouse_distributor_id')
                     ->orWhere('is_primary_couple', true);
             })
             ->with('user')
-            ->withCount('kycDocuments')
-            ->orderBy('created_at')
-            ->paginate(50);
+            ->withCount('kycDocuments');
+
+        $rows = $base->orderBy('created_at')->paginate(50)->withQueryString();
+
+        // Mark each row with whether it has a prior rejection — drives the
+        // "Resubmitted" pill on /admin/kyc rows whose status is 'pending'.
+        $ids = $rows->pluck('id')->all();
+        $resubmittedIds = $ids === [] ? collect() : AuditLog::query()
+            ->where('action', 'admin.kyc.rejected')
+            ->where('subject_type', 'distributor')
+            ->whereIn('subject_id', $ids)
+            ->pluck('subject_id')
+            ->unique();
+
+        // Counts for the tab buttons.
+        $pendingCount = Distributor::query()
+            ->whereHas('user', fn ($q) => $q->where('status', 'pending'))
+            ->where(function ($q) {
+                $q->whereNull('spouse_distributor_id')->orWhere('is_primary_couple', true);
+            })->count();
+        $rejectedCount = Distributor::query()
+            ->whereHas('user', fn ($q) => $q->where('status', 'rejected'))
+            ->where(function ($q) {
+                $q->whereNull('spouse_distributor_id')->orWhere('is_primary_couple', true);
+            })->count();
 
         return view('admin.kyc.index', [
-            'pending' => $pending,
+            'pending' => $rows,
+            'resubmittedIds' => $resubmittedIds,
+            'currentTab' => $tab,
+            'pendingCount' => $pendingCount,
+            'rejectedCount' => $rejectedCount,
         ]);
     }
 
@@ -69,8 +96,26 @@ final class AdminKycController extends Controller
             ->with(['user', 'kycDocuments'])
             ->findOrFail($id);
 
+        // Surface the most recent rejection reason (if any) so the admin
+        // reviewing a resubmitted application can see what they previously
+        // flagged. Also tells the view whether to render a "this is a
+        // re-submission" banner.
+        $lastRejection = AuditLog::query()
+            ->where('action', 'admin.kyc.rejected')
+            ->where('subject_type', 'distributor')
+            ->where('subject_id', $distributor->id)
+            ->orderByDesc('id')
+            ->first();
+
+        $hasPriorRejection = $lastRejection !== null;
+        $lastRejectionReason = is_array($lastRejection?->details ?? null)
+            ? ($lastRejection->details['reason'] ?? null)
+            : null;
+
         return view('admin.kyc.show', [
             'distributor' => $distributor,
+            'hasPriorRejection' => $hasPriorRejection,
+            'lastRejectionReason' => $lastRejectionReason,
         ]);
     }
 
@@ -134,7 +179,25 @@ final class AdminKycController extends Controller
 
         ($this->reject)($id, (int) Auth::id(), $validated['reason']);
 
-        return redirect()->route('admin.kyc.index')->with('status', 'KYC rejected.');
+        return redirect()->route('admin.kyc.index')
+            ->with('status', 'KYC rejected. The applicant has been emailed the reason and a link to re-upload.');
+    }
+
+    /**
+     * Permanently close the account. Distinct from reject — there is no
+     * resubmit path from terminated. Use this when the applicant should
+     * not be allowed to retry: confirmed fraud, repeat rejections, etc.
+     */
+    public function terminate(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:8', 'max:1024'],
+        ]);
+
+        ($this->terminate)($id, (int) Auth::id(), $validated['reason']);
+
+        return redirect()->route('admin.kyc.index')
+            ->with('status', 'Distributor account terminated. The applicant has been emailed the closure notice.');
     }
 
     public function uploadDocument(Request $request, int $id): RedirectResponse

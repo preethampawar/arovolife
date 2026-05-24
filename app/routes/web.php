@@ -204,6 +204,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/kyc/{id}/documents/{docId}', [AdminKycController::class, 'streamDocument'])->name('kyc.document');
     Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
+    Route::post('/kyc/{id}/terminate', [AdminKycController::class, 'terminate'])->name('kyc.terminate');
     Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
 
     // Commerce — orders
@@ -269,7 +270,18 @@ Route::middleware('capture.attribution')->group(function (): void {
 
 // ── Authenticated App ────────────────────────────────────────────────────────
 
+// KYC re-upload page for a rejected distributor. Lives OUTSIDE the
+// kyc.rejected.resubmit-protected group below because the middleware
+// allowlists this exact path — without the explicit declaration here we'd
+// either get an infinite redirect or block legitimate access.
 Route::middleware(['auth'])->group(function (): void {
+    Route::get('/kyc/resubmit', [App\Modules\Identity\Http\Controllers\KycResubmitController::class, 'show'])
+        ->name('kyc.resubmit.show');
+    Route::post('/kyc/resubmit', [App\Modules\Identity\Http\Controllers\KycResubmitController::class, 'submit'])
+        ->name('kyc.resubmit.submit');
+});
+
+Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/cooling-off', [CoolingOffController::class, 'show'])->name('cooling-off.show');

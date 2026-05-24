@@ -56,6 +56,18 @@ final class LoginController extends Controller
 
             $user = Auth::user();
 
+            // Terminated accounts can authenticate against the password but
+            // are immediately signed out and shown an error — they have no
+            // place to go. Same pattern as banks use on closed accounts.
+            if ($user->status === 'terminated') {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                return back()->withErrors([
+                    'email' => 'This account has been closed. Please contact support if you believe this is an error.',
+                ]);
+            }
+
             if ($user->hasRole('admin')) {
                 return redirect()->intended(route('admin.dashboard'));
             }
@@ -66,6 +78,13 @@ final class LoginController extends Controller
             // The presence of a distributors row distinguishes them.
             if ($user->status === 'pending' && $user->distributor === null) {
                 return redirect()->route('register.orientation');
+            }
+
+            // Rejected applicants land on the re-upload page. The
+            // RedirectRejectedToResubmit middleware would catch this anyway,
+            // but redirecting explicitly here keeps the URL bar clean.
+            if ($user->status === 'rejected') {
+                return redirect()->route('kyc.resubmit.show');
             }
 
             return redirect()->intended(route('dashboard'));
