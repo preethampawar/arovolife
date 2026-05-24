@@ -13,17 +13,34 @@ final class AdminDashboardController extends Controller
 {
     public function index(AuditLogPresenter $presenter): View
     {
+        // Each stat below is JOINed against distributors where the
+        // dashboard tile claims to be about distributors. A previous
+        // version of "pending_users" counted any users.status='pending'
+        // row, which silently included legacy orphan accounts from before
+        // the wizard switched to pure-session-only user creation. The
+        // tile read "11 pending" while the KYC queue only showed 1 —
+        // confusing for operators.
+        //
+        // The cooling-off stats now also filter by users.status='active'
+        // so a terminated/rejected distributor whose timer hasn't expired
+        // yet doesn't inflate the "Cooling-Off Active" count.
         $stats = [
             'total_users' => DB::table('users')->count(),
             'active_distributors' => DB::table('distributors')
                 ->join('users', 'distributors.user_id', '=', 'users.id')
                 ->where('users.status', 'active')->count(),
-            'pending_users' => DB::table('users')->where('status', 'pending')->count(),
+            'pending_users' => DB::table('distributors')
+                ->join('users', 'distributors.user_id', '=', 'users.id')
+                ->where('users.status', 'pending')->count(),
             'cooling_off_active' => DB::table('distributors')
-                ->where('cooling_off_end_at', '>', now())->count(),
+                ->join('users', 'distributors.user_id', '=', 'users.id')
+                ->where('users.status', 'active')
+                ->where('distributors.cooling_off_end_at', '>', now())->count(),
             'cooling_off_expiring' => DB::table('distributors')
-                ->where('cooling_off_end_at', '>', now())
-                ->where('cooling_off_end_at', '<=', now()->addDays(7))->count(),
+                ->join('users', 'distributors.user_id', '=', 'users.id')
+                ->where('users.status', 'active')
+                ->where('distributors.cooling_off_end_at', '>', now())
+                ->where('distributors.cooling_off_end_at', '<=', now()->addDays(7))->count(),
             'frozen_users' => DB::table('users')->where('status', 'frozen')->count(),
             'audit_entries_today' => DB::table('audit_log')
                 ->whereDate('created_at', today())->count(),

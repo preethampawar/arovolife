@@ -19,7 +19,7 @@ final class AdminDistributorController extends Controller
     {
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
-            'status' => ['nullable', 'in:pending,active,frozen,terminated'],
+            'status' => ['nullable', 'in:pending,active,frozen,terminated,rejected'],
             'state' => ['nullable', 'regex:/^[A-Z]{2}$/'],
             'cooling_off' => ['nullable', 'in:active,expiring'],
         ]);
