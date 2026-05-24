@@ -148,6 +148,7 @@ final class PlacementEngine
 
                 $result = new PlacementResult(
                     distributorId: $distributorId,
+                    userId: $in->userId,
                     parentId: $in->placementId,
                     side: $side,
                     depth: $depth,

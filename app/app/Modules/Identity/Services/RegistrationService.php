@@ -87,61 +87,58 @@ class RegistrationService
         $aadhaarLast4 = $aadhaarNumber !== ''
             ? substr($aadhaarNumber, -4)
             : ($aadhaar['last4'] ?? '0000');
-
-        $input = new PlaceDistributorInput(
-            userId: $user->id,
-            sponsorId: $sponsorId,
-            placementId: $placementId,
-            panHash: $panHash,
-            panLast4: strtoupper(substr($panNumber !== '' ? $panNumber : '0000', -4)),
-            bankAccountEnc: $bankAccountEnc,
-            bankIfsc: $bankIfscFinal,
-            state: $personal['state'] ?? '',
-            sideOpt: ! empty($placement['side']) ? $placement['side'] : null,
-            aadhaarRef: $aadhaar['ref'] ?? 'STUB_REF_'.strtoupper(uniqid()),
-            aadhaarLast4: $aadhaarLast4,
-            isPrimaryCouple: false,
-            panEncrypted: $panEncrypted,
-            aadhaarEncrypted: $aadhaarEncrypted,
-        );
+        $panLast4 = strtoupper(substr($panNumber !== '' ? $panNumber : '0000', -4));
 
         // Atomic finalisation: placement + cooling_off_events + kyc_documents
         // + orientation_views + consents + user.create + audit_log all live
         // or all roll back. The placement engine starts its own transaction;
         // Laravel nests cleanly via savepoints.
         return $this->db->connection()->transaction(function () use (
-            $input, $documents, $consent, $personal, $user, $wizardData,
-            $couple, $isCouple, $bankAccountEnc, $bankIfscFinal
+            $documents, $consent, $personal, $user, $wizardData,
+            $couple, $isCouple, $bankAccountEnc, $bankIfscFinal,
+            $sponsorId, $placementId, $panHash, $panLast4,
+            $panEncrypted, $aadhaarEncrypted, $aadhaarLast4,
+            $aadhaar, $placement
         ): PlacementResult {
             // Create user inside transaction if not already created
             if ($user === null) {
                 $account = $wizardData['account'] ?? [];
+
+                // Validate required account data exists
+                if (empty($account['email']) || empty($account['phone_e164']) || empty($account['password_hash'])) {
+                    throw new \RuntimeException(
+                        'Registration incomplete: missing required account data (email, phone, or password). '
+                        . 'Please return to the registration wizard and complete all steps.'
+                    );
+                }
+
                 $user = User::create([
-                    'email' => $account['email'] ?? '',
-                    'phone_e164' => $account['phone_e164'] ?? '',
-                    'password_hash' => $account['password_hash'] ?? '',
+                    'email' => $account['email'],
+                    'phone_e164' => $account['phone_e164'],
+                    'password_hash' => $account['password_hash'],
                     'password_set_at' => now(),
                     'full_name' => $account['full_name'] ?? null,
                     'status' => 'active',
                 ]);
-                // Reconstruct input with the newly created user_id
-                $input = new PlaceDistributorInput(
-                    userId: $user->id,
-                    sponsorId: $input->sponsorId,
-                    placementId: $input->placementId,
-                    panHash: $input->panHash,
-                    panLast4: $input->panLast4,
-                    bankAccountEnc: $input->bankAccountEnc,
-                    bankIfsc: $input->bankIfsc,
-                    state: $input->state,
-                    sideOpt: $input->sideOpt,
-                    aadhaarRef: $input->aadhaarRef,
-                    aadhaarLast4: $input->aadhaarLast4,
-                    isPrimaryCouple: $input->isPrimaryCouple,
-                    panEncrypted: $input->panEncrypted,
-                    aadhaarEncrypted: $input->aadhaarEncrypted,
-                );
             }
+
+            // Create PlaceDistributorInput now that we have a user_id
+            $input = new PlaceDistributorInput(
+                userId: $user->id,
+                sponsorId: $sponsorId,
+                placementId: $placementId,
+                panHash: $panHash,
+                panLast4: $panLast4,
+                bankAccountEnc: $bankAccountEnc,
+                bankIfsc: $bankIfscFinal,
+                state: $personal['state'] ?? '',
+                sideOpt: ! empty($placement['side']) ? $placement['side'] : null,
+                aadhaarRef: $aadhaar['ref'] ?? 'STUB_REF_'.strtoupper(uniqid()),
+                aadhaarLast4: $aadhaarLast4,
+                isPrimaryCouple: false,
+                panEncrypted: $panEncrypted,
+                aadhaarEncrypted: $aadhaarEncrypted,
+            );
 
             $result = $this->engine->place($input);
 

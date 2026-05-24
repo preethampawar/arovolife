@@ -9,7 +9,7 @@
     <p class="text-sm text-green-700">
         Welcome to arovolife. Your Distributor Number (ADN) has been issued and your
         30-day cooling-off period begins today. Your KYC documents are under review by
-        an admin — you will be notified once approved.
+        an admin - you will be notified once approved.
     </p>
 </div>
 @endif

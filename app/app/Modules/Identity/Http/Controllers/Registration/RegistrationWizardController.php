@@ -25,6 +25,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
@@ -201,9 +202,9 @@ final class RegistrationWizardController extends Controller
             'sponsor_adn' => ['required', 'string', 'regex:/^[0-9]{9}(-S)?$/i'],
             'placement_adn' => ['required', 'string', 'regex:/^[0-9]{9}(-S)?$/i'],
         ], [
-            'sponsor_adn.required' => 'Please enter the sponsor ADN — the person who invited you.',
+            'sponsor_adn.required' => 'Please enter the sponsor ADN - the person who invited you.',
             'sponsor_adn.regex' => 'Sponsor ADN must be exactly 9 digits, e.g. 111222333.',
-            'placement_adn.required' => 'Please enter the placement ADN — usually the same as your sponsor.',
+            'placement_adn.required' => 'Please enter the placement ADN - usually the same as your sponsor.',
             'placement_adn.regex' => 'Placement ADN must be exactly 9 digits, e.g. 111222333.',
         ]);
 
@@ -239,6 +240,7 @@ final class RegistrationWizardController extends Controller
             'sideOpt' => $intent['side_opt'] ?? null,
             'sponsorName' => $sponsorPreview['name'] ?? null,
             'sponsorEmailMasked' => $sponsorPreview['email_masked'] ?? null,
+            'existingUser' => null,
         ]);
     }
 
@@ -286,7 +288,7 @@ final class RegistrationWizardController extends Controller
         if (DB::table('users')->where('phone_e164', $normalisedPhone)->exists()) {
             return back()
                 ->withInput($request->except('password', 'password_confirmation'))
-                ->withErrors(['phone_e164' => 'An account already exists with this mobile number.']);
+                ->withErrors(['phone_e164' => 'An account already exists with this mobile number. Please sign in.']);
         }
 
         $this->wizard->start(
@@ -320,13 +322,13 @@ final class RegistrationWizardController extends Controller
             'confirmed_watched' => ['required', 'accepted'],
         ], [
             'quiz_q1.required' => 'Please answer Question 1.',
-            'quiz_q1.in' => 'Question 1: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q1.in' => 'Question 1: That is not the correct answer. Please re-read the orientation video and try again.',
             'quiz_q2.required' => 'Please answer Question 2.',
-            'quiz_q2.in' => 'Question 2: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q2.in' => 'Question 2: That is not the correct answer. Please re-read the orientation video and try again.',
             'quiz_q3.required' => 'Please answer Question 3.',
-            'quiz_q3.in' => 'Question 3: that’s not the correct answer. Please re-read the orientation and try again.',
+            'quiz_q3.in' => 'Question 3: That is not the correct answer. Please re-read the orientation video and try again.',
             'confirmed_watched.required' => 'Please confirm you have watched the full orientation video.',
-            'confirmed_watched.accepted' => 'You must confirm watching the orientation video before continuing.',
+            'confirmed_watched.accepted' => 'You must confirm that you have watched the orientation video to continue.',
         ]);
 
         $this->wizard->saveStepData(3, [
@@ -472,7 +474,7 @@ final class RegistrationWizardController extends Controller
             'aadhaar_number.required' => 'Please enter your 12-digit Aadhaar number.',
             'aadhaar_number.digits' => 'Aadhaar must be exactly 12 digits.',
             'consent_aadhaar.required' => 'Please consent to Aadhaar storage before continuing.',
-            'consent_aadhaar.accepted' => 'You must consent to Aadhaar storage and post-verification purge to proceed.',
+            'consent_aadhaar.accepted' => 'You must consent to store your Aadhaar number for KYC verification. Your raw Aadhaar will be permanently deleted after verification.',
         ], [
             'aadhaar_number' => 'Aadhaar number',
             'consent_aadhaar' => 'Aadhaar consent',
@@ -526,8 +528,8 @@ final class RegistrationWizardController extends Controller
             'account_number.required' => 'Please enter your bank account number (or clear the IFSC field to skip this step).',
             'account_number.min' => 'Bank account number must be at least 9 digits.',
             'account_number.max' => 'Bank account number must be at most 18 digits.',
-            'account_number.regex' => 'Bank account number must contain digits only — no spaces or letters.',
-            'ifsc.required' => 'Please enter your bank’s IFSC code (or clear the account number to skip this step).',
+            'account_number.regex' => 'Bank account number must contain digits only - no spaces or letters.',
+            'ifsc.required' => 'Please enter your bank\'s IFSC code (or clear the account number to skip this step).',
             'ifsc.regex' => 'IFSC must be 11 characters: 4 letters, 0, then 6 alphanumeric (e.g. HDFC0001234).',
         ], [
             'account_number' => 'bank account number',
@@ -600,7 +602,7 @@ final class RegistrationWizardController extends Controller
         // $rules uses the same rule set.
         $request->validate($rules, [
             'required' => 'Please upload :attribute (JPG, PNG, or PDF, max 5 MB).',
-            'file' => 'The :attribute upload was incomplete — please try again.',
+            'file' => 'The :attribute upload was incomplete - please try again.',
             'max' => 'The :attribute file is too large (max 5 MB).',
             'mimetypes' => 'The :attribute must be a JPG, PNG, or PDF file.',
         ], [
@@ -609,8 +611,8 @@ final class RegistrationWizardController extends Controller
             'cheque_doc' => 'a cancelled cheque scan',
             'address_proof_front' => 'your address proof (front side)',
             'address_proof_back' => 'your address proof (back side)',
-            'spouse_pan_doc' => 'your spouse’s PAN scan',
-            'spouse_aadhaar_doc' => 'your spouse’s Aadhaar scan',
+            'spouse_pan_doc' => 'your spouse\'s PAN scan',
+            'spouse_aadhaar_doc' => 'your spouse\'s Aadhaar scan',
         ]);
 
         $disk = Storage::disk('kyc');
@@ -679,13 +681,13 @@ final class RegistrationWizardController extends Controller
             'consent_plan' => ['required', 'accepted'],
             'consent_privacy' => ['required', 'accepted'],
         ], [
-            'consent_tnc.required' => 'Please tick the Terms & Conditions consent.',
-            'consent_tnc.accepted' => 'You must accept the Direct Seller Agreement & Terms of Service to continue.',
-            'consent_ethics.required' => 'Please tick the Code of Ethics consent.',
+            'consent_tnc.required' => 'Please check the Terms and Conditions consent.',
+            'consent_tnc.accepted' => 'You must accept the Direct Seller Agreement and Terms of Service to continue.',
+            'consent_ethics.required' => 'Please check the Code of Ethics consent.',
             'consent_ethics.accepted' => 'You must accept the Code of Ethics to continue.',
-            'consent_plan.required' => 'Please tick the Compensation Plan consent.',
-            'consent_plan.accepted' => 'You must acknowledge the Compensation Plan to continue.',
-            'consent_privacy.required' => 'Please tick the Privacy Policy consent.',
+            'consent_plan.required' => 'Please check the Compensation Plan consent.',
+            'consent_plan.accepted' => 'You must accept the Compensation Plan to continue.',
+            'consent_privacy.required' => 'Please check the Privacy Policy consent.',
             'consent_privacy.accepted' => 'You must accept the Privacy Policy to continue.',
         ]);
 
@@ -781,6 +783,13 @@ final class RegistrationWizardController extends Controller
 
         try {
             $result = $this->registrationService->finalise($wizardData, null);
+        } catch (\RuntimeException $e) {
+            // Account data validation failed (missing email, phone, or password)
+            // User needs to return to earlier steps to complete required fields
+            Log::warning('Registration finalisation: incomplete account data', [
+                'error' => $e->getMessage(),
+            ]);
+            return redirect('/contact-us?reason=registration_incomplete');
         } catch (UniqueConstraintViolationException $e) {
             // The C-1 race: a concurrent registration committed the same
             // PAN between step-4 dedup and now. The unique index on

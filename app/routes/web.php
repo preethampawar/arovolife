@@ -198,6 +198,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/kyc/{id}/documents/{docId}', [AdminKycController::class, 'streamDocument'])->name('kyc.document');
     Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
     Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
+    Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
 
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');

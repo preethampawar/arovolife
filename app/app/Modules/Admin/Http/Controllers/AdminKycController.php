@@ -8,13 +8,17 @@ use App\Modules\Admin\Services\ApproveKycSubmission;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Admin\Services\RejectKycSubmission;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -131,5 +135,75 @@ final class AdminKycController extends Controller
         ($this->reject)($id, (int) Auth::id(), $validated['reason']);
 
         return redirect()->route('admin.kyc.index')->with('status', 'KYC rejected.');
+    }
+
+    public function uploadDocument(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'string', Rule::in([
+                'pan', 'aadhaar', 'cheque', 'address_proof_front', 'address_proof_back', 'photo',
+            ])],
+            'document' => [
+                'required', 'file', 'max:5120',
+                'mimetypes:image/jpeg,image/png,application/pdf',
+                new ValidUploadedDocumentBytes(),
+            ],
+        ]);
+
+        $distributor = Distributor::query()->findOrFail($id);
+        $file = $request->file('document');
+        $type = $validated['type'];
+        $disk = Storage::disk('kyc');
+        $sha256 = hash_file('sha256', $file->getRealPath());
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
+        $path = "admin_{$distributor->id}/{$type}_" . substr($sha256, 0, 12) . ".{$extension}";
+
+        DB::transaction(function () use ($distributor, $disk, $file, $type, $path, $sha256, $request): void {
+            $existing = KycDocument::query()
+                ->where('distributor_id', $distributor->id)
+                ->where('type', $type)
+                ->latest()
+                ->first();
+
+            if ($existing !== null) {
+                abort_if(
+                    $existing->verified_at !== null,
+                    422,
+                    "A verified {$type} document already exists. Reject KYC first to allow replacement."
+                );
+                try {
+                    $disk->delete($existing->object_storage_key);
+                } catch (\Throwable) {
+                    Log::warning('admin.kyc.upload: could not delete old S3 key', [
+                        'key' => $existing->object_storage_key,
+                    ]);
+                }
+                $existing->delete();
+            }
+
+            $disk->putFileAs(dirname($path), $file, basename($path));
+
+            KycDocument::create([
+                'distributor_id' => $distributor->id,
+                'type' => $type,
+                'object_storage_key' => $path,
+                'checksum_sha256' => hex2bin($sha256),
+            ]);
+
+            AuditLog::create([
+                'actor_id' => Auth::id(),
+                'action' => 'admin.kyc.document_uploaded',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributor->id,
+                'details' => [
+                    'type' => $type,
+                    'path' => $path,
+                    'replaced_existing' => $existing !== null,
+                ],
+                'ip' => $request->ip(),
+            ]);
+        });
+
+        return back()->with('status', ucfirst(str_replace('_', ' ', $type)) . ' uploaded successfully.');
     }
 }

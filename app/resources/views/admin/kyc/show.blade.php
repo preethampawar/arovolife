@@ -129,6 +129,59 @@
     </form>
 </div>
 
+{{-- Admin document upload --}}
+<div class="mt-6 rounded-2xl border border-gray-200 bg-white p-6">
+    <p class="text-base font-semibold text-gray-800 mb-1">Upload document on behalf of distributor</p>
+    <p class="text-xs text-gray-500 mb-4">
+        Use this for manually-created accounts or when a resubmission is needed.
+        Uploading replaces any existing <em>unverified</em> document of the same type.
+        Verified documents cannot be replaced — reject KYC first.
+    </p>
+    @if(session('status'))
+    <div class="mb-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+        {{ session('status') }}
+    </div>
+    @endif
+    @if($errors->has('document') || $errors->has('type'))
+    <div class="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+        {{ $errors->first('document') ?: $errors->first('type') }}
+    </div>
+    @endif
+    <form method="POST"
+          action="{{ route('admin.kyc.document.upload', $distributor->id) }}"
+          enctype="multipart/form-data"
+          class="space-y-3">
+        @csrf
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Document type</label>
+                <select name="type" required
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500">
+                    <option value="">Select type…</option>
+                    <option value="pan">PAN card</option>
+                    <option value="aadhaar">Aadhaar (front)</option>
+                    <option value="cheque">Cancelled cheque / passbook</option>
+                    <option value="address_proof_front">Address proof (front)</option>
+                    <option value="address_proof_back">Address proof (back)</option>
+                    <option value="photo">Photo</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">File (JPEG, PNG or PDF — max 5 MB)</label>
+                <input type="file" name="document" required accept=".jpg,.jpeg,.png,.pdf"
+                    class="w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0
+                           file:bg-brand-50 file:text-brand-700 file:px-3 file:py-1.5 file:text-sm
+                           file:cursor-pointer hover:file:bg-brand-100">
+            </div>
+        </div>
+        <button type="submit"
+            class="w-full sm:w-auto rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium
+                   px-6 py-2 text-sm transition-colors">
+            Upload
+        </button>
+    </form>
+</div>
+
 <a href="{{ route('admin.kyc.index') }}" class="inline-block mt-6 text-sm text-gray-500 hover:text-gray-700">
     ← Back to queue
 </a>

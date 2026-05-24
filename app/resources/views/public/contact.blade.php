@@ -45,6 +45,13 @@
                     Your registration is otherwise complete — we have your PAN, Aadhaar, and KYC documents safely on file. The placement slot you chose at the start filled up while you were finishing the wizard. Leave your details below; support will assign you a new placement and complete your ADN issuance within one business day.
                 </p>
             </div>
+        @elseif($reason === 'registration_incomplete')
+            <div class="card-refined p-5 sm:p-6 mb-6 bg-red-50 border border-red-200 lift-in" style="animation-delay: 120ms;">
+                <p class="text-sm font-semibold text-red-900 mb-1.5">Your registration is incomplete</p>
+                <p class="text-sm text-red-800 leading-relaxed">
+                    It looks like you didn't complete all steps of the registration wizard. Please ensure you fill in all required information (name, email, phone, password) at each step. Leave your details below and we'll help you get registered.
+                </p>
+            </div>
         @elseif($reason === 'join_us')
             <div class="card-refined p-5 sm:p-6 mb-6 bg-leaf-50 border border-leaf-200 lift-in" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-leaf-800 mb-1.5">Welcome — let's get you started</p>

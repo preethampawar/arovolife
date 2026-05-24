@@ -152,7 +152,7 @@ it('RUQ-03: email comparison is case-insensitive — "Ravi@x.com" matches "ravi@
     expect(DB::table('users')->whereRaw('LOWER(email) = ?', ['ravi@x.com'])->count())->toBe(1);
 });
 
-it('RUQ-04: new email + new phone is accepted and user row is created with E.164 phone', function (): void {
+it('RUQ-04: new email + new phone is accepted and saved to session (user not created until step 10)', function (): void {
     $rootId = ruqSeedReservedTreeRoot();
 
     ruqStartIntent($rootId, $rootId);
@@ -161,8 +161,10 @@ it('RUQ-04: new email + new phone is accepted and user row is created with E.164
         ->post(route('register.post'), ruqValidPayload('fresh@test.com', '9876509876'));
 
     $response->assertRedirect(route('register.orientation'));
+    // In pure session-based flow, user is created at step 10, not step 2
+    // Verify no user row was created yet
     $u = DB::table('users')->where('email', 'fresh@test.com')->first();
-    expect($u)->not->toBeNull()
-        ->and($u->phone_e164)->toBe('+919876509876')   // stored E.164
-        ->and($u->status)->toBe('pending');
+    expect($u)->toBeNull();
+    // Verify session data was saved
+    $response->assertSessionHas('registration_wizard');
 });
