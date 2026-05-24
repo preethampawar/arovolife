@@ -322,6 +322,11 @@ Route::middleware(['auth'])->group(function (): void {
     Route::post('/profile/id-photo', [IdPhotoController::class, 'update'])->name('profile.id-photo.update');
     Route::delete('/profile/id-photo', [IdPhotoController::class, 'destroy'])->name('profile.id-photo.destroy');
 
+    // KYC document self-service — the customer can add or replace the
+    // optional cheque + address-proof docs that the wizard now skips.
+    Route::get('/dashboard/documents', [App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController::class, 'index'])->name('dashboard.documents');
+    Route::post('/dashboard/documents', [App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController::class, 'store'])->name('dashboard.documents.store');
+
     // Returns the Blade-rendered ID-card panel for any distributor the
     // requester is authorized to see (self, descendant, or admin).
     // Consumed by the tree-view "Details" modal — same source-of-truth

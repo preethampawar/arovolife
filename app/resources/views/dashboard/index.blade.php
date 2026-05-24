@@ -17,11 +17,20 @@
 @if($distributor && $user->status === 'pending')
 <div class="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-6">
     <h3 class="text-base font-semibold text-amber-800 mb-1">KYC under review</h3>
-    <p class="text-sm text-amber-800">
+    <p class="text-sm text-amber-800 mb-3">
         An admin is reviewing the PAN, Aadhaar, bank, and address-proof documents you uploaded.
         Most reviews complete within 1–2 business days. You will receive an email when the
         review is done.
     </p>
+    <a href="{{ route('dashboard.documents') }}" class="inline-flex items-center text-sm text-amber-900 font-semibold underline hover:no-underline">
+        Add or replace documents →
+    </a>
+</div>
+@elseif($distributor)
+<div class="mb-6">
+    <a href="{{ route('dashboard.documents') }}" class="inline-flex items-center text-sm text-brand-600 font-medium hover:underline">
+        Manage my KYC documents →
+    </a>
 </div>
 @endif
 
