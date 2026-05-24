@@ -15,6 +15,7 @@ use App\Modules\Identity\Notifications\DraftResumeNotification;
 use App\Modules\Identity\Services\DraftStateService;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\WizardStateService;
+use App\Modules\Identity\Support\SponsorPreview;
 use App\Modules\Shared\Features\RegistrationKillswitch;
 use Carbon\Carbon;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -220,7 +221,7 @@ final class RegistrationWizardController extends Controller
         return response()->json([
             'found' => true,
             'name' => (string) $row->full_name,
-            'email_masked' => \App\Modules\Identity\Support\SponsorPreview::maskEmail((string) $row->email),
+            'email_masked' => SponsorPreview::maskEmail((string) $row->email),
             'is_secondary' => $isSecondary,
         ]);
     }
@@ -306,7 +307,7 @@ final class RegistrationWizardController extends Controller
 
         $sponsorAdn = (string) ($intent['sponsor_adn'] ?? '');
         $sponsorPreview = $sponsorAdn !== ''
-            ? \App\Modules\Identity\Support\SponsorPreview::resolve($sponsorAdn)
+            ? SponsorPreview::resolve($sponsorAdn)
             : null;
 
         return view('registration.step1-account', [
@@ -666,8 +667,8 @@ final class RegistrationWizardController extends Controller
         // If EITHER field is filled, both must validate — partial bank
         // rows would be misleading and unable to receive a payout.
         $accountFilled = trim((string) $request->input('account_number', '')) !== '';
-        $ifscFilled    = trim((string) $request->input('ifsc', '')) !== '';
-        $bothBlank     = ! $accountFilled && ! $ifscFilled;
+        $ifscFilled = trim((string) $request->input('ifsc', '')) !== '';
+        $bothBlank = ! $accountFilled && ! $ifscFilled;
 
         if ($bothBlank) {
             $this->wizard->saveStepData(7, ['account_number' => null, 'ifsc' => null]);
