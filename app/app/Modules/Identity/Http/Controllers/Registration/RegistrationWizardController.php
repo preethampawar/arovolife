@@ -131,12 +131,16 @@ final class RegistrationWizardController extends Controller
                 $newAdn = (string) DB::table('distributors')
                     ->where('id', $sponsor->id)
                     ->value('adn');
+                $newPlacementAdn = (string) DB::table('distributors')
+                    ->where('id', $placement->id)
+                    ->value('adn');
 
                 return response()->view('registration.draft-conflict', [
                     'existingAdn' => $existingAdn ?: 'Unknown',
                     'newAdn' => $newAdn ?: 'Unknown',
+                    'newPlacementAdn' => $newPlacementAdn ?: 'Unknown',
                     'resumeRoute' => route(WizardStateService::stepRoute($existingDraft->current_step)),
-                    'discardRoute' => route('register.draft.discard'),
+                    'discardRoute' => route('register.draft.discard', ['sponsor' => $newAdn, 'placement' => $newPlacementAdn]),
                 ]);
             }
         }
@@ -258,6 +262,9 @@ final class RegistrationWizardController extends Controller
      */
     public function discardDraft(Request $request): RedirectResponse
     {
+        $sponsorAdn = (string) ($request->query('sponsor') ?? '');
+        $placementAdn = (string) ($request->query('placement') ?? '');
+
         $rawToken = $request->cookie('av_draft');
         if (is_string($rawToken)) {
             $draft = $this->drafts->resolveFromToken($rawToken);
@@ -267,7 +274,10 @@ final class RegistrationWizardController extends Controller
         }
 
         return redirect()
-            ->route('register')
+            ->route('register', [
+                'sponsor' => $sponsorAdn,
+                'placement' => $placementAdn,
+            ])
             ->withCookie(Cookie::forget('av_draft'));
     }
 
