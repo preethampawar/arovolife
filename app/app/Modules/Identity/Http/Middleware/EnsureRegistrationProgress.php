@@ -75,6 +75,7 @@ final class EnsureRegistrationProgress
                         Auth::loginUsingId($draft->user_id);
                         $request->session()->regenerate();
                         $this->drafts->restoreToWizard($draft, $this->wizard);
+                        $request->session()->save();
 
                         // If the required step is beyond the draft's current step, redirect
                         // to the draft's current step instead.

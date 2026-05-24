@@ -54,6 +54,7 @@ final class DraftResumeController extends Controller
 
         $request->session()->regenerate();
         $this->drafts->restoreToWizard($draft, $this->wizard);
+        $request->session()->save();
 
         // Re-issue a new raw token so the cookie works on this new device.
         $newDraft = $this->drafts->create(
