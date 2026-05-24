@@ -11,13 +11,10 @@ use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Notifications\DraftResumeNotification;
-use App\Modules\Identity\Services\DraftStateService;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\WizardStateService;
 use App\Modules\Identity\Support\SponsorPreview;
 use App\Modules\Shared\Features\RegistrationKillswitch;
-use Carbon\Carbon;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -26,12 +23,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
@@ -41,7 +34,6 @@ final class RegistrationWizardController extends Controller
     public function __construct(
         private readonly WizardStateService $wizard,
         private readonly RegistrationService $registrationService,
-        private readonly DraftStateService $drafts,
     ) {}
 
     /**
@@ -113,37 +105,6 @@ final class RegistrationWizardController extends Controller
 
         if (! $engine->hasOpenSlot((int) $placement->id, $sideOpt)) {
             return redirect('/contact-us?reason=invalid_referral_link');
-        }
-
-        // ── Draft-conflict guard ───────────────────────────────────────────
-        // If the visitor already has an active draft under a DIFFERENT
-        // sponsor or placement, show the conflict screen instead of
-        // silently overwriting the session intent.
-        $rawToken = $request->cookie('av_draft');
-        if (is_string($rawToken)) {
-            $existingDraft = $this->drafts->resolveFromToken($rawToken);
-            if ($existingDraft !== null
-                && ($existingDraft->sponsor_id !== (int) $sponsor->id
-                    || $existingDraft->placement_id !== (int) $placement->id)
-            ) {
-                $existingAdn = (string) DB::table('distributors')
-                    ->where('id', $existingDraft->sponsor_id)
-                    ->value('adn');
-                $newAdn = (string) DB::table('distributors')
-                    ->where('id', $sponsor->id)
-                    ->value('adn');
-                $newPlacementAdn = (string) DB::table('distributors')
-                    ->where('id', $placement->id)
-                    ->value('adn');
-
-                return response()->view('registration.draft-conflict', [
-                    'existingAdn' => $existingAdn ?: 'Unknown',
-                    'newAdn' => $newAdn ?: 'Unknown',
-                    'newPlacementAdn' => $newPlacementAdn ?: 'Unknown',
-                    'resumeRoute' => route(WizardStateService::stepRoute($existingDraft->current_step)),
-                    'discardRoute' => route('register.draft.discard', ['sponsor' => $newAdn, 'placement' => $newPlacementAdn]),
-                ]);
-            }
         }
 
         $this->wizard->stashIntent(
@@ -254,34 +215,6 @@ final class RegistrationWizardController extends Controller
         ]);
     }
 
-    /**
-     * POST /register/draft/discard
-     *
-     * Destroys the active draft identified by the av_draft cookie so the
-     * visitor can start a fresh registration under a new sponsor/placement.
-     * The cookie is forgotten on the response so the browser removes it.
-     */
-    public function discardDraft(Request $request): RedirectResponse
-    {
-        $sponsorAdn = (string) ($request->query('sponsor') ?? '');
-        $placementAdn = (string) ($request->query('placement') ?? '');
-
-        $rawToken = $request->cookie('av_draft');
-        if (is_string($rawToken)) {
-            $draft = $this->drafts->resolveFromToken($rawToken);
-            if ($draft !== null) {
-                $this->drafts->delete($draft->user_id);
-            }
-        }
-
-        return redirect()
-            ->route('register', [
-                'sponsor' => $sponsorAdn,
-                'placement' => $placementAdn,
-            ])
-            ->withCookie(Cookie::forget('av_draft'));
-    }
-
     // ── Step 2: Account ────────────────────────────────────────────────────
 
     public function showAccount(Request $request): View|RedirectResponse|Response
@@ -295,16 +228,6 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=referral_link_required');
         }
 
-        $existingUser = null;
-        $rawToken = $request->cookie('av_draft');
-
-        if (is_string($rawToken)) {
-            $draft = $this->drafts->resolveFromToken($rawToken);
-            if ($draft !== null) {
-                $existingUser = User::find($draft->user_id);
-            }
-        }
-
         $sponsorAdn = (string) ($intent['sponsor_adn'] ?? '');
         $sponsorPreview = $sponsorAdn !== ''
             ? SponsorPreview::resolve($sponsorAdn)
@@ -314,7 +237,6 @@ final class RegistrationWizardController extends Controller
             'sponsorAdn' => $sponsorAdn,
             'placementAdn' => $intent['placement_adn'] ?? '',
             'sideOpt' => $intent['side_opt'] ?? null,
-            'existingUser' => $existingUser,
             'sponsorName' => $sponsorPreview['name'] ?? null,
             'sponsorEmailMasked' => $sponsorPreview['email_masked'] ?? null,
         ]);
@@ -331,11 +253,6 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=referral_link_required');
         }
 
-        // Normalise BEFORE validation so the unique-check and
-        // returning-user lookup compare against the format we actually
-        // store. Phone form input is 10 digits ("9876543210"); the DB
-        // stores E.164 ("+919876543210"). Email is stored lowercase so
-        // "Ravi@x.com" matches an existing "ravi@x.com".
         $request->merge([
             'email' => strtolower(trim((string) $request->input('email', ''))),
         ]);
@@ -343,22 +260,18 @@ final class RegistrationWizardController extends Controller
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            // Format check only — uniqueness is enforced explicitly below
-            // against the normalised E.164 form so a returning user can
-            // pass through to the resume path without tripping over their
-            // own phone row.
             'phone_e164' => ['required', 'regex:/^[6-9]\d{9}$/'],
             'password' => ['required', 'string', 'min:8', 'confirmed', new StrongPassword, new NotPwned],
         ], [
             'full_name.required' => 'Please enter your full name as it appears on your PAN card.',
             'full_name.max' => 'Full name must be at most 255 characters.',
             'email.required' => 'Please enter your email address.',
-            'email.email' => 'That doesn’t look like a valid email — check for typos like missing @ or .com.',
+            'email.email' => 'That doesn\'t look like a valid email - check for typos like missing @ or .com.',
             'phone_e164.required' => 'Please enter your 10-digit Indian mobile number.',
             'phone_e164.regex' => 'Enter a 10-digit Indian mobile number (must start with 6, 7, 8, or 9).',
             'password.required' => 'Please choose a password.',
             'password.min' => 'Password must be at least 8 characters.',
-            'password.confirmed' => 'The two passwords don’t match — please re-type them.',
+            'password.confirmed' => 'The two passwords don\'t match - please re-type them.',
         ], [
             'full_name' => 'full name',
             'phone_e164' => 'mobile number',
@@ -366,98 +279,36 @@ final class RegistrationWizardController extends Controller
 
         $normalisedPhone = '+91'.ltrim($validated['phone_e164'], '0');
 
-        // ── Returning-user path ────────────────────────────────────────────
-        // If the email already exists in users, we must NOT create a second
-        // account. Instead:
-        //   • active draft  → authenticate the user with their password and
-        //                     resume the wizard where they left off.
-        //   • no active draft → the account is fully registered (or the draft
-        //                       has expired); surface an "email taken" error.
-        $existingUser = User::where('email', $validated['email'])->first();
+        if (User::where('email', $validated['email'])->exists()) {
+            return back()->withErrors(['email' => 'An account with this email already exists. Please sign in.']);
+        }
 
-        // ── Phone uniqueness check ─────────────────────────────────────────
-        // Only enforce when this is NOT a returning-user submission. A
-        // returning user typing their own phone matches their own row and
-        // would otherwise be bounced before the resume flow could run. A
-        // returning user typing a phone owned by SOMEONE ELSE is still
-        // blocked (the phone collision belongs to a different user_id).
-        $phoneOwnerId = (int) (DB::table('users')->where('phone_e164', $normalisedPhone)->value('id') ?? 0);
-        if ($phoneOwnerId !== 0 && $phoneOwnerId !== ($existingUser?->id ?? 0)) {
+        if (DB::table('users')->where('phone_e164', $normalisedPhone)->exists()) {
             return back()
                 ->withInput($request->except('password', 'password_confirmation'))
                 ->withErrors(['phone_e164' => 'An account already exists with this mobile number.']);
         }
 
-        if ($existingUser !== null) {
-            $activeDraft = $this->drafts->findActiveByUserId($existingUser->id);
-
-            if ($activeDraft !== null) {
-                if (! Hash::check($validated['password'], $existingUser->password_hash)) {
-                    return back()->withErrors(['password' => 'Incorrect password. Try again or use the Forgot Password link.']);
-                }
-
-                Auth::login($existingUser);
-                $this->drafts->restoreToWizard($activeDraft, $this->wizard);
-
-                $newDraft = $this->drafts->create(
-                    $existingUser->id,
-                    $activeDraft->sponsor_id,
-                    $activeDraft->placement_id,
-                    $activeDraft->side_opt,
-                    json_decode(Crypt::decryptString($activeDraft->payload_enc), true) ?? [],
-                    $activeDraft->current_step,
-                );
-
-                return redirect()
-                    ->route(WizardStateService::stepRoute($activeDraft->current_step))
-                    ->withCookie(cookie('av_draft', $newDraft->raw_token, 7 * 24 * 60, '/', null, true, true));
-            }
-
-            // No active draft — standard "email taken" error.
-            return back()->withErrors(['email' => 'An account with this email already exists. Please sign in.']);
-        }
-
-        $user = User::create([
-            'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
-            'phone_e164' => $normalisedPhone,
-            'password_hash' => Hash::make($validated['password']),
-            'password_set_at' => now(),
-            'status' => 'pending',
-        ]);
-
-        Auth::login($user);
-        $request->session()->regenerate();
-
         $this->wizard->start(
-            userId: $user->id,
             sponsorId: (int) $intent['sponsor_id'],
             placementId: (int) $intent['placement_id'],
             sideOpt: $intent['side_opt'] ?? null,
         );
 
-        $draft = $this->drafts->create(
-            $user->id,
-            (int) $intent['sponsor_id'],
-            (int) $intent['placement_id'],
-            $intent['side_opt'] ?? null,
-            [],
-        );
+        $this->wizard->saveStepData(2, [
+            'full_name' => $validated['full_name'],
+            'email' => $validated['email'],
+            'phone_e164' => $normalisedPhone,
+            'password_hash' => Hash::make($validated['password']),
+        ]);
 
-        Notification::send($user, new DraftResumeNotification($draft->id));
-
-        // Step 2 done; the next auth-gated step is Orientation.
-        return redirect()->route('register.orientation')
-            ->withCookie(cookie('av_draft', $draft->raw_token, 7 * 24 * 60, '/', null, true, true));
+        return redirect()->route('register.orientation');
     }
-
-    // ── Step 3: Orientation (auth-gated; quiz + video confirmation) ─────
 
     public function showOrientation(): View
     {
         return view('registration.step2-orientation', [
-            'draftExpiresAt' => $this->draftExpiresAt(),
-        ]);
+            ]);
     }
 
     public function handleOrientation(Request $request): RedirectResponse
@@ -482,7 +333,6 @@ final class RegistrationWizardController extends Controller
             'quiz_passed' => true,
             'watched_at' => now()->toISOString(),
         ]);
-        $this->syncDraft(3);
 
         return redirect()->route('register.consent');
     }
@@ -494,8 +344,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step3-personal', [
             'states' => $this->indianStates(),
             'data' => $this->wizard->getStepData(8) ?? [],
-            'draftExpiresAt' => $this->draftExpiresAt(),
-        ]);
+            ]);
     }
 
     public function handlePersonal(Request $request): RedirectResponse
@@ -542,7 +391,6 @@ final class RegistrationWizardController extends Controller
             'couple_enabled' => $isCouple,
             'spouse' => $spouse,
         ]);
-        $this->syncDraft(8);
 
         return redirect()->route('register.documents');
     }
@@ -562,8 +410,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step4-pan', [
             'data' => $this->wizard->getStepData(5) ?? [],
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
-            'draftExpiresAt' => $this->draftExpiresAt(),
-        ]);
+            ]);
     }
 
     public function handlePan(Request $request): RedirectResponse
@@ -597,7 +444,6 @@ final class RegistrationWizardController extends Controller
             'pan_number' => $validated['pan_number'],
             'spouse_pan_number' => null,
         ]);
-        $this->syncDraft(5);
 
         return redirect()->route('register.aadhaar');
     }
@@ -609,8 +455,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step5-aadhaar', [
             'data' => $this->wizard->getStepData(6) ?? [],
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
-            'draftExpiresAt' => $this->draftExpiresAt(),
-        ]);
+            ]);
     }
 
     public function handleAadhaar(Request $request): RedirectResponse
@@ -644,7 +489,6 @@ final class RegistrationWizardController extends Controller
             'spouse_last4' => null,
             'spouse_ref' => null,
         ]);
-        $this->syncDraft(6);
 
         return redirect()->route('register.bank');
     }
@@ -655,8 +499,7 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step6-bank', [
             'data' => $this->wizard->getStepData(7) ?? [],
-            'draftExpiresAt' => $this->draftExpiresAt(),
-        ]);
+            ]);
     }
 
     public function handleBank(Request $request): RedirectResponse
@@ -672,8 +515,7 @@ final class RegistrationWizardController extends Controller
 
         if ($bothBlank) {
             $this->wizard->saveStepData(7, ['account_number' => null, 'ifsc' => null]);
-            $this->syncDraft(7);
-
+    
             return redirect()->route('register.personal');
         }
 
@@ -693,7 +535,6 @@ final class RegistrationWizardController extends Controller
         ]);
 
         $this->wizard->saveStepData(7, $validated);
-        $this->syncDraft(7);
 
         // After Bank → Personal (was Documents in the old order).
         return redirect()->route('register.personal');
@@ -705,8 +546,7 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step7-documents', [
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
-            'draftExpiresAt' => $this->draftExpiresAt(),
-        ]);
+            ]);
     }
 
     /** @var array<string, string> Logical type → form field name (primary applicant) */
@@ -774,15 +614,14 @@ final class RegistrationWizardController extends Controller
             'spouse_aadhaar_doc' => 'your spouse’s Aadhaar scan',
         ]);
 
-        $userId = (int) Auth::id();
         $disk = Storage::disk('kyc');
+        $pathPrefix = 'reg_'.$this->wizard->registrationSessionId();
 
-        $stored = $this->storeKycFiles($request, self::KYC_DOC_FIELDS, "user_{$userId}", $disk);
+        $stored = $this->storeKycFiles($request, self::KYC_DOC_FIELDS, $pathPrefix, $disk);
         $this->wizard->saveStepData(9, [
             'documents' => $stored,
             'spouse_documents' => [],
         ]);
-        $this->syncDraft(9);
 
         // After Documents → Complete (the old placement step has been
         // folded into step 1, so it's no longer in the post-Documents chain).
@@ -830,8 +669,7 @@ final class RegistrationWizardController extends Controller
     public function showConsent(): View
     {
         return view('registration.step9-consent', [
-            'draftExpiresAt' => $this->draftExpiresAt(),
-        ]);
+            ]);
     }
 
     public function handleConsent(Request $request): RedirectResponse
@@ -858,7 +696,6 @@ final class RegistrationWizardController extends Controller
             'user_agent' => $request->userAgent() ?? '',
             'at' => now()->toISOString(),
         ]);
-        $this->syncDraft(4);
 
         return redirect()->route('register.pan');
     }
@@ -898,6 +735,7 @@ final class RegistrationWizardController extends Controller
         // user back to the missing step. Step numbers track the canonical
         // 2026-05 order; route names below mirror them.
         foreach ([
+            2 => 'account',
             3 => 'orientation',
             4 => 'consent',
             5 => 'pan',
@@ -943,7 +781,7 @@ final class RegistrationWizardController extends Controller
         }
 
         try {
-            $result = $this->registrationService->finalise($wizardData, $user);
+            $result = $this->registrationService->finalise($wizardData, null);
         } catch (UniqueConstraintViolationException $e) {
             // The C-1 race: a concurrent registration committed the same
             // PAN between step-4 dedup and now. The unique index on
@@ -968,47 +806,13 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=placement_taken');
         }
 
-        $userId = $user->id;
+        Auth::loginUsingId($result->userId);
         $this->wizard->clear();
-        $this->drafts->delete($userId);
 
         return redirect()->route('dashboard')
-            ->with('adn_issued', $result->distributorId)
-            ->withCookie(Cookie::forget('av_draft'));
+            ->with('adn_issued', $result->distributorId);
     }
 
-    private function draftExpiresAt(): ?Carbon
-    {
-        $userId = Auth::id();
-        if ($userId === null) {
-            return null;
-        }
-
-        return $this->drafts->findActiveByUserId((int) $userId)?->expires_at;
-    }
-
-    private function syncDraft(int $step): void
-    {
-        $userId = $this->wizard->userId();
-        if ($userId === null) {
-            // Silent skip masks lost wizard state in production. Log a
-            // structured warning so the unexpected case is observable.
-            Log::warning('syncDraft called with null userId', ['step' => $step]);
-
-            return;
-        }
-        $stateData = $this->wizard->get()['data'] ?? [];
-
-        // CLAUDE.md Hard Rule #8: raw Aadhaar must NEVER be stored.
-        // Strip it from every draft sync — the unredacted value lives only
-        // in the transient PHP session for the duration of registration.
-        unset(
-            $stateData['aadhaar']['aadhaar_number'],
-            $stateData['couple']['spouse_aadhaar_number'],
-        );
-
-        $this->drafts->sync($userId, $step, $stateData);
-    }
 
     /** @return array<string, string> */
     private function indianStates(): array
