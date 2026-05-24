@@ -84,6 +84,7 @@
                 placeholder="you@example.com"
                 maxlength="255"
                 class="input-refined">
+            <p id="email-availability" class="mt-1.5 text-xs hidden"></p>
             @error('email')<p class="mt-1.5 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
@@ -102,6 +103,7 @@
                     class="input-refined flex-1 !rounded-l-none">
             </div>
             <p class="mt-1.5 text-xs text-slate-500">10 digits, starting with 6–9.</p>
+            <p id="phone-availability" class="mt-1.5 text-xs hidden"></p>
             @error('phone_e164')<p class="mt-1.5 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
@@ -177,6 +179,92 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Real-time availability check for email + phone. Fires on blur (when the
+    // user moves off the field) and on debounced input. Catches duplicates
+    // before the user invests time finishing the rest of the wizard.
+    const checkUrl = @json(route('register.check-availability'));
+
+    function renderStatus(el, state, message) {
+        if (!el) return;
+        el.classList.remove('hidden', 'text-red-700', 'text-leaf-700', 'text-slate-500');
+        if (state === 'available') {
+            el.classList.add('text-leaf-700');
+            el.textContent = '✓ ' + message;
+        } else if (state === 'taken') {
+            el.classList.add('text-red-700');
+            el.textContent = '✗ ' + message;
+        } else if (state === 'checking') {
+            el.classList.add('text-slate-500');
+            el.textContent = message;
+        } else {
+            el.classList.add('hidden');
+            el.textContent = '';
+        }
+    }
+
+    async function checkAvailability(field, value, statusEl) {
+        if (!value) {
+            renderStatus(statusEl, 'hidden', '');
+            return;
+        }
+        renderStatus(statusEl, 'checking', 'Checking…');
+        try {
+            const url = checkUrl + '?field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value);
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) {
+                renderStatus(statusEl, 'hidden', '');
+                return;
+            }
+            const data = await res.json();
+            if (data.available === true) {
+                renderStatus(statusEl, 'available',
+                    field === 'email' ? 'Email is available' : 'Mobile number is available');
+            } else if (data.available === false) {
+                renderStatus(statusEl, 'taken',
+                    field === 'email'
+                        ? 'An account with this email already exists. Please sign in instead.'
+                        : 'An account already exists with this mobile number. Please sign in instead.');
+            } else {
+                renderStatus(statusEl, 'hidden', '');
+            }
+        } catch (e) {
+            renderStatus(statusEl, 'hidden', '');
+        }
+    }
+
+    function debounce(fn, ms) {
+        let timer = null;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), ms);
+        };
+    }
+
+    const emailInput = form.querySelector('input[name="email"]');
+    const emailStatus = document.getElementById('email-availability');
+    const phoneInput = form.querySelector('input[name="phone_e164"]');
+    const phoneStatus = document.getElementById('phone-availability');
+
+    if (emailInput && emailStatus) {
+        const debouncedEmailCheck = debounce(() => {
+            checkAvailability('email', emailInput.value.trim().toLowerCase(), emailStatus);
+        }, 500);
+        emailInput.addEventListener('input', debouncedEmailCheck);
+        emailInput.addEventListener('blur', () => {
+            checkAvailability('email', emailInput.value.trim().toLowerCase(), emailStatus);
+        });
+    }
+
+    if (phoneInput && phoneStatus) {
+        const debouncedPhoneCheck = debounce(() => {
+            checkAvailability('phone', phoneInput.value.trim(), phoneStatus);
+        }, 500);
+        phoneInput.addEventListener('input', debouncedPhoneCheck);
+        phoneInput.addEventListener('blur', () => {
+            checkAvailability('phone', phoneInput.value.trim(), phoneStatus);
+        });
+    }
 });
 </script>
 @endsection

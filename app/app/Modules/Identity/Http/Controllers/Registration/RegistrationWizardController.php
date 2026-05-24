@@ -188,6 +188,52 @@ final class RegistrationWizardController extends Controller
         ]);
     }
 
+    /**
+     * Real-time email/phone availability check called from step 2 on blur.
+     *
+     * Catches duplicate registrations BEFORE the user invests time in the rest
+     * of the wizard. Throttled to 60 requests per minute per IP to prevent
+     * enumeration scraping. Returns minimal info — just "available" or "taken"
+     * — never reveals whose account holds the value.
+     *
+     * Accepts ?field=email&value=foo@bar.com  OR  ?field=phone&value=9876543210
+     */
+    public function checkAvailability(Request $request): JsonResponse
+    {
+        $field = (string) $request->query('field', '');
+        $value = trim((string) $request->query('value', ''));
+
+        if ($value === '') {
+            return response()->json(['available' => null, 'reason' => 'empty']);
+        }
+
+        if ($field === 'email') {
+            $email = strtolower($value);
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json(['available' => null, 'reason' => 'invalid_format']);
+            }
+            $exists = User::where('email', $email)->exists();
+            return response()->json([
+                'available' => ! $exists,
+                'reason' => $exists ? 'taken' : 'available',
+            ]);
+        }
+
+        if ($field === 'phone') {
+            if (! preg_match('/^[6-9]\d{9}$/', $value)) {
+                return response()->json(['available' => null, 'reason' => 'invalid_format']);
+            }
+            $normalisedPhone = '+91'.$value;
+            $exists = DB::table('users')->where('phone_e164', $normalisedPhone)->exists();
+            return response()->json([
+                'available' => ! $exists,
+                'reason' => $exists ? 'taken' : 'available',
+            ]);
+        }
+
+        return response()->json(['available' => null, 'reason' => 'unknown_field'], 400);
+    }
+
     public function handleJoin(Request $request): RedirectResponse|Response
     {
         if (! $this->registrationIsOpen()) {

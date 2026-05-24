@@ -60,6 +60,12 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
     Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])->name('register.post');
 
+    // Real-time availability check for email + phone uniqueness — called via
+    // AJAX on blur from step 2 so users see "this email is already registered"
+    // before submitting and going through the whole wizard.
+    Route::get('/register/check-availability', [RegistrationWizardController::class, 'checkAvailability'])
+        ->middleware('throttle:60,1')->name('register.check-availability');
+
     // Forgot-password flow. The send-link endpoint is throttled (3 requests
     // per 10 min per IP) so an attacker can't spam reset emails to a victim.
     Route::get('/forgot-password', [PasswordResetController::class, 'showRequest'])->name('password.request');
