@@ -43,13 +43,17 @@ it('FF-ADMIN-01: index page lists the registration killswitch', function (): voi
 it('FF-ADMIN-02: admin can deactivate the flag and an audit row is written', function (): void {
     $admin = adminFlagSeedAdmin();
     $this->actingAs($admin);
-    expect(Feature::active(RegistrationKillswitch::class))->toBeTrue();
+    // Read against the global (null) scope — the toggle endpoint writes there
+    // intentionally so the flag affects unauthenticated visitors too. Reading
+    // with the default scope returns the admin's own override, which is what
+    // the old test was checking and that the production fix moved away from.
+    expect(Feature::for(null)->active(RegistrationKillswitch::class))->toBeTrue();
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
         ->post('/admin/feature-flags/registration.killswitch', ['action' => 'deactivate']);
 
     $response->assertRedirect();
-    expect(Feature::active(RegistrationKillswitch::class))->toBeFalse();
+    expect(Feature::for(null)->active(RegistrationKillswitch::class))->toBeFalse();
     expect(AuditLog::where('action', 'feature_flag.toggled')->count())->toBe(1);
 
     $row = AuditLog::where('action', 'feature_flag.toggled')->first();
@@ -62,13 +66,13 @@ it('FF-ADMIN-02: admin can deactivate the flag and an audit row is written', fun
 it('FF-ADMIN-03: admin can re-activate a deactivated flag', function (): void {
     $admin = adminFlagSeedAdmin();
     $this->actingAs($admin);
-    Feature::deactivate(RegistrationKillswitch::class);
+    Feature::for(null)->deactivate(RegistrationKillswitch::class);
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
         ->post('/admin/feature-flags/registration.killswitch', ['action' => 'activate']);
 
     $response->assertRedirect();
-    expect(Feature::active(RegistrationKillswitch::class))->toBeTrue();
+    expect(Feature::for(null)->active(RegistrationKillswitch::class))->toBeTrue();
 });
 
 it('FF-ADMIN-04: unknown flag key returns 404', function (): void {

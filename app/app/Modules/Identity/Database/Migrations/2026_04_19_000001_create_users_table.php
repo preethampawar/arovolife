@@ -18,7 +18,10 @@ return new class extends Migration
             $table->string('password_hash', 255);
             $table->binary('mfa_secret_enc')->nullable();
             $table->dateTime('mfa_enabled_at', 3)->nullable();
-            $table->enum('status', ['pending', 'active', 'frozen', 'terminated'])->default('pending');
+            // 'rejected' was added in 2026_05_24 — listed here too so fresh
+            // SQLite databases (used by the test suite) build a CHECK
+            // constraint that allows it without needing the later ALTER.
+            $table->enum('status', ['pending', 'active', 'frozen', 'terminated', 'rejected'])->default('pending');
             $table->dateTime('last_login_at', 3)->nullable();
             $table->string('remember_token', 100)->nullable();
             $table->dateTime('email_verified_at', 3)->nullable();

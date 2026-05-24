@@ -142,7 +142,7 @@ it('AKR-02: approve refuses when distributor has zero kyc rows', function () {
     expect($user->status)->toBe('pending');
 });
 
-it('AKR-03: reject flips user.status to terminated with reason in audit', function () {
+it('AKR-03: reject flips user.status to rejected (recoverable) with reason in audit', function () {
     Event::fake();
 
     [$user, $id] = array_values(akrSeedDistributorPending());
@@ -152,7 +152,10 @@ it('AKR-03: reject flips user.status to terminated with reason in audit', functi
     app(RejectKycSubmission::class)($id, $admin->id, reason: 'Aadhaar image is unreadable.');
 
     $user->refresh();
-    expect($user->status)->toBe('terminated');
+    // Rejected — not terminated. Terminated is now reserved for permanent
+    // closures via TerminateDistributor. Rejected applicants can re-upload
+    // documents at /kyc/resubmit and rejoin the queue.
+    expect($user->status)->toBe('rejected');
 
     $audit = AuditLog::where('action', 'admin.kyc.rejected')
         ->where('subject_id', $id)->first();

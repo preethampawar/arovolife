@@ -47,12 +47,20 @@ final class KycResubmitController extends Controller
             return redirect()->route('login');
         }
 
+        // Couple registrations are reviewed as a unit. If a spouse (secondary)
+        // logs in, look up the rejection audit on the PRIMARY's distributor
+        // row — that's where Reject wrote it. Same for the upload below.
+        $resubmissionTargetId = (int) $distributor->id;
+        if ($distributor->spouse_distributor_id !== null && ! $distributor->is_primary_couple) {
+            $resubmissionTargetId = (int) $distributor->spouse_distributor_id;
+        }
+
         // Surface the most recent rejection reason from the audit log so the
         // distributor knows what to fix.
         $rejection = AuditLog::query()
             ->where('action', 'admin.kyc.rejected')
             ->where('subject_type', 'distributor')
-            ->where('subject_id', $distributor->id)
+            ->where('subject_id', $resubmissionTargetId)
             ->orderByDesc('id')
             ->first();
         $rejectionReason = is_array($rejection?->details ?? null)

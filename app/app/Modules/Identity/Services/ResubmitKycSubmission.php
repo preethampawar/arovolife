@@ -46,6 +46,30 @@ final class ResubmitKycSubmission
             /** @var Distributor $distributor */
             $distributor = Distributor::query()->lockForUpdate()->findOrFail($distributorId);
 
+            // Couple registrations are rejected as a unit (see
+            // RejectKycSubmission) — both spouses' user.status flips to
+            // 'rejected' simultaneously. The primary is the document owner
+            // (the wizard captures one PAN, one Aadhaar, etc.); if the
+            // secondary tries to resubmit we redirect them to the primary's
+            // row so we never have a half-recovered couple. Either way the
+            // user-status flip later in this method targets BOTH user rows.
+            if ($distributor->spouse_distributor_id !== null && ! $distributor->is_primary_couple) {
+                /** @var Distributor $primary */
+                $primary = Distributor::query()->lockForUpdate()->findOrFail($distributor->spouse_distributor_id);
+                $distributorId = (int) $primary->id;
+                $distributor = $primary;
+            }
+
+            $userIdsToReactivate = [(int) $distributor->user_id];
+            if ($distributor->is_primary_couple && $distributor->spouse_distributor_id !== null) {
+                $spouseUserId = (int) Distributor::query()
+                    ->where('id', $distributor->spouse_distributor_id)
+                    ->value('user_id');
+                if ($spouseUserId > 0) {
+                    $userIdsToReactivate[] = $spouseUserId;
+                }
+            }
+
             $disk = Storage::disk('kyc');
             $now = Carbon::now();
             $replaced = [];
@@ -90,9 +114,11 @@ final class ResubmitKycSubmission
                 $replaced[] = $type;
             }
 
-            // Move the user back into the review queue.
+            // Move the user (and the spouse, for couple registrations) back
+            // into the review queue. Limited to status='rejected' so we don't
+            // accidentally pull an already-active spouse back into review.
             User::query()
-                ->where('id', $distributor->user_id)
+                ->whereIn('id', $userIdsToReactivate)
                 ->where('status', 'rejected')
                 ->update(['status' => 'pending']);
 
