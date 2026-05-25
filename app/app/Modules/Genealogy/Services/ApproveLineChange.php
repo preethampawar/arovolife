@@ -88,6 +88,8 @@ final class ApproveLineChange
                 }
 
                 $fromParentId = (int) $distributor->placement_parent_id;
+                $fromSide = $distributor->placement_side;
+                $fromDepth = (int) $distributor->depth;
                 $newDepth = (int) $newParent->depth + 1;
                 $now = Carbon::now();
 
@@ -134,6 +136,8 @@ final class ApproveLineChange
                     'details' => [
                         'request_id' => $requestId,
                         'from_placement_parent_id' => $fromParentId,
+                        'from_placement_side' => $fromSide,
+                        'from_depth' => $fromDepth,
                         'to_placement_parent_id' => $newParentId,
                         'chosen_side' => $chosenSide,
                         'new_depth' => $newDepth,

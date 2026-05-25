@@ -116,7 +116,12 @@ it('ALC-01: approval moves placement, depth, closure and leaves sponsor intact',
         ->and($req->approved_at)->not->toBeNull();
 
     Event::assertDispatched(LineChangeApproved::class, fn ($e) => $e->distributorId === $applicantId && $e->chosenSide === 'L');
-    expect(AuditLog::where('action', 'genealogy.line_change.approved')->where('subject_id', $applicantId)->exists())->toBeTrue();
+    $approvedAudit = AuditLog::where('action', 'genealogy.line_change.approved')
+        ->where('subject_id', $applicantId)->first();
+    expect($approvedAudit)->not->toBeNull()
+        ->and($approvedAudit->details['from_placement_parent_id'])->toBe($oldParentId)
+        ->and($approvedAudit->details['from_depth'])->toBe(2)
+        ->and($approvedAudit->details['new_depth'])->toBe(2);
 });
 
 it('ALC-02: approving onto a taken side throws slot-full', function () {

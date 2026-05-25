@@ -21,6 +21,8 @@ phase can close.
 | R-13 | Placement_id outside sponsor's downline | Operational — High | ADR-0003 | `PlacementEngine::isSelfOrDescendant()` (`app/Modules/Genealogy/Services/PlacementEngine.php:147`); cross-line attempts raise `CrossLinePlacementError`, dispatch `ForbiddenPlacementAttempted`, write `genealogy.placement.rejected` audit row; `RegistrationWizardController::start()` re-validates at link-open time and surfaces failures as a generic Contact Us redirect | 1 | Mitigated (2026-05-01) |
 | R-14 | Contact-form PII on a plaintext queue payload | Data protection — Medium | DPDP 2023 §6, §8(3) | `NewContactInquiryNotification` is constructed with the inquiry id only; PII is re-fetched at delivery time so the `jobs` table never carries name/email/phone/address/message | 1 | Mitigated (2026-05-01) |
 | R-15 | Contact-inquiry retention not bounded | Data protection — Medium | DPDP 2023 §8(3) | `contact-inquiries:purge` artisan command (`app/Modules/Public/Console/PurgeStaleContactInquiriesCommand.php`) deletes unhandled inquiries >90d and handled inquiries >365d; scheduled daily at 03:00 IST via `PublicServiceProvider::boot()`; each run records counts (no PII) in `audit_log`; covered by 6 Pest tests (PURGE-01..06) | 1 | Mitigated (2026-05-01) |
+| R-16 | Line-change approval residual TOCTOU on requester leaf status | Operational — Low | ADR-0003 | Line-change approval re-checks the requester's leaf status under a row lock, but a concurrent placement landing under the requester is not fully serialized by the target-parent advisory lock (`app/app/Modules/Genealogy/Services/ApproveLineChange.php`). Accepted for Phase 1 (low placement volume); revisit if placement volume rises | 1 | Accepted (2026-05-25) |
+| R-17 | Any admin may approve/reject a line-change (binary-placement move) | Operational — Low | T&C §3; separation-of-duties principle | Any user with the `admin` role may approve/reject line-change requests; the admin route group in `app/routes/web.php` is not scoped to a dedicated `admin-operations` role. A dedicated `admin-operations` role is deferred to a later phase. Accepted for Phase 1 (small admin team) | 1 | Accepted (2026-05-25) |
 
 ## Compliance items C-01 … C-09 (Phase 1)
 
@@ -40,5 +42,7 @@ Aligned to the PRD §12. Each must be signed before Phase 1 exits.
 
 ## Accepted risks (dated)
 
-_None yet. Entries go here with: date, acceptor names, risk ID, reason,
-review date._
+| Date | Risk ID | Acceptor(s) | Reason | Review date |
+|---|---|---|---|---|
+| 2026-05-25 | R-16 | compliance-officer | Residual TOCTOU: concurrent placement under the requester is not fully serialized by the target-parent advisory lock during approval. Low placement volume in Phase 1 makes the race practically unreachable | Phase 2 exit gate |
+| 2026-05-25 | R-17 | compliance-officer | Any `admin` may approve/reject a binary-placement move; a dedicated `admin-operations` role is deferred. Small, trusted admin team in Phase 1 | Phase 2 exit gate |

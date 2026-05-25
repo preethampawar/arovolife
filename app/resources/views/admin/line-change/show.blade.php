@@ -91,6 +91,7 @@
             Reason
             <x-help-tip text="Sent verbatim to the distributor. 8–1024 characters." />
         </label>
+        <p class="text-xs text-red-700">This reason is emailed verbatim to the distributor.</p>
         <textarea name="decision_note" required minlength="8" maxlength="1024" rows="3"
             class="w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
             placeholder="e.g. The requested parent is not eligible for this move."></textarea>
