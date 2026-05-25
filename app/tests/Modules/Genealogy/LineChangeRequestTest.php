@@ -5,9 +5,11 @@ declare(strict_types=1);
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Events\LineChangeRequested;
 use App\Modules\Genealogy\Models\LineChangeRequest;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyProcessedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
-use App\Modules\Genealogy\Services\Exceptions\LineChangeNewSponsorTooNewError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNewParentTooNewError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeWindowExpiredError;
 use App\Modules\Genealogy\Services\RequestLineChange;
 use App\Modules\Identity\Models\User;
@@ -101,15 +103,15 @@ it('LCR-01: request within 5 business days creates pending row + event + audit',
 
     app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $newSponsorId,
+        toPlacementParentId: $newSponsorId,
         actorUserId: $applicantUser->id,
         reason: 'requested by applicant',
     );
 
     $row = LineChangeRequest::query()->where('distributor_id', $applicantId)->firstOrFail();
     expect($row->status)->toBe('pending')
-        ->and($row->from_sponsor_id)->toBe($rootId)
-        ->and($row->to_sponsor_id)->toBe($newSponsorId);
+        ->and($row->from_placement_parent_id)->toBe($rootId)
+        ->and($row->to_placement_parent_id)->toBe($newSponsorId);
 
     Event::assertDispatched(LineChangeRequested::class, fn ($e) => $e->distributorId === $applicantId);
 
@@ -127,7 +129,7 @@ it('LCR-02: request beyond 5 business days throws LineChangeWindowExpiredError',
 
     expect(fn () => app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $newSponsorId,
+        toPlacementParentId: $newSponsorId,
         actorUserId: $applicantUser->id,
     ))->toThrow(LineChangeWindowExpiredError::class);
 
@@ -146,7 +148,7 @@ it('LCR-03: request rejected when distributor has any descendants', function () 
 
     expect(fn () => app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $newSponsorId,
+        toPlacementParentId: $newSponsorId,
         actorUserId: $applicantUser->id,
     ))->toThrow(LineChangeHasDownlineError::class);
 });
@@ -168,7 +170,7 @@ it('LCR-05: 4 weekdays + a fractional day still inside the window', function () 
 
     app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $newSponsorId,
+        toPlacementParentId: $newSponsorId,
         actorUserId: $applicantUser->id,
     );
 
@@ -185,13 +187,13 @@ it('LCR-04: cannot request twice while one is pending', function () {
 
     app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $newSponsorId,
+        toPlacementParentId: $newSponsorId,
         actorUserId: $applicantUser->id,
     );
 
     expect(fn () => app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $newSponsorId,
+        toPlacementParentId: $newSponsorId,
         actorUserId: $applicantUser->id,
     ))->toThrow(LineChangeAlreadyRequestedError::class);
 });
@@ -208,9 +210,9 @@ it('LCR-06: rejects a new sponsor whose effective_date is later than the applica
 
     expect(fn () => app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $newerSponsorId,
+        toPlacementParentId: $newerSponsorId,
         actorUserId: $applicantUser->id,
-    ))->toThrow(LineChangeNewSponsorTooNewError::class);
+    ))->toThrow(LineChangeNewParentTooNewError::class);
 
     // No row written; this is what enforces the "no abuse" property —
     // the request never enters the queue.
@@ -234,7 +236,50 @@ it('LCR-07: rejects a new sponsor whose effective_date EQUALS the applicant (str
 
     expect(fn () => app(RequestLineChange::class)(
         distributorId: $applicantId,
-        toSponsorId: $sameDayId,
+        toPlacementParentId: $sameDayId,
         actorUserId: $applicantUser->id,
-    ))->toThrow(LineChangeNewSponsorTooNewError::class);
+    ))->toThrow(LineChangeNewParentTooNewError::class);
+});
+
+it('LCR-08: cannot request a second line change after one was approved', function () {
+    $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    $newParentId = lcrSeed(lcrUser('newP')->id, effectiveAtBusinessDaysAgo: 10);
+
+    $applicantUser = lcrUser('app');
+    $applicantId = lcrSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 2, sponsorId: $rootId);
+
+    // Simulate a previously approved line change.
+    DB::table('line_change_requests')->insert([
+        'distributor_id' => $applicantId,
+        'from_placement_parent_id' => $rootId,
+        'to_placement_parent_id' => $newParentId,
+        'requested_at' => now()->subDay()->format('Y-m-d H:i:s.v'),
+        'approved_at' => now()->subDay()->format('Y-m-d H:i:s.v'),
+        'status' => 'approved',
+    ]);
+
+    expect(fn () => app(RequestLineChange::class)(
+        distributorId: $applicantId,
+        toPlacementParentId: $newParentId,
+        actorUserId: $applicantUser->id,
+    ))->toThrow(LineChangeAlreadyProcessedError::class);
+});
+
+it('LCR-09: rejects when the target parent has no open slot', function () {
+    $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    // Target parent joined before applicant; fill both its legs.
+    $targetId = lcrSeed(lcrUser('target')->id, effectiveAtBusinessDaysAgo: 20);
+    $cL = lcrSeed(lcrUser('cl')->id, effectiveAtBusinessDaysAgo: 15, sponsorId: $targetId);
+    $cR = lcrSeed(lcrUser('cr')->id, effectiveAtBusinessDaysAgo: 14, sponsorId: $targetId);
+    DB::table('distributors')->where('id', $cL)->update(['placement_side' => 'L']);
+    DB::table('distributors')->where('id', $cR)->update(['placement_side' => 'R']);
+
+    $applicantUser = lcrUser('app');
+    $applicantId = lcrSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 2, sponsorId: $rootId);
+
+    expect(fn () => app(RequestLineChange::class)(
+        distributorId: $applicantId,
+        toPlacementParentId: $targetId,
+        actorUserId: $applicantUser->id,
+    ))->toThrow(LineChangePlacementSlotFullError::class);
 });

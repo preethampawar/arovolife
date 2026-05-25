@@ -14,8 +14,8 @@ final class LineChangeRequested
     public function __construct(
         public readonly int $requestId,
         public readonly int $distributorId,
-        public readonly int $fromSponsorId,
-        public readonly int $toSponsorId,
+        public readonly int $fromPlacementParentId,
+        public readonly int $toPlacementParentId,
         public readonly Carbon $requestedAt,
     ) {}
 }
