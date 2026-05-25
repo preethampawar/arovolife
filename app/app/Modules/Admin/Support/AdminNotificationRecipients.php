@@ -33,6 +33,11 @@ final class AdminNotificationRecipients
      * Who to email when a distributor submits a line-change request — every
      * active user holding the 'admin' or 'admin-compliance' role.
      *
+     * Deliberately separate from compliance() even though the query is
+     * currently identical: line-change approval may gain its own role
+     * (e.g. 'admin-operations') in a future phase, and keeping the methods
+     * apart avoids a refactor at that point.
+     *
      * @return Collection<int, User>
      */
     public static function lineChangeReviewers(): Collection

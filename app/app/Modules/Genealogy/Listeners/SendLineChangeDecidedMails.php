@@ -16,8 +16,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Emails on a line-change decision. Two handlers — Laravel auto-discovers
- * each by its type-hinted argument.
+ * Emails on a line-change decision. Two named handlers (handleApproved /
+ * handleRejected) — wired explicitly in GenealogyServiceProvider; they
+ * are NOT auto-discovered by Laravel.
  */
 final class SendLineChangeDecidedMails implements ShouldQueue
 {
@@ -43,7 +44,7 @@ final class SendLineChangeDecidedMails implements ShouldQueue
             Notification::send($newParent->user, new NewPlacementUnderYouNotification(
                 parentFullName: (string) ($newParent->user->full_name ?? 'Distributor'),
                 parentAdn: $newParent->adn,
-                newJoinerFullName: (string) ($requester->user->full_name ?? 'Distributor'),
+                newJoinerFullName: (string) ($requester->user?->full_name ?? 'Distributor'),
                 newJoinerAdn: $requester->adn,
                 side: $event->chosenSide,
                 sideChosenBy: 'referral_explicit',
