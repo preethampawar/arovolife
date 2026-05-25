@@ -22,8 +22,10 @@ form and the admin screens must carry an explicit notice:
 > *"This changes your binary tree placement only. Your sponsor stays the same."*
 
 The distributor supplies a **target parent ADN only**. The admin chooses the
-side (L/R) at approval time, pre-selected by the company Placement Strategy
-setting.
+side (L/R) at approval time, pre-selected to the first free side (L preferred,
+R fallback — mirroring `PlacementEngine::resolveSlot`). (Note: ADR-0003 removed
+the old "Placement Strategy" setting; placement is invariant, so there is no
+strategy setting to read.)
 
 ## 2. Background / current state
 
@@ -96,10 +98,12 @@ transaction, using the same MySQL advisory lock + unique-index protection as
 1. Lock the request row; assert status is `pending`.
 2. Re-validate the target slot is still open (it can fill between request and
    approval) → `LineChangePlacementSlotFullError`.
-3. Resolve **side**: admin picks L or R among free slots; the Placement
-   Strategy setting pre-selects the default. Persist as `chosen_side`.
+3. Resolve **side**: admin picks L or R among free slots; the form pre-selects
+   the first free side (L preferred, R fallback). Persist as `chosen_side`.
 4. Update the requester row: `placement_parent_id`, `placement_side`,
-   `side_chosen_by = 'line_change'`, `depth = newParent.depth + 1`.
+   `side_chosen_by = 'referral_explicit'` (admin explicitly chose the side;
+   reuses the existing enum — no enum-rewrite migration),
+   `depth = newParent.depth + 1`.
    (`placement_id_at_registration` is historical and left untouched;
    `sponsor_id` is left untouched.)
 5. **Rebuild closure rows**: delete rows where
@@ -126,7 +130,7 @@ named `admin.line-changes.{index,show,approve,reject}`.
 - `@show` — detail page: who is requesting; their current placement (parent
   ADN + side); the **target parent** (ADN + name + which slots are open); the
   distributor's reason; the binary-only notice; a **side selector** defaulted
-  by the Placement Strategy setting (only free sides selectable). Approve
+  to the first free side (only free sides selectable). Approve
   button (submits `chosen_side`) + Reject form (requires `decision_note`).
 - `@approve` — validates `chosen_side` ∈ open slots; calls `ApproveLineChange`;
   redirects to index with status. Surfaces `LineChangePlacementSlotFullError`
@@ -146,9 +150,11 @@ request form each carry a short **form-purpose note**.
 ## 7. Emails (queued notifications)
 
 - **On request** (`LineChangeRequested` listener,
-  `SendLineChangeRequestedMails`): notify **all admin-role users**
-  (`User::role('admin')` lookup) **and** the **requester** ("we received your
-  request"). Both include the binary-only notice and the target parent ADN.
+  `SendLineChangeRequestedMails`): notify **all admin-role users** **and** the
+  **requester** ("we received your request"). Admin recipients come from a new
+  `AdminNotificationRecipients::lineChangeReviewers()` method (active users with
+  role `admin` or `admin-compliance`, mirroring the existing `compliance()`
+  helper). Both include the binary-only notice and the target parent ADN.
 - **On approve** (`LineChangeApproved` listener): notify the **requester**
   (done; new placement shown) and the **new placement parent** (consistent
   with the existing `NewPlacementUnderYouNotification` pattern). Reserved root
