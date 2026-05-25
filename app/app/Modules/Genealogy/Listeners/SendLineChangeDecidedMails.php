@@ -33,7 +33,7 @@ final class SendLineChangeDecidedMails implements ShouldQueue
         if ($requester->user !== null) {
             Notification::send($requester->user, new LineChangeApprovedNotification(
                 requesterAdn: $requester->adn,
-                newParentAdn: $newParent?->adn ?? '—',
+                newParentAdn: $newParent->adn ?? '—',
                 side: $event->chosenSide,
             ));
         }
@@ -44,7 +44,7 @@ final class SendLineChangeDecidedMails implements ShouldQueue
             Notification::send($newParent->user, new NewPlacementUnderYouNotification(
                 parentFullName: (string) ($newParent->user->full_name ?? 'Distributor'),
                 parentAdn: $newParent->adn,
-                newJoinerFullName: (string) ($requester->user?->full_name ?? 'Distributor'),
+                newJoinerFullName: (string) ($requester->user->full_name ?? 'Distributor'),
                 newJoinerAdn: $requester->adn,
                 side: $event->chosenSide,
                 sideChosenBy: 'referral_explicit',
