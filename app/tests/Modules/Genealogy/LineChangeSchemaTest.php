@@ -16,4 +16,9 @@ it('line_change_requests has placement-named columns', function () {
     expect(Schema::hasColumn('line_change_requests', 'decision_note'))->toBeTrue();
     expect(Schema::hasColumn('line_change_requests', 'from_sponsor_id'))->toBeFalse();
     expect(Schema::hasColumn('line_change_requests', 'to_sponsor_id'))->toBeFalse();
+
+    $fkColumns = collect(Schema::getForeignKeys('line_change_requests'))
+        ->flatMap(fn ($fk) => $fk['columns'])
+        ->all();
+    expect($fkColumns)->toContain('reviewed_by');
 });

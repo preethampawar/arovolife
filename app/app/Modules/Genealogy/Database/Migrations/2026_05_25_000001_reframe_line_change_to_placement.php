@@ -19,13 +19,17 @@ return new class extends Migration
         // Additive columns first (separate closure so SQLite's renameColumn
         // table-rebuild in the next block sees a stable shape).
         Schema::table('line_change_requests', function (Blueprint $table): void {
-            $table->char('chosen_side', 1)->nullable()->after('to_sponsor_id');
+            // 'after' names the pre-rename column; the rename closure below shifts it
+            // to 'to_placement_parent_id'. Final column order is correct.
+            $table->enum('chosen_side', ['L', 'R'])->nullable()->after('to_sponsor_id');
             $table->unsignedBigInteger('reviewed_by')->nullable()->after('approved_at');
             $table->dateTime('reviewed_at', 3)->nullable()->after('reviewed_by');
             $table->string('decision_note', 1024)->nullable()->after('reviewed_at');
 
+            // restrictOnDelete preserves the reviewer audit trail and matches the
+            // table's existing from/to FK convention.
             $table->foreign('reviewed_by', 'fk_lcr_reviewer')
-                ->references('id')->on('users')->nullOnDelete();
+                ->references('id')->on('users')->restrictOnDelete();
         });
 
         Schema::table('line_change_requests', function (Blueprint $table): void {
