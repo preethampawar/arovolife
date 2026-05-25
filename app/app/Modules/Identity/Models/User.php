@@ -20,6 +20,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $full_name
  * @property string|null $date_of_birth
  * @property string $status
+ * @property string|null $closure_type
  * @property Carbon|null $last_login_at
  * @property string|null $remember_token
  * @property Carbon|null $email_verified_at
@@ -44,6 +45,7 @@ final class User extends Authenticatable
         'mfa_enabled_at',
         'date_of_birth',
         'status',
+        'closure_type',
         'last_login_at',
         'remember_token',
         'email_verified_at',
@@ -118,6 +120,36 @@ final class User extends Authenticatable
     public function verificationClass(): string
     {
         return $this->statusTheme()['pill'];
+    }
+
+    /**
+     * Coherent, single-source account-status badge for admin surfaces.
+     *
+     * users.status is the lifecycle state; closure_type explains a terminal
+     * one. A 'terminated' status that was reached by a cooling-off
+     * self-cancellation reads as "Cancelled (cooling-off)" — distinct from an
+     * admin termination ("Terminated"). This avoids the old contradiction of a
+     * grey "Terminated" pill sitting next to a green "Distributor: Active" pill.
+     *
+     * @return array{label: string, class: string}
+     */
+    public function accountStatusLabel(): array
+    {
+        if ($this->status === 'terminated') {
+            $neutral = 'bg-white text-gray-500 border-gray-200';
+
+            return $this->closure_type === 'cooling_off_cancellation'
+                ? ['label' => 'Cancelled (cooling-off)', 'class' => $neutral]
+                : ['label' => 'Terminated', 'class' => $neutral];
+        }
+
+        return match ($this->status) {
+            'active' => ['label' => 'Active', 'class' => 'bg-green-50 text-green-700 border-green-200'],
+            'frozen' => ['label' => 'Frozen', 'class' => 'bg-red-50 text-red-700 border-red-200'],
+            'rejected' => ['label' => 'Rejected', 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
+            'pending' => ['label' => 'Pending', 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
+            default => ['label' => ucfirst((string) $this->status), 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
+        };
     }
 
     public function getAuthPassword(): string

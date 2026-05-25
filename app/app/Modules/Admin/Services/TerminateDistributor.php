@@ -65,8 +65,18 @@ final class TerminateDistributor
             if ($userIds !== []) {
                 User::query()
                     ->whereIn('id', $userIds)
-                    ->update(['status' => 'terminated']);
+                    ->update([
+                        'status' => 'terminated',
+                        'closure_type' => 'admin_termination',
+                    ]);
             }
+
+            // The distributor record(s) follow the account into the terminal
+            // state so the admin UI stays coherent (no "Distributor: Active"
+            // pill on a terminated account). The tree node is preserved.
+            Distributor::query()
+                ->whereIn('id', $idsToClose)
+                ->update(['status' => 'inactive']);
 
             AuditLog::create([
                 'actor_id' => $actorUserId,

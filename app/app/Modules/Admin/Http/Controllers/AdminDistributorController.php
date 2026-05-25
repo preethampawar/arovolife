@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Admin\Events\DistributorDeactivated;
 use App\Modules\Admin\Events\DistributorFrozen;
 use App\Modules\Admin\Events\DistributorReactivated;
+use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
@@ -82,7 +83,7 @@ final class AdminDistributorController extends Controller
         $distributor = DB::table('distributors')
             ->join('users', 'distributors.user_id', '=', 'users.id')
             ->select('distributors.*', 'distributors.status as distributor_status',
-                'users.email', 'users.full_name', 'users.status',
+                'users.email', 'users.full_name', 'users.status', 'users.closure_type',
                 'users.phone_e164', 'users.date_of_birth', 'users.created_at as user_created_at')
             ->where('distributors.id', $id)
             ->firstOrFail();
@@ -216,16 +217,38 @@ final class AdminDistributorController extends Controller
             return back()->withErrors(['reason' => 'User is already terminated.']);
         }
 
-        $user->update(['status' => 'terminated']);
+        $previousStatus = (string) $user->status;
+        $now = Carbon::now();
+        $reason = (string) $request->reason;
+        $actorId = (int) auth()->id();
 
-        AuditLog::create([
-            'actor_id' => auth()->id(),
-            'action' => 'admin.distributor.terminated',
-            'subject_type' => 'distributor',
-            'subject_id' => $id,
-            'details' => ['reason' => $request->reason, 'previous_status' => 'active'],
-            'ip' => $request->ip(),
-        ]);
+        DB::transaction(function () use ($user, $id, $reason, $previousStatus, $request, $actorId): void {
+            $user->update([
+                'status' => 'terminated',
+                'closure_type' => 'admin_termination',
+            ]);
+
+            // Keep the distributor-record flag coherent with the account's
+            // terminal state — no "Distributor: Active" pill post-termination.
+            DB::table('distributors')->where('id', $id)->update([
+                'status' => 'inactive',
+                'updated_at' => now(),
+            ]);
+
+            AuditLog::create([
+                'actor_id' => $actorId,
+                'action' => 'admin.distributor.terminated',
+                'subject_type' => 'distributor',
+                'subject_id' => $id,
+                'details' => ['reason' => $reason, 'previous_status' => $previousStatus],
+                'ip' => $request->ip(),
+            ]);
+        });
+
+        // Mirror TerminateDistributor / the KYC terminate path: this
+        // distributor-show terminate previously sent NO email. Dispatching the
+        // event drives SendDistributorTerminatedMail → AccountTerminatedNotification.
+        DistributorTerminated::dispatch($id, $actorId, $reason, $now);
 
         return redirect()->route('admin.distributors.show', $id)
             ->with('status', 'Distributor terminated.');

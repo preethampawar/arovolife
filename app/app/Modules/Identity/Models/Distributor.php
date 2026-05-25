@@ -75,6 +75,7 @@ final class Distributor extends Model
         'state',
         'spouse_distributor_id',
         'is_primary_couple',
+        'status',
     ];
 
     protected $hidden = [

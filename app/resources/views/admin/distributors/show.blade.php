@@ -43,21 +43,41 @@
                 <p class="text-3xl font-mono font-bold text-brand-600">{{ $distributor->adn }}</p>
                 <p class="text-sm text-gray-800 mt-1">{{ $distributor->full_name ?: 'No name recorded' }}</p>
             </div>
+            @php
+                // Coherent, single-source account-status badge. A terminated
+                // account reached via cooling-off self-cancellation reads as
+                // "Cancelled (cooling-off)"; an admin termination reads as
+                // "Terminated". Both are neutral/grey — never paired with a
+                // green "Distributor: Active" pill.
+                $isTerminated = $distributor->status === 'terminated';
+                if ($isTerminated) {
+                    $statusBadge = $distributor->closure_type === 'cooling_off_cancellation'
+                        ? ['label' => 'Cancelled (cooling-off)', 'class' => 'bg-white text-gray-500 border-gray-200']
+                        : ['label' => 'Terminated', 'class' => 'bg-white text-gray-500 border-gray-200'];
+                } else {
+                    $statusBadge = match ($distributor->status) {
+                        'active'   => ['label' => 'Active',   'class' => 'bg-green-50 text-green-700 border-green-200'],
+                        'frozen'   => ['label' => 'Frozen',   'class' => 'bg-red-50 text-red-700 border-red-200'],
+                        default    => ['label' => ucfirst($distributor->status), 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
+                    };
+                }
+
+                // The distributor-record pill only adds information when it
+                // disagrees with the headline (an inactive record on a live
+                // account). On a terminated account both flags now read
+                // inactive/closed, so the extra pill would be redundant noise.
+                $showDistributorPill = ! $isTerminated && $distributor->distributor_status !== 'active';
+            @endphp
             <div class="flex items-center gap-2 flex-wrap">
-                <span class="px-3 py-1 rounded-full text-sm border
-                    {{ $distributor->status === 'active'     ? 'bg-green-50 text-green-700 border-green-200'
-                     : ($distributor->status === 'frozen'    ? 'bg-red-50 text-red-700 border-red-200'
-                     : ($distributor->status === 'terminated'? 'bg-white text-gray-500 border-gray-200'
-                     : 'bg-amber-50 text-amber-700 border-amber-200')) }}">
-                    {{ ucfirst($distributor->status) }}
+                <span class="px-3 py-1 rounded-full text-sm border {{ $statusBadge['class'] }}">
+                    {{ $statusBadge['label'] }}
                 </span>
-                <span class="px-3 py-1 rounded-full text-xs border
-                    {{ $distributor->distributor_status === 'active'
-                        ? 'bg-green-50 text-green-700 border-green-200'
-                        : 'bg-gray-100 text-gray-600 border-gray-200' }}"
+                @if($showDistributorPill)
+                <span class="px-3 py-1 rounded-full text-xs border bg-gray-100 text-gray-600 border-gray-200"
                     title="Distributor record status (distributors.status)">
                     Distributor: {{ ucfirst($distributor->distributor_status) }}
                 </span>
+                @endif
             </div>
         </div>
         <div class="grid grid-cols-2 gap-4 text-sm">

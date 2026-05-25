@@ -111,8 +111,17 @@ final class CancelCoolingOff
         // on a BelongsTo runs unscoped on some Laravel versions and would
         // terminate every user; updating the loaded model directly is safe.
         if ($distributor->user !== null) {
-            $distributor->user->update(['status' => 'terminated']);
+            $distributor->user->update([
+                'status' => 'terminated',
+                'closure_type' => 'cooling_off_cancellation',
+            ]);
         }
+
+        // The distributor-record flag follows the account into its terminal
+        // state, so the admin show page no longer reads "Distributor: Active"
+        // for a cancelled account. The tree node itself is preserved (ghost
+        // slot) — only the status flag flips.
+        $distributor->update(['status' => 'inactive']);
 
         AuditLog::create([
             'actor_id' => $actorUserId,

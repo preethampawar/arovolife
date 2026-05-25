@@ -80,7 +80,14 @@ it('COC-01: cancel within window flips user.status to terminated and stamps canc
     app(CancelCoolingOff::class)($id, actorUserId: $user->id);
 
     $user->refresh();
-    expect($user->status)->toBe('terminated');
+    expect($user->status)->toBe('terminated')
+        // Marks the terminal state as a self-cancellation so the admin UI can
+        // label it "Cancelled (cooling-off)" rather than "Terminated".
+        ->and($user->closure_type)->toBe('cooling_off_cancellation');
+
+    // The distributor-record flag follows the account into the terminal state
+    // (no contradictory "Distributor: Active" pill on a cancelled account).
+    expect(DB::table('distributors')->where('id', $id)->value('status'))->toBe('inactive');
 
     $row = CoolingOffEvent::where('distributor_id', $id)->firstOrFail();
     expect($row->cancelled_at)->not->toBeNull();
