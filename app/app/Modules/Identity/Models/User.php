@@ -94,11 +94,20 @@ final class User extends Authenticatable
      */
     public function statusTheme(): array
     {
+        // A terminated account is either a cooling-off self-cancellation
+        // ("Cancelled") or an admin closure ("Terminated"); both read more
+        // honestly than the old "Inactive", which looked like a KYC state.
+        if ($this->status === 'terminated') {
+            $label = $this->closure_type === 'cooling_off_cancellation' ? 'Cancelled' : 'Terminated';
+
+            return ['dot' => 'bg-red-500', 'bg' => 'bg-red-50', 'border' => 'border-red-200', 'pill' => 'text-red-700 bg-red-50 border-red-200', 'card_label' => $label, 'pill_label' => $label];
+        }
+
         return match ($this->status) {
             'active' => ['dot' => 'bg-leaf-500',    'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'pill' => 'text-leaf-700 bg-leaf-50 border-leaf-200',           'card_label' => 'Active',     'pill_label' => 'Verified'],
             'pending' => ['dot' => 'bg-yellow-400',  'bg' => 'bg-yellow-50',  'border' => 'border-yellow-200',  'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'New Member', 'pill_label' => 'Pending'],
             'frozen' => ['dot' => 'bg-sunrise-500', 'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'pill' => 'text-sunrise-700 bg-sunrise-50 border-sunrise-200',  'card_label' => 'Suspended',  'pill_label' => 'Suspended'],
-            'terminated' => ['dot' => 'bg-red-500',     'bg' => 'bg-red-50',     'border' => 'border-red-200',     'pill' => 'text-red-700 bg-red-50 border-red-200',               'card_label' => 'Inactive',   'pill_label' => 'Inactive'],
+            'rejected' => ['dot' => 'bg-amber-400',   'bg' => 'bg-amber-50',   'border' => 'border-amber-200',   'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'Rejected',   'pill_label' => 'Rejected'],
             default => ['dot' => 'bg-gray-400',    'bg' => 'bg-gray-50',    'border' => 'border-gray-200',    'pill' => 'text-gray-700 bg-gray-50 border-gray-200',            'card_label' => ucfirst((string) $this->status), 'pill_label' => ucfirst((string) $this->status)],
         };
     }

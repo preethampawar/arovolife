@@ -75,7 +75,7 @@
     @foreach([
         'pending'    => ['dot' => 'bg-yellow-400',  'label' => 'New Member'],
         'active'     => ['dot' => 'bg-leaf-500',    'label' => 'Active'],
-        'terminated' => ['dot' => 'bg-red-500',     'label' => 'Inactive'],
+        'terminated' => ['dot' => 'bg-red-500',     'label' => 'Closed'],
         'frozen'     => ['dot' => 'bg-sunrise-500', 'label' => 'Suspended'],
     ] as $key => $cfg)
         <span class="inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-gray-700">
