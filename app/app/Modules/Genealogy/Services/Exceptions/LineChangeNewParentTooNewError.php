@@ -6,4 +6,4 @@ namespace App\Modules\Genealogy\Services\Exceptions;
 
 use RuntimeException;
 
-final class LineChangeNewSponsorTooNewError extends RuntimeException {}
+final class LineChangeNewParentTooNewError extends RuntimeException {}
