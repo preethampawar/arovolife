@@ -137,6 +137,12 @@ named `admin.line-changes.{index,show,approve,reject}`.
 Views: `admin/line-change/index.blade.php`, `admin/line-change/show.blade.php`,
 using `admin/layouts/admin.blade.php`.
 
+**Platform UI conventions (apply here):** every form field gets a help/info
+hover tooltip (description + impact); the Approve and Reject buttons each fire
+a **confirmation modal** stating the action and its impact (placement moves;
+sponsor unchanged) before submitting; the admin show page and the distributor
+request form each carry a short **form-purpose note**.
+
 ## 7. Emails (queued notifications)
 
 - **On request** (`LineChangeRequested` listener,
@@ -164,6 +170,9 @@ New notification classes follow the existing Genealogy notification pattern
 - If the distributor has **already used** their one line change (a prior
   `approved` request), show a terminal "you've already used your one line
   change" panel instead of the form.
+- Apply platform UI conventions: help tooltip on the target-parent-ADN and
+  reason fields, a form-purpose note at the top, and a confirmation modal
+  (showing the binary-only impact) before the request submits.
 
 ## 9. Tests
 
