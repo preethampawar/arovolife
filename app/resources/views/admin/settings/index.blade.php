@@ -77,6 +77,7 @@
                                     'key' => $key,
                                     'value' => $value,
                                     'readOnly' => $readOnly,
+                                    'label' => $meta['label'],
                                 ])
 
                             @elseif($meta['type'] === 'int')
@@ -214,7 +215,10 @@
             const input = form.querySelector('input[name="value"]');
             const currentlyOn = btn.getAttribute('aria-checked') === 'true';
             input.value = currentlyOn ? 'false' : 'true';
-            form.submit();
+            // requestSubmit() fires a real (cancelable) submit event so the
+            // global confirmation modal can intercept it; plain .submit() would
+            // bypass the modal. The modal submits the form on confirm.
+            form.requestSubmit();
         });
     });
 </script>

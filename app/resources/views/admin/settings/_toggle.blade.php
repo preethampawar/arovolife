@@ -6,9 +6,15 @@
      semantics because the spec wants a polished toggle UI. --}}
 @php
     $isOn = $value === 'true' || $value === '1';
+    $toggleLabel = $label ?? $key;
+    $confirmQuestion = 'Turn the ' . $toggleLabel . ' setting ' . ($isOn ? 'off' : 'on') . '?';
 @endphp
 <form method="POST" action="{{ route('admin.settings.update', $key) }}"
-      data-setting-form class="flex items-center justify-end">
+      data-setting-form
+      data-confirm="{{ $confirmQuestion }}"
+      data-confirm-title="Confirm setting change"
+      data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later."
+      class="flex items-center justify-end">
     @csrf
     <input type="hidden" name="value" value="{{ $isOn ? 'true' : 'false' }}">
     <button type="button"
