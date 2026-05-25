@@ -165,6 +165,10 @@
         })();
     </script>
 
+    {{-- Platform-wide confirmation modal. Any form marked with data-confirm
+         is intercepted and confirmed here before submitting. --}}
+    <x-confirm-modal />
+
     @stack('scripts')
 </body>
 </html>

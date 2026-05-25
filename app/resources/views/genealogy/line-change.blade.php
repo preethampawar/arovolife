@@ -120,6 +120,4 @@
     </a>
 </div>
 
-<x-confirm-modal />
-
 @endsection

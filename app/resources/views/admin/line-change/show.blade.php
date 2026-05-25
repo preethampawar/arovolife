@@ -106,6 +106,4 @@
     ← Back to queue
 </a>
 
-<x-confirm-modal />
-
 @endsection

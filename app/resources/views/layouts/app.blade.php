@@ -38,5 +38,9 @@
         <p class="mt-3 text-gray-600">Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
     </footer>
 
+    {{-- Platform-wide confirmation modal. Any form marked with data-confirm
+         is intercepted and confirmed here before submitting. --}}
+    <x-confirm-modal />
+
 </body>
 </html>
