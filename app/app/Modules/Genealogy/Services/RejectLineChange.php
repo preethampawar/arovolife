@@ -7,9 +7,9 @@ namespace App\Modules\Genealogy\Services;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Events\LineChangeRejected;
 use App\Modules\Genealogy\Models\LineChangeRequest;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNotPendingError;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
-use RuntimeException;
 
 /**
  * Rejects a pending line-change request. Records the admin's note; no
@@ -28,7 +28,7 @@ final class RejectLineChange
             /** @var LineChangeRequest $request */
             $request = LineChangeRequest::query()->lockForUpdate()->findOrFail($requestId);
             if ($request->status !== 'pending') {
-                throw new RuntimeException("Line-change request {$requestId} is not pending (status={$request->status}).");
+                throw new LineChangeNotPendingError("Line-change request {$requestId} is not pending (status={$request->status}).");
             }
 
             $now = Carbon::now();

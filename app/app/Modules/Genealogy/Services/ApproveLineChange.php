@@ -9,6 +9,7 @@ use App\Modules\Genealogy\Events\LineChangeApproved;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeLockTimeoutError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNotPendingError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\DatabaseManager;
@@ -39,7 +40,7 @@ final class ApproveLineChange
             /** @var LineChangeRequest $request */
             $request = LineChangeRequest::query()->lockForUpdate()->findOrFail($requestId);
             if ($request->status !== 'pending') {
-                throw new RuntimeException("Line-change request {$requestId} is not pending (status={$request->status}).");
+                throw new LineChangeNotPendingError("Line-change request {$requestId} is not pending (status={$request->status}).");
             }
 
             $distributorId = (int) $request->distributor_id;

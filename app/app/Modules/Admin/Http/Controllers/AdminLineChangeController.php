@@ -8,6 +8,7 @@ use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\ApproveLineChange;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeLockTimeoutError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNotPendingError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Genealogy\Services\RejectLineChange;
 use App\Modules\Identity\Models\Distributor;
@@ -85,6 +86,9 @@ final class AdminLineChangeController extends Controller
             return back()->withErrors(['chosen_side' => 'This distributor now has referrals in their tree, so their placement can no longer be moved. Reject this request instead.']);
         } catch (LineChangeLockTimeoutError) {
             return back()->withErrors(['chosen_side' => 'The tree is busy right now. Please try again in a moment.']);
+        } catch (LineChangeNotPendingError) {
+            return redirect()->route('admin.line-changes.index')
+                ->with('status', 'That request was already decided by another admin.');
         }
 
         return redirect()->route('admin.line-changes.index')->with('status', 'Line change approved and placement moved.');
@@ -96,7 +100,12 @@ final class AdminLineChangeController extends Controller
             'decision_note' => ['required', 'string', 'min:8', 'max:1024'],
         ]);
 
-        ($this->reject)($id, (int) Auth::id(), $validated['decision_note']);
+        try {
+            ($this->reject)($id, (int) Auth::id(), $validated['decision_note']);
+        } catch (LineChangeNotPendingError) {
+            return redirect()->route('admin.line-changes.index')
+                ->with('status', 'That request was already decided by another admin.');
+        }
 
         return redirect()->route('admin.line-changes.index')->with('status', 'Line change rejected. The distributor has been emailed.');
     }

@@ -54,7 +54,7 @@
         <p>Both legs are taken, so this move cannot be approved. Reject it with a reason below.</p>
     </div>
     @else
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="mb-6">
         <form method="POST" action="{{ route('admin.line-changes.approve', $lcr->id) }}"
             class="rounded-2xl border border-green-200 bg-green-50 p-6 space-y-3"
             data-confirm="Approve this line change and move the placement now?"
@@ -77,28 +77,28 @@
                 Approve
             </button>
         </form>
-
-        <form method="POST" action="{{ route('admin.line-changes.reject', $lcr->id) }}"
-            class="rounded-2xl border border-red-200 bg-red-50 p-6 space-y-3"
-            data-confirm="Reject this line-change request?"
-            data-confirm-title="Confirm rejection"
-            data-confirm-impact="The distributor is emailed your reason. No placement changes.">
-            @csrf
-            <p class="text-base font-semibold text-red-800">Reject request</p>
-            <label class="block text-xs text-red-800">
-                Reason
-                <x-help-tip text="Sent verbatim to the distributor. 8–1024 characters." />
-            </label>
-            <textarea name="decision_note" required minlength="8" maxlength="1024" rows="3"
-                class="w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
-                placeholder="e.g. The requested parent is not eligible for this move."></textarea>
-            <button type="submit"
-                class="w-full inline-flex justify-center items-center rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2.5 text-sm transition-colors">
-                Reject
-            </button>
-        </form>
     </div>
     @endif
+
+    <form method="POST" action="{{ route('admin.line-changes.reject', $lcr->id) }}"
+        class="rounded-2xl border border-red-200 bg-red-50 p-6 space-y-3"
+        data-confirm="Reject this line-change request?"
+        data-confirm-title="Confirm rejection"
+        data-confirm-impact="The distributor is emailed your reason. No placement changes.">
+        @csrf
+        <p class="text-base font-semibold text-red-800">Reject request</p>
+        <label class="block text-xs text-red-800">
+            Reason
+            <x-help-tip text="Sent verbatim to the distributor. 8–1024 characters." />
+        </label>
+        <textarea name="decision_note" required minlength="8" maxlength="1024" rows="3"
+            class="w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
+            placeholder="e.g. The requested parent is not eligible for this move."></textarea>
+        <button type="submit"
+            class="w-full inline-flex justify-center items-center rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2.5 text-sm transition-colors">
+            Reject
+        </button>
+    </form>
 @endif
 
 <a href="{{ route('admin.line-changes.index') }}" class="inline-block mt-6 text-sm text-gray-500 hover:text-gray-700">

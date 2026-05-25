@@ -132,3 +132,58 @@ it('ALCC-03: reject requires a note and marks rejected', function () {
 
     expect(LineChangeRequest::find($reqId)->status)->toBe('rejected');
 });
+
+it('ALCC-04: approve onto a taken slot fails and request stays pending', function () {
+    Notification::fake();
+    $admin = adminUser();
+    $rootId = adminLcSeed(40);
+    $targetId = adminLcSeed(25, parentId: $rootId);
+
+    // Fill both legs under the target parent.
+    $childL = adminLcSeed(10, parentId: $targetId);
+    $childR = adminLcSeed(10, parentId: $targetId);
+    DB::table('distributors')->where('id', $childL)->update(['placement_side' => 'L']);
+    DB::table('distributors')->where('id', $childR)->update(['placement_side' => 'R']);
+
+    $applicantId = adminLcSeed(2, parentId: $rootId);
+    $reqId = DB::table('line_change_requests')->insertGetId([
+        'distributor_id' => $applicantId, 'from_placement_parent_id' => $rootId,
+        'to_placement_parent_id' => $targetId, 'requested_at' => now()->format('Y-m-d H:i:s.v'),
+        'status' => 'pending', 'reason' => 'move me',
+    ]);
+
+    // The show page must render the reject form even when no leg is free.
+    $this->actingAs($admin)->get(route('admin.line-changes.show', $reqId))
+        ->assertOk()
+        ->assertSee('Reject');
+
+    $this->actingAs($admin)
+        ->post(route('admin.line-changes.approve', $reqId), ['chosen_side' => 'L'])
+        ->assertSessionHasErrors('chosen_side');
+
+    expect(LineChangeRequest::find($reqId)->status)->toBe('pending');
+    expect((int) DB::table('distributors')->where('id', $applicantId)->value('placement_parent_id'))->toBe($rootId);
+});
+
+it('ALCC-05: guest cannot access the queue', function () {
+    $this->get(route('admin.line-changes.index'))->assertStatus(302);
+});
+
+it('ALCC-06: rejecting an already-decided request redirects without a 500', function () {
+    Notification::fake();
+    $admin = adminUser();
+    $rootId = adminLcSeed(40);
+    $targetId = adminLcSeed(25, parentId: $rootId);
+    $applicantId = adminLcSeed(2, parentId: $rootId);
+    $reqId = DB::table('line_change_requests')->insertGetId([
+        'distributor_id' => $applicantId, 'from_placement_parent_id' => $rootId,
+        'to_placement_parent_id' => $targetId, 'requested_at' => now()->format('Y-m-d H:i:s.v'),
+        'status' => 'approved', 'reason' => 'move me',
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.line-changes.reject', $reqId), ['decision_note' => 'A perfectly valid rejection note.'])
+        ->assertRedirect(route('admin.line-changes.index'));
+
+    expect(LineChangeRequest::find($reqId)->status)->toBe('approved');
+});
