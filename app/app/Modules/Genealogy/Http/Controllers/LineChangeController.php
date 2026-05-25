@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Genealogy\Http\Controllers;
 
 use App\Modules\Genealogy\Models\LineChangeRequest;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyProcessedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
-use App\Modules\Genealogy\Services\Exceptions\LineChangeNewSponsorTooNewError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeNewParentTooNewError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeWindowExpiredError;
 use App\Modules\Genealogy\Services\RequestLineChange;
 use App\Modules\Identity\Models\Distributor;
@@ -36,32 +38,31 @@ final class LineChangeController extends Controller
             ->latest('requested_at')
             ->first();
 
+        // One change per distributor, ever.
+        $alreadyUsed = LineChangeRequest::query()
+            ->where('distributor_id', $self->id)
+            ->where('status', 'approved')
+            ->exists();
+
         return view('genealogy.line-change', [
             'self' => $self,
             'businessDaysSince' => $businessDaysSince,
             'isWithinWindow' => $businessDaysSince <= 5,
             'existing' => $existing,
+            'alreadyUsed' => $alreadyUsed,
         ]);
     }
 
     public function submit(Request $request): RedirectResponse
     {
-        // ADN format: ARO + 6 digits = 9 chars for primaries; secondaries
-        // (couple half) are <primary>-S = 11 chars and are intentionally
-        // NOT valid line-change targets (they don't occupy a tree slot).
-        // We allow 6-16 chars so a tightening of the ADN format doesn't
-        // re-trip the validator, then reject couple-secondaries explicitly
-        // below.
         $request->merge([
-            'to_sponsor_adn' => strtoupper(trim((string) $request->input('to_sponsor_adn', ''))),
+            'to_parent_adn' => strtoupper(trim((string) $request->input('to_parent_adn', ''))),
         ]);
         $validated = $request->validate([
-            // 9-digit numeric ADN; secondary `-S` not accepted here because
-            // line-change requests must target a primary record.
-            'to_sponsor_adn' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
+            'to_parent_adn' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
             'reason' => ['nullable', 'string', 'max:512'],
         ], [
-            'to_sponsor_adn.regex' => 'New sponsor ADN must be exactly 9 digits, e.g. 111222333.',
+            'to_parent_adn.regex' => 'Placement parent ADN must be exactly 9 digits, e.g. 111222333.',
         ]);
 
         $self = Auth::user()?->distributor;
@@ -69,34 +70,31 @@ final class LineChangeController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $newSponsor = Distributor::query()
-            ->where('adn', $validated['to_sponsor_adn'])
+        $newParent = Distributor::query()
+            ->where('adn', $validated['to_parent_adn'])
             ->first();
-        if ($newSponsor === null) {
+        if ($newParent === null) {
             return back()->withInput()->withErrors([
-                'to_sponsor_adn' => 'No distributor found with that ADN.',
+                'to_parent_adn' => 'No distributor found with that ADN.',
             ]);
         }
 
-        if ($newSponsor->id === $self->id) {
+        if ($newParent->id === $self->id) {
             return back()->withInput()->withErrors([
-                'to_sponsor_adn' => 'You cannot request a line-change to yourself.',
+                'to_parent_adn' => 'You cannot request a line-change to yourself.',
             ]);
         }
 
-        // Couple-secondary cannot be a sponsor target — they don't occupy a
-        // tree slot. Detected as: spouse_distributor_id non-null AND
-        // is_primary_couple = false (i.e. the row is a "secondary").
-        if ($newSponsor->spouse_distributor_id !== null && ! $newSponsor->is_primary_couple) {
+        if ($newParent->spouse_distributor_id !== null && ! $newParent->is_primary_couple) {
             return back()->withInput()->withErrors([
-                'to_sponsor_adn' => 'That ADN belongs to a couple-secondary record. Use the primary spouse\'s ADN instead.',
+                'to_parent_adn' => 'That ADN belongs to a couple-secondary record. Use the primary spouse\'s ADN instead.',
             ]);
         }
 
         try {
             ($this->request)(
                 distributorId: $self->id,
-                toSponsorId: $newSponsor->id,
+                toPlacementParentId: $newParent->id,
                 actorUserId: (int) Auth::id(),
                 reason: $validated['reason'] ?? null,
             );
@@ -106,10 +104,12 @@ final class LineChangeController extends Controller
             return back()->withErrors(['line_change' => 'You already have referrals in your tree; line-change is not available.']);
         } catch (LineChangeAlreadyRequestedError) {
             return back()->withErrors(['line_change' => 'A line-change request is already pending for your account.']);
-        } catch (LineChangeNewSponsorTooNewError) {
-            return back()->withErrors(['to_sponsor_adn' => 'You can only move under a sponsor who registered with the platform before you. '
-                .'Please pick someone who registered earlier than your own registration date.',
-            ])->withInput();
+        } catch (LineChangeAlreadyProcessedError) {
+            return back()->withErrors(['line_change' => 'You have already used your one line change; a further change is not allowed.']);
+        } catch (LineChangePlacementSlotFullError) {
+            return back()->withInput()->withErrors(['to_parent_adn' => 'That placement parent has no free position (both legs are taken). Choose another ADN.']);
+        } catch (LineChangeNewParentTooNewError) {
+            return back()->withInput()->withErrors(['to_parent_adn' => 'You can only move under someone who registered before you. Please pick an ADN that registered earlier than your own registration date.']);
         }
 
         return redirect()->route('line-change.show')->with(

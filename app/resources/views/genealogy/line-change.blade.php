@@ -5,10 +5,21 @@
 
 <div class="max-w-xl mx-auto py-10">
     <h1 class="text-2xl font-bold mb-2">Request a line-change</h1>
+
+    {{-- Form-purpose note (platform convention). --}}
+    <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-4 text-sm text-blue-900">
+        <p class="font-semibold mb-1">What this form does</p>
+        <p class="leading-relaxed">
+            This requests a move of your position in the binary tree to sit under a
+            different placement parent. It changes your <strong>binary placement only</strong> —
+            your sponsor stays the same. An admin must approve the request before anything moves.
+        </p>
+    </div>
+
     <p class="text-sm text-gray-600 mb-6">
-        Within five working days of registration, you may request to be moved to a
-        different sponsor — provided you have not yet introduced anyone to arovolife.
-        This is in line with the Direct Seller Agreement §10.
+        Within five working days of registration, and only if you have not yet introduced
+        anyone to arovolife, you may request this change. Direct Seller Agreement §10.
+        You may use a line change <strong>once</strong>.
     </p>
 
     <div class="rounded-2xl border border-gray-200 bg-white p-6 mb-6">
@@ -32,27 +43,54 @@
     </div>
     @endif
 
-    @if($existing && $existing->status === 'pending')
+    @if(session('status'))
+    <div class="rounded-xl border border-green-200 bg-green-50 p-4 mb-6 text-sm text-green-800">
+        {{ session('status') }}
+    </div>
+    @endif
+
+    @if($alreadyUsed)
+    <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
+        <p class="font-semibold mb-1">You've already used your one line change</p>
+        <p>Each distributor may change their placement once. For anything further, contact
+            <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
+    </div>
+    @elseif($existing && $existing->status === 'pending')
     <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
         <p class="font-semibold mb-1">Pending request</p>
-        <p>
-            You submitted a line-change request on
-            {{ $existing->requested_at->format('d M Y H:i') }}. An admin will review it shortly.
-        </p>
+        <p>You submitted a line-change request on
+            {{ $existing->requested_at->format('d M Y H:i') }}. An admin will review it shortly.</p>
     </div>
-    @elseif($isWithinWindow)
-    <form method="POST" action="{{ route('line-change.submit') }}" class="space-y-5">
+    @elseif($existing && $existing->status === 'rejected')
+    <div class="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800 mb-6">
+        <p class="font-semibold mb-1">Your last request was not approved</p>
+        @if($existing->decision_note)<p class="mb-2">Reason: {{ $existing->decision_note }}</p>@endif
+        <p>If you are still within the window, you may submit a new request below.</p>
+    </div>
+    @endif
+
+    @if(! $alreadyUsed && (! $existing || $existing->status !== 'pending') && $isWithinWindow)
+    <form method="POST" action="{{ route('line-change.submit') }}" class="space-y-5"
+        data-confirm="Submit this line-change request for admin review?"
+        data-confirm-title="Confirm line-change request"
+        data-confirm-impact="This changes your binary placement only — your sponsor stays the same. The change happens only after an admin approves it.">
         @csrf
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">New sponsor ADN</label>
-            <input type="text" name="to_sponsor_adn" value="{{ old('to_sponsor_adn') }}"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                New placement parent ADN
+                <x-help-tip text="The 9-digit ADN of the distributor you want to be placed under in the binary tree. They must have joined before you and have a free leg. Your sponsor does not change." />
+            </label>
+            <input type="text" name="to_parent_adn" value="{{ old('to_parent_adn') }}"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono tracking-widest focus:border-brand-500 focus:ring-brand-500"
-                placeholder="ARO123456" required>
+                placeholder="111222333" required>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Reason (optional)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Reason (optional)
+                <x-help-tip text="Briefly tell the admin why you want this placement change. Shown to the reviewer; max 512 characters." />
+            </label>
             <textarea name="reason" rows="3" maxlength="512"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500"
                 placeholder="Briefly tell us why you want this change.">{{ old('reason') }}</textarea>
@@ -63,7 +101,7 @@
             Submit request
         </button>
     </form>
-    @else
+    @elseif(! $alreadyUsed && (! $existing || $existing->status !== 'pending'))
     <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
         <p class="font-semibold mb-2">The 5-working-day window has ended.</p>
         <p>For account changes outside this window, please contact
@@ -75,5 +113,7 @@
         Back to dashboard
     </a>
 </div>
+
+<x-confirm-modal />
 
 @endsection
