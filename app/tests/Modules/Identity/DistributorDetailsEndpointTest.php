@@ -77,7 +77,7 @@ it('DDE-01: viewer can see their own id-card panel', function (): void {
     $response->assertOk();
     $response->assertSee('Region', false);
     $response->assertSee('India', false);
-    $response->assertSee('Verification', false);
+    $response->assertSee('Status', false);
 });
 
 it('DDE-02: viewer can see a descendant in their binary downline', function (): void {

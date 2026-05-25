@@ -38,9 +38,9 @@
     <h1 class="text-2xl font-bold mb-1">Welcome, {{ $user->full_name ?? $user->email }}</h1>
     <p class="text-gray-800 text-sm">
         Status:
-        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium
-            {{ $user->status === 'active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
-            {{ ucfirst($user->status) }}
+        @php($accountStatus = $user->accountStatusLabel())
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border {{ $accountStatus['class'] }}">
+            {{ $accountStatus['label'] }}
         </span>
     </p>
 </div>

@@ -143,7 +143,7 @@
             <dt class="text-gray-700">Region</dt>
             <dd class="text-gray-800 text-right">India</dd>
 
-            <dt class="text-gray-700">Verification</dt>
+            <dt class="text-gray-700">Status</dt>
             <dd class="text-right">
                 <span class="inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-semibold border {{ $theme['pill'] }}">
                     {{ $theme['pill_label'] }}

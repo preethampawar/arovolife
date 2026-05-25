@@ -26,7 +26,7 @@
                 ['label' => 'Registration Date',       'value' => $idCardStats['registration_date']?->format('d M Y')],
                 ['label' => 'Franchise',               'value' => $idCardStats['franchise']],
                 ['label' => 'Region',                  'value' => $idCardStats['region']],
-                ['label' => 'Verification',            'value' => $idCardStats['verification_label'], 'render' => 'pill', 'pill_class' => $idCardStats['verification_class']],
+                ['label' => 'Status',                  'value' => $idCardStats['verification_label'], 'render' => 'pill', 'pill_class' => $idCardStats['verification_class']],
                 ['label' => 'Activation Date',         'value' => $idCardStats['activation_date']?->format('d M Y')],
                 ['label' => 'Personal Sales Position', 'value' => $idCardStats['personal_sales_position']],
                 ['label' => 'Left Team',               'value' => number_format((int) $idCardStats['left_team'])],
