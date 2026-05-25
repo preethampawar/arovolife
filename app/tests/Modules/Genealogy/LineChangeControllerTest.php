@@ -134,3 +134,29 @@ it('LCC-03: a distributor who already used their one line change sees the termin
         ->assertSee('already used your one line change')
         ->assertDontSee('New placement parent ADN');
 });
+
+it('LCC-04: a rejected applicant still inside the window sees the rejection note and a live form', function () {
+    $rootId = lccSeed(lccUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    $targetId = lccSeed(lccUser('target')->id, effectiveAtBusinessDaysAgo: 20);
+
+    $applicantUser = lccUser('app');
+    $applicantId = lccSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 2, sponsorId: $rootId);
+
+    $decisionNote = 'Target placement parent had no free leg at review time.';
+
+    DB::table('line_change_requests')->insert([
+        'distributor_id' => $applicantId,
+        'from_placement_parent_id' => $rootId,
+        'to_placement_parent_id' => $targetId,
+        'requested_at' => now()->subDay()->format('Y-m-d H:i:s.v'),
+        'reviewed_at' => now()->subDay()->format('Y-m-d H:i:s.v'),
+        'decision_note' => $decisionNote,
+        'status' => 'rejected',
+    ]);
+
+    $this->actingAs($applicantUser)
+        ->get(route('line-change.show'))
+        ->assertOk()
+        ->assertSee($decisionNote)
+        ->assertSee('New placement parent ADN');
+});

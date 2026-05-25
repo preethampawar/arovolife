@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Genealogy\Http\Controllers;
 
+use App\Modules\Genealogy\Models\GenealogyClosure;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyProcessedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
@@ -22,7 +23,7 @@ use Illuminate\View\View;
 final class LineChangeController extends Controller
 {
     public function __construct(
-        private readonly RequestLineChange $request,
+        private readonly RequestLineChange $requestLineChange,
     ) {}
 
     public function show(): View|RedirectResponse
@@ -44,19 +45,25 @@ final class LineChangeController extends Controller
             ->where('status', 'approved')
             ->exists();
 
+        $hasDownline = GenealogyClosure::query()
+            ->where('ancestor_id', $self->id)
+            ->where('depth', '>=', 1)
+            ->exists();
+
         return view('genealogy.line-change', [
             'self' => $self,
             'businessDaysSince' => $businessDaysSince,
             'isWithinWindow' => $businessDaysSince <= 5,
             'existing' => $existing,
             'alreadyUsed' => $alreadyUsed,
+            'hasDownline' => $hasDownline,
         ]);
     }
 
     public function submit(Request $request): RedirectResponse
     {
         $request->merge([
-            'to_parent_adn' => strtoupper(trim((string) $request->input('to_parent_adn', ''))),
+            'to_parent_adn' => trim((string) $request->input('to_parent_adn', '')),
         ]);
         $validated = $request->validate([
             'to_parent_adn' => ['required', 'string', 'regex:/^[0-9]{9}$/'],
@@ -92,7 +99,7 @@ final class LineChangeController extends Controller
         }
 
         try {
-            ($this->request)(
+            ($this->requestLineChange)(
                 distributorId: $self->id,
                 toPlacementParentId: $newParent->id,
                 actorUserId: (int) Auth::id(),
