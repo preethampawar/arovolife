@@ -239,6 +239,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/tree/search', [AdminTreeController::class, 'search'])
         ->middleware('throttle:30,1')
         ->name('tree.search');
+    // Live typeahead suggestions — declared before /tree/{id?} (non-numeric, so
+    // it wouldn't collide anyway). Throttled higher than search to allow keystroke
+    // fetches.
+    Route::get('/tree/suggest', [AdminTreeController::class, 'suggest'])
+        ->middleware('throttle:60,1')
+        ->name('tree.suggest');
     Route::get('/tree/{id?}', [AdminTreeController::class, 'show'])
         ->whereNumber('id')->name('tree.show');
 
@@ -321,6 +327,12 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/tree/search', [TreeController::class, 'search'])
         ->middleware('throttle:30,1')
         ->name('tree.search');
+    // Live typeahead suggestions for the same scoped downline search. Declared
+    // before the binary catchall ("suggest" isn't a 9-digit ADN anyway).
+    // Throttled higher than search to absorb per-keystroke fetches.
+    Route::get('/tree/suggest', [TreeController::class, 'suggest'])
+        ->middleware('throttle:60,1')
+        ->name('tree.suggest');
     Route::get('/tree/{adn?}', [TreeController::class, 'binary'])
         ->where('adn', '[0-9]{9}(-S)?')
         ->name('tree.binary');

@@ -58,6 +58,7 @@
     'showSponsorshipLink' => false,
     'adminContext'      => true,
     'searchUrl'         => route('admin.tree.search'),
+    'suggestUrl'        => route('admin.tree.suggest'),
     'rerootBase'        => url('/admin/tree'),
     'rerootKey'         => 'id',
 ])

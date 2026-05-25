@@ -10,6 +10,7 @@
     'maxObservedDepth'  => $maxObservedDepth,
     'mode'              => 'binary',
     'searchUrl'         => route('tree.search'),
+    'suggestUrl'        => route('tree.suggest'),
     'rerootBase'        => url('/tree'),
     'rerootKey'         => 'adn',
 ])

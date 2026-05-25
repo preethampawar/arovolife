@@ -153,6 +153,47 @@ final class TreeController extends Controller
     }
 
     /**
+     * Live typeahead suggestions for the distributor tree search. Returns up to
+     * 8 matching distributors from the caller's own subtree (self-row + all
+     * descendants), closest-first by closure depth. Same matching predicate as
+     * search() so the dropdown and the Find button agree. Payload is limited to
+     * name + adn + id — no email/phone — to minimise PII exposure, and queries
+     * are never logged. A <2-char query short-circuits to an empty list to
+     * avoid noisy single-character lookups.
+     */
+    public function suggest(Request $request): JsonResponse
+    {
+        $authDistributor = Auth::user()?->distributor;
+        if ($authDistributor === null) {
+            return response()->json(['results' => []]);
+        }
+
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $rows = self::buildMatchQuery($q)
+            ->with('user:id,full_name')
+            // Restrict to the caller's subtree (self-row + all descendants).
+            ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'distributors.id')
+            ->where('gc.ancestor_id', $authDistributor->id)
+            // Closest (shallowest) matches first.
+            ->orderBy('gc.depth')
+            ->select('distributors.id', 'distributors.adn', 'distributors.user_id', 'gc.depth')
+            ->limit(8)
+            ->get();
+
+        return response()->json([
+            'results' => $rows->map(fn ($d): array => [
+                'adn' => $d->adn,
+                'id' => (int) $d->id,
+                'name' => $d->user?->full_name ?? '—',
+            ])->values()->all(),
+        ]);
+    }
+
+    /**
      * Builds the "matches q on adn/name/email/phone" Eloquent query, without
      * any scoping. Email is matched EXACTLY (anti-enumeration); name and phone
      * are LIKE. Phone is normalised: spaces stripped and a bare 10-digit number

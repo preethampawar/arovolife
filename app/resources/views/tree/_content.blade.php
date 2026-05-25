@@ -28,6 +28,7 @@
     // entry view overrides these. $rerootKey selects which identifier the
     // re-root URL is built from when a match isn't on screen (adn vs numeric id).
     $searchUrl           = $searchUrl   ?? route('tree.search');
+    $suggestUrl          = $suggestUrl  ?? route('tree.suggest');
     $rerootBase          = $rerootBase  ?? url('/tree');
     $rerootKey           = $rerootKey   ?? 'adn';
     $isSponsorshipModeTop = ($mode ?? 'binary') === 'sponsorship';
@@ -110,6 +111,7 @@
      deeper than the loaded depth. --}}
 <div class="mb-3 flex flex-wrap items-end gap-2" data-tree-search
     data-search-url="{{ $searchUrl }}"
+    data-suggest-url="{{ $suggestUrl }}"
     data-reroot-base="{{ $rerootBase }}"
     data-reroot-key="{{ $rerootKey }}"
     data-admin-context="{{ $adminContext ? '1' : '0' }}">
@@ -123,7 +125,9 @@
                 <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
                 <input type="search" id="treeSearchInput" autocomplete="off"
                     placeholder="Find by ADN, name, email or phone"
-                    class="w-full rounded-lg border border-gray-300 bg-white pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    class="w-full rounded-lg border border-gray-300 bg-white pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    role="combobox" aria-expanded="false" aria-controls="treeSearchResults" aria-autocomplete="list">
+                <ul id="treeSearchResults" class="absolute z-30 left-0 right-0 mt-1 max-h-72 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm hidden" role="listbox"></ul>
             </div>
             <button type="button" id="treeSearchBtn"
                 class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors whitespace-nowrap">Find</button>
@@ -642,10 +646,12 @@ window.copyAdn = (btn) => {
     const input    = document.getElementById('treeSearchInput');
     const btn      = document.getElementById('treeSearchBtn');
     const statusEl = document.getElementById('treeSearchStatus');
+    const resultsEl= document.getElementById('treeSearchResults');
     const viewport = document.getElementById('treeViewport');
     if (!input || !btn || !viewport) return;
 
     const searchUrl   = container.dataset.searchUrl;
+    const suggestUrl  = container.dataset.suggestUrl;
     const rerootBase  = (container.dataset.rerootBase || '').replace(/\/$/, '');
     const rerootKey   = container.dataset.rerootKey || 'adn';
     const isAdmin     = container.dataset.adminContext === '1';
@@ -697,7 +703,147 @@ window.copyAdn = (btn) => {
         }
     };
 
-    btn.addEventListener('click', run);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+    // ── Autocomplete (typeahead) ──────────────────────────────────────────
+    // As the user types (>= 2 chars, debounced), fetch a scoped list of
+    // matching distributors and render a dropdown. Selecting one re-roots the
+    // tree at that distributor via the same reroot() logic the Find button
+    // uses. The Find button + Enter retain the single-match fallback below.
+    const HIGHLIGHT = 'bg-brand-50';
+    let items = [];        // [{adn, id, name}]
+    let highlighted = -1;  // index into items, -1 = none
+    let debounceTimer = null;
+    let blurTimer = null;
+    let suggestSeq = 0;    // guards against out-of-order responses
+
+    const closeList = () => {
+        if (resultsEl) { resultsEl.classList.add('hidden'); resultsEl.innerHTML = ''; }
+        input.setAttribute('aria-expanded', 'false');
+        items = [];
+        highlighted = -1;
+    };
+
+    const paintHighlight = () => {
+        if (!resultsEl) return;
+        Array.from(resultsEl.querySelectorAll('li[role="option"]')).forEach((li, i) => {
+            const on = i === highlighted;
+            li.classList.toggle(HIGHLIGHT, on);
+            li.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+    };
+
+    const renderResults = () => {
+        if (!resultsEl) return;
+        resultsEl.innerHTML = '';
+        if (items.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'px-3 py-2 text-gray-400';
+            li.textContent = 'No matches';
+            resultsEl.appendChild(li);
+            resultsEl.classList.remove('hidden');
+            input.setAttribute('aria-expanded', 'true');
+            return;
+        }
+        items.forEach((m, i) => {
+            const li = document.createElement('li');
+            li.setAttribute('role', 'option');
+            li.dataset.adn = m.adn;
+            li.dataset.id = String(m.id);
+            li.className = 'px-3 py-2 cursor-pointer hover:bg-brand-50 flex items-center justify-between gap-3';
+            const name = document.createElement('span');
+            name.className = 'font-semibold text-gray-900 truncate';
+            name.textContent = m.name;
+            const adn = document.createElement('span');
+            adn.className = 'font-mono text-[11px] text-gray-500 shrink-0';
+            adn.textContent = m.adn;
+            li.appendChild(name);
+            li.appendChild(adn);
+            // mousedown (not click) so it fires before the input blur hides the list.
+            li.addEventListener('mousedown', (e) => { e.preventDefault(); selectItem(i); });
+            resultsEl.appendChild(li);
+        });
+        highlighted = -1;
+        paintHighlight();
+        resultsEl.classList.remove('hidden');
+        input.setAttribute('aria-expanded', 'true');
+    };
+
+    const selectItem = (i) => {
+        const m = items[i];
+        if (!m) return;
+        closeList();
+        setStatus('Opening that distributor…');
+        reroot(m);
+    };
+
+    const fetchSuggestions = async (q) => {
+        const seq = ++suggestSeq;
+        try {
+            const url = suggestUrl + (suggestUrl.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q);
+            const res = await fetch(url, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            });
+            if (seq !== suggestSeq) return; // a newer keystroke superseded this one
+            if (!res.ok) { closeList(); return; }
+            const data = await res.json();
+            if (seq !== suggestSeq) return;
+            items = Array.isArray(data.results) ? data.results : [];
+            renderResults();
+        } catch (e) {
+            if (seq === suggestSeq) closeList();
+        }
+    };
+
+    input.addEventListener('input', () => {
+        const q = input.value.trim();
+        if (debounceTimer) clearTimeout(debounceTimer);
+        if (q.length < 2) { closeList(); return; }
+        debounceTimer = setTimeout(() => fetchSuggestions(q), 250);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const open = resultsEl && !resultsEl.classList.contains('hidden') && items.length > 0;
+        if (e.key === 'ArrowDown' && open) {
+            e.preventDefault();
+            highlighted = (highlighted + 1) % items.length;
+            paintHighlight();
+        } else if (e.key === 'ArrowUp' && open) {
+            e.preventDefault();
+            highlighted = (highlighted - 1 + items.length) % items.length;
+            paintHighlight();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (open && highlighted >= 0) {
+                selectItem(highlighted);
+            } else {
+                // No suggestion highlighted — fall back to the single-match search.
+                closeList();
+                run();
+            }
+        } else if (e.key === 'Escape') {
+            closeList();
+        }
+    });
+
+    // The Find button selects the highlighted suggestion if there is one,
+    // otherwise runs the single-match search.
+    btn.addEventListener('click', () => {
+        if (resultsEl && !resultsEl.classList.contains('hidden') && highlighted >= 0) {
+            selectItem(highlighted);
+        } else {
+            run();
+        }
+    });
+
+    // Hide on blur (delayed so a result mousedown can register first).
+    input.addEventListener('blur', () => {
+        if (blurTimer) clearTimeout(blurTimer);
+        blurTimer = setTimeout(closeList, 150);
+    });
+
+    // Outside-click closes the dropdown.
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) closeList();
+    });
 })();
 </script>
