@@ -22,7 +22,7 @@ use Illuminate\View\View;
 final class TreeController extends Controller
 {
     /** Default depth shown when the user hasn't picked a value. */
-    private const DEFAULT_DEPTH = 4;
+    private const DEFAULT_DEPTH = 8;
 
     public function binary(Request $request, ?string $adn = null): View|RedirectResponse
     {

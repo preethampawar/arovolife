@@ -24,7 +24,7 @@ use Illuminate\View\View;
  */
 final class AdminTreeController extends Controller
 {
-    private const DEFAULT_DEPTH = 4;
+    private const DEFAULT_DEPTH = 8;
 
     public function show(Request $request, ?int $id = null): View|RedirectResponse
     {
