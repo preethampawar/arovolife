@@ -40,7 +40,7 @@ final class TreeController extends Controller
             // self-row or a descendant. Anything else is treated as a
             // tampered URL and silently bounces back to /tree.
             $candidate = Distributor::query()
-                ->with(['user:id,full_name,status,activated_at,closure_type'])
+                ->withTreeUser()
                 ->where('adn', $adn)
                 ->first();
 
@@ -96,7 +96,7 @@ final class TreeController extends Controller
             ->pluck('descendant_id', 'descendant_id');
 
         $nodesById = Distributor::query()
-            ->with(['user:id,full_name,status,activated_at,closure_type'])
+            ->withTreeUser()
             ->whereIn('id', $descendantIds)
             ->get()
             ->keyBy('id');
@@ -214,7 +214,7 @@ final class TreeController extends Controller
             // user's own row, a binary descendant, or a sponsorship
             // descendant. Anything else returns to the user's own root.
             $candidate = Distributor::query()
-                ->with(['user:id,full_name,status,activated_at,closure_type'])
+                ->withTreeUser()
                 ->where('adn', $adn)
                 ->first();
             if ($candidate === null) {
@@ -256,7 +256,7 @@ final class TreeController extends Controller
         $frontier = [(int) $self->id];
         for ($depth = 1; $depth <= $levels && ! empty($frontier); $depth++) {
             $rows = Distributor::query()
-                ->with(['user:id,full_name,status,activated_at,closure_type'])
+                ->withTreeUser()
                 ->whereIn('sponsor_id', $frontier)
                 ->whereColumn('id', '!=', 'sponsor_id')
                 ->get();

@@ -72,12 +72,7 @@
 </div>
 
 <div class="rounded-xl border border-gray-200 bg-white p-2 sm:p-3 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-5">
-    @foreach([
-        'pending'    => ['dot' => 'bg-yellow-400',  'label' => 'New Member'],
-        'active'     => ['dot' => 'bg-leaf-500',    'label' => 'Active'],
-        'terminated' => ['dot' => 'bg-red-500',     'label' => 'Closed'],
-        'frozen'     => ['dot' => 'bg-sunrise-500', 'label' => 'Suspended'],
-    ] as $key => $cfg)
+    @foreach(\App\Modules\Identity\Models\User::treeLegend() as $cfg)
         <span class="inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-gray-700">
             <span class="w-3 h-3 rounded {{ $cfg['dot'] }} ring-1 ring-black/5"></span>
             {{ $cfg['label'] }}

@@ -98,18 +98,63 @@ final class User extends Authenticatable
         // ("Cancelled") or an admin closure ("Terminated"); both read more
         // honestly than the old "Inactive", which looked like a KYC state.
         if ($this->status === 'terminated') {
-            $label = $this->closure_type === 'cooling_off_cancellation' ? 'Cancelled' : 'Terminated';
+            $label = $this->isCoolingOffCancellation() ? 'Cancelled' : 'Terminated';
 
-            return ['dot' => 'bg-red-500', 'bg' => 'bg-red-50', 'border' => 'border-red-200', 'pill' => 'text-red-700 bg-red-50 border-red-200', 'card_label' => $label, 'pill_label' => $label];
+            return ['dot' => self::STATUS_DOTS['terminated'], 'bg' => 'bg-red-50', 'border' => 'border-red-200', 'pill' => 'text-red-700 bg-red-50 border-red-200', 'card_label' => $label, 'pill_label' => $label];
         }
 
         return match ($this->status) {
-            'active' => ['dot' => 'bg-leaf-500',    'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'pill' => 'text-leaf-700 bg-leaf-50 border-leaf-200',           'card_label' => 'Active',     'pill_label' => 'Verified'],
-            'pending' => ['dot' => 'bg-yellow-400',  'bg' => 'bg-yellow-50',  'border' => 'border-yellow-200',  'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'New Member', 'pill_label' => 'Pending'],
-            'frozen' => ['dot' => 'bg-sunrise-500', 'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'pill' => 'text-sunrise-700 bg-sunrise-50 border-sunrise-200',  'card_label' => 'Suspended',  'pill_label' => 'Suspended'],
-            'rejected' => ['dot' => 'bg-amber-400',   'bg' => 'bg-amber-50',   'border' => 'border-amber-200',   'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'Rejected',   'pill_label' => 'Rejected'],
+            'active' => ['dot' => self::STATUS_DOTS['active'],    'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'pill' => 'text-leaf-700 bg-leaf-50 border-leaf-200',           'card_label' => 'Active',     'pill_label' => 'Verified'],
+            'pending' => ['dot' => self::STATUS_DOTS['pending'],  'bg' => 'bg-yellow-50',  'border' => 'border-yellow-200',  'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'New Member', 'pill_label' => 'Pending'],
+            'frozen' => ['dot' => self::STATUS_DOTS['frozen'],    'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'pill' => 'text-sunrise-700 bg-sunrise-50 border-sunrise-200',  'card_label' => 'Suspended',  'pill_label' => 'Suspended'],
+            'rejected' => ['dot' => self::STATUS_DOTS['rejected'], 'bg' => 'bg-amber-50',   'border' => 'border-amber-200',   'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'Rejected',   'pill_label' => 'Rejected'],
             default => ['dot' => 'bg-gray-400',    'bg' => 'bg-gray-50',    'border' => 'border-gray-200',    'pill' => 'text-gray-700 bg-gray-50 border-gray-200',            'card_label' => ucfirst((string) $this->status), 'pill_label' => ucfirst((string) $this->status)],
         };
+    }
+
+    /**
+     * Canonical dot colour per account status — the single source shared by
+     * the tree-card status dot ({@see self::statusTheme()}) and the tree
+     * legend ({@see self::treeLegend()}), so the two can never drift.
+     *
+     * @var array<string, string>
+     */
+    private const STATUS_DOTS = [
+        'pending' => 'bg-yellow-400',
+        'active' => 'bg-leaf-500',
+        'frozen' => 'bg-sunrise-500',
+        'terminated' => 'bg-red-500',
+        'rejected' => 'bg-amber-400',
+    ];
+
+    /**
+     * The genealogy tree colour-key legend: generic status buckets (not
+     * per-record labels), driven by the same {@see self::STATUS_DOTS} the
+     * cards use. A closed account (cancelled or terminated) shares the red
+     * "Closed" bucket here; the per-card pill carries the precise label.
+     *
+     * @return list<array{dot: string, label: string}>
+     */
+    public static function treeLegend(): array
+    {
+        return [
+            ['dot' => self::STATUS_DOTS['pending'],    'label' => 'New Member'],
+            ['dot' => self::STATUS_DOTS['active'],     'label' => 'Active'],
+            ['dot' => self::STATUS_DOTS['terminated'], 'label' => 'Closed'],
+            ['dot' => self::STATUS_DOTS['frozen'],     'label' => 'Suspended'],
+        ];
+    }
+
+    /**
+     * True when this terminal account was closed by the distributor's own
+     * cooling-off cancellation (vs an admin termination). Single source for
+     * the cancelled-vs-terminated distinction, shared by
+     * {@see self::statusTheme()} and {@see self::accountStatusLabel()}.
+     */
+    public function isCoolingOffCancellation(): bool
+    {
+        return $this->status === 'terminated'
+            && $this->closure_type === 'cooling_off_cancellation';
     }
 
     /**
@@ -147,7 +192,7 @@ final class User extends Authenticatable
         if ($this->status === 'terminated') {
             $neutral = 'bg-white text-gray-500 border-gray-200';
 
-            return $this->closure_type === 'cooling_off_cancellation'
+            return $this->isCoolingOffCancellation()
                 ? ['label' => 'Cancelled (cooling-off)', 'class' => $neutral]
                 : ['label' => 'Terminated', 'class' => $neutral];
         }

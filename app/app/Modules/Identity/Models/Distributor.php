@@ -11,6 +11,7 @@ use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Models\Sponsorship;
 use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Orientation\Models\OrientationView;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -134,6 +135,23 @@ final class Distributor extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Columns of the related user a genealogy tree card needs to render. */
+    public const TREE_CARD_USER_COLUMNS = 'id,full_name,status,activated_at,closure_type';
+
+    /**
+     * Eager-load only the user columns a tree card needs. Centralised so the
+     * column list — notably closure_type, which drives the Cancelled vs
+     * Terminated badge — can't drift or be forgotten across the several
+     * tree/sponsorship queries that render cards.
+     *
+     * @param  Builder<Distributor>  $query
+     * @return Builder<Distributor>
+     */
+    public function scopeWithTreeUser(Builder $query): Builder
+    {
+        return $query->with(['user:'.self::TREE_CARD_USER_COLUMNS]);
     }
 
     public function sponsor(): BelongsTo
