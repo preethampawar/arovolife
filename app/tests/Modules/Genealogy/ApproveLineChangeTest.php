@@ -6,6 +6,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Events\LineChangeApproved;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\ApproveLineChange;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,7 +20,10 @@ function alcSeed(int $userId, int $businessDaysAgo, ?int $parentId = null): int
     disableTestForeignKeys();
     try {
         $effective = now()->subWeekdays($businessDaysAgo);
-        $depth = $parentId === null ? 0 : 1;
+        $depth = 0;
+        if ($parentId !== null) {
+            $depth = (int) DB::table('distributors')->where('id', $parentId)->value('depth') + 1;
+        }
         $id = DB::table('distributors')->insertGetId([
             'user_id' => $userId,
             'adn' => 'ARO'.rand(100000, 999999),
@@ -128,4 +132,22 @@ it('ALC-02: approving onto a taken side throws slot-full', function () {
         ->toThrow(LineChangePlacementSlotFullError::class);
 
     expect(LineChangeRequest::find($reqId)->status)->toBe('pending');
+});
+
+it('ALC-03: approval is blocked if the requester gained a downline after requesting', function () {
+    $rootId = alcSeed(alcUser('root')->id, 40);
+    $newParentId = alcSeed(alcUser('new')->id, 25, parentId: $rootId);
+    $applicantId = alcSeed(alcUser('app')->id, 5, parentId: $rootId);
+
+    $reqId = alcPendingRequest($applicantId, $rootId, $newParentId);
+
+    // A child is placed under the applicant AFTER the request was filed.
+    alcSeed(alcUser('child')->id, 1, parentId: $applicantId);
+
+    expect(fn () => app(ApproveLineChange::class)($reqId, alcUser('admin')->id, 'L'))
+        ->toThrow(LineChangeHasDownlineError::class);
+
+    expect(LineChangeRequest::find($reqId)->status)->toBe('pending');
+    // Placement unchanged — still under root.
+    expect((int) DB::table('distributors')->where('id', $applicantId)->value('placement_parent_id'))->toBe($rootId);
 });

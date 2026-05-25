@@ -7,6 +7,8 @@ namespace App\Modules\Genealogy\Services;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Events\LineChangeApproved;
 use App\Modules\Genealogy\Models\LineChangeRequest;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeLockTimeoutError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\DatabaseManager;
@@ -47,7 +49,7 @@ final class ApproveLineChange
             if ($usingMysql) {
                 $got = $this->db->selectOne('SELECT GET_LOCK(?, 5) AS got', ["placement:{$newParentId}"]);
                 if ((int) ($got->got ?? 0) !== 1) {
-                    throw new LineChangePlacementSlotFullError("Could not lock target parent {$newParentId}.");
+                    throw new LineChangeLockTimeoutError("Could not lock target parent {$newParentId}.");
                 }
             }
 
@@ -69,6 +71,21 @@ final class ApproveLineChange
 
                 /** @var Distributor $distributor */
                 $distributor = Distributor::query()->lockForUpdate()->findOrFail($distributorId);
+
+                // RequestLineChange enforced no-downline at REQUEST time, but that guard can
+                // go stale before approval (a child may have been placed under the requester
+                // since). The closure rebuild only touches the requester's own rows, so a
+                // downline now present would corrupt the tree — re-check under the lock.
+                $hasDownline = $this->db->table('genealogy_closure')
+                    ->where('ancestor_id', $distributorId)
+                    ->where('depth', '>=', 1)
+                    ->exists();
+                if ($hasDownline) {
+                    throw new LineChangeHasDownlineError(
+                        "Distributor {$distributorId} is no longer a leaf; line-change cannot be executed safely.",
+                    );
+                }
+
                 $fromParentId = (int) $distributor->placement_parent_id;
                 $newDepth = (int) $newParent->depth + 1;
                 $now = Carbon::now();
