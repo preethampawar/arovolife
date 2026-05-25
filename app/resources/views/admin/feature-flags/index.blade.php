@@ -32,7 +32,10 @@
                     <div class="text-base font-medium text-gray-900">{{ $flag['label'] }}</div>
                     <div class="text-sm text-gray-600 mt-1">{{ $flag['description'] }}</div>
                 </div>
-                <form method="POST" action="{{ route('admin.feature-flags.toggle', $key) }}" class="shrink-0">
+                <form method="POST" action="{{ route('admin.feature-flags.toggle', $key) }}" class="shrink-0"
+                    data-confirm="{{ $flag['active'] ? 'Deactivate' : 'Activate' }} the &lsquo;{{ $flag['label'] }}&rsquo; flag?"
+                    data-confirm-title="Confirm feature flag change"
+                    data-confirm-impact="{{ $flag['active'] ? 'Disables' : 'Enables' }} this feature platform-wide for all users on arovolife. The change is audit-logged and reversible by toggling it back.">
                     @csrf
                     @if ($flag['active'])
                         <input type="hidden" name="action" value="deactivate">

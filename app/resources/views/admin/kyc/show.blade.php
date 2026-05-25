@@ -125,6 +125,9 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <form method="POST" action="{{ route('admin.kyc.approve', $distributor->id) }}"
+        data-confirm="Approve this KYC submission?"
+        data-confirm-title="Confirm KYC approval"
+        data-confirm-impact="Activates the account so the distributor can sign in, and purges the stored full PAN/Aadhaar, keeping only the last 4. The activation is audit-logged."
         class="rounded-2xl border border-green-200 bg-green-50 p-6">
         @csrf
         <p class="text-base font-semibold text-green-800 mb-2">Approve KYC</p>
@@ -139,6 +142,9 @@
     </form>
 
     <form method="POST" action="{{ route('admin.kyc.reject', $distributor->id) }}"
+        data-confirm="Reject this KYC submission?"
+        data-confirm-title="Confirm KYC rejection"
+        data-confirm-impact="Sets the account to rejected and emails the distributor your reason. This is reversible — they can re-upload corrected documents."
         class="rounded-2xl border border-red-200 bg-red-50 p-6 space-y-3">
         @csrf
         <p class="text-base font-semibold text-red-800">Reject KYC (recoverable)</p>
@@ -165,7 +171,10 @@
     <summary class="cursor-pointer text-sm font-semibold text-gray-800">
         Terminate account permanently (irreversible) &nbsp;⤓
     </summary>
-    <form method="POST" action="{{ route('admin.kyc.terminate', $distributor->id) }}" class="mt-4 space-y-3">
+    <form method="POST" action="{{ route('admin.kyc.terminate', $distributor->id) }}" class="mt-4 space-y-3"
+        data-confirm="Terminate this account permanently?"
+        data-confirm-title="Confirm termination"
+        data-confirm-impact="Permanently closes the account; the applicant is emailed a closure notice and can never sign in again. This is irreversible.">
         @csrf
         <p class="text-xs text-gray-600 leading-relaxed">
             Use this only when reject + resubmit is not appropriate: confirmed fraud, repeat
@@ -177,8 +186,7 @@
             class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-500 focus:ring-gray-500"
             placeholder="e.g. Fraudulent PAN — does not match the name on the Aadhaar card. Multiple inconsistencies after re-upload."></textarea>
         <button type="submit"
-            class="w-full sm:w-auto inline-flex justify-center items-center rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium px-4 py-2.5 text-sm transition-colors"
-            onclick="return confirm('Terminate this account permanently? The distributor will not be able to sign in afterwards.');">
+            class="w-full sm:w-auto inline-flex justify-center items-center rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium px-4 py-2.5 text-sm transition-colors">
             Terminate account permanently
         </button>
     </form>
@@ -205,6 +213,9 @@
     <form method="POST"
           action="{{ route('admin.kyc.document.upload', $distributor->id) }}"
           enctype="multipart/form-data"
+          data-confirm="Upload this document on the applicant's behalf?"
+          data-confirm-title="Confirm document upload"
+          data-confirm-impact="Adds the selected document to this applicant's KYC record, replacing any existing unverified document of the same type. Verified documents are not affected."
           class="space-y-3">
         @csrf
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">

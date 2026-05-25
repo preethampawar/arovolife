@@ -50,12 +50,18 @@
             <h3 class="font-semibold text-gray-900 mb-3">Fulfilment Actions</h3>
             <div class="flex flex-wrap gap-3">
                 @if($order->status === 'paid')
-                <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}">@csrf
+                <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}"
+                    data-confirm="Mark this order as shipped?"
+                    data-confirm-title="Confirm shipment"
+                    data-confirm-impact="Records the order as shipped and updates its fulfilment state. This is not easily reversible.">@csrf
                     <button class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium">Mark as Shipped</button>
                 </form>
                 @endif
                 @if($order->status === 'shipped')
-                <form method="POST" action="{{ route('admin.commerce.orders.deliver', $order) }}">@csrf
+                <form method="POST" action="{{ route('admin.commerce.orders.deliver', $order) }}"
+                    data-confirm="Mark this order as delivered?"
+                    data-confirm-title="Confirm delivery"
+                    data-confirm-impact="Records the order as delivered and opens the cooling-off window. This is not easily reversible.">@csrf
                     <button class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">Mark as Delivered (opens cooling-off)</button>
                 </form>
                 @endif

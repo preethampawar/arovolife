@@ -46,7 +46,10 @@
                         by user&nbsp;<code class="bg-gray-100 px-1 rounded text-[11px]">#{{ $inquiry->handled_by }}</code>
                     @endif.
                 </p>
-                <form method="POST" action="{{ route('admin.contact-inquiries.unhandle', $inquiry->id) }}">
+                <form method="POST" action="{{ route('admin.contact-inquiries.unhandle', $inquiry->id) }}"
+                    data-confirm="Reopen this inquiry?"
+                    data-confirm-title="Confirm reopen"
+                    data-confirm-impact="Marks the inquiry as unhandled again so it returns to the open queue. This is reversible.">
                     @csrf
                     <button type="submit" class="inline-flex items-center rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 text-sm transition-colors">
                         Reopen inquiry
@@ -56,7 +59,10 @@
                 <p class="text-sm text-gray-700 mb-3">
                     Mark this inquiry as handled once you've replied or escalated it.
                 </p>
-                <form method="POST" action="{{ route('admin.contact-inquiries.handle', $inquiry->id) }}">
+                <form method="POST" action="{{ route('admin.contact-inquiries.handle', $inquiry->id) }}"
+                    data-confirm="Mark this inquiry as handled?"
+                    data-confirm-title="Confirm handled"
+                    data-confirm-impact="Records the inquiry as handled and removes it from the open queue. This is reversible — you can reopen it later.">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-leaf-500 hover:bg-leaf-600 text-white font-semibold px-4 py-2 text-sm transition-colors">
                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

@@ -76,7 +76,10 @@
 
                             @elseif($meta['type'] === 'int')
                                 <form method="POST" action="{{ route('admin.settings.update', $key) }}"
-                                      data-setting-form class="flex items-center gap-2">
+                                      data-setting-form class="flex items-center gap-2"
+                                      data-confirm="Save the &lsquo;{{ $meta['label'] }}&rsquo; setting?"
+                                      data-confirm-title="Confirm setting change"
+                                      data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
                                     @csrf
                                     <input type="number"
                                            id="{{ $fieldId }}"
@@ -96,7 +99,10 @@
 
                             @elseif($meta['type'] === 'enum')
                                 <form method="POST" action="{{ route('admin.settings.update', $key) }}"
-                                      data-setting-form class="flex items-center gap-2">
+                                      data-setting-form class="flex items-center gap-2"
+                                      data-confirm="Save the &lsquo;{{ $meta['label'] }}&rsquo; setting?"
+                                      data-confirm-title="Confirm setting change"
+                                      data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
                                     @csrf
                                     <select id="{{ $fieldId }}" name="value"
                                             {{ $readOnly ? 'disabled' : '' }}
@@ -116,7 +122,10 @@
                                 {{-- JSON settings still post to the legacy endpoint that knows
                                      how to validate the structure (state-code regex, age range). --}}
                                 <form method="POST" action="{{ route('admin.settings.age-rules') }}"
-                                      data-setting-form class="w-full sm:w-[260px]">
+                                      data-setting-form class="w-full sm:w-[260px]"
+                                      data-confirm="Save the state age-minimum rules?"
+                                      data-confirm-title="Confirm setting change"
+                                      data-confirm-impact="Changes the per-state minimum-age rules platform-wide, affecting who can register on arovolife. The change is audit-logged and can be edited again later.">
                                     @csrf
                                     <textarea id="{{ $fieldId }}" name="state_age_minimums" rows="3" maxlength="2048"
                                               {{ $readOnly ? 'disabled' : '' }}

@@ -20,7 +20,10 @@
         </a>
 
         @if(auth()->id() !== (int) $distributor->user_id)
-            <form method="POST" action="{{ route('admin.impersonate.start', $distributor->user_id) }}">
+            <form method="POST" action="{{ route('admin.impersonate.start', $distributor->user_id) }}"
+                data-confirm="Impersonate this distributor?"
+                data-confirm-title="Confirm impersonation"
+                data-confirm-impact="You will browse arovolife as this distributor until you end the session. The switch is audit-logged and reversible by stopping impersonation.">
                 @csrf
                 <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sunrise-500 hover:bg-sunrise-600 text-white text-xs font-semibold transition-colors shadow-sm">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
@@ -171,7 +174,10 @@
     <div class="flex flex-wrap gap-4">
 
         @if($distributor->status === 'frozen')
-        <form method="POST" action="{{ route('admin.distributors.unfreeze', $distributor->id) }}">
+        <form method="POST" action="{{ route('admin.distributors.unfreeze', $distributor->id) }}"
+            data-confirm="Unfreeze this account?"
+            data-confirm-title="Confirm unfreeze"
+            data-confirm-impact="The account is unfrozen and the distributor can sign in again. This is reversible — you can freeze the account again later.">
             @csrf
             <button type="submit"
                 class="px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium transition-colors">
@@ -193,7 +199,10 @@
         </button>
 
         @if($distributor->distributor_status === 'active')
-        <form method="POST" action="{{ route('admin.distributors.deactivate', $distributor->id) }}">
+        <form method="POST" action="{{ route('admin.distributors.deactivate', $distributor->id) }}"
+            data-confirm="Deactivate this distributor record?"
+            data-confirm-title="Confirm deactivation"
+            data-confirm-impact="The distributor record is marked inactive. This is reversible — you can reactivate the record later.">
             @csrf
             <button type="submit"
                 class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
@@ -202,7 +211,10 @@
             </button>
         </form>
         @else
-        <form method="POST" action="{{ route('admin.distributors.activate', $distributor->id) }}">
+        <form method="POST" action="{{ route('admin.distributors.activate', $distributor->id) }}"
+            data-confirm="Activate this distributor record?"
+            data-confirm-title="Confirm activation"
+            data-confirm-impact="The distributor record is marked active. This is reversible — you can deactivate the record later.">
             @csrf
             <button type="submit"
                 class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
@@ -215,6 +227,9 @@
 
     <form id="freeze-form" method="POST"
         action="{{ route('admin.distributors.freeze', $distributor->id) }}"
+        data-confirm="Freeze this account?"
+        data-confirm-title="Confirm freeze"
+        data-confirm-impact="The account is frozen and the distributor cannot sign in until it is unfrozen. This is reversible."
         class="hidden mt-4 space-y-3 border-t border-gray-200 pt-4">
         @csrf
         <label class="block text-sm text-gray-700">Reason for freezing <span class="text-red-700">*</span></label>
@@ -227,6 +242,9 @@
 
     <form id="terminate-form" method="POST"
         action="{{ route('admin.distributors.terminate', $distributor->id) }}"
+        data-confirm="Terminate this account permanently?"
+        data-confirm-title="Confirm termination"
+        data-confirm-impact="The account is permanently closed and the distributor can never sign in again. This is irreversible."
         class="hidden mt-4 space-y-3 border-t border-gray-200 pt-4">
         @csrf
         <p class="text-sm text-red-700 font-medium">⚠ This action is irreversible. The distributor's ADN will be frozen.</p>

@@ -8,7 +8,10 @@
     <a href="{{ route('admin.distributors.show', $distributor->id) }}" class="text-sm text-gray-700 hover:text-gray-900">← Back to profile</a>
 </div>
 
-<form method="POST" action="{{ route('admin.distributors.update', $distributor->id) }}" class="space-y-6">
+<form method="POST" action="{{ route('admin.distributors.update', $distributor->id) }}" class="space-y-6"
+    data-confirm="Save these profile changes?"
+    data-confirm-title="Confirm save"
+    data-confirm-impact="Saves the distributor's profile, address and bank details. The change is audit-logged and can be edited again later.">
     @csrf
     @method('PATCH')
 
@@ -173,7 +176,10 @@
                 <p class="text-gray-800 font-mono text-sm">XXXX XXXX {{ $distributor->aadhaar_last4 ?? '—' }}</p>
             </div>
         </div>
-        <form method="POST" action="{{ route('admin.distributors.identity', $distributor->id) }}" class="space-y-3" autocomplete="off">
+        <form method="POST" action="{{ route('admin.distributors.identity', $distributor->id) }}" class="space-y-3" autocomplete="off"
+            data-confirm="Update identity and reset KYC?"
+            data-confirm-title="Confirm identity update"
+            data-confirm-impact="Updates the PAN/Aadhaar on file and resets every KYC document on this distributor to pending — they must be re-approved before the account is usable. The change is audit-logged (last 4 only).">
             @csrf
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -196,7 +202,6 @@
             </div>
             @error('identity')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
             <button type="submit"
-                onclick="return confirm('This will reset KYC review state for this distributor and require re-approval. Continue?');"
                 class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors">
                 Update identity & reset KYC
             </button>
@@ -239,10 +244,12 @@
                 Open KYC review →
             </a>
             @if(!$allVerified && $kycStatus['total'] > 0)
-                <form method="POST" action="{{ route('admin.kyc.approve', $distributor->id) }}" class="inline">
+                <form method="POST" action="{{ route('admin.kyc.approve', $distributor->id) }}" class="inline"
+                    data-confirm="Approve all {{ $kycStatus['total'] }} KYC documents?"
+                    data-confirm-title="Confirm KYC approval"
+                    data-confirm-impact="Flips the account to active and purges the stored full PAN/Aadhaar, keeping only the last 4. The activation is audit-logged.">
                     @csrf
                     <button type="submit"
-                        onclick="return confirm('Approve all {{ $kycStatus['total'] }} KYC documents for this distributor? This will flip status to active and purge the stored full PAN/Aadhaar.');"
                         class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors">
                             Approve all documents
                     </button>
@@ -251,7 +258,10 @@
                     <summary class="cursor-pointer px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors list-none">
                         Reject…
                     </summary>
-                    <form method="POST" action="{{ route('admin.kyc.reject', $distributor->id) }}" class="mt-2 space-y-2 p-3 rounded-lg border border-red-200 bg-red-50">
+                    <form method="POST" action="{{ route('admin.kyc.reject', $distributor->id) }}" class="mt-2 space-y-2 p-3 rounded-lg border border-red-200 bg-red-50"
+                        data-confirm="Reject this KYC submission?"
+                        data-confirm-title="Confirm KYC rejection"
+                        data-confirm-impact="Sets the account to rejected and emails the distributor your reason. This is reversible — they can re-upload corrected documents.">
                         @csrf
                         <label class="block text-xs text-gray-700">Rejection reason (will be emailed to the distributor)</label>
                         <textarea name="reason" required maxlength="500" rows="3"
@@ -285,7 +295,10 @@
                 Sends a 60-minute reset link. If the account has never activated a password, this silently no-ops
                 (the prospect should use the activation link instead).
             </p>
-            <form method="POST" action="{{ route('admin.distributors.password-reset', $distributor->id) }}">
+            <form method="POST" action="{{ route('admin.distributors.password-reset', $distributor->id) }}"
+                data-confirm="Send a password reset link?"
+                data-confirm-title="Confirm reset link"
+                data-confirm-impact="Emails the distributor a reset link valid for 60 minutes so they can set a new password. No password changes until they use the link.">
                 @csrf
                 <button type="submit" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors">
                     Send password reset link
@@ -300,7 +313,10 @@
                 Minimum 12 characters. Same strength rules the public form uses (rejects common phrases + known-breached passwords).
                 Any pending reset link is invalidated immediately. Audit-logged as <span class="font-mono">admin.distributor.password_set</span>.
             </p>
-            <form method="POST" action="{{ route('admin.distributors.set-password', $distributor->id) }}" class="space-y-3" autocomplete="off">
+            <form method="POST" action="{{ route('admin.distributors.set-password', $distributor->id) }}" class="space-y-3" autocomplete="off"
+                data-confirm="Set a new password directly?"
+                data-confirm-title="Confirm new password"
+                data-confirm-impact="Sets a new password on this account and invalidates any pending reset link immediately. The action is audit-logged.">
                 @csrf
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -351,7 +367,10 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('admin.distributors.id-photo', $distributor->id) }}" enctype="multipart/form-data" class="flex items-center gap-3">
+        <form method="POST" action="{{ route('admin.distributors.id-photo', $distributor->id) }}" enctype="multipart/form-data" class="flex items-center gap-3"
+            data-confirm="Upload this ID photo?"
+            data-confirm-title="Confirm photo upload"
+            data-confirm-impact="Replaces the distributor's current ID photo; the previous photo is deleted from storage. You can upload a different photo later.">
             @csrf
             <input type="file" name="photo" accept="image/jpeg,image/png" required
                 class="text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-gray-200">
