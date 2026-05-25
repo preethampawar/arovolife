@@ -28,4 +28,18 @@ final class AdminNotificationRecipients
 
         return $users;
     }
+
+    /**
+     * Who to email when a distributor submits a line-change request — every
+     * active user holding the 'admin' or 'admin-compliance' role.
+     *
+     * @return Collection<int, User>
+     */
+    public static function lineChangeReviewers(): Collection
+    {
+        return User::query()
+            ->where('status', 'active')
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['admin', 'admin-compliance']))
+            ->get();
+    }
 }
