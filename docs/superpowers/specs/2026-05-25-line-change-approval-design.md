@@ -76,7 +76,8 @@ Migration on `line_change_requests` (clean rename + additive columns):
 
 - Rename `from_sponsor_id` → `from_placement_parent_id`.
 - Rename `to_sponsor_id` → `to_placement_parent_id`.
-- Add `chosen_side` `char(1)` nullable (L/R; null until approval).
+- Add `chosen_side` `enum('L','R')` nullable (null until approval; DB-level
+  integrity, consistent with the table's `status` enum).
 - Add `reviewed_by` `unsignedBigInteger` nullable, FK → `users.id`
   (`restrictOnDelete`).
 - Add `reviewed_at` `dateTime(3)` nullable.
