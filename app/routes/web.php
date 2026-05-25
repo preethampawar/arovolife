@@ -11,6 +11,7 @@ use App\Modules\Admin\Http\Controllers\AdminDistributorEditController;
 use App\Modules\Admin\Http\Controllers\AdminFeatureFlagController;
 use App\Modules\Admin\Http\Controllers\AdminImpersonationController;
 use App\Modules\Admin\Http\Controllers\AdminKycController;
+use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
@@ -28,6 +29,8 @@ use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
 use App\Modules\Identity\Http\Controllers\DashboardController;
 use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
 use App\Modules\Identity\Http\Controllers\IdPhotoController;
+use App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController;
+use App\Modules\Identity\Http\Controllers\KycResubmitController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
@@ -207,6 +210,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/kyc/{id}/terminate', [AdminKycController::class, 'terminate'])->name('kyc.terminate');
     Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
 
+    // Line-change requests — review queue + approve/reject
+    Route::get('/line-changes', [AdminLineChangeController::class, 'index'])->name('line-changes.index');
+    Route::get('/line-changes/{id}', [AdminLineChangeController::class, 'show'])->whereNumber('id')->name('line-changes.show');
+    Route::post('/line-changes/{id}/approve', [AdminLineChangeController::class, 'approve'])->whereNumber('id')->name('line-changes.approve');
+    Route::post('/line-changes/{id}/reject', [AdminLineChangeController::class, 'reject'])->whereNumber('id')->name('line-changes.reject');
+
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');
     Route::get('/commerce/orders/{order}', [AdminOrderController::class, 'show'])->name('commerce.orders.show');
@@ -275,9 +284,9 @@ Route::middleware('capture.attribution')->group(function (): void {
 // allowlists this exact path — without the explicit declaration here we'd
 // either get an infinite redirect or block legitimate access.
 Route::middleware(['auth'])->group(function (): void {
-    Route::get('/kyc/resubmit', [App\Modules\Identity\Http\Controllers\KycResubmitController::class, 'show'])
+    Route::get('/kyc/resubmit', [KycResubmitController::class, 'show'])
         ->name('kyc.resubmit.show');
-    Route::post('/kyc/resubmit', [App\Modules\Identity\Http\Controllers\KycResubmitController::class, 'submit'])
+    Route::post('/kyc/resubmit', [KycResubmitController::class, 'submit'])
         ->name('kyc.resubmit.submit');
 });
 
@@ -318,8 +327,8 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // KYC document self-service — the customer can add or replace the
     // optional cheque + address-proof docs that the wizard now skips.
-    Route::get('/dashboard/documents', [App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController::class, 'index'])->name('dashboard.documents');
-    Route::post('/dashboard/documents', [App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController::class, 'store'])->name('dashboard.documents.store');
+    Route::get('/dashboard/documents', [KycDocumentSelfServiceController::class, 'index'])->name('dashboard.documents');
+    Route::post('/dashboard/documents', [KycDocumentSelfServiceController::class, 'store'])->name('dashboard.documents.store');
 
     // Returns the Blade-rendered ID-card panel for any distributor the
     // requester is authorized to see (self, descendant, or admin).
