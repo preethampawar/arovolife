@@ -6,6 +6,11 @@
     <h1 class="text-2xl font-bold text-gray-900 mb-1">My profile</h1>
     <p class="text-sm text-gray-500 mb-6">Update the details we use to contact you. Your email stays as your sign-in identity.</p>
 
+    <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
+        <p class="font-semibold mb-1">Your profile</p>
+        <p class="leading-relaxed">Update your contact details below. Some fields, like your email, are locked because they are tied to how you sign in to arovolife.</p>
+    </div>
+
     @if($errors->any())
         <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
             <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
@@ -14,23 +19,26 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('profile.update') }}" class="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+    <form method="POST" action="{{ route('profile.update') }}" class="bg-white rounded-2xl border border-gray-200 p-6 space-y-5"
+        data-confirm="Save these profile changes?"
+        data-confirm-title="Update profile"
+        data-confirm-impact="Updates your arovolife profile details. Changes are saved to your account.">
         @csrf
         @method('PATCH')
 
         <div>
-            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Email (read-only)</label>
+            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Email (read-only) <x-help-tip text="your email is your arovolife sign-in identity, so it is locked here." /></label>
             <input type="email" value="{{ $user->email }}" disabled class="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500">
         </div>
 
         <div>
-            <label for="full_name" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Full name</label>
+            <label for="full_name" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Full name <x-help-tip text="enter your name as it appears on your identity documents." /></label>
             <input type="text" id="full_name" name="full_name" value="{{ old('full_name', $user->full_name) }}" required
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
         </div>
 
         <div>
-            <label for="phone_e164" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Mobile (+91…)</label>
+            <label for="phone_e164" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Mobile (+91…) <x-help-tip text="use your indian mobile number in +91 format; arovolife uses it for account and service messages." /></label>
             <input type="tel" id="phone_e164" name="phone_e164" value="{{ old('phone_e164', $user->phone_e164) }}" required pattern="^\+91[6-9]\d{9}$"
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
         </div>

@@ -43,7 +43,10 @@
         </ul>
     </div>
 
-    <form method="POST" action="{{ route('cooling-off.cancel') }}">
+    <form method="POST" action="{{ route('cooling-off.cancel') }}"
+        data-confirm="Cancel your arovolife registration?"
+        data-confirm-title="Confirm cancellation"
+        data-confirm-impact="This closes your distributor account during the 30-day cooling-off window and signs you out. You will no longer be able to log in or use any distributor features. This cannot be undone — you would need to register again.">
         @csrf
         <input type="hidden" name="confirm" value="yes">
         <button type="submit"
