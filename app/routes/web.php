@@ -233,6 +233,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Genealogy — admin can view the entire company tree, or any distributor's
     // subtree. The id-less route shows the company root (Distributor whose
     // sponsor_id == its own id); /admin/tree/{id} scopes to that subtree.
+    // Global tree search — admin can locate anyone. Declared before the
+    // /tree/{id?} numeric route; "search" isn't numeric so it wouldn't collide
+    // regardless. Throttled to match the distributor search.
+    Route::get('/tree/search', [AdminTreeController::class, 'search'])
+        ->middleware('throttle:30,1')
+        ->name('tree.search');
     Route::get('/tree/{id?}', [AdminTreeController::class, 'show'])
         ->whereNumber('id')->name('tree.show');
 
@@ -308,6 +314,13 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/tree/sponsorship/{adn?}', [TreeController::class, 'sponsorship'])
         ->where('adn', '[0-9]{9}(-S)?')
         ->name('tree.sponsorship');
+    // Search the auth user's OWN downline by ADN/name/email/phone. Declared
+    // before the binary catchall; the literal "search" segment wouldn't match
+    // the [0-9]{9} guard anyway, but ordering keeps intent explicit. Throttled
+    // to blunt enumeration attempts against the name/phone LIKE predicates.
+    Route::get('/tree/search', [TreeController::class, 'search'])
+        ->middleware('throttle:30,1')
+        ->name('tree.search');
     Route::get('/tree/{adn?}', [TreeController::class, 'binary'])
         ->where('adn', '[0-9]{9}(-S)?')
         ->name('tree.binary');

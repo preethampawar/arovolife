@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -89,5 +91,27 @@ final class AdminTreeController extends Controller
             'maxObservedDepth' => $maxObservedDepth,
             'isCompanyRoot' => $id === null,
         ]);
+    }
+
+    /**
+     * Global tree search for admins — no subtree restriction; an admin may
+     * locate anyone by ADN, name, email or phone. Reuses the same matching
+     * predicate as the distributor view (see TreeController::buildMatchQuery).
+     * Returns the lowest-id match for determinism; admins are already trusted
+     * and the route is throttled. Non-match returns only `{found:false}`.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+        if ($q === '') {
+            return response()->json(['found' => false]);
+        }
+
+        $match = TreeController::buildMatchQuery($q)
+            ->orderBy('distributors.id')
+            ->select('distributors.id', 'distributors.adn', 'distributors.depth')
+            ->first();
+
+        return TreeController::matchResponse($match);
     }
 }

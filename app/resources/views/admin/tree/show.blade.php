@@ -57,6 +57,9 @@
     'contextSubtitlePre'=> 'Showing this node and descendants up to ',
     'showSponsorshipLink' => false,
     'adminContext'      => true,
+    'searchUrl'         => route('admin.tree.search'),
+    'rerootBase'        => url('/admin/tree'),
+    'rerootKey'         => 'id',
 ])
 
 @endsection

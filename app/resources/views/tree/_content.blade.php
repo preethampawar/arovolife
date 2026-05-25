@@ -24,6 +24,13 @@
     $adminContext        = $adminContext        ?? false;
     $expandAllUrl        = request()->fullUrlWithQuery(['levels' => max(1, $maxObservedDepth)]);
     $collapseAllUrl      = request()->fullUrlWithQuery(['levels' => 1]);
+    // Search wiring. Defaults route to the distributor endpoints; the admin
+    // entry view overrides these. $rerootKey selects which identifier the
+    // re-root URL is built from when a match isn't on screen (adn vs numeric id).
+    $searchUrl           = $searchUrl   ?? route('tree.search');
+    $rerootBase          = $rerootBase  ?? url('/tree');
+    $rerootKey           = $rerootKey   ?? 'adn';
+    $isSponsorshipModeTop = ($mode ?? 'binary') === 'sponsorship';
 @endphp
 
 <div class="mb-4 flex flex-wrap items-end justify-between gap-3 sm:gap-4">
@@ -100,6 +107,36 @@
         $stateClass = 'bg-brand-50 text-brand-700 border-brand-200';
     }
 @endphp
+
+@unless($isSponsorshipModeTop)
+{{-- Search-and-center. Locates a distributor (scoped to the caller's downline
+     for distributors; global for admins) and either scrolls them to the centre
+     of the viewport with a highlight, or re-roots the tree at them when they're
+     deeper than the loaded depth. --}}
+<div class="mb-3 flex flex-wrap items-end gap-2" data-tree-search
+    data-search-url="{{ $searchUrl }}"
+    data-reroot-base="{{ $rerootBase }}"
+    data-reroot-key="{{ $rerootKey }}"
+    data-admin-context="{{ $adminContext ? '1' : '0' }}">
+    <div class="min-w-0 flex-1 max-w-md">
+        <label for="treeSearchInput" class="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1 inline-flex items-center gap-1">
+            Find a distributor
+            <x-help-tip text="Search your tree by ADN, full name, email or phone. The match is centred on screen; deeper matches re-root the tree at that person." />
+        </label>
+        <div class="flex items-stretch gap-2">
+            <div class="relative flex-1 min-w-0">
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+                <input type="search" id="treeSearchInput" autocomplete="off"
+                    placeholder="Find by ADN, name, email or phone"
+                    class="w-full rounded-lg border border-gray-300 bg-white pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+            <button type="button" id="treeSearchBtn"
+                class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors whitespace-nowrap">Find</button>
+        </div>
+        <p id="treeSearchStatus" class="mt-1 text-[11px] text-gray-500 min-h-[1rem]" role="status" aria-live="polite"></p>
+    </div>
+</div>
+@endunless
 
 <div class="flex flex-wrap items-center gap-2 mb-3 text-xs">
     {{-- Expand / Collapse manipulate the `levels` query param. In direct-
@@ -596,5 +633,101 @@ window.copyAdn = (btn) => {
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => { if (window.treeFit) window.treeFit(); }, 150);
     });
+})();
+
+// ── Search-and-center ────────────────────────────────────────────────────
+// Find a distributor, then either scroll-to-center an on-screen match (with a
+// 2s highlight ring) or re-root the tree at a match that's deeper than the
+// loaded depth. Centering uses getBoundingClientRect() for both the node and
+// the viewport, which already reflect the CSS scale() transform — so no manual
+// zoom math is needed and centering stays correct at any zoom level.
+(() => {
+    const container = document.querySelector('[data-tree-search]');
+    if (!container) return;
+    const input    = document.getElementById('treeSearchInput');
+    const btn      = document.getElementById('treeSearchBtn');
+    const statusEl = document.getElementById('treeSearchStatus');
+    const viewport = document.getElementById('treeViewport');
+    if (!input || !btn || !viewport) return;
+
+    const searchUrl   = container.dataset.searchUrl;
+    const rerootBase  = (container.dataset.rerootBase || '').replace(/\/$/, '');
+    const rerootKey   = container.dataset.rerootKey || 'adn';
+    const isAdmin     = container.dataset.adminContext === '1';
+
+    const setStatus = (msg, tone) => {
+        statusEl.textContent = msg || '';
+        statusEl.className = 'mt-1 text-[11px] min-h-[1rem] ' + (
+            tone === 'error' ? 'text-red-600' :
+            tone === 'ok'    ? 'text-leaf-700' : 'text-gray-500'
+        );
+    };
+
+    const centerOnNode = (node) => {
+        const vpRect   = viewport.getBoundingClientRect();
+        const nodeRect = node.getBoundingClientRect();
+        // Node centre position within the scrollable content.
+        const nodeCenterX = (nodeRect.left - vpRect.left) + viewport.scrollLeft + nodeRect.width / 2;
+        const nodeCenterY = (nodeRect.top  - vpRect.top)  + viewport.scrollTop  + nodeRect.height / 2;
+        const targetLeft = nodeCenterX - viewport.clientWidth / 2;
+        const targetTop  = nodeCenterY - viewport.clientHeight / 2;
+        const maxLeft = viewport.scrollWidth  - viewport.clientWidth;
+        const maxTop  = viewport.scrollHeight - viewport.clientHeight;
+        viewport.scrollTo({
+            left: Math.max(0, Math.min(maxLeft, targetLeft)),
+            top:  Math.max(0, Math.min(maxTop,  targetTop)),
+            behavior: 'smooth',
+        });
+        // Flash a highlight ring for ~2s.
+        const ringClasses = ['ring-4', 'ring-brand-400', 'ring-offset-2'];
+        node.classList.add(...ringClasses);
+        setTimeout(() => node.classList.remove(...ringClasses), 2000);
+    };
+
+    const reroot = (match) => {
+        const seg = rerootKey === 'id' ? match.id : match.adn;
+        window.location.href = rerootBase + '/' + encodeURIComponent(seg);
+    };
+
+    let inFlight = false;
+    const run = async () => {
+        const q = input.value.trim();
+        if (q === '' || inFlight) return;
+        inFlight = true;
+        setStatus('Searching…');
+        try {
+            const url = searchUrl + (searchUrl.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q);
+            const res = await fetch(url, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            });
+            if (!res.ok) {
+                setStatus(res.status === 429 ? 'Too many searches — wait a moment and try again.' : 'Search failed. Try again.', 'error');
+                return;
+            }
+            const data = await res.json();
+            if (!data.found) {
+                setStatus(isAdmin ? 'No distributor found.' : 'No match in your tree.', 'error');
+                return;
+            }
+            const node = document.querySelector('[data-node-adn="' + (window.CSS && CSS.escape ? CSS.escape(data.adn) : data.adn) + '"]');
+            if (node) {
+                setStatus('');
+                centerOnNode(node);
+            } else {
+                // Match exists but isn't rendered at the current depth/branch —
+                // re-root the page at that node so it becomes visible.
+                setStatus('Opening that part of the tree…');
+                reroot(data);
+            }
+        } catch (e) {
+            setStatus('Search failed. Try again.', 'error');
+        } finally {
+            inFlight = false;
+        }
+    };
+
+    btn.addEventListener('click', run);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
 })();
 </script>

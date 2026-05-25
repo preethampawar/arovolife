@@ -9,5 +9,8 @@
     'totalDescendants'  => $totalDescendants,
     'maxObservedDepth'  => $maxObservedDepth,
     'mode'              => 'binary',
+    'searchUrl'         => route('tree.search'),
+    'rerootBase'        => url('/tree'),
+    'rerootKey'         => 'adn',
 ])
 @endsection

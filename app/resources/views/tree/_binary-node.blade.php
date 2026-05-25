@@ -32,7 +32,8 @@
         // (distributors.user_id NOT NULL with an FK to users.id).
         $theme = $node->user->statusTheme();
     @endphp
-    <div class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-3 py-2 text-center min-w-[200px] max-w-[230px] shadow-sm">
+    <div data-node-adn="{{ $node->adn }}" data-node-id="{{ $node->id }}"
+        class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-3 py-2 text-center min-w-[200px] max-w-[230px] shadow-sm transition-shadow">
         {{-- Status dot moved to top-LEFT so the 3-dots "more actions" menu
              can occupy the top-RIGHT corner, which is the conventional
              location and where the user expects it. --}}

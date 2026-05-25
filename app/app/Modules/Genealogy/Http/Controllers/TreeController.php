@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Genealogy\Http\Controllers;
 
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -116,6 +118,85 @@ final class TreeController extends Controller
             'maxDepth' => $levels,
             'totalDescendants' => array_sum($countByDepth),
             'maxObservedDepth' => $maxObservedDepth,
+        ]);
+    }
+
+    /**
+     * Locate a distributor inside the auth'd user's own downline by ADN,
+     * name, email or phone. Returns the shallowest (closest) match. Scoping
+     * is enforced by an inner join on the closure table: only descendants of
+     * the caller (or the caller's self-row) can ever be returned. A non-match
+     * leaks nothing beyond `{found:false}`.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $authDistributor = Auth::user()?->distributor;
+        if ($authDistributor === null) {
+            return response()->json(['found' => false]);
+        }
+
+        $q = trim((string) $request->query('q', ''));
+        if ($q === '') {
+            return response()->json(['found' => false]);
+        }
+
+        $match = self::buildMatchQuery($q)
+            // Restrict to the caller's subtree (self-row + all descendants).
+            ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'distributors.id')
+            ->where('gc.ancestor_id', $authDistributor->id)
+            // Order by closure depth so the shallowest (closest) match wins.
+            ->orderBy('gc.depth')
+            ->select('distributors.id', 'distributors.adn', 'gc.depth')
+            ->first();
+
+        return self::matchResponse($match);
+    }
+
+    /**
+     * Builds the "matches q on adn/name/email/phone" Eloquent query, without
+     * any scoping. Email is matched EXACTLY (anti-enumeration); name and phone
+     * are LIKE. Phone is normalised: spaces stripped and a bare 10-digit number
+     * is also matched against the +91-prefixed stored form.
+     *
+     * @return Builder<Distributor>
+     */
+    public static function buildMatchQuery(string $q): Builder
+    {
+        $phone = preg_replace('/\s+/', '', $q) ?? $q;
+        $phoneDigits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        return Distributor::query()
+            ->where(function (Builder $w) use ($q, $phone, $phoneDigits): void {
+                $w->where('distributors.adn', $q)
+                    ->orWhereHas('user', function (Builder $u) use ($q, $phone, $phoneDigits): void {
+                        $u->where('full_name', 'like', '%'.$q.'%')
+                            ->orWhere('email', $q)
+                            ->orWhere('phone_e164', 'like', '%'.$phone.'%');
+                        if ($phoneDigits !== '') {
+                            // Match a bare 10-digit number against the stored
+                            // +91XXXXXXXXXX form (and vice-versa) by comparing
+                            // on the trailing digits.
+                            $u->orWhere('phone_e164', 'like', '%'.$phoneDigits.'%');
+                        }
+                    });
+            });
+    }
+
+    /**
+     * Shapes a matched distributor row into the JSON contract. A null match
+     * returns `{found:false}` and nothing else.
+     */
+    public static function matchResponse(?object $match): JsonResponse
+    {
+        if ($match === null) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json([
+            'found' => true,
+            'adn' => $match->adn,
+            'id' => (int) $match->id,
+            'depth' => isset($match->depth) ? (int) $match->depth : null,
         ]);
     }
 
