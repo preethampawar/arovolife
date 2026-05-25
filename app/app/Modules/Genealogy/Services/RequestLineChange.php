@@ -73,6 +73,7 @@ final class RequestLineChange
             $alreadyApproved = LineChangeRequest::query()
                 ->where('distributor_id', $distributorId)
                 ->where('status', 'approved')
+                ->lockForUpdate()
                 ->exists();
             if ($alreadyApproved) {
                 throw new LineChangeAlreadyProcessedError(

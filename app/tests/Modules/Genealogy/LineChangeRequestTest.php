@@ -62,14 +62,19 @@ function lcrSeed(int $userId, ?int $effectiveAtBusinessDaysAgo = null, ?int $spo
     }
 
     DB::table('genealogy_closure')->insert([
-        'ancestor_id' => $sponsorId ?? $id,
-        'descendant_id' => $id,
-        'depth' => $sponsorId === null ? 0 : 1,
+        'ancestor_id' => $id, 'descendant_id' => $id, 'depth' => 0,
     ]);
     if ($sponsorId !== null) {
-        DB::table('genealogy_closure')->insert([
-            'ancestor_id' => $id, 'descendant_id' => $id, 'depth' => 0,
-        ]);
+        $ancestors = DB::table('genealogy_closure')
+            ->where('descendant_id', $sponsorId)
+            ->get(['ancestor_id', 'depth']);
+        foreach ($ancestors as $a) {
+            DB::table('genealogy_closure')->insert([
+                'ancestor_id' => $a->ancestor_id,
+                'descendant_id' => $id,
+                'depth' => $a->depth + 1,
+            ]);
+        }
     }
 
     return $id;
