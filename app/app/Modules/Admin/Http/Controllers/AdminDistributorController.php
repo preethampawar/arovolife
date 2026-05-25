@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Events\DistributorDeactivated;
+use App\Modules\Admin\Events\DistributorFrozen;
+use App\Modules\Admin\Events\DistributorReactivated;
+use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -168,6 +173,8 @@ final class AdminDistributorController extends Controller
             'ip' => $request->ip(),
         ]);
 
+        DistributorFrozen::dispatch($id, (int) auth()->id(), (string) $request->reason, Carbon::now());
+
         return redirect()->route('admin.distributors.show', $id)
             ->with('status', 'Distributor frozen successfully.');
     }
@@ -191,6 +198,8 @@ final class AdminDistributorController extends Controller
             'details' => ['previous_status' => 'frozen'],
             'ip' => $request->ip(),
         ]);
+
+        DistributorUnfrozen::dispatch($id, (int) auth()->id(), Carbon::now());
 
         return redirect()->route('admin.distributors.show', $id)
             ->with('status', 'Distributor account unfrozen.');
@@ -345,6 +354,15 @@ final class AdminDistributorController extends Controller
             'details' => ['from' => $previous, 'to' => $status, 'adn' => $row->adn],
             'ip' => $request->ip(),
         ]);
+
+        // deactivate/reactivate funnel through this single toggle, so the
+        // event we fire depends on the resulting distributor-record status.
+        $actorId = (int) auth()->id();
+        if ($status === 'active') {
+            DistributorReactivated::dispatch($id, $actorId, Carbon::now());
+        } elseif ($status === 'inactive') {
+            DistributorDeactivated::dispatch($id, $actorId, Carbon::now());
+        }
 
         return back()->with('status', sprintf('Distributor %s set to %s.', $row->adn, $status));
     }
