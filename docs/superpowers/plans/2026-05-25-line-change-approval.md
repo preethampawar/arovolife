@@ -2245,6 +2245,8 @@ namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\ApproveLineChange;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeLockTimeoutError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Genealogy\Services\RejectLineChange;
 use App\Modules\Identity\Models\Distributor;
@@ -2318,6 +2320,10 @@ final class AdminLineChangeController extends Controller
             ($this->approve)($id, (int) Auth::id(), $validated['chosen_side']);
         } catch (LineChangePlacementSlotFullError) {
             return back()->withErrors(['chosen_side' => 'That leg is no longer free under the target parent. Pick the other leg or reject.']);
+        } catch (LineChangeHasDownlineError) {
+            return back()->withErrors(['chosen_side' => 'This distributor now has referrals in their tree, so their placement can no longer be moved. Reject this request instead.']);
+        } catch (LineChangeLockTimeoutError) {
+            return back()->withErrors(['chosen_side' => 'The tree is busy right now. Please try again in a moment.']);
         }
 
         return redirect()->route('admin.line-changes.index')->with('status', 'Line change approved and placement moved.');

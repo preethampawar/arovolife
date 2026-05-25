@@ -97,8 +97,18 @@ transaction, using the same MySQL advisory lock + unique-index protection as
 `PlacementEngine`:
 
 1. Lock the request row; assert status is `pending`.
+1a. Re-validate the requester is still a **leaf** (a child could have been
+   placed under them between request and approval); if they now have any
+   downline → `LineChangeHasDownlineError`. (Done inside the txn after locking
+   the distributor row. Note: a concurrent placement landing under the
+   requester in the same instant is not fully serialized by the target-parent
+   advisory lock — a Phase-1-acceptable residual TOCTOU; revisit if placement
+   volume rises.)
 2. Re-validate the target slot is still open (it can fill between request and
-   approval) → `LineChangePlacementSlotFullError`.
+   approval) → `LineChangePlacementSlotFullError`. If the MySQL advisory lock
+   on the target parent cannot be acquired (contention, not a full slot) →
+   `LineChangeLockTimeoutError` (distinct from slot-full so the admin sees
+   "try again", not "slot taken").
 3. Resolve **side**: admin picks L or R among free slots; the form pre-selects
    the first free side (L preferred, R fallback). Persist as `chosen_side`.
 4. Update the requester row: `placement_parent_id`, `placement_side`,
