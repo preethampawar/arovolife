@@ -663,27 +663,6 @@ window.copyAdn = (btn) => {
         );
     };
 
-    const centerOnNode = (node) => {
-        const vpRect   = viewport.getBoundingClientRect();
-        const nodeRect = node.getBoundingClientRect();
-        // Node centre position within the scrollable content.
-        const nodeCenterX = (nodeRect.left - vpRect.left) + viewport.scrollLeft + nodeRect.width / 2;
-        const nodeCenterY = (nodeRect.top  - vpRect.top)  + viewport.scrollTop  + nodeRect.height / 2;
-        const targetLeft = nodeCenterX - viewport.clientWidth / 2;
-        const targetTop  = nodeCenterY - viewport.clientHeight / 2;
-        const maxLeft = viewport.scrollWidth  - viewport.clientWidth;
-        const maxTop  = viewport.scrollHeight - viewport.clientHeight;
-        viewport.scrollTo({
-            left: Math.max(0, Math.min(maxLeft, targetLeft)),
-            top:  Math.max(0, Math.min(maxTop,  targetTop)),
-            behavior: 'smooth',
-        });
-        // Flash a highlight ring for ~2s.
-        const ringClasses = ['ring-4', 'ring-brand-400', 'ring-offset-2'];
-        node.classList.add(...ringClasses);
-        setTimeout(() => node.classList.remove(...ringClasses), 2000);
-    };
-
     const reroot = (match) => {
         const seg = rerootKey === 'id' ? match.id : match.adn;
         window.location.href = rerootBase + '/' + encodeURIComponent(seg);
@@ -710,16 +689,12 @@ window.copyAdn = (btn) => {
                 setStatus(isAdmin ? 'No distributor found.' : 'No match in your tree.', 'error');
                 return;
             }
-            const node = document.querySelector('[data-node-adn="' + (window.CSS && CSS.escape ? CSS.escape(data.adn) : data.adn) + '"]');
-            if (node) {
-                setStatus('');
-                centerOnNode(node);
-            } else {
-                // Match exists but isn't rendered at the current depth/branch —
-                // re-root the page at that node so it becomes visible.
-                setStatus('Opening that part of the tree…');
-                reroot(data);
-            }
+            // Re-root the tree at the match so it becomes the focused root node,
+            // centred at the top. This reliably "locates and centres" the
+            // distributor at any zoom level and regardless of current depth —
+            // scrolling within the CSS-transform-scaled canvas is not reliable.
+            setStatus('Opening that distributor…');
+            reroot(data);
         } catch (e) {
             setStatus('Search failed. Try again.', 'error');
         } finally {
