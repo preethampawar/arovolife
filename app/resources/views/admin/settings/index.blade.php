@@ -6,6 +6,11 @@
 
 @include('partials._toast-container')
 
+<div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900 max-w-3xl">
+    <p class="font-semibold mb-1">Platform settings</p>
+    <p class="leading-relaxed">These values affect the whole arovolife platform and all users. Change with care; every change is audit-logged.</p>
+</div>
+
 <div class="max-w-3xl space-y-8">
 
     {{-- Placement rule (read-only — invariant per ADR-0003) --}}
@@ -49,7 +54,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <label for="{{ $fieldId }}" class="text-base font-semibold text-gray-900">{{ $meta['label'] }}</label>
+                                <label for="{{ $fieldId }}" class="text-base font-semibold text-gray-900">{{ $meta['label'] }} <x-help-tip text="A platform-wide setting that applies to all users on arovolife; changes are audit-logged and versioned." /></label>
                                 @if($readOnly)
                                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Read-only</span>
                                 @endif

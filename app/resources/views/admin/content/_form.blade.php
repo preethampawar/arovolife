@@ -3,7 +3,7 @@
 <div class="grid grid-cols-1 gap-5">
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Title <span class="text-red-600">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Title <span class="text-red-600">*</span> <x-help-tip text="The page heading shown to visitors and used as the browser tab title." /></label>
         <input name="title" type="text" required
             value="{{ old('title', $page->title) }}"
             maxlength="200"
@@ -13,7 +13,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Slug <span class="text-red-600">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Slug <span class="text-red-600">*</span> <x-help-tip text="The URL key for this page (the part after /p/); lowercase letters, numbers and hyphens only, and it cannot be changed after publishing." /></label>
         <div class="flex">
             <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 text-gray-500 text-sm select-none font-mono">/p/</span>
             <input name="slug" type="text" required
@@ -29,7 +29,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Meta Description</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Meta Description <x-help-tip text="A short summary shown by search engines in results; up to 300 characters." /></label>
         <input name="meta_description" type="text"
             value="{{ old('meta_description', $page->meta_description) }}"
             maxlength="300"
@@ -39,7 +39,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Status <span class="text-red-600">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Status <span class="text-red-600">*</span> <x-help-tip text="Draft keeps the page private, Published makes it publicly visible, and Archived hides it while keeping the record." /></label>
         <div class="flex gap-2">
             @foreach(['draft' => 'Draft', 'published' => 'Published', 'archived' => 'Archived'] as $val => $label)
             <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
@@ -55,7 +55,7 @@
     </div>
 
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">Body</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Body <x-help-tip text="The full rich-text content of the page shown to visitors." /></label>
         <input id="content-body-input" type="hidden" name="body" value="{{ old('body', $page->body) }}">
         <trix-editor input="content-body-input"
             class="trix-content bg-white border border-gray-200 rounded-lg min-h-[360px] p-4 focus:outline-none"></trix-editor>

@@ -6,6 +6,11 @@
 
 <div class="max-w-4xl">
 
+    <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
+        <p class="font-semibold mb-1">Edit content page</p>
+        <p class="leading-relaxed">Update the title and body of this public page. Changes are live immediately once saved if the page is published.</p>
+    </div>
+
     <div class="mb-4 flex items-center justify-between">
         <a href="{{ route('admin.content.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to Content Pages</a>
         @if($page->status === 'published')

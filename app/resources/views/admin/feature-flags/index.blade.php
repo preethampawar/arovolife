@@ -4,6 +4,11 @@
 
 @section('content')
 <div class="max-w-3xl">
+    <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
+        <p class="font-semibold mb-1">Feature flags</p>
+        <p class="leading-relaxed">Runtime switches that enable or disable platform features. Some (like the registration killswitch) have wide impact; every toggle is audit-logged.</p>
+    </div>
+
     <p class="text-sm text-gray-600 mb-6">
         Runtime toggles for rollouts and killswitches. Every change writes an
         <code class="px-1 rounded bg-gray-100 text-gray-800">audit_log</code>
@@ -29,7 +34,7 @@
                             <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Inactive</span>
                         @endif
                     </div>
-                    <div class="text-base font-medium text-gray-900">{{ $flag['label'] }}</div>
+                    <div class="text-base font-medium text-gray-900">{{ $flag['label'] }} <x-help-tip text="Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible." /></div>
                     <div class="text-sm text-gray-600 mt-1">{{ $flag['description'] }}</div>
                 </div>
                 <form method="POST" action="{{ route('admin.feature-flags.toggle', $key) }}" class="shrink-0"

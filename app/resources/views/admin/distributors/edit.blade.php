@@ -8,6 +8,11 @@
     <a href="{{ route('admin.distributors.show', $distributor->id) }}" class="text-sm text-gray-700 hover:text-gray-900">← Back to profile</a>
 </div>
 
+<div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
+    <p class="font-semibold mb-1">Edit distributor</p>
+    <p class="leading-relaxed">Update this distributor's profile, contact, address, bank, and identity details. Changes are audit-logged.</p>
+</div>
+
 <form method="POST" action="{{ route('admin.distributors.update', $distributor->id) }}" class="space-y-6"
     data-confirm="Save these profile changes?"
     data-confirm-title="Confirm save"
@@ -20,25 +25,25 @@
         <h3 class="font-semibold text-gray-800 mb-4">Profile</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="full_name">Full name</label>
+                <label class="block text-xs text-gray-700 mb-1" for="full_name">Full name <x-help-tip text="The distributor's legal full name as it should appear on records and communications." /></label>
                 <input type="text" id="full_name" name="full_name" maxlength="120"
                     value="{{ old('full_name', $distributor->user->full_name) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="phone_e164">Phone (E.164)</label>
+                <label class="block text-xs text-gray-700 mb-1" for="phone_e164">Phone (E.164) <x-help-tip text="The mobile number in international E.164 format (e.g. +919876543210), used for login and SMS notifications." /></label>
                 <input type="text" id="phone_e164" name="phone_e164" required maxlength="16"
                     value="{{ old('phone_e164', $distributor->user->phone_e164) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="email">Email</label>
+                <label class="block text-xs text-gray-700 mb-1" for="email">Email <x-help-tip text="The distributor's email address, used for login and account communications." /></label>
                 <input type="email" id="email" name="email" required maxlength="191"
                     value="{{ old('email', $distributor->user->email) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="date_of_birth">Date of birth</label>
+                <label class="block text-xs text-gray-700 mb-1" for="date_of_birth">Date of birth <x-help-tip text="The distributor's date of birth; used to enforce the per-state minimum-age rule at registration." /></label>
                 <input type="date" id="date_of_birth" name="date_of_birth"
                     value="{{ old('date_of_birth', optional($distributor->user->date_of_birth)->format('Y-m-d') ?? $distributor->user->date_of_birth) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
@@ -51,7 +56,7 @@
         <h3 class="font-semibold text-gray-800 mb-4">Address</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="state">State</label>
+                <label class="block text-xs text-gray-700 mb-1" for="state">State <x-help-tip text="The distributor's state of residence; the minimum-age rule applied at registration depends on this value." /></label>
                 <select id="state" name="state" required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     @foreach($states as $code => $name)
@@ -74,7 +79,7 @@
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="bank_account">Bank account number (leave blank to keep current)</label>
+                <label class="block text-xs text-gray-700 mb-1" for="bank_account">Bank account number (leave blank to keep current) <x-help-tip text="The bank account is stored encrypted at rest; enter a new number only to rotate the stored value, or leave blank to keep the current one." /></label>
                 <input type="text" id="bank_account" name="bank_account"
                     maxlength="18" inputmode="numeric" pattern="\d{9,18}"
                     placeholder="Enter new account number to rotate"
@@ -82,7 +87,7 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="bank_ifsc">Bank IFSC <span class="text-gray-500">(clear to detach bank)</span></label>
+                <label class="block text-xs text-gray-700 mb-1" for="bank_ifsc">Bank IFSC <span class="text-gray-500">(clear to detach bank)</span> <x-help-tip text="The 11-character IFSC of the distributor's bank branch; clearing this field detaches the bank details entirely." /></label>
                 <input type="text" id="bank_ifsc" name="bank_ifsc"
                     maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}"
                     value="{{ old('bank_ifsc', $distributor->bank_ifsc) }}"
@@ -183,7 +188,7 @@
             @csrf
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs text-gray-700 mb-1" for="pan_number">New PAN (leave blank to keep current)</label>
+                    <label class="block text-xs text-gray-700 mb-1" for="pan_number">New PAN (leave blank to keep current) <x-help-tip text="The PAN is stored encrypted with only its hash and last 4 digits retained; updating it re-checks PAN uniqueness and resets KYC to pending." /></label>
                     <input type="text" id="pan_number" name="pan_number"
                         maxlength="10" pattern="[A-Za-z]{5}[0-9]{4}[A-Za-z]"
                         placeholder="ABCDE1234F"
@@ -192,7 +197,7 @@
                     @error('pan_number')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-700 mb-1" for="aadhaar_number">New Aadhaar (12 digits, leave blank to keep current)</label>
+                    <label class="block text-xs text-gray-700 mb-1" for="aadhaar_number">New Aadhaar (12 digits, leave blank to keep current) <x-help-tip text="The raw Aadhaar is never stored; only the last 4 digits are retained, and updating it resets KYC to pending." /></label>
                     <input type="text" id="aadhaar_number" name="aadhaar_number"
                         maxlength="14" inputmode="numeric"
                         placeholder="1234 5678 9012"
@@ -263,7 +268,7 @@
                         data-confirm-title="Confirm KYC rejection"
                         data-confirm-impact="Sets the account to rejected and emails the distributor your reason. This is reversible — they can re-upload corrected documents.">
                         @csrf
-                        <label class="block text-xs text-gray-700">Rejection reason (will be emailed to the distributor)</label>
+                        <label class="block text-xs text-gray-700">Rejection reason (will be emailed to the distributor) <x-help-tip text="A brief, factual reason for the rejection; it is emailed verbatim to the distributor with a link to re-upload corrected documents." /></label>
                         <textarea name="reason" required maxlength="500" rows="3"
                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
                         <button type="submit"
@@ -320,14 +325,14 @@
                 @csrf
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-gray-700 mb-1" for="new_password">New password</label>
+                        <label class="block text-xs text-gray-700 mb-1" for="new_password">New password <x-help-tip text="Minimum 12 characters; setting it directly invalidates any pending reset link immediately." /></label>
                         <input type="password" id="new_password" name="new_password" required minlength="12"
                             autocomplete="new-password"
                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
                         @error('new_password')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-700 mb-1" for="new_password_confirmation">Confirm new password</label>
+                        <label class="block text-xs text-gray-700 mb-1" for="new_password_confirmation">Confirm new password <x-help-tip text="Re-enter the new password exactly; it must match the password above for the change to save." /></label>
                         <input type="password" id="new_password_confirmation" name="new_password_confirmation" required minlength="12"
                             autocomplete="new-password"
                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">

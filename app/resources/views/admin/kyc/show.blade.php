@@ -147,7 +147,7 @@
         data-confirm-impact="Sets the account to rejected and emails the distributor your reason. This is reversible — they can re-upload corrected documents."
         class="rounded-2xl border border-red-200 bg-red-50 p-6 space-y-3">
         @csrf
-        <p class="text-base font-semibold text-red-800">Reject KYC (recoverable)</p>
+        <p class="text-base font-semibold text-red-800">Reject KYC (recoverable) <x-help-tip text="The reason you enter is emailed verbatim to the distributor along with a link to re-upload corrected documents." /></p>
         <p class="text-xs text-red-700">
             The distributor's status flips to <strong>rejected</strong>. They are emailed the reason
             and a link to re-upload corrected documents. Required: a brief, accurate reason
@@ -220,7 +220,7 @@
         @csrf
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-                <label class="block text-xs text-gray-600 mb-1">Document type</label>
+                <label class="block text-xs text-gray-600 mb-1">Document type <x-help-tip text="The KYC document category being uploaded; uploading replaces any existing unverified document of the same type." /></label>
                 <select name="type" required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500">
                     <option value="">Select type…</option>
@@ -233,7 +233,7 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs text-gray-600 mb-1">File (JPEG, PNG or PDF — max 5 MB)</label>
+                <label class="block text-xs text-gray-600 mb-1">File (JPEG, PNG or PDF — max 5 MB) <x-help-tip text="The document image or PDF to attach to this applicant's KYC record; accepted formats are JPEG, PNG or PDF up to 5 MB." /></label>
                 <input type="file" name="document" required accept=".jpg,.jpeg,.png,.pdf"
                     class="w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0
                            file:bg-brand-50 file:text-brand-700 file:px-3 file:py-1.5 file:text-sm
