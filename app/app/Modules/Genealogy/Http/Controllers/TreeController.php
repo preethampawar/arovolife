@@ -156,10 +156,10 @@ final class TreeController extends Controller
      * Live typeahead suggestions for the distributor tree search. Returns up to
      * 8 matching distributors from the caller's own subtree (self-row + all
      * descendants), closest-first by closure depth. Same matching predicate as
-     * search() so the dropdown and the Find button agree. Payload is limited to
-     * name + adn + id — no email/phone — to minimise PII exposure, and queries
-     * are never logged. A <2-char query short-circuits to an empty list to
-     * avoid noisy single-character lookups.
+     * search() (partial mode) so the dropdown and the Find button agree.
+     * Results carry name + adn + email + phone (the caller can already see
+     * their own downline's contact details). Queries are never logged. A
+     * <3-char query short-circuits to an empty list to avoid noisy lookups.
      */
     public function suggest(Request $request): JsonResponse
     {
@@ -169,12 +169,12 @@ final class TreeController extends Controller
         }
 
         $q = trim((string) $request->query('q', ''));
-        if (mb_strlen($q) < 2) {
+        if (mb_strlen($q) < 3) {
             return response()->json(['results' => []]);
         }
 
-        $rows = self::buildMatchQuery($q)
-            ->with('user:id,full_name')
+        $rows = self::buildMatchQuery($q, partial: true)
+            ->with('user:id,full_name,email,phone_e164')
             // Restrict to the caller's subtree (self-row + all descendants).
             ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'distributors.id')
             ->where('gc.ancestor_id', $authDistributor->id)
@@ -189,37 +189,51 @@ final class TreeController extends Controller
                 'adn' => $d->adn,
                 'id' => (int) $d->id,
                 'name' => $d->user?->full_name ?? '—',
+                'email' => $d->user?->email,
+                'phone' => $d->user?->phone_e164,
             ])->values()->all(),
         ]);
     }
 
     /**
      * Builds the "matches q on adn/name/email/phone" Eloquent query, without
-     * any scoping. Email is matched EXACTLY (anti-enumeration); name and phone
-     * are LIKE. Phone is normalised: spaces stripped and a bare 10-digit number
-     * is also matched against the +91-prefixed stored form.
+     * any scoping. Name and phone are always LIKE. With $partial = false (the
+     * single-match "Find") ADN and email are matched EXACTLY (anti-enumeration);
+     * with $partial = true (the typeahead) ADN is a prefix-LIKE and email is a
+     * contains-LIKE, so suggestions appear as the user types. Phone is
+     * normalised: spaces stripped and a bare 10-digit number is also matched
+     * against the +91-prefixed stored form.
      *
      * @return Builder<Distributor>
      */
-    public static function buildMatchQuery(string $q): Builder
+    public static function buildMatchQuery(string $q, bool $partial = false): Builder
     {
         $phone = preg_replace('/\s+/', '', $q) ?? $q;
         $phoneDigits = preg_replace('/\D+/', '', $phone) ?? '';
 
         return Distributor::query()
-            ->where(function (Builder $w) use ($q, $phone, $phoneDigits): void {
-                $w->where('distributors.adn', $q)
-                    ->orWhereHas('user', function (Builder $u) use ($q, $phone, $phoneDigits): void {
-                        $u->where('full_name', 'like', '%'.$q.'%')
-                            ->orWhere('email', $q)
-                            ->orWhere('phone_e164', 'like', '%'.$phone.'%');
-                        if ($phoneDigits !== '') {
-                            // Match a bare 10-digit number against the stored
-                            // +91XXXXXXXXXX form (and vice-versa) by comparing
-                            // on the trailing digits.
-                            $u->orWhere('phone_e164', 'like', '%'.$phoneDigits.'%');
-                        }
-                    });
+            ->where(function (Builder $w) use ($q, $phone, $phoneDigits, $partial): void {
+                if ($partial) {
+                    $w->where('distributors.adn', 'like', $q.'%');
+                } else {
+                    $w->where('distributors.adn', $q);
+                }
+
+                $w->orWhereHas('user', function (Builder $u) use ($q, $phone, $phoneDigits, $partial): void {
+                    $u->where('full_name', 'like', '%'.$q.'%');
+                    if ($partial) {
+                        $u->orWhere('email', 'like', '%'.$q.'%');
+                    } else {
+                        $u->orWhere('email', $q);
+                    }
+                    $u->orWhere('phone_e164', 'like', '%'.$phone.'%');
+                    if ($phoneDigits !== '') {
+                        // Match a bare 10-digit number against the stored
+                        // +91XXXXXXXXXX form (and vice-versa) by comparing
+                        // on the trailing digits.
+                        $u->orWhere('phone_e164', 'like', '%'.$phoneDigits.'%');
+                    }
+                });
             });
     }
 

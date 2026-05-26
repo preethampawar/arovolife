@@ -118,18 +118,18 @@ final class AdminTreeController extends Controller
     /**
      * Global typeahead suggestions for admins — no subtree restriction; up to 8
      * matches by ADN, name, email or phone, ordered by id for determinism.
-     * Reuses the same matching predicate as the distributor view. Payload is
-     * limited to name + adn + id — no email/phone — and queries are not logged.
+     * Reuses the same matching predicate as the distributor view (partial
+     * mode). Results carry name + adn + email + phone; queries are not logged.
      */
     public function suggest(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));
-        if (mb_strlen($q) < 2) {
+        if (mb_strlen($q) < 3) {
             return response()->json(['results' => []]);
         }
 
-        $rows = TreeController::buildMatchQuery($q)
-            ->with('user:id,full_name')
+        $rows = TreeController::buildMatchQuery($q, partial: true)
+            ->with('user:id,full_name,email,phone_e164')
             ->orderBy('distributors.id')
             ->select('distributors.id', 'distributors.adn', 'distributors.user_id')
             ->limit(8)
@@ -140,6 +140,8 @@ final class AdminTreeController extends Controller
                 'adn' => $d->adn,
                 'id' => (int) $d->id,
                 'name' => $d->user?->full_name ?? '—',
+                'email' => $d->user?->email,
+                'phone' => $d->user?->phone_e164,
             ])->values()->all(),
         ]);
     }

@@ -704,7 +704,7 @@ window.copyAdn = (btn) => {
     };
 
     // ── Autocomplete (typeahead) ──────────────────────────────────────────
-    // As the user types (>= 2 chars, debounced), fetch a scoped list of
+    // As the user types (>= 3 chars, debounced), fetch a scoped list of
     // matching distributors and render a dropdown. Selecting one re-roots the
     // tree at that distributor via the same reroot() logic the Find button
     // uses. The Find button + Enter retain the single-match fallback below.
@@ -748,14 +748,28 @@ window.copyAdn = (btn) => {
             li.setAttribute('role', 'option');
             li.dataset.adn = m.adn;
             li.dataset.id = String(m.id);
-            li.className = 'px-3 py-2 cursor-pointer hover:bg-brand-50 flex items-center justify-between gap-3';
-            const name = document.createElement('span');
+            li.className = 'px-3 py-2 cursor-pointer hover:bg-brand-50 flex items-start justify-between gap-3';
+
+            // Left column: name, then email / phone beneath it.
+            const info = document.createElement('div');
+            info.className = 'min-w-0';
+            const name = document.createElement('div');
             name.className = 'font-semibold text-gray-900 truncate';
             name.textContent = m.name;
+            info.appendChild(name);
+            const contact = [m.email, m.phone].filter(Boolean).join(' · ');
+            if (contact) {
+                const sub = document.createElement('div');
+                sub.className = 'text-[11px] text-gray-500 truncate';
+                sub.textContent = contact;
+                info.appendChild(sub);
+            }
+
             const adn = document.createElement('span');
             adn.className = 'font-mono text-[11px] text-gray-500 shrink-0';
             adn.textContent = m.adn;
-            li.appendChild(name);
+
+            li.appendChild(info);
             li.appendChild(adn);
             // mousedown (not click) so it fires before the input blur hides the list.
             li.addEventListener('mousedown', (e) => { e.preventDefault(); selectItem(i); });
@@ -797,7 +811,7 @@ window.copyAdn = (btn) => {
     input.addEventListener('input', () => {
         const q = input.value.trim();
         if (debounceTimer) clearTimeout(debounceTimer);
-        if (q.length < 2) { closeList(); return; }
+        if (q.length < 3) { closeList(); return; }
         debounceTimer = setTimeout(() => fetchSuggestions(q), 250);
     });
 

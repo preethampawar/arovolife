@@ -98,14 +98,14 @@ it('TSG-01: distributor suggest returns matching downline distributors as a list
     $res = $this->actingAs($rootUser)
         ->getJson(route('tree.suggest', ['q' => 'Khanna']))
         ->assertOk()
-        ->assertJsonStructure(['results' => [['adn', 'id', 'name']]]);
+        ->assertJsonStructure(['results' => [['adn', 'id', 'name', 'email', 'phone']]]);
 
     $ids = collect($res->json('results'))->pluck('id')->all();
     expect($ids)->toContain($aId)->toContain($bId);
 
-    // Each row carries the expected shape: name + adn, no email/phone.
+    // Each row carries name + adn + email + phone.
     $first = $res->json('results.0');
-    expect(array_keys($first))->toEqualCanonicalizing(['adn', 'id', 'name']);
+    expect(array_keys($first))->toEqualCanonicalizing(['adn', 'id', 'name', 'email', 'phone']);
 });
 
 it('TSG-02: distributor suggest excludes distributors outside the caller downline', function () {
@@ -122,12 +122,13 @@ it('TSG-02: distributor suggest excludes distributors outside the caller downlin
         ->assertExactJson(['results' => []]);
 });
 
-it('TSG-03: a sub-2-character query returns empty results', function () {
-    $rootUser = tsgUser('root', name: 'Q');
+it('TSG-03: a query shorter than 3 characters returns empty results', function () {
+    $rootUser = tsgUser('root', name: 'Qadir Khan');
     tsgSeed($rootUser->id);
 
+    // 2 chars — below the 3-char threshold, even though it prefixes the name.
     $this->actingAs($rootUser)
-        ->getJson(route('tree.suggest', ['q' => 'Q']))
+        ->getJson(route('tree.suggest', ['q' => 'Qa']))
         ->assertOk()
         ->assertExactJson(['results' => []]);
 
@@ -135,6 +136,23 @@ it('TSG-03: a sub-2-character query returns empty results', function () {
         ->getJson(route('tree.suggest', ['q' => '']))
         ->assertOk()
         ->assertExactJson(['results' => []]);
+});
+
+it('TSG-05: distributor suggest matches a partial (prefix) ADN', function () {
+    $rootUser = tsgUser('root');
+    $rootId = tsgSeed($rootUser->id);
+
+    $childUser = tsgUser('child', name: 'Prefix Adn Child');
+    $childId = tsgSeed($childUser->id, parentId: $rootId);
+    $adn = tsgAdn($childId);
+
+    // Type just the first 4 digits of the child's ADN.
+    $res = $this->actingAs($rootUser)
+        ->getJson(route('tree.suggest', ['q' => substr($adn, 0, 4)]))
+        ->assertOk();
+
+    $ids = collect($res->json('results'))->pluck('id')->all();
+    expect($ids)->toContain($childId);
 });
 
 it('TSG-04: admin suggest returns global matches across unrelated trees', function () {
