@@ -38,7 +38,9 @@
     <h1 class="text-2xl font-bold mb-1">Welcome, {{ $user->full_name ?? $user->email }}</h1>
     <p class="text-gray-800 text-sm">
         Status:
-        @php($accountStatus = $user->accountStatusLabel())
+        @php
+            $accountStatus = $user->accountStatusLabel();
+        @endphp
         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border {{ $accountStatus['class'] }}">
             {{ $accountStatus['label'] }}
         </span>
