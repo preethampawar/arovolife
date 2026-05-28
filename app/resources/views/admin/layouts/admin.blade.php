@@ -7,6 +7,38 @@
     <title>@yield('title', 'Admin') — arovolife Admin</title>
     @vite(['resources/css/app.css'])
     @include('partials._font-size-fouc')
+    <style>
+        /* Admin sidebar: hide scrollbar by default, reveal a slim slate-tinted
+           one on hover so the nav looks clean but stays usable when the
+           viewport is short. Firefox uses scrollbar-width; WebKit uses
+           the ::-webkit-scrollbar pseudo. */
+        .admin-sidebar-scroll {
+            scrollbar-width: none;
+            scrollbar-color: transparent transparent;
+            transition: scrollbar-color 0.2s ease;
+        }
+        .admin-sidebar-scroll::-webkit-scrollbar {
+            width: 0;
+            background: transparent;
+        }
+        .admin-sidebar-scroll:hover,
+        .admin-sidebar-scroll:focus-within {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.4) transparent; /* slate-400 @ 40% */
+        }
+        .admin-sidebar-scroll:hover::-webkit-scrollbar,
+        .admin-sidebar-scroll:focus-within::-webkit-scrollbar {
+            width: 6px;
+        }
+        .admin-sidebar-scroll:hover::-webkit-scrollbar-thumb,
+        .admin-sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
+            background-color: rgba(148, 163, 184, 0.4); /* slate-400 @ 40% */
+            border-radius: 4px;
+        }
+        .admin-sidebar-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+    </style>
     @stack('styles')
 </head>
 <body class="min-h-full bg-[#f4f7f6] text-gray-900 antialiased flex overflow-x-hidden">
@@ -30,16 +62,16 @@
     <div id="adminSidebarBackdrop" class="lg:hidden fixed inset-0 z-30 bg-gray-900/40 hidden"></div>
 
     <aside id="adminSidebar"
-        class="w-60 fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-gray-200 flex flex-col
+        class="w-60 fixed top-0 bottom-0 left-0 z-40 bg-slate-900 border-r border-slate-800 flex flex-col
                -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out">
-        <div class="px-5 py-5 border-b border-gray-200 shrink-0">
+        <div class="px-5 py-5 border-b border-slate-800 shrink-0">
             <a href="{{ route('admin.dashboard') }}" class="block">
-                <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-10 w-auto">
+                <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-10 w-auto">
             </a>
-            <span class="block text-[11px] text-gray-500 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
+            <span class="block text-[11px] text-sunrise-400 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
         </div>
 
-        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        <div class="admin-sidebar-scroll flex-1 min-h-0 overflow-y-auto flex flex-col">
         <nav class="px-3 py-4 space-y-0.5">
             @php
                 // Unread Contact-inquiries count for the sidebar badge.
@@ -73,12 +105,12 @@
                 <a href="{{ route($item['route']) }}"
                    class="relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-colors
                           {{ $active
-                             ? 'bg-brand-50 text-brand-700 font-semibold'
-                             : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium' }}">
+                             ? 'bg-slate-800 text-white font-semibold'
+                             : 'text-slate-300 hover:bg-slate-800 hover:text-white font-medium' }}">
                     @if($active)
-                    <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand-500"></span>
+                    <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-sunrise-500"></span>
                     @endif
-                    <span class="text-base {{ $active ? 'text-brand-600' : 'text-gray-500' }}">{{ $item['icon'] }}</span>
+                    <span class="text-base {{ $active ? 'text-sunrise-400' : 'text-slate-400' }}">{{ $item['icon'] }}</span>
                     <span class="flex-1">{{ $item['label'] }}</span>
                     @if(!empty($item['badge']))
                         <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-500 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
@@ -87,13 +119,13 @@
             @endforeach
         </nav>
 
-            <div class="mt-auto px-3 py-4 border-t border-gray-200">
-                <p class="text-xs text-gray-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
+            <div class="mt-auto px-3 py-4 border-t border-slate-800">
+                <p class="text-xs text-slate-400 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
-                        class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 font-medium hover:bg-gray-50 hover:text-red-600 transition-colors">
-                        <span class="text-gray-500">⏻</span> Sign out
+                        class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 font-medium hover:bg-slate-800 hover:text-red-400 transition-colors">
+                        <span class="text-slate-400">⏻</span> Sign out
                     </button>
                 </form>
             </div>
@@ -108,12 +140,15 @@
          lg:ml-60 reserves space for the fixed sidebar on desktop; mobile
          has ml-0 because the sidebar is a slide-over drawer there. --}}
     <div class="ml-0 lg:ml-60 flex-1 min-h-screen flex flex-col min-w-0 max-w-full">
-        <header class="bg-brand-700 border-b border-brand-800 pl-16 pr-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-20 gap-3">
-            <h1 class="text-sm sm:text-base font-semibold text-white tracking-tight truncate">@yield('heading', 'Admin Console')</h1>
-            <div class="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-white font-medium whitespace-nowrap">
+        <header class="bg-slate-800 border-b border-slate-900 pl-16 pr-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-20 gap-3">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sunrise-500 text-white shrink-0">Admin</span>
+                <h1 class="text-sm sm:text-base font-semibold text-white tracking-tight truncate">@yield('heading', 'Admin Console')</h1>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">
                 <span class="hidden sm:inline">{{ now()->format('d M Y, H:i') }} IST</span>
-                <span class="hidden sm:inline text-brand-300">|</span>
-                <a href="{{ route('dashboard') }}" class="text-white hover:text-brand-100 transition-colors">← Distributor view</a>
+                <span class="hidden sm:inline text-slate-500">|</span>
+                <a href="{{ route('dashboard') }}" class="text-white hover:text-sunrise-300 transition-colors">← Distributor view</a>
             </div>
         </header>
 
