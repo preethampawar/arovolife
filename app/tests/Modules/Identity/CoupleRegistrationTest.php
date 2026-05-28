@@ -308,9 +308,9 @@ it('CR-11: spouse user starts with password_set_at NULL and cannot log in until 
 
     // Login attempt is refused at the LoginController gate.
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
-        ->post('/login', ['email' => $spouse->email, 'password' => 'whatever']);
-    $response->assertSessionHasErrors('email');
-    $errors = session('errors')->getBag('default')->get('email');
+        ->post('/login', ['login' => $spouse->email, 'password' => 'whatever']);
+    $response->assertSessionHasErrors('login');
+    $errors = session('errors')->getBag('default')->get('login');
     expect(implode(' ', $errors))->toContain('not been activated');
 
     // Primary user has password_set_at stamped.

@@ -44,7 +44,7 @@
                     'eyebrow' => 'arovolife Shopping Mall',
                     'title_plain' => 'Quality Essentials',
                     'title_accent' => 'Delivered to Your Door',
-                    'body' => 'Browse our curated range of personal care, health and food products. Free shipping within India on orders above ₹499. GST invoice on every order.',
+                    'body' => 'Browse our curated range of personal care, health and food products — responsibly sourced, independently quality-checked, and backed by a GST invoice on every order.',
                     'cta_primary' => ['label' => 'Shop Now →', 'url' => route('shop.index')],
                     'cta_secondary' => ['label' => 'Browse Categories', 'url' => route('shop.index')],
                     'note' => '30-day return window on every order.',
@@ -517,10 +517,11 @@
                     // white (each card's body text is white on a gradient).
                     $iconHeart    = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.099 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/>';
                     $iconSparkles = '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>';
-                    $iconBeaker   = '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>';
                     $iconHome     = '<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>';
-                    $iconScissors = '<path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 1 1-5.196-3 3 3 0 0 1 5.196 3zm1.536.887a2.165 2.165 0 0 1 1.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 1 1-5.196 3 3 3 0 0 1 5.196-3zm1.536-.887a2.165 2.165 0 0 0 1.083-1.838c.005-.352.054-.695.14-1.025m-1.223 2.863 2.077-1.199m0-3.328a4.323 4.323 0 0 1 2.068-1.379l5.325-1.628a4.5 4.5 0 0 1 2.48-.044l.803.215-7.794 4.5m-2.882-1.664A4.331 4.331 0 0 0 10.607 12m3.736 0 7.794 4.5-.802.215a4.5 4.5 0 0 1-2.48-.043l-5.326-1.629a4.323 4.323 0 0 1-2.068-1.379M14.343 12l-2.882 1.664"/>';
                     $iconSun      = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>';
+                    $iconLeaf     = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 3s-6.75-.9-11.25 3.6S4.5 19.5 4.5 19.5m0 0s9 1.05 13.5-3.45S21 3 21 3zM4.5 19.5 12 12"/>';
+                    // Comb — reads as hair / beauty grooming.
+                    $iconComb     = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5h16.5a0 0 0 0 1 0 0v3.75a5.25 5.25 0 0 1-5.25 5.25h-6A5.25 5.25 0 0 1 3.75 11.25V7.5zM7.5 16.5v3.75M12 16.5v3.75M16.5 16.5v3.75"/>';
 
                     // Six categories, each with a distinct hue across the
                     // brand + Tailwind palette so no two cards share a colour
@@ -549,7 +550,7 @@
                             'body' => 'Toothpaste, soaps, deodorants, and body wash — clean ingredient lists, no hidden fragrances, no surprise SLS.',
                             'gradient' => 'from-brand-400 via-brand-500 to-brand-600',
                             'glow' => 'shadow-brand-500/20',
-                            'icon' => $iconBeaker,
+                            'icon' => $iconComb,
                         ],
                         [
                             'title' => 'Home Care',
@@ -560,12 +561,12 @@
                             'icon' => $iconHome,
                         ],
                         [
-                            'title' => 'Hair Care',
-                            'subtitle' => 'Rooted in botanicals',
-                            'body' => 'Shampoos, conditioners, oils, and masks built around plant actives. Sulphate-free options for every hair type.',
+                            'title' => 'Agri Care',
+                            'subtitle' => 'Rooted in healthier soil',
+                            'body' => 'Organic fertilisers, bio-pesticides, and soil conditioners for stronger crops. Plant nutrition that works with the land, not against it.',
                             'gradient' => 'from-amber-400 via-amber-500 to-amber-600',
                             'glow' => 'shadow-amber-500/20',
-                            'icon' => $iconScissors,
+                            'icon' => $iconLeaf,
                         ],
                         [
                             'title' => 'Lifestyle',
@@ -641,10 +642,23 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                 <div>
                     <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mb-3">
-                    <p class="text-sm leading-relaxed">
+                    <p class="text-sm leading-relaxed mb-4">
                         Arovolife Private Limited — a direct-selling company incorporated in India.
                         CIN U46909TS2026PTC210896.
                     </p>
+                    <h4 class="text-white text-sm font-semibold mb-2">Customer Care</h4>
+                    <ul class="space-y-1.5 text-sm">
+                        <li>
+                            <a href="tel:+918886662949" class="hover:text-white">+91 88866 62949</a>
+                        </li>
+                        <li>
+                            <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a>
+                        </li>
+                        <li class="text-gray-500 leading-relaxed">
+                            9:30 am – 5:30 pm, every day<br>
+                            except Sundays &amp; public holidays
+                        </li>
+                    </ul>
                 </div>
                 <div>
                     <h4 class="text-white text-sm font-semibold mb-3">Company</h4>
@@ -660,6 +674,7 @@
                         <li><a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Direct Seller Agreement</a></li>
                         <li><a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy Policy</a></li>
                         <li><a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a></li>
+                        <li><a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a></li>
                     </ul>
                 </div>
                 <div>

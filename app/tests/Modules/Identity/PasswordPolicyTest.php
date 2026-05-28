@@ -158,14 +158,14 @@ it('PP-05: 5 failed login attempts throttle the 6th', function () {
     // 5 wrong attempts
     for ($i = 0; $i < 5; $i++) {
         $this->withoutMiddleware(PreventRequestForgery::class)
-            ->post('/login', ['email' => 'foo@test.com', 'password' => 'wrongpw'])
+            ->post('/login', ['login' => 'foo@test.com', 'password' => 'wrongpw'])
             ->assertRedirect();
     }
 
     // 6th attempt — even with the right password — must be throttled
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
-        ->post('/login', ['email' => 'foo@test.com', 'password' => 'correct-horse-battery-staple']);
-    $response->assertSessionHasErrors('email');
+        ->post('/login', ['login' => 'foo@test.com', 'password' => 'correct-horse-battery-staple']);
+    $response->assertSessionHasErrors('login');
     $errors = session('errors')->getBag('default')->all();
     expect(implode(' ', $errors))->toContain('many');
 });

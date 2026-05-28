@@ -78,10 +78,10 @@ Distributors retain the right to appeal any sanction to the Grievance Officer wi
 
 If a Distributor, customer, employee or member of the public observes conduct that they believe breaches this Code, they may report it through any of the following channels:
 
-- **Email:** `ethics@arovolife.in` (monitored daily; TBD — replace with real address before launch)
+- **Email:** `ethics@arovolife.com` (monitored daily)
 - **Web form:** `/contact-us` with reason "Ethics / Compliance"
 - **Post:** Compliance Officer, Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India
-- **Phone:** Grievance helpline (TBD — replace before launch)
+- **Phone:** Grievance helpline
 
 Reports may be made anonymously. arovolife guarantees:
 

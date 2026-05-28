@@ -18,7 +18,9 @@ use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
+use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
+use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
@@ -31,6 +33,8 @@ use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
 use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController;
 use App\Modules\Identity\Http\Controllers\KycResubmitController;
+use App\Modules\Identity\Http\Controllers\MembershipCardController;
+use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
@@ -209,6 +213,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
     Route::post('/kyc/{id}/terminate', [AdminKycController::class, 'terminate'])->name('kyc.terminate');
     Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
+    Route::post('/kyc/{id}/documents/{docId}/flag', [AdminKycController::class, 'flagDocument'])
+        ->whereNumber('id')->whereNumber('docId')->name('kyc.document.flag');
 
     // Line-change requests — review queue + approve/reject
     Route::get('/line-changes', [AdminLineChangeController::class, 'index'])->name('line-changes.index');
@@ -229,6 +235,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/content/{page}/edit', [AdminContentPageController::class, 'edit'])->name('content.edit');
     Route::patch('/content/{page}', [AdminContentPageController::class, 'update'])->name('content.update');
     Route::delete('/content/{page}', [AdminContentPageController::class, 'destroy'])->name('content.destroy');
+
+    // Compliance documents — admin upload/manage; published ones are listed
+    // publicly at /compliance-documents.
+    Route::get('/compliance-documents', [AdminComplianceDocumentController::class, 'index'])->name('compliance-documents.index');
+    Route::post('/compliance-documents', [AdminComplianceDocumentController::class, 'store'])->name('compliance-documents.store');
+    Route::patch('/compliance-documents/{document}/toggle', [AdminComplianceDocumentController::class, 'togglePublish'])->name('compliance-documents.toggle');
+    Route::delete('/compliance-documents/{document}', [AdminComplianceDocumentController::class, 'destroy'])->name('compliance-documents.destroy');
 
     // Genealogy — admin can view the entire company tree, or any distributor's
     // subtree. The id-less route shows the company root (Distributor whose
@@ -262,11 +275,31 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 Route::post('/admin/impersonate/stop', [AdminImpersonationController::class, 'stop'])
     ->middleware('auth')->name('admin.impersonate.stop');
 
+// KYC document re-upload (single-document, reached via signed email link).
+// Sits OUTSIDE the rejected-resubmit middleware so a flagged pending user
+// can land here without being redirected to the full resubmit flow.
+Route::middleware('auth')->group(function (): void {
+    Route::get('/kyc/reupload/{document}', [KycDocumentReuploadController::class, 'show'])
+        ->whereNumber('document')
+        ->middleware('signed')
+        ->name('kyc.reupload.show');
+    Route::post('/kyc/reupload/{document}', [KycDocumentReuploadController::class, 'store'])
+        ->whereNumber('document')
+        ->name('kyc.reupload.store');
+});
+
 // ── Public Content Pages ─────────────────────────────────────────────────────
 
 Route::get('/p/{slug}', [PublicContentPageController::class, 'show'])
     ->where('slug', '[a-z0-9-]+')
     ->name('content.show');
+
+// Public compliance documents — listing + streamed download (published only).
+Route::get('/compliance-documents', [PublicComplianceDocumentController::class, 'index'])
+    ->name('compliance-documents.index');
+Route::get('/compliance-documents/{document}/download', [PublicComplianceDocumentController::class, 'download'])
+    ->whereNumber('document')
+    ->name('compliance-documents.download');
 
 // ── Contact Us ───────────────────────────────────────────────────────────────
 
@@ -304,6 +337,9 @@ Route::middleware(['auth'])->group(function (): void {
 
 Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Printable membership card (front + back, save-as-PDF / print).
+    Route::get('/dashboard/membership-card', [MembershipCardController::class, 'show'])->name('membership-card.show');
 
     Route::get('/cooling-off', [CoolingOffController::class, 'show'])->name('cooling-off.show');
     Route::post('/cooling-off/cancel', [CoolingOffController::class, 'cancel'])->name('cooling-off.cancel');

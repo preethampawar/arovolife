@@ -97,7 +97,10 @@
     z-index: 0;
 }
 
-.wizard-stage > * { position: relative; z-index: 1; }
+/* Lift normal content above the ::before grid. Exclude fixed/absolute
+   children (e.g. the confirm-modal overlay) — forcing position:relative on
+   them clobbers their own positioning and drops them into normal flow. */
+.wizard-stage > *:where(:not(.fixed):not(.absolute)) { position: relative; z-index: 1; }
 
 .text-display {
     font-family: var(--font-display);

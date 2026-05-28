@@ -100,15 +100,15 @@ final class User extends Authenticatable
         if ($this->status === 'terminated') {
             $label = $this->isCoolingOffCancellation() ? 'Cancelled' : 'Terminated';
 
-            return ['dot' => self::STATUS_DOTS['terminated'], 'bg' => 'bg-red-50', 'border' => 'border-red-200', 'pill' => 'text-red-700 bg-red-50 border-red-200', 'card_label' => $label, 'pill_label' => $label];
+            return ['dot' => self::STATUS_DOTS['terminated'], 'bg' => 'bg-red-50', 'border' => 'border-red-400', 'pill' => 'text-red-700 bg-red-50 border-red-200', 'card_label' => $label, 'pill_label' => $label];
         }
 
         return match ($this->status) {
-            'active' => ['dot' => self::STATUS_DOTS['active'],    'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'pill' => 'text-leaf-700 bg-leaf-50 border-leaf-200',           'card_label' => 'Active',     'pill_label' => 'Verified'],
-            'pending' => ['dot' => self::STATUS_DOTS['pending'],  'bg' => 'bg-yellow-50',  'border' => 'border-yellow-200',  'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'New Member', 'pill_label' => 'Pending'],
-            'frozen' => ['dot' => self::STATUS_DOTS['frozen'],    'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'pill' => 'text-sunrise-700 bg-sunrise-50 border-sunrise-200',  'card_label' => 'Suspended',  'pill_label' => 'Suspended'],
-            'rejected' => ['dot' => self::STATUS_DOTS['rejected'], 'bg' => 'bg-amber-50',   'border' => 'border-amber-200',   'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'Rejected',   'pill_label' => 'Rejected'],
-            default => ['dot' => 'bg-gray-400',    'bg' => 'bg-gray-50',    'border' => 'border-gray-200',    'pill' => 'text-gray-700 bg-gray-50 border-gray-200',            'card_label' => ucfirst((string) $this->status), 'pill_label' => ucfirst((string) $this->status)],
+            'active' => ['dot' => self::STATUS_DOTS['active'],    'bg' => 'bg-leaf-50',    'border' => 'border-leaf-400',    'pill' => 'text-leaf-700 bg-leaf-50 border-leaf-200',           'card_label' => 'Active',     'pill_label' => 'Verified'],
+            'pending' => ['dot' => self::STATUS_DOTS['pending'],  'bg' => 'bg-yellow-50',  'border' => 'border-yellow-400',  'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'New Member', 'pill_label' => 'Pending'],
+            'frozen' => ['dot' => self::STATUS_DOTS['frozen'],    'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-400', 'pill' => 'text-sunrise-700 bg-sunrise-50 border-sunrise-200',  'card_label' => 'Suspended',  'pill_label' => 'Suspended'],
+            'rejected' => ['dot' => self::STATUS_DOTS['rejected'], 'bg' => 'bg-amber-50',   'border' => 'border-amber-400',   'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'Rejected',   'pill_label' => 'Rejected'],
+            default => ['dot' => 'bg-gray-400',    'bg' => 'bg-gray-50',    'border' => 'border-gray-400',    'pill' => 'text-gray-700 bg-gray-50 border-gray-200',            'card_label' => ucfirst((string) $this->status), 'pill_label' => ucfirst((string) $this->status)],
         };
     }
 

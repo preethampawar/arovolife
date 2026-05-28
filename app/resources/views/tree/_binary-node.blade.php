@@ -20,6 +20,18 @@
     $renderInlineChildren = $level < $maxDepth;
     $showLeafHoverEmpties = $level === $maxDepth && ! $hasAnyChild;
     $showMoreBelow        = $level === $maxDepth && $hasAnyChild;
+
+    // Depth-scaled horizontal padding around each child subtree. Shallow
+    // levels stay tight (their subtrees are already spread wide); deeper
+    // levels — where siblings would otherwise crowd together — get more
+    // breathing room. Static literals so Tailwind's JIT picks them up.
+    $childPad = match (true) {
+        $level <= 1 => 'px-0.5',
+        $level === 2 => 'px-1',
+        $level === 3 => 'px-2',
+        $level === 4 => 'px-3',
+        default      => 'px-4',
+    };
 @endphp
 
 <div class="flex flex-col items-center {{ $showLeafHoverEmpties ? 'relative' : '' }}"
@@ -33,11 +45,22 @@
         $theme = $node->user->statusTheme();
     @endphp
     <div data-node-adn="{{ $node->adn }}" data-node-id="{{ $node->id }}"
-        class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-3 py-2 text-center min-w-[200px] max-w-[230px] shadow-sm transition-shadow">
+        class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[150px] max-w-[168px] shadow-sm transition-shadow">
         {{-- Status dot moved to top-LEFT so the 3-dots "more actions" menu
              can occupy the top-RIGHT corner, which is the conventional
-             location and where the user expects it. --}}
-        <span class="absolute top-1.5 left-1.5 w-2 h-2 rounded-full {{ $theme['dot'] }} ring-2 ring-white" title="{{ $theme['card_label'] }}"></span>
+             location and where the user expects it. Hovering the dot reveals
+             a styled popover with the human status label (Active / New Member
+             / Suspended / Rejected / Closed) — see User::statusTheme(). --}}
+        <div class="group absolute top-1.5 left-1.5">
+            <span class="block w-2 h-2 rounded-full {{ $theme['dot'] }} ring-2 ring-white cursor-help"></span>
+            <div class="pointer-events-none absolute left-0 top-full mt-1.5 z-50 hidden group-hover:block whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-[11px] font-medium text-white shadow-lg">
+                <span class="inline-flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full {{ $theme['dot'] }} ring-1 ring-white/40"></span>
+                    {{ $theme['card_label'] }}
+                </span>
+                <span class="absolute bottom-full left-2 border-4 border-transparent border-b-gray-900"></span>
+            </div>
+        </div>
 
         @php
             // The "show only this person's tree" pivot URL.
@@ -132,7 +155,7 @@
                 @endif
             </div>
         </div>
-        <p class="text-[11px] uppercase tracking-wider {{ $isSelf ? 'text-brand-600 font-semibold' : 'text-gray-600' }}">{{ $title }}</p>
+        <p class="text-[11px] uppercase tracking-wider {{ $isSelf ? 'text-brand-700 font-semibold' : 'text-gray-700 font-medium' }}">{{ $title }}</p>
         @php $fullName = $node->user?->full_name; @endphp
         @if($fullName)
             <p class="text-xs text-gray-800 font-medium leading-tight mt-0.5 truncate" title="{{ $fullName }}">{{ $fullName }}</p>
@@ -153,18 +176,18 @@
         {{-- Compact 6-field summary (Name + ID already shown above as
              the card header; the panel here is the remaining 6 from the
              8-field spec). Phase-2+ placeholders render as `—`. --}}
-        <dl class="mt-2 pt-2 border-t border-gray-200/60 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-left">
-            <dt class="text-gray-700">Region</dt>
+        <dl class="mt-2 pt-2 border-t border-gray-300 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-left">
+            <dt class="text-gray-800 font-medium">Region</dt>
             <dd class="text-gray-800 text-right">India</dd>
 
-            <dt class="text-gray-700">Status</dt>
+            <dt class="text-gray-800 font-medium">Status</dt>
             <dd class="text-right">
                 <span class="inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-semibold border {{ $theme['pill'] }}">
                     {{ $theme['pill_label'] }}
                 </span>
             </dd>
 
-            <dt class="text-gray-700">Activated</dt>
+            <dt class="text-gray-800 font-medium">Activated</dt>
             <dd class="text-right text-gray-800">
                 @if($node->user->activated_at)
                     {{ $node->user->activated_at->format('d M Y') }}
@@ -173,18 +196,18 @@
                 @endif
             </dd>
 
-            <dt class="text-gray-700">Highest Rank</dt>
+            <dt class="text-gray-800 font-medium">Highest Rank</dt>
             <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
 
-            <dt class="text-gray-700">Current Rank</dt>
+            <dt class="text-gray-800 font-medium">Current Rank</dt>
             <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
 
-            <dt class="text-gray-700">Personal BV</dt>
+            <dt class="text-gray-800 font-medium">Personal BV</dt>
             <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
         </dl>
 
         @if($adminContext)
-            <p class="text-[11px] text-gray-700 mt-1.5">Level {{ $node->depth }}</p>
+            <p class="text-[11px] text-gray-800 font-medium mt-1.5">Level {{ $node->depth }}</p>
         @endif
     </div>
 
@@ -193,9 +216,9 @@
              container::before — vertical from parent's bottom down to the horizontal (h-4 ends EXACTLY at the horizontal)
              container::after  — horizontal at top-4
              column::before    — vertical from horizontal down to each child card --}}
-        <div class="relative pt-8 grid grid-cols-2 gap-0 w-full
-            before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-4 before:bg-slate-300
-            after:content-[''] after:absolute after:top-4 after:left-1/4 after:right-1/4 after:h-[2px] after:bg-slate-300">
+        <div class="relative pt-6 grid grid-cols-2 gap-0 w-full
+            before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500
+            after:content-[''] after:absolute after:top-3 after:left-1/4 after:right-1/4 after:h-[2px] after:bg-slate-500">
 
             {{-- px-{N} = horizontal padding around each child subtree. The
                  grid is recursive, so this padding cascades: leaves at the
@@ -206,8 +229,8 @@
                  padding all the way down. px-3 (12px each side, 24px gap)
                  is the minimum that keeps the densest level (16 leaves at
                  depth 4) from touching at 100% zoom. --}}
-            <div class="relative pt-4 flex justify-center px-3
-                before:content-[''] before:absolute before:top-[-1rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-8 before:bg-slate-300">
+            <div class="relative pt-3 flex justify-center {{ $childPad }}
+                before:content-[''] before:absolute before:top-[-0.75rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-6 before:bg-slate-500">
                 @if($left)
                     @include('tree._binary-node', [
                         'node'              => $left,
@@ -230,8 +253,8 @@
                  padding all the way down. px-3 (12px each side, 24px gap)
                  is the minimum that keeps the densest level (16 leaves at
                  depth 4) from touching at 100% zoom. --}}
-            <div class="relative pt-4 flex justify-center px-3
-                before:content-[''] before:absolute before:top-[-1rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-8 before:bg-slate-300">
+            <div class="relative pt-3 flex justify-center {{ $childPad }}
+                before:content-[''] before:absolute before:top-[-0.75rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-6 before:bg-slate-500">
                 @if($right)
                     @include('tree._binary-node', [
                         'node'              => $right,

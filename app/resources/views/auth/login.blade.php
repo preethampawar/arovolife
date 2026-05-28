@@ -46,12 +46,12 @@
                 @csrf
 
                 <div class="lift-in" style="animation-delay: 320ms;">
-                    <label for="email" class="flex items-baseline justify-between mb-1.5">
-                        <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">Email address</span>
+                    <label for="login" class="flex items-baseline justify-between mb-1.5">
+                        <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">Email address or ADN</span>
                     </label>
-                    <input id="email" name="email" type="email" autocomplete="email" required
-                        value="{{ old('email') }}"
-                        placeholder="you@example.com"
+                    <input id="login" name="login" type="text" autocomplete="username" required
+                        value="{{ old('login') }}"
+                        placeholder="you@example.com or 9-digit ADN"
                         class="input-refined">
                 </div>
 
@@ -63,6 +63,24 @@
                     <input id="password" name="password" type="password" autocomplete="current-password" required
                         placeholder="••••••••"
                         class="input-refined font-mono tracking-widest">
+                </div>
+
+                {{-- Couple (joint) ADN disambiguation. Revealed only when the
+                     identifier looks like an ADN (all digits) — see the script
+                     below. Two spouses share one ADN; this picks which holder
+                     to sign in as. Ignored server-side for solo ADNs / emails. --}}
+                <div id="coupleRoleRow" class="hidden">
+                    <label class="flex items-start gap-2 text-sm text-slate-600 cursor-pointer rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+                        <input type="checkbox" name="primary" value="1" checked
+                            class="mt-0.5 rounded border-slate-300 text-brand-500 focus:ring-brand-500/40">
+                        <span>
+                            <span class="font-medium text-slate-700">Primary account holder</span>
+                            <span class="block text-[11px] text-slate-400 leading-snug mt-0.5">
+                                Joint (couple) ADNs are shared by two people. Leave this checked for the
+                                primary holder, or uncheck to sign in as the spouse.
+                            </span>
+                        </span>
+                    </label>
                 </div>
 
                 <div class="flex items-center justify-between lift-in" style="animation-delay: 440ms;">
@@ -98,6 +116,24 @@
             Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
         </p>
     </div>
+
+    <script>
+        // Reveal the couple/primary selector only when the identifier looks
+        // like an ADN (digits only). Email logins never see it. The server
+        // applies the choice only when the ADN actually maps to a couple.
+        (function () {
+            var loginInput = document.getElementById('login');
+            var row = document.getElementById('coupleRoleRow');
+            if (!loginInput || !row) return;
+            function sync() {
+                var v = loginInput.value.trim();
+                var looksLikeAdn = /^\d{4,}$/.test(v);
+                row.classList.toggle('hidden', !looksLikeAdn);
+            }
+            loginInput.addEventListener('input', sync);
+            sync();
+        })();
+    </script>
 
 </body>
 </html>

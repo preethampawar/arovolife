@@ -16,8 +16,14 @@
         <a href="{{ route('admin.tree.show', $distributor->id) }}"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3"/></svg>
-            View tree
+            Tree View
         </a>
+
+        <button type="button" onclick="openResetPwdModal()"
+           class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"/></svg>
+            Reset password
+        </button>
 
         @if(auth()->id() !== (int) $distributor->user_id)
             <form method="POST" action="{{ route('admin.impersonate.start', $distributor->user_id) }}"
@@ -118,7 +124,7 @@
 
         {{-- Binary Children --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
-            <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Direct Children</p>
+            <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Direct Legs</p>
             <div class="flex gap-3">
                 <div class="flex-1 rounded-lg p-3 border {{ $leftChild ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white/50' }}">
                     <p class="text-xs text-gray-700 mb-1">Left (L)</p>
@@ -334,5 +340,70 @@
         @endforelse
     </div>
 </div>
+
+{{-- Reset-password modal. Posts to the existing set-password endpoint, which
+     validates (StrongPassword + NotPwned + 12-char min + confirmation match),
+     locks the rows, revokes pending reset tokens, and writes an audit entry.
+     Re-opens itself on validation error so the admin keeps context. --}}
+<div id="resetPwdModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4"
+     role="dialog" aria-modal="true" aria-labelledby="resetPwdTitle">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div class="flex items-start justify-between mb-1">
+            <h2 id="resetPwdTitle" class="text-base font-semibold text-gray-900">Reset password</h2>
+            <button type="button" onclick="closeResetPwdModal()" aria-label="Close"
+                class="text-gray-400 hover:text-gray-700 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100">×</button>
+        </div>
+        <p class="text-xs text-gray-500 mb-4 leading-relaxed">
+            Sets a new password for
+            <span class="font-semibold text-gray-700">{{ $distributor->full_name ?: 'this distributor' }}</span>
+            (<span class="font-mono">{{ $distributor->adn }}</span>) immediately. The current password and any
+            pending reset link stop working. This action is audit-logged.
+        </p>
+        <form method="POST" action="{{ route('admin.distributors.set-password', $distributor->id) }}" class="space-y-4">
+            @csrf
+            <div>
+                <label for="new_password" class="block text-xs font-medium text-gray-700 mb-1">New password</label>
+                <input id="new_password" name="new_password" type="password" required minlength="12" autocomplete="new-password"
+                    placeholder="At least 12 characters"
+                    class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('new_password') ? 'border-red-400' : 'border-gray-300' }}">
+                @error('new_password')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div>
+                <label for="new_password_confirmation" class="block text-xs font-medium text-gray-700 mb-1">Re-enter new password</label>
+                <input id="new_password_confirmation" name="new_password_confirmation" type="password" required minlength="12" autocomplete="new-password"
+                    placeholder="Repeat the new password"
+                    class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('new_password_confirmation') ? 'border-red-400' : 'border-gray-300' }}">
+                @error('new_password_confirmation')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div class="flex justify-end gap-3 pt-1">
+                <button type="button" onclick="closeResetPwdModal()"
+                    class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit"
+                    class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Set password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openResetPwdModal() {
+        var m = document.getElementById('resetPwdModal');
+        m.classList.remove('hidden'); m.classList.add('flex');
+        var f = document.getElementById('new_password');
+        if (f) setTimeout(function () { f.focus(); }, 50);
+    }
+    function closeResetPwdModal() {
+        var m = document.getElementById('resetPwdModal');
+        m.classList.add('hidden'); m.classList.remove('flex');
+    }
+    (function () {
+        var m = document.getElementById('resetPwdModal');
+        m.addEventListener('click', function (e) { if (e.target === m) closeResetPwdModal(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeResetPwdModal(); });
+        @if($errors->has('new_password') || $errors->has('new_password_confirmation'))
+            openResetPwdModal();
+        @endif
+    })();
+</script>
 
 @endsection

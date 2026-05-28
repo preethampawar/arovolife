@@ -57,6 +57,12 @@
             <span class="font-mono font-bold text-brand-600 tracking-widest text-base">{{ $distributor->adn }}</span>
         </div>
 
+        <a href="{{ route('membership-card.show') }}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1.5 mb-4 px-3 py-1.5 rounded-lg border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-semibold transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8.25V18a2.25 2.25 0 0 0 2.25 2.25h13.5A2.25 2.25 0 0 0 21 18V8.25m-18 0V6a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 6v2.25m-18 0h18M5.25 12h6m-6 3h3"/></svg>
+            View &amp; print membership card
+        </a>
+
         @include('partials._id-card-panel', [
             'idCardStats' => $idCardStats,
             'idPhotoUrl'  => $idPhotoUrl,

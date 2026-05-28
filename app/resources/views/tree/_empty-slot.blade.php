@@ -10,7 +10,7 @@
     data-invite-side="{{ $side }}"
     data-invite-side-label="{{ $sideLabel }}"
     onclick="openInviteModal(this)"
-    class="rounded-xl border border-dashed border-gray-300 px-2 py-2 text-[11px] text-gray-400 text-center bg-gray-50/50 cursor-pointer transition-colors hover:border-brand-400 hover:bg-brand-50/60 hover:text-brand-700 min-w-[100px]">
+    class="rounded-xl border border-dashed border-gray-300 px-2 py-2 text-[11px] text-gray-400 text-center bg-gray-50/50 cursor-pointer transition-colors hover:border-brand-400 hover:bg-brand-50/60 hover:text-brand-700 min-w-[78px]">
     <span class="block">Empty ({{ $sideLabel }})</span>
     <span class="block text-[10px] text-gray-400 mt-0.5">click to invite</span>
 </button>

@@ -30,11 +30,18 @@
     <footer class="bg-gray-900 text-gray-400 mt-16 py-10">
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
             <p>&copy; {{ date('Y') }} Arovolife Private Limited. CIN U46909TS2026PTC210896.</p>
-            <div class="flex gap-4">
+            <div class="flex flex-wrap gap-4">
                 <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Terms</a>
                 <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance</a>
+                <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
             </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-6 mt-4 text-xs text-gray-500">
+            Customer Care:
+            <a href="tel:+918886662949" class="hover:text-white">+91 88866 62949</a> ·
+            <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·
+            9:30 am – 5:30 pm, every day except Sundays &amp; public holidays
         </div>
     </footer>
 

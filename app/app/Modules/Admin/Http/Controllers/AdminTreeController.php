@@ -26,8 +26,6 @@ use Illuminate\View\View;
  */
 final class AdminTreeController extends Controller
 {
-    private const DEFAULT_DEPTH = 8;
-
     public function show(Request $request, ?int $id = null): View|RedirectResponse
     {
         // Resolve the root distributor for this view.
@@ -50,11 +48,6 @@ final class AdminTreeController extends Controller
                 ->findOrFail($id);
         }
 
-        $levels = (int) $request->query('levels', self::DEFAULT_DEPTH);
-        if ($levels < 1) {
-            $levels = self::DEFAULT_DEPTH;
-        }
-
         $countByDepth = DB::table('genealogy_closure')
             ->where('ancestor_id', $self->id)
             ->where('depth', '>', 0)
@@ -63,6 +56,16 @@ final class AdminTreeController extends Controller
             ->pluck('n', 'depth')
             ->all();
         $maxObservedDepth = empty($countByDepth) ? 0 : max(array_keys($countByDepth));
+
+        // Default depth is dynamic: open at the node's actual subtree depth
+        // rather than a fixed cap, so the view never claims more levels than
+        // exist. min 1 keeps a childless node showing its own card.
+        $requested = $request->query('levels');
+        if ($requested === null || $requested === '') {
+            $levels = max(1, $maxObservedDepth);
+        } else {
+            $levels = max(1, (int) $requested);
+        }
 
         $descendantIds = DB::table('genealogy_closure')
             ->where('ancestor_id', $self->id)

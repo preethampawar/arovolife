@@ -23,9 +23,6 @@ use Illuminate\View\View;
  */
 final class TreeController extends Controller
 {
-    /** Default depth shown when the user hasn't picked a value. */
-    private const DEFAULT_DEPTH = 8;
-
     public function binary(Request $request, ?string $adn = null): View|RedirectResponse
     {
         $authDistributor = Auth::user()?->distributor;
@@ -82,9 +79,14 @@ final class TreeController extends Controller
             ->all();
         $maxObservedDepth = empty($countByDepth) ? 0 : max(array_keys($countByDepth));
 
+        // Default depth is dynamic: open the tree at the root's actual
+        // subtree depth, so we never render (or claim) more levels than
+        // exist. A shallow tree opens fully and compact; a deep tree opens
+        // to its real extent. min 1 so a childless root still shows its
+        // own card + the two invite slots.
         $requested = $request->query('levels');
         if ($requested === null || $requested === '') {
-            $levels = self::DEFAULT_DEPTH;
+            $levels = max(1, $maxObservedDepth);
         } else {
             $levels = max(1, (int) $requested);
         }

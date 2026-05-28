@@ -116,6 +116,41 @@
                             {{ strtoupper($ext) ?: 'File' }} document — open in new tab
                         </div>
                     @endif
+
+                    {{-- Flag this single document for re-upload. Distinct from
+                         rejecting the whole KYC — the applicant gets an email
+                         with a signed link to re-upload only this document. --}}
+                    @if($doc->verified_at === null)
+                        <div class="px-3 py-2 border-t border-gray-100 bg-white">
+                            @if($doc->isFlagged())
+                                <p class="text-[11px] text-amber-700 mb-1">
+                                    <span class="font-semibold">Flagged for re-upload</span>
+                                    on {{ $doc->flagged_at->format('d M Y H:i') }}
+                                </p>
+                                <p class="text-[11px] text-gray-600 italic">"{{ $doc->flagged_reason }}"</p>
+                                <p class="text-[10px] text-gray-500 mt-1">Awaiting applicant re-upload.</p>
+                            @else
+                                <details class="text-[11px]">
+                                    <summary class="cursor-pointer text-amber-700 hover:text-amber-800 font-medium select-none">Flag this document for re-upload</summary>
+                                    <form method="POST"
+                                          action="{{ route('admin.kyc.document.flag', [$distributor->id, $doc->id]) }}"
+                                          class="mt-2 space-y-2"
+                                          data-confirm="Flag this document for re-upload?"
+                                          data-confirm-title="Confirm flag"
+                                          data-confirm-impact="The applicant is emailed your reason and a signed link to re-upload only this document. The rest of their KYC submission is untouched.">
+                                        @csrf
+                                        <textarea name="reason" required minlength="8" maxlength="1024" rows="2"
+                                            placeholder="Reason (sent verbatim to the applicant) — e.g. PAN card is blurry; please re-upload a sharper photo."
+                                            class="w-full rounded border border-amber-300 px-2 py-1 text-[11px] focus:border-amber-500 focus:ring-amber-500"></textarea>
+                                        <button type="submit"
+                                            class="w-full inline-flex justify-center items-center rounded bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-medium px-3 py-1">
+                                            Flag &amp; email applicant
+                                        </button>
+                                    </form>
+                                </details>
+                            @endif
+                        </div>
+                    @endif
                 </li>
             @endforeach
         </ul>

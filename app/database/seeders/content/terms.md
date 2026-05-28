@@ -76,7 +76,7 @@ You agree that the registration session, including every acceptance click, OTP v
 
 ### 4.1 Right to Cancel
 
-You have an unconditional right to cancel this Agreement at any time during the Cooling-Off Period, with or without cause, by clicking "Cancel my registration" inside your dashboard, or by writing to `cooling-off@arovolife.in` (TBD — replace with real address before launch) from your registered email. No reason need be stated.
+You have an unconditional right to cancel this Agreement at any time during the Cooling-Off Period, with or without cause, by clicking "Cancel my registration" inside your dashboard, or by writing to `cooling-off@arovolife.com` from your registered email. No reason need be stated.
 
 ### 4.2 Effect of Cancellation
 
@@ -216,7 +216,7 @@ In accordance with the Privacy Policy and the DPDP Act:
 
 ### 8.4 Right to Erasure
 
-You may request erasure of any personal data held beyond the retention periods above by writing to the Data Protection Officer at `dpo@arovolife.in` (TBD — replace before launch). arovolife will respond within 30 days. Data retained under a legal obligation (e.g. tax records within the 8-year window) cannot be erased on request.
+You may request erasure of any personal data held beyond the retention periods above by writing to the Data Protection Officer at `dpo@arovolife.com`. arovolife will respond within 30 days. Data retained under a legal obligation (e.g. tax records within the 8-year window) cannot be erased on request.
 
 ## 9. PII Handling
 
@@ -318,6 +318,12 @@ When a material amendment takes effect, you must re-accept the new version befor
 ### 16.4 No Retrospective Burden
 
 A new version of this Agreement does not retroactively impose obligations on a Distributor for actions taken under a prior version.
+
+## 17. Nominee Succession (Reserved — not yet in force)
+
+arovolife intends to introduce a nominee facility for the distributorship in a future version of this Agreement. The clause governing nomination, what transfers on the Distributor's death or incapacity (including the registered position and any earned, payable balances), the conditions under which a nominee may themselves later nominate (with succession across up to three generations as a stated goal), the interaction with the One PAN = One ADN rule (§1.4) where a nominee already holds a distributorship, and the operational workflow will be drafted in consultation with legal counsel.
+
+The nominee facility is **not yet operative**. Until a duly-noticed amendment to this Agreement is published under §16.2 and takes effect from the date stated in that amendment, the consequences of termination set out in §11.5 continue to apply in full, and **no right of nomination, inheritance, or succession arises under this Agreement**. arovolife makes no representation that such an amendment will be published, nor any projection or guarantee of income, earnings, or balances that may transfer if it is.
 
 ---
 

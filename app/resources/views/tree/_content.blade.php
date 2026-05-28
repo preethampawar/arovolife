@@ -154,7 +154,7 @@
         <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5"/>
         </svg>
-        Collapse All
+        Compress All
     </a>
     @endunless
 
@@ -313,12 +313,29 @@
     // enough to see the whole shape without resorting to the minimap.
     const MIN_SCALE = 0.05, MAX_SCALE = 2.0;
     let scale = 1;
-    const setScale = (s) => {
+    // setScale(s, focalVx, focalVy): rescale while keeping the content point
+    // under (focalVx, focalVy) — measured from the viewport's top-left — pinned
+    // in place. Defaults the focal point to the viewport centre (used by the
+    // +/- buttons); the wheel handler passes the cursor position so zooming
+    // keeps the spot under the pointer fixed.
+    const setScale = (s, focalVx = null, focalVy = null) => {
+        const fx = focalVx === null ? viewport.clientWidth / 2 : focalVx;
+        const fy = focalVy === null ? viewport.clientHeight / 2 : focalVy;
+        // Natural (unscaled) coordinate currently under the focal point.
+        const contentX = (viewport.scrollLeft + fx) / scale;
+        const contentY = (viewport.scrollTop + fy) / scale;
+
         scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
         canvas.style.transformOrigin = 'top left';
         canvas.style.transform = `scale(${scale})`;
         stage.style.width  = (naturalW * scale) + 'px';
         stage.style.height = (naturalH * scale) + 'px';
+
+        // Re-pin: put that same content coordinate back under the focal point.
+        // The browser clamps negative / overscrolled values to the valid range.
+        viewport.scrollLeft = contentX * scale - fx;
+        viewport.scrollTop  = contentY * scale - fy;
+
         const txt = Math.round(scale * 100) + '%';
         label.textContent = txt;
         if (fsLabel) fsLabel.textContent = txt;
@@ -351,7 +368,14 @@
     window.treeZoomReset = ()      => setScale(1);
     window.treeFit       = ()      => fitToView();
     requestAnimationFrame(fitToView);
-    viewport.addEventListener('wheel', (e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); setScale(scale + (e.deltaY < 0 ? 0.05 : -0.05)); } }, { passive: false });
+    viewport.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const rect = viewport.getBoundingClientRect();
+            // Zoom toward the cursor so the spot under the pointer stays put.
+            setScale(scale + (e.deltaY < 0 ? 0.05 : -0.05), e.clientX - rect.left, e.clientY - rect.top);
+        }
+    }, { passive: false });
     let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
     viewport.addEventListener('mousedown', (e) => {
         if (e.target.closest('input, button, a, summary, select, textarea, label')) return;

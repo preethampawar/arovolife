@@ -10,14 +10,21 @@ The arovolife Grievance Officer is the single point of contact for complaints th
 
 | Field | Value |
 |---|---|
-| Name | Grievance Officer, arovolife *(TODO: replace with named officer before launch)* |
-| Email | `grievance@arovolife.in` *(TODO: confirm domain and provision mailbox before launch)* |
-| Phone | *TODO: provision toll-free or 10-digit helpline before launch.* Hours: 10:00 – 18:00 IST, Monday to Saturday, excluding national holidays. |
+| Name | G. Shankar, Grievance Officer |
+| Email | `grievance@arovolife.com` |
+| Phone | +91 88866 62949. Hours: 10:00 – 18:00 IST, Monday to Saturday, excluding national holidays. |
 | Post | The Grievance Officer, Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India. *(This is the registered office and correspondence address.)* |
 | In-app | Dashboard → Help → "Raise a Grievance". |
 | Web form | `/contact-us` with reason "Grievance / Complaint". A `/p/grievance/form` page will be added in Phase 2 to provide a dedicated structured form with ticket-number issuance. |
 
-The Grievance Officer is supported by a Nodal Officer (for serious / cross-functional complaints) and a Compliance Committee (for ethics matters, suspensions and terminations). The names of these officers are kept up-to-date on this page.
+The Grievance Officer is supported by a Nodal Officer (for serious / cross-functional complaints) and a Compliance Committee (for ethics matters, suspensions and terminations). The current designations are:
+
+| Role | Named officer | Contact |
+|---|---|---|
+| Grievance Officer | G. Shankar | `grievance@arovolife.com` · +91 88866 62949 |
+| Data Protection Officer (DPO) | G. Shankar | `dpo@arovolife.com` |
+| Nodal Officer | L. Rajender | `nodal@arovolife.com` |
+| Compliance Committee | Chaired by G. Shankar | `compliance@arovolife.com` |
 
 ## 2. Service-Level Commitments (SLA)
 
@@ -46,11 +53,11 @@ You will be asked to describe the matter, attach evidence (PDFs, images, screens
 
 ### 3.2 Email
 
-Write to `grievance@arovolife.in` *(TBD)*. The subject line should begin with "Grievance" and include any prior ticket number if applicable. Attach evidence. You will receive an automated acknowledgement with a ticket number within 48 hours.
+Write to `grievance@arovolife.com`. The subject line should begin with "Grievance" and include any prior ticket number if applicable. Attach evidence. You will receive an automated acknowledgement with a ticket number within 48 hours.
 
 ### 3.3 Phone
 
-Call the helpline number *(TBD)* during published hours. The agent will note your complaint, issue a ticket number, and send the confirmation by SMS.
+Call the helpline number during published hours. The agent will note your complaint, issue a ticket number, and send the confirmation by SMS.
 
 ### 3.4 Post
 
@@ -68,8 +75,8 @@ If you are not satisfied with the response at any level, you may escalate to the
 |---|---|---|---|
 | 1 | Customer Care Agent | First contact through any channel in §3 | First response is expected within 5 working days. |
 | 2 | Grievance Officer | Reply to the same ticket with "Escalate to Grievance Officer" in the subject. | If unresolved after 7 days at Step 1. |
-| 3 | Nodal Officer | Email `nodal@arovolife.in` *(TBD)* citing the ticket number | If unresolved after 15 days at Step 2. |
-| 4 | Compliance Committee | Email `compliance@arovolife.in` *(TBD)* citing the ticket number | For ethics, fraud, suspension and termination matters. |
+| 3 | Nodal Officer | Email `nodal@arovolife.com` citing the ticket number | If unresolved after 15 days at Step 2. |
+| 4 | Compliance Committee | Email `compliance@arovolife.com` citing the ticket number | For ethics, fraud, suspension and termination matters. |
 | 5 | National Consumer Helpline | 1800-11-4000 / 1915 / `consumerhelpline.gov.in` (Department of Consumer Affairs, Government of India) | For consumer-protection matters unresolved after 30 days. |
 | 6 | Central Consumer Protection Authority (CCPA) | `consumeraffairs.nic.in` | For systemic violations of DSR 2021 or the Consumer Protection Act 2019. |
 | 7 | District / State / National Consumer Disputes Redressal Commission | `e-daakhil.nic.in` (e-filing) | For pecuniary claims under the Consumer Protection Act 2019. |

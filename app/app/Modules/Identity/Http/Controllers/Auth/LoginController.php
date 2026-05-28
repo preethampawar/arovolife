@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Controllers\Auth;
 
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,34 +24,63 @@ final class LoginController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
+
+        // Distributors may sign in with either their email address or their
+        // 9-digit ADN. Emails always contain '@'; anything without one is
+        // treated as an ADN and resolved to the owning user's email via the
+        // distributors table. An unmatched ADN simply falls through and fails
+        // authentication like any wrong credential — no account enumeration.
+        //
+        // Couple registrations share ONE ADN across two distributor rows
+        // (hard rule #6), each with its own user + password and an
+        // is_primary_couple flag. When an ADN resolves to a couple, the
+        // login form surfaces a "Primary account holder" checkbox so the
+        // spouse can be disambiguated; we pick the matching row (defaulting
+        // to the primary holder). A solo ADN ignores the checkbox entirely.
+        $loginInput = trim($credentials['login']);
+        $email = $loginInput;
+        if (! str_contains($loginInput, '@')) {
+            $matches = Distributor::query()
+                ->where('adn', $loginInput)
+                ->with('user')
+                ->get();
+
+            $chosen = $matches->count() > 1
+                ? ($matches->firstWhere('is_primary_couple', $request->boolean('primary'))
+                    ?? $matches->firstWhere('is_primary_couple', true)
+                    ?? $matches->first())
+                : $matches->first();
+
+            $email = $chosen?->user?->email ?? $loginInput;
+        }
 
         // Per-(email + IP) lockout: 5 failed attempts inside ~15 minutes
         // halts further tries. Mitigates password-spray and credential
         // stuffing without making honest typos painful.
-        $key = 'login:'.Str::lower($credentials['email']).'|'.$request->ip();
+        $key = 'login:'.Str::lower($email).'|'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, maxAttempts: 5)) {
             $seconds = RateLimiter::availableIn($key);
 
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => "Too many failed login attempts. Try again in {$seconds} seconds."]);
+                ->withInput($request->only('login'))
+                ->withErrors(['login' => "Too many failed login attempts. Try again in {$seconds} seconds."]);
         }
 
         // Pre-flight: if the user exists but has never set their own password
         // (e.g. spouse account from a couple registration), refuse login and
         // tell them to use the activation link they received by email.
         $candidate = User::query()
-            ->where('email', $credentials['email'])->first();
+            ->where('email', $email)->first();
         if ($candidate !== null && $candidate->password_set_at === null) {
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => 'Your account has not been activated yet. Please use the activation link sent to your email, or contact support@arovolife.com.']);
+                ->withInput($request->only('login'))
+                ->withErrors(['login' => 'Your account has not been activated yet. Please use the activation link sent to your email, or contact support@arovolife.com.']);
         }
 
-        if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password']], $request->boolean('remember'))) {
+        if (Auth::attempt(['email' => $email, 'password' => $credentials['password']], $request->boolean('remember'))) {
             RateLimiter::clear($key);
             $request->session()->regenerate();
 
@@ -64,7 +94,7 @@ final class LoginController extends Controller
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
                 return back()->withErrors([
-                    'email' => 'This account has been closed. Please contact support if you believe this is an error.',
+                    'login' => 'This account has been closed. Please contact support if you believe this is an error.',
                 ]);
             }
 
@@ -101,8 +131,8 @@ final class LoginController extends Controller
         $request->session()->migrate(true);
 
         return back()
-            ->withInput($request->only('email'))
-            ->withErrors(['email' => 'These credentials do not match our records.']);
+            ->withInput($request->only('login'))
+            ->withErrors(['login' => 'These credentials do not match our records.']);
     }
 
     public function logout(Request $request): RedirectResponse

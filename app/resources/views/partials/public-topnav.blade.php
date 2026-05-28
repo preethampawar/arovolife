@@ -7,7 +7,6 @@
         ['label' => 'About',        'route' => 'about',                                'match' => ['about']],
         ['label' => 'How It Works', 'url'   => route('home') . '#how-it-works',        'match' => []],
         ['label' => 'Contact',      'route' => 'contact.show','match' => ['contact.show']],
-        ['label' => 'Support',      'url'   => route('content.show', 'grievance'),     'match' => []],
     ];
 @endphp
 

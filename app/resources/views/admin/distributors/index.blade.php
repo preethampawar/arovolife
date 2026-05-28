@@ -75,6 +75,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">#</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">ADN</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Name / Contact</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">State</th>
@@ -88,6 +89,7 @@
             <tbody class="divide-y divide-gray-800">
                 @forelse($distributors as $d)
                 <tr class="hover:bg-white/40 transition-colors">
+                    <td class="px-4 py-3 text-gray-600 tabular-nums">{{ ($distributors->firstItem() ?? 1) + $loop->index }}</td>
                     <td class="px-4 py-3 font-mono font-medium">
                         <a href="{{ route('admin.distributors.show', $d->id) }}"
                            class="text-brand-600 hover:text-brand-700 hover:underline transition-colors">{{ $d->adn }}</a>
@@ -130,7 +132,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-700">
+                    <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-700">
                         No distributors found.
                     </td>
                 </tr>

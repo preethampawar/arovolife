@@ -44,7 +44,7 @@
             <div data-reveal>
                 <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">About arovolife</p>
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.05] mb-6">
-                    A new chapter in <span class="text-brand-600">Indian direct selling</span>.
+                    A new chapter in <span class="text-brand-600">Indian direct selling industry</span>.
                 </h1>
                 <p class="text-lg text-gray-600 mb-8 max-w-xl leading-relaxed">
                     arovolife is an India-incorporated direct-selling company, born in the first half of 2026
@@ -150,41 +150,34 @@
             <div class="text-center mb-12 max-w-2xl mx-auto" data-reveal>
                 <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Our products</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
-                    Best-in-class nutraceuticals & personal care.
+                    Best-in-class across every category.
                 </h2>
                 <p class="text-base text-gray-600">
-                    A small range, deeply considered. We'd rather make ten products you love than a hundred you forget.
+                    Six considered categories — from wellness and beauty to home and lifestyle — each chosen for
+                    quality over catalogue size.
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="group relative rounded-3xl overflow-hidden shadow-xl bg-white" data-reveal>
-                    <div class="aspect-[4/3] overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=900&q=80&auto=format&fit=crop" alt="Nutraceuticals" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
-                    </div>
-                    <div class="p-6">
-                        <p class="text-[11px] uppercase tracking-wider text-leaf-700 font-semibold mb-2">Nutraceuticals</p>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Wellness, formulated with intent.</h3>
-                        <p class="text-sm text-gray-600 leading-relaxed">
-                            Daily-essential supplements, immunity blends, and Ayurveda-inspired formulations —
-                            every label transparently lists every milligram. No proprietary blends, no hidden fillers.
-                        </p>
-                    </div>
-                </div>
+            @php
+                $aboutCategories = [
+                    ['name' => 'Health Care',    'headline' => 'Wellness, formulated with intent.', 'eyebrow' => 'text-leaf-700',   'accent' => 'border-leaf-500',   'body' => 'Daily supplements, immunity blends, and Ayurveda-inspired formulations — every milligram declared on the label, every batch independently tested.'],
+                    ['name' => 'Skin and Beauty', 'headline' => 'Radiance, responsibly made.',       'eyebrow' => 'text-rose-700',   'accent' => 'border-rose-500',   'body' => 'Cleansers, serums, and treatments formulated for Indian skin. Paraben-free, cruelty-free, dermatologically reviewed before launch.'],
+                    ['name' => 'Personal Care',   'headline' => 'Daily essentials, done honestly.',  'eyebrow' => 'text-brand-700',  'accent' => 'border-brand-500',  'body' => 'Toothpaste, soaps, deodorants, and body wash — clean ingredient lists, no hidden fragrances, no surprise SLS.'],
+                    ['name' => 'Home Care',       'headline' => 'A home that breathes clean.',       'eyebrow' => 'text-teal-700',   'accent' => 'border-teal-500',   'body' => 'Plant-based dishwash, laundry, and surface cleaners. Tough on grime, gentle on hands, biodegradable at the drain.'],
+                    ['name' => 'Agri Care',       'headline' => 'Rooted in healthier soil.',         'eyebrow' => 'text-amber-700',  'accent' => 'border-amber-500',  'body' => 'Organic fertilisers, bio-pesticides, and soil conditioners for stronger crops. Plant nutrition that works with the land, not against it.'],
+                    ['name' => 'Lifestyle',       'headline' => 'Wellness, beyond the bottle.',      'eyebrow' => 'text-violet-700', 'accent' => 'border-violet-500', 'body' => 'Curated bundles, wellness journals, and lifestyle accessories — the everyday companions that turn a routine into a habit.'],
+                ];
+            @endphp
 
-                <div class="group relative rounded-3xl overflow-hidden shadow-xl bg-white" data-reveal data-reveal-delay="200">
-                    <div class="aspect-[4/3] overflow-hidden">
-                        <img src="https://images.unsplash.com/photo-1556228841-a3c527ebefe5?w=900&q=80&auto=format&fit=crop" alt="Personal care" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
-                    </div>
-                    <div class="p-6">
-                        <p class="text-[11px] uppercase tracking-wider text-sunrise-700 font-semibold mb-2">Personal care</p>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Care that respects skin and ingredients.</h3>
-                        <p class="text-sm text-gray-600 leading-relaxed">
-                            Skin care, hair care and daily-use essentials — paraben-free where it matters,
-                            cruelty-free everywhere, and tested against the highest Indian and international standards.
-                        </p>
-                    </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                @foreach($aboutCategories as $i => $cat)
+                <div class="group rounded-2xl bg-white shadow-lg p-6 border-t-4 {{ $cat['accent'] }} transition-transform duration-300 hover:-translate-y-1"
+                     data-reveal @if($i % 3) data-reveal-delay="{{ ($i % 3) * 100 }}" @endif>
+                    <p class="text-[11px] uppercase tracking-wider {{ $cat['eyebrow'] }} font-semibold mb-2">{{ $cat['name'] }}</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ $cat['headline'] }}</h3>
+                    <p class="text-sm text-gray-600 leading-relaxed">{{ $cat['body'] }}</p>
                 </div>
+                @endforeach
             </div>
         </div>
     </section>
@@ -234,7 +227,7 @@
             <div class="text-center mb-12 max-w-3xl mx-auto" data-reveal>
                 <p class="text-sm font-medium text-brand-100 uppercase tracking-wider mb-3">For aspiring distributors</p>
                 <h2 class="text-3xl md:text-4xl font-bold mb-4 leading-tight">
-                    The fairest direct selling opportunity in India.
+                    The fairest direct selling company in India.
                 </h2>
                 <p class="text-base text-brand-50 leading-relaxed">
                     No registration fee. No minimum stocking. No pressure. Build at your pace, on terms that
@@ -274,7 +267,7 @@
                 <div data-reveal data-reveal-delay="200">
                     <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Growth pathway</p>
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
-                        From your first sale to leadership — we walk it with you.
+                        From your first step to leadership — we walk it with you.
                     </h2>
                     <p class="text-base text-gray-600 mb-6 leading-relaxed">
                         Our compensation plan rewards what's measurable: your team's product sales. The pathway
@@ -285,7 +278,7 @@
                         @foreach([
                             ['n' => '01', 'title' => 'Onboarding & orientation', 'body' => 'Mandatory product training, statutory orientation, micro-quiz. We make sure you can stand behind every claim.'],
                             ['n' => '02', 'title' => 'Mentorship that\'s real', 'body' => 'Weekly mentor calls, written FAQ libraries, 1:1 escalation paths to compliance and product teams.'],
-                            ['n' => '03', 'title' => 'Ranks and rewards', 'body' => 'Six published ranks with clear product-volume thresholds. No "secret sauce", no moving goalposts.'],
+                            ['n' => '03', 'title' => 'Ranks and rewards', 'body' => 'Nine published ranks with clear product-volume thresholds. No "secret sauce", no moving goalposts.'],
                         ] as $s)
                         <div class="flex gap-4">
                             <span class="shrink-0 w-10 h-10 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center font-bold text-sm">{{ $s['n'] }}</span>
@@ -316,15 +309,15 @@
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-5">
                 @foreach([
-                    ['icon' => '⚖', 'title' => 'Ethics', 'body' => 'Right is right, even when nobody is watching. Especially then.'],
-                    ['icon' => '🔍', 'title' => 'Transparency', 'body' => 'Costs published. Commissions auditable. No fine print that bites later.'],
-                    ['icon' => '🤲', 'title' => 'Trust', 'body' => 'We earn it once, then we work every day to keep it.'],
-                    ['icon' => '💚', 'title' => 'Service', 'body' => 'Customers and distributors are family. We treat them like it.'],
-                    ['icon' => '🔬', 'title' => 'Excellence', 'body' => 'Best-in-class isn\'t a slogan — it\'s a manufacturing standard.'],
-                    ['icon' => '🌏', 'title' => 'Community', 'body' => 'Indian roots, international standards, decade-long horizon.'],
+                    ['icon' => '⚖', 'title' => 'Ethics',       'body' => 'Right is right, even when nobody is watching. Especially then.',          'card' => 'bg-brand-50/70 border-brand-100 hover:border-brand-300',   'tile' => 'border-brand-100'],
+                    ['icon' => '🔍', 'title' => 'Transparency', 'body' => 'Costs published. Commissions auditable. No fine print that bites later.',  'card' => 'bg-sky-50/70 border-sky-100 hover:border-sky-300',         'tile' => 'border-sky-100'],
+                    ['icon' => '🤲', 'title' => 'Trust',        'body' => 'We earn it once, then we work every day to keep it.',                     'card' => 'bg-amber-50/70 border-amber-100 hover:border-amber-300',   'tile' => 'border-amber-100'],
+                    ['icon' => '💚', 'title' => 'Service',      'body' => 'Customers and distributors are family. We treat them like it.',           'card' => 'bg-leaf-50/70 border-leaf-100 hover:border-leaf-300',      'tile' => 'border-leaf-100'],
+                    ['icon' => '🔬', 'title' => 'Excellence',   'body' => 'Best-in-class isn\'t a slogan — it\'s a manufacturing standard.',          'card' => 'bg-violet-50/70 border-violet-100 hover:border-violet-300','tile' => 'border-violet-100'],
+                    ['icon' => '🌏', 'title' => 'Community',     'body' => 'Indian roots, international standards, decade-long horizon.',              'card' => 'bg-rose-50/70 border-rose-100 hover:border-rose-300',      'tile' => 'border-rose-100'],
                 ] as $i => $v)
-                <div class="bg-gray-50/50 border border-gray-200 rounded-2xl p-5 hover:border-brand-300 hover:bg-brand-50/30 transition-colors" data-reveal data-reveal-delay="{{ (($i % 3) + 1) * 100 }}">
-                    <div class="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-xl mb-3 shadow-sm">{{ $v['icon'] }}</div>
+                <div class="{{ $v['card'] }} border rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300" data-reveal data-reveal-delay="{{ (($i % 3) + 1) * 100 }}">
+                    <div class="w-10 h-10 rounded-lg bg-white border {{ $v['tile'] }} flex items-center justify-center text-xl mb-3 shadow-sm">{{ $v['icon'] }}</div>
                     <h3 class="font-bold text-gray-900 mb-1">{{ $v['title'] }}</h3>
                     <p class="text-sm text-gray-600 leading-snug">{{ $v['body'] }}</p>
                 </div>
@@ -413,6 +406,19 @@
     <footer class="bg-gray-900 text-gray-400 py-12">
         <div class="max-w-7xl mx-auto px-6 text-center">
             <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mx-auto mb-4">
+            <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs mb-4">
+                <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Terms</a>
+                <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
+                <a href="{{ route('content.show', 'ethics') }}" class="hover:text-white">Code of Ethics</a>
+                <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a>
+                <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
+            </div>
+            <p class="text-xs text-gray-500 mb-3 leading-relaxed">
+                Customer Care:
+                <a href="tel:+918886662949" class="hover:text-white">+91 88866 62949</a> ·
+                <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·
+                9:30 am – 5:30 pm, every day except Sundays &amp; public holidays
+            </p>
             <p class="text-xs">&copy; {{ date('Y') }} Arovolife Private Limited. All rights reserved.</p>
         </div>
     </footer>

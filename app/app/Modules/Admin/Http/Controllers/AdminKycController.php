@@ -269,4 +269,61 @@ final class AdminKycController extends Controller
 
         return back()->with('status', ucfirst(str_replace('_', ' ', $type)) . ' uploaded successfully.');
     }
+
+    /**
+     * Flag a single KYC document as unclear / needs re-upload. The applicant
+     * receives an email + in-app notification with a signed link to a page
+     * that lets them re-upload only this one document — without resubmitting
+     * the rest of the KYC. Distinct from {@see reject()}, which rejects the
+     * whole submission and flips the user status.
+     */
+    public function flagDocument(Request $request, int $id, int $docId): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:8', 'max:1024'],
+        ], [
+            'reason.required' => 'Please enter a reason — it is sent to the applicant.',
+            'reason.min' => 'Reason must be at least 8 characters.',
+        ]);
+
+        $distributor = Distributor::with('user')->findOrFail($id);
+        $document = KycDocument::query()
+            ->where('distributor_id', $distributor->id)
+            ->whereKey($docId)
+            ->firstOrFail();
+
+        abort_if(
+            $document->verified_at !== null,
+            422,
+            'This document is already verified. Reject the whole KYC first to allow replacement.'
+        );
+
+        DB::transaction(function () use ($document, $validated, $distributor, $request): void {
+            $document->update([
+                'flagged_reason' => $validated['reason'],
+                'flagged_at' => now(),
+                'flagged_by' => Auth::id(),
+            ]);
+
+            AuditLog::create([
+                'actor_id' => Auth::id(),
+                'action' => 'admin.kyc.document_flagged',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributor->id,
+                'details' => ['document_id' => $document->id, 'type' => $document->type],
+                'ip' => $request->ip(),
+            ]);
+
+            $user = $distributor->user;
+            if ($user !== null) {
+                $user->notify(new \App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification(
+                    documentId: $document->id,
+                    documentType: $document->type,
+                    reason: $validated['reason'],
+                ));
+            }
+        });
+
+        return back()->with('status', 'Document flagged. The applicant has been emailed a re-upload link.');
+    }
 }

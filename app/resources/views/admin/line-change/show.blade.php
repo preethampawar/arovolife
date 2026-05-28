@@ -19,6 +19,9 @@
 <div class="rounded-2xl border border-gray-200 bg-white p-6 mb-6">
     <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Request</p>
     <dl class="text-sm grid grid-cols-2 gap-y-2">
+        <dt class="text-gray-600">Requester name</dt>
+        <dd class="text-gray-900">{{ $lcr->distributor?->user?->full_name ?? '—' }}</dd>
+
         <dt class="text-gray-600">Requester ADN</dt>
         <dd class="font-mono font-bold text-brand-600 tracking-widest">{{ $lcr->distributor?->adn ?? '—' }}</dd>
 
@@ -26,10 +29,20 @@
         <dd class="text-gray-900">{{ $lcr->distributor?->user?->email ?? '—' }}</dd>
 
         <dt class="text-gray-600">Current placement parent</dt>
-        <dd class="font-mono text-gray-900">{{ $lcr->fromPlacementParent?->adn ?? '—' }}</dd>
+        <dd class="text-gray-900">
+            {{ $lcr->fromPlacementParent?->user?->full_name ?? '—' }}
+            @if($lcr->fromPlacementParent?->adn)
+                <span class="font-mono text-gray-600">({{ $lcr->fromPlacementParent->adn }})</span>
+            @endif
+        </dd>
 
         <dt class="text-gray-600">Requested placement parent</dt>
-        <dd class="font-mono text-gray-900">{{ $lcr->toPlacementParent?->adn ?? '—' }}</dd>
+        <dd class="text-gray-900">
+            {{ $lcr->toPlacementParent?->user?->full_name ?? '—' }}
+            @if($lcr->toPlacementParent?->adn)
+                <span class="font-mono text-gray-600">({{ $lcr->toPlacementParent->adn }})</span>
+            @endif
+        </dd>
 
         <dt class="text-gray-600">Reason given</dt>
         <dd class="text-gray-900">{{ $lcr->reason ?: '—' }}</dd>

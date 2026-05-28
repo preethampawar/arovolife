@@ -25,7 +25,26 @@ final class ShopController extends Controller
             ->orderBy('name')
             ->get();
 
-        $categories = $products->pluck('category')->filter()->unique()->values();
+        // Canonical storefront categories — always offered as filters even
+        // before any product is tagged with them. Stored as slugs to match
+        // the product `category` convention (e.g. "personal-care"), so a
+        // canonical entry and a product already tagged with it dedupe to one
+        // pill and the filter actually matches. The pill label is derived for
+        // display via ucwords(str_replace('-',' ', …)) in the view. Any extra
+        // categories existing products use are appended after these.
+        $canonicalCategories = collect([
+            'health-care',
+            'skin-and-beauty',
+            'personal-care',
+            'home-care',
+            'agri-care',
+            'lifestyle',
+        ]);
+
+        $categories = $canonicalCategories
+            ->merge($products->pluck('category')->filter())
+            ->unique()
+            ->values();
 
         return view('shop.index', [
             'products' => $products,

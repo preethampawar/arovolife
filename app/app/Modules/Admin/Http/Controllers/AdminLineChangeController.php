@@ -54,7 +54,7 @@ final class AdminLineChangeController extends Controller
     public function show(int $id): View
     {
         $lcr = LineChangeRequest::query()
-            ->with(['distributor.user', 'fromPlacementParent', 'toPlacementParent', 'reviewer'])
+            ->with(['distributor.user', 'fromPlacementParent.user', 'toPlacementParent.user', 'reviewer'])
             ->findOrFail($id);
 
         // Which legs are free under the target parent (for the side picker).

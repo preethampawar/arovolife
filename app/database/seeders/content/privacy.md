@@ -12,8 +12,8 @@ This Policy applies to all data processed by arovolife — through the website, 
 | CIN | U46909TS2026PTC210896 |
 | Registered office & correspondence address | H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India (as on the MCA / Income Tax Department record; this is also the address for all postal correspondence) |
 | Capacity under DPDP Act | Data Fiduciary |
-| Data Protection Officer (DPO) | `dpo@arovolife.in` *(TODO: provision mailbox and name the DPO before launch)* |
-| Grievance Officer (privacy matters) | `grievance@arovolife.in` *(TODO: same)* |
+| Data Protection Officer (DPO) | G. Shankar — `dpo@arovolife.com` |
+| Grievance Officer (privacy matters) | G. Shankar — `grievance@arovolife.com` |
 
 For privacy questions or to exercise any right described in §10, write to the DPO. For grievance escalation, see `/p/grievance`.
 
@@ -163,7 +163,7 @@ We do not use third-party advertising cookies. We do not place pixels for cross-
 
 ## 10. Your Rights as a Data Principal
 
-Under the DPDP Act and adjacent statutes you have the following rights, exercisable through `dpo@arovolife.in` *(TBD)*:
+Under the DPDP Act and adjacent statutes you have the following rights, exercisable through `dpo@arovolife.com`:
 
 ### 10.1 Right to information
 
@@ -187,7 +187,7 @@ Where processing is based on consent, you may withdraw it at any time. The withd
 
 ### 10.6 Right to nominate
 
-Under DPDP Act §14, you may nominate another individual to exercise these rights in the event of your death or incapacity. Email `dpo@arovolife.in` *(TBD)* with the nominee's name and contact details; we will issue a nomination acknowledgement.
+Under DPDP Act §14, you may nominate another individual to exercise these rights in the event of your death or incapacity. Email `dpo@arovolife.com` with the nominee's name and contact details; we will issue a nomination acknowledgement.
 
 ### 10.7 Right to grievance redressal
 
@@ -204,9 +204,9 @@ The arovolife service is for adults (18 and above; 21 and above in Maharashtra).
 The Grievance Officer contact details for privacy matters are the same as those published at `/p/grievance`. The internal escalation path is:
 
 1. **Customer Care** — first contact through `/contact-us` (reason: "Privacy").
-2. **Grievance Officer** — `grievance@arovolife.in` *(TBD)*.
-3. **Data Protection Officer** — `dpo@arovolife.in` *(TBD)*.
-4. **Nodal Officer** — `nodal@arovolife.in` *(TBD)*.
+2. **Grievance Officer** — `grievance@arovolife.com`.
+3. **Data Protection Officer** — `dpo@arovolife.com`.
+4. **Nodal Officer** — `nodal@arovolife.com`.
 5. **Data Protection Board of India** — per DPDP Act §27.
 
 SLA: acknowledgement in 48 hours; first substantive response in 5 working days; resolution within 30 days (extendable to 60 days for matters that require external verification).
@@ -223,4 +223,4 @@ This Policy is effective from the `Published` date displayed at the top of this 
 
 ---
 
-*Privacy Policy version: v2026-05-21. The current published version is always available at `/p/privacy`. Questions: `dpo@arovolife.in` (TBD).*
+*Privacy Policy version: v2026-05-21. The current published version is always available at `/p/privacy`. Questions: `dpo@arovolife.com`.*

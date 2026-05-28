@@ -21,6 +21,17 @@
     $renderInlineChildren = $level < $maxDepth && count($children) > 0;
     $showMoreBelow        = $level === $maxDepth && count($children) > 0;
     $childCount           = count($children);
+
+    // Depth-scaled horizontal padding around each child subtree — shallow
+    // levels tight, deeper levels roomier so siblings don't crowd. Static
+    // literals for Tailwind's JIT.
+    $childPad = match (true) {
+        $level <= 1 => 'px-0.5',
+        $level === 2 => 'px-1',
+        $level === 3 => 'px-2',
+        $level === 4 => 'px-3',
+        default      => 'px-4',
+    };
 @endphp
 
 <div class="flex flex-col items-center">
@@ -31,8 +42,17 @@
         $theme = $node->user->statusTheme();
     @endphp
 
-    <div class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-3 py-2 text-center min-w-[200px] max-w-[230px] shadow-sm">
-        <span class="absolute top-1.5 left-1.5 w-2 h-2 rounded-full {{ $theme['dot'] }} ring-2 ring-white" title="{{ $theme['card_label'] }}"></span>
+    <div class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[150px] max-w-[168px] shadow-sm">
+        <div class="group absolute top-1.5 left-1.5">
+            <span class="block w-2 h-2 rounded-full {{ $theme['dot'] }} ring-2 ring-white cursor-help"></span>
+            <div class="pointer-events-none absolute left-0 top-full mt-1.5 z-50 hidden group-hover:block whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-[11px] font-medium text-white shadow-lg">
+                <span class="inline-flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full {{ $theme['dot'] }} ring-1 ring-white/40"></span>
+                    {{ $theme['card_label'] }}
+                </span>
+                <span class="absolute bottom-full left-2 border-4 border-transparent border-b-gray-900"></span>
+            </div>
+        </div>
 
         @php
             // Pivot stays in sponsorship mode — clicking "show only this
@@ -117,7 +137,7 @@
                 @endif
             </div>
         </div>
-        <p class="text-[11px] uppercase tracking-wider {{ $isSelf ? 'text-brand-600 font-semibold' : 'text-gray-600' }}">{{ $title }}</p>
+        <p class="text-[11px] uppercase tracking-wider {{ $isSelf ? 'text-brand-700 font-semibold' : 'text-gray-700 font-medium' }}">{{ $title }}</p>
         @php $fullName = $node->user?->full_name; @endphp
         @if($fullName)
             <p class="text-xs text-gray-800 font-medium leading-tight mt-0.5 truncate" title="{{ $fullName }}">{{ $fullName }}</p>
@@ -139,18 +159,18 @@
              verificationLabel()/verificationClass() accessors so the
              label-and-pill mapping stays single-source-of-truth across
              card, dashboard, and popup. --}}
-        <dl class="mt-2 pt-2 border-t border-gray-200/60 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-left">
-            <dt class="text-gray-700">Region</dt>
+        <dl class="mt-2 pt-2 border-t border-gray-300 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-left">
+            <dt class="text-gray-800 font-medium">Region</dt>
             <dd class="text-gray-800 text-right">India</dd>
 
-            <dt class="text-gray-700">Status</dt>
+            <dt class="text-gray-800 font-medium">Status</dt>
             <dd class="text-right">
                 <span class="inline-flex items-center px-1.5 py-0 rounded-full text-[10px] font-semibold border {{ $theme['pill'] }}">
                     {{ $theme['pill_label'] }}
                 </span>
             </dd>
 
-            <dt class="text-gray-700">Activated</dt>
+            <dt class="text-gray-800 font-medium">Activated</dt>
             <dd class="text-right text-gray-800">
                 @if($node->user->activated_at)
                     {{ $node->user->activated_at->format('d M Y') }}
@@ -159,18 +179,18 @@
                 @endif
             </dd>
 
-            <dt class="text-gray-700">Highest Rank</dt>
+            <dt class="text-gray-800 font-medium">Highest Rank</dt>
             <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
 
-            <dt class="text-gray-700">Current Rank</dt>
+            <dt class="text-gray-800 font-medium">Current Rank</dt>
             <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
 
-            <dt class="text-gray-700">Personal BV</dt>
+            <dt class="text-gray-800 font-medium">Personal BV</dt>
             <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
         </dl>
 
         @if($adminContext)
-            <p class="text-[11px] text-gray-700 mt-1.5">Level {{ $node->depth }}</p>
+            <p class="text-[11px] text-gray-800 font-medium mt-1.5">Level {{ $node->depth }}</p>
         @endif
         @if($showMoreBelow)
             <p class="text-[11px] text-gray-600 mt-1 italic">+{{ count($children) }} more below</p>
@@ -206,18 +226,18 @@
              width, leaving the column centres unequal — which would mis-
              align the bus endpoints. Grid with minmax(0,1fr) forces equal
              column widths regardless of content. --}}
-        <div class="relative pt-8 grid items-start w-full gap-0
-            before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-4 before:bg-slate-300"
+        <div class="relative pt-6 grid items-start w-full gap-0
+            before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500"
             style="grid-template-columns: repeat({{ $childCount }}, minmax(0, 1fr));{{ $childCount > 1 ? ' --bus-inset: calc(50% / '.$childCount.');' : '' }}"
         >
             @if($childCount > 1)
-                <span class="absolute top-4 h-[2px] bg-slate-300"
+                <span class="absolute top-3 h-[2px] bg-slate-500"
                     style="left: var(--bus-inset); right: var(--bus-inset);"></span>
             @endif
 
             @foreach($children as $child)
-                <div class="relative pt-4 flex justify-center px-3
-                    before:content-[''] before:absolute before:top-[-1rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-8 before:bg-slate-300">
+                <div class="relative pt-3 flex justify-center {{ $childPad }}
+                    before:content-[''] before:absolute before:top-[-0.75rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-6 before:bg-slate-500">
                     @include('tree._sponsorship-node', [
                         'node'              => $child,
                         'level'             => $level + 1,

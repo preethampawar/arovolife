@@ -34,8 +34,15 @@
             <a href="{{ route('content.show', 'privacy') }}" class="hover:text-gray-900">Privacy</a>
             <a href="{{ route('content.show', 'ethics') }}" class="hover:text-gray-900">Code of Ethics</a>
             <a href="{{ route('content.show', 'grievance') }}" class="hover:text-gray-900">Grievance</a>
+            <a href="{{ route('compliance-documents.index') }}" class="hover:text-gray-900">Compliance Documents</a>
         </div>
-        <p class="mt-3 text-gray-600">Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
+        <p class="mt-3 text-gray-600">
+            Customer Care:
+            <a href="tel:+918886662949" class="hover:text-gray-900">+91 88866 62949</a> ·
+            <a href="mailto:support@arovolife.com" class="hover:text-gray-900">support@arovolife.com</a> ·
+            9:30 am – 5:30 pm, every day except Sundays &amp; public holidays
+        </p>
+        <p class="mt-2 text-gray-600">Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
     </footer>
 
     {{-- Platform-wide confirmation modal. Any form marked with data-confirm
