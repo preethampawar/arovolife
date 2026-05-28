@@ -33,7 +33,9 @@ use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
 use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController;
 use App\Modules\Identity\Http\Controllers\KycResubmitController;
+use App\Modules\Identity\Http\Controllers\DirectSellerApplicationController;
 use App\Modules\Identity\Http\Controllers\MembershipCardController;
+use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
@@ -340,6 +342,8 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Printable membership card (front + back, save-as-PDF / print).
     Route::get('/dashboard/membership-card', [MembershipCardController::class, 'show'])->name('membership-card.show');
+    Route::get('/dashboard/direct-seller-application', [DirectSellerApplicationController::class, 'show'])->name('direct-seller-application.show');
+    Route::get('/dashboard/tax-statements', [TaxStatementsController::class, 'show'])->name('tax-statements.show');
 
     Route::get('/cooling-off', [CoolingOffController::class, 'show'])->name('cooling-off.show');
     Route::post('/cooling-off/cancel', [CoolingOffController::class, 'cancel'])->name('cooling-off.cancel');

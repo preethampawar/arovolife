@@ -128,14 +128,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 @php
                     $pillars = [
-                        ['icon' => '🌿', 'title' => 'Quality you can trust', 'body' => 'Products formulated by qualified scientists, manufactured in FSSAI-licensed and ISO-certified facilities. Every batch carries a Certificate of Analysis on request.'],
-                        ['icon' => '💎', 'title' => 'Value that returns daily', 'body' => 'Honest pricing — no MRP-padding, no markup-laundering. The price you pay is the price the product is worth, audited and visible inside your account.'],
-                        ['icon' => '🤝', 'title' => 'Service that listens', 'body' => '24-hour grievance acknowledgement, 7-day resolution SLA, and a dedicated compliance team that takes consumer concerns as seriously as the law requires us to.'],
+                        ['icon' => '🌿', 'title' => 'Quality you can trust',     'body' => 'Products formulated by qualified scientists, manufactured in FSSAI-licensed and ISO-certified facilities. Every batch carries a Certificate of Analysis on request.', 'accent' => 'border-leaf-500',  'tile' => 'bg-leaf-50'],
+                        ['icon' => '💎', 'title' => 'Value that returns daily', 'body' => 'Honest pricing — no MRP-padding, no markup-laundering. The price you pay is the price the product is worth, audited and visible inside your account.',                  'accent' => 'border-amber-500', 'tile' => 'bg-amber-50'],
+                        ['icon' => '🤝', 'title' => 'Service that listens',     'body' => '24-hour grievance acknowledgement, 7-day resolution SLA, and a dedicated compliance team that takes consumer concerns as seriously as the law requires us to.',           'accent' => 'border-brand-500', 'tile' => 'bg-brand-50'],
                     ];
                 @endphp
                 @foreach($pillars as $i => $p)
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all" data-reveal data-reveal-delay="{{ ($i + 1) * 100 }}">
-                    <div class="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center text-2xl mb-4">{{ $p['icon'] }}</div>
+                <div class="group rounded-2xl bg-white shadow-lg p-6 border-t-4 {{ $p['accent'] }} transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl"
+                     data-reveal data-reveal-delay="{{ ($i + 1) * 100 }}">
+                    <div class="w-12 h-12 rounded-xl {{ $p['tile'] }} flex items-center justify-center text-2xl mb-4">{{ $p['icon'] }}</div>
                     <h3 class="text-lg font-bold text-gray-900 mb-2">{{ $p['title'] }}</h3>
                     <p class="text-sm text-gray-600 leading-relaxed">{{ $p['body'] }}</p>
                 </div>
