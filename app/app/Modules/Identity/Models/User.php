@@ -41,6 +41,7 @@ final class User extends Authenticatable
         'phone_e164',
         'password_hash',
         'password_set_at',
+        'login_throttle_cleared_at',
         'mfa_secret_enc',
         'mfa_enabled_at',
         'date_of_birth',
@@ -66,6 +67,7 @@ final class User extends Authenticatable
             'last_login_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'password_set_at' => 'datetime',
+            'login_throttle_cleared_at' => 'datetime',
             'activated_at' => 'datetime',
         ];
     }

@@ -57,10 +57,25 @@ final class LoginController extends Controller
             $email = $chosen?->user?->email ?? $loginInput;
         }
 
+        // Look the user up once; we need them both for the post-reset
+        // throttle-clear and for the unactivated-account pre-flight below.
+        $candidate = User::query()
+            ->where('email', $email)->first();
+
         // Per-(email + IP) lockout: 5 failed attempts inside ~15 minutes
         // halts further tries. Mitigates password-spray and credential
         // stuffing without making honest typos painful.
         $key = 'login:'.Str::lower($email).'|'.$request->ip();
+
+        // If an admin recently reset this user's password, drop any stale
+        // lockout BEFORE the throttle check so the user isn't blocked by
+        // attempts they made against their old password. Consumed once: the
+        // flag is nulled here so it can't be reused to bypass the limiter.
+        if ($candidate !== null && $candidate->login_throttle_cleared_at !== null) {
+            RateLimiter::clear($key);
+            $candidate->update(['login_throttle_cleared_at' => null]);
+        }
+
         if (RateLimiter::tooManyAttempts($key, maxAttempts: 5)) {
             $seconds = RateLimiter::availableIn($key);
 
@@ -72,8 +87,6 @@ final class LoginController extends Controller
         // Pre-flight: if the user exists but has never set their own password
         // (e.g. spouse account from a couple registration), refuse login and
         // tell them to use the activation link they received by email.
-        $candidate = User::query()
-            ->where('email', $email)->first();
         if ($candidate !== null && $candidate->password_set_at === null) {
             return back()
                 ->withInput($request->only('login'))

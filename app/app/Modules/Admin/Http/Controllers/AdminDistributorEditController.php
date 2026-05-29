@@ -138,6 +138,12 @@ final class AdminDistributorEditController extends Controller
             $user->update([
                 'password_hash' => $newPasswordHash,
                 'password_set_at' => now(),
+                // Marks any stale rate-limit lockout for clearing on the
+                // user's next login attempt. Without this, a user who
+                // hammered the OLD password and tripped the throttle stays
+                // locked out even with the fresh credential — the staging
+                // "new password doesn't work" reports were this.
+                'login_throttle_cleared_at' => now(),
             ]);
 
             // Revoke any active password-reset tokens so the link the
