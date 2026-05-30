@@ -21,9 +21,10 @@
 
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My KYC documents</h1>
     <p class="text-sm text-gray-600 mb-6">
-        PAN and Aadhaar are required for KYC approval. Cancelled cheque and
-        address proof are optional — add them when you're ready. New uploads
-        are pending admin review until approved.
+        PAN, Aadhaar (front and back) and address proof (front and back) are
+        required for KYC approval. Cancelled cheque or passbook is optional —
+        add it when you're ready. New uploads are pending admin review until
+        approved.
     </p>
 
     @if(session('status'))
