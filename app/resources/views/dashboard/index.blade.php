@@ -90,6 +90,15 @@
     @if($distributor)
     {{-- ── Expanded ADN card — spans 2/3 on lg, stats + ID photo side by side. --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6 md:col-span-2 lg:col-span-2">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold">Profile Stats</p>
+            <a href="{{ route('profile-stats.show') }}" target="_blank" rel="noopener"
+                title="Open a printable copy of your profile stats — choose Save as PDF in the print dialog"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+                Download PDF
+            </a>
+        </div>
         @include('partials._id-card-panel', [
             'idCardStats' => $idCardStats,
             'idPhotoUrl'  => $idPhotoUrl,
@@ -105,7 +114,7 @@
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
                     <span class="text-gray-800">Position</span>
-                    <span class="font-medium">{{ $distributor->placement_side === 'L' ? '← Left' : '→ Right' }} leg</span>
+                    <span class="font-medium">{{ $distributor->placement_side === 'L' ? '← Left' : '→ Right' }} group</span>
                 </div>
             </div>
             @php
@@ -117,7 +126,7 @@
                 $lcAvailable         = $lcBusinessDaysSince <= 5;
             @endphp
             <div class="mt-4 flex flex-col gap-1.5 text-xs">
-                <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">View my binary tree →</a>
+                <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">View my Genos →</a>
                 <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">My Referrals →</a>
                 @if($lcAvailable)
                     <a href="{{ route('line-change.show') }}" class="text-brand-600 hover:text-brand-700 underline">
@@ -287,10 +296,10 @@
         <div class="flex items-baseline justify-between mb-4 gap-3 flex-wrap">
             <div>
                 <p class="text-xs text-gray-700 uppercase tracking-wider mb-1 font-semibold">My Team</p>
-                <p class="text-sm text-gray-800">A live view of your binary downline and direct referrals.</p>
+                <p class="text-sm text-gray-800">A live view of your Genos downline and direct referrals.</p>
             </div>
             <div class="flex items-center gap-3 text-xs">
-                <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">Binary tree →</a>
+                <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">Genos →</a>
                 <span class="text-gray-500">·</span>
                 <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">Direct referrals →</a>
             </div>
@@ -305,7 +314,7 @@
                 class="text-left rounded-xl border border-brand-200 bg-brand-50/60 p-4 hover:bg-brand-50 hover:border-brand-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total team</p>
                 <p class="text-3xl font-bold text-brand-700 leading-none">{{ number_format($teamStats['total_team']) }}</p>
-                <p class="text-[11px] text-gray-700 mt-1.5">members in your binary downline</p>
+                <p class="text-[11px] text-gray-700 mt-1.5">members in your Genos downline</p>
             </button>
             <button type="button" data-team-roster="direct"
                 class="text-left rounded-xl border border-leaf-200 bg-leaf-50/60 p-4 hover:bg-leaf-50 hover:border-leaf-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-leaf-500">
@@ -317,13 +326,13 @@
                 class="text-left rounded-xl border border-sky-200 bg-sky-50/60 p-4 hover:bg-sky-50 hover:border-sky-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500">
                 <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
                 <p class="text-3xl font-bold text-sky-700 leading-none">{{ number_format($teamStats['left_team']) }}</p>
-                <p class="text-[11px] text-gray-700 mt-1.5">members under your left leg</p>
+                <p class="text-[11px] text-gray-700 mt-1.5">members under your left group</p>
             </button>
             <button type="button" data-team-roster="right"
-                class="text-left rounded-xl border border-violet-200 bg-violet-50/60 p-4 hover:bg-violet-50 hover:border-violet-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-500">
-                <p class="text-[11px] text-violet-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
-                <p class="text-3xl font-bold text-violet-700 leading-none">{{ number_format($teamStats['right_team']) }}</p>
-                <p class="text-[11px] text-gray-700 mt-1.5">members under your right leg</p>
+                class="text-left rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 hover:bg-indigo-50 hover:border-indigo-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <p class="text-[11px] text-indigo-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
+                <p class="text-3xl font-bold text-indigo-700 leading-none">{{ number_format($teamStats['right_team']) }}</p>
+                <p class="text-[11px] text-gray-700 mt-1.5">members under your right group</p>
             </button>
         </div>
 

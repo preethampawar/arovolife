@@ -108,7 +108,7 @@
             <p class="text-sm italic text-gray-400">House sale (no referrer)</p>
             @endif
             @if($order->self_consumption)
-            <p class="text-xs text-amber-700 mt-1">Self-consumption (PV only)</p>
+            <p class="text-xs text-amber-700 mt-1">Self-consumption (BV only)</p>
             @endif
         </div>
 

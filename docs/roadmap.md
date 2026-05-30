@@ -26,7 +26,7 @@ Compliance · Admin.
   + micro-quiz, electronic consent with versioned hash; DSR Rule 5(1)(a))
 - One PAN = one ADN
 - Couple registration (US-1.13) — two distributor rows, both with full
-  KYC, mutually linked; secondary doesn't take a binary tree slot
+  KYC, mutually linked; secondary doesn't take a Genos (binary tree) slot
 - Aadhaar via UIDAI-approved AUA/KUA partner — reference + last-4 only,
   raw never stored (DPDP Act 2023; hard rule 8)
 - PAN as hash + last-4 (encrypted blob purged after KYC sign-off)
@@ -37,7 +37,7 @@ Compliance · Admin.
 
 **Genealogy**
 
-- Closure-table binary tree (ADR-0001)
+- Closure-table Genos (binary placement tree) (ADR-0001)
 - Single-level placement on the chosen leg (ADR-0003) — no spine walk
 - Sponsorship vs binary placement separation
 - Line-change request (≤ 5 working days, single use, no-downline guard)
@@ -220,7 +220,7 @@ Compliance · Admin.
 
 **Module:** Compensation (1 of 3).
 
-- Binary BV/PV matching using left-leg / right-leg subtree volumes
+- Binary BV matching using left-leg / right-leg subtree volumes
   (closure-table reads — ADR-0001 §70)
 - Carry-forward of unmatched leg volume
 - Weekly / monthly payout windows interacting with Wallet

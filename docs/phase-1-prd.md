@@ -13,7 +13,7 @@ Phase 1 is the foundation of the Arovolife platform. It delivers the
 identity, KYC, consent, binary-placement and genealogy spine that every
 later phase depends on. At the end of Phase 1 a prospect can be invited,
 complete mandatory orientation, accept the Direct Seller Agreement,
-complete PAN/Aadhaar/bank KYC, be placed in the binary tree under a
+complete PAN/Aadhaar/bank KYC, be placed in the Genos (binary placement tree) under a
 chosen downline node, and log in as an active Direct Seller.
 Administrators can search the tree, freeze/terminate distributors,
 change the Placement Strategy setting (with audit log), and export the
@@ -62,7 +62,7 @@ US-1.01 to US-1.16 inclusive — including:
 ## 5. Architecture
 
 - Modular monolith (Laravel 13).
-- Closure-table for binary tree (ADR-0001).
+- Closure-table for the Genos (binary placement tree) (ADR-0001).
 - Placement Strategy admin setting (ADR-0002).
 - Service Layer + domain events.
 - Queue (database driver in Phase 1).

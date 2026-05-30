@@ -78,6 +78,27 @@ it('DSH-02: dashboard renders the ID-card panel for a distributor', function () 
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Your ADN', false)
+        ->assertSee('Profile Stats', false)
+        ->assertSee('ID Number', false)
         ->assertSee('Status', false);
+});
+
+it('PS-01: profile-stats prints the ID-card panel with the company header for a distributor', function () {
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    $this->actingAs($user)
+        ->get(route('profile-stats.show'))
+        ->assertOk()
+        ->assertSee('Profile Stats', false)
+        ->assertSee('Arovolife Private Limited', false)
+        ->assertSee('ID Number', false);
+});
+
+it('PS-02: profile-stats redirects to the dashboard when registration is incomplete (no distributor)', function () {
+    $user = dshUser('active');
+
+    $this->actingAs($user)
+        ->get(route('profile-stats.show'))
+        ->assertRedirect(route('dashboard'));
 });

@@ -12,7 +12,7 @@
             you continue.
         @else
             Enter the ADN of the Direct Seller who invited you, plus the placement
-            ADN under whose binary tree you'd like to be placed. They're often the
+            ADN under whose Genos (placement tree) you'd like to be placed. They're often the
             same. Your sponsor can find both numbers in their dashboard.
         @endif
     </p>

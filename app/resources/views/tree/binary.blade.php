@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'My binary tree')
+@section('title', 'My Genos')
 
 @section('content')
 @include('tree._content', [

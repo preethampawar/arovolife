@@ -190,7 +190,7 @@
                     @if($placement_side)
                     <div class="{{ $rowClass }}">
                         <span class="text-gray-600">Side</span>
-                        <span class="text-gray-900">{{ strtoupper($placement_side) === 'L' ? '← Left leg' : '→ Right leg' }}</span>
+                        <span class="text-gray-900">{{ strtoupper($placement_side) === 'L' ? '← Left group' : '→ Right group' }}</span>
                     </div>
                     @endif
                 </div>

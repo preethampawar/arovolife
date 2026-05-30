@@ -23,6 +23,13 @@ use Illuminate\View\View;
  */
 final class TreeController extends Controller
 {
+    /**
+     * Levels of the binary tree a distributor sees by default (no ?levels=
+     * query param). Deeper trees still render on demand via the Depth field
+     * or Expand All. Admin views are not subject to this cap.
+     */
+    private const DEFAULT_DISTRIBUTOR_DEPTH = 3;
+
     public function binary(Request $request, ?string $adn = null): View|RedirectResponse
     {
         $authDistributor = Auth::user()?->distributor;
@@ -79,14 +86,17 @@ final class TreeController extends Controller
             ->all();
         $maxObservedDepth = empty($countByDepth) ? 0 : max(array_keys($countByDepth));
 
-        // Default depth is dynamic: open the tree at the root's actual
-        // subtree depth, so we never render (or claim) more levels than
-        // exist. A shallow tree opens fully and compact; a deep tree opens
-        // to its real extent. min 1 so a childless root still shows its
-        // own card + the two invite slots.
+        // Default depth for distributors: open to 3 levels deep. A deep tree
+        // can be visually overwhelming on first load, so we start compact and
+        // let the distributor dial the depth up (Expand All / the Depth field)
+        // to reach their full subtree. The default is still bounded by the
+        // root's actual subtree depth, so a shallow tree opens fully. min 1
+        // so a childless root still shows its own card + the two invite slots.
+        // (The admin tree — AdminTreeController — keeps the full-depth default;
+        // this cap is distributor-only.)
         $requested = $request->query('levels');
         if ($requested === null || $requested === '') {
-            $levels = max(1, $maxObservedDepth);
+            $levels = min(self::DEFAULT_DISTRIBUTOR_DEPTH, max(1, $maxObservedDepth));
         } else {
             $levels = max(1, (int) $requested);
         }

@@ -129,15 +129,15 @@ final class AdminSettingsController extends Controller
             // ── Self-purchase ──────────────────────────────────────────────
             'commerce.self_purchase.earns_pv' => [
                 'group' => 'self_purchase',
-                'label' => 'Self-purchase earns PV',
-                'description' => "When ON, a distributor's own product purchases count toward their personal volume.",
+                'label' => 'Self-purchase earns BV',
+                'description' => "When ON, a distributor's own product purchases count toward their Business Volume (BV).",
                 'type' => 'bool',
                 'default' => 'true',
             ],
             'commerce.self_purchase.earns_retail_margin' => [
                 'group' => 'self_purchase',
                 'label' => 'Self-purchase earns retail margin',
-                'description' => "When ON, a distributor's own product purchases earn the retail margin component. Default OFF — self-purchase typically only contributes PV, not retail margin.",
+                'description' => "When ON, a distributor's own product purchases earn the retail margin component. Default OFF — self-purchase typically only contributes BV, not retail margin.",
                 'type' => 'bool',
                 'default' => 'false',
             ],

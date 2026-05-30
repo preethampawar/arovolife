@@ -139,7 +139,7 @@ ADNs are deterministic.
    `SettingsSeeder`, `ContentPageSeeder`, `LedgerAccountSeeder`,
    `CommerceFeatureFlagSeeder`, `ProductCatalogSeeder`.
 4. **Reserved distributor tree** — inserts 31 users + 31 distributor rows in
-   a complete 5-level binary tree (1 + 2 + 4 + 8 + 16 = 31), populates
+   a complete 5-level Genos (binary tree: 1 + 2 + 4 + 8 + 16 = 31), populates
    `genealogy_closure` (129 rows = 31 self + 98 ancestor edges), sets the
    root's self-references, and copies each parent's id into its children's
    `sponsor_id` and `placement_parent_id`.

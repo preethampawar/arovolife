@@ -5,7 +5,7 @@
 @section('content')
 
 <p class="text-sm text-gray-600 mb-4">
-    Distributors requesting a move of their <strong>binary placement</strong> to a different
+    Distributors requesting a move of their <strong>Genos placement</strong> to a different
     parent. Approving moves their placement only — the sponsor is never changed.
 </p>
 

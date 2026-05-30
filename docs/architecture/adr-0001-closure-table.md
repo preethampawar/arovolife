@@ -1,4 +1,4 @@
-# ADR-0001 — Use a closure table for the binary genealogy tree
+# ADR-0001 — Use a closure table for the Genos (binary genealogy tree)
 
 - **Status:** Accepted
 - **Date:** 2026-04-19
@@ -8,7 +8,7 @@
 
 ## Context
 
-Arovolife's binary tree is the backbone of the platform. It has:
+Arovolife's Genos (binary placement tree) is the backbone of the platform. It has:
 
 - Unlimited depth (millions of nodes projected).
 - High write frequency during campaigns (concurrent placements).

@@ -58,7 +58,7 @@
             ['label' => 'Aadhaar (last 4)',   'value' => $distributor->aadhaar_last4 ? 'XXXXXXXX'.$distributor->aadhaar_last4 : null, 'mono' => true],
             ['label' => 'Bank IFSC',          'value' => $distributor->bank_ifsc,                    'mono' => true],
             ['label' => 'Sponsor',            'value' => $sponsor ? trim(($sponsor->user?->full_name ?: 'Distributor').' ('.$sponsor->adn.')') : null],
-            ['label' => 'Placement side',     'value' => $distributor->placement_side === 'L' ? 'Left leg' : ($distributor->placement_side === 'R' ? 'Right leg' : null)],
+            ['label' => 'Placement side',     'value' => $distributor->placement_side === 'L' ? 'Left group' : ($distributor->placement_side === 'R' ? 'Right group' : null)],
             ['label' => 'Couple registration','value' => $distributor->spouse_distributor_id ? ($distributor->is_primary_couple ? 'Yes — Primary' : 'Yes — Spouse') : 'No'],
             ['label' => 'Account status',     'value' => ucfirst((string) ($distributor->status ?? '—'))],
         ];

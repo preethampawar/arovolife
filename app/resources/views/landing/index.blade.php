@@ -465,7 +465,7 @@
                 $iconBadge    = '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>';
 
                 $steps = [
-                    ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + leg.',          'bg' => 'bg-brand-500',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
+                    ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + group.',        'bg' => 'bg-brand-500',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
                     ['n' => '2', 'title' => 'Create Account', 'body' => 'Name, email, phone, password.',        'bg' => 'bg-leaf-500',    'shadow' => 'shadow-leaf-500/30',    'icon' => $iconUserPlus],
                     ['n' => '3', 'title' => 'Orientation',    'body' => 'Watch the video, pass the quiz.',      'bg' => 'bg-sunrise-500', 'shadow' => 'shadow-sunrise-500/30', 'icon' => $iconPlay],
                     ['n' => '4', 'title' => 'KYC',            'body' => 'PAN + Aadhaar (verified gateway).',    'bg' => 'bg-violet-500',  'shadow' => 'shadow-violet-500/30',  'icon' => $iconId],
@@ -501,7 +501,7 @@
         </div>
     </section>
 
-    {{-- Products preview — vibrant category teasers --}}
+    {{-- Products preview — subtle, lightly-tinted category teasers --}}
     <section class="relative py-16 overflow-hidden">
         <div class="absolute top-0 left-1/3 w-[400px] h-[400px] bg-leaf-100/50 rounded-full blur-3xl pointer-events-none"></div>
         <div class="max-w-7xl mx-auto px-6 relative">
@@ -513,8 +513,8 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @php
-                    // Heroicons outline paths. Stroke = currentColor =
-                    // white (each card's body text is white on a gradient).
+                    // Heroicons outline paths. Stroke = currentColor, which the
+                    // icon chip sets per-category (a soft tinted icon on a light card).
                     $iconHeart    = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.099 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/>';
                     $iconSparkles = '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>';
                     $iconHome     = '<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>';
@@ -525,72 +525,80 @@
 
                     // Six categories, each with a distinct hue across the
                     // brand + Tailwind palette so no two cards share a colour
-                    // family (leaf vs emerald would clash — picked teal for
-                    // Home Care instead).
+                    // family. Each card is a SUBTLE light tint (bg-*-50 with a
+                    // *-100 border) rather than a saturated gradient — the hue
+                    // shows through the icon chip, eyebrow and link instead.
+                    // Explicit class strings (no interpolation) so Tailwind's
+                    // JIT compiler can see and emit every utility.
                     $categories = [
                         [
                             'title' => 'Health Care',
                             'subtitle' => 'Evidence-led wellness',
                             'body' => 'Daily supplements, immunity blends, and Ayurveda-inspired formulations. Every milligram declared on the label, every batch independently tested.',
-                            'gradient' => 'from-leaf-400 via-leaf-500 to-leaf-600',
-                            'glow' => 'shadow-leaf-500/20',
+                            'card' => 'bg-leaf-50 border-leaf-100 hover:border-leaf-200',
+                            'iconChip' => 'bg-leaf-100 text-leaf-600',
+                            'accent' => 'text-leaf-700',
                             'icon' => $iconHeart,
                         ],
                         [
                             'title' => 'Skin and Beauty',
                             'subtitle' => 'Radiance, responsibly made',
                             'body' => 'Cleansers, serums, and treatments formulated for Indian skin. Paraben-free, cruelty-free, dermatologically reviewed before launch.',
-                            'gradient' => 'from-rose-400 via-rose-500 to-rose-600',
-                            'glow' => 'shadow-rose-500/20',
+                            'card' => 'bg-rose-50 border-rose-100 hover:border-rose-200',
+                            'iconChip' => 'bg-rose-100 text-rose-600',
+                            'accent' => 'text-rose-700',
                             'icon' => $iconSparkles,
                         ],
                         [
                             'title' => 'Personal Care',
                             'subtitle' => 'Daily essentials, done honestly',
                             'body' => 'Toothpaste, soaps, deodorants, and body wash — clean ingredient lists, no hidden fragrances, no surprise SLS.',
-                            'gradient' => 'from-brand-400 via-brand-500 to-brand-600',
-                            'glow' => 'shadow-brand-500/20',
+                            'card' => 'bg-brand-50 border-brand-100 hover:border-brand-200',
+                            'iconChip' => 'bg-brand-100 text-brand-600',
+                            'accent' => 'text-brand-700',
                             'icon' => $iconComb,
                         ],
                         [
                             'title' => 'Home Care',
                             'subtitle' => 'A home that breathes clean',
                             'body' => 'Plant-based dishwash, laundry, and surface cleaners. Tough on grime, gentle on hands, biodegradable at the drain.',
-                            'gradient' => 'from-teal-400 via-teal-500 to-teal-600',
-                            'glow' => 'shadow-teal-500/20',
+                            'card' => 'bg-teal-50 border-teal-100 hover:border-teal-200',
+                            'iconChip' => 'bg-teal-100 text-teal-600',
+                            'accent' => 'text-teal-700',
                             'icon' => $iconHome,
                         ],
                         [
                             'title' => 'Agri Care',
                             'subtitle' => 'Rooted in healthier soil',
                             'body' => 'Organic fertilisers, bio-pesticides, and soil conditioners for stronger crops. Plant nutrition that works with the land, not against it.',
-                            'gradient' => 'from-amber-400 via-amber-500 to-amber-600',
-                            'glow' => 'shadow-amber-500/20',
+                            'card' => 'bg-amber-50 border-amber-100 hover:border-amber-200',
+                            'iconChip' => 'bg-amber-100 text-amber-600',
+                            'accent' => 'text-amber-700',
                             'icon' => $iconLeaf,
                         ],
                         [
                             'title' => 'Lifestyle',
                             'subtitle' => 'Wellness, beyond the bottle',
                             'body' => 'Curated bundles, wellness journals, and lifestyle accessories — the everyday companions that turn a routine into a habit.',
-                            'gradient' => 'from-violet-400 via-violet-500 to-violet-600',
-                            'glow' => 'shadow-violet-500/20',
+                            'card' => 'bg-violet-50 border-violet-100 hover:border-violet-200',
+                            'iconChip' => 'bg-violet-100 text-violet-600',
+                            'accent' => 'text-violet-700',
                             'icon' => $iconSun,
                         ],
                     ];
                 @endphp
                 @foreach($categories as $cat)
-                <a href="{{ route('shop.index') }}" class="group relative rounded-3xl overflow-hidden bg-gradient-to-br {{ $cat['gradient'] }} p-7 shadow-xl {{ $cat['glow'] }} hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-white block">
-                    <div class="absolute -top-12 -right-12 w-40 h-40 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
+                <a href="{{ route('shop.index') }}" class="group relative rounded-3xl overflow-hidden border {{ $cat['card'] }} p-7 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 block">
                     <div class="relative">
-                        <div class="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/20 backdrop-blur">
+                        <div class="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl {{ $cat['iconChip'] }}">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-7 h-7" aria-hidden="true">
                                 {!! $cat['icon'] !!}
                             </svg>
                         </div>
-                        <p class="text-[11px] uppercase tracking-wider text-white/80 font-semibold mb-1">{{ $cat['subtitle'] }}</p>
-                        <h3 class="text-2xl font-bold mb-3 leading-tight">{{ $cat['title'] }}</h3>
-                        <p class="text-sm text-white/90 leading-relaxed mb-5">{{ $cat['body'] }}</p>
-                        <span class="inline-flex items-center gap-1.5 text-sm font-semibold group-hover:translate-x-1 transition-transform">
+                        <p class="text-[11px] uppercase tracking-wider {{ $cat['accent'] }} font-semibold mb-1">{{ $cat['subtitle'] }}</p>
+                        <h3 class="text-2xl font-bold mb-3 leading-tight text-gray-900">{{ $cat['title'] }}</h3>
+                        <p class="text-sm text-gray-600 leading-relaxed mb-5">{{ $cat['body'] }}</p>
+                        <span class="inline-flex items-center gap-1.5 text-sm font-semibold {{ $cat['accent'] }} group-hover:translate-x-1 transition-transform">
                             Browse range
                             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
                         </span>

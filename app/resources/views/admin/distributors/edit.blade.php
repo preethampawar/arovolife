@@ -99,11 +99,11 @@
     </div>
 
     {{-- Tree position (truly immutable — ADN, sponsor, placement
-         define the binary tree structure and cannot be re-keyed). --}}
+         define the Genos (placement tree) structure and cannot be re-keyed). --}}
     <div class="bg-gray-50 rounded-2xl border border-gray-200 p-6">
         <h3 class="font-semibold text-gray-800 mb-2">Tree position</h3>
         <p class="text-xs text-gray-700 mb-4">
-            ADN, sponsor, and placement are immutable — they define this distributor's position in the binary tree. Shown for reference only.
+            ADN, sponsor, and placement are immutable — they define this distributor's position in the Genos (placement tree). Shown for reference only.
         </p>
         <div class="grid grid-cols-2 gap-4 text-sm">
             <div>

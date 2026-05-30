@@ -109,7 +109,7 @@ Examples include (without limitation):
 ### Genealogy & Placement
 
 - Wrong sponsor recorded
-- Wrong placement (leg, parent)
+- Wrong placement (group / Genos side, parent)
 - Line-change request not honoured
 - Suspected ghost / fake placements in your downline
 - Slot squatting complaints
@@ -145,7 +145,7 @@ Examples include (without limitation):
 
 - Account hacked or shared without consent
 - Bug causing data loss
-- Suspected manipulation of BV / PV / commission engine
+- Suspected manipulation of BV / commission engine
 - Accessibility issues with the platform
 
 If your concern does not fit any of the above, raise it anyway — the ticketing system has a free-text category.

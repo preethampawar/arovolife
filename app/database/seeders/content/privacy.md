@@ -33,9 +33,9 @@ For privacy questions or to exercise any right described in §10, write to the D
 
 | Category | Field |
 |---|---|
-| Account | ADN; sponsor ID; placement parent ID; binary leg; rank; orientation watch percentage and quiz answers. |
+| Account | ADN; sponsor ID; placement parent ID; Genos placement group; rank; orientation watch percentage and quiz answers. |
 | Consent log | Acceptance of T&C / Ethics / Privacy / Returns / Compensation Plan with version, IP, timestamp, device fingerprint. |
-| Transactions (from Phase 2) | Orders placed, customer attributions, BV/PV earned, commission credits, payouts, TDS deductions, GST invoices, returns and refunds. |
+| Transactions (from Phase 2) | Orders placed, customer attributions, BV earned, commission credits, payouts, TDS deductions, GST invoices, returns and refunds. |
 | Communications | In-app messages, support tickets, grievances and their attachments. |
 | Behavioural | Login timestamps, IP addresses, device fingerprints, page-view analytics (first-party). |
 
@@ -60,7 +60,7 @@ Each category of processing is grounded in one or more of the lawful bases recog
 - **Consent** — for registration, marketing communications, optional analytics, retention of supporting documents beyond statutory minima. Consent is captured electronically, version-stamped, and revocable.
 - **Performance of contract** — for issuing your ADN, executing your orders, paying your commissions, processing returns and refunds, providing customer and Distributor support.
 - **Legal obligation** — for KYC under DSR 2021; for TDS reporting under the Income Tax Act; for GST invoicing under the CGST Act; for record retention under the Companies Act 2013, the Income Tax Act §44AA, and DSR 2021 Rule 12; for grievance redressal under DSR 2021 Rule 12.
-- **Legitimate use** under DPDP Act §7 — for fraud prevention, security incident response, internal audit and ensuring the integrity of the binary tree.
+- **Legitimate use** under DPDP Act §7 — for fraud prevention, security incident response, internal audit and ensuring the integrity of the Genos (binary placement tree).
 
 Where consent is the basis, you can withdraw at any time (see §10). Withdrawal does not affect the legality of processing performed before the withdrawal.
 
@@ -70,10 +70,10 @@ We process your personal data for:
 
 1. **Registration** — verifying your identity, age, eligibility; issuing your ADN; recording your sponsor and placement; capturing your consent log.
 2. **KYC and re-KYC** — meeting statutory KYC obligations and verifying material changes.
-3. **Compensation accounting** — calculating BV / PV, ranks, commissions, pool shares, payouts, TDS and GST.
+3. **Compensation accounting** — calculating BV, ranks, commissions, pool shares, payouts, TDS and GST.
 4. **Order fulfilment** — receiving, packing, dispatching and tracking customer orders; managing returns, refunds and buybacks.
 5. **Customer and Distributor support** — responding to your queries, processing grievances, providing training and education content.
-6. **Fraud prevention and security** — detecting account compromise, surrogate selling, ghost placements, BV / PV manipulation, payment fraud, and abuse of the platform.
+6. **Fraud prevention and security** — detecting account compromise, surrogate selling, ghost placements, BV manipulation, payment fraud, and abuse of the platform.
 7. **Statutory reporting** — filings with Income Tax, GST authorities, MCA, and consumer-protection authorities.
 8. **Platform improvement** — first-party analytics on aggregate, pseudonymised usage; bug diagnostics; performance tuning.
 9. **Marketing** (only with consent and only after Phase 4 when the marketing module ships) — sending Distributor-only programme updates, product launches and ethics reminders.

@@ -11,9 +11,9 @@
 @endif
 
 <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
-    <p class="font-semibold mb-1">Binary placement change only</p>
-    <p class="leading-relaxed">Approving this request moves the distributor's position in the binary
-        tree under the requested parent. Their <strong>sponsor is not changed</strong>.</p>
+    <p class="font-semibold mb-1">Genos placement change only</p>
+    <p class="leading-relaxed">Approving this request moves the distributor's position in the Genos (placement tree)
+        under the requested parent. Their <strong>sponsor is not changed</strong>.</p>
 </div>
 
 <div class="rounded-2xl border border-gray-200 bg-white p-6 mb-6">
@@ -63,8 +63,8 @@
 @if($lcr->status === 'pending')
     @if($freeSides === [])
     <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900 mb-6">
-        <p class="font-semibold mb-1">No free leg under the requested parent</p>
-        <p>Both legs are taken, so this move cannot be approved. Reject it with a reason below.</p>
+        <p class="font-semibold mb-1">No free group under the requested parent</p>
+        <p>Both groups are taken, so this move cannot be approved. Reject it with a reason below.</p>
     </div>
     @else
     <div class="mb-6">
@@ -72,12 +72,12 @@
             class="rounded-2xl border border-green-200 bg-green-50 p-6 space-y-3"
             data-confirm="Approve this line change and move the placement now?"
             data-confirm-title="Confirm approval"
-            data-confirm-impact="Moves the distributor's binary placement under the requested parent on the chosen leg. Sponsor is unchanged. This cannot be undone via this screen.">
+            data-confirm-impact="Moves the distributor's Genos placement under the requested parent on the chosen group. Sponsor is unchanged. This cannot be undone via this screen.">
             @csrf
             <p class="text-base font-semibold text-green-800">Approve & move placement</p>
             <label class="block text-xs text-green-800">
-                Leg to place on
-                <x-help-tip text="Which side of the requested parent to attach the distributor to. Only free legs are listed; the first free leg is preselected." />
+                Group to place on
+                <x-help-tip text="Which side of the requested parent to attach the distributor to. Only free groups are listed; the first free group is preselected." />
             </label>
             <select name="chosen_side" required
                 class="w-full rounded-lg border border-green-300 bg-white px-3 py-2 text-sm focus:border-green-500 focus:ring-green-500">

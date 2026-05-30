@@ -10,8 +10,8 @@
     <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-4 text-sm text-blue-900">
         <p class="font-semibold mb-1">What this form does</p>
         <p class="leading-relaxed">
-            This requests a move of your position in the binary tree to sit under a
-            different placement parent. It changes your <strong>binary placement only</strong> —
+            This requests a move of your position in your Genos (placement tree) to sit under a
+            different placement parent. It changes your <strong>Genos placement only</strong> —
             your sponsor stays the same. An admin must approve the request before anything moves.
         </p>
     </div>
@@ -79,13 +79,13 @@
     <form method="POST" action="{{ route('line-change.submit') }}" class="space-y-5"
         data-confirm="Submit this line-change request for admin review?"
         data-confirm-title="Confirm line-change request"
-        data-confirm-impact="This changes your binary placement only — your sponsor stays the same. The change happens only after an admin approves it.">
+        data-confirm-impact="This changes your Genos placement only — your sponsor stays the same. The change happens only after an admin approves it.">
         @csrf
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">
                 New placement parent ADN
-                <x-help-tip text="The 9-digit ADN of the distributor you want to be placed under in the binary tree. They must have joined before you and have a free leg. Your sponsor does not change." />
+                <x-help-tip text="The 9-digit ADN of the distributor you want to be placed under in your Genos. They must have joined before you and have a free group. Your sponsor does not change." />
             </label>
             <input type="text" name="to_parent_adn" value="{{ old('to_parent_adn') }}"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono tracking-widest focus:border-brand-500 focus:ring-brand-500"

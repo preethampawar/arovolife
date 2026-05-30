@@ -61,7 +61,7 @@ it('AS-01: GET /admin/settings renders friendly section headers, not just a raw 
     // Friendly per-setting labels — not raw keys as headings.
     $response->assertSee('Storefront checkout');
     $response->assertSee('Cooling-off period (days)');
-    $response->assertSee('Self-purchase earns PV');
+    $response->assertSee('Self-purchase earns BV');
     // The engineer view is still present but collapsed.
     $response->assertSee('Show advanced settings (engineer view)');
 });

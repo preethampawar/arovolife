@@ -45,7 +45,7 @@
             @endif
         </div>
         @if($sideOpt)
-            <span class="ml-auto text-[11px] uppercase tracking-wider text-brand-700/70 font-semibold whitespace-nowrap">Placed on the {{ $sideOpt === 'L' ? 'left' : 'right' }} leg</span>
+            <span class="ml-auto text-[11px] uppercase tracking-wider text-brand-700/70 font-semibold whitespace-nowrap">Placed on the {{ $sideOpt === 'L' ? 'left' : 'right' }} group</span>
         @endif
     </div>
     @endif

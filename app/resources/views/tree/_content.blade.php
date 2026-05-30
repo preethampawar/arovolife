@@ -16,7 +16,7 @@
        $showSponsorshipLink — bool, show "direct referrals on a separate page" link
        $adminContext        — bool, applies the admin styling tweaks --}}
 @php
-    $contextTitle        = $contextTitle        ?? 'My binary tree';
+    $contextTitle        = $contextTitle        ?? 'My Genos';
     $contextSubtitlePre  = $contextSubtitlePre  ?? 'Showing your placement and descendants up to ';
     $contextSubtitleHi   = $contextSubtitleHi   ?? null;
     $contextSubtitlePost = $contextSubtitlePost ?? '';
@@ -55,16 +55,34 @@
         @endforeach
         <div>
             <label for="levels" class="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Depth</label>
-            {{-- In direct-referral mode the depth is structurally fixed at 1
-                 (the literal meaning of "direct"). The input is rendered
-                 readonly so the depth control still communicates intent
-                 but the user can't pretend to dial it up — the controller
-                 also hard-caps the value, so even a hand-edited URL would
-                 land back on 1. --}}
-            <input id="levels" name="levels" type="number" min="1" step="1"
-                value="{{ $maxDepth }}"
-                @if($isSponsorshipMode) readonly aria-readonly="true" title="Direct referrals is always 1 level deep" @endif
-                class="w-16 sm:w-20 rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500 {{ $isSponsorshipMode ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white' }}">
+            @if($isSponsorshipMode)
+                {{-- In direct-referral mode the depth is structurally fixed at 1
+                     (the literal meaning of "direct"). The input is rendered
+                     readonly so the depth control still communicates intent
+                     but the user can't pretend to dial it up — the controller
+                     also hard-caps the value, so even a hand-edited URL would
+                     land back on 1. --}}
+                <input id="levels" name="levels" type="number" min="1" step="1"
+                    value="{{ $maxDepth }}"
+                    readonly aria-readonly="true" title="Direct referrals is always 1 level deep"
+                    class="w-16 sm:w-20 rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500 bg-gray-100 text-gray-500 cursor-not-allowed">
+            @else
+                {{-- Explicit −/+ steppers flank the input. Some users can't reach
+                     the browser's tiny native number spinner (touch, zoom,
+                     assistive tech), so these give a large, obvious hit target.
+                     They only adjust the field value (clamped at min 1) — the
+                     user still presses Apply to load the new depth, exactly like
+                     the native spinner. --}}
+                <div class="inline-flex items-stretch rounded-lg border border-gray-300 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-brand-500">
+                    <button type="button" onclick="treeStepDepth(-1)" aria-label="Decrease depth"
+                        class="px-2.5 text-gray-600 hover:bg-gray-50 hover:text-brand-700 text-base font-semibold leading-none inline-flex items-center transition-colors">−</button>
+                    <input id="levels" name="levels" type="number" min="1" step="1"
+                        value="{{ $maxDepth }}"
+                        class="w-12 sm:w-14 border-x border-gray-200 px-1 py-2 text-sm font-mono text-center focus:outline-none">
+                    <button type="button" onclick="treeStepDepth(1)" aria-label="Increase depth"
+                        class="px-2.5 text-gray-600 hover:bg-gray-50 hover:text-brand-700 text-base font-semibold leading-none inline-flex items-center transition-colors">+</button>
+                </div>
+            @endif
         </div>
         @unless($isSponsorshipMode)
             <button type="submit" class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Apply</button>
@@ -165,7 +183,7 @@
 
     <span class="mx-1 h-5 w-px bg-gray-200 hidden md:inline-block"></span>
 
-    {{-- View toggle: Binary tree (placement, L/R) vs Direct (sponsorship,
+    {{-- View toggle: Genos (binary placement tree, L/R) vs Direct (sponsorship,
          many children per parent). Skipped in admin context for now — the
          admin tree page only exposes the binary view. --}}
     @if(! ($adminContext ?? false))
@@ -177,7 +195,7 @@
     <span class="inline-flex items-center rounded-lg border border-gray-300 bg-white p-0.5 text-[11px] font-semibold">
         <a href="{{ $binaryHref }}"
             class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ ! $isSponsorshipView ? 'bg-brand-500 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
-            title="Binary placement tree (L/R)">Binary</a>
+            title="Genos placement tree (L/R)">Genos</a>
         <a href="{{ $directHref }}"
             class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ $isSponsorshipView ? 'bg-brand-500 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
             title="Sponsorship tree — distributors you directly introduced">Direct</a>
@@ -299,6 +317,16 @@
 </div>
 
 <script>
+// Depth steppers (−/+) next to the Depth field. Adjust the value only,
+// clamped to a minimum of 1; the user still presses Apply to load it, so
+// this is a drop-in replacement for the native number spinner.
+window.treeStepDepth = (delta) => {
+    const input = document.getElementById('levels');
+    if (!input || input.readOnly) return;
+    const next = Math.max(1, (parseInt(input.value, 10) || 1) + delta);
+    input.value = next;
+};
+
 (() => {
     const viewport = document.getElementById('treeViewport');
     const stage    = document.getElementById('treeStage');
@@ -399,7 +427,7 @@
     const copyBtn     = document.getElementById('inviteCopyBtn');
     window.openInviteModal = (btn) => {
         const parent = btn.dataset.inviteParent, side = btn.dataset.inviteSide, sideLabel = btn.dataset.inviteSideLabel;
-        headerEl.textContent    = `Invite to ${parent} (${sideLabel} leg)`;
+        headerEl.textContent    = `Invite to ${parent} (${sideLabel} group)`;
         placementEl.textContent = `${parent}.${side}`;
         urlInput.value = `${REGISTER_BASE}?sponsor=${encodeURIComponent(SELF_ADN)}&placement=${encodeURIComponent(parent)}&side=${side}`;
         modal.classList.remove('hidden'); modal.classList.add('flex');

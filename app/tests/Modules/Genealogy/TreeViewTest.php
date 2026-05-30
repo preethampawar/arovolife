@@ -220,3 +220,30 @@ it('TV-05: /tree/{adn} for a foreign ADN bounces back to /tree (no leak)', funct
 
     $response->assertRedirect(route('tree.binary'));
 });
+
+it('TV-06: distributor /tree defaults to 3 levels deep; deeper nodes need an explicit ?levels=', function () {
+    $rootUser = tvUser('root');
+    $rootId = tvSeedRoot($rootUser->id);
+
+    // Build a straight binary chain 4 levels deep below the root:
+    // root(0) → l1(1) → l2(2) → l3(3) → l4(4).
+    $l1 = tvPlace($rootId, tvUser('l1'), 'L');
+    $l2 = tvPlace($l1, tvUser('l2'), 'L');
+    $l3 = tvPlace($l2, tvUser('l3'), 'L');
+    $l4 = tvPlace($l3, tvUser('l4'), 'L');
+
+    $l3Adn = DB::table('distributors')->where('id', $l3)->value('adn');
+    $l4Adn = DB::table('distributors')->where('id', $l4)->value('adn');
+
+    // Default view (no ?levels=) caps at 3 levels: level-3 node shows,
+    // the level-4 node does not.
+    $default = $this->actingAs($rootUser->refresh())->get('/tree');
+    $default->assertOk();
+    $default->assertSee($l3Adn);
+    $default->assertDontSee($l4Adn);
+
+    // Explicitly requesting depth 4 reveals the level-4 node.
+    $deep = $this->actingAs($rootUser->refresh())->get('/tree?levels=4');
+    $deep->assertOk();
+    $deep->assertSee($l4Adn);
+});

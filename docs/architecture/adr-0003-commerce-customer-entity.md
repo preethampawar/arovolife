@@ -10,7 +10,7 @@
 
 Phase 2 introduces a first-party e-commerce storefront alongside the Phase 1 direct-selling network. A fundamental modelling question arises:
 
-> Does a person buying hand wash from the Arovolife shop need to be a Distributor in our binary tree?
+> Does a person buying hand wash from the Arovolife shop need to be a Distributor in our Genos (binary placement tree)?
 
 DSR 2021 Rule 5(1)(a) permits first-party retail sales to end-consumers. DPDP Act §6 requires consent to be purpose-limited. T&C §4 forbids any joining fee. Hard Rule 2 requires every commission row to carry a `product_sale_id` — if buyers must first register as distributors, we risk conflating "purchase" with "joining", which the regulator reads as a scheme.
 
@@ -44,7 +44,7 @@ DSR 2021 Rule 5(1)(a) permits first-party retail sales to end-consumers. DPDP Ac
 Adopt **Option C**.
 
 - New table `customers` (owned by the Commerce module). Minimal PII: name, email (hashed for lookup), phone (hashed), marketing opt-in. Encrypted at rest.
-- `customers.distributor_id` is a nullable FK to `distributors.id`. If the buyer happens to be a distributor, we link — `self_consumption=true` purchases count toward PV but not retail-margin commission.
+- `customers.distributor_id` is a nullable FK to `distributors.id`. If the buyer happens to be a distributor, we link — `self_consumption=true` purchases count toward BV but not retail-margin commission.
 - `customers.user_id` is a nullable FK to `users.id`. NULL = guest checkout.
 - When a Distributor registers, a listener on `genealogy.distributor.registered` auto-backfills a matching Customer row. Distributors therefore have a Customer record from day one without duplicating identity state.
 - Past orders are immutable — if a Customer later becomes a Distributor under a different sponsor, old orders stay attributed to whoever referred them at the time.

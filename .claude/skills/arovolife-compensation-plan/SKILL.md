@@ -28,12 +28,12 @@ exists so that the Phase 1 data model, events and audit trails are
 - TDS: 5% (per Income Tax rules; verify current rate on payout).
 - Repurchase wallet deduction: 10% of last-month GSB/MB/RB, cap ₹10,000.
 - Minimum payout: ₹500.
-- Mandatory monthly repurchase: 600 PV on or before the 15th; wallet must
+- Mandatory monthly repurchase: 600 BV on or before the 15th; wallet must
   also be cleared to zero before the 15th.
 
 ## Partner personal purchase ladder (A→ND)
 
-| Level | PV | Title |
+| Level | BV | Title |
 |---|---|---|
 | 1 | 3,000 | Agent |
 | 2 | 5,000 | Retailer |
@@ -47,13 +47,13 @@ exists so that the Phase 1 data model, events and audit trails are
 
 | Left / Right matched | Personal purchase title | Score | Incentive |
 |---|---|---|---|
-| 15,000 / 15,000 | Agent (3,000 PV) | 4 | ₹1,000 |
-| 30,000 / 30,000 | Retailer (5,000 PV) | 12 | ₹3,000 |
-| 90,000 / 90,000 | Dealer (15,000 PV) | 24 | ₹6,000 |
-| 2,70,000 / 2,70,000 | Wholesaler (50,000 PV) | 48 | ₹12,000 |
-| 8,00,000 / 8,00,000 | Distributor (1,00,000 PV) | 96 | ₹24,000 |
-| 24,00,000 / 24,00,000 | Regional (2,00,000 PV) | 160 | ₹40,000 |
-| 72,00,000 / 72,00,000 | National (3,00,000 PV) | 240 | ₹60,000 |
+| 15,000 / 15,000 | Agent (3,000 BV) | 4 | ₹1,000 |
+| 30,000 / 30,000 | Retailer (5,000 BV) | 12 | ₹3,000 |
+| 90,000 / 90,000 | Dealer (15,000 BV) | 24 | ₹6,000 |
+| 2,70,000 / 2,70,000 | Wholesaler (50,000 BV) | 48 | ₹12,000 |
+| 8,00,000 / 8,00,000 | Distributor (1,00,000 BV) | 96 | ₹24,000 |
+| 24,00,000 / 24,00,000 | Regional (2,00,000 BV) | 160 | ₹40,000 |
+| 72,00,000 / 72,00,000 | National (3,00,000 BV) | 240 | ₹60,000 |
 
 ## Mentorship Bonus slab (on top of GSB)
 
@@ -64,7 +64,7 @@ exists so that the Phase 1 data model, events and audit trails are
 
 | Rank | Name | Criteria (high level) | Pool | Months |
 |---|---|---|---|---|
-| 1 | Silver | 3 L / 3 L Group PV (with 2.5 L substitution rule) | 7% | 1 + 2 |
+| 1 | Silver | 3 L / 3 L Group BV (with 2.5 L substitution rule) | 7% | 1 + 2 |
 | 2 | Pearl | 5 L / 5 L (with 4 L substitution rule) | 4% | 1 + 2 |
 | 3 | Emerald | Two rank-2 leaders on each side | 3% | 1 + 1 |
 | 4 | Gold | Two rank-3 leaders on each side | 2.3% | 1 + 1 |

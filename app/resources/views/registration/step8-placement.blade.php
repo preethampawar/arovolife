@@ -5,7 +5,7 @@
 @section('content')
 <div class="max-w-xl mx-auto">
     <div class="mb-7 lift-in" style="animation-delay: 80ms;">
-        <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Binary tree placement</p>
+        <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Genos placement</p>
         <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
             Your <span class="text-brand-600">placement</span> is locked.
         </h1>
@@ -33,12 +33,12 @@
             @if($sideOpt)
                 <p class="text-xs text-slate-600 mt-1.5">
                     You will be placed on the
-                    <strong class="text-brand-700">{{ $sideOpt === 'L' ? 'left' : 'right' }} leg</strong>
+                    <strong class="text-brand-700">{{ $sideOpt === 'L' ? 'left' : 'right' }} group</strong>
                     of this distributor.
                 </p>
             @else
                 <p class="text-xs text-slate-600 mt-1.5">
-                    You will be placed on the first available leg under this distributor (left preferred).
+                    You will be placed on the first available group under this distributor (left preferred).
                 </p>
             @endif
         </div>

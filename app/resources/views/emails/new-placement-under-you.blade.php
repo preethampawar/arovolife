@@ -1,6 +1,6 @@
 @extends('emails.layouts.branded', [
-    'subject'     => 'New distributor placed on your '.$sideLabel.' leg — ADN '.$newJoinerAdn,
-    'previewText' => $newJoinerFullName.' (ADN '.$newJoinerAdn.') has just joined your '.$sideLabel.' leg.',
+    'subject'     => 'New distributor placed on your '.$sideLabel.' group — ADN '.$newJoinerAdn,
+    'previewText' => $newJoinerFullName.' (ADN '.$newJoinerAdn.') has just joined your '.$sideLabel.' group.',
 ])
 
 @section('content')
@@ -8,17 +8,17 @@
     <tr>
         <td>
             <p class="ar-h1" style="margin: 0 0 18px 0; font-size: 22px; line-height: 28px; font-weight: 700; color: #111827;">
-                A new distributor joined your {{ $sideLabel }} leg
+                A new distributor joined your {{ $sideLabel }} group
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Hi {{ $parentFullName }},
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
-                A new arovolife distributor has been placed directly under your binary tree on the
+                A new arovolife distributor has been placed directly under your Genos (placement tree) on the
                 @if($side === 'L')
-                    <strong style="color: #0a719f;">left leg ←</strong>
+                    <strong style="color: #0a719f;">left group ←</strong>
                 @else
-                    <strong style="color: #0a719f;">right leg →</strong>
+                    <strong style="color: #0a719f;">right group →</strong>
                 @endif
                 on {{ $placedAtFormatted }}.
             </p>
@@ -44,11 +44,11 @@
                 </tr>
                 <tr>
                     <td style="padding: 12px 14px; font-size: 13px; line-height: 20px; color: #374151;">
-                        <strong style="color: #111827;">Leg:</strong>
+                        <strong style="color: #111827;">Group:</strong>
                         {{ $sideLabel === 'left' ? '← Left' : '→ Right' }}
                         <span style="color: #6b7280;">
                             @if($sideChosenBy === 'referral_explicit')
-                                (you chose this leg)
+                                (you chose this group)
                             @elseif($sideChosenBy === 'referral_default')
                                 (default placement)
                             @elseif($sideChosenBy === 'referral_fallback_right')

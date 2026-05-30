@@ -47,10 +47,11 @@ If a user request would break one of these rules, stop and reply with:
 | Term | Meaning |
 |---|---|
 | **ADN** | Arovolife Distributor Number — the permanent unique ID issued at the end of registration (T&C §3.I Step 10). |
-| **BV / PV** | Business Volume / Personal Volume — points attached to each SKU and used by the compensation engine. (Phase 2+.) |
-| **Sponsor** | The distributor who introduced the new joiner. Captured in the `sponsorship` horizontal tree. Sponsor-tied earnings apply regardless of binary depth. |
-| **Placement** | The position of a distributor in the binary tree (not necessarily under their sponsor). Each distributor has one placement_parent and a left/right side. |
-| **Placement Strategy** | Company-wide admin setting: `default_left`, `default_right` or `custom`. Decides the starting leg when a placement_id is chosen. See `.claude/skills/arovolife-placement-engine/`. |
+| **BV** | Business Volume — points attached to each SKU and used by the compensation engine. (Phase 2+.) |
+| **Sponsor** | The distributor who introduced the new joiner. Captured in the `sponsorship` horizontal tree. Sponsor-tied earnings apply regardless of Genos depth. |
+| **Genos** | The binary placement tree — the two-sided (left group / right group) placement genealogy in which every distributor occupies one position. User-facing copy says "Genos" / "My Genos"; internal code keeps `binary` (route `tree.binary`, `_binary-node`, closure table). |
+| **Placement** | The position of a distributor in the Genos (binary placement tree), not necessarily under their sponsor. Each distributor has one placement_parent and a left/right side (group). |
+| **Placement Strategy** | Company-wide admin setting: `default_left`, `default_right` or `custom`. Decides the starting group when a placement_id is chosen. See `.claude/skills/arovolife-placement-engine/`. |
 | **Cooling-off** | Statutory 30-day window from Effective Date during which a distributor may cancel with full refund. |
 | **PYP** | Prove Your Position — rank-maintenance rule used by later phases. |
 | **T&C** | The Direct Seller Agreement & Code of Ethics bundled as `docs/compliance/`. |
@@ -68,7 +69,7 @@ If a user request would break one of these rules, stop and reply with:
 - **Double-entry ledger** (Phase 3 onwards). The wallet is never a mutable integer; it's a projection of an append-only entries table.
 - **Idempotency.** Every external call (payment, SMS, email, gateway) carries an idempotency key.
 - **Separation of duties.** `admin-finance` cannot freeze; `admin-compliance` cannot approve payouts. RBAC enforces this in code, not policy.
-- **Closure table for the binary tree.** See `docs/architecture/adr-0001-closure-table.md`. Do not reintroduce a nested-set or recursive CTE approach without a new ADR.
+- **Closure table for the Genos (binary placement tree).** See `docs/architecture/adr-0001-closure-table.md`. Do not reintroduce a nested-set or recursive CTE approach without a new ADR.
 - **Feature flags.** Every new module ships behind a flag with a documented killswitch.
 - **Observability from day one.** Structured logs, OpenTelemetry traces, Prometheus metrics.
 
@@ -116,7 +117,7 @@ Project skills in `.claude/skills/`:
 |---|---|
 | `arovolife-placement-engine` | The placement algorithm, descendant validation, Placement Strategy setting, race-safety requirements. |
 | `arovolife-compliance-rules` | DSR 2021 clauses, T&C duties, cooling-off, buyback, grievance SLAs. |
-| `arovolife-compensation-plan` | BV/PV, rank thresholds, bonus slabs, caps, repurchase logic (reference only; Phase 4+). |
+| `arovolife-compensation-plan` | BV, rank thresholds, bonus slabs, caps, repurchase logic (reference only; Phase 4+). |
 | `arovolife-ux-writing` | Safe vs unsafe phrasing; what counts as mis-selling; how to write error messages. |
 
 ---

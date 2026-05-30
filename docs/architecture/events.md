@@ -51,7 +51,7 @@ Examples: `identity.user.registered`, `genealogy.placement.created`,
 - Handlers: send welcome email with ADN, seed dashboard, analytics.
 
 ### `genealogy.placement.created`
-- When: a distributor is placed in the binary tree.
+- When: a distributor is placed in the Genos (binary placement tree).
 - Payload: `distributor_id`, `sponsor_id`, `placement_id`, `placement_parent_id`, `placement_side`, `depth`, `strategy_snapshot`, `side_chosen_by`.
 - Handlers: closure-table writer (synchronous, inside tx), analytics, audit-log.
 

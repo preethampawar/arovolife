@@ -122,9 +122,9 @@
             </div>
         </div>
 
-        {{-- Binary Children --}}
+        {{-- Genos Children --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
-            <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Direct Legs</p>
+            <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Direct Groups</p>
             <div class="flex gap-3">
                 <div class="flex-1 rounded-lg p-3 border {{ $leftChild ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white/50' }}">
                     <p class="text-xs text-gray-700 mb-1">Left (L)</p>
