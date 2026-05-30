@@ -128,7 +128,7 @@
             </div>
             <div>
                 <p class="text-xs text-gray-700 mb-0.5">Registered</p>
-                <p class="text-gray-800">{{ optional($distributor->created_at)->format('d M Y') }}</p>
+                <p class="text-gray-800">{{ optional($distributor->created_at)->format('d M Y, h:i A') }}</p>
             </div>
         </div>
     </div>

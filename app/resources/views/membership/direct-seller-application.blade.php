@@ -48,7 +48,7 @@
         $rows = [
             ['label' => 'Full name',          'value' => $distributor->full_name ?: $user?->full_name],
             ['label' => 'ADN',                'value' => $distributor->adn,                          'mono' => true],
-            ['label' => 'Registration date',  'value' => $distributor->effective_date?->format('d M Y')],
+            ['label' => 'Registration date',  'value' => $distributor->effective_date?->format('d M Y, h:i A')],
             ['label' => 'Cooling-off ends',   'value' => $distributor->cooling_off_end_at?->format('d M Y')],
             ['label' => 'Email',              'value' => $user?->email],
             ['label' => 'Phone',              'value' => $distributor->phone_e164 ?? $user?->phone_e164],
@@ -372,9 +372,20 @@
             </div>
         </section>
 
-        <p class="text-center text-[11px] text-slate-400">
-            Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
-        </p>
+        {{-- Footer contact strip — wrapped as real <a> tags so the
+             helpline, email and website stay clickable in the browser's
+             Save-as-PDF output. --}}
+        <div class="text-center text-[11px] text-slate-400 space-y-1">
+            <p>Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
+            <p>
+                <a href="tel:+918886662949" class="text-brand-600 hover:underline">+91 88866 62949</a>
+                <span class="text-slate-400">|</span>
+                <a href="mailto:support@arovolife.com" class="text-brand-600 hover:underline">support@arovolife.com</a>
+            </p>
+            <p>
+                <a href="https://www.arovolife.com" class="text-brand-600 hover:underline" target="_blank" rel="noopener">www.arovolife.com</a>
+            </p>
+        </div>
     </div>
 
 </body>

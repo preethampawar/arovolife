@@ -28,7 +28,7 @@
                 if ($initials === '') { $initials = mb_strtoupper(mb_substr((string) $user->email, 0, 1)); }
             @endphp
 
-            {{-- Profile dropdown (replaces the old "My Office | Sign out" pair) --}}
+            {{-- Profile dropdown (replaces the old "My Dashboard | Sign out" pair) --}}
             <div class="relative" data-profile-menu>
                 <button type="button" data-profile-trigger
                         class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full hover:bg-brand-600 transition-colors"
@@ -57,7 +57,7 @@
                         @else
                             <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
                                 <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
-                                My Office
+                                My Dashboard
                             </a>
                         @endif
                         <a href="{{ route('profile.show') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
@@ -111,12 +111,12 @@
 
         @auth
             {{-- Admins jump to their console; distributors jump to their
-                 dashboard ("My Office"). Guests keep the About Us link
+                 dashboard ("My Dashboard"). Guests keep the About Us link
                  since they have no dashboard to jump to. --}}
             @if(auth()->user()->hasRole('admin'))
                 <a href="{{ route('admin.dashboard') }}" class="hover:text-brand-50 transition-colors">Admin Console</a>
             @else
-                <a href="{{ route('dashboard') }}" class="hover:text-brand-50 transition-colors">My Office</a>
+                <a href="{{ route('dashboard') }}" class="hover:text-brand-50 transition-colors">My Dashboard</a>
             @endif
         @else
             <a href="{{ route('about') }}" class="hover:text-brand-50 transition-colors">About Us</a>
@@ -300,7 +300,7 @@
                 @if(auth()->user()->hasRole('admin'))
                     <a href="{{ route('admin.dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">Admin Console</a>
                 @else
-                    <a href="{{ route('dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Office</a>
+                    <a href="{{ route('dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Dashboard</a>
                 @endif
                 <a href="{{ route('profile.show') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">Edit profile</a>
                 <a href="{{ route('profile.password.show') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">Change password</a>

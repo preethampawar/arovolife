@@ -59,7 +59,7 @@
     @php
         $name = $stats['name'] ?? '—';
         $adn = $stats['adn'] ?? '—';
-        $joinDate = $stats['registration_date']?->format('d-m-Y');
+        $joinDate = $stats['registration_date']?->format('d-m-Y h:i A');
     @endphp
 
     <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -116,9 +116,15 @@
                         </dl>
                     </div>
                 </div>
-                <p class="relative text-[10px] sm:text-[11px] text-brand-600/80 font-medium tracking-wide pt-2 border-t border-brand-200/40">
-                    Quality you can trust · Value that returns · Service that listens
-                </p>
+                <div class="relative pt-2 border-t border-brand-200/40 text-center">
+                    <p class="text-[10px] sm:text-[11px] text-brand-600/80 font-medium tracking-wide">
+                        Quality you can trust · Value that returns · Service that listens
+                    </p>
+                    <p class="text-[10px] text-gray-600 mt-1 leading-snug">
+                        +91 88866 62949 <span class="text-gray-400">|</span> support@arovolife.com<br>
+                        www.arovolife.com
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -154,11 +160,14 @@
                     <li>In case of loss or damage, bring this to HR's notice immediately.</li>
                     <li>If found, please return it to the office address below or hand it over to the building security.</li>
                 </ul>
-                <div class="relative pt-2 mt-2 border-t border-brand-200/40">
+                <div class="relative pt-2 mt-2 border-t border-brand-200/40 text-center">
                     <p class="text-[10px] text-gray-500 leading-snug">
                         <span class="font-semibold text-gray-700">Arovolife Private Limited</span> · CIN U46909TS2026PTC210896<br>
-                        H. No. 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India.<br>
-                        <span class="text-gray-700">Helpline:</span> +91 88866 62949 · <span class="text-gray-700">Email:</span> support@arovolife.com
+                        H. No. 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India.
+                    </p>
+                    <p class="text-[10px] text-gray-600 mt-1 leading-snug">
+                        +91 88866 62949 <span class="text-gray-400">|</span> support@arovolife.com<br>
+                        www.arovolife.com
                     </p>
                 </div>
             </div>

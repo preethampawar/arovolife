@@ -125,7 +125,7 @@
                          : 'bg-amber-50 text-amber-700 border border-amber-200') }}">
                         {{ $d->status }}
                     </span>
-                    <p class="text-xs text-gray-600 mt-0.5">{{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y') }}</p>
+                    <p class="text-xs text-gray-600 mt-0.5">{{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y, h:i A') }}</p>
                 </div>
             </div>
             @empty

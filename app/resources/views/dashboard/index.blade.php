@@ -26,25 +26,63 @@
         Add or replace documents →
     </a>
 </div>
-@elseif($distributor)
-<div class="mb-6">
-    <a href="{{ route('dashboard.documents') }}" class="inline-flex items-center text-sm text-brand-600 font-medium hover:underline">
-        Manage my KYC documents →
-    </a>
-</div>
 @endif
 
-<div class="mb-8">
-    <h1 class="text-2xl font-bold mb-1">Welcome, {{ $user->full_name ?? $user->email }}</h1>
-    <p class="text-gray-800 text-sm">
-        Status:
-        @php
-            $accountStatus = $user->accountStatusLabel();
-        @endphp
-        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border {{ $accountStatus['class'] }}">
-            {{ $accountStatus['label'] }}
-        </span>
-    </p>
+@php
+    $accountStatus = $user->accountStatusLabel();
+    $hasDistributorBlock = $distributor !== null;
+    $inviteUrl = $hasDistributorBlock ? url('/join').'?sponsor='.$distributor->adn : null;
+    $bothFull  = $hasDistributorBlock ? (! $leftOpen && ! $rightOpen) : false;
+@endphp
+
+<div class="mb-8 grid grid-cols-1 md:grid-cols-2 md:items-start gap-4">
+    <div>
+        @if($hasDistributorBlock)
+            <a href="{{ route('dashboard.documents') }}" class="inline-flex items-center text-sm text-brand-600 font-medium hover:underline mb-3">
+                Manage my KYC documents →
+            </a>
+        @endif
+        <h1 class="text-2xl font-bold mb-1">Welcome, {{ $user->full_name ?? $user->email }}</h1>
+        <p class="text-gray-800 text-sm">
+            Status:
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border {{ $accountStatus['class'] }}">
+                {{ $accountStatus['label'] }}
+            </span>
+        </p>
+    </div>
+
+    @if($hasDistributorBlock)
+        {{-- Compact referral-link card. Same source as the full panel below
+             used to live in — moved here so distributors always see their
+             invite URL at the very top of the dashboard. --}}
+        <div class="w-full rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+            <div class="flex items-center justify-between gap-3 mb-2">
+                <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold">My Referral Link</p>
+                <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-white text-brand-700 border border-brand-200">Personal invite</span>
+            </div>
+            <div class="flex items-stretch gap-2">
+                <input type="text" readonly value="{{ $inviteUrl }}"
+                    class="flex-1 min-w-0 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    onclick="this.select()">
+                <button type="button"
+                    onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
+                    class="px-3 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition-colors">
+                    Copy
+                </button>
+            </div>
+            @if($bothFull)
+                <p class="mt-2 text-[11px] text-sunrise-700">
+                    <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sunrise-500"></span>Direct slots full.</span>
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">Open my tree →</a>
+                </p>
+            @else
+                <p class="mt-2 text-[11px] text-gray-700">
+                    Want a specific deeper slot?
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">Open my tree →</a>
+                </p>
+            @endif
+        </div>
+    @endif
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -52,11 +90,6 @@
     @if($distributor)
     {{-- ── Expanded ADN card — spans 2/3 on lg, stats + ID photo side by side. --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6 md:col-span-2 lg:col-span-2">
-        <div class="flex items-baseline justify-between mb-4 gap-3">
-            <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold">Your ADN</p>
-            <span class="font-mono font-bold text-brand-600 tracking-widest text-base">{{ $distributor->adn }}</span>
-        </div>
-
         @include('partials._id-card-panel', [
             'idCardStats' => $idCardStats,
             'idPhotoUrl'  => $idPhotoUrl,
@@ -75,11 +108,27 @@
                     <span class="font-medium">{{ $distributor->placement_side === 'L' ? '← Left' : '→ Right' }} leg</span>
                 </div>
             </div>
+            @php
+                // Line-change is a one-shot, 5-business-day window from
+                // effective_date (mirrors LineChangeController::show + the
+                // service-side guard in RequestLineChange).
+                $lcBusinessDaysSince = (int) $distributor->effective_date->diffInWeekdays(now());
+                $lcRemaining         = max(0, 5 - $lcBusinessDaysSince);
+                $lcAvailable         = $lcBusinessDaysSince <= 5;
+            @endphp
             <div class="mt-4 flex flex-col gap-1.5 text-xs">
                 <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">View my binary tree →</a>
-                <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">View my direct referrals →</a>
-                @if((int) $distributor->effective_date->diffInWeekdays(now()) <= 5)
-                <a href="{{ route('line-change.show') }}" class="text-brand-600 hover:text-brand-700 underline">Request line-change →</a>
+                <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">My Referrals →</a>
+                @if($lcAvailable)
+                    <a href="{{ route('line-change.show') }}" class="text-brand-600 hover:text-brand-700 underline">
+                        Request line-change →
+                        <span class="text-gray-500 font-normal">({{ $lcRemaining }} {{ $lcRemaining === 1 ? 'day' : 'days' }} left)</span>
+                    </a>
+                @else
+                    <span class="text-gray-400 cursor-not-allowed line-through"
+                          title="The 5-business-day line-change window has ended.">
+                        Request line-change
+                    </span>
                 @endif
             </div>
         </div>
@@ -247,28 +296,35 @@
             </div>
         </div>
 
-        {{-- Top row: the four headline numbers --}}
+        {{-- Top row: the four headline numbers. Each card is a button —
+             clicking it opens a modal with the underlying roster (S.No, ADN,
+             name, state, status) and a Download CSV button. JSON +
+             CSV come from TeamRosterController. --}}
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div class="rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+            <button type="button" data-team-roster="total"
+                class="text-left rounded-xl border border-brand-200 bg-brand-50/60 p-4 hover:bg-brand-50 hover:border-brand-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total team</p>
                 <p class="text-3xl font-bold text-brand-700 leading-none">{{ number_format($teamStats['total_team']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">members in your binary downline</p>
-            </div>
-            <div class="rounded-xl border border-leaf-200 bg-leaf-50/60 p-4">
+            </button>
+            <button type="button" data-team-roster="direct"
+                class="text-left rounded-xl border border-leaf-200 bg-leaf-50/60 p-4 hover:bg-leaf-50 hover:border-leaf-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-leaf-500">
                 <p class="text-[11px] text-leaf-700 uppercase tracking-wider font-semibold mb-1">Direct referrals</p>
                 <p class="text-3xl font-bold text-leaf-700 leading-none">{{ number_format($teamStats['direct_referrals']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">people you personally invited</p>
-            </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-4">
-                <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
-                <p class="text-3xl font-bold text-gray-900 leading-none">{{ number_format($teamStats['left_team']) }}</p>
+            </button>
+            <button type="button" data-team-roster="left"
+                class="text-left rounded-xl border border-sky-200 bg-sky-50/60 p-4 hover:bg-sky-50 hover:border-sky-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
+                <p class="text-3xl font-bold text-sky-700 leading-none">{{ number_format($teamStats['left_team']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">members under your left leg</p>
-            </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-4">
-                <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
-                <p class="text-3xl font-bold text-gray-900 leading-none">{{ number_format($teamStats['right_team']) }}</p>
+            </button>
+            <button type="button" data-team-roster="right"
+                class="text-left rounded-xl border border-violet-200 bg-violet-50/60 p-4 hover:bg-violet-50 hover:border-violet-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-500">
+                <p class="text-[11px] text-violet-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
+                <p class="text-3xl font-bold text-violet-700 leading-none">{{ number_format($teamStats['right_team']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">members under your right leg</p>
-            </div>
+            </button>
         </div>
 
         {{-- Status breakdown row --}}
@@ -276,7 +332,7 @@
             $statuses = [
                 ['key' => 'active',     'label' => 'Active',     'count' => $teamStats['active'],     'cls' => 'bg-green-50 text-green-700 border-green-200',     'dot' => 'bg-green-500'],
                 ['key' => 'pending',    'label' => 'Pending',    'count' => $teamStats['pending'],    'cls' => 'bg-amber-50 text-amber-700 border-amber-200',     'dot' => 'bg-amber-500'],
-                ['key' => 'frozen',     'label' => 'Blocked',    'count' => $teamStats['frozen'],     'cls' => 'bg-sunrise-50 text-sunrise-800 border-sunrise-200', 'dot' => 'bg-sunrise-500'],
+                ['key' => 'frozen',     'label' => 'Blocked',    'count' => $teamStats['frozen'],     'cls' => 'bg-red-50 text-red-700 border-red-200', 'dot' => 'bg-red-500'],
                 ['key' => 'terminated', 'label' => 'Inactive',   'count' => $teamStats['terminated'], 'cls' => 'bg-gray-100 text-gray-600 border-gray-200',       'dot' => 'bg-gray-400'],
             ];
         @endphp
@@ -311,60 +367,130 @@
             </div>
         </div>
     </div>
-    @endif
 
-    {{-- My Referral Link — sponsor-only.
-         The dashboard link ships JUST the sponsor ADN; the prospect picks
-         their own placement on the /join page (where both sponsor and
-         placement get resolved to friendly names before submission).
-         Tree-view "invite at this leaf" links keep their full
-         sponsor+placement+side encoding — that's a different flow. --}}
-    @php
-        $inviteUrl = url('/join').'?sponsor='.$distributor->adn;
-        $bothFull  = ! $leftOpen && ! $rightOpen;
-    @endphp
-    <div class="bg-white rounded-2xl border border-brand-200 p-6 col-span-full md:col-span-2 lg:col-span-3">
-        <div class="flex items-start justify-between mb-3 gap-4">
-            <div>
-                <p class="text-xs text-brand-700 uppercase tracking-wider mb-1 font-semibold">My Referral Link</p>
-                <p class="text-sm text-gray-800">
-                    Share this with anyone you invite. They open the page, see your
-                    name as the sponsor, and pick the placement ADN themselves.
-                </p>
-            </div>
-            <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-brand-50 text-brand-700 border border-brand-200">Personal invite</span>
-        </div>
-
-        <div class="space-y-2">
-            <div class="flex items-stretch gap-2">
-                <input type="text" readonly value="{{ $inviteUrl }}"
-                    class="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    onclick="this.select()">
-                <button type="button"
-                    onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-                    class="px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition-colors">
-                    Copy
-                </button>
-            </div>
-
-            @if($bothFull)
-                <div class="flex items-center gap-2 pt-1 text-[11px] text-sunrise-700">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sunrise-50 border border-sunrise-200 font-semibold">
-                        <span class="w-1.5 h-1.5 rounded-full bg-sunrise-500"></span>Your direct slots are full
-                    </span>
-                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
-                        class="ml-auto text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">
-                        Invite at a specific deeper slot — open my tree →
-                    </a>
+    {{-- Roster modal: shared by all four stat-card buttons. Populated on
+         click via /dashboard/team-roster/{scope}; download button hits the
+         CSV endpoint with the same scope. --}}
+    <div id="team-roster-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4 bg-black/40">
+        <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl">
+            <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200">
+                <div>
+                    <p id="team-roster-title" class="text-base font-semibold text-gray-900">Team list</p>
+                    <p id="team-roster-subtitle" class="text-xs text-gray-700 mt-0.5">—</p>
                 </div>
-            @else
-                <p class="pt-1 text-[11px] text-gray-700">
-                    Want to drop someone at a specific deeper slot instead?
-                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">Open my tree →</a>
-                </p>
-            @endif
+                <div class="flex items-center gap-2">
+                    <a id="team-roster-download" href="#"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                        Download CSV
+                    </a>
+                    <button type="button" id="team-roster-close"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-auto px-6 py-4">
+                <div id="team-roster-loading" class="hidden text-center text-sm text-gray-600 py-10">Loading…</div>
+                <div id="team-roster-empty" class="hidden text-center text-sm text-gray-600 py-10">No members to show.</div>
+                <table id="team-roster-table" class="hidden w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-700">
+                        <tr>
+                            <th class="text-left px-3 py-2 font-semibold w-14">S.No.</th>
+                            <th class="text-left px-3 py-2 font-semibold">ADN No.</th>
+                            <th class="text-left px-3 py-2 font-semibold">Name</th>
+                            <th class="text-left px-3 py-2 font-semibold">State</th>
+                            <th class="text-left px-3 py-2 font-semibold">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="team-roster-tbody" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
         </div>
     </div>
+
+    <script>
+    (function () {
+        const modal      = document.getElementById('team-roster-modal');
+        if (!modal) return;
+        const titleEl    = document.getElementById('team-roster-title');
+        const subEl      = document.getElementById('team-roster-subtitle');
+        const dlEl       = document.getElementById('team-roster-download');
+        const closeEl    = document.getElementById('team-roster-close');
+        const loadingEl  = document.getElementById('team-roster-loading');
+        const emptyEl    = document.getElementById('team-roster-empty');
+        const tableEl    = document.getElementById('team-roster-table');
+        const tbodyEl    = document.getElementById('team-roster-tbody');
+
+        const STATUS_PILL = {
+            'Active':   'bg-green-50 text-green-700 border-green-200',
+            'Pending':  'bg-amber-50 text-amber-700 border-amber-200',
+            'Blocked':  'bg-red-50 text-red-700 border-red-200',
+            'Inactive': 'bg-gray-100 text-gray-600 border-gray-200',
+            'Rejected': 'bg-amber-50 text-amber-700 border-amber-200',
+        };
+
+        const escapeHtml = (s) => String(s ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        function open(scope) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            tableEl.classList.add('hidden');
+            tbodyEl.innerHTML = '';
+            titleEl.textContent = 'Loading…';
+            subEl.textContent = '—';
+            dlEl.setAttribute('href', `/dashboard/team-roster/${scope}/download`);
+
+            fetch(`/dashboard/team-roster/${scope}`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                .then(r => r.ok ? r.json() : Promise.reject(r))
+                .then(data => {
+                    loadingEl.classList.add('hidden');
+                    titleEl.textContent = data.label;
+                    subEl.textContent   = `${data.rows.length} ${data.rows.length === 1 ? 'member' : 'members'}`;
+                    if (data.rows.length === 0) {
+                        emptyEl.classList.remove('hidden');
+                        return;
+                    }
+                    tableEl.classList.remove('hidden');
+                    tbodyEl.innerHTML = data.rows.map((row, i) => {
+                        const cls = STATUS_PILL[row.status] || 'bg-gray-100 text-gray-600 border-gray-200';
+                        return `<tr>
+                            <td class="px-3 py-2 text-gray-700">${i + 1}</td>
+                            <td class="px-3 py-2 font-mono text-gray-900">${escapeHtml(row.adn)}</td>
+                            <td class="px-3 py-2 text-gray-900">${escapeHtml(row.name)}</td>
+                            <td class="px-3 py-2 text-gray-800">${escapeHtml(row.state)}</td>
+                            <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}">${escapeHtml(row.status)}</span></td>
+                        </tr>`;
+                    }).join('');
+                })
+                .catch(() => {
+                    loadingEl.classList.add('hidden');
+                    emptyEl.classList.remove('hidden');
+                    emptyEl.textContent = 'Could not load the list. Please try again.';
+                });
+        }
+
+        function close() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.querySelectorAll('[data-team-roster]').forEach(btn => {
+            btn.addEventListener('click', () => open(btn.getAttribute('data-team-roster')));
+        });
+        closeEl.addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    })();
+    </script>
+    @endif
+
+    {{-- Referral link moved up to the page header — see the compact card
+         beside the Welcome heading. --}}
 
     @else
     {{-- Registration incomplete --}}

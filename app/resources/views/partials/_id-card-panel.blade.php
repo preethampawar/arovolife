@@ -23,7 +23,7 @@
             $rows = [
                 ['label' => 'Name',                    'value' => $idCardStats['name']],
                 ['label' => 'ID Number',               'value' => $idCardStats['adn'],                'class' => 'font-mono text-brand-600 tracking-wider'],
-                ['label' => 'Registration Date',       'value' => $idCardStats['registration_date']?->format('d M Y')],
+                ['label' => 'Registration Date',       'value' => $idCardStats['registration_date']?->format('d M Y, h:i A')],
                 ['label' => 'Franchise',               'value' => $idCardStats['franchise']],
                 ['label' => 'Region',                  'value' => $idCardStats['region']],
                 ['label' => 'Status',                  'value' => $idCardStats['verification_label'], 'render' => 'pill', 'pill_class' => $idCardStats['verification_class']],

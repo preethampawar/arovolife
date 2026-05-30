@@ -104,7 +104,7 @@
                     <td class="px-4 py-3 text-gray-800">{{ $d->state }}</td>
                     <td class="px-4 py-3 text-gray-800">{{ $d->depth }}</td>
                     <td class="px-4 py-3 text-gray-700 text-xs">
-                        {{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y') }}
+                        {{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y, h:i A') }}
                     </td>
                     <td class="px-4 py-3 text-xs">
                         @php $daysLeft = now()->diffInDays($d->cooling_off_end_at, false); @endphp

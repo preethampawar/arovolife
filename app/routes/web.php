@@ -36,6 +36,7 @@ use App\Modules\Identity\Http\Controllers\KycResubmitController;
 use App\Modules\Identity\Http\Controllers\DirectSellerApplicationController;
 use App\Modules\Identity\Http\Controllers\MembershipCardController;
 use App\Modules\Identity\Http\Controllers\TaxStatementsController;
+use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
@@ -344,6 +345,15 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/dashboard/membership-card', [MembershipCardController::class, 'show'])->name('membership-card.show');
     Route::get('/dashboard/direct-seller-application', [DirectSellerApplicationController::class, 'show'])->name('direct-seller-application.show');
     Route::get('/dashboard/tax-statements', [TaxStatementsController::class, 'show'])->name('tax-statements.show');
+
+    // Stat-card → roster modal (and downloadable CSV) for the four headline
+    // team counts on the dashboard. Scope guard mirrors TeamStatsService::roster.
+    Route::get('/dashboard/team-roster/{scope}', [TeamRosterController::class, 'index'])
+        ->where('scope', 'total|direct|left|right')
+        ->name('dashboard.team-roster');
+    Route::get('/dashboard/team-roster/{scope}/download', [TeamRosterController::class, 'download'])
+        ->where('scope', 'total|direct|left|right')
+        ->name('dashboard.team-roster.download');
 
     Route::get('/cooling-off', [CoolingOffController::class, 'show'])->name('cooling-off.show');
     Route::post('/cooling-off/cancel', [CoolingOffController::class, 'cancel'])->name('cooling-off.cancel');

@@ -94,7 +94,7 @@ Compliance · Admin.
 
 **Distributor dashboard & documents**
 
-- "My Office" — ADN card, placement, cooling-off, messages, team stats,
+- "My Dashboard" — ADN card, placement, cooling-off, messages, team stats,
   ID-card placeholders (Personal Sales Position, ranks, BV, withdrawal
   income — wired for Phase 4+)
 - **Documents section** with three cards (Direct Seller Application,

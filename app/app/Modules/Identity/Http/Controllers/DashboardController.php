@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
- * Distributor "My Office" dashboard.
+ * Distributor "My Dashboard" page.
  *
  * Aggregates everything a logged-in distributor would want to see at a
  * glance: their identity card (ADN, placement leg, cooling-off status),
