@@ -19,6 +19,36 @@ parameters:
 			path: app/Modules/Admin/Http/Controllers/AdminDistributorController.php
 
 		-
+			message: '#^Parameter \#1 \$string of function hex2bin expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Admin/Http/Controllers/AdminKycController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function substr expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Admin/Http/Controllers/AdminKycController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>details" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Admin/Http/Controllers/AdminKycController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Admin/Http/Controllers/AdminTreeController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type App\\Modules\\Identity\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Modules/Admin/Http/Controllers/AdminTreeController.php
+
+		-
 			message: '#^Method App\\Modules\\Admin\\Models\\Setting\:\:updatedBy\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -415,6 +445,12 @@ parameters:
 			path: app/Modules/Compliance/Models/AuditLog.php
 
 		-
+			message: '#^Method App\\Modules\\Compliance\\Models\\ComplianceDocument\:\:uploader\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compliance/Models/ComplianceDocument.php
+
+		-
 			message: '#^Method App\\Modules\\Compliance\\Models\\CoolingOffEvent\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -463,6 +499,30 @@ parameters:
 			path: app/Modules/Fulfilment/Models/Shipment.php
 
 		-
+			message: '#^Access to an undefined property object\:\:\$adn\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Genealogy/Http/Controllers/TreeController.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Genealogy/Http/Controllers/TreeController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Genealogy/Http/Controllers/TreeController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type App\\Modules\\Identity\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Modules/Genealogy/Http/Controllers/TreeController.php
+
+		-
 			message: '#^Method App\\Modules\\Genealogy\\Models\\GenealogyClosure\:\:ancestor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -487,13 +547,13 @@ parameters:
 			path: app/Modules/Genealogy/Models/LineChangeRequest.php
 
 		-
-			message: '#^Method App\\Modules\\Genealogy\\Models\\LineChangeRequest\:\:toPlacementParent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			message: '#^Method App\\Modules\\Genealogy\\Models\\LineChangeRequest\:\:reviewer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Genealogy/Models/LineChangeRequest.php
 
 		-
-			message: '#^Method App\\Modules\\Genealogy\\Models\\LineChangeRequest\:\:reviewer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			message: '#^Method App\\Modules\\Genealogy\\Models\\LineChangeRequest\:\:toPlacementParent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Genealogy/Models/LineChangeRequest.php
@@ -533,6 +593,48 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Grievance/Models/TicketEvent.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Identity\\Models\\User\:\:\$login_throttle_cleared_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Identity/Http/Controllers/Auth/LoginController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Identity/Http/Controllers/Auth/LoginController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sponsor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Identity/Http/Controllers/DirectSellerApplicationController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type App\\Modules\\Identity\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Identity/Http/Controllers/KycDocumentSelfServiceController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>details" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Identity/Http/Controllers/KycResubmitController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Identity/Http/Controllers/TeamRosterController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Modules/Identity/Http/Controllers/TeamRosterController.php
 
 		-
 			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:closureAncestors\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -625,6 +727,24 @@ parameters:
 			path: app/Modules/Identity/Models/User.php
 
 		-
+			message: '#^Parameter \#1 \$string of function hex2bin expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Identity/Services/ResubmitKycSubmission.php
+
+		-
+			message: '#^Parameter \#1 \$string of function substr expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Identity/Services/ResubmitKycSubmission.php
+
+		-
+			message: '#^Method App\\Modules\\Identity\\Services\\TeamStatsService\:\:roster\(\) should return list\<array\{adn\: string, name\: string, state\: string, status\: string\}\> but returns array\<int, array\{adn\: string, name\: string, state\: string, status\: string\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Modules/Identity/Services/TeamStatsService.php
+
+		-
 			message: '#^Method App\\Modules\\Identity\\Services\\WizardStateService\:\:get\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -641,6 +761,18 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Modules/Identity/Services/WizardStateService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function hex2bin expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Kyc/Http/Controllers/KycDocumentReuploadController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function substr expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Kyc/Http/Controllers/KycDocumentReuploadController.php
 
 		-
 			message: '#^Method App\\Modules\\Ledger\\Models\\LedgerEntry\:\:account\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -927,6 +1059,18 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Admin/AdminDistributorStateMailTest.php
+
+		-
+			message: '#^Function asmSeedDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Admin/AdminDistributorStateMailTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 6
 			path: tests/Modules/Admin/AdminFeatureFlagTest.php
 
@@ -963,6 +1107,18 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 7
+			path: tests/Modules/Admin/AdminLineChangeControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminLineChangeControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 8
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
@@ -995,6 +1151,18 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Admin/RegisterOfDirectSellersExportTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/TerminateDistributorTest.php
+
+		-
+			message: '#^Function tdSeedDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Admin/TerminateDistributorTest.php
 
 		-
 			message: '#^Function seedActiveDistributor\(\) return type has no value type specified in iterable type array\.$#'
@@ -1035,14 +1203,86 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Genealogy/LineChangeControllerTest.php
+
+		-
+			message: '#^Unable to resolve the template type TFlatMapKey in call to method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:flatMap\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Genealogy/LineChangeSchemaTest.php
+
+		-
+			message: '#^Unable to resolve the template type TFlatMapValue in call to method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:flatMap\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Genealogy/LineChangeSchemaTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Genealogy/TreeCardStatusTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 10
+			path: tests/Modules/Genealogy/TreeSearchTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Genealogy/TreeSuggestTest.php
+
+		-
+			message: '#^Unable to resolve the template type TKey in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: tests/Modules/Genealogy/TreeSuggestTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function collect$#'
+			identifier: argument.templateType
+			count: 3
+			path: tests/Modules/Genealogy/TreeSuggestTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 6
 			path: tests/Modules/Genealogy/TreeViewTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Identity/AdminPasswordResetLoginTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Identity/AdminPasswordResetLoginTest.php
+
+		-
+			message: '#^Function aprlMakeDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/AdminPasswordResetLoginTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Identity/CoupleRegistrationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/DashboardRenderTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -1069,9 +1309,21 @@ parameters:
 			path: tests/Modules/Identity/IdPhotoUploadTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Identity/KycDocumentSelfServiceTest.php
+
+		-
+			message: '#^Function kdsSeedDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/KycDocumentSelfServiceTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 7
 			path: tests/Modules/Identity/KycDocumentUploadTest.php
 
 		-
@@ -1085,6 +1337,18 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Identity/KycDocumentUploadTest.php
+
+		-
+			message: '#^Function krsSeedDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/KycResubmitTest.php
+
+		-
+			message: '#^Function krsSeedDocs\(\) has parameter \$types with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/KycResubmitTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
@@ -1123,6 +1387,66 @@ parameters:
 			path: tests/Modules/Identity/PasswordResetTest.php
 
 		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Identity/PlacementRaceMessageTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:andThrow\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/PlacementRaceMessageTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/PlacementRaceMessageTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/PlacementRaceMessageTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/PlacementRaceMessageTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/PlacementRaceMessageTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Identity/RegistrationEdgeCasesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/RegistrationEdgeCasesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/RegistrationEdgeCasesTest.php
+
+		-
+			message: '#^Function recSeedWizardAt\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/RegistrationEdgeCasesTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
 			count: 14
@@ -1133,6 +1457,18 @@ parameters:
 			identifier: method.notFound
 			count: 3
 			path: tests/Modules/Identity/RegistrationFlowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Identity/RegistrationUniquenessTest.php
+
+		-
+			message: '#^Function ruqValidPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/RegistrationUniquenessTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -1163,6 +1499,48 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Identity/StateAgeRuleTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withCookies\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Call to method create\(\) on an unknown class App\\Modules\\Identity\\Services\\DraftStateService\.$#'
+			identifier: class.notFound
+			count: 1
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Class App\\Modules\\Identity\\Services\\DraftStateService not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Function wpmSeedPendingUserWithDraft\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Unknown parameter \$userId in call to method App\\Modules\\Identity\\Services\\WizardStateService\:\:start\(\)\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -1235,33 +1613,3 @@ parameters:
 			identifier: method.alreadyNarrowedType
 			count: 1
 			path: tests/Unit/ExampleTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 7
-			path: tests/Modules/Admin/AdminLineChangeControllerTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminLineChangeControllerTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 4
-			path: tests/Modules/Genealogy/LineChangeControllerTest.php
-
-		-
-			message: '#^Unable to resolve the template type TFlatMapKey in call to method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:flatMap\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: tests/Modules/Genealogy/LineChangeSchemaTest.php
-
-		-
-			message: '#^Unable to resolve the template type TFlatMapValue in call to method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:flatMap\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: tests/Modules/Genealogy/LineChangeSchemaTest.php

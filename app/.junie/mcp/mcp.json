@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/Users/preetham/.config/herd-lite/bin/php",
+            "args": [
+                "/Users/preetham/Documents/arovolife/arovolife/arovolife-code/app/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}

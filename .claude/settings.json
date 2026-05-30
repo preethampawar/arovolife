@@ -100,6 +100,14 @@
           {
             "type": "command",
             "command": "case \"$CLAUDE_TOOL_PATH\" in *.php) rel=\"${CLAUDE_TOOL_PATH#$(pwd)/}\"; case \"$rel\" in app/*) docker exec arovolife-app vendor/bin/pint --quiet \"${rel#app/}\" 2>&1 | tail -3 ;; esac ;; esac"
+          },
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_PATH\" in *.php) rel=\"${CLAUDE_TOOL_PATH#$(pwd)/}\"; case \"$rel\" in app/app/*|app/database/seeders/*|app/tests/*) docker exec arovolife-app vendor/bin/phpstan analyse --no-progress --memory-limit=1G \"${rel#app/}\" 2>&1 | tail -8 ;; esac ;; esac"
+          },
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_PATH\" in *PlacementEngine*|*TeamStatsService*|*LoginController*|*WizardStateService*|*RegistrationWizardController*) docker exec arovolife-app php artisan test --compact --filter=$(basename \"$CLAUDE_TOOL_PATH\" .php) 2>&1 | tail -6 ;; esac"
           }
         ]
       }

@@ -18,6 +18,7 @@
         "spatie/laravel-permission": "^7.3"
     },
     "require-dev": {
+        "brianium/paratest": "^7.20",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.0",
         "laravel/boost": "^2.4",
@@ -59,12 +60,17 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "test:parallel": [
+            "@php artisan config:clear --ansi",
+            "vendor/bin/pest --parallel"
+        ],
         "lint": "vendor/bin/pint --test",
         "stan": "vendor/bin/phpstan analyse --no-progress --memory-limit=1G",
+        "stan:dirty": "vendor/bin/phpstan analyse --no-progress --memory-limit=1G $(git diff --name-only --diff-filter=ACMR HEAD | grep -E '^app/.*\\.php$' | tr '\\n' ' ')",
         "ci": [
             "@lint",
             "@stan",
-            "vendor/bin/pest"
+            "vendor/bin/pest --parallel"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
