@@ -70,19 +70,25 @@
             </div>
 
             <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Aadhaar (back) <x-help-tip text="upload the back of your aadhaar showing the address printed by uidai." /></label>
+                <input type="file" name="aadhaar_back_doc" accept=".jpg,.jpeg,.png,.pdf"
+                    class="w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:px-3 file:py-1.5 file:text-sm file:cursor-pointer hover:file:bg-brand-100">
+            </div>
+
+            <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Cancelled cheque / passbook page <x-help-tip text="upload a cancelled cheque or passbook page that shows your bank account and ifsc clearly." /> <span class="text-gray-400">(optional)</span></label>
                 <input type="file" name="cheque_doc" accept=".jpg,.jpeg,.png,.pdf"
                     class="w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:px-3 file:py-1.5 file:text-sm file:cursor-pointer hover:file:bg-brand-100">
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Address proof (front) <x-help-tip text="upload the front of a document that shows your current address, such as a utility bill or passport." /> <span class="text-gray-400">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Address proof (front) <x-help-tip text="upload the front of a document that shows your current address, such as a utility bill or passport." /></label>
                 <input type="file" name="address_proof_front" accept=".jpg,.jpeg,.png,.pdf"
                     class="w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:px-3 file:py-1.5 file:text-sm file:cursor-pointer hover:file:bg-brand-100">
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Address proof (back) <x-help-tip text="upload the back of the same address-proof document if it carries additional details." /> <span class="text-gray-400">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Address proof (back) <x-help-tip text="upload the back of the same address-proof document." /></label>
                 <input type="file" name="address_proof_back" accept=".jpg,.jpeg,.png,.pdf"
                     class="w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:px-3 file:py-1.5 file:text-sm file:cursor-pointer hover:file:bg-brand-100">
             </div>

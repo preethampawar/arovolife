@@ -6,10 +6,11 @@
     // Friendly labels for the doc types the customer can manage themselves.
     $labels = [
         'pan' => ['title' => 'PAN card', 'help' => 'Front side, clearly readable.', 'required' => true],
-        'aadhaar' => ['title' => 'Aadhaar (front)', 'help' => 'Or e-Aadhaar PDF from UIDAI.', 'required' => true],
+        'aadhaar' => ['title' => 'Aadhaar (front)', 'help' => 'Front side showing photo, name and DOB.', 'required' => true],
+        'aadhaar_back' => ['title' => 'Aadhaar (back)', 'help' => 'Back side showing the address printed by UIDAI.', 'required' => true],
         'cheque' => ['title' => 'Cancelled cheque or passbook page', 'help' => 'Account number and IFSC must be visible.', 'required' => false],
-        'address_proof_front' => ['title' => 'Address proof (front)', 'help' => 'Aadhaar, passport, voter ID, driving licence, or utility bill (last 3 months).', 'required' => false],
-        'address_proof_back' => ['title' => 'Address proof (back)', 'help' => 'Back of the same document.', 'required' => false],
+        'address_proof_front' => ['title' => 'Address proof (front)', 'help' => 'Aadhaar, passport, voter ID, driving licence, or utility bill (last 3 months).', 'required' => true],
+        'address_proof_back' => ['title' => 'Address proof (back)', 'help' => 'Back of the same document.', 'required' => true],
     ];
 @endphp
 

@@ -601,6 +601,7 @@ final class RegistrationWizardController extends Controller
     private const KYC_DOC_FIELDS = [
         'pan' => 'pan_doc',
         'aadhaar' => 'aadhaar_doc',
+        'aadhaar_back' => 'aadhaar_back_doc',
         'cheque' => 'cheque_doc',
         'address_proof_front' => 'address_proof_front',
         'address_proof_back' => 'address_proof_back',
@@ -620,6 +621,9 @@ final class RegistrationWizardController extends Controller
     private const KYC_DOC_REQUIRED_FIELDS = [
         'pan' => 'pan_doc',
         'aadhaar' => 'aadhaar_doc',
+        'aadhaar_back' => 'aadhaar_back_doc',
+        'address_proof_front' => 'address_proof_front',
+        'address_proof_back' => 'address_proof_back',
     ];
 
     public function handleDocuments(Request $request): RedirectResponse
@@ -653,7 +657,8 @@ final class RegistrationWizardController extends Controller
             'mimetypes' => 'The :attribute must be a JPG, PNG, or PDF file.',
         ], [
             'pan_doc' => 'your PAN scan',
-            'aadhaar_doc' => 'your Aadhaar scan',
+            'aadhaar_doc' => 'your Aadhaar scan (front side)',
+            'aadhaar_back_doc' => 'your Aadhaar scan (back side)',
             'cheque_doc' => 'a cancelled cheque scan',
             'address_proof_front' => 'your address proof (front side)',
             'address_proof_back' => 'your address proof (back side)',
@@ -751,14 +756,34 @@ final class RegistrationWizardController extends Controller
 
     public function showComplete(): View
     {
-        $state = $this->wizard->get();
+        $state = $this->wizard->get() ?? [];
+        $data = $state['data'] ?? [];
+
+        // Resolve sponsor + placement ADNs for the preview modal — these
+        // come from the intent stash and are stored as INTERNAL ids on the
+        // wizard state. The user is about to commit, so we want them to
+        // see human-readable ADNs (and the friendly name we masked earlier).
+        $sponsorRow = isset($state['sponsor_id'])
+            ? DB::table('distributors')->where('id', (int) $state['sponsor_id'])->first(['adn', 'full_name'])
+            : null;
+        $placementRow = isset($state['placement_id'])
+            ? DB::table('distributors')->where('id', (int) $state['placement_id'])->first(['adn', 'full_name'])
+            : null;
 
         return view('registration.step10-complete', [
-            'personal' => $state['data']['personal'] ?? [],
-            'pan' => $state['data']['pan'] ?? [],
+            'personal' => $data['personal'] ?? [],
+            'pan' => $data['pan'] ?? [],
+            'aadhaar' => $data['aadhaar'] ?? [],
+            'bank' => $data['bank'] ?? [],
+            'account' => $data['account'] ?? [],
+            'documents' => $data['documents']['documents'] ?? [],
             'sponsor_id' => $state['sponsor_id'] ?? null,
-            'isCouple' => (bool) ($state['data']['personal']['couple_enabled'] ?? false),
-            'spouse' => $state['data']['personal']['spouse'] ?? [],
+            'sponsor_adn' => $sponsorRow?->adn,
+            'sponsor_name' => $sponsorRow?->full_name,
+            'placement_adn' => $placementRow?->adn,
+            'placement_side' => $state['side_opt'] ?? null,
+            'isCouple' => (bool) ($data['personal']['couple_enabled'] ?? false),
+            'spouse' => $data['personal']['spouse'] ?? [],
         ]);
     }
 

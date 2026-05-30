@@ -261,6 +261,7 @@
                     <option value="">Select type…</option>
                     <option value="pan">PAN card</option>
                     <option value="aadhaar">Aadhaar (front)</option>
+                    <option value="aadhaar_back">Aadhaar (back)</option>
                     <option value="cheque">Cancelled cheque / passbook</option>
                     <option value="address_proof_front">Address proof (front)</option>
                     <option value="address_proof_back">Address proof (back)</option>

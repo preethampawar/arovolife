@@ -22,10 +22,11 @@
             // block signup on documents the customer can upload after the fact.
             $fields = [
                 'pan_doc'             => ['label' => 'PAN card',                              'help' => 'Front side, clearly readable.',                                                                'required' => true],
-                'aadhaar_doc'         => ['label' => 'Aadhaar (front)',                        'help' => 'Or e-Aadhaar PDF from UIDAI.',                                                                  'required' => true],
+                'aadhaar_doc'         => ['label' => 'Aadhaar (front)',                        'help' => 'Front side showing photo, name and DOB. Or e-Aadhaar PDF from UIDAI.',                          'required' => true],
+                'aadhaar_back_doc'    => ['label' => 'Aadhaar (back)',                         'help' => 'Back side showing the address printed by UIDAI.',                                              'required' => true],
                 'cheque_doc'          => ['label' => 'Cancelled cheque or passbook page',     'help' => 'Account number and IFSC must be visible. Skip if you’ll add bank details later.',                  'required' => false],
-                'address_proof_front' => ['label' => 'Address proof (front)',                  'help' => 'Aadhaar, passport, voter ID, driving licence, or utility bill (last 3 months). Optional at signup.', 'required' => false],
-                'address_proof_back'  => ['label' => 'Address proof (back)',                   'help' => 'Back of the same document. Optional at signup.',                                                'required' => false],
+                'address_proof_front' => ['label' => 'Address proof (front)',                  'help' => 'Aadhaar, passport, voter ID, driving licence, or utility bill (last 3 months).',                'required' => true],
+                'address_proof_back'  => ['label' => 'Address proof (back)',                   'help' => 'Back of the same document.',                                                                    'required' => true],
             ];
         @endphp
 

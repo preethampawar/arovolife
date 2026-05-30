@@ -49,6 +49,7 @@ final class KycDocumentSelfServiceController extends Controller
     private const SELF_SERVICE_TYPES = [
         'pan',
         'aadhaar',
+        'aadhaar_back',
         'cheque',
         'address_proof_front',
         'address_proof_back',
