@@ -28,11 +28,15 @@ final class LoginController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        // Distributors may sign in with either their email address or their
-        // 9-digit ADN. Emails always contain '@'; anything without one is
-        // treated as an ADN and resolved to the owning user's email via the
-        // distributors table. An unmatched ADN simply falls through and fails
-        // authentication like any wrong credential — no account enumeration.
+        // Identifier policy (locked down 2026-05-30):
+        //   - Distributors sign in with their 9-digit ADN ONLY. An email
+        //     submitted by a distributor is rejected with the same generic
+        //     "credentials don't match" error as any wrong input, so account
+        //     enumeration isn't possible.
+        //   - Admin accounts sign in with their EMAIL only. ADNs do not
+        //     resolve to admin users anyway (admins have no distributor row),
+        //     so the lookup naturally fails — we just need to ensure the
+        //     email branch refuses anything that isn't an admin.
         //
         // Couple registrations share ONE ADN across two distributor rows
         // (hard rule #6), each with its own user + password and an
@@ -41,8 +45,10 @@ final class LoginController extends Controller
         // spouse can be disambiguated; we pick the matching row (defaulting
         // to the primary holder). A solo ADN ignores the checkbox entirely.
         $loginInput = trim($credentials['login']);
+        $isEmailInput = str_contains($loginInput, '@');
         $email = $loginInput;
-        if (! str_contains($loginInput, '@')) {
+
+        if (! $isEmailInput) {
             $matches = Distributor::query()
                 ->where('adn', $loginInput)
                 ->with('user')
@@ -61,6 +67,25 @@ final class LoginController extends Controller
         // throttle-clear and for the unactivated-account pre-flight below.
         $candidate = User::query()
             ->where('email', $email)->first();
+
+        // Enforce the identifier-type policy. The check sits BEFORE the
+        // throttle hit so a misdirected user (admin typing ADN, or
+        // distributor typing email) doesn't burn down their lockout
+        // counter from a copy-paste mistake — but it sits AFTER the
+        // candidate lookup so we return the same generic error.
+        if ($candidate !== null) {
+            $isAdminAccount = $candidate->hasRole('admin');
+            $wrongChannel = ($isEmailInput && ! $isAdminAccount)
+                || (! $isEmailInput && $isAdminAccount);
+
+            if ($wrongChannel) {
+                // Same generic error as a bad password — never disclose that
+                // admin accounts authenticate via a different channel.
+                return back()
+                    ->withInput($request->only('login'))
+                    ->withErrors(['login' => 'These credentials do not match our records.']);
+            }
+        }
 
         // Per-(email + IP) lockout: 5 failed attempts inside ~15 minutes
         // halts further tries. Mitigates password-spray and credential

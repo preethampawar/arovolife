@@ -84,9 +84,28 @@
      every field they've entered (account, personal, PAN/Aadhaar last-4,
      bank, placement, uploaded docs) so they can catch typos BEFORE the
      ADN is minted. Confirming inside the modal submits the wrapping form. --}}
-<div id="finalise-preview-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4 bg-black/50">
-    <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
-        <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-gray-200">
+<style>
+    dialog#finalise-preview-modal::backdrop { background: rgba(15, 23, 42, 0.6); }
+    dialog#finalise-preview-modal {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        margin: 0;
+        inset: 0;
+    }
+    dialog#finalise-preview-modal[open] {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+<dialog id="finalise-preview-modal" class="m-auto">
+    <div class="bg-white rounded-2xl w-[calc(100vw-2rem)] sm:w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden" style="max-height: calc(100vh - 4rem);">
+        <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-gray-200 shrink-0 bg-white">
             <div>
                 <p class="text-base font-bold text-gray-900">Preview your details</p>
                 <p class="text-xs text-gray-700 mt-0.5">
@@ -101,7 +120,7 @@
             </button>
         </div>
 
-        <div class="overflow-auto px-6 py-4 space-y-5 text-sm">
+        <div class="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-5 text-sm bg-white">
             @php
                 $rowClass = 'grid grid-cols-[140px_1fr] gap-3 py-1 text-xs';
                 $sectionClass = 'rounded-lg border border-gray-200 bg-gray-50/60 p-4';
@@ -219,7 +238,7 @@
             </button>
         </div>
     </div>
-</div>
+</dialog>
 
 <script>
 (function () {
@@ -232,14 +251,12 @@
 
     if (!modal || !openBtn || !form) return;
 
-    const show = () => { modal.classList.remove('hidden'); modal.classList.add('flex'); };
-    const hide = () => { modal.classList.add('hidden');    modal.classList.remove('flex'); };
-
-    openBtn.addEventListener('click', show);
-    closeBtn?.addEventListener('click', hide);
-    cancelBtn?.addEventListener('click', hide);
-    modal.addEventListener('click', (e) => { if (e.target === modal) hide(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
+    openBtn.addEventListener('click', () => modal.showModal());
+    closeBtn?.addEventListener('click', () => modal.close());
+    cancelBtn?.addEventListener('click', () => modal.close());
+    // Click outside the inner card (i.e. directly on the dialog element)
+    // dismisses; Escape key is handled natively by <dialog>.
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
     confirmBtn?.addEventListener('click', () => {
         confirmBtn.disabled = true;
         confirmBtn.textContent = 'Submitting…';

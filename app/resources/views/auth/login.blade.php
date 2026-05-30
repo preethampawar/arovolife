@@ -47,12 +47,15 @@
 
                 <div class="lift-in" style="animation-delay: 320ms;">
                     <label for="login" class="flex items-baseline justify-between mb-1.5">
-                        <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">Email address or ADN</span>
+                        <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">ADN</span>
                     </label>
                     <input id="login" name="login" type="text" autocomplete="username" required
                         value="{{ old('login') }}"
-                        placeholder="you@example.com or 9-digit ADN"
+                        placeholder="9-digit ADN"
                         class="input-refined">
+                    <p class="mt-1.5 text-[11px] text-slate-500">
+                        Sign in with your <strong>9-digit ADN</strong>.
+                    </p>
                 </div>
 
                 <div class="lift-in" style="animation-delay: 380ms;">

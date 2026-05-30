@@ -370,10 +370,32 @@
 
     {{-- Roster modal: shared by all four stat-card buttons. Populated on
          click via /dashboard/team-roster/{scope}; download button hits the
-         CSV endpoint with the same scope. --}}
-    <div id="team-roster-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4 bg-black/40">
-        <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl">
-            <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200">
+         CSV endpoint with the same scope. Uses a native <dialog> element so
+         it always renders in the browser's top layer with a real ::backdrop
+         — sidesteps any ancestor stacking-context / transform that would
+         otherwise trap a div-based modal. --}}
+    <style>
+        dialog#team-roster-modal::backdrop { background: rgba(15, 23, 42, 0.6); }
+        dialog#team-roster-modal {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            margin: 0;
+            inset: 0;
+        }
+        dialog#team-roster-modal[open] {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+    <dialog id="team-roster-modal">
+        <div class="bg-white rounded-2xl w-[calc(100vw-2rem)] sm:w-full max-w-3xl flex flex-col shadow-2xl overflow-hidden" style="max-height: calc(100vh - 4rem);">
+            <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200 shrink-0 bg-white">
                 <div>
                     <p id="team-roster-title" class="text-base font-semibold text-gray-900">Team list</p>
                     <p id="team-roster-subtitle" class="text-xs text-gray-700 mt-0.5">—</p>
@@ -390,7 +412,7 @@
                     </button>
                 </div>
             </div>
-            <div class="overflow-auto px-6 py-4">
+            <div class="flex-1 min-h-0 overflow-y-auto px-6 py-4 bg-white">
                 <div id="team-roster-loading" class="hidden text-center text-sm text-gray-600 py-10">Loading…</div>
                 <div id="team-roster-empty" class="hidden text-center text-sm text-gray-600 py-10">No members to show.</div>
                 <table id="team-roster-table" class="hidden w-full text-sm">
@@ -407,7 +429,7 @@
                 </table>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <script>
     (function () {
@@ -434,9 +456,7 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-        function open(scope) {
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        function openModal(scope) {
             loadingEl.classList.remove('hidden');
             emptyEl.classList.add('hidden');
             tableEl.classList.add('hidden');
@@ -444,6 +464,7 @@
             titleEl.textContent = 'Loading…';
             subEl.textContent = '—';
             dlEl.setAttribute('href', `/dashboard/team-roster/${scope}/download`);
+            modal.showModal();
 
             fetch(`/dashboard/team-roster/${scope}`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
                 .then(r => r.ok ? r.json() : Promise.reject(r))
@@ -474,17 +495,13 @@
                 });
         }
 
-        function close() {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
         document.querySelectorAll('[data-team-roster]').forEach(btn => {
-            btn.addEventListener('click', () => open(btn.getAttribute('data-team-roster')));
+            btn.addEventListener('click', () => openModal(btn.getAttribute('data-team-roster')));
         });
-        closeEl.addEventListener('click', close);
-        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+        closeEl.addEventListener('click', () => modal.close());
+        // Click outside the inner card (i.e. directly on the dialog element)
+        // dismisses; Escape key is handled natively by <dialog>.
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
     })();
     </script>
     @endif
