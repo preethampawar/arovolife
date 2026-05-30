@@ -11,6 +11,7 @@ use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\WizardStateService;
 use App\Modules\Identity\Support\SponsorPreview;
@@ -213,6 +214,7 @@ final class RegistrationWizardController extends Controller
                 return response()->json(['available' => null, 'reason' => 'invalid_format']);
             }
             $exists = User::where('email', $email)->exists();
+
             return response()->json([
                 'available' => ! $exists,
                 'reason' => $exists ? 'taken' : 'available',
@@ -225,6 +227,7 @@ final class RegistrationWizardController extends Controller
             }
             $normalisedPhone = '+91'.$value;
             $exists = DB::table('users')->where('phone_e164', $normalisedPhone)->exists();
+
             return response()->json([
                 'available' => ! $exists,
                 'reason' => $exists ? 'taken' : 'available',
@@ -356,7 +359,7 @@ final class RegistrationWizardController extends Controller
     public function showOrientation(): View
     {
         return view('registration.step2-orientation', [
-            ]);
+        ]);
     }
 
     public function handleOrientation(Request $request): RedirectResponse
@@ -392,7 +395,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step3-personal', [
             'states' => $this->indianStates(),
             'data' => $this->wizard->getStepData(8) ?? [],
-            ]);
+        ]);
     }
 
     public function handlePersonal(Request $request): RedirectResponse
@@ -458,7 +461,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step4-pan', [
             'data' => $this->wizard->getStepData(5) ?? [],
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
-            ]);
+        ]);
     }
 
     public function handlePan(Request $request): RedirectResponse
@@ -503,7 +506,7 @@ final class RegistrationWizardController extends Controller
         return view('registration.step5-aadhaar', [
             'data' => $this->wizard->getStepData(6) ?? [],
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
-            ]);
+        ]);
     }
 
     public function handleAadhaar(Request $request): RedirectResponse
@@ -547,7 +550,7 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step6-bank', [
             'data' => $this->wizard->getStepData(7) ?? [],
-            ]);
+        ]);
     }
 
     public function handleBank(Request $request): RedirectResponse
@@ -563,7 +566,7 @@ final class RegistrationWizardController extends Controller
 
         if ($bothBlank) {
             $this->wizard->saveStepData(7, ['account_number' => null, 'ifsc' => null]);
-    
+
             return redirect()->route('register.personal');
         }
 
@@ -594,7 +597,7 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step7-documents', [
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
-            ]);
+        ]);
     }
 
     /** @var array<string, string> Logical type → form field name (primary applicant) */
@@ -721,7 +724,7 @@ final class RegistrationWizardController extends Controller
     public function showConsent(): View
     {
         return view('registration.step9-consent', [
-            ]);
+        ]);
     }
 
     public function handleConsent(Request $request): RedirectResponse
@@ -763,11 +766,16 @@ final class RegistrationWizardController extends Controller
         // come from the intent stash and are stored as INTERNAL ids on the
         // wizard state. The user is about to commit, so we want them to
         // see human-readable ADNs (and the friendly name we masked earlier).
+        // full_name lives on `users`, not `distributors`, so join.
+        $resolveRow = fn (int $distributorId) => DB::table('distributors as d')
+            ->join('users as u', 'u.id', '=', 'd.user_id')
+            ->where('d.id', $distributorId)
+            ->first(['d.adn', 'u.full_name']);
         $sponsorRow = isset($state['sponsor_id'])
-            ? DB::table('distributors')->where('id', (int) $state['sponsor_id'])->first(['adn', 'full_name'])
+            ? $resolveRow((int) $state['sponsor_id'])
             : null;
         $placementRow = isset($state['placement_id'])
-            ? DB::table('distributors')->where('id', (int) $state['placement_id'])->first(['adn', 'full_name'])
+            ? $resolveRow((int) $state['placement_id'])
             : null;
 
         return view('registration.step10-complete', [
@@ -864,12 +872,13 @@ final class RegistrationWizardController extends Controller
 
         try {
             $result = $this->registrationService->finalise($wizardData, null);
-        } catch (\App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError $e) {
+        } catch (IncompleteRegistrationDataError $e) {
             // Account data validation failed (missing email, phone, or password)
             // User needs to return to earlier steps to complete required fields
             Log::warning('Registration finalisation: incomplete account data', [
                 'error' => $e->getMessage(),
             ]);
+
             return redirect()->route('register.account.show')->withErrors([
                 'wizard' => 'Some required details (email, phone, or password) were missing — please re-enter them.',
             ]);
@@ -903,7 +912,6 @@ final class RegistrationWizardController extends Controller
         return redirect()->route('dashboard')
             ->with('adn_issued', $result->distributorId);
     }
-
 
     /** @return array<string, string> */
     private function indianStates(): array
