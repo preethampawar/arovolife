@@ -81,6 +81,10 @@
           {
             "type": "command",
             "command": "test -e \"$CLAUDE_TOOL_PATH\" && grep -qE '\\b(AADHAAR|AADHAR)[A-Z0-9_]*\\s*=\\s*\"?[0-9]{12}' \"$CLAUDE_TOOL_PATH\" && { echo 'BLOCKED: raw Aadhaar number detected in file. Only store reference + last-4.' >&2; exit 2; } || true"
+          },
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_PATH\" in *app/database/seeders/content/terms.md|*app/database/seeders/content/ethics.md|*app/database/seeders/content/privacy.md|*app/database/seeders/content/grievance.md) echo 'BLOCKED: this file is legally-binding compliance content. Run /compliance-check, get compliance-officer sign-off, and add Compliance-Review trailer before editing.' >&2; exit 2 ;; esac"
           }
         ]
       }
@@ -92,6 +96,10 @@
           {
             "type": "command",
             "command": "test -f \"$CLAUDE_TOOL_PATH\" && echo '[arovolife hook] wrote' \"$CLAUDE_TOOL_PATH\" >> .claude/local/write.log 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_TOOL_PATH\" in *.php) rel=\"${CLAUDE_TOOL_PATH#$(pwd)/}\"; case \"$rel\" in app/*) docker exec arovolife-app vendor/bin/pint --quiet \"${rel#app/}\" 2>&1 | tail -3 ;; esac ;; esac"
           }
         ]
       }
