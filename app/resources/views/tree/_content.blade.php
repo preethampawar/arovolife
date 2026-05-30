@@ -96,7 +96,7 @@
         $stateLabel = 'Expanded';
         $stateClass = 'bg-leaf-50 text-leaf-700 border-leaf-200';
     } elseif ($maxDepth <= 1) {
-        $stateLabel = 'Collapsed';
+        $stateLabel = 'Compressed';
         $stateClass = 'bg-sunrise-50 text-sunrise-700 border-sunrise-200';
     } else {
         $stateLabel = 'Partial — depth '.$maxDepth.' of '.$maxObservedDepth;
