@@ -1393,7 +1393,13 @@ parameters:
 			path: app/Modules/Tax/Services/InvoiceGenerator.php
 
 		-
-			message: '#^Offset ''image_url'' on array\{sku\: ''AV\-FD\-001'', slug\: ''herbal\-green\-tea'', category\: ''food'', name\: ''arovolife Herbal…'', short_description\: ''25 bags\. Tulsi &…'', description\: ''Daily wellness tea…'', hsn_code\: ''0902'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-HW\-001'', slug\: ''gentle\-hand\-wash'', category\: ''personal\-care'', name\: ''arovolife Gentle…'', short_description\: ''Aloe vera & neem\.…'', description\: ''A daily\-use hand…'', hsn_code\: ''3401'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-MV\-001'', slug\: ''multi\-vitamin'', category\: ''health'', name\: ''arovolife Multi…'', short_description\: ''30 tablets\. Daily…'', description\: ''Daily multivitamin…'', hsn_code\: ''2936'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-OL\-001'', slug\: ''hair\-essential\-oil'', category\: ''personal\-care'', name\: ''arovolife Hair…'', short_description\: ''Bhringraj & amla\.…'', description\: ''Traditional hair…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-SH\-001'', slug\: ''scalpcare\-shampoo'', category\: ''personal\-care'', name\: ''arovolife ScalpCare…'', short_description\: ''Anti\-dandruff…'', description\: ''Clinically tested…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			message: '#^Offset ''dist'' on array\{sku\: ''AV\-AFW\-001'', slug\: ''aloe\-face\-wash'', category_slug\: ''personal\-care'', name\: ''arovolife Aloe Face…'', short_description\: ''150 ml\. Gentle…'', description\: ''A gentle aloe vera…'', hsn_code\: ''3401'', image_url\: ''https\://picsum…'', \.\.\.\}\|array\{sku\: ''AV\-FD\-001'', slug\: ''herbal\-green\-tea'', category_slug\: ''health\-care'', name\: ''arovolife Herbal…'', short_description\: ''25 bags\. Tulsi &…'', description\: ''Daily wellness tea…'', hsn_code\: ''0902'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-HW\-001'', slug\: ''gentle\-hand\-wash'', category_slug\: ''personal\-care'', name\: ''arovolife Gentle…'', short_description\: ''Aloe vera & neem\.…'', description\: ''A daily\-use hand…'', hsn_code\: ''3401'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-IB\-001'', slug\: ''immunity\-booster'', category_slug\: ''health\-care'', name\: ''arovolife Immunity…'', short_description\: ''60 capsules\. Zinc,…'', description\: ''Daily immunity…'', hsn_code\: ''3004'', image_url\: ''https\://picsum…'', \.\.\.\}\|array\{sku\: ''AV\-MV\-001'', slug\: ''multi\-vitamin'', category_slug\: ''health\-care'', name\: ''arovolife Multi…'', short_description\: ''30 tablets\. Daily…'', description\: ''Daily multivitamin…'', hsn_code\: ''2936'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-OL\-001'', slug\: ''hair\-essential\-oil'', category_slug\: ''personal\-care'', name\: ''arovolife Hair…'', short_description\: ''Bhringraj & amla\.…'', description\: ''Traditional hair…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-SH\-001'', slug\: ''scalpcare\-shampoo'', category_slug\: ''personal\-care'', name\: ''arovolife ScalpCare…'', short_description\: ''Anti\-dandruff…'', description\: ''Clinically tested…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-VCS\-001'', slug\: ''vitamin\-c\-serum'', category_slug\: ''skin\-and\-beauty'', name\: ''arovolife Vitamin C…'', short_description\: ''30 ml\. Brightening…'', description\: ''A lightweight…'', hsn_code\: ''3304'', image_url\: ''https\://picsum…'', \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: database/seeders/ProductCatalogSeeder.php
+
+		-
+			message: '#^Offset ''image_url'' on array\{sku\: ''AV\-AFW\-001'', slug\: ''aloe\-face\-wash'', category_slug\: ''personal\-care'', name\: ''arovolife Aloe Face…'', short_description\: ''150 ml\. Gentle…'', description\: ''A gentle aloe vera…'', hsn_code\: ''3401'', image_url\: ''https\://picsum…'', \.\.\.\}\|array\{sku\: ''AV\-FD\-001'', slug\: ''herbal\-green\-tea'', category_slug\: ''health\-care'', name\: ''arovolife Herbal…'', short_description\: ''25 bags\. Tulsi &…'', description\: ''Daily wellness tea…'', hsn_code\: ''0902'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-HW\-001'', slug\: ''gentle\-hand\-wash'', category_slug\: ''personal\-care'', name\: ''arovolife Gentle…'', short_description\: ''Aloe vera & neem\.…'', description\: ''A daily\-use hand…'', hsn_code\: ''3401'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-IB\-001'', slug\: ''immunity\-booster'', category_slug\: ''health\-care'', name\: ''arovolife Immunity…'', short_description\: ''60 capsules\. Zinc,…'', description\: ''Daily immunity…'', hsn_code\: ''3004'', image_url\: ''https\://picsum…'', \.\.\.\}\|array\{sku\: ''AV\-MV\-001'', slug\: ''multi\-vitamin'', category_slug\: ''health\-care'', name\: ''arovolife Multi…'', short_description\: ''30 tablets\. Daily…'', description\: ''Daily multivitamin…'', hsn_code\: ''2936'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-OL\-001'', slug\: ''hair\-essential\-oil'', category_slug\: ''personal\-care'', name\: ''arovolife Hair…'', short_description\: ''Bhringraj & amla\.…'', description\: ''Traditional hair…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-SH\-001'', slug\: ''scalpcare\-shampoo'', category_slug\: ''personal\-care'', name\: ''arovolife ScalpCare…'', short_description\: ''Anti\-dandruff…'', description\: ''Clinically tested…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-VCS\-001'', slug\: ''vitamin\-c\-serum'', category_slug\: ''skin\-and\-beauty'', name\: ''arovolife Vitamin C…'', short_description\: ''30 ml\. Brightening…'', description\: ''A lightweight…'', hsn_code\: ''3304'', image_url\: ''https\://picsum…'', \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
 			path: database/seeders/ProductCatalogSeeder.php
@@ -1727,6 +1733,72 @@ parameters:
 			identifier: method.notFound
 			count: 6
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$image_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$distributor_price_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$value_html\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|null\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 8
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Admin/ProductCatalogSeederTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'

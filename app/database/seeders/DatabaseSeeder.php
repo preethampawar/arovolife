@@ -13,8 +13,8 @@ class DatabaseSeeder extends Seeder
             SettingsSeeder::class,
             ContentPageSeeder::class,
             LedgerAccountSeeder::class,
-            ProductCatalogSeeder::class,
             ProductCategorySeeder::class,
+            ProductCatalogSeeder::class,
             CommerceFeatureFlagSeeder::class,
         ]);
     }
