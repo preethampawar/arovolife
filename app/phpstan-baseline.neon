@@ -55,6 +55,90 @@ parameters:
 			path: app/Modules/Admin/Models/Setting.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$image_s3_key\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$sku\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$product_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminProductController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$s3_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminProductController.php
+
+		-
+			message: '#^Property Illuminate\\Database\\Eloquent\\Model\:\:\$attributes \(array\<string, mixed\>\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: app/Modules/Catalog/Http/Controllers/Admin/AdminProductController.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Requests/CategoryRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Http\\Requests\\CategoryRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Catalog/Http/Requests/CategoryRequest.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Http/Requests/ProductRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Http\\Requests\\ProductRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Catalog/Http/Requests/ProductRequest.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\InventoryLevel\:\:\$on_hand\.$#'
 			identifier: property.notFound
 			count: 1
@@ -85,8 +169,32 @@ parameters:
 			path: app/Modules/Catalog/Models/Product.php
 
 		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:galleryImages\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/Product.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:images\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/Product.php
+
+		-
 			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:primaryVariant\(\) should return App\\Modules\\Catalog\\Models\\ProductVariant\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: return.type
+			count: 1
+			path: app/Modules/Catalog/Models/Product.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:productAttributes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/Product.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:productCategory\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Catalog/Models/Product.php
 
@@ -97,6 +205,60 @@ parameters:
 			path: app/Modules/Catalog/Models/Product.php
 
 		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\ProductAttribute\:\:product\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/ProductAttribute.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$image_s3_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Models/ProductCategory.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Models/ProductCategory.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\ProductCategory\:\:children\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/ProductCategory.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\ProductCategory\:\:parent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/ProductCategory.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\ProductCategory\:\:products\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/ProductCategory.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$s3_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Catalog/Models/ProductImage.php
+
+		-
+			message: '#^Method App\\Modules\\Catalog\\Models\\ProductImage\:\:product\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Catalog/Models/ProductImage.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$distributor_price_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Catalog/Models/ProductVariant.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$mrp_paise\.$#'
 			identifier: property.notFound
 			count: 3
@@ -105,7 +267,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 4
 			path: app/Modules/Catalog/Models/ProductVariant.php
 
 		-
@@ -121,13 +283,103 @@ parameters:
 			path: app/Modules/Catalog/Models/ProductVariant.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$s3_key\.$#'
 			identifier: property.notFound
 			count: 1
+			path: app/Modules/Catalog/Services/ProductImageStorage.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$max_discount_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$min_purchase_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$per_customer_limit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$scope\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$scope_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$usage_limit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Http\\Controllers\\Admin\\AdminCouponController\:\:categoryOptions\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Http\\Controllers\\Admin\\AdminCouponController\:\:productOptions\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 2
 			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
 
 		-
 			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markDelivered\(\) expects int\|null, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
+
+		-
+			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markPaid\(\) expects int\|null, int\|string\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
@@ -139,8 +391,26 @@ parameters:
 			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Storefront/CartController.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
 			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
+
+		-
+			message: '#^Parameter \#1 \$coupon of method App\\Modules\\Commerce\\Services\\CouponService\:\:discountFor\(\) expects App\\Modules\\Commerce\\Models\\Coupon, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
 			count: 1
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
 
@@ -149,6 +419,18 @@ parameters:
 			identifier: missingType.return
 			count: 1
 			path: app/Modules/Commerce/Http/Middleware/CaptureAttribution.php
+
+		-
+			message: '#^Access to an undefined property \(object\|string\)\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Requests/CouponRequest.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Http\\Requests\\CouponRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Commerce/Http/Requests/CouponRequest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$gst_rate_bp\.$#'
@@ -166,6 +448,12 @@ parameters:
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$unit_price_paise\.$#'
 			identifier: property.notFound
 			count: 2
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Cart\:\:coupon\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
 			path: app/Modules/Commerce/Models/Cart.php
 
 		-
@@ -209,6 +497,72 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Commerce/Models/CartItem.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$starts_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$usage_limit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$used_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Coupon\:\:redemptions\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/Coupon.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\CouponRedemption\:\:coupon\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/CouponRedemption.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\CouponRedemption\:\:customer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/CouponRedemption.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\CouponRedemption\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/CouponRedemption.php
 
 		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\Customer\:\:addresses\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -319,6 +673,12 @@ parameters:
 			path: app/Modules/Commerce/Services/CartService.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Cart\:\:\$coupon_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/CartService.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
 			identifier: property.notFound
 			count: 1
@@ -344,6 +704,12 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Services/CheckoutService.php
@@ -391,6 +757,72 @@ parameters:
 			path: app/Modules/Commerce/Services/CheckoutService.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$max_discount_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$min_purchase_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$per_customer_limit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$scope\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$scope_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variant\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/CouponService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$discount_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$gst_paise\.$#'
 			identifier: property.notFound
 			count: 2
@@ -399,7 +831,13 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
 			identifier: property.notFound
-			count: 6
+			count: 7
+			path: app/Modules/Commerce/Services/OrderStateMachine.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
+			identifier: property.notFound
+			count: 2
 			path: app/Modules/Commerce/Services/OrderStateMachine.php
 
 		-
@@ -417,7 +855,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 3
 			path: app/Modules/Commerce/Services/OrderStateMachine.php
 
 		-
@@ -961,6 +1399,12 @@ parameters:
 			path: database/seeders/ProductCatalogSeeder.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 1
+			path: database/seeders/ProductCategorySeeder.php
+
+		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 1
@@ -1007,6 +1451,150 @@ parameters:
 			identifier: foreach.nonIterable
 			count: 1
 			path: tests/Feature/Compliance/RegistrationHasZeroOrdersTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$category_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$description_html\.$#'
+			identifier: property.notFound
+			count: 3
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$manufacturer\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$s3_key\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$distributor_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$gst_rate_bp\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$landing_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$mrp_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$on_hand\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sort\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$value_html\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Function acatProductPayload\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 22
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$max_discount_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Admin/AdminCouponTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$min_purchase_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCouponTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCouponTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Admin/AdminCouponTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Admin/AdminCouponTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 6
+			path: tests/Modules/Admin/AdminCouponTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -1165,6 +1753,108 @@ parameters:
 			path: tests/Modules/Admin/TerminateDistributorTest.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CustomerAddress\:\:\$city\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Function cpoAddr\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Function cpoBuyer\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 6
+			path: tests/Modules/Commerce/CheckoutPaymentTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$code\.$#'
+			identifier: property.notFound
+			count: 9
+			path: tests/Modules/Commerce/CouponTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$used_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/CouponTest.php
+
+		-
+			message: '#^Function cpnCart\(\) never assigns null to &\$productId so it can be removed from the by\-ref type\.$#'
+			identifier: parameterByRef.unusedType
+			count: 1
+			path: tests/Modules/Commerce/CouponTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Commerce/CouponTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/MembersOnlyCheckoutTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/MembersOnlyCheckoutTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/StorefrontCatalogTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Commerce/StorefrontCatalogTest.php
+
+		-
+			message: '#^Parameter \#1 \$expected of method Pest\\Mixins\\Expectation\<int\<0, max\>\|false\|null\>\:\:toBeLessThan\(\) expects DateTimeInterface\|float\|int\|string, int\<0, max\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Modules/Commerce/StorefrontCatalogTest.php
+
+		-
 			message: '#^Function seedActiveDistributor\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1251,7 +1941,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 8
 			path: tests/Modules/Genealogy/TreeViewTest.php
 
 		-
@@ -1281,7 +1971,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 2
+			count: 4
 			path: tests/Modules/Identity/DashboardRenderTest.php
 
 		-
@@ -1501,12 +2191,6 @@ parameters:
 			path: tests/Modules/Identity/StateAgeRuleTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
 			count: 2
@@ -1533,12 +2217,6 @@ parameters:
 		-
 			message: '#^Function wpmSeedPendingUserWithDraft\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
-
-		-
-			message: '#^Unknown parameter \$userId in call to method App\\Modules\\Identity\\Services\\WizardStateService\:\:start\(\)\.$#'
-			identifier: argument.unknown
 			count: 1
 			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
 
