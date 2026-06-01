@@ -1465,6 +1465,12 @@ parameters:
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$image_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminCatalogTest.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$manufacturer\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1557,7 +1563,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 22
+			count: 23
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-

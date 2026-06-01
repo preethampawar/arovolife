@@ -81,6 +81,12 @@
                 <input type="text" name="short_description" value="{{ old('short_description', $product->short_description) }}" maxlength="500"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
+            <label class="block sm:col-span-2">
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Primary image URL</span>
+                <input type="url" name="image_url" value="{{ old('image_url', $product->image_url) }}" maxlength="1000" placeholder="https://… (used when no gallery image is uploaded)"
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <span class="block text-xs text-gray-500 mt-1">Optional. A hosted/CDN image URL shown when no gallery image is uploaded.</span>
+            </label>
         </div>
     </div>
 

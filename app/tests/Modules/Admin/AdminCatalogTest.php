@@ -59,6 +59,7 @@ function acatProductPayload(int $categoryId, array $overrides = []): array
         'slug' => 'test-wellness-tonic-'.rand(1000, 9999),
         'category_id' => $categoryId,
         'hsn_code' => '3004',
+        'image_url' => 'https://cdn.example.com/tonic.jpg',
         'manufacturer' => 'Arovolife Labs',
         'country_of_origin' => 'India',
         'short_description' => 'A test tonic.',
@@ -99,6 +100,7 @@ it('ACAT-01: admin creates a product with pricing tiers + attributes + inventory
     expect($product)->not->toBeNull();
     expect($product->category_id)->toBe($cat->id);
     expect($product->manufacturer)->toBe('Arovolife Labs');
+    expect($product->image_url)->toBe('https://cdn.example.com/tonic.jpg');
 
     $variant = $product->primaryVariant();
     expect($variant->mrp_paise)->toBe(100000);          // ₹1000.00

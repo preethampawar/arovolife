@@ -61,6 +61,7 @@ final class AdminProductController extends Controller
                 'manufacturer' => $data['manufacturer'] ?? null,
                 'country_of_origin' => $data['country_of_origin'] ?? null,
                 'hsn_code' => $data['hsn_code'],
+                'image_url' => $data['image_url'] ?? null,
                 'status' => $data['status'],
                 'created_by_user_id' => Auth::id(),
             ]);
@@ -106,6 +107,7 @@ final class AdminProductController extends Controller
                 'manufacturer' => $data['manufacturer'] ?? null,
                 'country_of_origin' => $data['country_of_origin'] ?? null,
                 'hsn_code' => $data['hsn_code'],
+                'image_url' => $data['image_url'] ?? null,
                 'status' => $data['status'],
             ]);
 
