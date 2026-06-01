@@ -306,9 +306,12 @@ it('CR-11: spouse user starts with password_set_at NULL and cannot log in until 
 
     expect($spouse->password_set_at)->toBeNull();
 
-    // Login attempt is refused at the LoginController gate.
+    // Login attempt is refused at the LoginController gate. Distributors sign
+    // in by ADN; the spouse's ADN is the couple's base ADN with a "-S" suffix
+    // (e.g. "270346663-S"). An email here would be rejected as "wrong channel"
+    // before the not-activated check is reached, so we use the spouse's ADN.
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
-        ->post('/login', ['login' => $spouse->email, 'password' => 'whatever']);
+        ->post('/login', ['login' => $secondary->adn, 'password' => 'whatever']);
     $response->assertSessionHasErrors('login');
     $errors = session('errors')->getBag('default')->get('login');
     expect(implode(' ', $errors))->toContain('not been activated');

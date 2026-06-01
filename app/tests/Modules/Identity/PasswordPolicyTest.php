@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -147,6 +148,12 @@ it('PP-04: a strong, non-breached password registers successfully', function () 
 it('PP-05: 5 failed login attempts throttle the 6th', function () {
     RateLimiter::clear('login:foo@test.com|127.0.0.1');
 
+    // The lockout is exercised through a VALID login channel. Distributors
+    // sign in by ADN and admins by email; an email submitted for a non-admin
+    // is rejected as "wrong channel" BEFORE the rate limiter is charged, so
+    // we use an admin account (email = its valid channel) to drive the
+    // failed-attempt counter to the 5-attempt lockout.
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
     $user = User::create([
         'email' => 'foo@test.com',
         'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
@@ -154,6 +161,7 @@ it('PP-05: 5 failed login attempts throttle the 6th', function () {
         'password_set_at' => now(),
         'status' => 'active',
     ]);
+    $user->assignRole('admin');
 
     // 5 wrong attempts
     for ($i = 0; $i < 5; $i++) {

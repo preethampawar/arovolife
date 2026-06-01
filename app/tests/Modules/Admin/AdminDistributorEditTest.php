@@ -116,8 +116,12 @@ it('AED-01: admin updates full_name, phone, email — audit log diff written', f
         ->and($audit->actor_id)->toBe($admin->id);
 
     $changes = $audit->details['changes'] ?? [];
+    // toEqual (not toBe): `details` is a JSON column and MySQL normalises JSON
+    // object key order by key length ("to" before "from"), so a strict,
+    // order-sensitive assertSame would pass on SQLite but fail on MySQL. The
+    // from/to VALUES are what matter, not their stored key order.
     expect($changes)->toHaveKey('full_name')
-        ->and($changes['full_name'])->toBe(['from' => 'Original Name', 'to' => 'Updated Name'])
+        ->and($changes['full_name'])->toEqual(['from' => 'Original Name', 'to' => 'Updated Name'])
         ->and($changes)->toHaveKey('email')
         ->and($changes['email']['to'])->toBe('new-email@test.com');
 });

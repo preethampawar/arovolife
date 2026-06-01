@@ -44,26 +44,34 @@ function aprlMakeDistributor(string $emailPrefix, string $oldPassword, string $a
     $user->assignRole('distributor');
 
     // Minimal distributor row — enough columns satisfied to land in the
-    // table; tests don't touch tree placement.
-    DB::table('distributors')->insert([
-        'user_id' => $user->id,
-        'adn' => $adn,
-        'pan_hash' => random_bytes(32),
-        'pan_last4' => '0000',
-        'bank_account_enc' => 'stub',
-        'bank_ifsc' => 'SBIN0000000',
-        'sponsor_id' => 1,
-        'placement_parent_id' => 1,
-        'placement_side' => 'L',
-        'side_chosen_by' => 'referral_explicit',
-        'depth' => 1,
-        'effective_date' => now()->format('Y-m-d H:i:s.v'),
-        'cooling_off_end_at' => now()->addDays(30)->format('Y-m-d H:i:s.v'),
-        'state' => 'TS',
-        'is_primary_couple' => 0,
-        'created_at' => now()->format('Y-m-d H:i:s.v'),
-        'updated_at' => now()->format('Y-m-d H:i:s.v'),
-    ]);
+    // table; tests don't touch tree placement. sponsor_id/placement_parent_id
+    // point at a notional root that this isolated test never creates, so we
+    // disable FK checks around the insert (MySQL enforces them; the dangling
+    // refs are harmless and RefreshDatabase rolls the row back).
+    disableTestForeignKeys();
+    try {
+        DB::table('distributors')->insert([
+            'user_id' => $user->id,
+            'adn' => $adn,
+            'pan_hash' => random_bytes(32),
+            'pan_last4' => '0000',
+            'bank_account_enc' => 'stub',
+            'bank_ifsc' => 'SBIN0000000',
+            'sponsor_id' => 1,
+            'placement_parent_id' => 1,
+            'placement_side' => 'L',
+            'side_chosen_by' => 'referral_explicit',
+            'depth' => 1,
+            'effective_date' => now()->format('Y-m-d H:i:s.v'),
+            'cooling_off_end_at' => now()->addDays(30)->format('Y-m-d H:i:s.v'),
+            'state' => 'TS',
+            'is_primary_couple' => 0,
+            'created_at' => now()->format('Y-m-d H:i:s.v'),
+            'updated_at' => now()->format('Y-m-d H:i:s.v'),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
 
     return [$user, $adn];
 }
@@ -83,13 +91,12 @@ function aprlMakeAdmin(): User
     return $admin;
 }
 
-it('APR-01: admin sets a new password → distributor can sign in with EMAIL', function () {
+it('APR-01: admin sets a new password → distributor EMAIL login is rejected (ADN-only policy)', function () {
     $newPassword = 'BrandNew-9pass!ZZ';
     [$user]      = aprlMakeDistributor('email-login-', 'OldCorrectPass!2026', '900100200');
     $admin       = aprlMakeAdmin();
     $distributor = Distributor::query()->where('user_id', $user->id)->firstOrFail();
 
-    // Clear any pre-existing rate-limit state for both keys we'll touch.
     RateLimiter::clear('login:'.strtolower($user->email).'|127.0.0.1');
 
     // 1. Admin resets the password through the real endpoint.
@@ -107,17 +114,17 @@ it('APR-01: admin sets a new password → distributor can sign in with EMAIL', f
     expect(Hash::check($newPassword, $user->password_hash))->toBeTrue();
     expect($user->password_set_at)->not->toBeNull();
 
-    // 2. Switch contexts — sign out admin, then attempt distributor login
-    //    via email + new password.
+    // 2. Distributors sign in by ADN ONLY (policy locked 2026-05-30). An EMAIL
+    //    login — even with the correct new password — is rejected with the
+    //    generic error and must not authenticate. (ADN login is covered by APR-02.)
     auth()->logout();
     RateLimiter::clear('login:'.strtolower($user->email).'|127.0.0.1');
 
     $loginResponse = $this->withoutMiddleware(PreventRequestForgery::class)
         ->post('/login', ['login' => $user->email, 'password' => $newPassword]);
 
-    $loginResponse->assertRedirect('/dashboard');
-    expect(auth()->check())->toBeTrue();
-    expect(auth()->id())->toBe($user->id);
+    $loginResponse->assertSessionHasErrors('login');
+    expect(auth()->check())->toBeFalse();
 });
 
 it('APR-02: admin sets a new password → distributor can sign in with ADN', function () {
@@ -153,19 +160,22 @@ it('APR-02: admin sets a new password → distributor can sign in with ADN', fun
 it('APR-04: REGRESSION — pre-reset failed attempts must not lock the user out after admin reset', function () {
     $oldPassword = 'OldCorrectPass!2026';
     $newPassword = 'BrandNew-9pass!ZZ';
-    [$user]      = aprlMakeDistributor('throttle-', $oldPassword, '900400500');
+    $adn         = '900400500';
+    [$user]      = aprlMakeDistributor('throttle-', $oldPassword, $adn);
     $admin       = aprlMakeAdmin();
     $distributor = Distributor::query()->where('user_id', $user->id)->firstOrFail();
 
+    // The lockout bucket is keyed on the resolved email; an ADN login resolves
+    // to the same key, so charging it via the distributor's ADN (their valid
+    // channel) fills the same bucket the reset must later clear.
     $loginKey = 'login:'.strtolower($user->email).'|127.0.0.1';
     RateLimiter::clear($loginKey);
 
-    // Step 1: user fires 5 bad-password attempts to fill the rate-limit
-    // bucket, mirroring what a forgetful user does before asking for a
-    // reset on the helpdesk channel.
+    // Step 1: user fires 5 bad-password attempts (by ADN) to fill the
+    // rate-limit bucket, mirroring a forgetful user before a helpdesk reset.
     for ($i = 0; $i < 5; $i++) {
         $this->withoutMiddleware(PreventRequestForgery::class)
-            ->post('/login', ['login' => $user->email, 'password' => 'wrong-'.$i])
+            ->post('/login', ['login' => $adn, 'password' => 'wrong-'.$i])
             ->assertRedirect();
     }
     expect(RateLimiter::tooManyAttempts($loginKey, 5))->toBeTrue();
@@ -180,11 +190,10 @@ it('APR-04: REGRESSION — pre-reset failed attempts must not lock the user out 
         ->assertRedirect();
     auth()->logout();
 
-    // Step 3: user attempts login with the CORRECT new password.
-    // EXPECTED (after fix): authenticated → redirected to /dashboard.
-    // CURRENT BUG: still throttled, error mentions "Too many failed".
+    // Step 3: user attempts login (by ADN) with the CORRECT new password.
+    // EXPECTED: the admin reset cleared the lockout → authenticated → /dashboard.
     $resp = $this->withoutMiddleware(PreventRequestForgery::class)
-        ->post('/login', ['login' => $user->email, 'password' => $newPassword]);
+        ->post('/login', ['login' => $adn, 'password' => $newPassword]);
 
     $resp->assertRedirect('/dashboard');
     expect(auth()->check())->toBeTrue();

@@ -49,12 +49,15 @@ function kycSeedSession(): User
     return $user;
 }
 
-it('KYC-UP-01: step 7 accepts five required docs and persists paths to wizard state', function () {
+it('KYC-UP-01: step 7 accepts all required docs (+ optional cheque) and persists paths to wizard state', function () {
     $user = kycSeedSession();
 
+    // Required: PAN, Aadhaar front, Aadhaar back, address-proof front + back.
+    // Cheque is optional but supplied here too.
     $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
         'pan_doc' => UploadedFile::fake()->image('pan.jpg', 600, 400),
         'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+        'aadhaar_back_doc' => UploadedFile::fake()->image('aadhaar_back.jpg', 600, 400),
         'cheque_doc' => UploadedFile::fake()->image('cheque.jpg', 600, 400),
         'address_proof_front' => UploadedFile::fake()->image('addr_front.jpg', 600, 400),
         'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
@@ -66,9 +69,9 @@ it('KYC-UP-01: step 7 accepts five required docs and persists paths to wizard st
     $docs = $wizard->getStepData(9)['documents'] ?? null;
 
     expect($docs)->not->toBeNull()
-        ->and($docs)->toHaveKeys(['pan', 'aadhaar', 'cheque', 'address_proof_front', 'address_proof_back']);
+        ->and($docs)->toHaveKeys(['pan', 'aadhaar', 'aadhaar_back', 'cheque', 'address_proof_front', 'address_proof_back']);
 
-    foreach (['pan', 'aadhaar', 'cheque', 'address_proof_front', 'address_proof_back'] as $type) {
+    foreach (['pan', 'aadhaar', 'aadhaar_back', 'cheque', 'address_proof_front', 'address_proof_back'] as $type) {
         expect($docs[$type])->toHaveKeys(['path', 'sha256'])
             ->and(strlen($docs[$type]['sha256']))->toBe(64);
         Storage::disk('kyc')->assertExists($docs[$type]['path']);
@@ -121,16 +124,19 @@ it('KYC-UP-03: rejects oversize file (>5 MB)', function () {
     $response->assertSessionHasErrors('pan_doc');
 });
 
-it('KYC-UP-04: step 7 accepts ONLY PAN + Aadhaar (cheque + address-proof are optional)', function () {
-    // Cancelled cheque + address-proof front/back were made optional —
-    // the customer can supply them later via the dashboard or by the
-    // admin via the pending-registration tool. Asserts the wizard now
-    // advances when only the two required docs are attached.
+it('KYC-UP-04: step 7 accepts the required docs without the optional cheque', function () {
+    // The cancelled cheque is the only OPTIONAL document. PAN, Aadhaar
+    // (front + back) and address-proof (front + back) are all mandatory.
+    // Asserts the wizard advances when every required doc is attached but
+    // the optional cheque is omitted, and that cheque is not a ghost key.
     $user = kycSeedSession();
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
         'pan_doc' => UploadedFile::fake()->image('pan.jpg', 600, 400),
         'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
+        'aadhaar_back_doc' => UploadedFile::fake()->image('aadhaar_back.jpg', 600, 400),
+        'address_proof_front' => UploadedFile::fake()->image('addr_front.jpg', 600, 400),
+        'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
     ]);
 
     $response->assertRedirect('/register/complete');
@@ -139,11 +145,9 @@ it('KYC-UP-04: step 7 accepts ONLY PAN + Aadhaar (cheque + address-proof are opt
     $wizard = app(WizardStateService::class);
     $docs = $wizard->getStepData(9)['documents'] ?? null;
     expect($docs)->not->toBeNull()
-        ->and($docs)->toHaveKeys(['pan', 'aadhaar'])
-        // The omitted optional fields must NOT appear as ghost keys.
-        ->and($docs)->not->toHaveKey('cheque')
-        ->and($docs)->not->toHaveKey('address_proof_front')
-        ->and($docs)->not->toHaveKey('address_proof_back');
+        ->and($docs)->toHaveKeys(['pan', 'aadhaar', 'aadhaar_back', 'address_proof_front', 'address_proof_back'])
+        // The omitted optional cheque must NOT appear as a ghost key.
+        ->and($docs)->not->toHaveKey('cheque');
 });
 
 it('KYC-UP-05: step 7 still rejects when PAN is missing (PAN remains mandatory)', function () {
@@ -170,21 +174,21 @@ it('KYC-UP-06: step 7 still rejects when Aadhaar is missing (Aadhaar remains man
     $response->assertSessionHasErrors('aadhaar_doc');
 });
 
-it('KYC-UP-07: a partial mix (PAN + Aadhaar + address-proof-front only) is accepted', function () {
-    // Realistic case: customer has their address proof handy but not
-    // a cancelled cheque. The wizard must let them progress with the
-    // subset they have.
+it('KYC-UP-07: step 7 rejects an incomplete set missing a required address-proof side', function () {
+    // Address proof (front AND back) is mandatory alongside PAN + Aadhaar
+    // (front + back). Omitting the address-proof back side must be rejected
+    // and must not advance the wizard — complements KYC-UP-05/06.
     $user = kycSeedSession();
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)->post('/register/documents', [
         'pan_doc' => UploadedFile::fake()->image('pan.jpg', 600, 400),
         'aadhaar_doc' => UploadedFile::fake()->image('aadhaar.jpg', 600, 400),
-        'address_proof_front' => UploadedFile::fake()->image('addr.jpg', 600, 400),
+        'aadhaar_back_doc' => UploadedFile::fake()->image('aadhaar_back.jpg', 600, 400),
+        'address_proof_front' => UploadedFile::fake()->image('addr_front.jpg', 600, 400),
+        // address_proof_back omitted on purpose — it is required.
     ]);
 
-    $response->assertRedirect('/register/complete');
-    $docs = app(WizardStateService::class)->getStepData(9)['documents'] ?? [];
-    expect($docs)->toHaveKeys(['pan', 'aadhaar', 'address_proof_front'])
-        ->and($docs)->not->toHaveKey('cheque')
-        ->and($docs)->not->toHaveKey('address_proof_back');
+    $response->assertRedirect();
+    $response->assertSessionHasErrors('address_proof_back');
+    expect(app(WizardStateService::class)->getStepData(9))->toBeNull();
 });

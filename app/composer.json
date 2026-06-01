@@ -58,11 +58,11 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php artisan test"
+            "DB_CONNECTION=mysql DB_DATABASE=arovolife_test php artisan test"
         ],
         "test:parallel": [
             "@php artisan config:clear --ansi",
-            "vendor/bin/pest --parallel"
+            "DB_CONNECTION=mysql DB_DATABASE=arovolife_test vendor/bin/pest --parallel"
         ],
         "lint": "vendor/bin/pint --test",
         "stan": "vendor/bin/phpstan analyse --no-progress --memory-limit=1G",

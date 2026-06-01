@@ -34,6 +34,7 @@ function prmSetWizardAtComplete(User $user): void
             'user_id' => $user->id,
             'sponsor_id' => 1,
             'data' => [
+                'account' => ['email' => $user->email, 'phone_e164' => $user->phone_e164],
                 'pan' => ['pan_number' => 'PRMRA1234X'],
                 'aadhaar' => ['ref' => 'STUB', 'last4' => '9012', 'aadhaar_number' => '123456789012'],
                 'bank' => ['account_number' => null, 'ifsc' => null],
