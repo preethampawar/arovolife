@@ -55,6 +55,10 @@ return [
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            // Pin the SQL session to IST so CURRENT_TIMESTAMP / useCurrent()
+            // columns match the app timezone (Asia/Kolkata) on every host —
+            // notably Amazon RDS (staging), whose server tz defaults to UTC.
+            'timezone' => env('DB_TIMEZONE', '+05:30'),
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
