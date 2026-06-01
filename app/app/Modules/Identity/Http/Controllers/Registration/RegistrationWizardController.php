@@ -814,18 +814,23 @@ final class RegistrationWizardController extends Controller
         // proceed unless every required step has data, and bounce the
         // user back to the missing step. Step numbers track the canonical
         // 2026-05 order; route names below mirror them.
+        // step-data key → the GET route that re-collects it. The account step
+        // is named `register.account.show` (not `register.account`); the rest
+        // follow the `register.<key>` convention. Mapping explicitly avoids a
+        // RouteNotFoundException (→ 500) when the account block is the one
+        // missing.
         foreach ([
-            2 => 'account',
-            3 => 'orientation',
-            4 => 'consent',
-            5 => 'pan',
-            6 => 'aadhaar',
-            7 => 'bank',
-            8 => 'personal',
-            9 => 'documents',
-        ] as $stepNum => $key) {
+            'account' => 'register.account.show',
+            'orientation' => 'register.orientation',
+            'consent' => 'register.consent',
+            'pan' => 'register.pan',
+            'aadhaar' => 'register.aadhaar',
+            'bank' => 'register.bank',
+            'personal' => 'register.personal',
+            'documents' => 'register.documents',
+        ] as $key => $route) {
             if (($state['data'][$key] ?? null) === null) {
-                return redirect()->route('register.'.$key)->withErrors([
+                return redirect()->route($route)->withErrors([
                     'wizard' => "We could not find your {$key} data — please re-submit this step.",
                 ]);
             }
