@@ -8,12 +8,16 @@ use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
+use App\Modules\Commerce\Services\DTOs\CouponResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 final class CartService
 {
-    public function __construct(private readonly AttributionService $attribution) {}
+    public function __construct(
+        private readonly AttributionService $attribution,
+        private readonly CouponService $coupons,
+    ) {}
 
     public function currentCart(Request $request): Cart
     {
@@ -85,5 +89,28 @@ final class CartService
     public function clear(Cart $cart): void
     {
         $cart->items()->delete();
+    }
+
+    /**
+     * Validate a promo code against the cart and, if valid, attach it.
+     * Returns the {@see CouponResult} so the caller can surface success or the
+     * customer-safe error message.
+     */
+    public function applyCoupon(Cart $cart, string $code, ?Customer $customer): CouponResult
+    {
+        $result = $this->coupons->validate($code, $cart, $customer);
+
+        if ($result->ok && $result->coupon !== null) {
+            $cart->coupon_id = $result->coupon->id;
+            $cart->save();
+        }
+
+        return $result;
+    }
+
+    public function removeCoupon(Cart $cart): void
+    {
+        $cart->coupon_id = null;
+        $cart->save();
     }
 }

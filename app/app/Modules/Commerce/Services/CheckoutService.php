@@ -6,6 +6,7 @@ namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\Customer;
+use App\Modules\Commerce\Models\CustomerAddress;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Ledger\Services\LedgerPoster;
@@ -27,19 +28,21 @@ final class CheckoutService
         private readonly DatabaseManager $db,
         private readonly AttributionService $attribution,
         private readonly LedgerPoster $ledger,
+        private readonly CouponService $coupons,
     ) {}
 
     /**
-     * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $buyer
+     * @param  array<string, mixed>  $shipping
+     * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, ?int $attributedDistributorId, string $attributionSource, ?int $consentId = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        return $this->db->transaction(function () use ($cart, $buyer, $shipping, $attributedDistributorId, $attributionSource, $consentId) {
+        return $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId) {
             // 1. Find or create the customer
             $emailHash = isset($buyer['email']) && $buyer['email'] !== ''
                 ? hash('sha256', strtolower(trim($buyer['email'])))
@@ -62,25 +65,51 @@ final class CheckoutService
                 ]);
             }
 
+            // 1b. Persist shipping + billing addresses on file for the customer
+            // (the default of each kind). Billing falls back to shipping when
+            // "same as shipping" was chosen.
+            $this->saveAddress($customer->id, 'shipping', $shipping);
+            $this->saveAddress($customer->id, 'billing', ! empty($billing) ? $billing : $shipping);
+
             // 2. Build the order
             $orderNo = $this->generateOrderNo();
             $idempotencyKey = (string) Str::uuid();
 
             $subtotalPaise = (int) $cart->subtotalPaise();
             $gstPaise = (int) $cart->gstPaise();
-            $totalPaise = $subtotalPaise;
+
+            // Re-validate any attached coupon now that the customer is known
+            // (this enforces per-customer limits / window at the moment of
+            // sale). A now-invalid coupon is silently dropped. The discount
+            // only reduces what the customer pays — BV on order lines is
+            // unaffected (compliance: BV stays a function of the SKU sale).
+            $discountPaise = 0;
+            $appliedCoupon = null;
+            $cart->loadMissing('coupon');
+            if ($cart->coupon !== null) {
+                // lockForUpdate: serialise concurrent checkouts on this coupon
+                // so the usage-limit check + increment can't be raced.
+                $couponResult = $this->coupons->validate($cart->coupon->code, $cart, $customer, lockForUpdate: true);
+                if ($couponResult->ok && $couponResult->coupon !== null) {
+                    $discountPaise = $couponResult->discountPaise;
+                    $appliedCoupon = $couponResult->coupon;
+                }
+            }
+
+            $totalPaise = max(0, $subtotalPaise - $discountPaise);
 
             $order = Order::create([
                 'order_no' => $orderNo,
                 'customer_id' => $customer->id,
                 'attributed_distributor_id' => $attributedDistributorId,
                 'attribution_source' => $attributionSource,
+                'payment_method' => $paymentMethod,
                 'status' => Order::STATUS_PLACED,
                 'self_consumption' => $attributedDistributorId !== null
                     && $customer->distributor_id === $attributedDistributorId,
                 'subtotal_paise' => $subtotalPaise,
                 'gst_paise' => $gstPaise,
-                'discount_paise' => 0,
+                'discount_paise' => $discountPaise,
                 'shipping_paise' => 0,
                 'total_paise' => $totalPaise,
                 'ship_name' => $shipping['name'],
@@ -124,17 +153,29 @@ final class CheckoutService
                 }
             }
 
-            // 4. Ledger: Dr razorpay cash (money held), Cr customer_prepayment (we owe customer the product)
-            $this->ledger->transfer(
-                sourceModule: 'Commerce',
-                sourceType: 'order.placed',
-                sourceId: $order->id,
-                idempotencyKey: "order.placed:{$order->id}",
-                debitAccount: 'asset.cash.gateway.razorpay',
-                creditAccount: 'liability.customer_prepayment',
-                amountPaise: $totalPaise,
-                memo: "Order {$orderNo}",
-            );
+            // 3b. Record the coupon redemption (usage tracking + per-customer caps)
+            if ($appliedCoupon !== null) {
+                $this->coupons->recordRedemption($appliedCoupon, $order->id, $customer->id, $discountPaise);
+            }
+
+            // 4. Ledger — ONLINE only: Dr razorpay cash (money held), Cr
+            // customer_prepayment (we owe the customer the product). For COD no
+            // cash has been received at placement, so no entry is posted now;
+            // the cash-in is posted when the COD payment is marked collected
+            // (OrderStateMachine::markPaid), keeping the ledger balanced and the
+            // revenue-recognition-on-ship step correct for both methods.
+            if ($paymentMethod === Order::PAYMENT_ONLINE && $totalPaise > 0) {
+                $this->ledger->transfer(
+                    sourceModule: 'Commerce',
+                    sourceType: 'order.placed',
+                    sourceId: $order->id,
+                    idempotencyKey: "order.placed:{$order->id}",
+                    debitAccount: 'asset.cash.gateway.razorpay',
+                    creditAccount: 'liability.customer_prepayment',
+                    amountPaise: $totalPaise,
+                    memo: "Order {$orderNo}",
+                );
+            }
 
             // 5. Clear the cart
             $cart->items()->delete();
@@ -142,6 +183,34 @@ final class CheckoutService
 
             return $order->fresh(['items', 'customer']);
         });
+    }
+
+    /**
+     * Upsert the customer's default address of a given kind (shipping|billing).
+     * Kept as the single "on file" default per kind; future saved-address
+     * reuse reads these.
+     *
+     * @param  array<string, mixed>  $a
+     */
+    private function saveAddress(int $customerId, string $kind, array $a): void
+    {
+        if (empty($a['line1'] ?? null)) {
+            return;
+        }
+
+        CustomerAddress::updateOrCreate(
+            ['customer_id' => $customerId, 'kind' => $kind, 'is_default' => true],
+            [
+                'name' => $a['name'] ?? '',
+                'phone_e164' => $a['phone'] ?? '',
+                'line1' => $a['line1'],
+                'line2' => $a['line2'] ?? null,
+                'city' => $a['city'] ?? '',
+                'state' => $a['state'] ?? '',
+                'pincode' => $a['pincode'] ?? '',
+                'country' => 'IN',
+            ],
+        );
     }
 
     private function generateOrderNo(): string

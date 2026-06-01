@@ -15,7 +15,7 @@ final class CommerceFeatureFlagSeeder extends Seeder
             // Storefront
             ['key' => 'commerce.storefront.enabled',              'value' => 'true'],
             ['key' => 'commerce.checkout.enabled',                'value' => 'true'],
-            ['key' => 'commerce.guest_checkout.enabled',          'value' => 'true'],   // Default: ON (Part 16 decision 1)
+            ['key' => 'commerce.guest_checkout.enabled',          'value' => 'false'],  // Default: OFF — members-only buying (partner spec 2026-05-31)
 
             // Attribution & cooling-off
             ['key' => 'commerce.attribution.window_days',         'value' => '30'],      // Default: 30 (Part 16 decision 2)
@@ -43,6 +43,7 @@ final class CommerceFeatureFlagSeeder extends Seeder
             // Payments
             ['key' => 'payments.gateway.razorpay.enabled',        'value' => 'false'],
             ['key' => 'payments.gateway.stub.enabled',            'value' => 'true'],    // Dev default
+            ['key' => 'payments.cod.enabled',                     'value' => 'true'],    // Cash on delivery (Epic 4)
         ];
 
         foreach ($flags as $flag) {

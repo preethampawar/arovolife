@@ -31,6 +31,17 @@ return [
             'AutoFormat.AutoParagraph' => true,
             'AutoFormat.RemoveEmpty' => true,
         ],
+        // Rich product-description body authored via the admin Trix WYSIWYG.
+        // Allows headings, lists, links, inline images (served from S3),
+        // tables and blockquotes — but NO script/iframe/style-injection.
+        'products' => [
+            'HTML.Doctype' => 'HTML 4.01 Transitional',
+            'HTML.Allowed' => 'p,br,h2,h3,h4,strong,b,em,i,u,ul,ol,li,a[href|title|target],img[src|alt|width|height],blockquote,figure,figcaption,table,thead,tbody,tr,th,td,span[style]',
+            'CSS.AllowedProperties' => 'text-align,font-weight,font-style,text-decoration,color',
+            'AutoFormat.AutoParagraph' => false,
+            'AutoFormat.RemoveEmpty' => true,
+            'HTML.TargetBlank' => true,
+        ],
         'test' => [
             'Attr.EnableID' => 'true',
         ],

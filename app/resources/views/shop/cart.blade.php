@@ -47,14 +47,46 @@
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6 h-fit sticky top-20">
         <h2 class="font-semibold text-gray-900 mb-4">Order Summary</h2>
+        @php $couponDiscount = $couponDiscount ?? 0; $finalTotal = max(0, $cart->totalPaise() - $couponDiscount); @endphp
         <div class="space-y-2 text-sm mb-4 pb-4 border-b border-gray-200">
             <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ number_format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ number_format($cart->gstPaise() / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">Shipping</span><span class="font-medium text-green-700">Free</span></div>
+            @if($couponDiscount > 0)
+            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ number_format($couponDiscount / 100, 2) }}</span></div>
+            @endif
+            @auth
+                @php $bvTotal = auth()->user()->distributor ? $cart->items->sum(fn ($i) => $i->bv_paise * $i->qty) : 0; @endphp
+                @if($bvTotal > 0)
+                {{-- BV total shown only to logged-in distributors — a factual point
+                     total used by the compensation plan, never an earnings figure
+                     (DSR Rule 5(1)(d) / hard rule #3). --}}
+                <div class="flex justify-between text-brand-700"><span>Total BV</span><span class="font-semibold" title="Business Volume — points used in the compensation plan">{{ number_format($bvTotal / 100, 0) }} BV</span></div>
+                @endif
+            @endauth
         </div>
+
+        {{-- Promo code --}}
+        <div class="mb-4">
+            @if($cart->coupon !== null && $couponDiscount > 0)
+                <div class="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm">
+                    <span class="text-green-800 font-medium">{{ $cart->coupon->code }} applied</span>
+                    <form method="POST" action="{{ route('shop.cart.coupon.remove') }}">@csrf @method('DELETE')<button type="submit" class="text-xs text-green-700 hover:text-red-600 underline">Remove</button></form>
+                </div>
+            @else
+                <form method="POST" action="{{ route('shop.cart.coupon.apply') }}" class="flex gap-2">
+                    @csrf
+                    <input name="code" type="text" value="{{ old('code') }}" placeholder="Promo code"
+                        class="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <button type="submit" class="shrink-0 px-4 rounded-lg bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold">Apply</button>
+                </form>
+                @error('code')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+            @endif
+        </div>
+
         <div class="flex justify-between mb-5">
             <span class="font-semibold text-gray-900">Total</span>
-            <span class="font-bold text-lg text-gray-900">₹{{ number_format($cart->totalPaise() / 100, 2) }}</span>
+            <span class="font-bold text-lg text-gray-900">₹{{ number_format($finalTotal / 100, 2) }}</span>
         </div>
         <a href="{{ route('shop.checkout') }}"
            class="block text-center w-full py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm transition-colors">

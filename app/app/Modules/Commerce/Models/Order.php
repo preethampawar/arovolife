@@ -36,9 +36,13 @@ final class Order extends Model
 
     public const STATUS_REFUNDED = 'refunded';
 
+    public const PAYMENT_ONLINE = 'online';
+
+    public const PAYMENT_COD = 'cod';
+
     protected $fillable = [
         'order_no', 'customer_id', 'attributed_distributor_id', 'attribution_source',
-        'status', 'self_consumption',
+        'payment_method', 'status', 'self_consumption',
         'subtotal_paise', 'gst_paise', 'discount_paise', 'shipping_paise', 'total_paise',
         'ship_name', 'ship_phone_e164', 'ship_line1', 'ship_line2',
         'ship_city', 'ship_state', 'ship_pincode',

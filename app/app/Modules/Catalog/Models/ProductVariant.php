@@ -15,6 +15,7 @@ final class ProductVariant extends Model
     protected $fillable = [
         'product_id', 'variant_sku', 'name', 'attributes',
         'weight_g', 'mrp_paise', 'sale_price_paise', 'cost_paise',
+        'landing_price_paise', 'distributor_price_paise',
         'bv_paise', 'pv_paise', 'gst_rate_bp', 'inventory_policy', 'status',
     ];
 
@@ -25,6 +26,8 @@ final class ProductVariant extends Model
             'mrp_paise' => 'int',
             'sale_price_paise' => 'int',
             'cost_paise' => 'int',
+            'landing_price_paise' => 'int',
+            'distributor_price_paise' => 'int',
             'bv_paise' => 'int',
             'pv_paise' => 'int',
             'weight_g' => 'int',
@@ -50,6 +53,21 @@ final class ProductVariant extends Model
     public function displayMrp(): string
     {
         return '₹'.number_format($this->mrp_paise / 100, 2);
+    }
+
+    /**
+     * The distributor price tier — shown ONLY to authenticated distributors
+     * (after-login pricing). It is a factual catalogue price, never an
+     * earnings figure (hard rule #3).
+     */
+    public function hasDistributorPrice(): bool
+    {
+        return $this->distributor_price_paise > 0 && $this->distributor_price_paise < $this->sale_price_paise;
+    }
+
+    public function displayDistributorPrice(): string
+    {
+        return '₹'.number_format($this->distributor_price_paise / 100, 2);
     }
 
     public function hasDiscount(): bool

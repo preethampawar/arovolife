@@ -14,6 +14,9 @@ use App\Modules\Admin\Http\Controllers\AdminKycController;
 use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
+use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
+use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
@@ -231,6 +234,33 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/commerce/orders/{order}', [AdminOrderController::class, 'show'])->name('commerce.orders.show');
     Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
     Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
+    Route::post('/commerce/orders/{order}/mark-cod-paid', [AdminOrderController::class, 'markCodPaid'])->name('commerce.orders.mark-cod-paid');
+
+    // Commerce — coupons / discounts (Epic 3)
+    Route::get('/commerce/coupons', [AdminCouponController::class, 'index'])->name('commerce.coupons.index');
+    Route::get('/commerce/coupons/create', [AdminCouponController::class, 'create'])->name('commerce.coupons.create');
+    Route::post('/commerce/coupons', [AdminCouponController::class, 'store'])->name('commerce.coupons.store');
+    Route::get('/commerce/coupons/{coupon}/edit', [AdminCouponController::class, 'edit'])->name('commerce.coupons.edit');
+    Route::put('/commerce/coupons/{coupon}', [AdminCouponController::class, 'update'])->name('commerce.coupons.update');
+    Route::post('/commerce/coupons/{coupon}/archive', [AdminCouponController::class, 'archive'])->name('commerce.coupons.archive');
+
+    // Catalog — products & categories (Epic 1)
+    Route::get('/catalog/products', [AdminProductController::class, 'index'])->name('catalog.products.index');
+    Route::get('/catalog/products/create', [AdminProductController::class, 'create'])->name('catalog.products.create');
+    Route::post('/catalog/products', [AdminProductController::class, 'store'])->name('catalog.products.store');
+    Route::get('/catalog/products/{product}/edit', [AdminProductController::class, 'edit'])->name('catalog.products.edit');
+    Route::put('/catalog/products/{product}', [AdminProductController::class, 'update'])->name('catalog.products.update');
+    Route::post('/catalog/products/{product}/archive', [AdminProductController::class, 'archive'])->name('catalog.products.archive');
+    Route::delete('/catalog/images/{image}', [AdminProductController::class, 'deleteImage'])->name('catalog.images.destroy');
+    // WYSIWYG inline-image upload target (Trix attachment add event).
+    Route::post('/catalog/trix-upload', [AdminProductController::class, 'trixUpload'])->name('catalog.trix-upload');
+
+    Route::get('/catalog/categories', [AdminCategoryController::class, 'index'])->name('catalog.categories.index');
+    Route::get('/catalog/categories/create', [AdminCategoryController::class, 'create'])->name('catalog.categories.create');
+    Route::post('/catalog/categories', [AdminCategoryController::class, 'store'])->name('catalog.categories.store');
+    Route::get('/catalog/categories/{category}/edit', [AdminCategoryController::class, 'edit'])->name('catalog.categories.edit');
+    Route::put('/catalog/categories/{category}', [AdminCategoryController::class, 'update'])->name('catalog.categories.update');
+    Route::post('/catalog/categories/{category}/archive', [AdminCategoryController::class, 'archive'])->name('catalog.categories.archive');
 
     // Content pages CRUD
     Route::get('/content', [AdminContentPageController::class, 'index'])->name('content.index');
@@ -320,6 +350,8 @@ Route::middleware('capture.attribution')->group(function (): void {
     Route::post('/shop/cart/add', [CartController::class, 'add'])->name('shop.cart.add');
     Route::patch('/shop/cart/items/{item}', [CartController::class, 'update'])->name('shop.cart.update');
     Route::delete('/shop/cart/items/{item}', [CartController::class, 'remove'])->name('shop.cart.remove');
+    Route::post('/shop/cart/coupon', [CartController::class, 'applyCoupon'])->name('shop.cart.coupon.apply');
+    Route::delete('/shop/cart/coupon', [CartController::class, 'removeCoupon'])->name('shop.cart.coupon.remove');
 
     Route::get('/shop/checkout', [CheckoutController::class, 'show'])->name('shop.checkout');
     Route::post('/shop/checkout', [CheckoutController::class, 'place'])->name('shop.checkout.place');

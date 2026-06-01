@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Cart extends Model
@@ -12,7 +13,7 @@ final class Cart extends Model
     protected $table = 'carts';
 
     protected $fillable = [
-        'customer_id', 'anonymous_key', 'ref_adn_snapshot', 'expires_at',
+        'customer_id', 'anonymous_key', 'ref_adn_snapshot', 'coupon_id', 'expires_at',
     ];
 
     protected function casts(): array
@@ -23,6 +24,11 @@ final class Cart extends Model
     public function items(): HasMany
     {
         return $this->hasMany(CartItem::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function subtotalPaise(): int

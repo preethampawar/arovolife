@@ -41,6 +41,9 @@
             <div class="mt-4 pt-4 border-t border-gray-200 flex flex-col items-end text-sm space-y-1">
                 <div class="flex gap-8"><span class="text-gray-600">Subtotal (taxable)</span><span class="w-32 text-right">₹{{ number_format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
                 <div class="flex gap-8"><span class="text-gray-600">GST</span><span class="w-32 text-right">₹{{ number_format($order->gst_paise / 100, 2) }}</span></div>
+                @if($order->discount_paise > 0)
+                <div class="flex gap-8 text-green-700"><span>Discount</span><span class="w-32 text-right">−₹{{ number_format($order->discount_paise / 100, 2) }}</span></div>
+                @endif
                 <div class="flex gap-8 font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span class="w-32 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
         </div>
@@ -49,6 +52,14 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
             <h3 class="font-semibold text-gray-900 mb-3">Fulfilment Actions</h3>
             <div class="flex flex-wrap gap-3">
+                @if($order->payment_method === 'cod' && $order->status === 'placed')
+                <form method="POST" action="{{ route('admin.commerce.orders.mark-cod-paid', $order) }}"
+                    data-confirm="Record COD payment as collected?"
+                    data-confirm-title="Confirm COD payment"
+                    data-confirm-impact="Marks this Cash-on-Delivery order as paid and posts the cash-in ledger entry. Only do this once the cash has actually been collected.">@csrf
+                    <button class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium">Mark COD Paid</button>
+                </form>
+                @endif
                 @if($order->status === 'paid')
                 <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}"
                     data-confirm="Mark this order as shipped?"
@@ -65,7 +76,7 @@
                     <button class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">Mark as Delivered (opens cooling-off)</button>
                 </form>
                 @endif
-                @if(!in_array($order->status, ['paid', 'shipped']))
+                @if(! in_array($order->status, ['paid', 'shipped']) && ! ($order->payment_method === 'cod' && $order->status === 'placed'))
                 <p class="text-sm text-gray-500">No fulfilment actions available in status <strong>{{ $order->status }}</strong>.</p>
                 @endif
             </div>
@@ -82,6 +93,14 @@
                 @if($order->shipped_at)<div>Shipped {{ $order->shipped_at->format('d M Y H:i') }}</div>@endif
                 @if($order->delivered_at)<div class="text-green-700 font-medium">Delivered {{ $order->delivered_at->format('d M Y H:i') }}</div>@endif
             </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Payment</p>
+            <p class="text-sm font-medium text-gray-900">{{ $order->payment_method === 'cod' ? 'Cash on Delivery' : 'Online' }}</p>
+            @if($order->payment_method === 'cod' && $order->status === 'placed')
+            <p class="text-xs text-amber-700 mt-1">Awaiting COD collection</p>
+            @endif
         </div>
 
         @if($order->coolingOff)

@@ -84,6 +84,64 @@
             </div>
         </div>
 
+        {{-- Billing address --}}
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+            <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                <h2 class="font-semibold text-gray-900">Billing Address</h2>
+                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" name="billing_same" id="billingSame" value="1" {{ old('billing_same', '1') ? 'checked' : '' }}
+                        class="rounded text-brand-600 border-gray-300 focus:ring-brand-500">
+                    Same as shipping
+                </label>
+            </div>
+            <div id="billingFields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Address Line 1</label>
+                    <input name="bill_line1" type="text" value="{{ old('bill_line1') }}"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Address Line 2</label>
+                    <input name="bill_line2" type="text" value="{{ old('bill_line2') }}"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">City</label>
+                    <input name="bill_city" type="text" value="{{ old('bill_city') }}"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">State</label>
+                    <input name="bill_state" type="text" value="{{ old('bill_state') }}"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Pincode</label>
+                    <input name="bill_pincode" type="text" value="{{ old('bill_pincode') }}" pattern="\d{6}" maxlength="6" inputmode="numeric"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                </div>
+            </div>
+        </div>
+
+        {{-- Payment method --}}
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 class="font-semibold text-gray-900 mb-4">Payment Method</h2>
+            <div class="space-y-3">
+                @if($onlineEnabled)
+                <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+                    <input type="radio" name="payment_method" value="online" @checked(old('payment_method', $onlineEnabled ? 'online' : 'cod') === 'online') class="text-brand-600 focus:ring-brand-500">
+                    <span class="text-sm"><strong class="text-gray-900">Pay online</strong> <span class="text-gray-500">— card / UPI / netbanking</span></span>
+                </label>
+                @endif
+                @if($codEnabled)
+                <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+                    <input type="radio" name="payment_method" value="cod" @checked(old('payment_method', $onlineEnabled ? 'online' : 'cod') === 'cod') class="text-brand-600 focus:ring-brand-500">
+                    <span class="text-sm"><strong class="text-gray-900">Cash on Delivery</strong> <span class="text-gray-500">— pay when your order arrives</span></span>
+                </label>
+                @endif
+            </div>
+        </div>
+
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Consent</h2>
             <label class="flex items-start gap-3 cursor-pointer">
@@ -115,15 +173,19 @@
             @endforeach
         </div>
 
+        @php $couponDiscount = $couponDiscount ?? 0; $finalTotal = max(0, $cart->totalPaise() - $couponDiscount); @endphp
         <div class="space-y-2 text-sm mb-4 pb-4 border-b border-gray-200">
             <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ number_format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ number_format($cart->gstPaise() / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">Shipping</span><span class="font-medium text-green-700">Free</span></div>
+            @if($couponDiscount > 0)
+            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ number_format($couponDiscount / 100, 2) }}</span></div>
+            @endif
         </div>
 
         <div class="flex justify-between mb-5">
             <span class="font-semibold text-gray-900">Total</span>
-            <span class="font-bold text-lg text-gray-900">₹{{ number_format($cart->totalPaise() / 100, 2) }}</span>
+            <span class="font-bold text-lg text-gray-900">₹{{ number_format($finalTotal / 100, 2) }}</span>
         </div>
 
         <button type="submit"
@@ -133,5 +195,16 @@
         <p class="text-xs text-gray-500 mt-3 text-center">Test gateway — no real money moves.</p>
     </div>
 </form>
+
+<script>
+    (function () {
+        const same = document.getElementById('billingSame');
+        const fields = document.getElementById('billingFields');
+        if (!same || !fields) return;
+        const sync = () => { fields.style.display = same.checked ? 'none' : ''; };
+        same.addEventListener('change', sync);
+        sync();
+    })();
+</script>
 
 @endsection

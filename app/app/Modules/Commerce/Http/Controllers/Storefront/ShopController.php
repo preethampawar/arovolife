@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Commerce\Services\CartService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -20,35 +21,41 @@ final class ShopController extends Controller
     {
         $this->ensureStorefrontEnabled();
 
-        $products = Product::with(['variants' => fn ($q) => $q->where('status', 'active')])
-            ->where('status', Product::STATUS_ACTIVE)
-            ->orderBy('name')
+        // Storefront category nav is driven by the category master
+        // (Atomy-style) — active categories in admin sort order.
+        $categories = ProductCategory::query()
+            ->where('status', ProductCategory::STATUS_ACTIVE)
+            ->orderBy('sort')
             ->get();
 
-        // Canonical storefront categories — always offered as filters even
-        // before any product is tagged with them. Stored as slugs to match
-        // the product `category` convention (e.g. "personal-care"), so a
-        // canonical entry and a product already tagged with it dedupe to one
-        // pill and the filter actually matches. The pill label is derived for
-        // display via ucwords(str_replace('-',' ', …)) in the view. Any extra
-        // categories existing products use are appended after these.
-        $canonicalCategories = collect([
-            'health-care',
-            'skin-and-beauty',
-            'personal-care',
-            'home-care',
-            'agri-care',
-            'lifestyle',
-        ]);
+        // Optional ?category=<slug> filter. Match on the FK (category_id) and
+        // fall back to the legacy `category` string so products tagged either
+        // way are found.
+        $activeSlug = $request->query('category');
+        $activeCategory = $activeSlug !== null ? $categories->firstWhere('slug', $activeSlug) : null;
 
-        $categories = $canonicalCategories
-            ->merge($products->pluck('category')->filter())
-            ->unique()
-            ->values();
+        $products = Product::query()
+            ->with([
+                'variants' => fn ($q) => $q->where('status', 'active')->orderBy('id'),
+                'galleryImages',
+                'productCategory',
+            ])
+            ->where('status', Product::STATUS_ACTIVE)
+            ->when($activeSlug !== null, function ($q) use ($activeSlug, $activeCategory): void {
+                $q->where(function ($w) use ($activeSlug, $activeCategory): void {
+                    if ($activeCategory !== null) {
+                        $w->where('category_id', $activeCategory->id);
+                    }
+                    $w->orWhere('category', $activeSlug);
+                });
+            })
+            ->orderBy('name')
+            ->get();
 
         return view('shop.index', [
             'products' => $products,
             'categories' => $categories,
+            'activeSlug' => $activeSlug,
             'cart' => $this->cartService->currentCart($request),
         ]);
     }
@@ -57,7 +64,13 @@ final class ShopController extends Controller
     {
         $this->ensureStorefrontEnabled();
 
-        $product = Product::with(['variants' => fn ($q) => $q->where('status', 'active')])
+        $product = Product::query()
+            ->with([
+                'variants' => fn ($q) => $q->where('status', 'active')->orderBy('id'),
+                'galleryImages',
+                'productCategory',
+                'productAttributes',
+            ])
             ->where('slug', $slug)
             ->where('status', Product::STATUS_ACTIVE)
             ->first();

@@ -28,6 +28,7 @@ final class LedgerAccountSeeder extends Seeder
 
             // Revenue
             ['code' => 'revenue.sales',               'name' => 'Product sales revenue',           'type' => 'revenue'],
+            ['code' => 'revenue.discounts',           'name' => 'Sales discounts (contra-revenue)', 'type' => 'revenue'],
             ['code' => 'revenue.shipping',            'name' => 'Shipping revenue',                'type' => 'revenue'],
             ['code' => 'revenue.house_margin',        'name' => 'Un-attributed retail margin',     'type' => 'revenue'],
             ['code' => 'revenue.admin_charge',        'name' => 'Admin charge (3%) income',        'type' => 'revenue'],

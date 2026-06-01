@@ -54,15 +54,15 @@
 <div class="flex items-center gap-2 mb-8 overflow-x-auto pb-1">
     <a href="{{ route('shop.index') }}"
        class="shrink-0 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
-       {{ request('category') === null ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/30' : 'bg-white border-gray-200 text-gray-700 hover:border-brand-500' }}">
+       {{ ($activeSlug ?? null) === null ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/30' : 'bg-white border-gray-200 text-gray-700 hover:border-brand-500' }}">
         All products
     </a>
     @foreach($categories as $i => $cat)
         @php $tone = $catTones[$i % count($catTones)]; @endphp
-        <a href="{{ route('shop.index') }}?category={{ $cat }}"
+        <a href="{{ route('shop.index', ['category' => $cat->slug]) }}"
            class="shrink-0 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
-           {{ request('category') === $cat ? $tone['active'].' shadow-md' : $tone['idle'] }}">
-            {{ ucwords(str_replace('-', ' ', $cat)) }}
+           {{ ($activeSlug ?? null) === $cat->slug ? $tone['active'].' shadow-md' : $tone['idle'] }}">
+            {{ $cat->name }}
         </a>
     @endforeach
 </div>
@@ -82,13 +82,16 @@
     @foreach($products as $product)
         @php $variant = $product->primaryVariant(); @endphp
         @if($variant === null) @continue @endif
-        @if(request('category') && $product->category !== request('category')) @continue @endif
-        @php $tone = $cardTones[$shownIndex % count($cardTones)]; $shownIndex++; @endphp
+        @php
+            $tone = $cardTones[$shownIndex % count($cardTones)]; $shownIndex++;
+            $cardImage = $product->galleryImages->first()?->url() ?? $product->image_url;
+            $catLabel = $product->productCategory?->name ?? ($product->category ? str_replace('-', ' ', $product->category) : null);
+        @endphp
         <a href="{{ route('shop.product', $product->slug) }}"
            class="bg-white rounded-2xl border-2 border-gray-200 {{ $tone['borderHover'] }} overflow-hidden shadow-sm hover:shadow-xl {{ $tone['shadow'] }} hover:-translate-y-1 transition-all duration-300 group flex flex-col">
             <div class="relative aspect-square bg-gradient-to-br {{ $tone['gradient'] }} flex items-center justify-center overflow-hidden">
-                @if($product->image_url)
-                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                @if($cardImage)
+                    <img src="{{ $cardImage }}" alt="{{ $product->name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
                 @else
                     <div class="text-center {{ $tone['iconColor'] }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto mb-2 opacity-70" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
@@ -101,9 +104,9 @@
                         −{{ $variant->discountPercent() }}%
                     </span>
                 @endif
-                @if($product->category)
+                @if($catLabel)
                     <span class="absolute top-3 right-3 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider {{ $tone['badgeBg'] }} {{ $tone['badgeTxt'] }} backdrop-blur-sm shadow-sm">
-                        {{ str_replace('-', ' ', $product->category) }}
+                        {{ $catLabel }}
                     </span>
                 @endif
             </div>

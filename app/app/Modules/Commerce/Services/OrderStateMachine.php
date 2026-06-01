@@ -27,22 +27,45 @@ final class OrderStateMachine
         private readonly LedgerPoster $ledger,
     ) {}
 
-    public function markPaid(Order $order): void
+    public function markPaid(Order $order, ?int $actorUserId = null): void
     {
         if ($order->status !== Order::STATUS_PLACED) {
             throw new RuntimeException("Cannot mark paid from status {$order->status}");
         }
-        $order->update([
-            'status' => Order::STATUS_PAID,
-            'paid_at' => Carbon::now(),
-        ]);
 
-        AuditLog::create([
-            'action' => 'order.paid',
-            'subject_type' => 'order',
-            'subject_id' => $order->id,
-            'details' => ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise],
-        ]);
+        $this->db->transaction(function () use ($order, $actorUserId): void {
+            $order->update([
+                'status' => Order::STATUS_PAID,
+                'paid_at' => Carbon::now(),
+            ]);
+
+            // COD: cash is received at THIS moment (collection), so post the
+            // cash-in entry the online flow already posted at placement —
+            // Dr bank cash, Cr customer_prepayment. Online orders skip this
+            // (their prepayment liability already exists). Either way, by the
+            // time an order is PAID the prepayment liability is on the books,
+            // so revenue recognition on ship works identically for both.
+            if ($order->payment_method === Order::PAYMENT_COD && $order->total_paise > 0) {
+                $this->ledger->transfer(
+                    sourceModule: 'Commerce',
+                    sourceType: 'order.cod_collected',
+                    sourceId: $order->id,
+                    idempotencyKey: "order.cod_collected:{$order->id}",
+                    debitAccount: 'asset.cash.bank.settlement',
+                    creditAccount: 'liability.customer_prepayment',
+                    amountPaise: $order->total_paise,
+                    memo: "COD collected for {$order->order_no}",
+                );
+            }
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'order.paid',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise, 'payment_method' => $order->payment_method],
+            ]);
+        });
     }
 
     public function markShipped(Order $order, ?int $actorUserId = null): void
@@ -57,19 +80,31 @@ final class OrderStateMachine
                 'shipped_at' => Carbon::now(),
             ]);
 
-            // Revenue recognition: move customer_prepayment → sales + gst_output
+            // Revenue recognition: move customer_prepayment → sales + gst_output.
             if ($order->subtotal_paise > 0) {
                 $taxable = $order->subtotal_paise - $order->gst_paise;
+                $lines = [
+                    ['account' => 'liability.customer_prepayment', 'side' => 'debit',  'amount_paise' => $order->total_paise],
+                    ['account' => 'revenue.sales',                 'side' => 'credit', 'amount_paise' => $taxable],
+                    ['account' => 'liability.gst_output',          'side' => 'credit', 'amount_paise' => $order->gst_paise],
+                ];
+
+                // A coupon discount is recorded as contra-revenue (debit) so
+                // gross sales + GST output stay at the documented sale value
+                // while the debit side equals the cash actually due
+                // (total_paise = subtotal − discount). Without this the entry
+                // would be out of balance by the discount amount and the
+                // LedgerPoster would (correctly) reject it.
+                if ($order->discount_paise > 0) {
+                    $lines[] = ['account' => 'revenue.discounts', 'side' => 'debit', 'amount_paise' => $order->discount_paise];
+                }
+
                 $this->ledger->post(
                     sourceModule: 'Commerce',
                     sourceType: 'order.shipped',
                     sourceId: $order->id,
                     idempotencyKey: "order.shipped:{$order->id}",
-                    lines: [
-                        ['account' => 'liability.customer_prepayment', 'side' => 'debit',  'amount_paise' => $order->total_paise],
-                        ['account' => 'revenue.sales',                 'side' => 'credit', 'amount_paise' => $taxable],
-                        ['account' => 'liability.gst_output',          'side' => 'credit', 'amount_paise' => $order->gst_paise],
-                    ],
+                    lines: $lines,
                     memo: "Revenue recognised for {$order->order_no}",
                     createdByUserId: $actorUserId,
                 );

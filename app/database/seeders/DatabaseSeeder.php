@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             ContentPageSeeder::class,
             LedgerAccountSeeder::class,
             ProductCatalogSeeder::class,
+            ProductCategorySeeder::class,
             CommerceFeatureFlagSeeder::class,
         ]);
     }
