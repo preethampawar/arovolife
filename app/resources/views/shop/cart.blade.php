@@ -28,14 +28,24 @@
                 <p class="text-sm font-semibold text-gray-900 mt-1">₹{{ number_format($item->unit_price_paise / 100, 2) }}</p>
             </div>
             <div class="flex flex-col items-end gap-2">
-                <form method="POST" action="{{ route('shop.cart.update', $item) }}">
-                    @csrf @method('PATCH')
-                    <div class="flex items-center border border-gray-300 rounded-lg">
-                        <input name="qty" type="number" value="{{ $item->qty }}" min="0" max="10"
-                            onchange="this.form.submit()"
-                            class="w-14 bg-transparent py-1.5 text-sm text-center focus:outline-none">
-                    </div>
-                </form>
+                {{-- Quantity stepper: each button is its own form-submit, so it
+                     works without JavaScript. Decrease is disabled at 1 (use
+                     Remove to delete the line); increase is capped at 10. --}}
+                <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <form method="POST" action="{{ route('shop.cart.update', $item) }}">
+                        @csrf @method('PATCH')
+                        <input type="hidden" name="qty" value="{{ $item->qty - 1 }}">
+                        <button type="submit" @disabled($item->qty <= 1) aria-label="Decrease quantity"
+                            class="px-3 py-1.5 text-base leading-none text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                    </form>
+                    <span class="w-10 text-center text-sm tabular-nums select-none" aria-live="polite">{{ $item->qty }}</span>
+                    <form method="POST" action="{{ route('shop.cart.update', $item) }}">
+                        @csrf @method('PATCH')
+                        <input type="hidden" name="qty" value="{{ $item->qty + 1 }}">
+                        <button type="submit" @disabled($item->qty >= 10) aria-label="Increase quantity"
+                            class="px-3 py-1.5 text-base leading-none text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">+</button>
+                    </form>
+                </div>
                 <form method="POST" action="{{ route('shop.cart.remove', $item) }}">
                     @csrf @method('DELETE')
                     <button type="submit" class="text-xs text-gray-500 hover:text-red-600">Remove</button>

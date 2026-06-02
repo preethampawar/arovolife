@@ -1819,6 +1819,24 @@ parameters:
 			path: tests/Modules/Admin/TerminateDistributorTest.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 3
+			path: tests/Modules/Commerce/CartQuantityTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:patch\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Commerce/CartQuantityTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 3
+			path: tests/Modules/Commerce/CartQuantityTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
 			identifier: method.notFound
 			count: 1
