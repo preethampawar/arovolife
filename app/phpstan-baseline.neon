@@ -655,18 +655,6 @@ parameters:
 			path: app/Modules/Commerce/Models/Order.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/Order.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:daysRemaining\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/Order.php
-
-		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:bvLedgerEntries\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1976,6 +1964,12 @@ parameters:
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/BvLedgerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Commerce/BvLedgerTest.php

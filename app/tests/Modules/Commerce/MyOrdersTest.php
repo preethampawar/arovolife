@@ -131,15 +131,14 @@ it('404s when viewing an order that is not yours', function (): void {
     $this->actingAs($userA)->get(route('orders.show', $theirs->order_no))->assertNotFound();
 });
 
-it('shows BV total and the in-cooling-off status on the order detail', function (): void {
+it('shows BV total and the awaiting-payment status on the order detail', function (): void {
     [$user, $distId] = moUserWithDistributor();
-    $order = moOrder($user->id, $distId, self: true);
-    OrderCoolingOff::create(['order_id' => $order->id, 'opened_at' => now()->subDays(2), 'ends_at' => now()->addDays(28), 'status' => OrderCoolingOff::STATUS_OPEN]);
+    $order = moOrder($user->id, $distId, self: true); // self-consumption, no ledger entry yet
 
     $this->actingAs($user)->get(route('orders.show', $order->order_no))
         ->assertOk()
         ->assertSee('500 BV')
-        ->assertSee('In cooling-off');
+        ->assertSee('Awaiting payment');
 });
 
 it('personalBvStatus transitions none → pending → accumulated → reversed', function (): void {

@@ -61,7 +61,7 @@
             <span class="text-sm text-gray-600">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV from this order</span>
         </div>
         @if($bv['state'] === 'pending')
-        <p class="text-xs text-gray-500 mt-2">BV is counted toward your personal volume once the 30-day return window closes. It is reversed if the order is refunded.</p>
+        <p class="text-xs text-gray-500 mt-2">BV is counted toward your personal volume once payment is received. It is reversed if the order is refunded.</p>
         @endif
     </div>
     @endif

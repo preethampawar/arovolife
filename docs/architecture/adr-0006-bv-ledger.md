@@ -1,10 +1,22 @@
 # ADR-0006 — Personal BV ledger: an append-only projection of confirmed product sales
 
-- **Status:** Accepted
+- **Status:** Accepted (revised 2026-06-02)
 - **Date:** 2026-06-02
 - **Deciders:** Laravel Architect, Compliance Officer, Product Owner
 - **Supersedes:** —
 - **Superseded by:** —
+
+> **Revision 2026-06-02 (product-owner decision).** BV now accrues **as soon as
+> payment is received** (`OrderStateMachine::markPaid`), not on cooling-off
+> expiry. There is no cooling-off gating on *counting* BV. The refund safeguard
+> is unchanged: a refund still reverses the BV via `reverse()`, so a cancelled
+> sale nets to zero. **Compliance carry-forward:** because BV is now counted
+> before the return window closes, the Phase-4 compensation engine MUST NOT pay
+> out commissions derived from an order's BV until that order's 30-day
+> cooling-off has closed (hold/escrow), so money is never paid on a sale that
+> may still be refunded. Counting points early is fine; paying cash early is not.
+> The sections below are retained for context; where they say "accrue on
+> cooling-off expiry", read "accrue on payment, reverse on refund".
 
 ## Context
 
@@ -82,23 +94,24 @@ reversals subtract, netting to zero for a refunded order.
 ### Lifecycle (drives the per-order status the distributor sees)
 
 ```
-order delivered → cooling-off opens     → status "Pending (in cooling-off, N days left)"   [NO ledger entry yet]
-order.confirmed (cooling-off expired)   → accrue(order): +bv_paise accrual entry            → status "Accumulated"
-order refunded                          → reverse(order): -bv_paise reversal entry          → status "Reversed"
+order placed, unpaid    → no ledger entry yet                       → status "Awaiting payment"
+order paid (markPaid)    → accrue(order): +bv_paise accrual entry    → status "Accumulated"
+order refunded           → reverse(order): -bv_paise reversal entry  → status "Reversed"
 ```
 
-The ledger therefore holds **counted BV only**. "Pending" BV is never in the
-ledger — it is derived from `order_cooling_off.status = 'open'`. This makes
-cooling-off structurally impossible to bypass: BV cannot be counted before the
-window closes because nothing writes the entry until `expireCoolingOff()` runs.
+The ledger holds **counted BV only**; a not-yet-paid order has no entry. A
+refund reverses the accrual so a cancelled sale nets to zero — this is the
+cooling-off safeguard at the *counting* layer. (The separate cash-payout
+safeguard lives in Phase 4: see the revision note above.)
 
 ### Triggers (single source, idempotent)
 
-- `OrderStateMachine::expireCoolingOff()` (→ `STATUS_CONFIRMED`) calls
-  `BvLedgerService::accrue($order)`.
+- `OrderStateMachine::markPaid()` (→ `STATUS_PAID`) calls
+  `BvLedgerService::accrue($order)` — fires for both online (gateway capture)
+  and COD (admin "mark COD paid"), which both route through `markPaid`.
 - The refund path (→ `STATUS_REFUNDED`) calls `BvLedgerService::reverse($order)`.
 - Both are idempotent via the `UNIQUE (order_id, type)` constraint, so a retried
-  job or a re-run cron never double-counts.
+  job never double-counts.
 
 ### Reads (single source)
 
@@ -113,8 +126,9 @@ window closes because nothing writes the entry until `expireCoolingOff()` runs.
 - **Positive**
   - Accumulated personal BV is durable, auditable and append-only (no mutable
     running total to corrupt).
-  - Cooling-off is enforced by construction — no entry exists until the window
-    closes; refunds net to zero.
+  - Refunds net to zero via a reversal entry, so a cancelled sale removes its
+    BV. (Cash-payout protection during cooling-off is a Phase-4 escrow concern —
+    see the revision note.)
   - Phase 4 Compensation reads a ready-made, sale-linked BV history.
   - Every entry references an `order_id`, satisfying hard rule #2 by schema.
 

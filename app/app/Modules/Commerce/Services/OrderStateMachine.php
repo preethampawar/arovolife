@@ -67,6 +67,13 @@ final class OrderStateMachine
                 'subject_id' => $order->id,
                 'details' => ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise, 'payment_method' => $order->payment_method],
             ]);
+
+            // BV accrues as soon as payment is received (product-owner decision,
+            // 2026-06-02 — ADR-0006 revised). No cooling-off gating on accrual;
+            // a refund still reverses it via BvLedgerService::reverse(). No-op
+            // unless the order is a self-consumption purchase with BV and
+            // self-purchase BV is enabled.
+            $this->bvLedger->accrue($order);
         });
 
         event(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
@@ -183,12 +190,9 @@ final class OrderStateMachine
             $coolingOff->update(['status' => OrderCoolingOff::STATUS_EXPIRED]);
             $order->update(['status' => Order::STATUS_CONFIRMED]);
 
-            // The cooling-off window has closed, so the order's BV is now
-            // firmly counted toward the buyer's personal BV (ADR-0006). This is
-            // the ONLY place personal BV is accrued — keeping it after expiry
-            // makes the statutory window impossible to bypass. No-op unless the
-            // order is a self-consumption purchase and self-purchase BV is on.
-            $this->bvLedger->accrue($order);
+            // BV is NOT accrued here — it was already accrued on payment
+            // (markPaid), per ADR-0006 (revised 2026-06-02). This transition
+            // only closes the statutory refund window and confirms the order.
 
             AuditLog::create([
                 'actor_id' => $actorUserId,

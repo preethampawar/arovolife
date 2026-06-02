@@ -5,19 +5,20 @@ declare(strict_types=1);
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
-use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\DistributorIdCardStats;
+use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    $this->seed(LedgerAccountSeeder::class);
     DB::table('settings')->updateOrInsert(['key' => 'commerce.self_purchase.earns_bv'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
 });
 
@@ -48,7 +49,7 @@ function blDistributorId(): int
     return $id;
 }
 
-/** A delivered, self-consumption order with one BV-bearing line and an OPEN cooling-off whose end is in the past. */
+/** A just-PLACED (unpaid) self-consumption online order with one BV line. */
 function blOrder(int $distributorId, int $bvPaise = 50000, bool $selfConsumption = true): Order
 {
     $customer = Customer::create(['display_name' => 'BL Buyer', 'distributor_id' => $distributorId]);
@@ -58,13 +59,13 @@ function blOrder(int $distributorId, int $bvPaise = 50000, bool $selfConsumption
         'attributed_distributor_id' => $distributorId,
         'attribution_source' => 'logged_in',
         'payment_method' => Order::PAYMENT_ONLINE,
-        'status' => Order::STATUS_DELIVERED,
+        'status' => Order::STATUS_PLACED,
         'self_consumption' => $selfConsumption,
         'subtotal_paise' => 100000, 'gst_paise' => 15254, 'discount_paise' => 0,
         'shipping_paise' => 0, 'total_paise' => 100000,
         'ship_name' => 'BL Buyer', 'ship_phone_e164' => '+919800000000',
         'ship_line1' => '1 St', 'ship_city' => 'Pune', 'ship_state' => 'MH', 'ship_pincode' => '411001',
-        'placed_at' => now()->subDays(40), 'delivered_at' => now()->subDays(31), 'idempotency_key' => 'idem-'.uniqid(),
+        'placed_at' => now(), 'idempotency_key' => 'idem-'.uniqid(),
     ]);
     disableTestForeignKeys();
     try {
@@ -77,46 +78,28 @@ function blOrder(int $distributorId, int $bvPaise = 50000, bool $selfConsumption
     } finally {
         enableTestForeignKeys();
     }
-    OrderCoolingOff::create([
-        'order_id' => $order->id,
-        'opened_at' => now()->subDays(31),
-        'ends_at' => now()->subDay(), // already past → eligible to expire
-        'status' => OrderCoolingOff::STATUS_OPEN,
-    ]);
 
-    return $order->load('items', 'coolingOff');
+    return $order->load('items');
 }
 
-it('does NOT accrue BV while the order is still in its cooling-off window', function (): void {
+it('does NOT accrue BV before payment is received', function (): void {
     $distId = blDistributorId();
-    blOrder($distId);
+    blOrder($distId); // placed, unpaid
 
-    // No expiry yet → nothing counted.
     expect(BvLedgerEntry::where('distributor_id', $distId)->count())->toBe(0);
     expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(0);
 });
 
-it('accrues personal BV exactly once when the cooling-off expires (order confirmed)', function (): void {
+it('accrues personal BV exactly once as soon as payment is received', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000);
 
-    app(OrderStateMachine::class)->expireCoolingOff($order);
+    app(OrderStateMachine::class)->markPaid($order);
 
-    expect($order->fresh()->status)->toBe(Order::STATUS_CONFIRMED);
+    expect($order->fresh()->status)->toBe(Order::STATUS_PAID);
     $entries = BvLedgerEntry::where('distributor_id', $distId)->where('type', 'accrual')->get();
     expect($entries)->toHaveCount(1);
     expect($entries->first()->bv_paise)->toBe(50000);
-    expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(50000);
-});
-
-it('is idempotent — re-running accrual does not double-count', function (): void {
-    $distId = blDistributorId();
-    $order = blOrder($distId, 50000);
-
-    app(OrderStateMachine::class)->expireCoolingOff($order);
-    app(BvLedgerService::class)->accrue($order->fresh()->load('items')); // second call
-
-    expect(BvLedgerEntry::where('order_id', $order->id)->where('type', 'accrual')->count())->toBe(1);
     expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(50000);
 });
 
@@ -124,7 +107,7 @@ it('writes an audit-log row when BV is accrued', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000);
 
-    app(OrderStateMachine::class)->expireCoolingOff($order);
+    app(OrderStateMachine::class)->markPaid($order);
 
     expect(DB::table('audit_log')
         ->where('action', 'bv.accrued')
@@ -132,11 +115,22 @@ it('writes an audit-log row when BV is accrued', function (): void {
         ->count())->toBe(1);
 });
 
+it('is idempotent — re-running accrual does not double-count', function (): void {
+    $distId = blDistributorId();
+    $order = blOrder($distId, 50000);
+
+    app(OrderStateMachine::class)->markPaid($order);
+    app(BvLedgerService::class)->accrue($order->fresh()->load('items')); // second call
+
+    expect(BvLedgerEntry::where('order_id', $order->id)->where('type', 'accrual')->count())->toBe(1);
+    expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(50000);
+});
+
 it('does NOT accrue when the order is not self-consumption', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000, selfConsumption: false);
 
-    app(OrderStateMachine::class)->expireCoolingOff($order);
+    app(OrderStateMachine::class)->markPaid($order);
 
     expect(BvLedgerEntry::where('distributor_id', $distId)->count())->toBe(0);
 });
@@ -146,7 +140,7 @@ it('does NOT accrue when self-purchase BV is disabled', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000);
 
-    app(OrderStateMachine::class)->expireCoolingOff($order);
+    app(OrderStateMachine::class)->markPaid($order);
 
     expect(BvLedgerEntry::where('distributor_id', $distId)->count())->toBe(0);
 });
@@ -154,7 +148,7 @@ it('does NOT accrue when self-purchase BV is disabled', function (): void {
 it('reverses an accrued order back to zero and is idempotent', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000);
-    app(OrderStateMachine::class)->expireCoolingOff($order);
+    app(OrderStateMachine::class)->markPaid($order);
     expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(50000);
 
     app(BvLedgerService::class)->reverse($order->fresh());
@@ -164,9 +158,9 @@ it('reverses an accrued order back to zero and is idempotent', function (): void
     expect(BvLedgerEntry::where('order_id', $order->id)->where('type', 'reversal')->count())->toBe(1);
 });
 
-it('reverse is a no-op when nothing was ever accrued (refund during cooling-off)', function (): void {
+it('reverse is a no-op when nothing was ever accrued (unpaid order)', function (): void {
     $distId = blDistributorId();
-    $order = blOrder($distId, 50000); // never expired → never accrued
+    $order = blOrder($distId, 50000); // never paid → never accrued
 
     app(BvLedgerService::class)->reverse($order);
 
@@ -176,7 +170,7 @@ it('reverse is a no-op when nothing was ever accrued (refund during cooling-off)
 it('surfaces the owner\'s accumulated BV on their stats, formatted as "N BV"', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000);
-    app(OrderStateMachine::class)->expireCoolingOff($order);
+    app(OrderStateMachine::class)->markPaid($order);
     $dist = Distributor::find($distId);
 
     $this->actingAs($dist->user);
@@ -188,7 +182,7 @@ it('surfaces the owner\'s accumulated BV on their stats, formatted as "N BV"', f
 it('hides a distributor\'s personal BV from a non-owner viewer (hard rule #3)', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000);
-    app(OrderStateMachine::class)->expireCoolingOff($order);
+    app(OrderStateMachine::class)->markPaid($order);
     $dist = Distributor::find($distId);
 
     // No authenticated owner → personal BV must not be exposed.

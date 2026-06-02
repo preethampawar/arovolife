@@ -110,9 +110,10 @@ final class Order extends Model
 
     /**
      * The accumulation status of this order's personal BV, for the buyer's own
-     * order history (ADR-0006). Only meaningful for self-consumption purchases;
-     * other orders carry no personal BV and return 'none'. Requires `items`,
-     * `coolingOff` and `bvLedgerEntries` to be loaded.
+     * order history (ADR-0006, revised 2026-06-02 — BV accrues on payment, with
+     * no cooling-off gating). Only meaningful for self-consumption purchases;
+     * other orders carry no personal BV and return 'none'. Requires `items` and
+     * `bvLedgerEntries` to be loaded.
      *
      * @return array{state: 'none'|'pending'|'accumulated'|'reversed', label: string}
      */
@@ -130,11 +131,8 @@ final class Order extends Model
             return ['state' => 'accumulated', 'label' => 'Accumulated'];
         }
 
-        $coolingOff = $this->coolingOff;
-        if ($coolingOff !== null && $coolingOff->status === OrderCoolingOff::STATUS_OPEN) {
-            return ['state' => 'pending', 'label' => 'In cooling-off · '.$coolingOff->daysRemaining().' days left'];
-        }
-
-        return ['state' => 'pending', 'label' => 'Pending'];
+        // Self-consumption order with BV but not yet paid → BV accrues once
+        // payment is received.
+        return ['state' => 'pending', 'label' => 'Awaiting payment'];
     }
 }
