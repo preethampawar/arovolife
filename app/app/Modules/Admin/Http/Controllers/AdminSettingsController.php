@@ -198,6 +198,15 @@ final class AdminSettingsController extends Controller
                 'default' => 'false',
             ],
 
+            // ── Notifications ──────────────────────────────────────────────
+            'notifications.email_on_status_change' => [
+                'group' => 'notifications',
+                'label' => 'Email on every order status change',
+                'description' => 'When ON, the buyer is emailed each time their order moves status (paid, shipped, delivered, …). The order-received email is always sent regardless of this toggle.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+
             // ── Payments ───────────────────────────────────────────────────
             'payments.cod.enabled' => [
                 'group' => 'payments',
@@ -258,6 +267,10 @@ final class AdminSettingsController extends Controller
             'payments' => [
                 'label' => 'Payments',
                 'description' => 'Payment methods offered at checkout and the gateways that process them.',
+            ],
+            'notifications' => [
+                'label' => 'Notifications',
+                'description' => 'Transactional emails (and, later, SMS) sent to buyers about their orders.',
             ],
             'advanced' => [
                 'label' => 'Other / Advanced',

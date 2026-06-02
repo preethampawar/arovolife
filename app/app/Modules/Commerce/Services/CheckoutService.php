@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Services;
 
+use App\Modules\Commerce\Events\OrderPlaced;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\CustomerAddress;
@@ -43,7 +44,7 @@ final class CheckoutService
             throw new \RuntimeException('Cart is empty.');
         }
 
-        return $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId) {
             // 1. Find or create the customer
             $emailHash = isset($buyer['email']) && $buyer['email'] !== ''
                 ? hash('sha256', strtolower(trim($buyer['email'])))
@@ -200,6 +201,12 @@ final class CheckoutService
 
             return $order->fresh(['items', 'customer']);
         });
+
+        // Dispatch AFTER the transaction commits so the queued listener never
+        // sees a rolled-back order (the order-received email + any SMS later).
+        event(new OrderPlaced($order->id));
+
+        return $order;
     }
 
     /**

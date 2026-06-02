@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Services;
 
+use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Compliance\Models\AuditLog;
@@ -67,6 +68,8 @@ final class OrderStateMachine
                 'details' => ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise, 'payment_method' => $order->payment_method],
             ]);
         });
+
+        event(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
     }
 
     public function markShipped(Order $order, ?int $actorUserId = null): void
@@ -74,6 +77,8 @@ final class OrderStateMachine
         if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
             throw new RuntimeException("Cannot ship from status {$order->status}");
         }
+
+        $oldStatus = $order->status;
 
         $this->db->transaction(function () use ($order, $actorUserId): void {
             $order->update([
@@ -119,6 +124,8 @@ final class OrderStateMachine
                 'details' => ['order_no' => $order->order_no],
             ]);
         });
+
+        event(new OrderStatusChanged($order->id, $oldStatus, Order::STATUS_SHIPPED));
     }
 
     public function markDelivered(Order $order, ?int $actorUserId = null): OrderCoolingOff
@@ -127,7 +134,7 @@ final class OrderStateMachine
             throw new RuntimeException("Cannot mark delivered from status {$order->status}");
         }
 
-        return $this->db->transaction(function () use ($order, $actorUserId): OrderCoolingOff {
+        $coolingOff = $this->db->transaction(function () use ($order, $actorUserId): OrderCoolingOff {
             $deliveredAt = Carbon::now();
 
             $order->update([
@@ -156,6 +163,10 @@ final class OrderStateMachine
 
             return $coolingOff;
         });
+
+        event(new OrderStatusChanged($order->id, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED));
+
+        return $coolingOff;
     }
 
     public function expireCoolingOff(Order $order, ?int $actorUserId = null): void
@@ -187,6 +198,8 @@ final class OrderStateMachine
                 'details' => ['order_no' => $order->order_no],
             ]);
         });
+
+        event(new OrderStatusChanged($order->id, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED));
     }
 
     public function cancel(Order $order, string $reason, ?int $actorUserId = null): void
@@ -194,6 +207,8 @@ final class OrderStateMachine
         if (in_array($order->status, [Order::STATUS_SHIPPED, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED, Order::STATUS_REFUNDED], true)) {
             throw new RuntimeException("Cannot cancel order in status {$order->status}");
         }
+
+        $oldStatus = $order->status;
 
         $order->update([
             'status' => Order::STATUS_CANCELLED,
@@ -207,5 +222,7 @@ final class OrderStateMachine
             'subject_id' => $order->id,
             'details' => ['order_no' => $order->order_no, 'reason' => $reason],
         ]);
+
+        event(new OrderStatusChanged($order->id, $oldStatus, Order::STATUS_CANCELLED));
     }
 }

@@ -42,6 +42,9 @@ final class CommerceFeatureFlagSeeder extends Seeder
             // Compliance
             ['key' => 'compliance.crawler.enabled',               'value' => 'false'],   // Manual review in Phase 2
 
+            // Notifications
+            ['key' => 'notifications.email_on_status_change',     'value' => 'true'],    // Email buyer on each status change
+
             // Payments
             ['key' => 'payments.gateway.razorpay.enabled',        'value' => 'false'],
             ['key' => 'payments.gateway.stub.enabled',            'value' => 'true'],    // Dev default

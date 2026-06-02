@@ -225,6 +225,7 @@ final class ProductionSeeder extends Seeder
             'compensation.unlock.enabled' => 'false',
             'compensation.payout.enabled' => 'false',
             'compliance.crawler.enabled' => 'false',
+            'notifications.email_on_status_change' => 'true',
             'payments.cod.enabled' => 'false',
             'payments.gateway.razorpay.enabled' => 'false',
             'payments.gateway.stub.enabled' => 'false',

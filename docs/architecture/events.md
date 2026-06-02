@@ -79,6 +79,22 @@ Examples: `identity.user.registered`, `genealogy.placement.created`,
 ### `admin.distributor.frozen` / `.unfrozen` / `.terminated`
 - Payload: `distributor_id`, `reason`, `actor_id`, `at`.
 
+## Phase 2 events (Commerce)
+
+### `commerce.order.placed` (`App\Modules\Commerce\Events\OrderPlaced`)
+- When: an order is successfully placed (dispatched after the placement
+  transaction commits, from `CheckoutService::place()`).
+- Payload: `orderId`.
+- Handlers: `SendOrderPlacedMail` (queued) → channel-agnostic
+  `OrderPlacedNotification` (mail now; SMS when the gateway lands). Always sent.
+
+### `commerce.order.status_changed` (`App\Modules\Commerce\Events\OrderStatusChanged`)
+- When: an order transitions state (paid, shipped, delivered, confirmed,
+  cancelled), from `OrderStateMachine`. Dispatched after each transition.
+- Payload: `orderId`, `oldStatus`, `newStatus`.
+- Handlers: `SendOrderStatusChangedMail` (queued), gated by the admin setting
+  `notifications.email_on_status_change` (default on).
+
 ## Idempotency
 
 Every event MUST be reproducible from its payload — handlers that are
