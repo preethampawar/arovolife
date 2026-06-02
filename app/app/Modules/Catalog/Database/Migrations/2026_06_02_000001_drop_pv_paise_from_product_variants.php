@@ -15,13 +15,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('product_variants', function (Blueprint $table): void {
-            $table->dropColumn('pv_paise');
-        });
+        // Idempotent: only drop if still present (self-heals a re-run).
+        if (Schema::hasColumn('product_variants', 'pv_paise')) {
+            Schema::table('product_variants', function (Blueprint $table): void {
+                $table->dropColumn('pv_paise');
+            });
+        }
     }
 
     public function down(): void
     {
+        if (Schema::hasColumn('product_variants', 'pv_paise')) {
+            return;
+        }
+
         Schema::table('product_variants', function (Blueprint $table): void {
             $table->bigInteger('pv_paise')->default(0);
         });

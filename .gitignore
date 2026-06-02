@@ -61,3 +61,7 @@ composer.phar
 
 # --- OS ---
 *~
+
+# Local DB backups/dumps — may contain PII, never commit
+/backups/
+*.sql.gz

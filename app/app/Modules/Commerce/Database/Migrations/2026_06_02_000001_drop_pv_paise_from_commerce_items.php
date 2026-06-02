@@ -14,21 +14,30 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('cart_items', function (Blueprint $table): void {
-            $table->dropColumn('pv_paise');
-        });
-        Schema::table('order_items', function (Blueprint $table): void {
-            $table->dropColumn('pv_paise');
-        });
+        // Idempotent: only drop where still present (self-heals a re-run).
+        if (Schema::hasColumn('cart_items', 'pv_paise')) {
+            Schema::table('cart_items', function (Blueprint $table): void {
+                $table->dropColumn('pv_paise');
+            });
+        }
+        if (Schema::hasColumn('order_items', 'pv_paise')) {
+            Schema::table('order_items', function (Blueprint $table): void {
+                $table->dropColumn('pv_paise');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('cart_items', function (Blueprint $table): void {
-            $table->bigInteger('pv_paise')->default(0);
-        });
-        Schema::table('order_items', function (Blueprint $table): void {
-            $table->bigInteger('pv_paise')->default(0);
-        });
+        if (! Schema::hasColumn('cart_items', 'pv_paise')) {
+            Schema::table('cart_items', function (Blueprint $table): void {
+                $table->bigInteger('pv_paise')->default(0);
+            });
+        }
+        if (! Schema::hasColumn('order_items', 'pv_paise')) {
+            Schema::table('order_items', function (Blueprint $table): void {
+                $table->bigInteger('pv_paise')->default(0);
+            });
+        }
     }
 };

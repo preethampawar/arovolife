@@ -16,6 +16,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempotent: skip if already created (self-heals a partially-migrated DB).
+        if (Schema::hasTable('bv_ledger_entries')) {
+            return;
+        }
+
         Schema::create('bv_ledger_entries', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('distributor_id')->constrained('distributors')->cascadeOnDelete();
