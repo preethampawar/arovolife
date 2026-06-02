@@ -28,7 +28,7 @@
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-sunrise-700 text-xs font-semibold border border-sunrise-200 shadow-sm">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                    Free shipping ₹499+
+                    Free shipping ₹{{ number_format($freeShippingThresholdRupees ?? 4000) }}+
                 </span>
             </div>
         </div>

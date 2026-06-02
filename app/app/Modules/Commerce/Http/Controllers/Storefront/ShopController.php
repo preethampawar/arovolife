@@ -7,6 +7,7 @@ namespace App\Modules\Commerce\Http\Controllers\Storefront;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Commerce\Services\CartService;
+use App\Modules\Commerce\Services\ShippingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -15,7 +16,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class ShopController extends Controller
 {
-    public function __construct(private readonly CartService $cartService) {}
+    public function __construct(
+        private readonly CartService $cartService,
+        private readonly ShippingService $shipping,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -57,6 +61,7 @@ final class ShopController extends Controller
             'categories' => $categories,
             'activeSlug' => $activeSlug,
             'cart' => $this->cartService->currentCart($request),
+            'freeShippingThresholdRupees' => intdiv($this->shipping->freeThresholdPaise(), 100),
         ]);
     }
 
