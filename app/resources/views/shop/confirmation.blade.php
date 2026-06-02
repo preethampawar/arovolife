@@ -15,12 +15,16 @@
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h2 class="font-semibold text-gray-900 mb-4">Order Details</h2>
+        @php $showBv = auth()->user()?->distributor !== null; @endphp
         <div class="space-y-3">
             @foreach($order->items as $item)
             <div class="flex justify-between text-sm">
                 <span>
                     <strong class="text-gray-900">{{ $item->product_name_snapshot }}</strong>
                     × {{ $item->qty }}
+                    @if($showBv && $item->lineBvPaise() > 0)
+                    <span class="ml-1 text-xs text-brand-700" title="Business Volume for this line">({{ number_format($item->lineBvPaise() / 100, 0) }} BV)</span>
+                    @endif
                 </span>
                 <span class="font-medium">₹{{ number_format($item->line_total_paise / 100, 2) }}</span>
             </div>
@@ -39,6 +43,11 @@
             <div class="flex justify-between font-semibold pt-2 border-t border-gray-100 mt-2">
                 <span>Total</span><span>{{ $order->displayTotal() }}</span>
             </div>
+            @if($showBv && $order->bvTotalPaise() > 0)
+            <div class="flex justify-between text-sm text-brand-700 pt-1">
+                <span>Total BV</span><span class="font-semibold" title="Business Volume — points used in the compensation plan">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span>
+            </div>
+            @endif
         </div>
     </div>
 

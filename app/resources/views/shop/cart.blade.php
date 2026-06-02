@@ -77,7 +77,7 @@
             <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ number_format($couponDiscount / 100, 2) }}</span></div>
             @endif
             @auth
-                @php $bvTotal = auth()->user()->distributor ? $cart->items->sum(fn ($i) => $i->bv_paise * $i->qty) : 0; @endphp
+                @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
                 @if($bvTotal > 0)
                 {{-- BV total shown only to logged-in distributors — a factual point
                      total used by the compensation plan, never an earnings figure

@@ -92,4 +92,14 @@ final class Order extends Model
     {
         return '₹'.number_format($this->total_paise / 100, 2);
     }
+
+    /**
+     * Total Business Volume for the whole order (sum of line BV), in paise.
+     * The single source of truth for an order's BV — every surface that shows
+     * an order's BV total reads this. Requires `items` to be loaded.
+     */
+    public function bvTotalPaise(): int
+    {
+        return (int) $this->items->sum(fn (OrderItem $item): int => $item->lineBvPaise());
+    }
 }

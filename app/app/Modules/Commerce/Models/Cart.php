@@ -49,4 +49,14 @@ final class Cart extends Model
     {
         return $this->subtotalPaise(); // prices include GST
     }
+
+    /**
+     * Total Business Volume for the cart (sum of line BV), in paise. The single
+     * source of truth for cart BV — shown only to logged-in distributors as a
+     * factual point total, never an earnings figure (hard rule #3).
+     */
+    public function bvTotalPaise(): int
+    {
+        return (int) $this->items->sum(fn (CartItem $i): int => $i->bv_paise * $i->qty);
+    }
 }

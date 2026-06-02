@@ -43,4 +43,10 @@ final class OrderItem extends Model
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
+
+    /** Total Business Volume for this line (unit BV × quantity), in paise. */
+    public function lineBvPaise(): int
+    {
+        return $this->qty * $this->bv_paise;
+    }
 }

@@ -433,6 +433,12 @@ parameters:
 			path: app/Modules/Commerce/Http/Requests/CouponRequest.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Cart.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$gst_rate_bp\.$#'
 			identifier: property.notFound
 			count: 2
@@ -441,7 +447,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 3
 			path: app/Modules/Commerce/Models/Cart.php
 
 		-
@@ -471,7 +477,7 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: int\)\|string\|null, Closure\(App\\Modules\\Commerce\\Models\\CartItem\)\: int given\.$#'
 			identifier: argument.type
-			count: 1
+			count: 2
 			path: app/Modules/Commerce/Models/Cart.php
 
 		-
@@ -619,6 +625,12 @@ parameters:
 			path: app/Modules/Commerce/Models/Order.php
 
 		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:sum\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: int\)\|string\|null, Closure\(App\\Modules\\Commerce\\Models\\OrderItem\)\: int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$ends_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -635,6 +647,18 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Commerce/Models/OrderCoolingOff.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderItem\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/OrderItem.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderItem\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/OrderItem.php
 
 		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\OrderItem\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -1931,6 +1955,42 @@ parameters:
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Commerce/MembersOnlyCheckoutTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Commerce/OrderBvDisplayTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:lineBvPaise\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/OrderBvDisplayTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/OrderBvDisplayTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/OrderBvDisplayTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Commerce/OrderBvDisplayTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Commerce/OrderBvDisplayTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$shipping_paise\.$#'
