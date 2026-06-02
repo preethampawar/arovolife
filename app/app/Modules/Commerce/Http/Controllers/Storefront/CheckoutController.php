@@ -101,7 +101,19 @@ final class CheckoutController extends Controller
         ]);
 
         $cart = $this->cartService->currentCart($request);
-        $attr = $this->attribution->resolveForCheckout($request);
+
+        // A logged-in distributor buying their own products is attributed to
+        // themselves when the admin setting allows (default on) — this is what
+        // makes the order self-consumption, so its BV accrues to their personal
+        // ledger after cooling-off (ADR-0006). Otherwise fall back to the
+        // referral cookie / house attribution.
+        $loggedInDistributorId = Auth::user()?->distributor?->id;
+        $attr = $this->attribution->resolveForCheckout(
+            $request,
+            ($loggedInDistributorId !== null && $this->flag('commerce.attribution.logged_in_overrides_ref'))
+                ? $loggedInDistributorId
+                : null,
+        );
 
         $shipping = [
             'name' => $validated['buyer_name'],
@@ -136,6 +148,8 @@ final class CheckoutController extends Controller
             attributedDistributorId: $attr['distributor_id'],
             attributionSource: $attr['source'],
             paymentMethod: $validated['payment_method'],
+            authUserId: Auth::id(),
+            buyerDistributorId: Auth::user()?->distributor?->id,
         );
 
         // ONLINE: capture immediately via the gateway (Phase 2 stub auto-captures

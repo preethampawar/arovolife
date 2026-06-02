@@ -128,6 +128,7 @@
             <div class="mt-4 flex flex-col gap-1.5 text-xs">
                 <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">View my Genos →</a>
                 <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">My Referrals →</a>
+                <a href="{{ route('orders.index') }}" class="text-brand-600 hover:text-brand-700 underline">My Orders →</a>
                 @if($lcAvailable)
                     <a href="{{ route('line-change.show') }}" class="text-brand-600 hover:text-brand-700 underline">
                         Request line-change →

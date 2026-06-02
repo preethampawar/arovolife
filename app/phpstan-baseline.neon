@@ -415,6 +415,12 @@ parameters:
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
 
 		-
+			message: '#^Parameter \$authUserId of method App\\Modules\\Commerce\\Services\\CheckoutService\:\:place\(\) expects int\|null, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
+
+		-
 			message: '#^Method App\\Modules\\Commerce\\Http\\Middleware\\CaptureAttribution\:\:handle\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -607,8 +613,32 @@ parameters:
 			path: app/Modules/Commerce/Models/CustomerAddress.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
 			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:daysRemaining\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:bvLedgerEntries\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Commerce/Models/Order.php
 
@@ -752,6 +782,12 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Customer\:\:\$distributor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Customer\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Services/CheckoutService.php
@@ -2015,6 +2051,66 @@ parameters:
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Commerce/MembersOnlyCheckoutTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$claimed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$distributor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Function moUserWithDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 3
+			path: tests/Modules/Commerce/MyOrdersTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Commerce/MyOrdersTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'

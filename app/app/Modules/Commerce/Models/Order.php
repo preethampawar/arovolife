@@ -88,6 +88,11 @@ final class Order extends Model
         return $this->hasOne(OrderCoolingOff::class);
     }
 
+    public function bvLedgerEntries(): HasMany
+    {
+        return $this->hasMany(BvLedgerEntry::class);
+    }
+
     public function displayTotal(): string
     {
         return '₹'.number_format($this->total_paise / 100, 2);
@@ -101,5 +106,35 @@ final class Order extends Model
     public function bvTotalPaise(): int
     {
         return (int) $this->items->sum(fn (OrderItem $item): int => $item->lineBvPaise());
+    }
+
+    /**
+     * The accumulation status of this order's personal BV, for the buyer's own
+     * order history (ADR-0006). Only meaningful for self-consumption purchases;
+     * other orders carry no personal BV and return 'none'. Requires `items`,
+     * `coolingOff` and `bvLedgerEntries` to be loaded.
+     *
+     * @return array{state: 'none'|'pending'|'accumulated'|'reversed', label: string}
+     */
+    public function personalBvStatus(): array
+    {
+        if (! $this->self_consumption || $this->bvTotalPaise() <= 0) {
+            return ['state' => 'none', 'label' => '—'];
+        }
+
+        if ($this->bvLedgerEntries->firstWhere('type', BvLedgerEntry::TYPE_REVERSAL) !== null) {
+            return ['state' => 'reversed', 'label' => 'Reversed (refunded)'];
+        }
+
+        if ($this->bvLedgerEntries->firstWhere('type', BvLedgerEntry::TYPE_ACCRUAL) !== null) {
+            return ['state' => 'accumulated', 'label' => 'Accumulated'];
+        }
+
+        $coolingOff = $this->coolingOff;
+        if ($coolingOff !== null && $coolingOff->status === OrderCoolingOff::STATUS_OPEN) {
+            return ['state' => 'pending', 'label' => 'In cooling-off · '.$coolingOff->daysRemaining().' days left'];
+        }
+
+        return ['state' => 'pending', 'label' => 'Pending'];
     }
 }

@@ -20,6 +20,7 @@ use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
+use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
@@ -32,18 +33,18 @@ use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
 use App\Modules\Identity\Http\Controllers\DashboardController;
+use App\Modules\Identity\Http\Controllers\DirectSellerApplicationController;
 use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
 use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController;
 use App\Modules\Identity\Http\Controllers\KycResubmitController;
-use App\Modules\Identity\Http\Controllers\DirectSellerApplicationController;
 use App\Modules\Identity\Http\Controllers\MembershipCardController;
+use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\ProfileStatsController;
+use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
-use App\Modules\Identity\Http\Controllers\ProfileController;
-use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
 use App\Modules\Public\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
@@ -380,6 +381,10 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/dashboard/profile-stats', [ProfileStatsController::class, 'show'])->name('profile-stats.show');
     Route::get('/dashboard/direct-seller-application', [DirectSellerApplicationController::class, 'show'])->name('direct-seller-application.show');
     Route::get('/dashboard/tax-statements', [TaxStatementsController::class, 'show'])->name('tax-statements.show');
+
+    // The distributor's own order history (BV accumulation + cooling-off status).
+    Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{orderNo}', [MyOrdersController::class, 'show'])->name('orders.show');
 
     // Stat-card → roster modal (and downloadable CSV) for the four headline
     // team counts on the dashboard. Scope guard mirrors TeamStatsService::roster.
