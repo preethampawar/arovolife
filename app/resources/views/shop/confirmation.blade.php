@@ -15,7 +15,7 @@
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h2 class="font-semibold text-gray-900 mb-4">Order Details</h2>
-        @php $showBv = auth()->user()?->distributor !== null; @endphp
+        @php $showBv = $showBv ?? false; @endphp
         <div class="space-y-3">
             @foreach($order->items as $item)
             <div class="flex justify-between text-sm">
@@ -63,7 +63,7 @@
 
     <div class="bg-brand-50 border border-brand-200 rounded-xl p-5 text-sm text-brand-800 mb-6">
         <p class="font-semibold mb-1">Your 30-day return window</p>
-        <p class="text-brand-700">Your cooling-off clock begins when the order is delivered. You'll receive SMS reminders at D-20, D-7, and D-1 before it closes.</p>
+        <p class="text-brand-700">Your cooling-off clock begins when the order is delivered. You'll receive reminders before it closes.</p>
     </div>
 
     <div class="flex justify-center gap-3">

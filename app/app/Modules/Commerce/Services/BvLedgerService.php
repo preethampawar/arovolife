@@ -6,6 +6,7 @@ namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -38,7 +39,7 @@ final class BvLedgerService
             return;
         }
 
-        BvLedgerEntry::firstOrCreate(
+        $entry = BvLedgerEntry::firstOrCreate(
             ['order_id' => $order->id, 'type' => BvLedgerEntry::TYPE_ACCRUAL],
             [
                 'distributor_id' => $order->attributed_distributor_id,
@@ -46,6 +47,8 @@ final class BvLedgerService
                 'effective_at' => Carbon::now(),
             ],
         );
+
+        $this->audit('bv.accrued', $entry);
     }
 
     /**
@@ -64,7 +67,7 @@ final class BvLedgerService
             return;
         }
 
-        BvLedgerEntry::firstOrCreate(
+        $entry = BvLedgerEntry::firstOrCreate(
             ['order_id' => $order->id, 'type' => BvLedgerEntry::TYPE_REVERSAL],
             [
                 'distributor_id' => $accrual->distributor_id,
@@ -72,6 +75,30 @@ final class BvLedgerService
                 'effective_at' => Carbon::now(),
             ],
         );
+
+        $this->audit('bv.reversed', $entry);
+    }
+
+    /**
+     * Audit a BV ledger write (before/after traceability for the sale-linked
+     * credit store, R-22). Only logs an actual write, not an idempotent no-op.
+     */
+    private function audit(string $action, BvLedgerEntry $entry): void
+    {
+        if (! $entry->wasRecentlyCreated) {
+            return;
+        }
+
+        AuditLog::create([
+            'action' => $action,
+            'subject_type' => 'bv_ledger_entry',
+            'subject_id' => $entry->id,
+            'details' => [
+                'order_id' => $entry->order_id,
+                'distributor_id' => $entry->distributor_id,
+                'bv_paise' => $entry->bv_paise,
+            ],
+        ]);
     }
 
     /** A distributor's total accumulated personal BV (in paise). */

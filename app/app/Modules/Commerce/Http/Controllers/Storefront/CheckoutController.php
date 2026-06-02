@@ -164,19 +164,46 @@ final class CheckoutController extends Controller
         $order->load('items');
         $this->invoiceGenerator->generate($order);
 
+        // Bind this order to the buyer's session so the confirmation page is
+        // viewable by the person who just placed it (incl. guests) without
+        // exposing it to anyone who can guess the order number (IDOR).
+        $request->session()->push('recent_order_nos', $order->order_no);
+
         return redirect()->route('shop.confirmation', $order->order_no);
     }
 
-    public function confirmation(string $orderNo): View
+    public function confirmation(Request $request, string $orderNo): View
     {
         $order = Order::with(['items.variant.product', 'customer'])
             ->where('order_no', $orderNo)->first();
 
-        if ($order === null) {
+        // Only the buyer may view their confirmation: either they just placed
+        // it (session-bound) or they are the authenticated owner. Anyone else
+        // (e.g. a distributor enumerating order numbers) gets a 404 — this
+        // protects both the order PII and the BV figure (hard rule #3).
+        if ($order === null || ! $this->canViewConfirmation($request, $order)) {
             throw new NotFoundHttpException;
         }
 
-        return view('shop.confirmation', ['order' => $order]);
+        return view('shop.confirmation', [
+            'order' => $order,
+            // BV is shown only to the authenticated owner who is a distributor.
+            'showBv' => $this->ownsOrder($request, $order) && $request->user()?->distributor !== null,
+        ]);
+    }
+
+    private function canViewConfirmation(Request $request, Order $order): bool
+    {
+        $recent = (array) $request->session()->get('recent_order_nos', []);
+
+        return in_array($order->order_no, $recent, true) || $this->ownsOrder($request, $order);
+    }
+
+    private function ownsOrder(Request $request, Order $order): bool
+    {
+        $userId = $request->user()?->id;
+
+        return $userId !== null && $order->customer !== null && $order->customer->user_id === $userId;
     }
 
     private function ensureCheckoutEnabled(): void

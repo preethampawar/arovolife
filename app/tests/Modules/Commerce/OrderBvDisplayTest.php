@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
-/** Build a placed order with two BV-bearing lines. */
-function obvOrder(): Order
+/** Build a placed order with two BV-bearing lines, optionally owned by a user. */
+function obvOrder(?int $ownerUserId = null): Order
 {
-    $customer = Customer::create(['display_name' => 'BV Buyer']);
+    $customer = Customer::create(['display_name' => 'BV Buyer', 'user_id' => $ownerUserId]);
     $order = Order::create([
         'order_no' => 'ORD-BV-'.random_int(1000, 9999),
         'customer_id' => $customer->id,
@@ -101,18 +101,21 @@ it('Cart::bvTotalPaise sums line BV', function (): void {
     expect($cart->load('items')->bvTotalPaise())->toBe(60000); // 3 × 200 BV
 });
 
-it('hides BV on the order confirmation from a guest (hard rule #3)', function (): void {
-    $order = obvOrder();
+it('404s the confirmation page for a non-owner distributor (IDOR + hard rule #3)', function (): void {
+    $order = obvOrder(); // not owned by anyone in particular
 
-    $this->get(route('shop.confirmation', $order->order_no))
-        ->assertOk()
-        ->assertDontSee('Total BV');
+    // A logged-in distributor who is not the buyer must not be able to read
+    // another buyer's order (PII) or its BV by guessing the order number.
+    $this->actingAs(obvDistributor())
+        ->get(route('shop.confirmation', $order->order_no))
+        ->assertNotFound();
 });
 
-it('shows BV on the order confirmation to a logged-in distributor', function (): void {
-    $order = obvOrder();
+it('shows BV on the confirmation to the owning distributor only', function (): void {
+    $owner = obvDistributor();
+    $order = obvOrder($owner->id); // owned by this distributor's user
 
-    $this->actingAs(obvDistributor())
+    $this->actingAs($owner)
         ->get(route('shop.confirmation', $order->order_no))
         ->assertOk()
         ->assertSee('Total BV')

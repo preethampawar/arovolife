@@ -399,11 +399,17 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 3
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
@@ -741,11 +747,17 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$bv_paise\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Modules/Commerce/Services/BvLedgerService.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$distributor_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/BvLedgerService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$order_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Services/BvLedgerService.php
@@ -2163,13 +2175,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Commerce/OrderBvDisplayTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
-			identifier: method.notFound
-			count: 1
+			count: 2
 			path: tests/Modules/Commerce/OrderBvDisplayTest.php
 
 		-

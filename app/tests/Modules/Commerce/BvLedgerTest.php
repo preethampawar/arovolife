@@ -120,6 +120,18 @@ it('is idempotent — re-running accrual does not double-count', function (): vo
     expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(50000);
 });
 
+it('writes an audit-log row when BV is accrued', function (): void {
+    $distId = blDistributorId();
+    $order = blOrder($distId, 50000);
+
+    app(OrderStateMachine::class)->expireCoolingOff($order);
+
+    expect(DB::table('audit_log')
+        ->where('action', 'bv.accrued')
+        ->where('subject_type', 'bv_ledger_entry')
+        ->count())->toBe(1);
+});
+
 it('does NOT accrue when the order is not self-consumption', function (): void {
     $distId = blDistributorId();
     $order = blOrder($distId, 50000, selfConsumption: false);
