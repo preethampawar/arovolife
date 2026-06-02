@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CouponService;
+use App\Modules\Commerce\Services\ShippingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ final class CartController extends Controller
     public function __construct(
         private readonly CartService $cartService,
         private readonly CouponService $coupons,
+        private readonly ShippingService $shipping,
     ) {}
 
     public function show(Request $request): View
@@ -39,7 +41,14 @@ final class CartController extends Controller
             }
         }
 
-        return view('shop.cart', ['cart' => $cart, 'couponDiscount' => $couponDiscount]);
+        $subtotalPaise = $cart->subtotalPaise();
+
+        return view('shop.cart', [
+            'cart' => $cart,
+            'couponDiscount' => $couponDiscount,
+            'shippingPaise' => $this->shipping->feePaise($subtotalPaise),
+            'amountToFreeShippingPaise' => $this->shipping->amountToFreeShippingPaise($subtotalPaise),
+        ]);
     }
 
     public function applyCoupon(Request $request): RedirectResponse

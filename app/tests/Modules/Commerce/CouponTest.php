@@ -41,7 +41,7 @@ function cpnCart(int $unitPaise, int $qty = 1, ?int $categoryId = null, ?int &$p
     $cart = Cart::create(['anonymous_key' => "k{$n}", 'expires_at' => now()->addDay()]);
     CartItem::create([
         'cart_id' => $cart->id, 'product_variant_id' => $variant->id, 'qty' => $qty,
-        'unit_price_paise' => $unitPaise, 'bv_paise' => 0, 'pv_paise' => 0, 'gst_rate_bp' => 1800,
+        'unit_price_paise' => $unitPaise, 'bv_paise' => 0, 'gst_rate_bp' => 1800,
     ]);
 
     return $cart->load('items.variant.product');

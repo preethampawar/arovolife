@@ -9,6 +9,7 @@ use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
+use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
@@ -29,6 +30,7 @@ final class CheckoutController extends Controller
         private readonly CouponService $coupons,
         private readonly StubGateway $gateway,
         private readonly InvoiceGenerator $invoiceGenerator,
+        private readonly ShippingService $shipping,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -54,6 +56,7 @@ final class CheckoutController extends Controller
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
+            'shippingPaise' => $this->shipping->feePaise($cart->subtotalPaise()),
             'guestAllowed' => $guestAllowed,
             'onlineEnabled' => $this->onlineEnabled(),
             'codEnabled' => $this->flag('payments.cod.enabled'),
@@ -98,7 +101,19 @@ final class CheckoutController extends Controller
         ]);
 
         $cart = $this->cartService->currentCart($request);
-        $attr = $this->attribution->resolveForCheckout($request);
+
+        // A logged-in distributor buying their own products is attributed to
+        // themselves when the admin setting allows (default on) — this is what
+        // makes the order self-consumption, so its BV accrues to their personal
+        // ledger after cooling-off (ADR-0006). Otherwise fall back to the
+        // referral cookie / house attribution.
+        $loggedInDistributorId = Auth::user()?->distributor?->id;
+        $attr = $this->attribution->resolveForCheckout(
+            $request,
+            ($loggedInDistributorId !== null && $this->flag('commerce.attribution.logged_in_overrides_ref'))
+                ? $loggedInDistributorId
+                : null,
+        );
 
         $shipping = [
             'name' => $validated['buyer_name'],
@@ -133,6 +148,8 @@ final class CheckoutController extends Controller
             attributedDistributorId: $attr['distributor_id'],
             attributionSource: $attr['source'],
             paymentMethod: $validated['payment_method'],
+            authUserId: Auth::id(),
+            buyerDistributorId: Auth::user()?->distributor?->id,
         );
 
         // ONLINE: capture immediately via the gateway (Phase 2 stub auto-captures
@@ -147,19 +164,46 @@ final class CheckoutController extends Controller
         $order->load('items');
         $this->invoiceGenerator->generate($order);
 
+        // Bind this order to the buyer's session so the confirmation page is
+        // viewable by the person who just placed it (incl. guests) without
+        // exposing it to anyone who can guess the order number (IDOR).
+        $request->session()->push('recent_order_nos', $order->order_no);
+
         return redirect()->route('shop.confirmation', $order->order_no);
     }
 
-    public function confirmation(string $orderNo): View
+    public function confirmation(Request $request, string $orderNo): View
     {
         $order = Order::with(['items.variant.product', 'customer'])
             ->where('order_no', $orderNo)->first();
 
-        if ($order === null) {
+        // Only the buyer may view their confirmation: either they just placed
+        // it (session-bound) or they are the authenticated owner. Anyone else
+        // (e.g. a distributor enumerating order numbers) gets a 404 — this
+        // protects both the order PII and the BV figure (hard rule #3).
+        if ($order === null || ! $this->canViewConfirmation($request, $order)) {
             throw new NotFoundHttpException;
         }
 
-        return view('shop.confirmation', ['order' => $order]);
+        return view('shop.confirmation', [
+            'order' => $order,
+            // BV is shown only to the authenticated owner who is a distributor.
+            'showBv' => $this->ownsOrder($request, $order) && $request->user()?->distributor !== null,
+        ]);
+    }
+
+    private function canViewConfirmation(Request $request, Order $order): bool
+    {
+        $recent = (array) $request->session()->get('recent_order_nos', []);
+
+        return in_array($order->order_no, $recent, true) || $this->ownsOrder($request, $order);
+    }
+
+    private function ownsOrder(Request $request, Order $order): bool
+    {
+        $userId = $request->user()?->id;
+
+        return $userId !== null && $order->customer !== null && $order->customer->user_id === $userId;
     }
 
     private function ensureCheckoutEnabled(): void

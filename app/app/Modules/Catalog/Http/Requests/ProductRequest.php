@@ -48,7 +48,6 @@ final class ProductRequest extends FormRequest
             'landing_price' => ['nullable', 'numeric', 'min:0'],
             'distributor_price' => ['nullable', 'numeric', 'min:0'],
             'bv' => ['nullable', 'numeric', 'min:0'],
-            'pv' => ['nullable', 'numeric', 'min:0'],
             'gst_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'weight_g' => ['nullable', 'integer', 'min:0'],
             'inventory_policy' => ['required', Rule::in(['track', 'no_track'])],

@@ -173,14 +173,29 @@
             @endforeach
         </div>
 
-        @php $couponDiscount = $couponDiscount ?? 0; $finalTotal = max(0, $cart->totalPaise() - $couponDiscount); @endphp
+        @php
+            $couponDiscount = $couponDiscount ?? 0;
+            $shippingPaise = $shippingPaise ?? 0;
+            $finalTotal = max(0, $cart->totalPaise() - $couponDiscount) + $shippingPaise;
+        @endphp
         <div class="space-y-2 text-sm mb-4 pb-4 border-b border-gray-200">
             <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ number_format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ number_format($cart->gstPaise() / 100, 2) }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-600">Shipping</span><span class="font-medium text-green-700">Free</span></div>
+            <div class="flex justify-between"><span class="text-gray-600">Shipping</span>
+                @if($shippingPaise > 0)<span class="font-medium">₹{{ number_format($shippingPaise / 100, 2) }}</span>
+                @else<span class="font-medium text-green-700">Free</span>@endif
+            </div>
             @if($couponDiscount > 0)
             <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ number_format($couponDiscount / 100, 2) }}</span></div>
             @endif
+            @auth
+                @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
+                @if($bvTotal > 0)
+                {{-- BV shown only to logged-in distributors — a factual point total
+                     for the compensation plan, never an earnings figure (hard rule #3). --}}
+                <div class="flex justify-between text-brand-700"><span>Total BV</span><span class="font-semibold" title="Business Volume — points used in the compensation plan">{{ number_format($bvTotal / 100, 0) }} BV</span></div>
+                @endif
+            @endauth
         </div>
 
         <div class="flex justify-between mb-5">

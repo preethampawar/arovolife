@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Services;
 
+use App\Modules\Commerce\Events\OrderPlaced;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\CustomerAddress;
@@ -29,6 +30,7 @@ final class CheckoutService
         private readonly AttributionService $attribution,
         private readonly LedgerPoster $ledger,
         private readonly CouponService $coupons,
+        private readonly ShippingService $shipping,
     ) {}
 
     /**
@@ -36,13 +38,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        return $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId) {
             // 1. Find or create the customer
             $emailHash = isset($buyer['email']) && $buyer['email'] !== ''
                 ? hash('sha256', strtolower(trim($buyer['email'])))
@@ -62,6 +64,19 @@ final class CheckoutService
                     'phone_enc' => $buyer['phone'] ?? null,
                     'phone_last4' => isset($buyer['phone']) ? substr(preg_replace('/\D/', '', $buyer['phone']), -4) : null,
                     'marketing_opt_in' => (bool) ($buyer['marketing_opt_in'] ?? false),
+                ]);
+            }
+
+            // 1a. Link the customer to the authenticated buyer. The customer may
+            // have been matched only by email_hash; stamping user_id (and the
+            // buyer's own distributor_id) is what lets "My Orders" find these
+            // orders and makes self-consumption BV resolve correctly. Only fills
+            // blanks — a customer already claimed by someone is never reassigned.
+            if ($authUserId !== null && $customer->user_id === null) {
+                $customer->update([
+                    'user_id' => $authUserId,
+                    'distributor_id' => $buyerDistributorId,
+                    'claimed_at' => Carbon::now(),
                 ]);
             }
 
@@ -96,7 +111,11 @@ final class CheckoutService
                 }
             }
 
-            $totalPaise = max(0, $subtotalPaise - $discountPaise);
+            // Shipping is a function of the cart's merchandise value (before
+            // the coupon), via the single-source ShippingService.
+            $shippingPaise = $this->shipping->feePaise($subtotalPaise);
+
+            $totalPaise = max(0, $subtotalPaise - $discountPaise) + $shippingPaise;
 
             $order = Order::create([
                 'order_no' => $orderNo,
@@ -110,7 +129,7 @@ final class CheckoutService
                 'subtotal_paise' => $subtotalPaise,
                 'gst_paise' => $gstPaise,
                 'discount_paise' => $discountPaise,
-                'shipping_paise' => 0,
+                'shipping_paise' => $shippingPaise,
                 'total_paise' => $totalPaise,
                 'ship_name' => $shipping['name'],
                 'ship_phone_e164' => $shipping['phone'],
@@ -140,7 +159,6 @@ final class CheckoutService
                     'qty' => $ci->qty,
                     'unit_price_paise' => $ci->unit_price_paise,
                     'bv_paise' => $ci->bv_paise,
-                    'pv_paise' => $ci->pv_paise,
                     'gst_rate_bp' => $ci->gst_rate_bp,
                     'taxable_value_paise' => $taxable,
                     'gst_paise' => $gstPart,
@@ -183,6 +201,12 @@ final class CheckoutService
 
             return $order->fresh(['items', 'customer']);
         });
+
+        // Dispatch AFTER the transaction commits so the queued listener never
+        // sees a rolled-back order (the order-received email + any SMS later).
+        event(new OrderPlaced($order->id));
+
+        return $order;
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Services;
 
+use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Compliance\Models\AuditLog;
@@ -25,6 +26,7 @@ final class OrderStateMachine
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LedgerPoster $ledger,
+        private readonly BvLedgerService $bvLedger,
     ) {}
 
     public function markPaid(Order $order, ?int $actorUserId = null): void
@@ -65,7 +67,16 @@ final class OrderStateMachine
                 'subject_id' => $order->id,
                 'details' => ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise, 'payment_method' => $order->payment_method],
             ]);
+
+            // BV accrues as soon as payment is received (product-owner decision,
+            // 2026-06-02 — ADR-0006 revised). No cooling-off gating on accrual;
+            // a refund still reverses it via BvLedgerService::reverse(). No-op
+            // unless the order is a self-consumption purchase with BV and
+            // self-purchase BV is enabled.
+            $this->bvLedger->accrue($order);
         });
+
+        event(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
     }
 
     public function markShipped(Order $order, ?int $actorUserId = null): void
@@ -73,6 +84,8 @@ final class OrderStateMachine
         if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
             throw new RuntimeException("Cannot ship from status {$order->status}");
         }
+
+        $oldStatus = $order->status;
 
         $this->db->transaction(function () use ($order, $actorUserId): void {
             $order->update([
@@ -118,6 +131,8 @@ final class OrderStateMachine
                 'details' => ['order_no' => $order->order_no],
             ]);
         });
+
+        event(new OrderStatusChanged($order->id, $oldStatus, Order::STATUS_SHIPPED));
     }
 
     public function markDelivered(Order $order, ?int $actorUserId = null): OrderCoolingOff
@@ -126,7 +141,7 @@ final class OrderStateMachine
             throw new RuntimeException("Cannot mark delivered from status {$order->status}");
         }
 
-        return $this->db->transaction(function () use ($order, $actorUserId): OrderCoolingOff {
+        $coolingOff = $this->db->transaction(function () use ($order, $actorUserId): OrderCoolingOff {
             $deliveredAt = Carbon::now();
 
             $order->update([
@@ -155,6 +170,10 @@ final class OrderStateMachine
 
             return $coolingOff;
         });
+
+        event(new OrderStatusChanged($order->id, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED));
+
+        return $coolingOff;
     }
 
     public function expireCoolingOff(Order $order, ?int $actorUserId = null): void
@@ -167,16 +186,24 @@ final class OrderStateMachine
             return;
         }
 
-        $coolingOff->update(['status' => OrderCoolingOff::STATUS_EXPIRED]);
-        $order->update(['status' => Order::STATUS_CONFIRMED]);
+        $this->db->transaction(function () use ($order, $coolingOff, $actorUserId): void {
+            $coolingOff->update(['status' => OrderCoolingOff::STATUS_EXPIRED]);
+            $order->update(['status' => Order::STATUS_CONFIRMED]);
 
-        AuditLog::create([
-            'actor_id' => $actorUserId,
-            'action' => 'order.cooling_off_expired',
-            'subject_type' => 'order',
-            'subject_id' => $order->id,
-            'details' => ['order_no' => $order->order_no],
-        ]);
+            // BV is NOT accrued here — it was already accrued on payment
+            // (markPaid), per ADR-0006 (revised 2026-06-02). This transition
+            // only closes the statutory refund window and confirms the order.
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'order.cooling_off_expired',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => ['order_no' => $order->order_no],
+            ]);
+        });
+
+        event(new OrderStatusChanged($order->id, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED));
     }
 
     public function cancel(Order $order, string $reason, ?int $actorUserId = null): void
@@ -184,6 +211,8 @@ final class OrderStateMachine
         if (in_array($order->status, [Order::STATUS_SHIPPED, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED, Order::STATUS_REFUNDED], true)) {
             throw new RuntimeException("Cannot cancel order in status {$order->status}");
         }
+
+        $oldStatus = $order->status;
 
         $order->update([
             'status' => Order::STATUS_CANCELLED,
@@ -197,5 +226,7 @@ final class OrderStateMachine
             'subject_id' => $order->id,
             'details' => ['order_no' => $order->order_no, 'reason' => $reason],
         ]);
+
+        event(new OrderStatusChanged($order->id, $oldStatus, Order::STATUS_CANCELLED));
     }
 }

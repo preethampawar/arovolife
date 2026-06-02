@@ -19,6 +19,7 @@
                         <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Product</th>
                         <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Qty</th>
                         <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Price</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">BV</th>
                         <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">GST</th>
                         <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Total</th>
                     </tr>
@@ -32,6 +33,7 @@
                         </td>
                         <td class="py-2 text-right">{{ $it->qty }}</td>
                         <td class="py-2 text-right">₹{{ number_format($it->unit_price_paise / 100, 2) }}</td>
+                        <td class="py-2 text-right text-brand-700">{{ number_format($it->lineBvPaise() / 100, 0) }} BV</td>
                         <td class="py-2 text-right text-xs text-gray-500">₹{{ number_format($it->gst_paise / 100, 2) }} ({{ $it->gst_rate_bp / 100 }}%)</td>
                         <td class="py-2 text-right font-semibold">₹{{ number_format($it->line_total_paise / 100, 2) }}</td>
                     </tr>
@@ -44,6 +46,8 @@
                 @if($order->discount_paise > 0)
                 <div class="flex gap-8 text-green-700"><span>Discount</span><span class="w-32 text-right">−₹{{ number_format($order->discount_paise / 100, 2) }}</span></div>
                 @endif
+                <div class="flex gap-8"><span class="text-gray-600">Shipping</span><span class="w-32 text-right">@if($order->shipping_paise > 0)₹{{ number_format($order->shipping_paise / 100, 2) }}@else<span class="text-green-700">Free</span>@endif</span></div>
+                <div class="flex gap-8"><span class="text-gray-600">Total BV</span><span class="w-32 text-right text-brand-700">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span></div>
                 <div class="flex gap-8 font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span class="w-32 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
         </div>

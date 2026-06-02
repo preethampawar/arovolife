@@ -28,14 +28,24 @@
                 <p class="text-sm font-semibold text-gray-900 mt-1">₹{{ number_format($item->unit_price_paise / 100, 2) }}</p>
             </div>
             <div class="flex flex-col items-end gap-2">
-                <form method="POST" action="{{ route('shop.cart.update', $item) }}">
-                    @csrf @method('PATCH')
-                    <div class="flex items-center border border-gray-300 rounded-lg">
-                        <input name="qty" type="number" value="{{ $item->qty }}" min="0" max="10"
-                            onchange="this.form.submit()"
-                            class="w-14 bg-transparent py-1.5 text-sm text-center focus:outline-none">
-                    </div>
-                </form>
+                {{-- Quantity stepper: each button is its own form-submit, so it
+                     works without JavaScript. Decrease is disabled at 1 (use
+                     Remove to delete the line); increase is capped at 10. --}}
+                <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <form method="POST" action="{{ route('shop.cart.update', $item) }}">
+                        @csrf @method('PATCH')
+                        <input type="hidden" name="qty" value="{{ $item->qty - 1 }}">
+                        <button type="submit" @disabled($item->qty <= 1) aria-label="Decrease quantity"
+                            class="px-3 py-1.5 text-base leading-none text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                    </form>
+                    <span class="w-10 text-center text-sm tabular-nums select-none" aria-live="polite">{{ $item->qty }}</span>
+                    <form method="POST" action="{{ route('shop.cart.update', $item) }}">
+                        @csrf @method('PATCH')
+                        <input type="hidden" name="qty" value="{{ $item->qty + 1 }}">
+                        <button type="submit" @disabled($item->qty >= 10) aria-label="Increase quantity"
+                            class="px-3 py-1.5 text-base leading-none text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">+</button>
+                    </form>
+                </div>
                 <form method="POST" action="{{ route('shop.cart.remove', $item) }}">
                     @csrf @method('DELETE')
                     <button type="submit" class="text-xs text-gray-500 hover:text-red-600">Remove</button>
@@ -47,16 +57,27 @@
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6 h-fit sticky top-20">
         <h2 class="font-semibold text-gray-900 mb-4">Order Summary</h2>
-        @php $couponDiscount = $couponDiscount ?? 0; $finalTotal = max(0, $cart->totalPaise() - $couponDiscount); @endphp
+        @php
+            $couponDiscount = $couponDiscount ?? 0;
+            $shippingPaise = $shippingPaise ?? 0;
+            $amountToFreeShippingPaise = $amountToFreeShippingPaise ?? 0;
+            $finalTotal = max(0, $cart->totalPaise() - $couponDiscount) + $shippingPaise;
+        @endphp
         <div class="space-y-2 text-sm mb-4 pb-4 border-b border-gray-200">
             <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ number_format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ number_format($cart->gstPaise() / 100, 2) }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-600">Shipping</span><span class="font-medium text-green-700">Free</span></div>
+            <div class="flex justify-between"><span class="text-gray-600">Shipping</span>
+                @if($shippingPaise > 0)<span class="font-medium">₹{{ number_format($shippingPaise / 100, 2) }}</span>
+                @else<span class="font-medium text-green-700">Free</span>@endif
+            </div>
+            @if($shippingPaise > 0 && $amountToFreeShippingPaise > 0)
+            <p class="text-xs text-gray-500">Add ₹{{ number_format($amountToFreeShippingPaise / 100, 2) }} more to get free shipping.</p>
+            @endif
             @if($couponDiscount > 0)
             <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ number_format($couponDiscount / 100, 2) }}</span></div>
             @endif
             @auth
-                @php $bvTotal = auth()->user()->distributor ? $cart->items->sum(fn ($i) => $i->bv_paise * $i->qty) : 0; @endphp
+                @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
                 @if($bvTotal > 0)
                 {{-- BV total shown only to logged-in distributors — a factual point
                      total used by the compensation plan, never an earnings figure

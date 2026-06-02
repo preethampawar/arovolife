@@ -16,7 +16,7 @@ final class ProductVariant extends Model
         'product_id', 'variant_sku', 'name', 'attributes',
         'weight_g', 'mrp_paise', 'sale_price_paise', 'cost_paise',
         'landing_price_paise', 'distributor_price_paise',
-        'bv_paise', 'pv_paise', 'gst_rate_bp', 'inventory_policy', 'status',
+        'bv_paise', 'gst_rate_bp', 'inventory_policy', 'status',
     ];
 
     protected function casts(): array
@@ -29,7 +29,6 @@ final class ProductVariant extends Model
             'landing_price_paise' => 'int',
             'distributor_price_paise' => 'int',
             'bv_paise' => 'int',
-            'pv_paise' => 'int',
             'weight_g' => 'int',
             'gst_rate_bp' => 'int',
         ];

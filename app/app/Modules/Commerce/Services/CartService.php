@@ -65,7 +65,6 @@ final class CartService
             'qty' => $qty,
             'unit_price_paise' => $variant->sale_price_paise,
             'bv_paise' => $variant->bv_paise,
-            'pv_paise' => $variant->pv_paise,
             'gst_rate_bp' => $variant->gst_rate_bp,
         ]);
     }

@@ -70,7 +70,6 @@ function acatProductPayload(int $categoryId, array $overrides = []): array
         'landing_price' => '350',
         'distributor_price' => '700',
         'bv' => '500',
-        'pv' => '500',
         'gst_rate' => '18',
         'weight_g' => '250',
         'inventory_policy' => 'track',

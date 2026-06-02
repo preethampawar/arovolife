@@ -56,7 +56,6 @@ function scatProduct(string $sku, string $slug, ProductCategory $cat, array $ove
         'landing_price_paise' => 35000,
         'distributor_price_paise' => 70000,
         'bv_paise' => 55000,
-        'pv_paise' => 55000,
         'gst_rate_bp' => 1800,
         'inventory_policy' => 'track',
         'status' => 'active',

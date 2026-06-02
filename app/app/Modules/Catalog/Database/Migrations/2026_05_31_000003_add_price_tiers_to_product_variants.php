@@ -16,7 +16,7 @@ return new class extends Migration
             //   landing_price_paise — landed cost incl. freight/duties
             //   distributor_price_paise — price a distributor pays
             //   sale_price_paise / mrp_paise — already exist (customer-facing)
-            // BV/PV remain admin-set per variant (no formula — user decision).
+            // BV remains admin-set per variant (no formula — user decision).
             // Guards make this idempotent so a partially-migrated DB self-heals.
             if (! Schema::hasColumn('product_variants', 'landing_price_paise')) {
                 $table->bigInteger('landing_price_paise')->default(0)->after('cost_paise');

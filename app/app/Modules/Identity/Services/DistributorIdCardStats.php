@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Services;
 
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,7 +29,10 @@ use Illuminate\Support\Facades\Storage;
  */
 final class DistributorIdCardStats
 {
-    public function __construct(private readonly TeamStatsService $teamStats) {}
+    public function __construct(
+        private readonly TeamStatsService $teamStats,
+        private readonly BvLedgerService $bvLedger,
+    ) {}
 
     /**
      * Compact 8-field stats — the subset rendered on each tree card. No
@@ -52,8 +56,26 @@ final class DistributorIdCardStats
             'verification_label' => $user->verificationLabel(),
             'verification_class' => $user->verificationClass(),
             'activation_date' => $user->activated_at,
-            'total_personal_bv' => null, // PHASE_LATER_PLACEHOLDER (Phase 3 — BV ledger)
+            'total_personal_bv' => $this->ownPersonalBv($distributor),
         ];
+    }
+
+    /**
+     * The distributor's accumulated personal BV (ADR-0006), formatted for
+     * display — but ONLY when the card belongs to the authenticated viewer.
+     * A downline member's personal BV is never exposed to an upline or admin
+     * via the tree/Details surfaces (hard rule #3 — own data only). Returns
+     * null (renders "—") for other distributors or when nothing has accrued.
+     */
+    private function ownPersonalBv(Distributor $distributor): ?string
+    {
+        if (auth()->id() !== $distributor->user_id) {
+            return null;
+        }
+
+        $paise = $this->bvLedger->totalPersonalBvPaise($distributor->id);
+
+        return $paise > 0 ? number_format($paise / 100, 0).' BV' : null;
     }
 
     /**
