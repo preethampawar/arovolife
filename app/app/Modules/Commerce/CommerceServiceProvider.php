@@ -9,6 +9,7 @@ use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Commerce\Services\ShippingService;
 use Illuminate\Support\ServiceProvider;
 
 final class CommerceServiceProvider extends ServiceProvider
@@ -20,6 +21,7 @@ final class CommerceServiceProvider extends ServiceProvider
         $this->app->singleton(CartService::class);
         $this->app->singleton(CheckoutService::class);
         $this->app->singleton(OrderStateMachine::class);
+        $this->app->singleton(ShippingService::class);
     }
 
     public function boot(): void

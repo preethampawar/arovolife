@@ -94,6 +94,24 @@ final class AdminSettingsController extends Controller
                 'max' => 100,
                 'default' => '5',
             ],
+            'commerce.shipping.fee_rupees' => [
+                'group' => 'commerce',
+                'label' => 'Shipping fee (₹)',
+                'description' => 'Flat shipping charge (in whole rupees) applied to orders below the free-shipping threshold.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100000,
+                'default' => '60',
+            ],
+            'commerce.shipping.free_threshold_rupees' => [
+                'group' => 'commerce',
+                'label' => 'Free-shipping threshold (₹)',
+                'description' => 'Cart value (in whole rupees) at or above which shipping is free. Default ₹4000.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000000,
+                'default' => '4000',
+            ],
 
             // ── Commerce — attribution ─────────────────────────────────────
             'commerce.attribution.window_days' => [
@@ -181,15 +199,22 @@ final class AdminSettingsController extends Controller
             ],
 
             // ── Payments ───────────────────────────────────────────────────
+            'payments.cod.enabled' => [
+                'group' => 'payments',
+                'label' => 'Cash on Delivery',
+                'description' => 'Offer Cash on Delivery at checkout. Default OFF — when off, only online payment is available and the invoice is generated after payment.',
+                'type' => 'bool',
+                'default' => 'false',
+            ],
             'payments.gateway.razorpay.enabled' => [
-                'group' => 'advanced',
+                'group' => 'payments',
                 'label' => 'Payments: Razorpay gateway',
                 'description' => 'Route checkouts through Razorpay. Requires keys in the environment; do not enable without the finance team.',
                 'type' => 'bool',
                 'default' => 'false',
             ],
             'payments.gateway.stub.enabled' => [
-                'group' => 'advanced',
+                'group' => 'payments',
                 'label' => 'Payments: stub gateway (dev)',
                 'description' => 'Accept payments via the in-process stub. Useful for local development; never enable on production.',
                 'type' => 'bool',
@@ -229,6 +254,10 @@ final class AdminSettingsController extends Controller
             'compensation' => [
                 'label' => 'Compensation engine',
                 'description' => 'Master switches for the Phase 4+ commission engine. Read-only from this UI.',
+            ],
+            'payments' => [
+                'label' => 'Payments',
+                'description' => 'Payment methods offered at checkout and the gateways that process them.',
             ],
             'advanced' => [
                 'label' => 'Other / Advanced',

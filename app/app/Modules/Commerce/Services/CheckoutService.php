@@ -29,6 +29,7 @@ final class CheckoutService
         private readonly AttributionService $attribution,
         private readonly LedgerPoster $ledger,
         private readonly CouponService $coupons,
+        private readonly ShippingService $shipping,
     ) {}
 
     /**
@@ -96,7 +97,11 @@ final class CheckoutService
                 }
             }
 
-            $totalPaise = max(0, $subtotalPaise - $discountPaise);
+            // Shipping is a function of the cart's merchandise value (before
+            // the coupon), via the single-source ShippingService.
+            $shippingPaise = $this->shipping->feePaise($subtotalPaise);
+
+            $totalPaise = max(0, $subtotalPaise - $discountPaise) + $shippingPaise;
 
             $order = Order::create([
                 'order_no' => $orderNo,
@@ -110,7 +115,7 @@ final class CheckoutService
                 'subtotal_paise' => $subtotalPaise,
                 'gst_paise' => $gstPaise,
                 'discount_paise' => $discountPaise,
-                'shipping_paise' => 0,
+                'shipping_paise' => $shippingPaise,
                 'total_paise' => $totalPaise,
                 'ship_name' => $shipping['name'],
                 'ship_phone_e164' => $shipping['phone'],

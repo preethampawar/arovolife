@@ -9,6 +9,7 @@ use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
+use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
@@ -29,6 +30,7 @@ final class CheckoutController extends Controller
         private readonly CouponService $coupons,
         private readonly StubGateway $gateway,
         private readonly InvoiceGenerator $invoiceGenerator,
+        private readonly ShippingService $shipping,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -54,6 +56,7 @@ final class CheckoutController extends Controller
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
+            'shippingPaise' => $this->shipping->feePaise($cart->subtotalPaise()),
             'guestAllowed' => $guestAllowed,
             'onlineEnabled' => $this->onlineEnabled(),
             'codEnabled' => $this->flag('payments.cod.enabled'),

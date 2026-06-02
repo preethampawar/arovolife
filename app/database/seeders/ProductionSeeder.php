@@ -219,10 +219,13 @@ final class ProductionSeeder extends Seeder
             'commerce.self_purchase.earns_bv' => 'true',
             'commerce.self_purchase.earns_retail_margin' => 'false',
             'commerce.shipping.india_mainland_only' => 'true',
+            'commerce.shipping.fee_rupees' => '60',
+            'commerce.shipping.free_threshold_rupees' => '4000',
             'compensation.accrual.enabled' => 'false',
             'compensation.unlock.enabled' => 'false',
             'compensation.payout.enabled' => 'false',
             'compliance.crawler.enabled' => 'false',
+            'payments.cod.enabled' => 'false',
             'payments.gateway.razorpay.enabled' => 'false',
             'payments.gateway.stub.enabled' => 'false',
         ];

@@ -29,6 +29,13 @@
         <div class="mt-4 pt-4 border-t border-gray-200 space-y-1">
             <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span>₹{{ number_format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
             <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ number_format($order->gst_paise / 100, 2) }}</span></div>
+            @if($order->discount_paise > 0)
+            <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ number_format($order->discount_paise / 100, 2) }}</span></div>
+            @endif
+            <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span>
+                @if($order->shipping_paise > 0)<span>₹{{ number_format($order->shipping_paise / 100, 2) }}</span>
+                @else<span class="text-green-700">Free</span>@endif
+            </div>
             <div class="flex justify-between font-semibold pt-2 border-t border-gray-100 mt-2">
                 <span>Total</span><span>{{ $order->displayTotal() }}</span>
             </div>
