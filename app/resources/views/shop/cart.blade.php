@@ -26,6 +26,13 @@
                 <a href="{{ route('shop.product', $item->variant->product->slug) }}" class="font-semibold text-gray-900 hover:text-brand-600">{{ $item->variant->product->name }}</a>
                 <p class="text-xs text-gray-500 mt-0.5 font-mono">SKU {{ $item->variant->variant_sku }}</p>
                 <p class="text-sm font-semibold text-gray-900 mt-1">₹{{ number_format($item->unit_price_paise / 100, 2) }}</p>
+                {{-- Per-product BV under the price — distributor-only, a factual
+                     point value, never an earnings figure (hard rule #3). --}}
+                @auth
+                    @if(auth()->user()->distributor && $item->bv_paise > 0)
+                    <p class="text-xs font-semibold text-brand-700 mt-0.5" title="Business Volume — points used in the compensation plan">{{ number_format($item->bv_paise / 100, 0) }} BV</p>
+                    @endif
+                @endauth
             </div>
             <div class="flex flex-col items-end gap-2">
                 {{-- Quantity stepper: each button is its own form-submit, so it
