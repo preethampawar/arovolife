@@ -180,3 +180,17 @@ it('SCAT-04: a logged-in distributor sees the distributor price, BV and the Easy
     $response->assertSee('Easy Purchase');                       // share affordance visible
     $response->assertSee('ref=AV12345678', false);               // referral link carries this ADN
 });
+
+it('SCAT-05: the shop listing shows the BV badge to a distributor but not to the public', function (): void {
+    Storage::fake('s3');
+    scatEnableStorefront();
+    $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+    scatProduct('AV-LST', 'list-prod', $health, ['name' => 'List Tonic']);
+
+    // Public visitor — price shown, BV hidden.
+    $this->get(route('shop.index'))->assertOk()->assertSee('List Tonic')->assertDontSee('550 BV');
+
+    // Logged-in distributor — BV badge visible on the listing card.
+    $dist = scatDistributor('AV87654321');
+    $this->actingAs($dist)->get(route('shop.index'))->assertOk()->assertSee('550 BV');
+});

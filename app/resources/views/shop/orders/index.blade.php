@@ -28,8 +28,10 @@
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Total</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
+                        @if($showBv ?? false)
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">BV</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">BV status</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -42,6 +44,7 @@
                         <td class="px-4 py-3 text-gray-600">{{ $order->placed_at?->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right font-medium text-gray-900">{{ $order->displayTotal() }}</td>
                         <td class="px-4 py-3"><span class="capitalize text-gray-700">{{ str_replace('_', ' ', $order->status) }}</span></td>
+                        @if($showBv ?? false)
                         <td class="px-4 py-3 text-right text-brand-700">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</td>
                         <td class="px-4 py-3">
                             @if($bv['state'] !== 'none')
@@ -50,6 +53,7 @@
                             <span class="text-gray-400">—</span>
                             @endif
                         </td>
+                        @endif
                     </tr>
                     @endforeach
                 </tbody>

@@ -141,6 +141,20 @@ it('shows BV total and the awaiting-payment status on the order detail', functio
         ->assertSee('Awaiting payment');
 });
 
+it('hides BV on the order detail from a non-distributor owner (hard rule #3)', function (): void {
+    $user = User::create([
+        'full_name' => 'Plain Customer', 'email' => 'plain-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
+        'password_hash' => bcrypt('x'), 'status' => 'active',
+    ]);
+    $order = moOrder($user->id); // owns it, but is not a distributor
+
+    $this->actingAs($user)->get(route('orders.show', $order->order_no))
+        ->assertOk()
+        ->assertDontSee('Total BV')
+        ->assertDontSee('Business Volume');
+});
+
 it('personalBvStatus transitions none → pending → accumulated → reversed', function (): void {
     [$user, $distId] = moUserWithDistributor();
 

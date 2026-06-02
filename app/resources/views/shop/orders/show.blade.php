@@ -3,6 +3,7 @@
 
 @section('content')
 @php
+    $showBv = $showBv ?? false; // BV is distributor-only (hard rule #3)
     $bv = $order->personalBvStatus();
     $bvBadge = match ($bv['state']) {
         'accumulated' => 'bg-green-50 text-green-700 border-green-200',
@@ -28,7 +29,7 @@
             <div class="flex justify-between text-sm">
                 <span>
                     <strong class="text-gray-900">{{ $item->product_name_snapshot }}</strong> × {{ $item->qty }}
-                    @if($item->lineBvPaise() > 0)
+                    @if($showBv && $item->lineBvPaise() > 0)
                     <span class="ml-1 text-xs text-brand-700">({{ number_format($item->lineBvPaise() / 100, 0) }} BV)</span>
                     @endif
                 </span>
@@ -46,14 +47,14 @@
                 @if($order->shipping_paise > 0)<span>₹{{ number_format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
             </div>
             <div class="flex justify-between font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span>{{ $order->displayTotal() }}</span></div>
-            @if($order->bvTotalPaise() > 0)
+            @if($showBv && $order->bvTotalPaise() > 0)
             <div class="flex justify-between text-sm text-brand-700 pt-1"><span>Total BV</span><span class="font-semibold">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span></div>
             @endif
         </div>
     </div>
 
-    {{-- BV accumulation status --}}
-    @if($bv['state'] !== 'none')
+    {{-- BV accumulation status (distributor-only) --}}
+    @if($showBv && $bv['state'] !== 'none')
     <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h2 class="font-semibold text-gray-900 mb-2">Business Volume</h2>
         <div class="flex items-center gap-3">

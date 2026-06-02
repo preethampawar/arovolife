@@ -25,7 +25,12 @@ final class MyOrdersController extends Controller
             ->latest('placed_at')
             ->paginate(15);
 
-        return view('shop.orders.index', ['orders' => $orders]);
+        return view('shop.orders.index', [
+            'orders' => $orders,
+            // BV is a distributor-only figure (hard rule #3) — a non-distributor
+            // customer never sees it, consistent with cart/checkout/confirmation.
+            'showBv' => $request->user()?->distributor !== null,
+        ]);
     }
 
     public function show(Request $request, string $orderNo): View
@@ -40,6 +45,9 @@ final class MyOrdersController extends Controller
             throw new NotFoundHttpException;
         }
 
-        return view('shop.orders.show', ['order' => $order]);
+        return view('shop.orders.show', [
+            'order' => $order,
+            'showBv' => $request->user()?->distributor !== null,
+        ]);
     }
 }
