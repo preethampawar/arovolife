@@ -2277,24 +2277,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withCookies\(\)\.$#'
 			identifier: method.notFound
-			count: 2
-			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
-
-		-
-			message: '#^Call to method create\(\) on an unknown class App\\Modules\\Identity\\Services\\DraftStateService\.$#'
-			identifier: class.notFound
-			count: 1
-			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
-
-		-
-			message: '#^Class App\\Modules\\Identity\\Services\\DraftStateService not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
-
-		-
-			message: '#^Function wpmSeedPendingUserWithDraft\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
 

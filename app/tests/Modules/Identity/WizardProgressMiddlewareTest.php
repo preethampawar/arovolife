@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Services\DraftStateService;
 use App\Modules\Identity\Services\WizardStateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -11,24 +10,15 @@ use Illuminate\Support\Facades\DB;
 uses(RefreshDatabase::class);
 
 /**
- * WPM-01 .. WPM-04 — EnsureRegistrationProgress middleware behaviour
- * on the wizard step routes.
+ * WPM-02 .. WPM-04 — EnsureRegistrationProgress middleware behaviour on the
+ * wizard step routes (pure session-only registration; the draft/av_draft
+ * resume infrastructure was removed in ffd816b). The middleware's branches:
  *
- * Regression-locks the Bug 2 fix: removing `auth` from the wizard
- * route group must continue to mean wizard.progress is the SOLE gate
- * that decides what happens when an unauthenticated visitor hits a
- * mid-wizard URL. The middleware's three branches:
- *
- *  • av_draft cookie present + valid → loginUsingId + restore wizard
- *    state + pass through (this is the "Continue with registration"
- *    button on the draft-conflict screen for a user whose Laravel
- *    session expired)
  *  • Active wizard state in the session → pass through
- *  • Nothing → redirect to /login
+ *  • No state → redirect to /join (with an expired-session notice)
  *
- * If anyone re-adds `Route::middleware(['auth'])->group(...)` around
- * the wizard step routes, WPM-01 fails because `auth` would bounce
- * to login BEFORE the middleware gets to read the cookie.
+ * A stray/garbage av_draft cookie is ignored (it no longer means anything) and
+ * still bounces to /join.
  */
 function wpmSeedSponsorRoot(): int
 {
@@ -76,48 +66,6 @@ function wpmSeedSponsorRoot(): int
 
     return $id;
 }
-
-function wpmSeedPendingUserWithDraft(int $rootId, int $atStep = 3): array
-{
-    $user = User::create([
-        'email' => 'wpm-'.rand(10000, 99999).'@test.com',
-        'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
-        'password_hash' => bcrypt('placeholder'),
-        'password_set_at' => now(),
-        'full_name' => 'Mid-wizard Subject',
-        'status' => 'pending',
-    ]);
-
-    $draft = app(DraftStateService::class)->create(
-        $user->id,
-        $rootId,
-        $rootId,
-        'L',
-        ['sponsor_id' => $rootId, 'placement' => ['placement_id' => $rootId, 'side' => 'L']],
-        $atStep,
-    );
-
-    return ['user' => $user, 'rawToken' => $draft->raw_token];
-}
-
-it('WPM-01: av_draft cookie + NO active session → middleware restores → page loads (NOT login redirect)', function (): void {
-    // This is the Bug 2 scenario: user clicks "Continue with registration"
-    // from the draft-conflict screen, their Laravel session has expired
-    // but the av_draft cookie is still valid. Without the fix, the
-    // `auth` route-group middleware would have bounced them to /login
-    // BEFORE wizard.progress got to restore the session from the
-    // cookie. We assert the page LOADS — confirming the auth gate is
-    // no longer running before wizard.progress.
-    $rootId = wpmSeedSponsorRoot();
-    ['rawToken' => $rawToken, 'user' => $user] = wpmSeedPendingUserWithDraft($rootId, atStep: 3);
-
-    $response = $this->withCookies(['av_draft' => $rawToken])
-        ->get(route('register.orientation'));
-
-    $response->assertStatus(200);
-    // Authenticated session established by the middleware via loginUsingId.
-    expect(auth()->id())->toBe($user->id);
-})->skip('av_draft cookie restoration is not implemented: EnsureRegistrationProgress has no cookie-restore branch and there is no DraftStateService (the registration_drafts table is unused). Re-enable when/if the draft-restore feature is built.');
 
 it('WPM-02: NO session + NO cookie → middleware redirects to /join (not /login)', function (): void {
     // The fallback path — no way to identify which wizard belongs to the
