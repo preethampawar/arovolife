@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commerce;
 
 use App\Modules\Commerce\Services\AttributionService;
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
@@ -22,6 +23,7 @@ final class CommerceServiceProvider extends ServiceProvider
         $this->app->singleton(CheckoutService::class);
         $this->app->singleton(OrderStateMachine::class);
         $this->app->singleton(ShippingService::class);
+        $this->app->singleton(BvLedgerService::class);
     }
 
     public function boot(): void

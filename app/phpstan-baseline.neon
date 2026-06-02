@@ -433,6 +433,18 @@ parameters:
 			path: app/Modules/Commerce/Http/Requests/CouponRequest.php
 
 		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/BvLedgerEntry.php
+
+		-
+			message: '#^Method App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Commerce/Models/BvLedgerEntry.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$bv_paise\.$#'
 			identifier: property.notFound
 			count: 1
@@ -671,6 +683,30 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Commerce/Models/OrderItem.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/BvLedgerService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$distributor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/BvLedgerService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Commerce/Services/BvLedgerService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Services/BvLedgerService.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
@@ -1841,6 +1877,30 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Admin/TerminateDistributorTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$bv_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/BvLedgerTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/BvLedgerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/BvLedgerTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 2
+			path: tests/Modules/Commerce/BvLedgerTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'

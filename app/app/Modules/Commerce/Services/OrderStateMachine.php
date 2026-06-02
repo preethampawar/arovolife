@@ -25,6 +25,7 @@ final class OrderStateMachine
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LedgerPoster $ledger,
+        private readonly BvLedgerService $bvLedger,
     ) {}
 
     public function markPaid(Order $order, ?int $actorUserId = null): void
@@ -167,16 +168,25 @@ final class OrderStateMachine
             return;
         }
 
-        $coolingOff->update(['status' => OrderCoolingOff::STATUS_EXPIRED]);
-        $order->update(['status' => Order::STATUS_CONFIRMED]);
+        $this->db->transaction(function () use ($order, $coolingOff, $actorUserId): void {
+            $coolingOff->update(['status' => OrderCoolingOff::STATUS_EXPIRED]);
+            $order->update(['status' => Order::STATUS_CONFIRMED]);
 
-        AuditLog::create([
-            'actor_id' => $actorUserId,
-            'action' => 'order.cooling_off_expired',
-            'subject_type' => 'order',
-            'subject_id' => $order->id,
-            'details' => ['order_no' => $order->order_no],
-        ]);
+            // The cooling-off window has closed, so the order's BV is now
+            // firmly counted toward the buyer's personal BV (ADR-0006). This is
+            // the ONLY place personal BV is accrued — keeping it after expiry
+            // makes the statutory window impossible to bypass. No-op unless the
+            // order is a self-consumption purchase and self-purchase BV is on.
+            $this->bvLedger->accrue($order);
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'order.cooling_off_expired',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => ['order_no' => $order->order_no],
+            ]);
+        });
     }
 
     public function cancel(Order $order, string $reason, ?int $actorUserId = null): void
