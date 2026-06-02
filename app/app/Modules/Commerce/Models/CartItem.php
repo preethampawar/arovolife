@@ -14,7 +14,7 @@ final class CartItem extends Model
 
     protected $fillable = [
         'cart_id', 'product_variant_id', 'qty',
-        'unit_price_paise', 'bv_paise', 'pv_paise', 'gst_rate_bp',
+        'unit_price_paise', 'bv_paise', 'gst_rate_bp',
     ];
 
     protected function casts(): array
@@ -23,7 +23,6 @@ final class CartItem extends Model
             'qty' => 'int',
             'unit_price_paise' => 'int',
             'bv_paise' => 'int',
-            'pv_paise' => 'int',
             'gst_rate_bp' => 'int',
         ];
     }

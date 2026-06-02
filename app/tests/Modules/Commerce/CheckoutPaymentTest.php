@@ -35,7 +35,7 @@ function cpoCart(): Cart
     $cart = Cart::create(['anonymous_key' => "k{$n}", 'expires_at' => now()->addDay()]);
     CartItem::create([
         'cart_id' => $cart->id, 'product_variant_id' => $variant->id, 'qty' => 1,
-        'unit_price_paise' => 100000, 'bv_paise' => 50000, 'pv_paise' => 50000, 'gst_rate_bp' => 1800,
+        'unit_price_paise' => 100000, 'bv_paise' => 50000, 'gst_rate_bp' => 1800,
     ]);
 
     return $cart->load('items.variant.product');

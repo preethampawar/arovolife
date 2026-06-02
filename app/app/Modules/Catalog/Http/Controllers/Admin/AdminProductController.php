@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Mews\Purifier\Facades\Purifier;
@@ -183,7 +184,6 @@ final class AdminProductController extends Controller
             'landing_price_paise' => $this->toPaise($data['landing_price'] ?? 0),
             'distributor_price_paise' => $this->toPaise($data['distributor_price'] ?? 0),
             'bv_paise' => $this->toPaise($data['bv'] ?? 0),
-            'pv_paise' => $this->toPaise($data['pv'] ?? 0),
             'gst_rate_bp' => (int) round(((float) $data['gst_rate']) * 100),
             'inventory_policy' => $data['inventory_policy'],
             'status' => 'active',
@@ -251,7 +251,7 @@ final class AdminProductController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, ProductCategory>
+     * @return Collection<int, ProductCategory>
      */
     private function categoryOptions()
     {

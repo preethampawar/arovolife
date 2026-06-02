@@ -17,7 +17,7 @@ final class OrderItem extends Model
     protected $fillable = [
         'order_id', 'product_variant_id',
         'product_name_snapshot', 'variant_sku_snapshot', 'hsn_code_snapshot',
-        'qty', 'unit_price_paise', 'bv_paise', 'pv_paise', 'gst_rate_bp',
+        'qty', 'unit_price_paise', 'bv_paise', 'gst_rate_bp',
         'taxable_value_paise', 'gst_paise', 'line_total_paise',
     ];
 
@@ -27,7 +27,6 @@ final class OrderItem extends Model
             'qty' => 'int',
             'unit_price_paise' => 'int',
             'bv_paise' => 'int',
-            'pv_paise' => 'int',
             'gst_rate_bp' => 'int',
             'taxable_value_paise' => 'int',
             'gst_paise' => 'int',

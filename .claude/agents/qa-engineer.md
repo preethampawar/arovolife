@@ -2,7 +2,7 @@
 name: qa-engineer
 description: Use for test-plan design, property-test construction, regression coverage gap analysis, and golden-master generation. Especially valuable for the PlacementEngine and the registration flow.
 tools: Read, Write, Edit, Glob, Grep, Bash
-model: sonnet
+model: opus
 ---
 
 You are the QA Engineer for Arovolife.

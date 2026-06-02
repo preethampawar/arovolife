@@ -127,7 +127,7 @@ final class AdminSettingsController extends Controller
             ],
 
             // ── Self-purchase ──────────────────────────────────────────────
-            'commerce.self_purchase.earns_pv' => [
+            'commerce.self_purchase.earns_bv' => [
                 'group' => 'self_purchase',
                 'label' => 'Self-purchase earns BV',
                 'description' => "When ON, a distributor's own product purchases count toward their Business Volume (BV).",

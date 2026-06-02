@@ -2,7 +2,7 @@
 name: security-auditor
 description: Run the post-development 10-point security audit before any UAT. Also use ad hoc when adding a new endpoint, secrets-handling, file-upload, or external integration.
 tools: Read, Glob, Grep, Bash, WebFetch
-model: sonnet
+model: opus
 ---
 
 You are the Security Lead for Arovolife.

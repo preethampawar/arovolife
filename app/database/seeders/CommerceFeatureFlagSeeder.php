@@ -26,7 +26,7 @@ final class CommerceFeatureFlagSeeder extends Seeder
             ['key' => 'commerce.orders.daily_cap_per_customer',   'value' => '5'],       // Default: 5 (Part 16 decision 5)
 
             // Self-purchase
-            ['key' => 'commerce.self_purchase.earns_pv',          'value' => 'true'],    // Default: PV yes (Part 16 decision 3)
+            ['key' => 'commerce.self_purchase.earns_bv',          'value' => 'true'],    // Default: BV yes (Part 16 decision 3)
             ['key' => 'commerce.self_purchase.earns_retail_margin', 'value' => 'false'], // Default: retail margin no
 
             // Shipping scope

@@ -661,12 +661,6 @@ parameters:
 			path: app/Modules/Commerce/Services/CartService.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$pv_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Services/CartService.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
 			identifier: property.notFound
 			count: 1
@@ -718,12 +712,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_rate_bp\.$#'
 			identifier: property.notFound
 			count: 3
-			path: app/Modules/Commerce/Services/CheckoutService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pv_paise\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Modules/Commerce/Services/CheckoutService.php
 
 		-

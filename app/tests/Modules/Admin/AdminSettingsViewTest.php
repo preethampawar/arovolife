@@ -49,7 +49,7 @@ it('AS-01: GET /admin/settings renders friendly section headers, not just a raw 
     // Seed a representative key so the relevant section actually renders.
     asvSeedSetting('commerce.checkout.enabled', 'true');
     asvSeedSetting('commerce.cooling_off.days', '30');
-    asvSeedSetting('commerce.self_purchase.earns_pv', 'true');
+    asvSeedSetting('commerce.self_purchase.earns_bv', 'true');
 
     $response = $this->get('/admin/settings');
 

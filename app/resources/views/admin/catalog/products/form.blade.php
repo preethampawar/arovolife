@@ -101,7 +101,6 @@
                 'mrp' => ['MRP', $variant->mrp_paise ?? 0],
                 'sale_price' => ['Sale price', $variant->sale_price_paise ?? 0],
                 'bv' => ['BV', $variant->bv_paise ?? 0],
-                'pv' => ['PV', $variant->pv_paise ?? 0],
             ] as $field => [$label, $val])
                 <label class="block">
                     <span class="block text-xs text-gray-700 mb-1 font-medium">{{ $label }}</span>

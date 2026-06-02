@@ -140,7 +140,6 @@ final class CheckoutService
                     'qty' => $ci->qty,
                     'unit_price_paise' => $ci->unit_price_paise,
                     'bv_paise' => $ci->bv_paise,
-                    'pv_paise' => $ci->pv_paise,
                     'gst_rate_bp' => $ci->gst_rate_bp,
                     'taxable_value_paise' => $taxable,
                     'gst_paise' => $gstPart,
