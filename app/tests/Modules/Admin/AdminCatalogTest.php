@@ -182,6 +182,47 @@ it('ACAT-03: gallery image uploads to S3 and records a ProductImage row', functi
     Storage::disk('s3')->assertExists($image->s3_key);
 });
 
+it('ACAT-03b: gallery image URLs are recorded as URL-only ProductImage rows (no S3)', function (): void {
+    Storage::fake('s3');
+    $admin = acatAdmin();
+    $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.products.store'), acatProductPayload($cat->id, [
+            'sku' => 'AV-IMG-URL', 'slug' => 'img-url',
+            // Textarea: one URL per line, with a blank line that must be dropped.
+            'gallery_image_urls' => "https://cdn.example.com/a.jpg\n\nhttps://cdn.example.com/b.png",
+        ]))
+        ->assertRedirect();
+
+    $product = Product::where('sku', 'AV-IMG-URL')->first();
+    $images = ProductImage::where('product_id', $product->id)->where('kind', 'gallery')->orderBy('sort')->get();
+
+    expect($images)->toHaveCount(2);
+    expect($images->pluck('external_url')->all())
+        ->toBe(['https://cdn.example.com/a.jpg', 'https://cdn.example.com/b.png']);
+    // URL-only images carry no S3 key and url() returns the URL verbatim.
+    expect($images->first()->s3_key)->toBeNull();
+    expect($images->first()->url())->toBe('https://cdn.example.com/a.jpg');
+});
+
+it('ACAT-03c: an invalid gallery image URL is rejected', function (): void {
+    Storage::fake('s3');
+    $admin = acatAdmin();
+    $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.products.store'), acatProductPayload($cat->id, [
+            'sku' => 'AV-IMG-BAD', 'slug' => 'img-bad',
+            'gallery_image_urls' => 'not-a-url',
+        ]))
+        ->assertSessionHasErrors('gallery_image_urls.0');
+
+    expect(Product::where('sku', 'AV-IMG-BAD')->exists())->toBeFalse();
+});
+
 it('ACAT-04: trix-upload stores an inline image and returns its URL', function (): void {
     Storage::fake('s3');
     $admin = acatAdmin();

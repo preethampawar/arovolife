@@ -68,7 +68,30 @@ final class ProductRequest extends FormRequest
             // ── Gallery images ───────────────────────────────────────
             'images' => ['nullable', 'array'],
             'images.*' => ['image', 'mimes:jpeg,jpg,png', 'max:5120'],
+            // Externally-hosted gallery images: a textarea of one URL per
+            // line, normalised to an array in prepareForValidation().
+            'gallery_image_urls' => ['nullable', 'array'],
+            'gallery_image_urls.*' => ['url', 'max:1000'],
         ];
+    }
+
+    /**
+     * The gallery image-URL field is a free-text textarea (one URL per line).
+     * Normalise it into an array of trimmed, non-blank lines so the `.*` URL
+     * rules apply per line and the controller receives a clean list.
+     */
+    protected function prepareForValidation(): void
+    {
+        $raw = $this->input('gallery_image_urls');
+
+        if (is_string($raw)) {
+            $lines = preg_split('/\r\n|\r|\n/', $raw) ?: [];
+            $urls = array_values(array_filter(
+                array_map('trim', $lines),
+                static fn (string $line): bool => $line !== '',
+            ));
+            $this->merge(['gallery_image_urls' => $urls]);
+        }
     }
 
     public function messages(): array
@@ -77,6 +100,7 @@ final class ProductRequest extends FormRequest
             'slug.regex' => 'Slug must be lowercase letters, numbers and hyphens only.',
             'images.*.mimes' => 'Product images must be JPG or PNG.',
             'images.*.max' => 'Each product image must be 5 MB or smaller.',
+            'gallery_image_urls.*.url' => 'Each gallery image URL must be a valid URL (one per line).',
         ];
     }
 }

@@ -196,6 +196,9 @@
             @foreach($galleryImages as $img)
             <div class="relative">
                 <img src="{{ $img->url() }}" alt="{{ $img->alt }}" class="w-24 h-24 object-cover rounded-lg border border-gray-200">
+                @if($img->external_url)
+                <span class="absolute bottom-0 left-0 bg-black/60 text-white text-[9px] font-semibold px-1 rounded-tr rounded-bl-lg leading-tight">URL</span>
+                @endif
                 <button type="button" data-confirm-impact="Delete this image permanently?"
                     onclick="document.getElementById('delImg{{ $img->id }}').submit()"
                     class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs leading-none">×</button>
@@ -206,6 +209,13 @@
         <input type="file" name="images[]" accept="image/jpeg,image/png" multiple
             class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
         <p class="text-xs text-gray-500">JPG or PNG, up to 5 MB each. Stored on S3.</p>
+
+        <label class="block pt-2 border-t border-gray-100">
+            <span class="block text-xs text-gray-700 mb-1 font-medium">…or add image URLs</span>
+            <textarea name="gallery_image_urls" rows="3" placeholder="One image URL per line — https://…"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">{{ is_array(old('gallery_image_urls')) ? implode("\n", old('gallery_image_urls')) : old('gallery_image_urls') }}</textarea>
+            <span class="block text-xs text-gray-500 mt-1">Hosted/CDN image URLs, one per line. Added to the gallery alongside any uploads.</span>
+        </label>
     </div>
 
     {{-- ── WYSIWYG description ─────────────────────────────────────────── --}}

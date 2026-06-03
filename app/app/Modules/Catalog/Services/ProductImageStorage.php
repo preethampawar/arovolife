@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Services;
 
 use App\Modules\Catalog\Models\ProductImage;
+use App\Modules\Identity\Services\IdPhotoStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 /**
  * Stores catalog product images on the public `s3` disk and records a
  * {@see ProductImage} row. Mirrors the EXIF-strip + canonical-extension
- * behaviour of {@see \App\Modules\Identity\Services\IdPhotoStorage}, but
+ * behaviour of {@see IdPhotoStorage}, but
  * for the PUBLIC disk — catalog images are not PII (unlike KYC documents),
  * so they are web-served directly via their S3 URL.
  *
@@ -51,6 +52,28 @@ final class ProductImageStorage
         return ProductImage::create([
             'product_id' => $productId,
             's3_key' => $key,
+            'alt' => $alt,
+            'sort' => $nextSort,
+            'kind' => $kind,
+        ]);
+    }
+
+    /**
+     * Record an externally-hosted (CDN) image as a gallery image WITHOUT
+     * uploading anything to S3 — the row carries the URL verbatim and has a
+     * null `s3_key`. Sort order continues the product/kind sequence so a URL
+     * image slots in after any uploads, mirroring {@see self::store()}.
+     */
+    public function storeUrl(string $url, string $kind, ?int $productId = null, ?string $alt = null): ProductImage
+    {
+        $nextSort = $productId !== null
+            ? (int) ProductImage::query()->where('product_id', $productId)->where('kind', $kind)->max('sort') + 1
+            : 0;
+
+        return ProductImage::create([
+            'product_id' => $productId,
+            's3_key' => null,
+            'external_url' => $url,
             'alt' => $alt,
             'sort' => $nextSort,
             'kind' => $kind,
@@ -102,6 +125,11 @@ final class ProductImageStorage
     {
         $key = $image->s3_key;
         $image->delete();
+
+        // An externally-hosted image has no S3 object — nothing to remove.
+        if ($key === null) {
+            return;
+        }
 
         try {
             Storage::disk('s3')->delete($key);

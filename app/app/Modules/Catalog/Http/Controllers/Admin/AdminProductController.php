@@ -70,6 +70,7 @@ final class AdminProductController extends Controller
             $this->syncDefaultVariant($product, $data);
             $this->syncAttributes($product, $data);
             $this->storeGalleryImages($product, $request);
+            $this->storeGalleryImageUrls($product, $data);
 
             return $product;
         });
@@ -115,6 +116,7 @@ final class AdminProductController extends Controller
             $this->syncDefaultVariant($product, $data);
             $this->syncAttributes($product, $data);
             $this->storeGalleryImages($product, $request);
+            $this->storeGalleryImageUrls($product, $data);
         });
 
         $this->audit('catalog.product.updated', $product);
@@ -202,6 +204,21 @@ final class AdminProductController extends Controller
             if ($file !== null) {
                 $this->images->store($file, ProductImage::KIND_GALLERY, $product->id);
             }
+        }
+    }
+
+    /**
+     * Attach externally-hosted (CDN) gallery images from the "image URLs"
+     * textarea. ProductRequest has already split the textarea into a clean
+     * array of validated, non-blank URLs; each becomes a URL-only
+     * ProductImage row (no S3 upload).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function storeGalleryImageUrls(Product $product, array $data): void
+    {
+        foreach ($data['gallery_image_urls'] ?? [] as $url) {
+            $this->images->storeUrl((string) $url, ProductImage::KIND_GALLERY, $product->id);
         }
     }
 

@@ -1611,7 +1611,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$s3_key\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 3
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
@@ -1677,7 +1677,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 9
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
@@ -1689,7 +1689,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 23
+			count: 24
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-

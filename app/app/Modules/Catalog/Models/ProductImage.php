@@ -17,7 +17,7 @@ final class ProductImage extends Model
     public const KIND_INLINE = 'inline';
 
     protected $fillable = [
-        'product_id', 's3_key', 'alt', 'sort', 'kind',
+        'product_id', 's3_key', 'external_url', 'alt', 'sort', 'kind',
     ];
 
     protected function casts(): array
@@ -34,11 +34,17 @@ final class ProductImage extends Model
     }
 
     /**
-     * Public URL for the stored image (catalog images live on the public
-     * `s3` disk — they are not PII, unlike KYC documents).
+     * Public URL for the image. An externally-hosted image returns its URL
+     * verbatim; an uploaded image is served from the public `s3` disk
+     * (catalog images are not PII, unlike KYC documents). Returns '' for a
+     * row with neither — a defensive guard that never reaches a real row.
      */
     public function url(): string
     {
-        return Storage::disk('s3')->url($this->s3_key);
+        if (! empty($this->external_url)) {
+            return $this->external_url;
+        }
+
+        return $this->s3_key !== null ? Storage::disk('s3')->url($this->s3_key) : '';
     }
 }
