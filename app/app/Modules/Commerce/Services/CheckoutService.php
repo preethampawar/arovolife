@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\CustomerAddress;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -78,6 +79,23 @@ final class CheckoutService
                     'distributor_id' => $buyerDistributorId,
                     'claimed_at' => Carbon::now(),
                 ]);
+            } elseif ($buyerDistributorId !== null
+                && $customer->user_id === $authUserId
+                && $customer->distributor_id === null) {
+                // The customer was claimed by this buyer before they became a
+                // distributor (or before the distributor link existed) — backfill
+                // it so My-Orders and other distributor_id readers stay consistent.
+                $customer->update(['distributor_id' => $buyerDistributorId]);
+
+                // Trace the PII-linkage change (a customer row now points at a
+                // distributor account).
+                AuditLog::create([
+                    'actor_id' => $authUserId,
+                    'action' => 'customer.distributor_backfilled',
+                    'subject_type' => 'customer',
+                    'subject_id' => $customer->id,
+                    'details' => ['distributor_id' => $buyerDistributorId],
+                ]);
             }
 
             // 1b. Persist shipping + billing addresses on file for the customer
@@ -124,8 +142,12 @@ final class CheckoutService
                 'attribution_source' => $attributionSource,
                 'payment_method' => $paymentMethod,
                 'status' => Order::STATUS_PLACED,
+                // Self-consumption = the attributed distributor is the buyer
+                // themselves. Keyed on the authenticated buyer's own distributor
+                // id (not the customer row, which may not be fully linked yet), so
+                // a logged-in distributor's own purchase always accrues their BV.
                 'self_consumption' => $attributedDistributorId !== null
-                    && $customer->distributor_id === $attributedDistributorId,
+                    && $attributedDistributorId === $buyerDistributorId,
                 'subtotal_paise' => $subtotalPaise,
                 'gst_paise' => $gstPaise,
                 'discount_paise' => $discountPaise,

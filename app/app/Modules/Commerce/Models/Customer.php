@@ -9,6 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int|null $user_id
+ * @property int|null $distributor_id
+ * @property string|null $email_hash
+ */
 final class Customer extends Model
 {
     protected $table = 'customers';
