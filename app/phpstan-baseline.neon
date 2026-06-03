@@ -1987,9 +1987,21 @@ parameters:
 			path: tests/Modules/Commerce/CartBvDisplayTest.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$cart_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/CartQuantityTest.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
 			identifier: property.notFound
 			count: 3
+			path: tests/Modules/Commerce/CartQuantityTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anonymous_key\.$#'
+			identifier: property.notFound
+			count: 1
 			path: tests/Modules/Commerce/CartQuantityTest.php
 
 		-

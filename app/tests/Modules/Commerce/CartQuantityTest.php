@@ -6,7 +6,10 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
+use App\Modules\Commerce\Services\AttributionService;
+use App\Modules\Commerce\Services\CartService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 
 uses(RefreshDatabase::class);
 
@@ -26,6 +29,25 @@ function cqtItem(int $qty = 2): CartItem
         'unit_price_paise' => 50000, 'bv_paise' => 0, 'gst_rate_bp' => 1800,
     ]);
 }
+
+it('itemCount sums the quantities of the anonymous cart (for the nav badge)', function (): void {
+    $item = cqtItem(2); // line A, qty 2
+    // line B (a different product/variant), qty 1 → total 3 units
+    $n = random_int(10000, 99999);
+    $p2 = Product::create(['sku' => "CQT2-{$n}", 'slug' => "cqt2-{$n}", 'name' => "Qty2 {$n}", 'hsn_code' => '3004', 'status' => 'active']);
+    $v2 = ProductVariant::create(['product_id' => $p2->id, 'variant_sku' => "CQT2-{$n}-V1", 'name' => 'Default', 'mrp_paise' => 50000, 'sale_price_paise' => 50000, 'bv_paise' => 0, 'gst_rate_bp' => 1800, 'inventory_policy' => 'no_track', 'status' => 'active']);
+    CartItem::create(['cart_id' => $item->cart_id, 'product_variant_id' => $v2->id, 'qty' => 1, 'unit_price_paise' => 50000, 'bv_paise' => 0, 'gst_rate_bp' => 1800]);
+
+    $request = Request::create('/');
+    $request->cookies->set(AttributionService::ANON_COOKIE, $item->cart->anonymous_key);
+
+    expect(app(CartService::class)->itemCount($request))->toBe(3); // 2 + 1
+});
+
+it('itemCount is 0 when there is no cart and never creates one', function (): void {
+    expect(app(CartService::class)->itemCount(Request::create('/')))->toBe(0);
+    expect(Cart::count())->toBe(0);
+});
 
 it('increases the line quantity (the + button sends qty+1)', function (): void {
     $item = cqtItem(2);

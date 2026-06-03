@@ -94,10 +94,20 @@
             @csrf
             <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
             <div class="flex items-center gap-3">
-                <div class="flex items-center border border-gray-300 rounded-lg">
-                    <label class="text-xs text-gray-500 px-3">Qty</label>
-                    <input name="qty" type="number" value="1" min="1" max="10"
-                        class="w-16 bg-transparent py-2.5 text-sm text-center focus:outline-none">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-500">Qty</label>
+                    {{-- −/＋ stepper: buttons adjust the field client-side (clamped
+                         1–10); the value submits with Add to Cart. --}}
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                        <button type="button" aria-label="Decrease quantity"
+                            onclick="var i=this.parentNode.querySelector('input[name=qty]'); i.value=Math.max(1,(parseInt(i.value,10)||1)-1);"
+                            class="px-3 py-2.5 text-base leading-none text-gray-600 hover:bg-gray-100">−</button>
+                        <input name="qty" type="text" inputmode="numeric" value="1"
+                            class="w-12 bg-transparent py-2.5 text-sm text-center focus:outline-none">
+                        <button type="button" aria-label="Increase quantity"
+                            onclick="var i=this.parentNode.querySelector('input[name=qty]'); i.value=Math.min(10,(parseInt(i.value,10)||1)+1);"
+                            class="px-3 py-2.5 text-base leading-none text-gray-600 hover:bg-gray-100">+</button>
+                    </div>
                 </div>
                 <button type="submit"
                     class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-md shadow-brand-500/20">

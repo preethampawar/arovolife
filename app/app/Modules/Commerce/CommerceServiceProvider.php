@@ -16,6 +16,7 @@ use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\ShippingService;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 final class CommerceServiceProvider extends ServiceProvider
@@ -40,5 +41,11 @@ final class CommerceServiceProvider extends ServiceProvider
         // later is a channel change, not a rewrite.
         Event::listen(OrderPlaced::class, SendOrderPlacedMail::class);
         Event::listen(OrderStatusChanged::class, SendOrderStatusChangedMail::class);
+
+        // Make the cart item count available to the nav (cart-icon count badge
+        // + highlight). Read-only — never creates a cart.
+        View::composer('partials.public-topnav', function ($view): void {
+            $view->with('cartItemCount', $this->app->make(CartService::class)->itemCount(request()));
+        });
     }
 }

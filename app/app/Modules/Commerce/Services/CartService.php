@@ -47,6 +47,33 @@ final class CartService
         ]);
     }
 
+    /**
+     * Total quantity of items in the visitor's CURRENT cart, or 0 if none.
+     * Read-only — never creates a cart (so it's safe to call from the nav on
+     * every page). Used for the cart-icon count badge.
+     */
+    public function itemCount(Request $request): int
+    {
+        $userId = $request->user()?->id;
+
+        if ($userId !== null) {
+            $customer = Customer::where('user_id', $userId)->first();
+            $cart = $customer === null ? null : Cart::query()
+                ->where('customer_id', $customer->id)
+                ->where('expires_at', '>', now())
+                ->first();
+        } else {
+            $anonKey = $request->cookie(AttributionService::ANON_COOKIE);
+            $cart = ! is_string($anonKey) || $anonKey === '' ? null : Cart::query()
+                ->whereNull('customer_id')
+                ->where('anonymous_key', $anonKey)
+                ->where('expires_at', '>', now())
+                ->first();
+        }
+
+        return $cart === null ? 0 : (int) $cart->items()->sum('qty');
+    }
+
     public function addItem(Cart $cart, int $variantId, int $qty = 1): CartItem
     {
         $variant = ProductVariant::with('product')->findOrFail($variantId);
