@@ -6,6 +6,7 @@ namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Services\DTOs\BvBreakdown;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -104,7 +105,22 @@ final class BvLedgerService
     /** A distributor's total accumulated personal BV (in paise). */
     public function totalPersonalBvPaise(int $distributorId): int
     {
-        return (int) BvLedgerEntry::where('distributor_id', $distributorId)->sum('bv_paise');
+        return (int) BvLedgerEntry::query()->forDistributor($distributorId)->sum('bv_paise');
+    }
+
+    /**
+     * A distributor's accrued / reversed / net personal BV over an optional
+     * date window (in paise). The single source of the accrued/reversed/net
+     * definition for the admin BV-ledger report.
+     */
+    public function breakdownForDistributor(int $distributorId, ?Carbon $from = null, ?Carbon $to = null): BvBreakdown
+    {
+        $base = BvLedgerEntry::query()->forDistributor($distributorId)->dateRange($from, $to);
+
+        $accrued = (int) (clone $base)->where('type', BvLedgerEntry::TYPE_ACCRUAL)->sum('bv_paise');
+        $reversed = (int) (clone $base)->where('type', BvLedgerEntry::TYPE_REVERSAL)->sum('bv_paise');
+
+        return new BvBreakdown($accrued, $reversed, $accrued + $reversed);
     }
 
     private function shouldAccrue(Order $order): bool

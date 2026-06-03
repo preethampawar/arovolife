@@ -15,6 +15,8 @@ use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\ShippingService;
+use App\Modules\Commerce\Support\Bv;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -47,5 +49,9 @@ final class CommerceServiceProvider extends ServiceProvider
         View::composer('partials.public-topnav', function ($view): void {
             $view->with('cartItemCount', $this->app->make(CartService::class)->itemCount(request()));
         });
+
+        // `@bv($paise)` — the single Blade entry point for rendering a BV amount,
+        // delegating to the Bv formatter so "N BV" is defined in one place.
+        Blade::directive('bv', static fn (string $expr): string => '<?php echo '.Bv::class."::format($expr); ?>");
     }
 }

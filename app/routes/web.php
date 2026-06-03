@@ -16,6 +16,7 @@ use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
@@ -236,6 +237,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
     Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
     Route::post('/commerce/orders/{order}/mark-cod-paid', [AdminOrderController::class, 'markCodPaid'])->name('commerce.orders.mark-cod-paid');
+
+    // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
+    // The static `export` path is declared before the {distributor} wildcard
+    // so "export" is never captured as a distributor id.
+    Route::get('/commerce/bv-ledger', [AdminBvLedgerController::class, 'index'])->name('commerce.bv-ledger.index');
+    Route::get('/commerce/bv-ledger/export', [AdminBvLedgerController::class, 'export'])->name('commerce.bv-ledger.export');
+    Route::get('/commerce/bv-ledger/{distributor}', [AdminBvLedgerController::class, 'show'])->whereNumber('distributor')->name('commerce.bv-ledger.show');
+    Route::get('/commerce/bv-ledger/{distributor}/export', [AdminBvLedgerController::class, 'exportShow'])->whereNumber('distributor')->name('commerce.bv-ledger.show.export');
 
     // Commerce — coupons / discounts (Epic 3)
     Route::get('/commerce/coupons', [AdminCouponController::class, 'index'])->name('commerce.coupons.index');

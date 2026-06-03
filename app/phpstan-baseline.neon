@@ -367,12 +367,6 @@ parameters:
 			path: app/Modules/Commerce/Http/Controllers/Admin/AdminCouponController.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
-
-		-
 			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markDelivered\(\) expects int\|null, int\|string\|null given\.$#'
 			identifier: argument.type
 			count: 1
@@ -395,12 +389,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CartController.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
@@ -445,22 +433,10 @@ parameters:
 			path: app/Modules/Commerce/Http/Requests/CouponRequest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Listeners/SendOrderPlacedMail.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$ship_name\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Listeners/SendOrderPlacedMail.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Listeners/SendOrderStatusChangedMail.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$ship_name\.$#'
@@ -733,24 +709,6 @@ parameters:
 			path: app/Modules/Commerce/Models/OrderItem.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$bv_paise\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Commerce/Services/BvLedgerService.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$distributor_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Commerce/Services/BvLedgerService.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$order_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Services/BvLedgerService.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
 			identifier: property.notFound
 			count: 2
@@ -934,12 +892,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$gst_paise\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 7
 			path: app/Modules/Commerce/Services/OrderStateMachine.php
 
 		-
@@ -1951,10 +1903,10 @@ parameters:
 			path: tests/Modules/Admin/TerminateDistributorTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:\$bv_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/BvLedgerTest.php
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: tests/Modules/Commerce/AdminBvLedgerTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
@@ -1977,7 +1929,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 2
+			count: 1
 			path: tests/Modules/Commerce/BvLedgerTest.php
 
 		-
@@ -2113,12 +2065,6 @@ parameters:
 			path: tests/Modules/Commerce/MembersOnlyCheckoutTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 5
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2171,12 +2117,6 @@ parameters:
 			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Modules/Commerce/OrderBvDisplayTest.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:lineBvPaise\(\)\.$#'
