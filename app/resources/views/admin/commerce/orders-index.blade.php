@@ -38,6 +38,7 @@
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Attribution</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">BV</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Placed</th>
                     <th class="px-4 py-3"></th>
@@ -57,6 +58,9 @@
                         <span class="block text-gray-400">{{ $o->attribution_source }}</span>
                     </td>
                     <td class="px-4 py-3 font-semibold">{{ $o->displayTotal() }}</td>
+                    <td class="px-4 py-3 text-right text-brand-700 whitespace-nowrap" title="Total Business Volume for this order">
+                        {{ number_format($o->bvTotalPaise() / 100, 0) }} BV
+                    </td>
                     <td class="px-4 py-3">
                         <span class="text-xs px-2 py-0.5 rounded-full border {{ $pills[$o->status][1] ?? 'bg-gray-100 text-gray-600 border-gray-200' }}">
                             {{ $pills[$o->status][0] ?? ucfirst($o->status) }}
@@ -70,7 +74,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No orders yet.</td></tr>
+                <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No orders yet.</td></tr>
                 @endforelse
             </tbody>
         </table>

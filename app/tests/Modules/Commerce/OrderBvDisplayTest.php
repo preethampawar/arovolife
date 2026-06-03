@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -119,5 +120,26 @@ it('shows BV on the confirmation to the owning distributor only', function (): v
         ->get(route('shop.confirmation', $order->order_no))
         ->assertOk()
         ->assertSee('Total BV')
+        ->assertSee('1,400 BV');
+});
+
+it('shows each order total BV in the admin orders list', function (): void {
+    $order = obvOrder(); // 1,400 BV
+
+    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+    $admin = User::create([
+        'full_name' => 'Orders Admin',
+        'email' => 'obv-admin-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
+        'password_hash' => bcrypt('x'),
+        'password_set_at' => now(),
+        'status' => 'active',
+        'email_verified_at' => now(),
+    ]);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->get(route('admin.commerce.orders.index'))
+        ->assertOk()
         ->assertSee('1,400 BV');
 });
