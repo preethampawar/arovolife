@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin') — arovolife Admin</title>
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._font-size-fouc')
     <style>
         /* Admin sidebar: hide scrollbar by default, reveal a slim slate-tinted
