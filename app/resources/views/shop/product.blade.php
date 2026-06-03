@@ -27,9 +27,15 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
     {{-- ── Gallery ──────────────────────────────────────────────────────── --}}
     <div>
-        <div class="bg-gradient-to-br from-brand-50 to-brand-100 rounded-2xl aspect-square flex items-center justify-center overflow-hidden">
+        <div class="bg-gradient-to-br from-brand-50 to-brand-100 rounded-2xl aspect-square flex items-center justify-center overflow-hidden relative group">
             @if($mainImage)
-                <img id="productMainImage" src="{{ $mainImage }}" alt="{{ $product->name }}" class="w-full h-full object-cover rounded-2xl">
+                {{-- Click the main image to open the fullscreen lightbox --}}
+                <img id="pdpMain" src="{{ $mainImage }}" alt="{{ $product->name }}" onclick="pdpOpen(pdpCurrent)"
+                    class="w-full h-full object-cover rounded-2xl cursor-zoom-in">
+                <span class="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/50 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/></svg>
+                    Tap to zoom
+                </span>
             @else
                 <div class="text-center text-brand-400 p-8">
                     <svg class="w-24 h-24 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.41 11.59c.8-.8 2.1-.8 2.9 0l4.56 4.56m-1.5-1.5 1.66-1.66c.8-.8 2.1-.8 2.9 0l2.83 2.83M3 16.5V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5m-18 0A2.25 2.25 0 0 0 5.25 18.75h13.5A2.25 2.25 0 0 0 21 16.5m-18 0L7 12.5" /></svg>
@@ -38,14 +44,59 @@
             @endif
         </div>
         @if($images->count() > 1)
+        {{-- Thumbnails: click sets the main image AND opens the lightbox at it --}}
         <div class="mt-3 flex gap-2 overflow-x-auto pb-1">
             @foreach($images as $img)
-            <button type="button" onclick="document.getElementById('productMainImage').src='{{ $img }}'"
-                class="shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-brand-400 transition-colors focus:outline-none focus:border-brand-500">
+            <button type="button" onclick="pdpThumb({{ $loop->index }})"
+                class="pdp-thumb shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 {{ $loop->first ? 'border-brand-500' : 'border-gray-200' }} hover:border-brand-400 transition-colors focus:outline-none focus:border-brand-500">
                 <img src="{{ $img }}" alt="" class="w-full h-full object-cover">
             </button>
             @endforeach
         </div>
+        @endif
+
+        @if($images->isNotEmpty())
+        {{-- Fullscreen lightbox (vanilla JS) --}}
+        <div id="pdpLightbox" class="hidden fixed inset-0 z-50 bg-black/90 items-center justify-center" onclick="if(event.target===this)pdpClose()">
+            <button type="button" onclick="pdpClose()" aria-label="Close" class="absolute top-4 right-4 text-white/80 hover:text-white p-2">
+                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+            </button>
+            @if($images->count() > 1)
+            <button type="button" onclick="pdpMove(-1)" aria-label="Previous" class="absolute left-2 sm:left-6 text-white/80 hover:text-white p-2">
+                <svg class="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+            </button>
+            @endif
+            <img id="pdpLightboxImg" src="{{ $mainImage }}" alt="{{ $product->name }}" class="max-h-[90vh] max-w-[92vw] object-contain rounded">
+            @if($images->count() > 1)
+            <button type="button" onclick="pdpMove(1)" aria-label="Next" class="absolute right-2 sm:right-6 text-white/80 hover:text-white p-2">
+                <svg class="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+            </button>
+            <span id="pdpCounter" class="absolute bottom-4 text-white/70 text-sm"></span>
+            @endif
+        </div>
+        <script>
+        (function () {
+            var imgs = @json($images->values());
+            var cur = 0;
+            window.pdpCurrent = 0;
+            function el(id) { return document.getElementById(id); }
+            function render() { el('pdpLightboxImg').src = imgs[cur]; var c = el('pdpCounter'); if (c) { c.textContent = (cur + 1) + ' / ' + imgs.length; } }
+            function highlight(i) {
+                document.querySelectorAll('.pdp-thumb').forEach(function (t, idx) {
+                    t.classList.toggle('border-brand-500', idx === i);
+                    t.classList.toggle('border-gray-200', idx !== i);
+                });
+            }
+            window.pdpOpen = function (i) { cur = i; render(); var lb = el('pdpLightbox'); lb.classList.remove('hidden'); lb.classList.add('flex'); document.body.style.overflow = 'hidden'; };
+            window.pdpClose = function () { var lb = el('pdpLightbox'); lb.classList.add('hidden'); lb.classList.remove('flex'); document.body.style.overflow = ''; if (el('pdpMain')) { el('pdpMain').src = imgs[cur]; } window.pdpCurrent = cur; highlight(cur); };
+            window.pdpMove = function (d) { cur = (cur + d + imgs.length) % imgs.length; render(); };
+            window.pdpThumb = function (i) { window.pdpCurrent = i; if (el('pdpMain')) { el('pdpMain').src = imgs[i]; } highlight(i); pdpOpen(i); };
+            document.addEventListener('keydown', function (e) {
+                var lb = el('pdpLightbox'); if (!lb || lb.classList.contains('hidden')) { return; }
+                if (e.key === 'Escape') { pdpClose(); } else if (e.key === 'ArrowLeft') { pdpMove(-1); } else if (e.key === 'ArrowRight') { pdpMove(1); }
+            });
+        })();
+        </script>
         @endif
     </div>
 
