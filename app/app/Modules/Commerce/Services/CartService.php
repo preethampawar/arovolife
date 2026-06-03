@@ -21,30 +21,51 @@ final class CartService
 
     public function currentCart(Request $request): Cart
     {
-        $anonKey = $this->attribution->anonymousKey($request);
-        $userId = $request->user()?->id;
-
-        $customer = null;
-        if ($userId !== null) {
-            $customer = Customer::where('user_id', $userId)->first();
-        }
-
-        $cart = Cart::query()
-            ->when($customer !== null, fn ($q) => $q->where('customer_id', $customer->id))
-            ->when($customer === null, fn ($q) => $q->whereNull('customer_id')->where('anonymous_key', $anonKey))
-            ->where('expires_at', '>', now())
-            ->first();
-
+        $cart = $this->findCart($request);
         if ($cart !== null) {
             return $cart;
         }
 
+        // No existing cart — mint the anon key (queues the cookie) and create
+        // one. A logged-in visitor without a Customer row yet gets an
+        // anonymous cart; the customer link is established at checkout.
+        $userId = $request->user()?->id;
+        $customer = $userId !== null ? Customer::where('user_id', $userId)->first() : null;
+
         return Cart::create([
             'customer_id' => $customer?->id,
-            'anonymous_key' => $anonKey,
+            'anonymous_key' => $this->attribution->anonymousKey($request),
             'ref_adn_snapshot' => $request->cookie(AttributionService::COOKIE_NAME),
             'expires_at' => Carbon::now()->addDays(7),
         ]);
+    }
+
+    /**
+     * Resolve the visitor's CURRENT cart without creating one — the single
+     * source of truth for "which cart is this visitor's". Mirrors the lookup
+     * in {@see self::currentCart()}: a logged-in visitor with a Customer row
+     * is matched by customer_id; everyone else (including a logged-in visitor
+     * who hasn't checked out yet, so has no Customer row) falls back to the
+     * anonymous cookie key. Returns null when there's no cart.
+     */
+    public function findCart(Request $request): ?Cart
+    {
+        $userId = $request->user()?->id;
+        $customer = $userId !== null ? Customer::where('user_id', $userId)->first() : null;
+
+        $query = Cart::query()->where('expires_at', '>', now());
+
+        if ($customer !== null) {
+            $query->where('customer_id', $customer->id);
+        } else {
+            $anonKey = $request->cookie(AttributionService::ANON_COOKIE);
+            if (! is_string($anonKey) || $anonKey === '') {
+                return null;
+            }
+            $query->whereNull('customer_id')->where('anonymous_key', $anonKey);
+        }
+
+        return $query->first();
     }
 
     /**
@@ -54,22 +75,7 @@ final class CartService
      */
     public function itemCount(Request $request): int
     {
-        $userId = $request->user()?->id;
-
-        if ($userId !== null) {
-            $customer = Customer::where('user_id', $userId)->first();
-            $cart = $customer === null ? null : Cart::query()
-                ->where('customer_id', $customer->id)
-                ->where('expires_at', '>', now())
-                ->first();
-        } else {
-            $anonKey = $request->cookie(AttributionService::ANON_COOKIE);
-            $cart = ! is_string($anonKey) || $anonKey === '' ? null : Cart::query()
-                ->whereNull('customer_id')
-                ->where('anonymous_key', $anonKey)
-                ->where('expires_at', '>', now())
-                ->first();
-        }
+        $cart = $this->findCart($request);
 
         return $cart === null ? 0 : (int) $cart->items()->sum('qty');
     }

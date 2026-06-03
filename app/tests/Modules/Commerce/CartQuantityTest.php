@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
+use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 
@@ -47,6 +48,28 @@ it('itemCount sums the quantities of the anonymous cart (for the nav badge)', fu
 it('itemCount is 0 when there is no cart and never creates one', function (): void {
     expect(app(CartService::class)->itemCount(Request::create('/')))->toBe(0);
     expect(Cart::count())->toBe(0);
+});
+
+it('itemCount finds the anonymous cart of a logged-in visitor with no Customer row yet', function (): void {
+    // Regression: a logged-in distributor browsing the shop has an anonymous
+    // cart (customer_id null) because the Customer row is only created at
+    // checkout. The badge must still count it via the anon cookie.
+    $item = cqtItem(4); // anon cart (customer_id null), qty 4
+    $user = User::create([
+        'full_name' => 'Shopper '.random_int(1000, 9999),
+        'email' => 'shopper-'.uniqid().'@example.com',
+        'phone_e164' => '+9180000'.random_int(10000, 99999),
+        'password_hash' => bcrypt('Sh0pper!Pass#2026'),
+        'password_set_at' => now(),
+        'status' => 'active',
+        'email_verified_at' => now(),
+    ]);
+
+    $request = Request::create('/');
+    $request->cookies->set(AttributionService::ANON_COOKIE, $item->cart->anonymous_key);
+    $request->setUserResolver(fn () => $user);
+
+    expect(app(CartService::class)->itemCount($request))->toBe(4);
 });
 
 it('increases the line quantity (the + button sends qty+1)', function (): void {
