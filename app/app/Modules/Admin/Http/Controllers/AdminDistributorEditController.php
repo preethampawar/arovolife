@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
-use App\Modules\Identity\Models\Distributor;
-use App\Modules\Identity\Models\User;
-use App\Modules\Kyc\Models\KycDocument;
-use App\Modules\Identity\Services\IdPhotoDecodeError;
-use App\Modules\Identity\Services\IdPhotoStorage;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
+use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\DistributorIdCardStats;
+use App\Modules\Identity\Services\IdPhotoDecodeError;
+use App\Modules\Identity\Services\IdPhotoStorage;
 use App\Modules\Identity\Services\RequestPasswordReset;
+use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -111,11 +112,11 @@ final class AdminDistributorEditController extends Controller
     {
         // Validate first so client errors don't open a useless transaction.
         $request->validate([
-            'new_password' => ['required', 'string', 'min:12', new StrongPassword(), new NotPwned()],
+            'new_password' => ['required', 'string', 'min:8', new StrongPassword, new NotPwned],
             'new_password_confirmation' => ['required', 'string', 'same:new_password'],
         ], [
             'new_password.required' => 'Please enter a new password.',
-            'new_password.min' => 'Password must be at least 12 characters.',
+            'new_password.min' => 'Password must be at least 8 characters.',
             'new_password_confirmation.required' => 'Please re-enter the new password to confirm.',
             'new_password_confirmation.same' => 'The two passwords don\'t match.',
         ]);
@@ -237,7 +238,7 @@ final class AdminDistributorEditController extends Controller
                         ->where('id', '!=', $distributor->id)
                         ->exists();
                     if ($clashes) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
+                        throw ValidationException::withMessages([
                             'pan_number' => 'Another Direct Seller account already exists for this PAN.',
                         ]);
                     }
@@ -312,7 +313,7 @@ final class AdminDistributorEditController extends Controller
                     'aadhaar_changed' => $newAadhaar !== '',
                 ];
             });
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             // Bubble out of the transaction as a normal 422 redirect.
             return back()->withErrors($e->errors())->withInput();
         }

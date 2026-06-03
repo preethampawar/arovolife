@@ -342,7 +342,7 @@
 </div>
 
 {{-- Reset-password modal. Posts to the existing set-password endpoint, which
-     validates (StrongPassword + NotPwned + 12-char min + confirmation match),
+     validates (StrongPassword + NotPwned + 8-char min + confirmation match),
      locks the rows, revokes pending reset tokens, and writes an audit entry.
      Re-opens itself on validation error so the admin keeps context. --}}
 <div id="resetPwdModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4"
@@ -363,14 +363,14 @@
             @csrf
             <div>
                 <label for="new_password" class="block text-xs font-medium text-gray-700 mb-1">New password</label>
-                <input id="new_password" name="new_password" type="password" required minlength="12" autocomplete="new-password"
-                    placeholder="At least 12 characters"
+                <input id="new_password" name="new_password" type="password" required minlength="8" autocomplete="new-password"
+                    placeholder="At least 8 characters"
                     class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('new_password') ? 'border-red-400' : 'border-gray-300' }}">
                 @error('new_password')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label for="new_password_confirmation" class="block text-xs font-medium text-gray-700 mb-1">Re-enter new password</label>
-                <input id="new_password_confirmation" name="new_password_confirmation" type="password" required minlength="12" autocomplete="new-password"
+                <input id="new_password_confirmation" name="new_password_confirmation" type="password" required minlength="8" autocomplete="new-password"
                     placeholder="Repeat the new password"
                     class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('new_password_confirmation') ? 'border-red-400' : 'border-gray-300' }}">
                 @error('new_password_confirmation')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror

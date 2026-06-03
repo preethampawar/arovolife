@@ -315,7 +315,7 @@
         <div>
             <p class="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Option B — Set a new password directly</p>
             <p class="text-xs text-gray-600 mb-3">
-                Minimum 12 characters. Same strength rules the public form uses (rejects common phrases + known-breached passwords).
+                Minimum 8 characters. Same strength rules the public form uses (rejects common phrases + known-breached passwords).
                 Any pending reset link is invalidated immediately. Audit-logged as <span class="font-mono">admin.distributor.password_set</span>.
             </p>
             <form method="POST" action="{{ route('admin.distributors.set-password', $distributor->id) }}" class="space-y-3" autocomplete="off"
@@ -325,15 +325,15 @@
                 @csrf
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-gray-700 mb-1" for="new_password">New password <x-help-tip text="Minimum 12 characters; setting it directly invalidates any pending reset link immediately." /></label>
-                        <input type="password" id="new_password" name="new_password" required minlength="12"
+                        <label class="block text-xs text-gray-700 mb-1" for="new_password">New password <x-help-tip text="Minimum 8 characters; setting it directly invalidates any pending reset link immediately." /></label>
+                        <input type="password" id="new_password" name="new_password" required minlength="8"
                             autocomplete="new-password"
                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
                         @error('new_password')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                     </div>
                     <div>
                         <label class="block text-xs text-gray-700 mb-1" for="new_password_confirmation">Confirm new password <x-help-tip text="Re-enter the new password exactly; it must match the password above for the change to save." /></label>
-                        <input type="password" id="new_password_confirmation" name="new_password_confirmation" required minlength="12"
+                        <input type="password" id="new_password_confirmation" name="new_password_confirmation" required minlength="8"
                             autocomplete="new-password"
                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
                         @error('new_password_confirmation')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
