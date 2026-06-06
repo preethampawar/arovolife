@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property int|null $user_id
  * @property int|null $distributor_id
+ * @property string $display_name
  * @property string|null $email_hash
  */
 final class Customer extends Model

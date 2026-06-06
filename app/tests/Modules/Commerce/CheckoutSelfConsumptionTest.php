@@ -113,6 +113,33 @@ it('flags self_consumption + backfills distributor_id when the buyer is a logged
     expect($customer->fresh()->distributor_id)->toBe($distId); // backfilled
 });
 
+it('attaches a logged-in buyer\'s order to their OWN customer row, never a stranger\'s matched by email (KP NAIK regression)', function (): void {
+    [$buyerUserId, $buyerDistId] = cscDistributor();
+
+    // A different person ("KP NAIK") already owns a customer row for this email.
+    $strangerUser = User::create([
+        'full_name' => 'KP NAIK', 'email' => 'stranger-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.str_pad((string) rand(7000000000, 9999999999), 10, '0'),
+        'password_hash' => bcrypt('x'), 'status' => 'active',
+    ]);
+    $sharedEmail = 'shared-'.uniqid().'@test.com';
+    $stranger = Customer::create([
+        'display_name' => 'KP NAIK',
+        'email_hash' => hash('sha256', strtolower(trim($sharedEmail))),
+        'email_enc' => $sharedEmail,
+        'user_id' => $strangerUser->id,
+        'claimed_at' => now(),
+    ]);
+
+    // Shankar (logged in) checks out typing the SAME email as the stranger.
+    $order = cscPlace([$buyerUserId, $buyerDistId], $sharedEmail, attributedDistributorId: $buyerDistId, authUserId: $buyerUserId, buyerDistributorId: $buyerDistId)->load('customer');
+
+    expect($order->customer_id)->not->toBe($stranger->id);     // not the stranger's row
+    expect($order->customer->user_id)->toBe($buyerUserId);     // the buyer's own row
+    expect($order->customer->display_name)->toBe('SC Buyer');  // shows the buyer, not "KP NAIK"
+    expect($stranger->fresh()->display_name)->toBe('KP NAIK'); // stranger's row untouched
+});
+
 it('flags self_consumption for a logged-in distributor buying for the first time', function (): void {
     [$userId, $distId] = cscDistributor();
 

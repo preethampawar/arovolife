@@ -46,14 +46,35 @@ final class CheckoutService
         }
 
         $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId) {
-            // 1. Find or create the customer
+            // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
+            //
+            // A logged-in buyer is always resolved to THEIR OWN customer row,
+            // keyed on the authenticated user_id. This is what stops an order
+            // from attaching to a stranger's customer record just because the
+            // buyer typed an email that happens to hash to it — the reported bug
+            // where a logged-in distributor's own order showed another person's
+            // name ("KP NAIK") in the admin. Email matching is a guest-only
+            // convenience and never re-points a row already claimed by someone.
             $emailHash = isset($buyer['email']) && $buyer['email'] !== ''
                 ? hash('sha256', strtolower(trim($buyer['email'])))
                 : null;
 
             $customer = null;
-            if ($emailHash !== null) {
-                $customer = Customer::where('email_hash', $emailHash)->first();
+            if ($authUserId !== null) {
+                $customer = Customer::where('user_id', $authUserId)->first();
+            }
+
+            if ($customer === null && $emailHash !== null) {
+                $match = Customer::where('email_hash', $emailHash)->first();
+                if ($match !== null && ($match->user_id === null || $match->user_id === $authUserId)) {
+                    // Unclaimed (a prior guest order) or already mine — safe to reuse.
+                    $customer = $match;
+                } elseif ($match !== null && $authUserId !== null) {
+                    // The email belongs to a DIFFERENT user. Don't reuse their
+                    // row, and drop the hash on the new row so it can't collide
+                    // on the unique email_hash index (identity is the user_id).
+                    $emailHash = null;
+                }
             }
 
             if ($customer === null) {
@@ -65,37 +86,49 @@ final class CheckoutService
                     'phone_enc' => $buyer['phone'] ?? null,
                     'phone_last4' => isset($buyer['phone']) ? substr(preg_replace('/\D/', '', $buyer['phone']), -4) : null,
                     'marketing_opt_in' => (bool) ($buyer['marketing_opt_in'] ?? false),
+                    // Claim the row for a logged-in buyer up front so it's
+                    // unambiguously theirs from creation.
+                    'user_id' => $authUserId,
+                    'distributor_id' => $authUserId !== null ? $buyerDistributorId : null,
+                    'claimed_at' => $authUserId !== null ? Carbon::now() : null,
                 ]);
             }
 
-            // 1a. Link the customer to the authenticated buyer. The customer may
-            // have been matched only by email_hash; stamping user_id (and the
-            // buyer's own distributor_id) is what lets "My Orders" find these
-            // orders and makes self-consumption BV resolve correctly. Only fills
-            // blanks — a customer already claimed by someone is never reassigned.
-            if ($authUserId !== null && $customer->user_id === null) {
-                $customer->update([
-                    'user_id' => $authUserId,
-                    'distributor_id' => $buyerDistributorId,
-                    'claimed_at' => Carbon::now(),
-                ]);
-            } elseif ($buyerDistributorId !== null
-                && $customer->user_id === $authUserId
-                && $customer->distributor_id === null) {
-                // The customer was claimed by this buyer before they became a
-                // distributor (or before the distributor link existed) — backfill
-                // it so My-Orders and other distributor_id readers stay consistent.
-                $customer->update(['distributor_id' => $buyerDistributorId]);
+            // 1a. Keep the logged-in buyer's own customer row consistent with
+            // this purchase: claim it if unclaimed, link their distributor, and
+            // refresh the display name so the admin always sees who actually
+            // placed the order (the row may have been a guest/email match with a
+            // stale name). Only fills/refreshes the buyer's own row.
+            if ($authUserId !== null) {
+                $updates = [];
+                if ($customer->user_id === null) {
+                    $updates['user_id'] = $authUserId;
+                    $updates['claimed_at'] = Carbon::now();
+                }
+                $linkingDistributor = $customer->distributor_id === null && $buyerDistributorId !== null;
+                if ($linkingDistributor) {
+                    $updates['distributor_id'] = $buyerDistributorId;
+                }
+                $buyerName = $buyer['name'] ?? null;
+                if ($buyerName !== null && $buyerName !== '' && $customer->display_name !== $buyerName) {
+                    $updates['display_name'] = $buyerName;
+                }
 
-                // Trace the PII-linkage change (a customer row now points at a
-                // distributor account).
-                AuditLog::create([
-                    'actor_id' => $authUserId,
-                    'action' => 'customer.distributor_backfilled',
-                    'subject_type' => 'customer',
-                    'subject_id' => $customer->id,
-                    'details' => ['distributor_id' => $buyerDistributorId],
-                ]);
+                if ($updates !== []) {
+                    $customer->update($updates);
+                }
+
+                if ($linkingDistributor) {
+                    // Trace the PII-linkage change (a customer row now points at
+                    // a distributor account).
+                    AuditLog::create([
+                        'actor_id' => $authUserId,
+                        'action' => 'customer.distributor_backfilled',
+                        'subject_type' => 'customer',
+                        'subject_id' => $customer->id,
+                        'details' => ['distributor_id' => $buyerDistributorId],
+                    ]);
+                }
             }
 
             // 1b. Persist shipping + billing addresses on file for the customer
