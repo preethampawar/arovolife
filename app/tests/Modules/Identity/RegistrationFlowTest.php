@@ -213,19 +213,20 @@ it('REG-003: GET /register where placement ADN is not in sponsor downline redire
 
 // ─── REG-004 ─────────────────────────────────────────────────────────────────
 
-it('REG-004: GET /register where specified side is already taken redirects to invalid_referral_link', function () {
+it('REG-004: GET /register where specified side is already taken redirects to placement_full', function () {
     $sponsor = regSeedRoot();
 
     // Fill the L slot under the sponsor's own root node
     regPlaceUnder($sponsor['id'], $sponsor['id'], 'L', 0);
 
-    // A referral link requesting side=L on that same node must be rejected
+    // A referral link requesting side=L on that same node must be rejected —
+    // a full slot is its own, recoverable reason (not "invalid link").
     $response = $this->get('/register?sponsor='.$sponsor['adn'].'&placement='.$sponsor['adn'].'&side=L');
 
-    $response->assertRedirect('/contact-us?reason=invalid_referral_link');
+    $response->assertRedirect('/contact-us?reason=placement_full');
 });
 
-it('REG-004b: GET /register where both slots are taken (no side given) redirects to invalid_referral_link', function () {
+it('REG-004b: GET /register where both slots are taken (no side given) redirects to placement_full', function () {
     $sponsor = regSeedRoot();
 
     regPlaceUnder($sponsor['id'], $sponsor['id'], 'L', 0);
@@ -233,7 +234,22 @@ it('REG-004b: GET /register where both slots are taken (no side given) redirects
 
     $response = $this->get('/register?sponsor='.$sponsor['adn'].'&placement='.$sponsor['adn']);
 
-    $response->assertRedirect('/contact-us?reason=invalid_referral_link');
+    $response->assertRedirect('/contact-us?reason=placement_full');
+});
+
+it('REG-004c: a couple-secondary (-S) placement ADN is normalised to its primary tree node', function () {
+    $sponsor = regSeedRoot();
+
+    // A shared link that uses the SECONDARY suffix on the primary's own ADN
+    // must resolve to the primary (the real tree node) and proceed, not fail.
+    $response = $this->get('/register?sponsor='.$sponsor['adn'].'-S&placement='.$sponsor['adn'].'-S&side=L');
+
+    $response->assertRedirect(route('register.account.show'));
+
+    $intent = app(WizardStateService::class)->intent();
+    expect($intent)->not->toBeNull()
+        ->and((int) $intent['placement_id'])->toBe($sponsor['id'])  // primary node, not a -S row
+        ->and((int) $intent['sponsor_id'])->toBe($sponsor['id']);
 });
 
 // ─── REG-005 ─────────────────────────────────────────────────────────────────

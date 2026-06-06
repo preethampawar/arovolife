@@ -89,6 +89,15 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=invalid_referral_link');
         }
 
+        // Couple-secondary (`-S`) records are NOT binary-tree nodes — the
+        // PRIMARY of the couple holds the placement position (one ADN per
+        // couple, T&C §1.4/§7). Normalise a secondary sponsor/placement ADN to
+        // its primary so a shared `-S` link resolves to the real tree node,
+        // instead of passing the checks here and failing during finalisation.
+        // The live /join lookup already nudges users toward the primary.
+        $sponsorAdn = (string) preg_replace('/-S$/', '', $sponsorAdn);
+        $placementAdn = (string) preg_replace('/-S$/', '', $placementAdn);
+
         $sponsor = DB::table('distributors')->where('adn', $sponsorAdn)->first();
         $placement = DB::table('distributors')->where('adn', $placementAdn)->first();
 
@@ -105,8 +114,14 @@ final class RegistrationWizardController extends Controller
             return redirect('/contact-us?reason=invalid_referral_link');
         }
 
+        // The placement target exists and is in-line, but its slot(s) are
+        // already filled. This is a distinct, recoverable situation from a
+        // malformed/unknown/cross-line link — surface it with its own clear
+        // message (pick a different placement / contact support) rather than
+        // the generic "invalid referral link". Placement is single-level by
+        // design (ADR-0003, no spillover); the sponsor chooses another node.
         if (! $engine->hasOpenSlot((int) $placement->id, $sideOpt)) {
-            return redirect('/contact-us?reason=invalid_referral_link');
+            return redirect('/contact-us?reason=placement_full');
         }
 
         $this->wizard->stashIntent(

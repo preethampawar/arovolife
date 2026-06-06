@@ -18,6 +18,7 @@ final class ContactController extends Controller
     private const ALLOWED_REASONS = [
         'referral_link_required',
         'invalid_referral_link',
+        'placement_full',
         'placement_taken',
         'join_us',
         'general',

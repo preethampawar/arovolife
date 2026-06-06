@@ -34,8 +34,16 @@
             <div class="card-refined p-5 sm:p-6 mb-6 bg-red-50 border border-red-200 lift-in" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-red-900 mb-1.5">That referral link couldn't be verified</p>
                 <p class="text-sm text-red-800 leading-relaxed">
-                    The link may have expired, the placement target may be full, or the link may be malformed.
+                    The link may have expired or may be malformed.
                     Leave your details below and we'll help you complete your registration.
+                </p>
+            </div>
+        @elseif($reason === 'placement_full')
+            <div class="card-refined p-5 sm:p-6 mb-6 bg-amber-50 border border-amber-200 lift-in" style="animation-delay: 120ms;">
+                <p class="text-sm font-semibold text-amber-900 mb-1.5">That placement position is already full</p>
+                <p class="text-sm text-amber-800 leading-relaxed">
+                    The placement you were invited under already has its position(s) filled, so we can't place you there.
+                    Ask your sponsor for a referral link with a different placement, or leave your details below and our team will help you find an open position within one business day.
                 </p>
             </div>
         @elseif($reason === 'placement_taken')
