@@ -43,7 +43,7 @@
                         </td>
                         <td class="px-4 py-3 text-gray-600">{{ $order->placed_at?->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right font-medium text-gray-900">{{ $order->displayTotal() }}</td>
-                        <td class="px-4 py-3"><span class="capitalize text-gray-700">{{ str_replace('_', ' ', $order->status) }}</span></td>
+                        <td class="px-4 py-3">@include('partials.order-status-badge', ['status' => $order->status])</td>
                         @if($showBv ?? false)
                         <td class="px-4 py-3 text-right text-brand-700">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</td>
                         <td class="px-4 py-3">

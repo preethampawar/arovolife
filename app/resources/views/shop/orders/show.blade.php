@@ -18,7 +18,7 @@
 
     <div class="flex items-center justify-between mt-3 mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Order <span class="font-mono text-brand-600">{{ $order->order_no }}</span></h1>
-        <span class="capitalize text-sm text-gray-600">{{ str_replace('_', ' ', $order->status) }}</span>
+        @include('partials.order-status-badge', ['status' => $order->status])
     </div>
 
     {{-- Items --}}

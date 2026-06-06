@@ -4,27 +4,15 @@
 
 @section('content')
 
-@php
-    $pills = [
-        'placed' => ['Placed', 'bg-blue-50 text-blue-700 border-blue-200'],
-        'paid' => ['Paid', 'bg-sky-50 text-sky-700 border-sky-200'],
-        'shipped' => ['Shipped', 'bg-indigo-50 text-indigo-700 border-indigo-200'],
-        'delivered' => ['Delivered', 'bg-amber-50 text-amber-700 border-amber-200'],
-        'confirmed' => ['Confirmed', 'bg-green-50 text-green-700 border-green-200'],
-        'cancelled' => ['Cancelled', 'bg-gray-100 text-gray-600 border-gray-200'],
-        'refunded' => ['Refunded', 'bg-red-50 text-red-700 border-red-200'],
-    ];
-@endphp
-
 <div class="flex items-center gap-3 mb-6 flex-wrap">
     <a href="{{ route('admin.commerce.orders.index') }}"
        class="px-3 py-1 rounded-full text-xs font-medium border {{ !request()->query('status') ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500' }}">
         All
     </a>
-    @foreach($pills as $s => $meta)
+    @foreach(\App\Modules\Commerce\Support\OrderStatusBadge::FILTERABLE as $s)
     <a href="{{ route('admin.commerce.orders.index', ['status' => $s]) }}"
-       class="px-3 py-1 rounded-full text-xs font-medium border {{ request()->query('status') === $s ? 'bg-brand-500 text-white border-brand-500' : $meta[1] }}">
-        {{ $meta[0] }} @if(isset($statusCounts[$s])) ({{ $statusCounts[$s] }}) @endif
+       class="px-3 py-1 rounded-full text-xs font-medium border {{ request()->query('status') === $s ? 'bg-brand-500 text-white border-brand-500' : \App\Modules\Commerce\Support\OrderStatusBadge::classes($s) }}">
+        {{ \App\Modules\Commerce\Support\OrderStatusBadge::label($s) }} @if(isset($statusCounts[$s])) ({{ $statusCounts[$s] }}) @endif
     </a>
     @endforeach
 </div>
@@ -61,11 +49,7 @@
                     <td class="px-4 py-3 text-right text-brand-700 whitespace-nowrap" title="Total Business Volume for this order">
                         {{ number_format($o->bvTotalPaise() / 100, 0) }} BV
                     </td>
-                    <td class="px-4 py-3">
-                        <span class="text-xs px-2 py-0.5 rounded-full border {{ $pills[$o->status][1] ?? 'bg-gray-100 text-gray-600 border-gray-200' }}">
-                            {{ $pills[$o->status][0] ?? ucfirst($o->status) }}
-                        </span>
-                    </td>
+                    <td class="px-4 py-3">@include('partials.order-status-badge', ['status' => $o->status])</td>
                     <td class="px-4 py-3 text-xs text-gray-500">
                         {{ $o->placed_at?->format('d M Y H:i') ?? '—' }}
                     </td>

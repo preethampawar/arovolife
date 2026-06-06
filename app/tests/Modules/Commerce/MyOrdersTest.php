@@ -123,6 +123,20 @@ it('lists only the authenticated distributor\'s own orders', function (): void {
         ->assertDontSee($theirs->order_no);
 });
 
+it('shows the order status as a coloured badge on My Orders list + detail', function (): void {
+    [$user, $distId] = moUserWithDistributor();
+    $order = moOrder($user->id, $distId); // status: delivered
+
+    $this->actingAs($user)->get(route('orders.index'))
+        ->assertOk()
+        ->assertSee('Delivered')              // human label from the single-source presenter
+        ->assertSee('bg-amber-50', false);    // badge colour
+
+    $this->actingAs($user)->get(route('orders.show', $order->order_no))
+        ->assertOk()
+        ->assertSee('Delivered');
+});
+
 it('404s when viewing an order that is not yours', function (): void {
     [$userA] = moUserWithDistributor();
     [$userB] = moUserWithDistributor();
