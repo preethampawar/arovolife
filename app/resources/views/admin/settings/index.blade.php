@@ -13,17 +13,19 @@
 
 <div class="max-w-3xl space-y-8">
 
-    {{-- Placement rule (read-only — invariant per ADR-0003) --}}
+    {{-- Placement rule (see also the Placement settings group below) --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="font-semibold text-gray-900">Placement rule</h2>
         <p class="text-sm text-gray-500 mt-1">
-            Placement is fixed by ADR-0003: every new registrant arrives via a referral link
-            carrying <code class="bg-gray-100 px-1 rounded text-xs">sponsor</code>,
+            Every new registrant arrives via a referral link carrying
+            <code class="bg-gray-100 px-1 rounded text-xs">sponsor</code>,
             <code class="bg-gray-100 px-1 rounded text-xs">placement</code>, and an optional
-            <code class="bg-gray-100 px-1 rounded text-xs">side</code>. The engine places exactly
-            at <code class="bg-gray-100 px-1 rounded text-xs">placement.&lt;side&gt;</code>;
-            when no side is given, left is preferred and right is the fallback. There is
-            no spine walk and no admin-tunable strategy.
+            <code class="bg-gray-100 px-1 rounded text-xs">side</code>. By default (ADR-0003) the
+            engine places exactly at <code class="bg-gray-100 px-1 rounded text-xs">placement.&lt;side&gt;</code>
+            (left preferred, right the fallback) and a full target is rejected. When
+            <strong>Binary spillover</strong> (Placement settings below) is enabled, a full target
+            instead spills into the next open slot below it, using the selected
+            <strong>fill strategy</strong> (ADR-0007).
         </p>
     </div>
 
