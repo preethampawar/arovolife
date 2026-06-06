@@ -252,6 +252,23 @@ it('REG-004c: a couple-secondary (-S) placement ADN is normalised to its primary
         ->and((int) $intent['sponsor_id'])->toBe($sponsor['id']);
 });
 
+it('REG-004d: with spillover enabled, a full target is accepted (no placement_full redirect)', function () {
+    $sponsor = regSeedRoot();
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'L', 0);
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'R', 0);
+
+    // ADR-0007: spillover on → the engine will place below, so start() must not
+    // pre-reject the full target.
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'placement.spillover.enabled'],
+        ['value' => 'true', 'version' => 1, 'updated_at' => now()],
+    );
+
+    $response = $this->get('/register?sponsor='.$sponsor['adn'].'&placement='.$sponsor['adn']);
+
+    $response->assertRedirect(route('register.account.show'));
+});
+
 // ─── REG-005 ─────────────────────────────────────────────────────────────────
 
 it('REG-005: happy path GET /register with valid sponsor, placement in downline, open L slot → redirects to /register/account', function () {

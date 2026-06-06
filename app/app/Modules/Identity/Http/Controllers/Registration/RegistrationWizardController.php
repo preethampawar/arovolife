@@ -115,12 +115,16 @@ final class RegistrationWizardController extends Controller
         }
 
         // The placement target exists and is in-line, but its slot(s) are
-        // already filled. This is a distinct, recoverable situation from a
-        // malformed/unknown/cross-line link — surface it with its own clear
-        // message (pick a different placement / contact support) rather than
-        // the generic "invalid referral link". Placement is single-level by
-        // design (ADR-0003, no spillover); the sponsor chooses another node.
-        if (! $engine->hasOpenSlot((int) $placement->id, $sideOpt)) {
+        // already filled. With spillover OFF (ADR-0003, single-level) this is a
+        // distinct, recoverable dead-end: surface its own clear `placement_full`
+        // message (pick a different placement / contact support), not the
+        // generic "invalid referral link". With spillover ON (ADR-0007) a full
+        // target is fine — the engine places the joiner in the next open slot
+        // below — so we skip the pre-rejection entirely.
+        $spilloverEnabled = DB::table('settings')
+            ->where('key', 'placement.spillover.enabled')
+            ->value('value') === 'true';
+        if (! $spilloverEnabled && ! $engine->hasOpenSlot((int) $placement->id, $sideOpt)) {
             return redirect('/contact-us?reason=placement_full');
         }
 

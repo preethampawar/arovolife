@@ -73,10 +73,27 @@ function place(sponsor_id, placement_id, side_opt):
     RELEASE_LOCK('placement:'||placement_id)
 ```
 
-Note: there is no `findFirstEmptySlot()`. The placement target is *always*
-the parent. If the targeted slot is full the registration is rejected
-upward to the wizard, which redirects to `/contact-us` with reason
-`invalid_referral_link`.
+### Two modes — single-level (default) vs spillover (ADR-0007)
+
+Behaviour depends on the admin setting **`placement.spillover.enabled`** (default
+OFF). The engine reads it via `spilloverEnabled()`; the wizard's `start()` reads
+it too (to decide whether to pre-reject a full target).
+
+- **OFF — single-level (ADR-0003, default):** the placement target is *always*
+  the parent (the algorithm above). If the targeted slot is full the
+  registration is rejected upward to the wizard, which redirects to
+  `/contact-us?reason=placement_full`. There is no auto-descent.
+- **ON — spillover (ADR-0007):** `resolveSlotWithSpillover()` runs a BFS from the
+  link's placement target for the shallowest open slot — *directed* into the
+  requested leg when `side=L/R` is given, or *balanced* across both legs when no
+  side is given. The actual parent may then be a **descendant** of the link's
+  `placement_id`; the intended target is preserved in
+  `placement_id_at_registration`. The per-target advisory lock plus a bounded
+  retry on the `(placement_parent_id, placement_side)` unique index keep it
+  race-safe. `start()` does **not** pre-reject a full target when spillover is on.
+
+Do not enable spillover in production until the compensation-distribution effect
+is signed off (see ADR-0007 + risk R-26).
 
 ### `side_chosen_by` values
 
@@ -85,6 +102,9 @@ upward to the wizard, which redirects to `/contact-us` with reason
 | `referral_explicit`         | Referral link carried `side=L` or `side=R` and the slot was open. |
 | `referral_default`          | No `side` in link; `placement_id.L` was open.                     |
 | `referral_fallback_right`   | No `side` in link; `placement_id.L` taken, `placement_id.R` open. |
+| `spillover_left`            | Spillover ON, `side=L`, spilled into the left subtree.            |
+| `spillover_right`           | Spillover ON, `side=R`, spilled into the right subtree.           |
+| `spillover_balanced`        | Spillover ON, no `side`; shallowest open slot under the target.   |
 
 ## Race-safety
 

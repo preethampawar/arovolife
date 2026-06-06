@@ -56,6 +56,15 @@ final class AdminSettingsController extends Controller
                 'default' => '{"MH":21}',
             ],
 
+            // ── Placement (Genos) ──────────────────────────────────────────
+            'placement.spillover.enabled' => [
+                'group' => 'placement',
+                'label' => 'Binary spillover',
+                'description' => 'When ON, a joiner invited under a node whose slot is already full is auto-placed into the next open position below it (standard binary spillover, ADR-0007). When OFF, a full placement is rejected and the joiner is asked to use a different placement (ADR-0003). Default OFF. NOTE: enabling this changes how downlines grow and therefore future commission distribution — get PO + Compliance sign-off before turning it on in production.',
+                'type' => 'bool',
+                'default' => 'false',
+            ],
+
             // ── Commerce — storefront ──────────────────────────────────────
             'commerce.storefront.enabled' => [
                 'group' => 'commerce',
@@ -243,6 +252,10 @@ final class AdminSettingsController extends Controller
             'registration' => [
                 'label' => 'Registration & KYC',
                 'description' => 'Rules that govern who can register and on what terms.',
+            ],
+            'placement' => [
+                'label' => 'Placement (Genos)',
+                'description' => 'How new joiners are positioned in the binary placement tree.',
             ],
             'commerce' => [
                 'label' => 'Commerce',

@@ -209,6 +209,7 @@ final class ProductionSeeder extends Seeder
     private function seedFeatureFlags(): void
     {
         $defaults = [
+            'placement.spillover.enabled' => 'false',   // ADR-0007 — off until PO/Compliance sign-off
             'commerce.storefront.enabled' => 'true',
             'commerce.checkout.enabled' => 'true',
             'commerce.guest_checkout.enabled' => 'true',

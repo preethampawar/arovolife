@@ -16,14 +16,21 @@ use App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError;
 use App\Modules\Genealogy\Support\ReservedAdns;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 
 /**
- * ADR-0003 — referral-link single-level placement.
+ * ADR-0003 / ADR-0007 — referral-link placement.
  *
- * The new registrant is placed *exactly* at `placement_id.<side>`. The engine
- * never descends. If the targeted slot is full, the registration is
- * rejected upward; the wizard surfaces this as the generic
- * `invalid_referral_link` Contact Us redirect.
+ * Default (ADR-0003, single-level): the new registrant is placed *exactly* at
+ * `placement_id.<side>`; if that slot is full the registration is rejected and
+ * the wizard surfaces the `placement_full` Contact Us redirect.
+ *
+ * When the admin setting `placement.spillover.enabled` is on (ADR-0007), a full
+ * target instead spills the joiner into the next open slot below it (directed
+ * BFS within the chosen leg, or balanced BFS when no side is given). The actual
+ * parent may then be a descendant of `placement_id`; the intended target is
+ * always preserved in `placement_id_at_registration`.
  */
 final class PlacementEngine
 {
@@ -81,48 +88,17 @@ final class PlacementEngine
             }
 
             try {
-                [$side, $chosenBy] = $this->resolveSlot($in->placementId, $in->sideOpt);
-
-                $placementDepth = $this->db->table('distributors')
-                    ->where('id', $in->placementId)
-                    ->value('depth');
-                if ($placementDepth === null) {
-                    // H2 — cross-line guard already proved placement_id is in
-                    // sponsor's downline (or is the sponsor), so this branch
-                    // is unreachable from the wizard. Throwing keeps the
-                    // engine safe under direct service usage / test fixtures
-                    // where the assumption could break.
-                    throw new PlacementSlotsExhaustedError($in->placementId);
-                }
-                $depth = (int) $placementDepth + 1;
-
+                // ADR-0007: when the admin setting `placement.spillover.enabled`
+                // is on, a full target spills the joiner into the next open slot
+                // below it; otherwise placement is single-level (ADR-0003). The
+                // actual parent (`$parentId`) may therefore be a descendant of
+                // the link's `placement_id`. The intended target is preserved in
+                // `placement_id_at_registration` regardless.
                 $now = now();
-                $distributorId = $this->db->table('distributors')->insertGetId([
-                    'user_id' => $in->userId,
-                    'adn' => $this->generateAdn(),
-                    'pan_hash' => $in->panHash,
-                    'pan_last4' => $in->panLast4,
-                    'pan_encrypted' => $in->panEncrypted,
-                    'aadhaar_ref' => $in->aadhaarRef,
-                    'aadhaar_last4' => $in->aadhaarLast4,
-                    'aadhaar_encrypted' => $in->aadhaarEncrypted,
-                    'bank_account_enc' => $in->bankAccountEnc,
-                    'bank_ifsc' => $in->bankIfsc,
-                    'sponsor_id' => $in->sponsorId,
-                    'placement_id_at_registration' => $in->placementId,
-                    'placement_parent_id' => $in->placementId,
-                    'placement_side' => $side,
-                    'side_chosen_by' => $chosenBy,
-                    'depth' => $depth,
-                    'effective_date' => $now->format('Y-m-d H:i:s.v'),
-                    'cooling_off_end_at' => $now->copy()->addDays(30)->format('Y-m-d H:i:s.v'),
-                    'state' => $in->state,
-                    'is_primary_couple' => (int) $in->isPrimaryCouple,
-                    'created_at' => $now->format('Y-m-d H:i:s.v'),
-                    'updated_at' => $now->format('Y-m-d H:i:s.v'),
-                ]);
+                [$distributorId, $parentId, $side, $chosenBy, $depth] =
+                    $this->resolveAndInsert($in, $this->spilloverEnabled(), $now);
 
-                $this->writeClosureRows($distributorId, $in->placementId);
+                $this->writeClosureRows($distributorId, $parentId);
 
                 $this->db->table('sponsorship')->insert([
                     'sponsor_id' => $in->sponsorId,
@@ -138,8 +114,8 @@ final class PlacementEngine
                     'details' => [
                         'distributor_id' => $distributorId,
                         'sponsor_id' => $in->sponsorId,
-                        'placement_id' => $in->placementId,
-                        'parent_id' => $in->placementId,
+                        'placement_id' => $in->placementId,   // intended target
+                        'parent_id' => $parentId,             // actual parent (may differ under spillover)
                         'side' => $side,
                         'depth' => $depth,
                         'side_chosen_by' => $chosenBy,
@@ -149,7 +125,7 @@ final class PlacementEngine
                 $result = new PlacementResult(
                     distributorId: $distributorId,
                     userId: $in->userId,
-                    parentId: $in->placementId,
+                    parentId: $parentId,
                     side: $side,
                     depth: $depth,
                     sideChosenBy: $chosenBy,
@@ -203,6 +179,166 @@ final class PlacementEngine
         }
 
         throw new PlacementSlotsExhaustedError($placementId);
+    }
+
+    /**
+     * Resolve the slot (single-level, or with spillover when enabled) and
+     * insert the distributor row. Under spillover a unique-slot collision from
+     * a concurrent registration (an overlapping-subtree race the per-target
+     * advisory lock can't cover) re-runs the BFS to the next open slot.
+     *
+     * @return array{0: int, 1: int, 2: string, 3: string, 4: int}
+     *                                                             [distributorId, parentId, side, chosenBy, depth]
+     */
+    private function resolveAndInsert(PlaceDistributorInput $in, bool $spillover, Carbon $now): array
+    {
+        $maxAttempts = $spillover ? 3 : 1;
+
+        for ($attempt = 1; ; $attempt++) {
+            if ($spillover) {
+                [$parentId, $side, $chosenBy] = $this->resolveSlotWithSpillover($in->placementId, $in->sideOpt);
+            } else {
+                [$side, $chosenBy] = $this->resolveSlot($in->placementId, $in->sideOpt);
+                $parentId = $in->placementId;
+            }
+
+            $parentDepth = $this->db->table('distributors')->where('id', $parentId)->value('depth');
+            if ($parentDepth === null) {
+                // Cross-line guard already proved placement_id is in the
+                // sponsor's downline (or is the sponsor), and a spillover parent
+                // is always a real descendant of it — so this is unreachable from
+                // the wizard. Kept safe for direct service / fixture use.
+                throw new PlacementSlotsExhaustedError($in->placementId);
+            }
+            $depth = (int) $parentDepth + 1;
+
+            try {
+                $distributorId = $this->db->table('distributors')->insertGetId([
+                    'user_id' => $in->userId,
+                    'adn' => $this->generateAdn(),
+                    'pan_hash' => $in->panHash,
+                    'pan_last4' => $in->panLast4,
+                    'pan_encrypted' => $in->panEncrypted,
+                    'aadhaar_ref' => $in->aadhaarRef,
+                    'aadhaar_last4' => $in->aadhaarLast4,
+                    'aadhaar_encrypted' => $in->aadhaarEncrypted,
+                    'bank_account_enc' => $in->bankAccountEnc,
+                    'bank_ifsc' => $in->bankIfsc,
+                    'sponsor_id' => $in->sponsorId,
+                    'placement_id_at_registration' => $in->placementId,
+                    'placement_parent_id' => $parentId,
+                    'placement_side' => $side,
+                    'side_chosen_by' => $chosenBy,
+                    'depth' => $depth,
+                    'effective_date' => $now->format('Y-m-d H:i:s.v'),
+                    'cooling_off_end_at' => $now->copy()->addDays(30)->format('Y-m-d H:i:s.v'),
+                    'state' => $in->state,
+                    'is_primary_couple' => (int) $in->isPrimaryCouple,
+                    'created_at' => $now->format('Y-m-d H:i:s.v'),
+                    'updated_at' => $now->format('Y-m-d H:i:s.v'),
+                ]);
+
+                return [$distributorId, $parentId, $side, $chosenBy, $depth];
+            } catch (QueryException $e) {
+                // 23000 = integrity constraint violation (the unique
+                // (placement_parent_id, placement_side) slot, or an ADN clash).
+                // Retry only under spillover, where re-running the BFS finds the
+                // next open slot. Off spillover, surface the error unchanged.
+                if ($spillover && $attempt < $maxAttempts && (string) $e->getCode() === '23000') {
+                    continue;
+                }
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * ADR-0007 spillover slot resolution. Breadth-first search from the link's
+     * placement target for the shallowest open slot:
+     *   - side given (L/R) → search only within that child's subtree ("group");
+     *   - no side          → search both legs (balanced).
+     *
+     * A binary tree is never full, so this always returns. The returned
+     * `parentId` may be a descendant of `$targetId` (a genuine spillover).
+     *
+     * @return array{0: int, 1: string, 2: string} [parentId, side, chosenBy]
+     */
+    private function resolveSlotWithSpillover(int $targetId, ?string $sideOpt): array
+    {
+        // Frontier of [nodeId, sidesToConsider]. At the target we only enter the
+        // requested side (or both when none is given); one level down we always
+        // consider both L and R so a chosen leg fills breadth-first.
+        $queue = [[$targetId, $sideOpt !== null ? [$sideOpt] : ['L', 'R']]];
+
+        while ($queue !== []) {
+            /** @var array{0: int, 1: list<string>} $head */
+            $head = array_shift($queue);
+            [$nodeId, $sides] = $head;
+            $children = $this->childrenBySide($nodeId);
+
+            foreach ($sides as $side) {
+                if ($children[$side] === null) {
+                    return [$nodeId, $side, $this->spilloverChosenBy($nodeId === $targetId, $sideOpt, $side)];
+                }
+            }
+
+            // All requested sides are occupied here — descend into them and
+            // consider both legs at the next depth.
+            foreach ($sides as $side) {
+                $queue[] = [(int) $children[$side], ['L', 'R']];
+            }
+        }
+
+        throw new PlacementSlotsExhaustedError($targetId);
+    }
+
+    /**
+     * The placement children of a node, keyed by side.
+     *
+     * @return array{L: int|null, R: int|null}
+     */
+    private function childrenBySide(int $nodeId): array
+    {
+        $rows = $this->db->table('distributors')
+            ->where('placement_parent_id', $nodeId)
+            ->where('id', '!=', $nodeId)            // exclude root self-reference
+            ->whereIn('placement_side', ['L', 'R'])
+            ->pluck('id', 'placement_side');
+
+        return [
+            'L' => isset($rows['L']) ? (int) $rows['L'] : null,
+            'R' => isset($rows['R']) ? (int) $rows['R'] : null,
+        ];
+    }
+
+    /**
+     * `side_chosen_by` for a spillover-mode placement. When the joiner lands at
+     * the immediate target slot (no descent) it is recorded with the same
+     * referral_* value as single-level placement; an actual spillover gets a
+     * spillover_* value so the audit distinguishes the two.
+     */
+    private function spilloverChosenBy(bool $atTarget, ?string $sideOpt, string $resolvedSide): string
+    {
+        if ($atTarget) {
+            if ($sideOpt !== null) {
+                return 'referral_explicit';
+            }
+
+            return $resolvedSide === 'L' ? 'referral_default' : 'referral_fallback_right';
+        }
+
+        return match ($sideOpt) {
+            'L' => 'spillover_left',
+            'R' => 'spillover_right',
+            default => 'spillover_balanced',
+        };
+    }
+
+    private function spilloverEnabled(): bool
+    {
+        return $this->db->table('settings')
+            ->where('key', 'placement.spillover.enabled')
+            ->value('value') === 'true';
     }
 
     public function isSelfOrDescendant(int $ancestorId, int $candidateId): bool
