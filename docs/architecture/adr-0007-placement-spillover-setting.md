@@ -53,18 +53,24 @@ the placement rule is decided when the ADN is issued, not when the link was
 opened. The wizard's `start()` reads it only to decide whether to pre-reject a
 full target (see §4).
 
-### 2. Spillover algorithm — choose one (recommended: A)
+### 2. Spillover algorithm — runtime-selectable (default A)
 
 When `placement.spillover.enabled` is **on** and the immediate target slot is
 full, the engine descends from the **link's placement target** to the first open
 slot. The "group" semantics are preserved: a `side=L` link always lands the
 joiner somewhere inside the target's **left** subtree.
 
-| Option | Rule | Notes |
+The fill algorithm is **admin-selectable** via a second setting
+**`placement.spillover.strategy`** (enum, default `breadth_balanced`). All three
+options below ship as selectable values; the engine dispatches on the setting
+(`PlacementEngine::resolveSlotWithSpillover()` → `resolveBreadthBalanced` /
+`resolveDepthOuter` / `resolveWeakerLeg`):
+
+| `strategy` value | Rule | Notes |
 |---|---|---|
-| **A (recommended) — directed BFS by group** | `side=L`/`R` → breadth-first search for the shallowest open slot **within that child's subtree** (i.e. starting at `target.L` / `target.R`). No `side` → BFS for the shallowest open slot under the target across **both** legs (balanced). | Honours the sponsor's explicit leg choice ("put them in my left group and let it spill"), stays shallow/balanced within the leg, deterministic. |
-| **B — balanced BFS only** | Always shallowest open slot under the target, ignoring any `side`. | Simplest, but discards the sponsor's L/R intent. |
-| **C — weaker-leg fill** | Place under whichever leg currently has fewer members. | "Auto-balance the org." Strong opinion about tree shape; least predictable for the sponsor; needs a per-call subtree count (cost + lock scope). |
+| **`breadth_balanced` (default)** | `side=L`/`R` → breadth-first search for the shallowest open slot **within that child's subtree** (i.e. starting at `target.L` / `target.R`). No `side` → BFS across **both** legs (balanced). | Honours the sponsor's explicit leg choice, stays shallow/balanced within the leg, deterministic. |
+| **`depth_outer`** | Ride one monotone edge down the chosen side (`side=L` → L→L→…; no side → outer-left) to the first open slot on that edge. | Builds one deep outer leg (depth over width). |
+| **`weaker_leg`** | Enter the chosen leg, then at each full node descend into the sub-leg with fewer members until an open slot. Sub-leg size via `TeamStatsService::scopedCount()` (team-stats single source). | Auto-balances the leg by headcount; costs a per-step subtree count. |
 
 BFS (not depth-first) is recommended so legs build **top-down and shallow**,
 which is the usual spillover expectation and keeps `depth` (and thus future
@@ -210,9 +216,11 @@ ADR.
 
 1. **Toggle mechanism:** admin **Setting** `placement.spillover.enabled`
    (group `placement`), default `false`. ✅
-2. **Algorithm:** **directed BFS by group** (Option A). ✅
-3. **No-side default under spillover:** **balanced BFS** (shallowest open slot
-   across both legs). ✅
+2. **Algorithm:** runtime-selectable via `placement.spillover.strategy` (enum) —
+   `breadth_balanced` (**default**, the former Option A directed-BFS-by-group),
+   `depth_outer`, and `weaker_leg` all ship as selectable values. ✅
+3. **No-side default under spillover:** **balanced BFS** for `breadth_balanced`;
+   outer-left for `depth_outer`; balanced descent for `weaker_leg`. ✅
 4. **Compensation sign-off:** accepted as a **gate on production enablement** —
    the feature ships default-off; PO + Compliance must sign off the
    downline-distribution effect before the toggle is switched on in prod. The

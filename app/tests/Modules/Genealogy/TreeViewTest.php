@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Services\TeamStatsService;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,6 +70,7 @@ function tvEngine(): PlacementEngine
     return new PlacementEngine(
         app(DatabaseManager::class),
         app(Dispatcher::class),
+        app(TeamStatsService::class),
     );
 }
 

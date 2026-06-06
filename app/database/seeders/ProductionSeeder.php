@@ -210,6 +210,7 @@ final class ProductionSeeder extends Seeder
     {
         $defaults = [
             'placement.spillover.enabled' => 'false',   // ADR-0007 — off until PO/Compliance sign-off
+            'placement.spillover.strategy' => 'breadth_balanced', // ADR-0007 — fill strategy when spillover is on
             'commerce.storefront.enabled' => 'true',
             'commerce.checkout.enabled' => 'true',
             'commerce.guest_checkout.enabled' => 'true',

@@ -83,14 +83,27 @@ it too (to decide whether to pre-reject a full target).
   the parent (the algorithm above). If the targeted slot is full the
   registration is rejected upward to the wizard, which redirects to
   `/contact-us?reason=placement_full`. There is no auto-descent.
-- **ON — spillover (ADR-0007):** `resolveSlotWithSpillover()` runs a BFS from the
-  link's placement target for the shallowest open slot — *directed* into the
-  requested leg when `side=L/R` is given, or *balanced* across both legs when no
-  side is given. The actual parent may then be a **descendant** of the link's
-  `placement_id`; the intended target is preserved in
-  `placement_id_at_registration`. The per-target advisory lock plus a bounded
-  retry on the `(placement_parent_id, placement_side)` unique index keep it
-  race-safe. `start()` does **not** pre-reject a full target when spillover is on.
+- **ON — spillover (ADR-0007):** `resolveSlotWithSpillover()` descends from the
+  link's placement target to an open slot — *directed* into the requested leg
+  when `side=L/R` is given, or across both legs when no side is given. The actual
+  parent may then be a **descendant** of the link's `placement_id`; the intended
+  target is preserved in `placement_id_at_registration`. The per-target advisory
+  lock plus a bounded retry on the `(placement_parent_id, placement_side)` unique
+  index keep it race-safe. `start()` does **not** pre-reject a full target when
+  spillover is on.
+
+The fill algorithm is admin-selectable via **`placement.spillover.strategy`**
+(enum, default `breadth_balanced`); `resolveSlotWithSpillover()` dispatches on it:
+
+- **`breadth_balanced`** (default) — `resolveBreadthBalanced()`: BFS for the
+  shallowest open slot in the chosen leg (or across both legs, no side). Fills
+  level-by-level.
+- **`depth_outer`** — `resolveDepthOuter()`: rides one monotone edge down the
+  chosen side (no side → outer-left) to the first open slot. One deep leg.
+- **`weaker_leg`** — `resolveWeakerLeg()`: enters the leg, then descends into the
+  smaller sub-leg until an open slot. Sub-leg size via
+  `TeamStatsService::scopedCount()` ([[team_stats_single_source]]) — do NOT
+  re-implement closure counting here.
 
 Do not enable spillover in production until the compensation-distribution effect
 is signed off (see ADR-0007 + risk R-26).

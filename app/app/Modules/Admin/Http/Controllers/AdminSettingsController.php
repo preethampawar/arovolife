@@ -64,6 +64,18 @@ final class AdminSettingsController extends Controller
                 'type' => 'bool',
                 'default' => 'false',
             ],
+            'placement.spillover.strategy' => [
+                'group' => 'placement',
+                'label' => 'Spillover fill strategy',
+                'description' => 'How spillover fills the chosen leg (only applies when Binary spillover is ON). Breadth-balanced: shallowest open slot, fills level-by-level (keeps the leg even). Depth (outer edge): rides one deep edge down the chosen side. Weaker leg: places under the sub-leg with fewer members (balances by headcount). Default: Breadth-balanced. Like Binary spillover, this affects downline composition — changing it in production requires the same PO + Compliance sign-off.',
+                'type' => 'enum',
+                'default' => 'breadth_balanced',
+                'options' => [
+                    ['value' => 'breadth_balanced', 'label' => 'Breadth-balanced (shallowest open slot)'],
+                    ['value' => 'depth_outer', 'label' => 'Depth — outer edge (one deep leg)'],
+                    ['value' => 'weaker_leg', 'label' => 'Weaker leg (fewer members)'],
+                ],
+            ],
 
             // ── Commerce — storefront ──────────────────────────────────────
             'commerce.storefront.enabled' => [

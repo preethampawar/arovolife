@@ -10,6 +10,7 @@ use App\Modules\Identity\Events\KycResubmitted;
 use App\Modules\Identity\Listeners\SendKycResubmittedMails;
 use App\Modules\Identity\Listeners\SendRegistrationSubmittedMails;
 use App\Modules\Identity\Services\RegistrationService;
+use App\Modules\Identity\Services\TeamStatsService;
 use App\Modules\Identity\Services\WizardStateService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -24,7 +25,7 @@ final class IdentityServiceProvider extends ServiceProvider
 
         $this->app->singleton(RegistrationService::class, function ($app) {
             return new RegistrationService(
-                new PlacementEngine($app['db'], $app['events']),
+                new PlacementEngine($app['db'], $app['events'], $app->make(TeamStatsService::class)),
                 $app['db'],
             );
         });

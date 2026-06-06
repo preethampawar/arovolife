@@ -28,6 +28,7 @@ use App\Modules\Genealogy\Services\Exceptions\CrossLinePlacementError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError;
 use App\Modules\Genealogy\Services\PlacementEngine;
+use App\Modules\Identity\Services\TeamStatsService;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
@@ -44,6 +45,7 @@ function propEngine(): PlacementEngine
     return new PlacementEngine(
         app(DatabaseManager::class),
         app(Dispatcher::class),
+        app(TeamStatsService::class),
     );
 }
 

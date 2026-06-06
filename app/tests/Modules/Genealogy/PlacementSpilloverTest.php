@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
 use App\Modules\Genealogy\Services\PlacementEngine;
+use App\Modules\Identity\Services\TeamStatsService;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,7 +24,7 @@ beforeEach(function (): void {
 
 function spEngine(): PlacementEngine
 {
-    return new PlacementEngine(app(DatabaseManager::class), app(Dispatcher::class));
+    return new PlacementEngine(app(DatabaseManager::class), app(Dispatcher::class), app(TeamStatsService::class));
 }
 
 function spEnableSpillover(bool $on = true): void
@@ -31,6 +32,14 @@ function spEnableSpillover(bool $on = true): void
     DB::table('settings')->updateOrInsert(
         ['key' => 'placement.spillover.enabled'],
         ['value' => $on ? 'true' : 'false', 'version' => 1, 'updated_at' => now()],
+    );
+}
+
+function spSetStrategy(string $strategy): void
+{
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'placement.spillover.strategy'],
+        ['value' => $strategy, 'version' => 1, 'updated_at' => now()],
     );
 }
 
@@ -166,4 +175,56 @@ it('SPILL-06: repeated directed spillover fills breadth-first with no (parent, s
         ->having('n', '>', 1)
         ->get();
     expect($dups)->toBeEmpty();
+});
+
+it('SPILL-07: depth_outer rides the outer-left edge deeper on each spill', function (): void {
+    spEnableSpillover();
+    spSetStrategy('depth_outer');
+    $root = spSeedRoot();
+    $engine = spEngine();
+    $j1 = $engine->place(spInput($root, $root, 'L'))->distributorId; // root.L
+
+    $a = $engine->place(spInput($root, $root, 'L')); // j1.L
+    $b = $engine->place(spInput($root, $root, 'L')); // a.L (deeper, same edge)
+    $c = $engine->place(spInput($root, $root, 'L')); // b.L
+
+    expect([$a->parentId, $a->side, $a->depth])->toBe([$j1, 'L', 2])
+        ->and([$b->parentId, $b->side, $b->depth])->toBe([$a->distributorId, 'L', 3])
+        ->and([$c->parentId, $c->side, $c->depth])->toBe([$b->distributorId, 'L', 4])
+        ->and($c->sideChosenBy)->toBe('spillover_left');
+});
+
+it('SPILL-08: weaker_leg places under the sub-leg with fewer members', function (): void {
+    $root = spSeedRoot();
+    $engine = spEngine();
+    // Build with spillover OFF (single-level, explicit slots):
+    //   root.L = A ; A.L = X (with a child Xc) ; A.R = Y (empty)
+    // → A's left sub-leg (X) is heavier than its right sub-leg (Y).
+    $a = $engine->place(spInput($root, $root, 'L'))->distributorId;
+    $x = $engine->place(spInput($root, $a, 'L'))->distributorId;
+    $y = $engine->place(spInput($root, $a, 'R'))->distributorId;
+    $engine->place(spInput($root, $x, 'L')); // Xc
+
+    spEnableSpillover();
+    spSetStrategy('weaker_leg');
+
+    $r = $engine->place(spInput($root, $root, 'L')); // enter L → A full → descend the lighter (Y) sub-leg
+
+    expect($r->parentId)->toBe($y)              // Y (fewer members), not X
+        ->and($r->side)->toBe('L')
+        ->and($r->sideChosenBy)->toBe('spillover_left');
+});
+
+it('SPILL-09: an unknown strategy falls back to breadth_balanced', function (): void {
+    spEnableSpillover();
+    spSetStrategy('not_a_real_strategy');
+    $root = spSeedRoot();
+    $engine = spEngine();
+    $j1 = $engine->place(spInput($root, $root, 'L'))->distributorId; // root.L
+
+    $a = $engine->place(spInput($root, $root, 'L')); // breadth: j1.L
+    $b = $engine->place(spInput($root, $root, 'L')); // breadth: j1.R (depth_outer would go deeper)
+
+    expect([$a->parentId, $a->side])->toBe([$j1, 'L'])
+        ->and([$b->parentId, $b->side])->toBe([$j1, 'R']); // proves breadth, not depth_outer
 });

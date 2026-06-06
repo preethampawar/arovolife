@@ -7,6 +7,7 @@ use App\Modules\Compliance\Services\CancelCoolingOff;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\RegistrationService;
+use App\Modules\Identity\Services\TeamStatsService;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -91,6 +92,7 @@ function crService(): RegistrationService
         new PlacementEngine(
             app(DatabaseManager::class),
             app(Dispatcher::class),
+            app(TeamStatsService::class),
         ),
         app(DatabaseManager::class),
     );

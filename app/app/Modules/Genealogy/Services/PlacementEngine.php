@@ -14,6 +14,8 @@ use App\Modules\Genealogy\Services\Exceptions\CrossLinePlacementError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError;
 use App\Modules\Genealogy\Support\ReservedAdns;
+use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Services\TeamStatsService;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
@@ -37,6 +39,7 @@ final class PlacementEngine
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly Dispatcher $events,
+        private readonly TeamStatsService $teamStats,
     ) {}
 
     public function place(PlaceDistributorInput $in): PlacementResult
@@ -95,8 +98,9 @@ final class PlacementEngine
                 // the link's `placement_id`. The intended target is preserved in
                 // `placement_id_at_registration` regardless.
                 $now = now();
+                $spillover = $this->spilloverEnabled();
                 [$distributorId, $parentId, $side, $chosenBy, $depth] =
-                    $this->resolveAndInsert($in, $this->spilloverEnabled(), $now);
+                    $this->resolveAndInsert($in, $spillover, $now);
 
                 $this->writeClosureRows($distributorId, $parentId);
 
@@ -119,6 +123,7 @@ final class PlacementEngine
                         'side' => $side,
                         'depth' => $depth,
                         'side_chosen_by' => $chosenBy,
+                        'strategy' => $spillover ? $this->spilloverStrategy() : null,
                     ],
                 ]);
 
@@ -253,17 +258,31 @@ final class PlacementEngine
     }
 
     /**
-     * ADR-0007 spillover slot resolution. Breadth-first search from the link's
-     * placement target for the shallowest open slot:
-     *   - side given (L/R) → search only within that child's subtree ("group");
-     *   - no side          → search both legs (balanced).
-     *
-     * A binary tree is never full, so this always returns. The returned
+     * ADR-0007 spillover slot resolution — dispatches to the admin-selected fill
+     * strategy (`placement.spillover.strategy`). All strategies direct into the
+     * chosen leg when a side is given (or operate across both legs when none is).
+     * A binary tree is never full, so each always returns; the returned
      * `parentId` may be a descendant of `$targetId` (a genuine spillover).
      *
      * @return array{0: int, 1: string, 2: string} [parentId, side, chosenBy]
      */
     private function resolveSlotWithSpillover(int $targetId, ?string $sideOpt): array
+    {
+        return match ($this->spilloverStrategy()) {
+            'depth_outer' => $this->resolveDepthOuter($targetId, $sideOpt),
+            'weaker_leg' => $this->resolveWeakerLeg($targetId, $sideOpt),
+            default => $this->resolveBreadthBalanced($targetId, $sideOpt),
+        };
+    }
+
+    /**
+     * `breadth_balanced` (default): breadth-first search for the SHALLOWEST open
+     * slot — within the chosen child's subtree (side given) or across both legs
+     * (no side). Fills the leg level-by-level.
+     *
+     * @return array{0: int, 1: string, 2: string} [parentId, side, chosenBy]
+     */
+    private function resolveBreadthBalanced(int $targetId, ?string $sideOpt): array
     {
         // Frontier of [nodeId, sidesToConsider]. At the target we only enter the
         // requested side (or both when none is given); one level down we always
@@ -282,14 +301,84 @@ final class PlacementEngine
                 }
             }
 
-            // All requested sides are occupied here — descend into them and
-            // consider both legs at the next depth.
             foreach ($sides as $side) {
                 $queue[] = [(int) $children[$side], ['L', 'R']];
             }
         }
 
         throw new PlacementSlotsExhaustedError($targetId);
+    }
+
+    /**
+     * `depth_outer`: ride a single monotone edge down the chosen side
+     * (side=L → L→L→…, side=R → R→R→…, no side → outer-left) to the first open
+     * slot on that edge. Builds one deep outer leg.
+     *
+     * @return array{0: int, 1: string, 2: string} [parentId, side, chosenBy]
+     */
+    private function resolveDepthOuter(int $targetId, ?string $sideOpt): array
+    {
+        $edgeSide = $sideOpt ?? 'L';
+        $nodeId = $targetId;
+
+        while (true) {
+            $children = $this->childrenBySide($nodeId);
+            if ($children[$edgeSide] === null) {
+                return [$nodeId, $edgeSide, $this->spilloverChosenBy($nodeId === $targetId, $sideOpt, $edgeSide)];
+            }
+            $nodeId = (int) $children[$edgeSide];
+        }
+    }
+
+    /**
+     * `weaker_leg`: enter the chosen leg, then at each fully-occupied node
+     * descend into the sub-leg with FEWER members until an open slot. Balances
+     * the leg by headcount.
+     *
+     * @return array{0: int, 1: string, 2: string} [parentId, side, chosenBy]
+     */
+    private function resolveWeakerLeg(int $targetId, ?string $sideOpt): array
+    {
+        $nodeId = $targetId;
+        $sides = $sideOpt !== null ? [$sideOpt] : ['L', 'R'];
+
+        while (true) {
+            $children = $this->childrenBySide($nodeId);
+
+            // Open slot among the considered sides → take it (L-first tie-break).
+            foreach ($sides as $side) {
+                if ($children[$side] === null) {
+                    return [$nodeId, $side, $this->spilloverChosenBy($nodeId === $targetId, $sideOpt, $side)];
+                }
+            }
+
+            // Fully occupied → descend into the lighter sub-leg; both sub-legs
+            // are in play from here on.
+            $nodeId = $this->lighterChild($nodeId, $sides, $children);
+            $sides = ['L', 'R'];
+        }
+    }
+
+    /**
+     * The child id under `$nodeId` whose subtree currently has the fewest
+     * members. When only one side is in play (directed entry at the target),
+     * that side's child is returned. Subtree size comes from the single-source
+     * {@see TeamStatsService} (see the team-stats-single-source rule).
+     *
+     * @param  list<string>  $sides
+     * @param  array{L: int|null, R: int|null}  $children
+     */
+    private function lighterChild(int $nodeId, array $sides, array $children): int
+    {
+        if (count($sides) === 1) {
+            return (int) $children[$sides[0]];
+        }
+
+        $node = Distributor::findOrFail($nodeId);
+        $left = $this->teamStats->scopedCount($node, 'left');
+        $right = $this->teamStats->scopedCount($node, 'right');
+
+        return $left <= $right ? (int) $children['L'] : (int) $children['R'];
     }
 
     /**
@@ -339,6 +428,22 @@ final class PlacementEngine
         return $this->db->table('settings')
             ->where('key', 'placement.spillover.enabled')
             ->value('value') === 'true';
+    }
+
+    /**
+     * The selected spillover fill strategy. Falls back to `breadth_balanced`
+     * for an absent or unrecognised value (so the default + the enum guard both
+     * resolve to the safe default).
+     */
+    private function spilloverStrategy(): string
+    {
+        $v = $this->db->table('settings')
+            ->where('key', 'placement.spillover.strategy')
+            ->value('value');
+
+        return is_string($v) && in_array($v, ['breadth_balanced', 'depth_outer', 'weaker_leg'], true)
+            ? $v
+            : 'breadth_balanced';
     }
 
     public function isSelfOrDescendant(int $ancestorId, int $candidateId): bool
