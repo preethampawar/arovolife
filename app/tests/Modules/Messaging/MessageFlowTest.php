@@ -17,6 +17,7 @@ use App\Modules\Messaging\Notifications\NewMessageNotification;
 use App\Modules\Messaging\Services\MessageService;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 
@@ -89,6 +90,40 @@ it('MSG-05: GET /messages renders the conversation list for the authed user only
     $response->assertOk();
     $response->assertSee($alice->full_name);
     $response->assertSee($carol->full_name);
+});
+
+it('MSG-13: the inbox shows S.No, the sender ADN and a Reply link, and never the email', function (): void {
+    Notification::fake();
+    $alice = msgUser('alice');
+    $bob = msgUser('bob');
+
+    // Give Alice a distributor record so her ADN ("sender ID") is shown.
+    disableTestForeignKeys();
+    try {
+        DB::table('distributors')->insert([
+            'user_id' => $alice->id, 'adn' => 'ADN77777',
+            'pan_hash' => random_bytes(32), 'pan_last4' => '0000',
+            'bank_account_enc' => 'stub', 'bank_ifsc' => 'SBIN0000000',
+            'sponsor_id' => 0, 'placement_parent_id' => 0, 'side_chosen_by' => 'referral_default', 'depth' => 0,
+            'effective_date' => now()->format('Y-m-d H:i:s.v'),
+            'cooling_off_end_at' => now()->copy()->addDays(30)->format('Y-m-d H:i:s.v'),
+            'state' => 'TS', 'is_primary_couple' => 0,
+            'created_at' => now()->format('Y-m-d H:i:s.v'), 'updated_at' => now()->format('Y-m-d H:i:s.v'),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    app(MessageService::class)->send($alice, $bob, 'Ledger looks good');
+
+    $response = $this->actingAs($bob->refresh())->get('/messages');
+    $response->assertOk()
+        ->assertSee('S.No')
+        ->assertSee($alice->full_name)
+        ->assertSee('ADN77777')          // sender ID
+        ->assertSee('Reply')             // reply button
+        ->assertSee('Ledger looks good') // message
+        ->assertDontSee($alice->email);  // no email leakage
 });
 
 it('MSG-06: GET /messages/{user} renders the chat with that user and marks unread as read', function (): void {

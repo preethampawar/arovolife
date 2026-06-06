@@ -14,41 +14,62 @@
             <p class="text-xs text-gray-600">Open a distributor card in the tree and click the menu's "Send Message" item to start.</p>
         </div>
     @else
-        <ul class="divide-y divide-gray-100">
-            @foreach($conversations as $conv)
-                @php
-                    $otherId = (int) $conv->other_user_id;
-                    $other = $users->get($otherId);
-                    $preview = $previewByPair[$otherId] ?? null;
-                    $unread = (int) $conv->unread_count;
-                    $name = $other?->full_name ?: $other?->email ?: ('user #'.$otherId);
-                @endphp
-                <li>
-                    <a href="{{ route('messages.show', ['user' => $otherId]) }}"
-                       class="flex items-start justify-between gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-baseline gap-2">
-                                <p class="text-sm font-semibold text-gray-900 truncate {{ $unread > 0 ? 'text-brand-700' : '' }}">{{ $name }}</p>
-                                @if($unread > 0)
-                                    <span class="shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-brand-500 text-white">{{ $unread }}</span>
-                                @endif
-                            </div>
-                            @if($preview)
-                                <p class="text-xs text-gray-700 mt-1 line-clamp-1">
-                                    @if($preview->from_user_id === auth()->id())
-                                        <span class="text-gray-600">You:</span>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200 text-left text-[11px] uppercase tracking-wider text-gray-500">
+                    <tr>
+                        <th class="px-4 py-3 w-12">S.No</th>
+                        <th class="px-4 py-3">From</th>
+                        <th class="px-4 py-3">Message</th>
+                        <th class="px-4 py-3 whitespace-nowrap">Date &amp; time</th>
+                        <th class="px-4 py-3 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($conversations as $i => $conv)
+                        @php
+                            $otherId = (int) $conv->other_user_id;
+                            $other = $users->get($otherId);
+                            $preview = $previewByPair[$otherId] ?? null;
+                            $unread = (int) $conv->unread_count;
+                            // Sender name — never fall back to an email address.
+                            $name = $other?->full_name ?: ('Distributor #'.$otherId);
+                            $adn = $adnByUser[$otherId] ?? null;
+                        @endphp
+                        <tr class="hover:bg-gray-50/60">
+                            <td class="px-4 py-3 align-top text-gray-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-3 align-top">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-gray-900">{{ $name }}</span>
+                                    @if($unread > 0)
+                                        <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold bg-brand-500 text-white" title="{{ $unread }} unread">{{ $unread }}</span>
                                     @endif
-                                    {{ $preview->body }}
-                                </p>
-                            @endif
-                        </div>
-                        @if($preview)
-                            <span class="text-[11px] text-gray-600 whitespace-nowrap pt-0.5">{{ $preview->created_at->diffForHumans(short: true) }}</span>
-                        @endif
-                    </a>
-                </li>
-            @endforeach
-        </ul>
+                                </div>
+                                <div class="text-[11px] font-mono text-brand-700 mt-0.5">ADN {{ $adn ?? '—' }}</div>
+                            </td>
+                            <td class="px-4 py-3 align-top">
+                                @if($preview)
+                                    <p class="text-gray-700 line-clamp-2 max-w-md {{ $unread > 0 ? 'font-medium text-gray-900' : '' }}">
+                                        @if($preview->from_user_id === auth()->id())<span class="text-gray-500">You:</span> @endif{{ $preview->body }}
+                                    </p>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 align-top whitespace-nowrap text-xs text-gray-600">
+                                {{ $preview?->created_at?->format('d M Y, h:i A') ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3 align-top text-right">
+                                <a href="{{ route('messages.show', ['user' => $otherId]) }}"
+                                   class="inline-flex items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-3 py-1.5 text-xs transition-colors">
+                                    Reply →
+                                </a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     @endif
 </div>
 @endsection

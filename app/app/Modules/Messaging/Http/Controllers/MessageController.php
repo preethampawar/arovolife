@@ -77,6 +77,13 @@ final class MessageController extends Controller
         $otherUserIds = $latestPerOther->pluck('other_user_id')->map(fn ($v) => (int) $v)->all();
         $users = User::query()->whereIn('id', $otherUserIds)->get()->keyBy('id');
 
+        // Each correspondent's ADN ("sender ID") for the inbox. Keyed by user_id
+        // so the view can show the distributor number alongside the name —
+        // never an email address.
+        $adnByUser = DB::table('distributors')
+            ->whereIn('user_id', $otherUserIds)
+            ->pluck('adn', 'user_id');
+
         $previewByPair = [];
         foreach ($latestPerOther as $row) {
             $other = (int) $row->other_user_id;
@@ -94,6 +101,7 @@ final class MessageController extends Controller
         return view('messages.index', [
             'conversations' => $latestPerOther,
             'users' => $users,
+            'adnByUser' => $adnByUser,
             'previewByPair' => $previewByPair,
         ]);
     }
