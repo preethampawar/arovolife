@@ -35,10 +35,6 @@
                 <p class="text-slate-900 font-semibold text-sm">{{ $sponsorName }}</p>
                 <p class="font-mono text-brand-700 text-[12px] tracking-wider mt-0.5">
                     ADN {{ $sponsorAdn }}
-                    @if(!empty($sponsorEmailMasked))
-                        <span class="text-slate-400 ml-1">·</span>
-                        <span class="text-slate-500 normal-case tracking-normal ml-1">{{ $sponsorEmailMasked }}</span>
-                    @endif
                 </p>
             @else
                 <p class="font-mono text-brand-700 font-semibold tracking-wider">{{ $sponsorAdn }}</p>

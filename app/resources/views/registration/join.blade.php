@@ -148,12 +148,11 @@
                     paint(key, 'bad', 'No distributor with that ADN.');
                     return;
                 }
-                var emailSuffix = json.email_masked ? ' · ' + json.email_masked : '';
                 if (json.is_secondary) {
-                    paint(key, 'warn', '✓ ' + json.name + emailSuffix + ' (couple-secondary — use the primary spouse\'s ADN instead).');
+                    paint(key, 'warn', '✓ ' + json.name + ' (couple-secondary — use the primary spouse\'s ADN instead).');
                     return;
                 }
-                paint(key, 'ok', '✓ ' + json.name + emailSuffix);
+                paint(key, 'ok', '✓ ' + json.name);
             })
             .catch(() => paint(key, 'idle', idleCopy[key] || ''));
     }

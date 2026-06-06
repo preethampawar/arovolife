@@ -172,7 +172,7 @@ final class RegistrationWizardController extends Controller
         $row = DB::table('distributors as d')
             ->join('users as u', 'u.id', '=', 'd.user_id')
             ->where('d.adn', $adn)
-            ->select('u.full_name', 'u.email', 'd.spouse_distributor_id', 'd.is_primary_couple', 'd.state')
+            ->select('u.full_name', 'd.spouse_distributor_id', 'd.is_primary_couple', 'd.state')
             ->first();
 
         if ($row === null) {
@@ -181,10 +181,12 @@ final class RegistrationWizardController extends Controller
 
         $isSecondary = $row->spouse_distributor_id !== null && (int) $row->is_primary_couple !== 1;
 
+        // Confirm the sponsor by NAME only. The email is the sponsor's personal
+        // data and must not be surfaced to a prospective registrant (DPDP /
+        // privacy — even masked, it leaks the domain).
         return response()->json([
             'found' => true,
             'name' => (string) $row->full_name,
-            'email_masked' => SponsorPreview::maskEmail((string) $row->email),
             'is_secondary' => $isSecondary,
         ]);
     }
@@ -288,7 +290,6 @@ final class RegistrationWizardController extends Controller
             'placementAdn' => $intent['placement_adn'] ?? '',
             'sideOpt' => $intent['side_opt'] ?? null,
             'sponsorName' => $sponsorPreview['name'] ?? null,
-            'sponsorEmailMasked' => $sponsorPreview['email_masked'] ?? null,
             'existingUser' => null,
         ]);
     }

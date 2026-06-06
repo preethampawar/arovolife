@@ -297,13 +297,13 @@ it('JOIN-01: GET /join?sponsor=<adn> pre-fills + locks the sponsor field', funct
     $response->assertSee('readonly', escape: false);
 });
 
-it('JOIN-LOOKUP-01: returns the name for a valid ADN', function () {
+it('JOIN-LOOKUP-01: returns the name for a valid ADN but never the sponsor email (privacy)', function () {
     $sponsor = regSeedRoot();
     // The regSeed helpers create a User without a full_name; backfill
     // one so we can assert the controller surfaces it correctly.
-    DB::table('users')
-        ->where('id', DB::table('distributors')->where('id', $sponsor['id'])->value('user_id'))
-        ->update(['full_name' => 'Aarti Sharma']);
+    $sponsorUserId = DB::table('distributors')->where('id', $sponsor['id'])->value('user_id');
+    DB::table('users')->where('id', $sponsorUserId)->update(['full_name' => 'Aarti Sharma']);
+    $sponsorEmail = (string) DB::table('users')->where('id', $sponsorUserId)->value('email');
 
     $response = $this->getJson('/join/lookup?adn='.$sponsor['adn']);
 
@@ -313,6 +313,11 @@ it('JOIN-LOOKUP-01: returns the name for a valid ADN', function () {
         'name' => 'Aarti Sharma',
         'is_secondary' => false,
     ]);
+    // The sponsor's email — even masked — must not be surfaced.
+    $response->assertJsonMissingPath('email_masked');
+    $response->assertJsonMissingPath('email');
+    expect($response->getContent())->not->toContain('@');
+    expect($response->getContent())->not->toContain(explode('@', $sponsorEmail)[0]);
 });
 
 it('JOIN-LOOKUP-02: returns found=false for an unknown but well-formed ADN', function () {
