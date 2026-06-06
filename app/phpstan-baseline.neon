@@ -1983,7 +1983,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 4
 			path: tests/Modules/Commerce/CheckoutPaymentTest.php
 
 		-
@@ -2013,13 +2013,25 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 6
+			count: 7
 			path: tests/Modules/Commerce/CheckoutPaymentTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
 			identifier: property.notFound
 			count: 4
+			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$display_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
 			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
 
 		-
@@ -2037,7 +2049,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 4
+			count: 6
 			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
 
 		-
@@ -2103,7 +2115,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 6
 			path: tests/Modules/Commerce/MyOrdersTest.php
 
 		-
@@ -2173,12 +2185,6 @@ parameters:
 			path: tests/Modules/Commerce/OrderNotificationTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$shipping_paise\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Modules/Commerce/ShippingTest.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2205,7 +2211,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 4
+			count: 2
 			path: tests/Modules/Commerce/ShippingTest.php
 
 		-
@@ -2577,7 +2583,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 7
 			path: tests/Modules/Messaging/MessageFlowTest.php
 
 		-
