@@ -126,3 +126,48 @@ it('E4-05: shipping a DISCOUNTED order posts a BALANCED revenue-recognition entr
         ->exists();
     expect($hasContra)->toBeTrue();
 });
+
+it('E4-06: COD order with shipping ships without a 500 and books shipping revenue (KP regression)', function (): void {
+    // Reproduces the reported flow: admin marks a COD order paid, then "Mark as
+    // Shipped". Before the fix the revenue-recognition entry was out of balance
+    // by the shipping amount (shipping sits inside total_paise on the debit side
+    // but was never credited), so the LedgerPoster rejected it → 500.
+    $customer = Customer::create(['display_name' => 'Ship Buyer']);
+    // subtotal 1500.00, gst 228.81, no discount, shipping 60.00 → total 1560.00.
+    $order = Order::create([
+        'order_no' => 'ORD-SHIP-'.random_int(1000, 9999),
+        'customer_id' => $customer->id,
+        'attribution_source' => 'direct',
+        'payment_method' => Order::PAYMENT_COD,
+        'status' => Order::STATUS_PLACED,
+        'subtotal_paise' => 150000, 'gst_paise' => 22881, 'discount_paise' => 0,
+        'shipping_paise' => 6000, 'total_paise' => 156000,
+        'ship_name' => 'Ship Buyer', 'ship_phone_e164' => '+919800000000',
+        'ship_line1' => '1 St', 'ship_city' => 'Pune', 'ship_state' => 'MH', 'ship_pincode' => '411001',
+        'placed_at' => now(), 'idempotency_key' => 'idem-'.uniqid(),
+    ]);
+
+    $sm = app(OrderStateMachine::class);
+    $sm->markPaid($order->fresh());            // COD cash-in (includes shipping)
+    $sm->markShipped($order->fresh());          // revenue recognition — must not throw
+
+    expect($order->fresh()->status)->toBe('shipped');
+
+    $tx = DB::table('ledger_tx')->where('source_type', 'order.shipped')->where('source_id', $order->id)->first();
+    expect($tx)->not->toBeNull();
+
+    // Debits − credits across the recognition entry must net to zero.
+    $net = (int) DB::table('ledger_entries')->where('ledger_tx_id', $tx->id)
+        ->selectRaw("SUM(CASE WHEN side='debit' THEN amount_paise ELSE -amount_paise END) AS net")->value('net');
+    expect($net)->toBe(0);
+
+    // Shipping the customer paid is recognised as shipping revenue.
+    $hasShipping = DB::table('ledger_entries')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->where('ledger_tx_id', $tx->id)
+        ->where('ledger_accounts.code', 'revenue.shipping')
+        ->where('ledger_entries.side', 'credit')
+        ->where('ledger_entries.amount_paise', 6000)
+        ->exists();
+    expect($hasShipping)->toBeTrue();
+});

@@ -102,11 +102,21 @@ final class OrderStateMachine
                     ['account' => 'liability.gst_output',          'side' => 'credit', 'amount_paise' => $order->gst_paise],
                 ];
 
+                // Shipping the customer paid is recognised as shipping revenue
+                // on the credit side. It sits inside total_paise (the debit), so
+                // without this credit the entry is out of balance by exactly the
+                // shipping amount and the LedgerPoster (correctly) rejects it —
+                // which surfaced as a 500 when marking any order with shipping as
+                // shipped. Free-shipping orders (shipping_paise = 0) skip it.
+                if ($order->shipping_paise > 0) {
+                    $lines[] = ['account' => 'revenue.shipping', 'side' => 'credit', 'amount_paise' => $order->shipping_paise];
+                }
+
                 // A coupon discount is recorded as contra-revenue (debit) so
                 // gross sales + GST output stay at the documented sale value
                 // while the debit side equals the cash actually due
-                // (total_paise = subtotal − discount). Without this the entry
-                // would be out of balance by the discount amount and the
+                // (total_paise = subtotal − discount + shipping). Without this the
+                // entry would be out of balance by the discount amount and the
                 // LedgerPoster would (correctly) reject it.
                 if ($order->discount_paise > 0) {
                     $lines[] = ['account' => 'revenue.discounts', 'side' => 'debit', 'amount_paise' => $order->discount_paise];

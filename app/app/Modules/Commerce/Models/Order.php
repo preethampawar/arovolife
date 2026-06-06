@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string $order_no
+ * @property int $shipping_paise
+ * @property int $customer_id
  */
 final class Order extends Model
 {
