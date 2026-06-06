@@ -88,9 +88,13 @@ final class CartController extends Controller
         ]);
 
         $cart = $this->cartService->currentCart($request);
-        $this->cartService->addItem($cart, (int) $validated['product_variant_id'], (int) ($validated['qty'] ?? 1));
+        $variantId = (int) $validated['product_variant_id'];
+        $this->cartService->addItem($cart, $variantId, (int) ($validated['qty'] ?? 1));
 
-        return redirect()->route('shop.cart')->with('status', 'Added to cart.');
+        // Flash the just-added variant so the cart page can highlight that line.
+        return redirect()->route('shop.cart')
+            ->with('status', 'Added to cart.')
+            ->with('added_variant_id', $variantId);
     }
 
     public function update(Request $request, CartItem $item): RedirectResponse

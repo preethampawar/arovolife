@@ -8,6 +8,10 @@ use App\Modules\Catalog\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $cart_id
+ * @property int $product_variant_id
+ */
 final class CartItem extends Model
 {
     protected $table = 'cart_items';

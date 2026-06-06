@@ -11,10 +11,12 @@
     <a href="{{ route('shop.index') }}" class="text-brand-600 hover:text-brand-700 font-medium">Continue shopping →</a>
 </div>
 @else
+@php $addedVariantId = (int) session('added_variant_id'); @endphp
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-3">
         @foreach($cart->items as $item)
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 flex items-start gap-4">
+        @php $justAdded = $addedVariantId > 0 && (int) $item->product_variant_id === $addedVariantId; @endphp
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 flex items-start gap-4 scroll-mt-24 {{ $justAdded ? 'cart-line-added' : '' }}" @if($justAdded) data-cart-added @endif>
             <div class="w-20 h-20 rounded-lg bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center shrink-0">
                 @if($item->variant->product->image_url)
                 <img src="{{ $item->variant->product->image_url }}" class="w-full h-full object-cover rounded-lg">
@@ -123,6 +125,19 @@
         <p class="text-xs text-gray-500 mt-3 text-center">30-day return window on every order.</p>
     </div>
 </div>
+@endif
+
+@if(session('added_variant_id'))
+<script>
+    // Bring the just-added cart line into view (in case the cart is long).
+    // The brief highlight itself is a one-shot CSS animation (.cart-line-added).
+    document.addEventListener('DOMContentLoaded', function () {
+        var el = document.querySelector('[data-cart-added]');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+</script>
 @endif
 
 @endsection

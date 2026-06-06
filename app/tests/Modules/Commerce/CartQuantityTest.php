@@ -11,6 +11,7 @@ use App\Modules\Commerce\Services\CartService;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -70,6 +71,42 @@ it('itemCount finds the anonymous cart of a logged-in visitor with no Customer r
     $request->setUserResolver(fn () => $user);
 
     expect(app(CartService::class)->itemCount($request))->toBe(4);
+});
+
+it('flashes the just-added variant id so the cart can highlight it', function (): void {
+    $n = random_int(10000, 99999);
+    $product = Product::create(['sku' => "ADD-{$n}", 'slug' => "add-{$n}", 'name' => "Add {$n}", 'hsn_code' => '3004', 'status' => 'active']);
+    $variant = ProductVariant::create([
+        'product_id' => $product->id, 'variant_sku' => "ADD-{$n}-V1", 'name' => 'Default',
+        'mrp_paise' => 50000, 'sale_price_paise' => 50000, 'gst_rate_bp' => 1800,
+        'inventory_policy' => 'no_track', 'status' => 'active',
+    ]);
+
+    $this->post(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 1])
+        ->assertRedirect(route('shop.cart'))
+        ->assertSessionHas('added_variant_id', $variant->id);
+});
+
+it('highlights the just-added line on the cart page (and not other lines)', function (): void {
+    $item = cqtItem(2); // line A (the "just added" one)
+    // A second, different line that must NOT be highlighted.
+    $n = random_int(10000, 99999);
+    $p2 = Product::create(['sku' => "CQO-{$n}", 'slug' => "cqo-{$n}", 'name' => "Other {$n}", 'hsn_code' => '3004', 'status' => 'active']);
+    $v2 = ProductVariant::create(['product_id' => $p2->id, 'variant_sku' => "CQO-{$n}-V1", 'name' => 'Default', 'mrp_paise' => 50000, 'sale_price_paise' => 50000, 'bv_paise' => 0, 'gst_rate_bp' => 1800, 'inventory_policy' => 'no_track', 'status' => 'active']);
+    CartItem::create(['cart_id' => $item->cart_id, 'product_variant_id' => $v2->id, 'qty' => 1, 'unit_price_paise' => 50000, 'bv_paise' => 0, 'gst_rate_bp' => 1800]);
+
+    DB::table('settings')->updateOrInsert(['key' => 'commerce.storefront.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
+
+    $html = $this->withUnencryptedCookie(AttributionService::ANON_COOKIE, $item->cart->anonymous_key)
+        ->withSession(['added_variant_id' => $item->product_variant_id])
+        ->get(route('shop.cart'))
+        ->assertOk()
+        ->assertSee('cart-line-added', false)   // highlight class is rendered
+        ->assertSee('data-cart-added', false)
+        ->getContent();
+
+    // Exactly one line is highlighted (the added one, not the other product).
+    expect(substr_count($html, 'cart-line-added'))->toBe(1);
 });
 
 it('increases the line quantity (the + button sends qty+1)', function (): void {
