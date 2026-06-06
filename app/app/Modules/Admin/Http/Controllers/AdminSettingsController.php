@@ -37,7 +37,7 @@ final class AdminSettingsController extends Controller
      *   description: string,
      *   type: string,
      *   default?: string,
-     *   options?: array<int, array{value: string, label: string}>,
+     *   options?: array<int, array{value: string, label: string, note?: string}>,
      *   min?: int,
      *   max?: int,
      *   read_only?: bool,
@@ -71,9 +71,9 @@ final class AdminSettingsController extends Controller
                 'type' => 'enum',
                 'default' => 'breadth_balanced',
                 'options' => [
-                    ['value' => 'breadth_balanced', 'label' => 'Breadth-balanced (shallowest open slot)'],
-                    ['value' => 'depth_outer', 'label' => 'Depth — outer edge (one deep leg)'],
-                    ['value' => 'weaker_leg', 'label' => 'Weaker leg (fewer members)'],
+                    ['value' => 'breadth_balanced', 'label' => 'Breadth-balanced (shallowest open slot)', 'note' => 'Fills the chosen leg level-by-level — each new joiner takes the shallowest open position. Keeps the leg even and bushy.'],
+                    ['value' => 'depth_outer', 'label' => 'Depth — outer edge (one deep leg)', 'note' => 'Rides one long edge straight down the chosen side, building a single deep leg (depth over width).'],
+                    ['value' => 'weaker_leg', 'label' => 'Weaker leg (fewer members)', 'note' => 'Places under whichever sub-leg currently has fewer members, balancing the leg by headcount.'],
                 ],
             ],
 

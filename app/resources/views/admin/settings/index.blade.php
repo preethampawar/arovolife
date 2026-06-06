@@ -124,6 +124,20 @@
                                     </button>
                                 </form>
 
+                                {{-- Per-option behaviour notes, so the admin sees what each choice does. --}}
+                                @if(collect($meta['options'] ?? [])->contains(fn ($o) => ! empty($o['note'])))
+                                <ul class="mt-2 space-y-1 text-xs text-gray-500 max-w-prose">
+                                    @foreach($meta['options'] ?? [] as $opt)
+                                        @if(! empty($opt['note']))
+                                        <li class="{{ $opt['value'] === $value ? 'text-gray-700' : '' }}">
+                                            <span class="font-semibold {{ $opt['value'] === $value ? 'text-brand-700' : 'text-gray-700' }}">{{ $opt['label'] }}@if($opt['value'] === $value) (current)@endif:</span>
+                                            {{ $opt['note'] }}
+                                        </li>
+                                        @endif
+                                    @endforeach
+                                </ul>
+                                @endif
+
                             @elseif($meta['type'] === 'json')
                                 {{-- JSON settings still post to the legacy endpoint that knows
                                      how to validate the structure (state-code regex, age range). --}}

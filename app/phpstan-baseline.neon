@@ -1963,7 +1963,7 @@ parameters:
 			path: tests/Modules/Commerce/CheckoutCodToggleTest.php
 
 		-
-			message: '#^Offset ''default'' might not exist on array\{group\: string, label\: string, description\: string, type\: string, default\?\: string, options\?\: array\<int, array\{value\: string, label\: string\}\>, min\?\: int, max\?\: int, \.\.\.\}\.$#'
+			message: '#^Offset ''default'' might not exist on array\{group\: string, label\: string, description\: string, type\: string, default\?\: string, options\?\: array\<int, array\{value\: string, label\: string, note\?\: string\}\>, min\?\: int, max\?\: int, \.\.\.\}\.$#'
 			identifier: offsetAccess.notFound
 			count: 1
 			path: tests/Modules/Commerce/CheckoutCodToggleTest.php
