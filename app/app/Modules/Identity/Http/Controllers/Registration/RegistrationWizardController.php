@@ -53,6 +53,18 @@ final class RegistrationWizardController extends Controller
         return Feature::active(RegistrationKillswitch::class);
     }
 
+    /**
+     * Whether binary spillover is on (ADR-0007). When on, a full placement
+     * target is never a dead-end — the engine places the joiner in the next
+     * open slot below — so the /join "placement full" guards are skipped.
+     */
+    private function spilloverEnabled(): bool
+    {
+        return DB::table('settings')
+            ->where('key', 'placement.spillover.enabled')
+            ->value('value') === 'true';
+    }
+
     // ── Entry: parse referral link query params and stash in session ──────
 
     /**
@@ -121,10 +133,7 @@ final class RegistrationWizardController extends Controller
         // generic "invalid referral link". With spillover ON (ADR-0007) a full
         // target is fine — the engine places the joiner in the next open slot
         // below — so we skip the pre-rejection entirely.
-        $spilloverEnabled = DB::table('settings')
-            ->where('key', 'placement.spillover.enabled')
-            ->value('value') === 'true';
-        if (! $spilloverEnabled && ! $engine->hasOpenSlot((int) $placement->id, $sideOpt)) {
+        if (! $this->spilloverEnabled() && ! $engine->hasOpenSlot((int) $placement->id, $sideOpt)) {
             return redirect('/contact-us?reason=placement_full');
         }
 
@@ -191,7 +200,7 @@ final class RegistrationWizardController extends Controller
         $row = DB::table('distributors as d')
             ->join('users as u', 'u.id', '=', 'd.user_id')
             ->where('d.adn', $adn)
-            ->select('u.full_name', 'd.spouse_distributor_id', 'd.is_primary_couple', 'd.state')
+            ->select('u.full_name', 'd.id', 'd.spouse_distributor_id', 'd.is_primary_couple', 'd.state')
             ->first();
 
         if ($row === null) {
@@ -200,6 +209,14 @@ final class RegistrationWizardController extends Controller
 
         $isSecondary = $row->spouse_distributor_id !== null && (int) $row->is_primary_couple !== 1;
 
+        // Whether a new joiner could actually be placed under this node. With
+        // single-level placement (ADR-0003) a node with both L and R taken is a
+        // dead-end; with spillover on (ADR-0007) a slot is always found below,
+        // so it's never "full". The /join placement field uses this to warn and
+        // block before the applicant invests time in the wizard.
+        $hasOpenSlot = $this->spilloverEnabled()
+            || app(PlacementEngine::class)->hasOpenSlot((int) $row->id, null);
+
         // Confirm the sponsor by NAME only. The email is the sponsor's personal
         // data and must not be surfaced to a prospective registrant (DPDP /
         // privacy — even masked, it leaks the domain).
@@ -207,6 +224,7 @@ final class RegistrationWizardController extends Controller
             'found' => true,
             'name' => (string) $row->full_name,
             'is_secondary' => $isSecondary,
+            'has_open_slot' => $hasOpenSlot,
         ]);
     }
 
@@ -288,12 +306,22 @@ final class RegistrationWizardController extends Controller
         // instead of advancing and bouncing them to Contact Us. `-S`
         // couple-secondary ADNs are normalised to the primary tree node, the
         // same as the canonical referral entry.
+        $sponsor = DB::table('distributors')->where('adn', preg_replace('/-S$/', '', $sponsorAdn))->first();
+        $placement = DB::table('distributors')->where('adn', preg_replace('/-S$/', '', $placementAdn))->first();
+
         $errors = [];
-        if (! DB::table('distributors')->where('adn', preg_replace('/-S$/', '', $sponsorAdn))->exists()) {
+        if ($sponsor === null) {
             $errors['sponsor_adn'] = 'No distributor found with that sponsor ADN. Please check and try again.';
         }
-        if (! DB::table('distributors')->where('adn', preg_replace('/-S$/', '', $placementAdn))->exists()) {
+        if ($placement === null) {
             $errors['placement_adn'] = 'No distributor found with that placement ADN. Please check and try again.';
+        } elseif (! $this->spilloverEnabled()
+            && ! app(PlacementEngine::class)->hasOpenSlot((int) $placement->id, null)) {
+            // The placement node is real and in-line, but both its positions
+            // are already filled and spillover is off — so a new joiner can't
+            // be placed there. Keep them on /join with a clear message to pick
+            // a different placement, rather than advancing then dead-ending.
+            $errors['placement_adn'] = 'That placement already has both positions filled. Please use a different placement ADN.';
         }
         if ($errors !== []) {
             return redirect()->route('join.show')->withErrors($errors)->withInput();

@@ -408,3 +408,56 @@ it('JOIN-SUBMIT-03: both ADNs valid proceeds to the canonical /register entry', 
     $response->assertRedirect('/register?sponsor='.$sponsor['adn'].'&placement='.$sponsor['adn']);
     $response->assertSessionHasNoErrors();
 });
+
+it('JOIN-SUBMIT-04: a FULL placement node (spillover off) returns to /join with an error', function () {
+    $sponsor = regSeedRoot();
+    // Fill both slots under the sponsor's own node → no open position.
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'L', 0);
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'R', 0);
+
+    $response = $this->from('/join')->post('/join', [
+        'sponsor_adn' => $sponsor['adn'],
+        'placement_adn' => $sponsor['adn'],
+    ]);
+
+    $response->assertRedirect('/join');
+    $response->assertSessionHasErrors('placement_adn');
+});
+
+it('JOIN-SUBMIT-05: a FULL placement node proceeds when spillover is ON', function () {
+    $sponsor = regSeedRoot();
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'L', 0);
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'R', 0);
+
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'placement.spillover.enabled'],
+        ['value' => 'true', 'version' => 1, 'updated_at' => now()],
+    );
+
+    $response = $this->post('/join', [
+        'sponsor_adn' => $sponsor['adn'],
+        'placement_adn' => $sponsor['adn'],
+    ]);
+
+    $response->assertRedirect('/register?sponsor='.$sponsor['adn'].'&placement='.$sponsor['adn']);
+    $response->assertSessionHasNoErrors();
+});
+
+it('JOIN-LOOKUP-04: lookup reports has_open_slot=false for a full node (off) and true with spillover', function () {
+    $sponsor = regSeedRoot();
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'L', 0);
+    regPlaceUnder($sponsor['id'], $sponsor['id'], 'R', 0);
+
+    $this->getJson('/join/lookup?adn='.$sponsor['adn'])
+        ->assertOk()
+        ->assertJson(['found' => true, 'has_open_slot' => false]);
+
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'placement.spillover.enabled'],
+        ['value' => 'true', 'version' => 1, 'updated_at' => now()],
+    );
+
+    $this->getJson('/join/lookup?adn='.$sponsor['adn'])
+        ->assertOk()
+        ->assertJson(['found' => true, 'has_open_slot' => true]);
+});

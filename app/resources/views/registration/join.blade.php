@@ -168,6 +168,13 @@
                     paint(key, 'warn', '✓ ' + json.name + ' (couple-secondary — use the primary spouse\'s ADN instead).');
                     return;
                 }
+                // A placement node whose positions are already full can't take a
+                // new joiner — block and ask for a different placement. (Only the
+                // placement field; a full sponsor node is irrelevant to placing.)
+                if (key === 'placement' && json.has_open_slot === false) {
+                    paint(key, 'bad', json.name + "'s placement is full — both positions are taken. Use a different placement ADN.");
+                    return;
+                }
                 paint(key, 'ok', '✓ ' + json.name);
             })
             .catch(() => paint(key, 'idle', idleCopy[key] || ''));
