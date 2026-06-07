@@ -51,6 +51,38 @@
 
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Shipping Address</h2>
+
+            @auth
+            @if(($savedAddresses ?? collect())->isNotEmpty())
+            {{-- Saved-address picker: selecting one fills the fields below. --}}
+            <div class="mb-5" data-saved-addresses>
+                <p class="text-sm font-medium text-gray-700 mb-2">Use a saved address</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    @foreach($savedAddresses as $sa)
+                    <label class="flex items-start gap-2 rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-brand-400 has-[:checked]:border-brand-500 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
+                        <input type="radio" name="__saved_address" value="{{ $sa->id }}" class="mt-1 text-brand-600 focus:ring-brand-500"
+                            data-name="{{ $sa->name }}" data-phone="{{ preg_replace('/^\+91/', '', $sa->phone_e164) }}"
+                            data-line1="{{ $sa->line1 }}" data-line2="{{ $sa->line2 }}" data-city="{{ $sa->city }}"
+                            data-state="{{ $sa->state }}" data-pincode="{{ $sa->pincode }}"
+                            {{ $sa->is_default ? 'checked' : '' }}>
+                        <span class="min-w-0">
+                            <span class="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                                @if($sa->label)<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700">{{ $sa->label }}</span>@endif
+                                {{ $sa->name }}
+                            </span>
+                            <span class="block text-xs text-gray-600 mt-0.5">{{ $sa->oneLine() }}</span>
+                        </span>
+                    </label>
+                    @endforeach
+                    <label class="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 p-3 cursor-pointer hover:border-brand-400 has-[:checked]:border-brand-500 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
+                        <input type="radio" name="__saved_address" value="" class="text-brand-600 focus:ring-brand-500">
+                        <span class="text-sm font-medium text-gray-900">＋ Use a new address</span>
+                    </label>
+                </div>
+            </div>
+            @endif
+            @endauth
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Address Line 1 *</label>
@@ -82,6 +114,24 @@
                         class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
                 </div>
             </div>
+
+            @auth
+            {{-- Save this delivery address to the book for next time. --}}
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" name="save_address" value="1" checked
+                        class="rounded text-brand-600 border-gray-300 focus:ring-brand-500" data-save-address-toggle>
+                    Save this delivery address for next time
+                </label>
+                <div class="mt-2" data-save-address-label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Label (optional)</label>
+                    <input name="address_label" type="text" list="checkout-addr-labels" maxlength="40" placeholder="Home, Work, Office…"
+                        value="{{ old('address_label') }}"
+                        class="w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <datalist id="checkout-addr-labels">@foreach(($presetLabels ?? []) as $p)<option value="{{ $p }}"></option>@endforeach</datalist>
+                </div>
+            </div>
+            @endauth
         </div>
 
         {{-- Billing address --}}
@@ -218,6 +268,39 @@
         if (!same || !fields) return;
         const sync = () => { fields.style.display = same.checked ? 'none' : ''; };
         same.addEventListener('change', sync);
+        sync();
+    })();
+
+    // Saved-address picker → fill the shipping + contact fields.
+    (function () {
+        const radios = document.querySelectorAll('input[name="__saved_address"]');
+        if (!radios.length) return;
+        const set = (name, val) => { const el = document.querySelector('[name="' + name + '"]'); if (el) el.value = val || ''; };
+
+        function fill(radio) {
+            if (!radio.value) return; // "Use a new address" — leave fields as-is
+            const d = radio.dataset;
+            set('buyer_name', d.name);
+            set('buyer_phone', d.phone);
+            set('ship_line1', d.line1);
+            set('ship_line2', d.line2);
+            set('ship_city', d.city);
+            set('ship_state', d.state);
+            set('ship_pincode', d.pincode);
+        }
+
+        radios.forEach((r) => r.addEventListener('change', () => fill(r)));
+        const checked = document.querySelector('input[name="__saved_address"]:checked');
+        if (checked) fill(checked); // prefill from the default on load
+    })();
+
+    // Show the label field only when "save this address" is ticked.
+    (function () {
+        const toggle = document.querySelector('[data-save-address-toggle]');
+        const label = document.querySelector('[data-save-address-label]');
+        if (!toggle || !label) return;
+        const sync = () => { label.style.display = toggle.checked ? '' : 'none'; };
+        toggle.addEventListener('change', sync);
         sync();
     })();
 </script>

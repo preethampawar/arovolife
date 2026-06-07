@@ -32,6 +32,7 @@ final class CheckoutService
         private readonly LedgerPoster $ledger,
         private readonly CouponService $coupons,
         private readonly ShippingService $shipping,
+        private readonly CustomerAddressService $addressBook,
     ) {}
 
     /**
@@ -39,13 +40,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel) {
             // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
             //
             // A logged-in buyer is always resolved to THEIR OWN customer row,
@@ -131,10 +132,14 @@ final class CheckoutService
                 }
             }
 
-            // 1b. Persist shipping + billing addresses on file for the customer
-            // (the default of each kind). Billing falls back to shipping when
+            // 1b. Persist the shipping address into the customer's saved-address
+            // book (label-aware, de-duped, single-default) so it can be reused
+            // next time — unless the buyer opted out at checkout. Billing keeps
+            // its single "on file" default and falls back to shipping when
             // "same as shipping" was chosen.
-            $this->saveAddress($customer->id, 'shipping', $shipping);
+            if ($saveShippingAddress) {
+                $this->addressBook->save($customer->id, $shipping, $shippingLabel);
+            }
             $this->saveAddress($customer->id, 'billing', ! empty($billing) ? $billing : $shipping);
 
             // 2. Build the order

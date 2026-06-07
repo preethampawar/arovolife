@@ -87,6 +87,30 @@ it('E4-04: checkout saves shipping + billing addresses on file for the customer'
     expect($billing->city)->toBe('Mumbai');
 });
 
+it('E4-04b: checkout saves the shipping address into the book with a label + as default', function (): void {
+    $order = app(CheckoutService::class)->place(
+        cpoCart(), cpoBuyer(), cpoAddr('Pune', '7 Home St'), cpoAddr(), null, 'direct',
+        Order::PAYMENT_COD, null, null, null, true, 'Home'
+    );
+    $customer = Order::find($order->id)->customer;
+
+    $saved = CustomerAddress::where('customer_id', $customer->id)->where('kind', 'shipping')->get();
+    expect($saved)->toHaveCount(1);
+    expect($saved->first()->label)->toBe('Home');
+    expect($saved->first()->line1)->toBe('7 Home St');
+    expect($saved->first()->is_default)->toBeTrue();
+});
+
+it('E4-04c: opting out (saveShippingAddress=false) does not save a shipping address', function (): void {
+    $order = app(CheckoutService::class)->place(
+        cpoCart(), cpoBuyer(), cpoAddr('Pune', '7 Home St'), cpoAddr(), null, 'direct',
+        Order::PAYMENT_COD, null, null, null, false, null
+    );
+    $customer = Order::find($order->id)->customer;
+
+    expect(CustomerAddress::where('customer_id', $customer->id)->where('kind', 'shipping')->count())->toBe(0);
+});
+
 it('E4-05: shipping a DISCOUNTED order posts a BALANCED revenue-recognition entry (H-1 regression)', function (): void {
     $customer = Customer::create(['display_name' => 'Disc Buyer']);
     // subtotal 999.00, gst 152.39, discount 99.90 → total 899.10 (mirrors the

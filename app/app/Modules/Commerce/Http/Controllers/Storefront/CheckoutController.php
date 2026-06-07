@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
+use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
+use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Tax\Services\InvoiceGenerator;
@@ -31,6 +33,7 @@ final class CheckoutController extends Controller
         private readonly StubGateway $gateway,
         private readonly InvoiceGenerator $invoiceGenerator,
         private readonly ShippingService $shipping,
+        private readonly CustomerAddressService $addressBook,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -53,6 +56,17 @@ final class CheckoutController extends Controller
         $guestAllowed = DB::table('settings')
             ->where('key', 'commerce.guest_checkout.enabled')->value('value') === 'true';
 
+        // The logged-in buyer's saved shipping addresses, for the checkout
+        // picker (default first). Guests / not-yet-customers see none.
+        $savedAddresses = collect();
+        $userId = $request->user()?->id;
+        if ($userId !== null) {
+            $customer = Customer::where('user_id', $userId)->first();
+            if ($customer !== null) {
+                $savedAddresses = $this->addressBook->forCustomer($customer->id);
+            }
+        }
+
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
@@ -61,6 +75,8 @@ final class CheckoutController extends Controller
             'onlineEnabled' => $this->onlineEnabled(),
             'codEnabled' => $this->flag('payments.cod.enabled'),
             'refAdn' => $request->cookie(AttributionService::COOKIE_NAME),
+            'savedAddresses' => $savedAddresses,
+            'presetLabels' => CustomerAddressService::PRESET_LABELS,
         ]);
     }
 
@@ -97,6 +113,8 @@ final class CheckoutController extends Controller
             'bill_city' => [Rule::requiredIf(! $billingSame), 'nullable', 'string', 'max:100'],
             'bill_state' => [Rule::requiredIf(! $billingSame), 'nullable', 'string', 'max:64'],
             'bill_pincode' => [Rule::requiredIf(! $billingSame), 'nullable', 'regex:/^\d{6}$/'],
+            'save_address' => ['nullable', 'boolean'],
+            'address_label' => ['nullable', 'string', 'max:40'],
             'accept_terms' => ['required', 'accepted'],
         ]);
 
@@ -150,6 +168,11 @@ final class CheckoutController extends Controller
             paymentMethod: $validated['payment_method'],
             authUserId: Auth::id(),
             buyerDistributorId: Auth::user()?->distributor?->id,
+            // Save the shipping address to the book only for a logged-in buyer
+            // who opted in (the checkbox defaults to on). Guests have no account
+            // to save against.
+            saveShippingAddress: Auth::check() && $request->boolean('save_address'),
+            shippingLabel: $validated['address_label'] ?? null,
         );
 
         // ONLINE: capture immediately via the gateway (Phase 2 stub auto-captures

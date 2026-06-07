@@ -19,6 +19,7 @@ use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
+use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
@@ -394,6 +395,13 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
     Route::get('/orders/{orderNo}', [MyOrdersController::class, 'show'])->name('orders.show');
+
+    // Saved shipping-address book ("My Addresses") — reused at checkout.
+    Route::get('/addresses', [AddressController::class, 'index'])->name('addresses.index');
+    Route::post('/addresses', [AddressController::class, 'store'])->name('addresses.store');
+    Route::patch('/addresses/{address}', [AddressController::class, 'update'])->whereNumber('address')->name('addresses.update');
+    Route::post('/addresses/{address}/default', [AddressController::class, 'setDefault'])->whereNumber('address')->name('addresses.set-default');
+    Route::delete('/addresses/{address}', [AddressController::class, 'destroy'])->whereNumber('address')->name('addresses.destroy');
 
     // Stat-card → roster modal (and downloadable CSV) for the four headline
     // team counts on the dashboard. Scope guard mirrors TeamStatsService::roster.

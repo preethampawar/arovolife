@@ -1893,6 +1893,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 15
+			path: tests/Modules/Commerce/AddressBookTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 8
 			path: tests/Modules/Commerce/AdminBvLedgerTest.php
 
@@ -1975,12 +1981,6 @@ parameters:
 			path: tests/Modules/Commerce/CheckoutCodToggleTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CustomerAddress\:\:\$city\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/CheckoutPaymentTest.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1995,7 +1995,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 4
 			path: tests/Modules/Commerce/CheckoutPaymentTest.php
 
 		-
@@ -2019,7 +2019,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 7
+			count: 6
 			path: tests/Modules/Commerce/CheckoutPaymentTest.php
 
 		-
