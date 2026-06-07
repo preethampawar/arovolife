@@ -9,6 +9,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property int $id
+ * @property string $slug
+ * @property string $name
+ * @property string $status
+ * @property string|null $image_s3_key
+ * @property string|null $banner_s3_key
+ * @property string|null $banner_external_url
+ */
 final class ProductCategory extends Model
 {
     protected $table = 'product_categories';
@@ -18,7 +27,8 @@ final class ProductCategory extends Model
     public const STATUS_ARCHIVED = 'archived';
 
     protected $fillable = [
-        'slug', 'name', 'parent_id', 'description', 'image_s3_key', 'sort', 'status',
+        'slug', 'name', 'parent_id', 'description', 'image_s3_key',
+        'banner_s3_key', 'banner_external_url', 'sort', 'status',
     ];
 
     protected function casts(): array
@@ -56,6 +66,21 @@ final class ProductCategory extends Model
     {
         return $this->image_s3_key !== null
             ? Storage::disk('s3')->url($this->image_s3_key)
+            : null;
+    }
+
+    /**
+     * Public URL for the wide category banner (external URL wins, else the S3
+     * object), or null when none is set.
+     */
+    public function bannerUrl(): ?string
+    {
+        if (! empty($this->banner_external_url)) {
+            return $this->banner_external_url;
+        }
+
+        return $this->banner_s3_key !== null
+            ? Storage::disk('s3')->url($this->banner_s3_key)
             : null;
     }
 }

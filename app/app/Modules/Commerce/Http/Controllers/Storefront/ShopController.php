@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
+use App\Modules\Catalog\Models\Banner;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Commerce\Services\CartService;
@@ -60,6 +61,8 @@ final class ShopController extends Controller
             'products' => $products,
             'categories' => $categories,
             'activeSlug' => $activeSlug,
+            'activeCategory' => $activeCategory,
+            'banners' => Banner::query()->displayable()->get(),
             'cart' => $this->cartService->currentCart($request),
             'freeShippingThresholdRupees' => intdiv($this->shipping->freeThresholdPaise(), 100),
         ]);

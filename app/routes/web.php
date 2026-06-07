@@ -14,6 +14,7 @@ use App\Modules\Admin\Http\Controllers\AdminKycController;
 use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
+use App\Modules\Catalog\Http\Controllers\Admin\AdminBannerController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
@@ -273,6 +274,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/catalog/categories/{category}/edit', [AdminCategoryController::class, 'edit'])->name('catalog.categories.edit');
     Route::put('/catalog/categories/{category}', [AdminCategoryController::class, 'update'])->name('catalog.categories.update');
     Route::post('/catalog/categories/{category}/archive', [AdminCategoryController::class, 'archive'])->name('catalog.categories.archive');
+
+    // Storefront shopping-mall carousel banners
+    Route::get('/catalog/banners', [AdminBannerController::class, 'index'])->name('catalog.banners.index');
+    Route::get('/catalog/banners/create', [AdminBannerController::class, 'create'])->name('catalog.banners.create');
+    Route::post('/catalog/banners', [AdminBannerController::class, 'store'])->name('catalog.banners.store');
+    Route::get('/catalog/banners/{banner}/edit', [AdminBannerController::class, 'edit'])->name('catalog.banners.edit');
+    Route::put('/catalog/banners/{banner}', [AdminBannerController::class, 'update'])->name('catalog.banners.update');
+    Route::delete('/catalog/banners/{banner}', [AdminBannerController::class, 'destroy'])->name('catalog.banners.destroy');
 
     // Content pages CRUD
     Route::get('/content', [AdminContentPageController::class, 'index'])->name('content.index');

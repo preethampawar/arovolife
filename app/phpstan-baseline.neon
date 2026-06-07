@@ -55,30 +55,6 @@ parameters:
 			path: app/Modules/Admin/Models/Setting.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$image_s3_key\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Catalog/Http/Controllers/Admin/AdminCategoryController.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 3
@@ -191,18 +167,6 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Catalog/Models/ProductAttribute.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$image_s3_key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Catalog/Models/ProductCategory.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Catalog/Models/ProductCategory.php
 
 		-
 			message: '#^Method App\\Modules\\Catalog\\Models\\ProductCategory\:\:children\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -1405,12 +1369,6 @@ parameters:
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductCategory\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminCatalogTest.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$s3_key\.$#'
 			identifier: property.notFound
 			count: 3
@@ -1485,7 +1443,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 23
+			count: 22
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
@@ -1745,6 +1703,18 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Admin/TerminateDistributorTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Catalog/BannerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Catalog/BannerTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'

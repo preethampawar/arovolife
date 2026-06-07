@@ -202,6 +202,25 @@
                 </a>
             @endforeach
 
+            {{-- Categories mega-dropdown (Atomy-style), built from the category master. --}}
+            @if(($navCategories ?? collect())->isNotEmpty())
+            <div class="relative" data-cat-menu>
+                <button type="button" data-cat-trigger aria-haspopup="menu" aria-expanded="false"
+                    class="py-5 font-medium text-brand-50 hover:text-white transition-colors inline-flex items-center gap-1">
+                    Categories
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                </button>
+                <div data-cat-panel hidden role="menu"
+                    class="absolute right-0 top-full w-56 rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900 py-1 z-[60]">
+                    <a href="{{ route('shop.index') }}" class="block px-4 py-2 text-sm font-medium hover:bg-gray-50" role="menuitem">All products</a>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    @foreach($navCategories as $c)
+                    <a href="{{ route('shop.index', ['category' => $c->slug]) }}" class="block px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">{{ $c->name }}</a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             @include('partials._notification-bell', ['bellLayout' => 'flex items-center py-5'])
 
             @php $cartItemCount = $cartItemCount ?? 0; @endphp
@@ -292,6 +311,21 @@
         })();
     </script>
     @endauth
+
+    {{-- Categories dropdown toggle (available to guests + members). --}}
+    <script>
+        (function () {
+            var menu = document.querySelector('[data-cat-menu]');
+            if (!menu) return;
+            var trigger = menu.querySelector('[data-cat-trigger]');
+            var panel = menu.querySelector('[data-cat-panel]');
+            function close() { panel.hidden = true; trigger.setAttribute('aria-expanded', 'false'); }
+            function open() { panel.hidden = false; trigger.setAttribute('aria-expanded', 'true'); }
+            trigger.addEventListener('click', function (e) { e.stopPropagation(); panel.hidden ? open() : close(); });
+            document.addEventListener('click', function (e) { if (!menu.contains(e.target)) close(); });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+        })();
+    </script>
 
     {{-- Mobile drawer (slides down under the header) --}}
     <div id="mobileNavDrawer" class="hidden lg:hidden bg-brand-500 border-t border-brand-600">

@@ -3,7 +3,57 @@
 
 @section('content')
 
-{{-- Hero band — multi-tint gradient + floating accent blobs --}}
+@if(($banners ?? collect())->isNotEmpty())
+{{-- Shopping-mall carousel (admin-managed banners, recommended 1520×350). --}}
+<section class="relative mb-8 rounded-3xl overflow-hidden shadow-sm" data-carousel>
+    <div class="relative aspect-[1520/350] bg-gray-100">
+        @foreach($banners as $i => $b)
+        <a href="{{ $b->link_url ?: '' }}" @if(! $b->link_url) onclick="return false;" @endif
+           data-slide="{{ $i }}"
+           class="absolute inset-0 transition-opacity duration-700 {{ $i === 0 ? 'opacity-100' : 'opacity-0 pointer-events-none' }}">
+            <img src="{{ $b->url() }}" alt="{{ $b->title }}" class="w-full h-full object-cover">
+            @if($b->title || $b->caption)
+            <div class="absolute inset-0 flex flex-col justify-center px-8 md:px-14 bg-gradient-to-r from-black/35 via-black/10 to-transparent">
+                @if($b->title)<h2 class="text-2xl md:text-4xl font-bold text-white drop-shadow-md">{{ $b->title }}</h2>@endif
+                @if($b->caption)<p class="mt-2 text-sm md:text-base text-white/90 max-w-md drop-shadow">{{ $b->caption }}</p>@endif
+            </div>
+            @endif
+        </a>
+        @endforeach
+    </div>
+    @if($banners->count() > 1)
+    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2" data-dots>
+        @foreach($banners as $i => $b)
+        <button type="button" data-dot="{{ $i }}" aria-label="Show slide {{ $i + 1 }}"
+            class="w-2.5 h-2.5 rounded-full transition-colors {{ $i === 0 ? 'bg-white' : 'bg-white/50 hover:bg-white/80' }}"></button>
+        @endforeach
+    </div>
+    @endif
+</section>
+<script>
+(function () {
+    var root = document.querySelector('[data-carousel]');
+    if (!root) return;
+    var slides = root.querySelectorAll('[data-slide]');
+    var dots = root.querySelectorAll('[data-dot]');
+    if (slides.length < 2) return;
+    var i = 0;
+    function show(n) {
+        i = (n + slides.length) % slides.length;
+        slides.forEach(function (s, k) {
+            var on = k === i;
+            s.style.opacity = on ? '1' : '0';
+            s.style.pointerEvents = on ? '' : 'none';
+        });
+        dots.forEach(function (d, k) { d.className = d.className.replace(/bg-white(\/\d+)?( hover:bg-white\/80)?/, '') + (k === i ? ' bg-white' : ' bg-white/50 hover:bg-white/80'); });
+    }
+    dots.forEach(function (d, k) { d.addEventListener('click', function () { show(k); reset(); }); });
+    var timer = setInterval(function () { show(i + 1); }, 5000);
+    function reset() { clearInterval(timer); timer = setInterval(function () { show(i + 1); }, 5000); }
+})();
+</script>
+@else
+{{-- Hero band — multi-tint gradient + floating accent blobs (shown when no banners) --}}
 <section class="relative mb-8 rounded-3xl overflow-hidden p-8 md:p-12">
     <div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-leaf-50 to-sunrise-50"></div>
     <div class="absolute -top-16 -right-12 w-72 h-72 bg-brand-200/50 rounded-full blur-3xl pointer-events-none"></div>
@@ -39,6 +89,14 @@
         </div>
     </div>
 </section>
+@endif
+
+{{-- Selected-category banner (Atomy-style, recommended 1280×290). --}}
+@if(($activeCategory ?? null) && $activeCategory->bannerUrl())
+<section class="mb-8 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+    <img src="{{ $activeCategory->bannerUrl() }}" alt="{{ $activeCategory->name }}" class="w-full aspect-[1280/290] object-cover">
+</section>
+@endif
 
 {{-- Category pill row — colour-cycled --}}
 @php

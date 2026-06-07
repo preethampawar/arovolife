@@ -27,6 +27,8 @@ final class CategoryRequest extends FormRequest
             'sort' => ['nullable', 'integer', 'min:0'],
             'status' => ['required', Rule::in([ProductCategory::STATUS_ACTIVE, ProductCategory::STATUS_ARCHIVED])],
             'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png', 'max:5120'],
+            'banner' => ['nullable', 'image', 'mimes:jpeg,jpg,png', 'max:5120'],
+            'banner_external_url' => ['nullable', 'url', 'max:500'],
         ];
     }
 

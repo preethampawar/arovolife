@@ -11,6 +11,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 final class AdminCategoryController extends Controller
@@ -53,6 +54,13 @@ final class AdminCategoryController extends Controller
             $category->image_s3_key = $this->images->putRaw($request->file('image'), 'categories');
         }
 
+        // Wide category banner — uploaded file wins over an external URL.
+        if ($request->hasFile('banner')) {
+            $category->banner_s3_key = $this->images->putRaw($request->file('banner'), 'category-banners');
+        } elseif (! empty($data['banner_external_url'])) {
+            $category->banner_external_url = $data['banner_external_url'];
+        }
+
         $category->save();
         $this->audit('catalog.category.created', $category);
 
@@ -88,6 +96,20 @@ final class AdminCategoryController extends Controller
             $this->images->deleteKey($old);
         }
 
+        // Wide category banner — uploaded file wins; else set/clear external URL.
+        if ($request->hasFile('banner')) {
+            $old = $category->banner_s3_key;
+            $category->banner_s3_key = $this->images->putRaw($request->file('banner'), 'category-banners');
+            $category->banner_external_url = null;
+            $this->images->deleteKey($old);
+        } elseif ($request->filled('banner_external_url')) {
+            $category->banner_external_url = $data['banner_external_url'];
+            if ($category->banner_s3_key !== null) {
+                $this->images->deleteKey($category->banner_s3_key);
+                $category->banner_s3_key = null;
+            }
+        }
+
         $category->save();
         $this->audit('catalog.category.updated', $category);
 
@@ -110,7 +132,7 @@ final class AdminCategoryController extends Controller
      * Active categories eligible as a parent, excluding the category being
      * edited (a category can't be its own parent).
      *
-     * @return \Illuminate\Support\Collection<int, ProductCategory>
+     * @return Collection<int, ProductCategory>
      */
     private function parentOptions(?int $excludeId)
     {

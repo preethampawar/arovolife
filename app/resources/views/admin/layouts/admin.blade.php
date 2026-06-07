@@ -94,6 +94,7 @@
                     ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => '🏷', 'prefix' => 'admin.commerce.coupons'],
                     ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => '📦', 'prefix' => 'admin.catalog.products'],
                     ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => '🗂', 'prefix' => 'admin.catalog.categories'],
+                    ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => '🖼', 'prefix' => 'admin.catalog.banners'],
                     ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => '📄', 'prefix' => 'admin.content'],
                     ['route' => 'admin.compliance-documents.index','label' => 'Compliance Docs', 'icon' => '🛡', 'prefix' => 'admin.compliance-documents'],
                     ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => '⚙'],
