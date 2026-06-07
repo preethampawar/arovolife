@@ -41,6 +41,7 @@
     <table class="w-full text-sm">
         <thead class="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200">
             <tr>
+                <th class="px-5 py-3 w-12">S.No</th>
                 <th class="px-5 py-3">Requester</th>
                 <th class="px-5 py-3">Current parent</th>
                 <th class="px-5 py-3">Requested parent</th>
@@ -52,6 +53,7 @@
         <tbody>
             @foreach($rows as $row)
             <tr class="border-b border-gray-100 last:border-0">
+                <td class="px-5 py-3 text-gray-500">{{ $loop->iteration }}</td>
                 <td class="px-5 py-3 font-mono font-bold text-brand-600 tracking-widest">{{ $row->distributor?->adn ?? '—' }}</td>
                 <td class="px-5 py-3 font-mono text-gray-700">{{ $row->fromPlacementParent?->adn ?? '—' }}</td>
                 <td class="px-5 py-3 font-mono text-gray-700">{{ $row->toPlacementParent?->adn ?? '—' }}</td>

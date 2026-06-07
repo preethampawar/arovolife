@@ -45,6 +45,7 @@
     <table class="w-full text-sm">
         <thead class="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200">
             <tr>
+                <th class="px-5 py-3 w-12">S.No</th>
                 <th class="px-5 py-3">ADN</th>
                 <th class="px-5 py-3">Email</th>
                 <th class="px-5 py-3">Submitted</th>
@@ -55,6 +56,7 @@
         <tbody>
             @foreach($pending as $row)
             <tr class="border-b border-gray-100 last:border-0">
+                <td class="px-5 py-3 text-gray-500">{{ $loop->iteration }}</td>
                 <td class="px-5 py-3 font-mono font-bold text-brand-600 tracking-widest">
                     {{ $row->adn }}
                     @if($resubmittedIds->contains($row->id) && $currentTab !== 'rejected')

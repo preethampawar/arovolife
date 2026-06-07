@@ -20,6 +20,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50">
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-12">S.No</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Slug</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -30,6 +31,7 @@
             <tbody class="divide-y divide-gray-200">
                 @forelse($pages as $page)
                 <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3">
                         <a href="{{ route('admin.content.edit', $page) }}" class="font-medium text-gray-900 hover:text-brand-600">
                             {{ $page->title }}
@@ -57,7 +59,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">
                         No content pages yet. <a href="{{ route('admin.content.create') }}" class="text-brand-600">Create one →</a>
                     </td>
                 </tr>

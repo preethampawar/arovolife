@@ -15,6 +15,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
+                <th class="px-4 py-3 font-semibold w-12">S.No</th>
                 <th class="px-4 py-3 font-semibold">Product</th>
                 <th class="px-4 py-3 font-semibold">SKU</th>
                 <th class="px-4 py-3 font-semibold">Category</th>
@@ -29,6 +30,7 @@
             @forelse($products as $product)
                 @php $v = $product->variants->sortBy('id')->first(); @endphp
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-medium text-gray-900">{{ $product->name }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $product->sku }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $product->productCategory?->name ?? '—' }}</td>

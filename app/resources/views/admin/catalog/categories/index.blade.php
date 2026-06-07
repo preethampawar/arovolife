@@ -15,6 +15,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
+                <th class="px-4 py-3 font-semibold w-12">S.No</th>
                 <th class="px-4 py-3 font-semibold">Name</th>
                 <th class="px-4 py-3 font-semibold">Slug</th>
                 <th class="px-4 py-3 font-semibold">Parent</th>
@@ -27,6 +28,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($categories as $cat)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-medium text-gray-900">{{ $cat->name }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $cat->slug }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $cat->parent?->name ?? '—' }}</td>
@@ -40,7 +42,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="px-4 py-10 text-center text-gray-500">No categories yet.</td></tr>
+                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">No categories yet.</td></tr>
             @endforelse
         </tbody>
     </table>

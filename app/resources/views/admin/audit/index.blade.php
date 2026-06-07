@@ -51,6 +51,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
+                    <th class="text-left px-4 py-3 text-xs text-gray-700 uppercase tracking-wider w-12">S.No</th>
                     <th class="text-left px-4 py-3 text-xs text-gray-700 uppercase tracking-wider w-36">Time</th>
                     <th class="text-left px-4 py-3 text-xs text-gray-700 uppercase tracking-wider">Activity</th>
                     <th class="text-left px-4 py-3 text-xs text-gray-700 uppercase tracking-wider w-24">Details</th>
@@ -59,6 +60,7 @@
             <tbody class="divide-y divide-gray-200">
                 @forelse($logs as $log)
                 <tr class="hover:bg-gray-50/50 transition-colors align-top">
+                    <td class="px-4 py-4 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-4 text-xs text-gray-700 whitespace-nowrap">
                         <p class="text-gray-800 font-medium">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y') }}</p>
                         <p class="text-gray-600">{{ \Carbon\Carbon::parse($log->created_at)->format('H:i:s') }}</p>
@@ -109,7 +111,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="3" class="px-4 py-8 text-center text-sm text-gray-700">No audit entries found.</td>
+                    <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-700">No audit entries found.</td>
                 </tr>
                 @endforelse
             </tbody>

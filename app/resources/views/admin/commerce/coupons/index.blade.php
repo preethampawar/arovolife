@@ -15,6 +15,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
+                <th class="px-4 py-3 font-semibold w-12">S.No</th>
                 <th class="px-4 py-3 font-semibold">Code</th>
                 <th class="px-4 py-3 font-semibold">Discount</th>
                 <th class="px-4 py-3 font-semibold">Scope</th>
@@ -27,6 +28,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($coupons as $coupon)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-mono font-semibold text-gray-900">{{ $coupon->code }}</td>
                     <td class="px-4 py-3 text-gray-700">
                         {{ $coupon->displayValue() }}
@@ -47,7 +49,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="px-4 py-10 text-center text-gray-500">No coupons yet. <a href="{{ route('admin.commerce.coupons.create') }}" class="text-brand-600 underline">Create one</a>.</td></tr>
+                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">No coupons yet. <a href="{{ route('admin.commerce.coupons.create') }}" class="text-brand-600 underline">Create one</a>.</td></tr>
             @endforelse
         </tbody>
     </table>

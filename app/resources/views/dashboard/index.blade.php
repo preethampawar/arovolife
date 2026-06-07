@@ -73,12 +73,12 @@
             @if($bothFull)
                 <p class="mt-2 text-[11px] text-sunrise-700">
                     <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sunrise-500"></span>Direct slots full.</span>
-                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">Open my tree →</a>
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">My Genos →</a>
                 </p>
             @else
                 <p class="mt-2 text-[11px] text-gray-700">
                     Want a specific deeper slot?
-                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">Open my tree →</a>
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">My Genos →</a>
                 </p>
             @endif
         </div>

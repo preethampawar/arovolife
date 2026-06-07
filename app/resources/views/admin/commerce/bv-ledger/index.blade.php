@@ -82,6 +82,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50">
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-12">S.No</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ADN</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Distributor</th>
                     <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Accrued</th>
@@ -95,6 +96,7 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($summary as $row)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-mono font-medium">
                         <a href="{{ route('admin.commerce.bv-ledger.show', $row->distributor_id) }}" class="text-brand-600 hover:text-brand-700 hover:underline">{{ $row->adn }}</a>
                     </td>
@@ -109,7 +111,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No BV accumulated yet.</td></tr>
+                <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">No BV accumulated yet.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -126,6 +128,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50">
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-12">S.No</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">When</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Distributor</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
@@ -136,6 +139,7 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($entries as $e)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{{ $e->effective_at?->format('d M Y H:i') ?? '—' }}</td>
                     <td class="px-4 py-3">
                         <a href="{{ route('admin.commerce.bv-ledger.show', $e->distributor_id) }}" class="font-mono text-brand-600 hover:text-brand-700 hover:underline">{{ $e->distributor?->adn ?? '#'.$e->distributor_id }}</a>
@@ -158,7 +162,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">No BV entries in this range.</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">No BV entries in this range.</td></tr>
                 @endforelse
             </tbody>
         </table>

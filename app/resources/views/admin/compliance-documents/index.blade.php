@@ -53,6 +53,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider w-12">S.No</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Document</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">File</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
@@ -62,6 +63,7 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($documents as $doc)
                 <tr class="hover:bg-gray-50/40 transition-colors">
+                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3">
                         <p class="font-medium text-gray-900">{{ $doc->title }}</p>
                         @if($doc->description)<p class="text-xs text-gray-600 mt-0.5">{{ $doc->description }}</p>@endif
@@ -100,7 +102,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-600">No documents uploaded yet.</td></tr>
+                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-600">No documents uploaded yet.</td></tr>
                 @endforelse
             </tbody>
         </table>

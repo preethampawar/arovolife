@@ -43,7 +43,10 @@
                      role="menu">
                     <div class="px-4 py-3 border-b border-gray-100">
                         <p class="text-sm font-semibold leading-tight truncate">{{ $name }}</p>
+                        {{-- Email shown to admins only; hidden for distributors. --}}
+                        @if($isAdmin)
                         <p class="text-[11px] text-gray-500 truncate mt-0.5">{{ $user->email }}</p>
+                        @endif
                         @if($isAdmin)
                             <span class="mt-1.5 inline-block text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-sunrise-100 text-sunrise-800 font-bold">Admin</span>
                         @endif

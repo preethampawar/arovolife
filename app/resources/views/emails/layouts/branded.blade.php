@@ -51,7 +51,10 @@
                                     <td align="left" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 22px; line-height: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px;">
                                         arovolife
                                     </td>
-                                    <td align="right" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #cff1fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                </tr>
+                                {{-- Caption sits BELOW the logo, left-aligned. --}}
+                                <tr>
+                                    <td align="left" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #cff1fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; padding-top: 4px;">
                                         Direct Selling, Done Right
                                     </td>
                                 </tr>

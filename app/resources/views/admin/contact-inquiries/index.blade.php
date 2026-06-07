@@ -60,6 +60,7 @@
     <table class="w-full text-sm">
         <thead class="text-left text-[10px] uppercase tracking-wider text-gray-500 border-b border-gray-200">
             <tr>
+                <th class="px-4 py-3 w-12">S.No</th>
                 <th class="px-4 py-3">Status</th>
                 <th class="px-4 py-3">Submitted</th>
                 <th class="px-4 py-3">Name</th>
@@ -72,6 +73,7 @@
         <tbody>
             @foreach($inquiries as $row)
             <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
                 <td class="px-4 py-3">
                     @if($row->handled_at)
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-leaf-50 text-leaf-700 text-[10px] font-semibold">
