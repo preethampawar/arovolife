@@ -178,7 +178,7 @@ final class TeamStatsService
             'active' => 'Active',
             'pending' => 'Pending',
             'frozen' => 'Blocked',
-            'terminated' => 'Inactive',
+            'terminated' => 'Terminated',
             'rejected' => 'Rejected',
             default => ucfirst($status),
         };

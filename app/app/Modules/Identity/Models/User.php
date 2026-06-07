@@ -133,7 +133,8 @@ final class User extends Authenticatable
      * The genealogy tree colour-key legend: generic status buckets (not
      * per-record labels), driven by the same {@see self::STATUS_DOTS} the
      * cards use. A closed account (cancelled or terminated) shares the red
-     * "Closed" bucket here; the per-card pill carries the precise label.
+     * "Terminated" bucket here; the per-card pill carries the precise label
+     * ("Cancelled" for a cooling-off self-cancellation, else "Terminated").
      *
      * @return list<array{dot: string, label: string}>
      */
@@ -142,7 +143,7 @@ final class User extends Authenticatable
         return [
             ['dot' => self::STATUS_DOTS['pending'],    'label' => 'New Member'],
             ['dot' => self::STATUS_DOTS['active'],     'label' => 'Active'],
-            ['dot' => self::STATUS_DOTS['terminated'], 'label' => 'Closed'],
+            ['dot' => self::STATUS_DOTS['terminated'], 'label' => 'Terminated'],
             ['dot' => self::STATUS_DOTS['frozen'],     'label' => 'Suspended'],
         ];
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\PlacementEngine;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\TeamStatsService;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -248,4 +249,33 @@ it('TV-06: distributor /tree defaults to 3 levels deep; deeper nodes need an exp
     $deep = $this->actingAs($rootUser->refresh())->get('/tree?levels=4');
     $deep->assertOk();
     $deep->assertSee($l4Adn);
+});
+
+it('TV-07: a terminated downline member is bucketed/labelled "Terminated" (not "Inactive")', function () {
+    $rootUser = tvUser('root');
+    $rootId = tvSeedRoot($rootUser->id);
+
+    $childUser = tvUser('term');
+    tvPlace($rootId, $childUser);
+
+    // Close the child's account.
+    $childUser->update(['status' => 'terminated']);
+
+    $rootDistributor = Distributor::find($rootId);
+    $stats = app(TeamStatsService::class);
+
+    // full() exposes a `terminated` bucket (the dashboard "By status" card).
+    expect($stats->full($rootDistributor)['terminated'])->toBe(1);
+
+    // roster() labels that row "Terminated" — the partner's required wording.
+    $roster = $stats->roster($rootDistributor, 'total');
+    expect(collect($roster)->pluck('status')->all())->toContain('Terminated');
+    expect(collect($roster)->pluck('status')->all())->not->toContain('Inactive');
+});
+
+it('TV-08: the tree legend uses the "Terminated" bucket label (not "Closed")', function () {
+    $labels = collect(User::treeLegend())->pluck('label')->all();
+
+    expect($labels)->toContain('Terminated');
+    expect($labels)->not->toContain('Closed');
 });

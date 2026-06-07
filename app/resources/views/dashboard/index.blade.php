@@ -343,7 +343,7 @@
                 ['key' => 'active',     'label' => 'Active',     'count' => $teamStats['active'],     'cls' => 'bg-green-50 text-green-700 border-green-200',     'dot' => 'bg-green-500'],
                 ['key' => 'pending',    'label' => 'Pending',    'count' => $teamStats['pending'],    'cls' => 'bg-amber-50 text-amber-700 border-amber-200',     'dot' => 'bg-amber-500'],
                 ['key' => 'frozen',     'label' => 'Blocked',    'count' => $teamStats['frozen'],     'cls' => 'bg-red-50 text-red-700 border-red-200', 'dot' => 'bg-red-500'],
-                ['key' => 'terminated', 'label' => 'Inactive',   'count' => $teamStats['terminated'], 'cls' => 'bg-gray-100 text-gray-600 border-gray-200',       'dot' => 'bg-gray-400'],
+                ['key' => 'terminated', 'label' => 'Terminated', 'count' => $teamStats['terminated'], 'cls' => 'bg-gray-100 text-gray-600 border-gray-200',       'dot' => 'bg-gray-400'],
             ];
         @endphp
         <div class="border-t border-gray-100 pt-4">
@@ -458,7 +458,7 @@
             'Active':   'bg-green-50 text-green-700 border-green-200',
             'Pending':  'bg-amber-50 text-amber-700 border-amber-200',
             'Blocked':  'bg-red-50 text-red-700 border-red-200',
-            'Inactive': 'bg-gray-100 text-gray-600 border-gray-200',
+            'Terminated': 'bg-gray-100 text-gray-600 border-gray-200',
             'Rejected': 'bg-amber-50 text-amber-700 border-amber-200',
         };
 
