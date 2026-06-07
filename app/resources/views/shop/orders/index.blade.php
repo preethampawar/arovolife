@@ -24,6 +24,7 @@
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Order</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Total</th>
@@ -38,6 +39,7 @@
                     @foreach($orders as $order)
                     @php $bv = $order->personalBvStatus(); @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500">{{ $orders->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3">
                             <a href="{{ route('orders.show', $order->order_no) }}" class="font-mono text-brand-600 hover:text-brand-700">{{ $order->order_no }}</a>
                         </td>

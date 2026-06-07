@@ -123,6 +123,15 @@ it('lists only the authenticated distributor\'s own orders', function (): void {
         ->assertDontSee($theirs->order_no);
 });
 
+it('shows an S.No column on the My Orders list', function (): void {
+    [$user] = moUserWithDistributor();
+    moOrder($user->id);
+
+    $this->actingAs($user)->get(route('orders.index'))
+        ->assertOk()
+        ->assertSeeInOrder(['S.No', 'Order', 'Date']); // header column present, first
+});
+
 it('shows the order status as a coloured badge on My Orders list + detail', function (): void {
     [$user, $distId] = moUserWithDistributor();
     $order = moOrder($user->id, $distId); // status: delivered
