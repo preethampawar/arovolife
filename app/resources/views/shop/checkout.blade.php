@@ -26,27 +26,73 @@
     @csrf
 
     <div class="lg:col-span-2 space-y-5">
+        @if($buyerDistributor)
+        {{-- Read-only identity of the logged-in distributor placing the order.
+             Sourced from their account; not editable here. --}}
+        <div class="bg-brand-50 rounded-2xl border border-brand-200 p-6"
+             data-distributor
+             data-dist-name="{{ $buyerDistributor['name'] }}"
+             data-dist-email="{{ $buyerDistributor['email'] }}"
+             data-dist-phone="{{ $buyerDistributor['phone_local'] }}">
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="font-semibold text-gray-900">Distributor details</h2>
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd" /></svg>
+                    From your account
+                </span>
+            </div>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <div class="flex justify-between sm:block">
+                    <dt class="text-gray-500">Distributor (ADN)</dt>
+                    <dd class="font-mono font-semibold text-gray-900">{{ $buyerDistributor['adn'] }}</dd>
+                </div>
+                <div class="flex justify-between sm:block">
+                    <dt class="text-gray-500">Name</dt>
+                    <dd class="font-medium text-gray-900">{{ $buyerDistributor['name'] }}</dd>
+                </div>
+                <div class="flex justify-between sm:block">
+                    <dt class="text-gray-500">Email</dt>
+                    <dd class="font-medium text-gray-900 break-all">{{ $buyerDistributor['email'] }}</dd>
+                </div>
+                <div class="flex justify-between sm:block">
+                    <dt class="text-gray-500">Mobile</dt>
+                    <dd class="font-medium text-gray-900">{{ $buyerDistributor['phone_e164'] }}</dd>
+                </div>
+            </dl>
+        </div>
+        @endif
+
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 class="font-semibold text-gray-900 mb-4">Your Details</h2>
+            <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+                <h2 class="font-semibold text-gray-900">Customer Details</h2>
+                @if($buyerDistributor)
+                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" name="same_as_distributor" id="sameAsDistributor" value="1"
+                        {{ old('same_as_distributor') ? 'checked' : '' }}
+                        class="rounded text-brand-600 border-gray-300 focus:ring-brand-500">
+                    Same as distributor
+                </label>
+                @endif
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name *</label>
-                    <input name="buyer_name" type="text" required value="{{ old('buyer_name') }}"
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                    <input name="buyer_name" id="buyerName" type="text" required value="{{ old('buyer_name') }}"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
-                    <input name="buyer_email" type="email" required value="{{ old('buyer_email') }}"
+                    <input name="buyer_email" id="buyerEmail" type="email" required value="{{ old('buyer_email') }}"
                         placeholder="you@example.com"
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-500">
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Mobile *</label>
                     <div class="flex">
                         <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">+91</span>
-                        <input name="buyer_phone" type="tel" required value="{{ old('buyer_phone') }}"
+                        <input name="buyer_phone" id="buyerPhone" type="tel" required value="{{ old('buyer_phone') }}"
                             maxlength="10" pattern="[6-9][0-9]{9}" placeholder="9876543210"
-                            class="flex-1 rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                            class="flex-1 rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-500">
                     </div>
                 </div>
             </div>
@@ -309,6 +355,34 @@
         const sync = () => { label.style.display = toggle.checked ? '' : 'none'; };
         toggle.addEventListener('change', sync);
         sync();
+    })();
+
+    // The same-as-distributor toggle copies the logged-in distributor's
+    // identity into the customer fields and locks them; unticking restores
+    // editing.
+    (function () {
+        const toggle = document.getElementById('sameAsDistributor');
+        const panel = document.querySelector('[data-distributor]');
+        if (!toggle || !panel) return;
+
+        const name = document.getElementById('buyerName');
+        const email = document.getElementById('buyerEmail');
+        const phone = document.getElementById('buyerPhone');
+        const d = panel.dataset;
+
+        const apply = () => {
+            if (toggle.checked) {
+                name.value = d.distName || '';
+                email.value = d.distEmail || '';
+                phone.value = d.distPhone || '';
+                [name, email, phone].forEach((el) => el.setAttribute('readonly', 'readonly'));
+            } else {
+                [name, email, phone].forEach((el) => el.removeAttribute('readonly'));
+            }
+        };
+
+        toggle.addEventListener('change', apply);
+        apply(); // honour the restored checkbox state after a validation error
     })();
 </script>
 

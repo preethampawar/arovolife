@@ -67,6 +67,23 @@ final class CheckoutController extends Controller
             }
         }
 
+        // The logged-in distributor's own identity, shown as a read-only block
+        // and offered as a "same as distributor" shortcut for the customer
+        // fields (self-consumption is the common case). Null for guests /
+        // plain customers, who only see the editable customer block.
+        $buyerDistributor = null;
+        $authUser = $request->user();
+        if ($authUser?->distributor !== null) {
+            $buyerDistributor = [
+                'adn' => $authUser->distributor->adn,
+                'name' => $authUser->full_name,
+                'email' => $authUser->email,
+                'phone_e164' => $authUser->phone_e164,
+                // 10-digit local form for the buyer_phone field (drops +91).
+                'phone_local' => preg_replace('/^\+91/', '', (string) $authUser->phone_e164),
+            ];
+        }
+
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
@@ -77,6 +94,7 @@ final class CheckoutController extends Controller
             'refAdn' => $request->cookie(AttributionService::COOKIE_NAME),
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
+            'buyerDistributor' => $buyerDistributor,
         ]);
     }
 
