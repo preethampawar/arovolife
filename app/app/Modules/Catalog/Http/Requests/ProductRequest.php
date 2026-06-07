@@ -32,6 +32,7 @@ final class ProductRequest extends FormRequest
             'category_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')],
             'manufacturer' => ['nullable', 'string', 'max:200'],
             'country_of_origin' => ['nullable', 'string', 'max:64'],
+            'food_type' => ['nullable', Rule::in([Product::FOOD_VEG, Product::FOOD_NON_VEG])],
             'hsn_code' => ['required', 'string', 'max:16'],
             // Hosted image URL — primary product image when no gallery image is
             // uploaded (the storefront falls back to it). Lets admins use a CDN/

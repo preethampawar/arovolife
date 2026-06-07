@@ -69,6 +69,15 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Veg / Non-veg</span>
+                <select name="food_type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    @foreach(['' => 'Not applicable (non-food)', 'veg' => 'Vegetarian', 'non_veg' => 'Non-vegetarian'] as $val => $lbl)
+                        <option value="{{ $val }}" @selected((string) old('food_type', $product->food_type) === $val)>{{ $lbl }}</option>
+                    @endforeach
+                </select>
+                <span class="block text-[11px] text-gray-500 mt-1">FSSAI mark shown on the storefront for food items. Leave as “Not applicable” for personal-care / agri products.</span>
+            </label>
+            <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Status</span>
                 <select name="status" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     @foreach(['draft' => 'Draft', 'active' => 'Active', 'archived' => 'Archived'] as $val => $lbl)

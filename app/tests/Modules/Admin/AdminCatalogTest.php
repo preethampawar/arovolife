@@ -256,6 +256,82 @@ it('ACAT-05: admin creates a category with audit', function (): void {
     expect(AuditLog::where('action', 'catalog.category.created')->count())->toBe(1);
 });
 
+it('ACAT-08: admin sets a product food_type (veg) and it persists', function (): void {
+    Storage::fake('s3');
+    $admin = acatAdmin();
+    $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.products.store'), acatProductPayload($cat->id, [
+            'sku' => 'AV-VEG-1', 'slug' => 'veg-one', 'food_type' => 'veg',
+        ]))
+        ->assertRedirect();
+
+    $product = Product::where('sku', 'AV-VEG-1')->first();
+    expect($product->food_type)->toBe('veg');
+    expect($product->hasFoodMark())->toBeTrue();
+    expect($product->isVeg())->toBeTrue();
+});
+
+it('ACAT-09: food_type defaults to null (not applicable) when omitted', function (): void {
+    Storage::fake('s3');
+    $admin = acatAdmin();
+    $cat = ProductCategory::create(['slug' => 'agri-care', 'name' => 'Agri Care', 'sort' => 1, 'status' => 'active']);
+
+    $payload = acatProductPayload($cat->id, ['sku' => 'AV-NOFOOD-1', 'slug' => 'nofood-one']);
+    unset($payload['food_type']);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.products.store'), $payload)
+        ->assertRedirect();
+
+    $product = Product::where('sku', 'AV-NOFOOD-1')->first();
+    expect($product->food_type)->toBeNull();
+    expect($product->hasFoodMark())->toBeFalse();
+});
+
+it('ACAT-10: an invalid food_type is rejected', function (): void {
+    Storage::fake('s3');
+    $admin = acatAdmin();
+    $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.products.store'), acatProductPayload($cat->id, [
+            'sku' => 'AV-BADFOOD', 'slug' => 'bad-food', 'food_type' => 'vegan',
+        ]))
+        ->assertSessionHasErrors('food_type');
+
+    expect(Product::where('sku', 'AV-BADFOOD')->exists())->toBeFalse();
+});
+
+it('ACAT-11: admin can update a product food_type to non_veg', function (): void {
+    Storage::fake('s3');
+    $admin = acatAdmin();
+    $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.products.store'), acatProductPayload($cat->id, [
+            'sku' => 'AV-UPD-FOOD', 'slug' => 'upd-food', 'food_type' => 'veg',
+        ]))
+        ->assertRedirect();
+
+    $product = Product::where('sku', 'AV-UPD-FOOD')->first();
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->put(route('admin.catalog.products.update', $product), acatProductPayload($cat->id, [
+            'sku' => 'AV-UPD-FOOD', 'slug' => 'upd-food', 'food_type' => 'non_veg',
+        ]))
+        ->assertRedirect();
+
+    expect($product->fresh()->food_type)->toBe('non_veg');
+    expect($product->fresh()->isVeg())->toBeFalse();
+});
+
 it('ACAT-06: a non-admin cannot reach the catalog admin', function (): void {
     $user = acatNonAdmin();
 

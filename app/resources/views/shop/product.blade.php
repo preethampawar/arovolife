@@ -106,7 +106,10 @@
         <a href="{{ route('shop.index', ['category' => $product->productCategory?->slug ?? $product->category]) }}"
            class="text-xs text-brand-600 uppercase tracking-wider font-semibold hover:text-brand-700">{{ $catLabel }}</a>
         @endif
-        <h1 class="text-3xl font-bold text-gray-900 mt-2 mb-3">{{ $product->name }}</h1>
+        <h1 class="text-3xl font-bold text-gray-900 mt-2 mb-3 flex items-center gap-2">
+            <x-veg-mark :type="$product->food_type" />
+            <span>{{ $product->name }}</span>
+        </h1>
 
         @if($product->short_description)
         <p class="text-gray-600 mb-5">{{ $product->short_description }}</p>
@@ -212,6 +215,14 @@
                     @endif
                     @if($product->country_of_origin)
                     <tr><td class="py-2 pr-4 text-gray-500 font-medium">Country of origin</td><td class="py-2 text-gray-900">{{ $product->country_of_origin }}</td></tr>
+                    @endif
+                    @if($product->hasFoodMark())
+                    <tr><td class="py-2 pr-4 text-gray-500 font-medium">Food type</td><td class="py-2 text-gray-900">
+                        <span class="inline-flex items-center gap-1.5">
+                            <x-veg-mark :type="$product->food_type" size="sm" />
+                            {{ $product->isVeg() ? 'Vegetarian' : 'Non-vegetarian' }}
+                        </span>
+                    </td></tr>
                     @endif
                     @if($variant && $variant->weight_g > 0)
                     <tr><td class="py-2 pr-4 text-gray-500 font-medium">Net weight</td><td class="py-2 text-gray-900">{{ $variant->weight_g }} g</td></tr>

@@ -169,7 +169,10 @@
                 @endif
             </div>
             <div class="p-4 flex-1 flex flex-col">
-                <h3 class="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors leading-snug">{{ $product->name }}</h3>
+                <h3 class="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors leading-snug flex items-start gap-1.5">
+                    <x-veg-mark :type="$product->food_type" size="sm" class="mt-0.5" />
+                    <span>{{ $product->name }}</span>
+                </h3>
                 @if($product->short_description)
                     <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ $product->short_description }}</p>
                 @endif
