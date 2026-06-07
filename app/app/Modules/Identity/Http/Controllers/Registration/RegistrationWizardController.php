@@ -278,11 +278,32 @@ final class RegistrationWizardController extends Controller
             'placement_adn.regex' => 'Placement ADN must be exactly 9 digits, e.g. 111222333.',
         ]);
 
-        // Re-route through the canonical referral-link entry so all the
-        // existence / cross-line / open-slot checks happen in one place.
+        $sponsorAdn = strtoupper(trim((string) $validated['sponsor_adn']));
+        $placementAdn = strtoupper(trim((string) $validated['placement_adn']));
+
+        // Both ADNs must resolve to a real distributor before we let the
+        // applicant proceed. A wrong/unknown ADN keeps them on the /join form
+        // with a field error (the live lookup also disables the button, but
+        // this is the server-side backstop for non-JS / pasted bad values),
+        // instead of advancing and bouncing them to Contact Us. `-S`
+        // couple-secondary ADNs are normalised to the primary tree node, the
+        // same as the canonical referral entry.
+        $errors = [];
+        if (! DB::table('distributors')->where('adn', preg_replace('/-S$/', '', $sponsorAdn))->exists()) {
+            $errors['sponsor_adn'] = 'No distributor found with that sponsor ADN. Please check and try again.';
+        }
+        if (! DB::table('distributors')->where('adn', preg_replace('/-S$/', '', $placementAdn))->exists()) {
+            $errors['placement_adn'] = 'No distributor found with that placement ADN. Please check and try again.';
+        }
+        if ($errors !== []) {
+            return redirect()->route('join.show')->withErrors($errors)->withInput();
+        }
+
+        // Re-route through the canonical referral-link entry so the remaining
+        // cross-line / open-slot checks happen in one place.
         return redirect()->route('register', [
-            'sponsor' => strtoupper(trim((string) $validated['sponsor_adn'])),
-            'placement' => strtoupper(trim((string) $validated['placement_adn'])),
+            'sponsor' => $sponsorAdn,
+            'placement' => $placementAdn,
         ]);
     }
 

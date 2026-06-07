@@ -2521,6 +2521,12 @@ parameters:
 			path: tests/Modules/Identity/RegistrationEdgeCasesTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:from\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/RegistrationFlowTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
 			count: 16
@@ -2530,6 +2536,12 @@ parameters:
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:getJson\(\)\.$#'
 			identifier: method.notFound
 			count: 3
+			path: tests/Modules/Identity/RegistrationFlowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 1
 			path: tests/Modules/Identity/RegistrationFlowTest.php
 
 		-

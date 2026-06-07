@@ -369,3 +369,42 @@ it('JOIN-LOOKUP-03: rejects malformed ADN without touching the DB', function () 
     $response->assertOk();
     $response->assertExactJson(['found' => false]);
 });
+
+// ─── JOIN-SUBMIT — server backstop: a wrong ADN must not proceed ──────────────
+
+it('JOIN-SUBMIT-01: a non-existent placement ADN returns to /join with an error (does not proceed)', function () {
+    $sponsor = regSeedRoot();
+
+    $response = $this->from('/join')->post('/join', [
+        'sponsor_adn' => $sponsor['adn'],
+        'placement_adn' => '999999999', // well-formed but not seeded
+    ]);
+
+    $response->assertRedirect('/join');
+    $response->assertSessionHasErrors('placement_adn');
+    $response->assertSessionDoesntHaveErrors('sponsor_adn');
+});
+
+it('JOIN-SUBMIT-02: a non-existent sponsor ADN returns to /join with an error', function () {
+    $sponsor = regSeedRoot();
+
+    $response = $this->from('/join')->post('/join', [
+        'sponsor_adn' => '999999999',
+        'placement_adn' => $sponsor['adn'],
+    ]);
+
+    $response->assertRedirect('/join');
+    $response->assertSessionHasErrors('sponsor_adn');
+});
+
+it('JOIN-SUBMIT-03: both ADNs valid proceeds to the canonical /register entry', function () {
+    $sponsor = regSeedRoot();
+
+    $response = $this->post('/join', [
+        'sponsor_adn' => $sponsor['adn'],
+        'placement_adn' => $sponsor['adn'],
+    ]);
+
+    $response->assertRedirect('/register?sponsor='.$sponsor['adn'].'&placement='.$sponsor['adn']);
+    $response->assertSessionHasNoErrors();
+});

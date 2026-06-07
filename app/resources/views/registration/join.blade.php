@@ -68,8 +68,8 @@
             </p>
         </div>
 
-        <button type="submit"
-            class="w-full rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-lg shadow-brand-500/30">
+        <button type="submit" id="join-submit"
+            class="w-full rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-lg shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-brand-500">
             Continue to Orientation →
         </button>
     </form>
@@ -105,8 +105,24 @@
         return document.querySelector('[data-adn-name="' + key + '"]');
     }
 
+    // Both ADNs must resolve to a real distributor before the applicant can
+    // continue. The Continue button stays disabled until each side is 'ok'
+    // (or 'warn' — a couple-secondary, which the server normalises to its
+    // primary). Anything else — empty, malformed, looking-up, or not-found —
+    // keeps it disabled so a wrong ADN can't proceed.
+    const submitBtn = document.getElementById('join-submit');
+    const valid = { sponsor: false, placement: false };
+
+    function refreshSubmit() {
+        if (submitBtn) {
+            submitBtn.disabled = !(valid.sponsor && valid.placement);
+        }
+    }
+
     function paint(key, state, text) {
         const el = nameEl(key);
+        valid[key] = (state === 'ok' || state === 'warn');
+        refreshSubmit();
         if (!el) return;
         el.classList.remove('text-gray-500', 'text-green-700', 'text-red-600', 'text-amber-700');
         el.classList.add(
@@ -157,8 +173,19 @@
             .catch(() => paint(key, 'idle', idleCopy[key] || ''));
     }
 
-    // On page load, if the sponsor came in pre-filled (locked) or the
-    // user is editing pre-populated input, kick the lookups immediately.
+    // Belt-and-braces: never let a disabled-state submit through (e.g. Enter
+    // key) — the server re-checks existence regardless.
+    if (submitBtn && submitBtn.form) {
+        submitBtn.form.addEventListener('submit', (e) => {
+            if (!(valid.sponsor && valid.placement)) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Start disabled until both ADNs resolve, then kick off lookups for any
+    // pre-filled fields (locked sponsor link, or repopulated-after-error).
+    refreshSubmit();
     document.querySelectorAll('[data-adn-input]').forEach((el) => {
         if (el.value.trim() !== '') {
             scheduleLookup(el);
