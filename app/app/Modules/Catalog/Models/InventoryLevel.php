@@ -7,6 +7,10 @@ namespace App\Modules\Catalog\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $reserved
+ * @property int $on_hand
+ */
 final class InventoryLevel extends Model
 {
     protected $table = 'inventory_levels';

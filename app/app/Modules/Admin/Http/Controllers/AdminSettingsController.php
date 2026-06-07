@@ -40,6 +40,7 @@ final class AdminSettingsController extends Controller
      *   options?: array<int, array{value: string, label: string, note?: string}>,
      *   min?: int,
      *   max?: int,
+     *   format?: string,
      *   read_only?: bool,
      *   read_only_reason?: string,
      * }>
@@ -227,6 +228,15 @@ final class AdminSettingsController extends Controller
                 'type' => 'bool',
                 'default' => 'true',
             ],
+            'notifications.admin_order_email' => [
+                'group' => 'notifications',
+                'label' => 'Admin new-order alert email',
+                'description' => 'Mailbox that receives a "new order placed" alert for every order. Leave blank to turn admin alerts off. Set this to a real monitored inbox before launch (placeholder default).',
+                'type' => 'string',
+                'format' => 'email',
+                'max' => 255,
+                'default' => 'orders@arovolife.com',
+            ],
 
             // ── Payments ───────────────────────────────────────────────────
             'payments.cod.enabled' => [
@@ -391,7 +401,7 @@ final class AdminSettingsController extends Controller
      * are reported via the by-ref $error so the caller can redirect back
      * with errors instead of throwing through abort().
      *
-     * @param  array{type: string, options?: array<int, array{value: string, label: string}>, min?: int, max?: int, label: string}  $meta
+     * @param  array{type: string, options?: array<int, array{value: string, label: string}>, min?: int, max?: int, format?: string, label: string}  $meta
      */
     private function normalizeIncomingValue(Request $request, array $meta, ?string &$error = null): string
     {
@@ -436,6 +446,17 @@ final class AdminSettingsController extends Controller
                 }
 
                 return $raw;
+
+            case 'string':
+                $raw = trim((string) $request->input('value', ''));
+                // An empty value is allowed (e.g. clears/disables the setting).
+                if ($raw !== '' && ($meta['format'] ?? null) === 'email' && ! filter_var($raw, FILTER_VALIDATE_EMAIL)) {
+                    $error = "{$meta['label']} must be a valid email address (or left blank).";
+
+                    return '';
+                }
+
+                return mb_substr($raw, 0, (int) ($meta['max'] ?? 255));
 
             default:
                 $error = 'Unsupported setting type: '.$meta['type'];

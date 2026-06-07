@@ -7,6 +7,7 @@ namespace App\Modules\Commerce\Services;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
+use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
 use Illuminate\Database\DatabaseManager;
@@ -79,7 +80,7 @@ final class OrderStateMachine
         event(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
     }
 
-    public function markShipped(Order $order, ?int $actorUserId = null): void
+    public function markShipped(Order $order, ?int $actorUserId = null, ?string $carrier = null, ?string $trackingNo = null): void
     {
         if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
             throw new RuntimeException("Cannot ship from status {$order->status}");
@@ -87,10 +88,12 @@ final class OrderStateMachine
 
         $oldStatus = $order->status;
 
-        $this->db->transaction(function () use ($order, $actorUserId): void {
+        $this->db->transaction(function () use ($order, $actorUserId, $carrier, $trackingNo): void {
             $order->update([
                 'status' => Order::STATUS_SHIPPED,
                 'shipped_at' => Carbon::now(),
+                'ship_carrier' => $carrier,
+                'ship_tracking_no' => $trackingNo,
             ]);
 
             // Revenue recognition: move customer_prepayment → sales + gst_output.
@@ -138,7 +141,11 @@ final class OrderStateMachine
                 'action' => 'order.shipped',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,
-                'details' => ['order_no' => $order->order_no],
+                'details' => [
+                    'order_no' => $order->order_no,
+                    'carrier' => $carrier,
+                    'tracking_no' => $trackingNo,
+                ],
             ]);
         });
 
@@ -218,24 +225,49 @@ final class OrderStateMachine
 
     public function cancel(Order $order, string $reason, ?int $actorUserId = null): void
     {
-        if (in_array($order->status, [Order::STATUS_SHIPPED, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED, Order::STATUS_REFUNDED], true)) {
+        // Only pre-shipment orders can be cancelled. Once shipped/delivered the
+        // statutory return/refund path applies instead (Phase 3). No money has
+        // moved yet for COD (unpaid) and the online prepayment liability is
+        // settled by the refund flow later, so cancel only releases the goods.
+        if (in_array($order->status, [Order::STATUS_SHIPPED, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED, Order::STATUS_REFUNDED, Order::STATUS_CANCELLED], true)) {
             throw new RuntimeException("Cannot cancel order in status {$order->status}");
         }
 
         $oldStatus = $order->status;
 
-        $order->update([
-            'status' => Order::STATUS_CANCELLED,
-            'cancelled_at' => Carbon::now(),
-        ]);
+        $this->db->transaction(function () use ($order, $reason, $actorUserId): void {
+            $order->update([
+                'status' => Order::STATUS_CANCELLED,
+                'cancelled_at' => Carbon::now(),
+            ]);
 
-        AuditLog::create([
-            'actor_id' => $actorUserId,
-            'action' => 'order.cancelled',
-            'subject_type' => 'order',
-            'subject_id' => $order->id,
-            'details' => ['order_no' => $order->order_no, 'reason' => $reason],
-        ]);
+            // Reverse any BV accrued at payment — a cancelled order is not a
+            // completed sale, so no BV may remain against it (hard rule #2).
+            // Idempotent + a no-op when nothing was accrued (e.g. unpaid COD).
+            $this->bvLedger->reverse($order);
+
+            // Release the inventory reserved at placement so the stock is
+            // available again (tracked variants only; mirrors CheckoutService).
+            $order->loadMissing('items.variant.inventory');
+            foreach ($order->items as $item) {
+                /** @var OrderItem $item */
+                $variant = $item->variant;
+                if ($variant !== null && $variant->inventory_policy === 'track' && $variant->inventory !== null) {
+                    $release = min($item->qty, (int) $variant->inventory->reserved);
+                    if ($release > 0) {
+                        $variant->inventory->decrement('reserved', $release);
+                    }
+                }
+            }
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'order.cancelled',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => ['order_no' => $order->order_no, 'reason' => $reason],
+            ]);
+        });
 
         event(new OrderStatusChanged($order->id, $oldStatus, Order::STATUS_CANCELLED));
     }

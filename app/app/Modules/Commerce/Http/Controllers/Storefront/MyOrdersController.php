@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Services\OrderStateMachine;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -49,5 +51,33 @@ final class MyOrdersController extends Controller
             'order' => $order,
             'showBv' => $request->user()?->distributor !== null,
         ]);
+    }
+
+    /**
+     * Customer-initiated cancellation, allowed only BEFORE the order ships
+     * (placed/paid). Once shipped, the statutory return/refund path applies
+     * instead (Phase 3). Scoped to the user's own order; releases reserved
+     * stock via the state machine.
+     */
+    public function cancel(Request $request, string $orderNo): RedirectResponse
+    {
+        $order = Order::query()
+            ->where('order_no', $orderNo)
+            ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
+            ->with('items.variant.inventory')
+            ->first();
+
+        if ($order === null) {
+            throw new NotFoundHttpException;
+        }
+
+        if (! in_array($order->status, [Order::STATUS_PLACED, Order::STATUS_PAID], true)) {
+            return redirect()->route('orders.show', $order->order_no)
+                ->withErrors(['cancel' => 'This order can no longer be cancelled. Please contact support.']);
+        }
+
+        app(OrderStateMachine::class)->cancel($order, 'Cancelled by customer', $request->user()->id);
+
+        return redirect()->route('orders.show', $order->order_no)->with('status', 'Your order has been cancelled.');
     }
 }

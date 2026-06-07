@@ -6,7 +6,12 @@ namespace App\Modules\Commerce\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $status
+ * @property Carbon $ends_at
+ */
 final class OrderCoolingOff extends Model
 {
     protected $table = 'order_cooling_off';

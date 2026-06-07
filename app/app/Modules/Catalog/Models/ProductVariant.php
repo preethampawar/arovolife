@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property string $inventory_policy
+ * @property-read InventoryLevel|null $inventory
+ */
 final class ProductVariant extends Model
 {
     protected $table = 'product_variants';

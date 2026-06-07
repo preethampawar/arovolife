@@ -238,6 +238,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
     Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
     Route::post('/commerce/orders/{order}/mark-cod-paid', [AdminOrderController::class, 'markCodPaid'])->name('commerce.orders.mark-cod-paid');
+    Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
 
     // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
     // The static `export` path is declared before the {distributor} wildcard
@@ -395,6 +396,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
     Route::get('/orders/{orderNo}', [MyOrdersController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{orderNo}/cancel', [MyOrdersController::class, 'cancel'])->name('orders.cancel');
 
     // Saved shipping-address book ("My Addresses") — reused at checkout.
     Route::get('/addresses', [AddressController::class, 'index'])->name('addresses.index');

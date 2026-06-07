@@ -26,6 +26,8 @@
         @yield('content')
     </main>
 
+    <x-confirm-modal />
+
     {{-- Footer --}}
     <footer class="bg-gray-900 text-gray-400 mt-16 py-10">
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">

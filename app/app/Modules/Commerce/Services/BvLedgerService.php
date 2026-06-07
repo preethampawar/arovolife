@@ -13,13 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The single source of truth for personal Business Volume accumulation
- * (ADR-0006). Personal BV is a distributor's own-purchase (self-consumption)
- * BV, counted only once an order's 30-day cooling-off has closed and reversed
- * if the order is later refunded.
- *
- * Nothing here ever writes a credit before cooling-off expiry — `accrue()` is
- * called from {@see OrderStateMachine::expireCoolingOff()} — so the statutory
- * window cannot be bypassed by construction.
+ * (ADR-0006, revised 2026-06-02). Personal BV is a distributor's own-purchase
+ * (self-consumption) BV. It accrues when the order is paid
+ * ({@see OrderStateMachine::markPaid()}) and is reversed if the order is later
+ * refunded OR cancelled ({@see OrderStateMachine::cancel()}), so a non-sale
+ * never leaves net BV behind (hard rule #2). BV is only ever attached to a
+ * paid product sale — never to registration or recruitment.
  */
 final class BvLedgerService
 {
@@ -53,10 +52,11 @@ final class BvLedgerService
     }
 
     /**
-     * Reverse a previously accrued order (refund). Writes a negative entry that
-     * nets the order's BV back to zero. A no-op if nothing was accrued (e.g. a
-     * refund during cooling-off, where BV was never counted) — preserving the
-     * cooling-off guarantee. Idempotent. Called by the Phase-3 refund pipeline.
+     * Reverse a previously accrued order's BV. Writes a negative entry that nets
+     * the order's BV back to zero. A no-op if nothing was accrued (e.g. an
+     * unpaid COD order or one with no BV). Idempotent. Called when an order is
+     * cancelled ({@see OrderStateMachine::cancel()}) and by the Phase-3 refund
+     * pipeline — so a non-sale never leaves BV behind (hard rule #2).
      */
     public function reverse(Order $order): void
     {

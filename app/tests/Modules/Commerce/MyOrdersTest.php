@@ -123,6 +123,23 @@ it('lists only the authenticated distributor\'s own orders', function (): void {
         ->assertDontSee($theirs->order_no);
 });
 
+it('shows a Cancel button on a pre-ship order detail but not after delivery', function (): void {
+    [$user] = moUserWithDistributor();
+    $delivered = moOrder($user->id); // status: delivered
+
+    // Delivered → no cancel.
+    $this->actingAs($user)->get(route('orders.show', $delivered->order_no))
+        ->assertOk()
+        ->assertDontSee('Cancel this order');
+
+    // A fresh placed order → cancel offered.
+    $placed = moOrder($user->id);
+    $placed->update(['status' => 'placed']);
+    $this->actingAs($user)->get(route('orders.show', $placed->order_no))
+        ->assertOk()
+        ->assertSee('Cancel this order');
+});
+
 it('shows an S.No column on the My Orders list', function (): void {
     [$user] = moUserWithDistributor();
     moOrder($user->id);

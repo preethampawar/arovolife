@@ -105,6 +105,27 @@
                                     </button>
                                 </form>
 
+                            @elseif($meta['type'] === 'string')
+                                <form method="POST" action="{{ route('admin.settings.update', $key) }}"
+                                      data-setting-form class="flex items-center gap-2"
+                                      data-confirm="Save the &lsquo;{{ $meta['label'] }}&rsquo; setting?"
+                                      data-confirm-title="Confirm setting change"
+                                      data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
+                                    @csrf
+                                    <input type="{{ ($meta['format'] ?? '') === 'email' ? 'email' : 'text' }}"
+                                           id="{{ $fieldId }}"
+                                           name="value"
+                                           value="{{ old('value', $value) }}"
+                                           maxlength="{{ $meta['max'] ?? 255 }}"
+                                           {{ $readOnly ? 'disabled' : '' }}
+                                           class="w-72 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-500">
+                                    <button type="submit"
+                                            {{ $readOnly ? 'disabled' : '' }}
+                                            class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                        Save
+                                    </button>
+                                </form>
+
                             @elseif($meta['type'] === 'enum')
                                 <form method="POST" action="{{ route('admin.settings.update', $key) }}"
                                       data-setting-form class="flex items-center gap-2"

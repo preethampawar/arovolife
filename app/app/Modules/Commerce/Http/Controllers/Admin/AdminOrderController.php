@@ -53,9 +53,19 @@ final class AdminOrderController extends Controller
         return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} marked paid (COD collected).");
     }
 
-    public function markShipped(Order $order): RedirectResponse
+    public function markShipped(Request $request, Order $order): RedirectResponse
     {
-        $this->stateMachine->markShipped($order, auth()->id());
+        $validated = $request->validate([
+            'ship_carrier' => ['nullable', 'string', 'max:120'],
+            'ship_tracking_no' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $this->stateMachine->markShipped(
+            $order,
+            auth()->id(),
+            $validated['ship_carrier'] ?? null,
+            $validated['ship_tracking_no'] ?? null,
+        );
 
         return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} marked shipped.");
     }
@@ -65,5 +75,20 @@ final class AdminOrderController extends Controller
         $this->stateMachine->markDelivered($order, auth()->id());
 
         return redirect()->route('admin.commerce.orders.show', $order)->with('status', 'Delivery recorded. 30-day cooling-off clock opened.');
+    }
+
+    public function cancel(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        try {
+            $this->stateMachine->cancel($order, $validated['reason'] ?? 'Cancelled by admin', (int) auth()->id());
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['cancel' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} cancelled. Reserved stock released.");
     }
 }

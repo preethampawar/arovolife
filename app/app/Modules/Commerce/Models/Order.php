@@ -12,8 +12,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string $order_no
+ * @property string $status
+ * @property string $payment_method
+ * @property string $ship_name
+ * @property int $subtotal_paise
+ * @property int $gst_paise
+ * @property int $discount_paise
+ * @property int $total_paise
  * @property int $shipping_paise
  * @property int $customer_id
+ * @property string|null $ship_carrier
+ * @property string|null $ship_tracking_no
  */
 final class Order extends Model
 {
@@ -50,7 +59,7 @@ final class Order extends Model
         'payment_method', 'status', 'self_consumption',
         'subtotal_paise', 'gst_paise', 'discount_paise', 'shipping_paise', 'total_paise',
         'ship_name', 'ship_phone_e164', 'ship_line1', 'ship_line2',
-        'ship_city', 'ship_state', 'ship_pincode',
+        'ship_city', 'ship_state', 'ship_pincode', 'ship_carrier', 'ship_tracking_no',
         'placed_at', 'paid_at', 'shipped_at', 'delivered_at', 'cancelled_at', 'refunded_at',
         'idempotency_key', 'tnc_of_sale_consent_id',
     ];

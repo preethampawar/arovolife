@@ -55,32 +55,58 @@
         {{-- Actions --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
             <h3 class="font-semibold text-gray-900 mb-3">Fulfilment Actions</h3>
-            <div class="flex flex-wrap gap-3">
+            @error('cancel')<p class="mb-3 text-sm text-red-600">{{ $message }}</p>@enderror
+            <div class="flex flex-wrap items-end gap-3">
                 @if($order->payment_method === 'cod' && $order->status === 'placed')
                 <form method="POST" action="{{ route('admin.commerce.orders.mark-cod-paid', $order) }}"
                     data-confirm="Record COD payment as collected?"
                     data-confirm-title="Confirm COD payment"
-                    data-confirm-impact="Marks this Cash-on-Delivery order as paid and posts the cash-in ledger entry. Only do this once the cash has actually been collected.">@csrf
+                    data-confirm-impact="Impact: marks this Cash-on-Delivery order as PAID and posts the cash-in ledger entry (debits bank, settles the customer prepayment). Use only once you have actually collected the cash — it cannot be undone from here.">@csrf
                     <button class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium">Mark COD Paid</button>
                 </form>
                 @endif
+
                 @if($order->status === 'paid')
+                {{-- Ship: capture courier + tracking, then confirm. --}}
                 <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}"
+                    class="flex flex-wrap items-end gap-3"
                     data-confirm="Mark this order as shipped?"
                     data-confirm-title="Confirm shipment"
-                    data-confirm-impact="Records the order as shipped and updates its fulfilment state. This is not easily reversible.">@csrf
+                    data-confirm-impact="Impact: sets the order to SHIPPED, recognises revenue in the ledger, and emails the customer their shipping details. This is not easily reversible — make sure the courier and tracking number are correct first.">@csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Courier / carrier</label>
+                        <input name="ship_carrier" type="text" maxlength="120" placeholder="e.g. Delhivery, BlueDart"
+                            class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Tracking number</label>
+                        <input name="ship_tracking_no" type="text" maxlength="120" placeholder="e.g. 1234567890"
+                            class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
                     <button class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium">Mark as Shipped</button>
                 </form>
                 @endif
+
                 @if($order->status === 'shipped')
                 <form method="POST" action="{{ route('admin.commerce.orders.deliver', $order) }}"
                     data-confirm="Mark this order as delivered?"
                     data-confirm-title="Confirm delivery"
-                    data-confirm-impact="Records the order as delivered and opens the cooling-off window. This is not easily reversible.">@csrf
+                    data-confirm-impact="Impact: sets the order to DELIVERED and OPENS the statutory 30-day cooling-off window (the customer may return for a full refund until it closes). This is not easily reversible.">@csrf
                     <button class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">Mark as Delivered (opens cooling-off)</button>
                 </form>
                 @endif
-                @if(! in_array($order->status, ['paid', 'shipped']) && ! ($order->payment_method === 'cod' && $order->status === 'placed'))
+
+                {{-- Cancel: only before shipment (placed / paid). --}}
+                @if(in_array($order->status, ['placed', 'paid'], true))
+                <form method="POST" action="{{ route('admin.commerce.orders.cancel', $order) }}"
+                    data-confirm="Cancel this order?"
+                    data-confirm-title="Cancel order"
+                    data-confirm-impact="Impact: sets the order to CANCELLED and releases the reserved stock back to inventory. Allowed only before the order ships. Any refund of money already collected is handled separately (Phase 3). This cannot be undone.">@csrf
+                    <button class="px-4 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 text-sm font-medium">Cancel Order</button>
+                </form>
+                @endif
+
+                @if(! in_array($order->status, ['placed', 'paid', 'shipped'], true))
                 <p class="text-sm text-gray-500">No fulfilment actions available in status <strong>{{ $order->status }}</strong>.</p>
                 @endif
             </div>
@@ -95,6 +121,8 @@
                 @if($order->placed_at)<div>Placed {{ $order->placed_at->format('d M Y H:i') }}</div>@endif
                 @if($order->paid_at)<div>Paid {{ $order->paid_at->format('d M Y H:i') }}</div>@endif
                 @if($order->shipped_at)<div>Shipped {{ $order->shipped_at->format('d M Y H:i') }}</div>@endif
+                @if($order->ship_carrier || $order->ship_tracking_no)<div class="text-gray-700">Courier: {{ $order->ship_carrier ?: '—' }}@if($order->ship_tracking_no) · Tracking: <span class="font-mono">{{ $order->ship_tracking_no }}</span>@endif</div>@endif
+                @if($order->cancelled_at)<div class="text-red-700 font-medium">Cancelled {{ $order->cancelled_at->format('d M Y H:i') }}</div>@endif
                 @if($order->delivered_at)<div class="text-green-700 font-medium">Delivered {{ $order->delivered_at->format('d M Y H:i') }}</div>@endif
             </div>
         </div>

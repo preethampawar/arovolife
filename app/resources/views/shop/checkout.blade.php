@@ -19,7 +19,10 @@
 </div>
 @endif
 
-<form method="POST" action="{{ route('shop.checkout.place') }}" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<form method="POST" action="{{ route('shop.checkout.place') }}" class="grid grid-cols-1 lg:grid-cols-3 gap-6"
+    data-confirm="Place this order?"
+    data-confirm-title="Confirm your order"
+    data-confirm-impact="Impact: this places your order with arovolife. For online payment you'll be taken to pay now; for Cash on Delivery you'll pay when it arrives. You can cancel from My Orders any time before it ships, and every order is protected by the 30-day cooling-off return window after delivery.">
     @csrf
 
     <div class="lg:col-span-2 space-y-5">

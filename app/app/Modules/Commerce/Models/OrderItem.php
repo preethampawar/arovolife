@@ -8,6 +8,11 @@ use App\Modules\Catalog\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $qty
+ * @property int $product_variant_id
+ * @property-read ProductVariant|null $variant
+ */
 final class OrderItem extends Model
 {
     protected $table = 'order_items';

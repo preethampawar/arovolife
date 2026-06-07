@@ -11,6 +11,7 @@ use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Commerce\Notifications\AdminNewOrderNotification;
 use App\Modules\Commerce\Notifications\OrderPlacedNotification;
 use App\Modules\Commerce\Notifications\OrderStatusChangedNotification;
 use App\Modules\Commerce\Services\CheckoutService;
@@ -18,6 +19,7 @@ use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -109,6 +111,26 @@ it('emails the buyer their order-received confirmation on placement', function (
     app(CheckoutService::class)->place(onCart(), onBuyer($user), onAddr(), onAddr(), null, 'direct', Order::PAYMENT_ONLINE, null, $user->id, null);
 
     Notification::assertSentTo($user, OrderPlacedNotification::class);
+});
+
+it('emails the admin a new-order alert when the recipient setting is configured', function (): void {
+    onSetting('notifications.admin_order_email', 'ops@arovolife.com');
+    Notification::fake();
+    $user = onBuyerUser();
+
+    app(CheckoutService::class)->place(onCart(), onBuyer($user), onAddr(), onAddr(), null, 'direct', Order::PAYMENT_ONLINE, null, $user->id, null);
+
+    Notification::assertSentOnDemand(AdminNewOrderNotification::class);
+});
+
+it('sends NO admin alert when the recipient setting is blank', function (): void {
+    onSetting('notifications.admin_order_email', '');
+    Notification::fake();
+    $user = onBuyerUser();
+
+    app(CheckoutService::class)->place(onCart(), onBuyer($user), onAddr(), onAddr(), null, 'direct', Order::PAYMENT_ONLINE, null, $user->id, null);
+
+    Notification::assertNotSentTo(new AnonymousNotifiable, AdminNewOrderNotification::class);
 });
 
 it('emails the buyer on a status change when the toggle is ON', function (): void {

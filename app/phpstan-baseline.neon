@@ -139,24 +139,6 @@ parameters:
 			path: app/Modules/Catalog/Http/Requests/ProductRequest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\InventoryLevel\:\:\$on_hand\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Catalog/Models/InventoryLevel.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\InventoryLevel\:\:\$reserved\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Catalog/Models/InventoryLevel.php
-
-		-
-			message: '#^Method App\\Modules\\Catalog\\Models\\InventoryLevel\:\:available\(\) should return int but returns float\|int\<0, max\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Modules/Catalog/Models/InventoryLevel.php
-
-		-
 			message: '#^Method App\\Modules\\Catalog\\Models\\InventoryLevel\:\:variant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -391,12 +373,6 @@ parameters:
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CartController.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -431,18 +407,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Modules/Commerce/Http/Requests/CouponRequest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$ship_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Listeners/SendOrderPlacedMail.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$ship_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Listeners/SendOrderStatusChangedMail.php
 
 		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\BvLedgerEntry\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -625,12 +589,6 @@ parameters:
 			path: app/Modules/Commerce/Models/Order.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/Order.php
-
-		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:bvLedgerEntries\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -667,18 +625,6 @@ parameters:
 			path: app/Modules/Commerce/Models/Order.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$ends_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/OrderCoolingOff.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/OrderCoolingOff.php
-
-		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -686,12 +632,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderItem\:\:\$bv_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/OrderItem.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderItem\:\:\$qty\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Models/OrderItem.php
@@ -869,48 +809,6 @@ parameters:
 			identifier: property.notFound
 			count: 2
 			path: app/Modules/Commerce/Services/CouponService.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$discount_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$gst_paise\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$subtotal_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$ends_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Services/OrderStateMachine.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ends_at\.$#'
@@ -1315,12 +1213,6 @@ parameters:
 			path: app/Modules/Payments/Models/RefundIntent.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Payments/Services/StubGateway.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Payments\\Models\\PaymentIntent\:\:\$status\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1393,24 +1285,6 @@ parameters:
 			path: app/Modules/Tax/Models/InvoiceLine.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$gst_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$subtotal_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_paise\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1481,18 +1355,6 @@ parameters:
 			identifier: deadCode.unreachable
 			count: 1
 			path: tests/Feature/Compliance/CommissionHasProductSaleTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$ends_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$opened_at\.$#'
@@ -1597,12 +1459,6 @@ parameters:
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$on_hand\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminCatalogTest.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$sort\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1629,7 +1485,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 24
+			count: 23
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
@@ -1903,12 +1759,6 @@ parameters:
 			path: tests/Modules/Commerce/AdminBvLedgerTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/BvLedgerTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -1917,12 +1767,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Commerce/BvLedgerTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Commerce/BvLedgerTest.php
 
@@ -1981,18 +1825,6 @@ parameters:
 			path: tests/Modules/Commerce/CheckoutCodToggleTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$payment_method\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Modules/Commerce/CheckoutPaymentTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 4
-			path: tests/Modules/Commerce/CheckoutPaymentTest.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 4
@@ -2014,12 +1846,6 @@ parameters:
 			message: '#^Function cpoBuyer\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: tests/Modules/Commerce/CheckoutPaymentTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
-			count: 6
 			path: tests/Modules/Commerce/CheckoutPaymentTest.php
 
 		-
@@ -2121,7 +1947,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 9
 			path: tests/Modules/Commerce/MyOrdersTest.php
 
 		-
@@ -2173,6 +1999,24 @@ parameters:
 			path: tests/Modules/Commerce/OrderBvDisplayTest.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$variant\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/OrderCancelTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Commerce/OrderCancelTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/OrderCancelTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2191,12 +2035,6 @@ parameters:
 			path: tests/Modules/Commerce/OrderNotificationTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$total_paise\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Modules/Commerce/ShippingTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2212,12 +2050,6 @@ parameters:
 			message: '#^Function shipBuyer\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: tests/Modules/Commerce/ShippingTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
-			count: 2
 			path: tests/Modules/Commerce/ShippingTest.php
 
 		-

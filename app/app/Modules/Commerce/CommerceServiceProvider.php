@@ -6,6 +6,7 @@ namespace App\Modules\Commerce;
 
 use App\Modules\Commerce\Events\OrderPlaced;
 use App\Modules\Commerce\Events\OrderStatusChanged;
+use App\Modules\Commerce\Listeners\SendAdminNewOrderMail;
 use App\Modules\Commerce\Listeners\SendOrderPlacedMail;
 use App\Modules\Commerce\Listeners\SendOrderStatusChangedMail;
 use App\Modules\Commerce\Services\AttributionService;
@@ -42,6 +43,7 @@ final class CommerceServiceProvider extends ServiceProvider
         // queued and dispatch channel-agnostic Notifications, so adding SMS
         // later is a channel change, not a rewrite.
         Event::listen(OrderPlaced::class, SendOrderPlacedMail::class);
+        Event::listen(OrderPlaced::class, SendAdminNewOrderMail::class);
         Event::listen(OrderStatusChanged::class, SendOrderStatusChangedMail::class);
 
         // Make the cart item count available to the nav (cart-icon count badge

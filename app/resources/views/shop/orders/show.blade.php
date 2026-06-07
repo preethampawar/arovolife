@@ -21,6 +21,11 @@
         @include('partials.order-status-badge', ['status' => $order->status])
     </div>
 
+    @if(session('status'))
+    <div class="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{{ session('status') }}</div>
+    @endif
+    @error('cancel')<div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ $message }}</div>@enderror
+
     {{-- Items --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h2 class="font-semibold text-gray-900 mb-4">Items</h2>
@@ -76,6 +81,25 @@
             {{ $order->ship_line1 }}@if($order->ship_line2), {{ $order->ship_line2 }}@endif<br>
             {{ $order->ship_city }}, {{ $order->ship_state }} {{ $order->ship_pincode }}
         </p>
+        @if($order->ship_carrier || $order->ship_tracking_no)
+        <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700">
+            <span class="font-medium text-gray-900">Tracking:</span>
+            {{ $order->ship_carrier ?: 'Courier' }}@if($order->ship_tracking_no) — <span class="font-mono">{{ $order->ship_tracking_no }}</span>@endif
+        </div>
+        @endif
     </div>
+
+    {{-- Cancel (only before the order ships) --}}
+    @if(in_array($order->status, ['placed', 'paid'], true))
+    <div class="mt-6 text-right">
+        <form method="POST" action="{{ route('orders.cancel', $order->order_no) }}" class="inline"
+            data-confirm="Cancel this order?"
+            data-confirm-title="Cancel your order"
+            data-confirm-impact="Impact: this cancels your order before it ships. The items are released and the order can't be reinstated — you'd need to place a new order. Any payment already made is refunded by our team separately.">
+            @csrf
+            <button type="submit" class="text-sm font-medium text-red-600 hover:text-red-700">Cancel this order</button>
+        </form>
+    </div>
+    @endif
 </div>
 @endsection
