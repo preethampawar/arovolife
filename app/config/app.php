@@ -107,6 +107,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | PII Encryption Key
+    |--------------------------------------------------------------------------
+    |
+    | A DEDICATED, stable key used only for personal data at rest (PAN,
+    | Aadhaar, bank account) — see App\Modules\Shared\Crypto\PiiCrypter and
+    | ADR-0008. It is intentionally independent of APP_KEY so that rotating
+    | APP_KEY (which only affects sessions, cookies and signed URLs) never
+    | makes PII unreadable. When unset, PiiCrypter falls back to APP_KEY, so
+    | existing behaviour is preserved until the key is provisioned.
+    |
+    */
+
+    'pii_key' => env('PII_ENCRYPTION_KEY'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |

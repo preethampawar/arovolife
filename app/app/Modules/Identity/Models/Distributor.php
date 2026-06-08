@@ -11,6 +11,7 @@ use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Models\Sponsorship;
 use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Orientation\Models\OrientationView;
+use App\Modules\Shared\Casts\PiiEncrypted;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
@@ -93,12 +94,13 @@ final class Distributor extends Model
             'cooling_off_end_at' => 'datetime',
             'is_primary_couple' => 'boolean',
             'depth' => 'integer',
-            // Laravel decrypts on read, encrypts on write. Backed by VARBINARY(512).
-            // Nulled by ApproveKycSubmission after admin KYC verification — at
-            // which point pan_last4 / aadhaar_last4 remain the only on-disk
-            // representation of the number.
-            'pan_encrypted' => 'encrypted',
-            'aadhaar_encrypted' => 'encrypted',
+            // Encrypted at rest with the dedicated PII key (ADR-0008), not
+            // APP_KEY, so APP_KEY rotation never makes these unreadable. Backed
+            // by VARBINARY(512). Nulled by ApproveKycSubmission after admin KYC
+            // verification — at which point pan_last4 / aadhaar_last4 remain the
+            // only on-disk representation of the number.
+            'pan_encrypted' => PiiEncrypted::class,
+            'aadhaar_encrypted' => PiiEncrypted::class,
         ];
     }
 

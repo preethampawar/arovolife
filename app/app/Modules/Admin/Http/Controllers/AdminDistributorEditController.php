@@ -14,11 +14,11 @@ use App\Modules\Identity\Services\IdPhotoDecodeError;
 use App\Modules\Identity\Services\IdPhotoStorage;
 use App\Modules\Identity\Services\RequestPasswordReset;
 use App\Modules\Kyc\Models\KycDocument;
+use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -44,7 +44,7 @@ use Illuminate\View\View;
  * Every field change writes an audit_log entry with a redacted diff. The
  * bank account number is NEVER logged in plaintext — only the new last-4
  * suffix appears in details, and the encrypted column is rotated via
- * Crypt::encryptString.
+ * PiiCrypter::encryptString.
  */
 final class AdminDistributorEditController extends Controller
 {
@@ -178,7 +178,7 @@ final class AdminDistributorEditController extends Controller
      * lookup that excludes the current row. Either field may be
      * submitted independently; both are optional. If either changes:
      *
-     *   - The full value is re-encrypted (Crypt::encryptString) and
+     *   - The full value is re-encrypted (PiiCrypter::encryptString) and
      *     stored on pan_encrypted / aadhaar_encrypted; the sha256 hash
      *     (PAN) and the last-4 columns are updated atomically.
      *   - All kyc_documents for this distributor have verified_at
@@ -257,17 +257,18 @@ final class AdminDistributorEditController extends Controller
                 // written under a different/lost APP_KEY (e.g. data copied from
                 // another environment) throws "The MAC is invalid", 500-ing the
                 // whole edit. Replacing identity must never require reading the
-                // old value. Crypt::encryptString() is byte-compatible with the
-                // `encrypted` cast's reader, so later reads round-trip normally.
+                // old value. PiiCrypter encrypts with the dedicated PII key and
+                // is the same encrypter the model's PiiEncrypted cast reads with
+                // (ADR-0008), so later reads round-trip normally.
                 $update = [];
                 if ($newPan !== '') {
                     $update['pan_hash'] = hash('sha256', $newPan, true);
                     $update['pan_last4'] = substr($newPan, -4);
-                    $update['pan_encrypted'] = Crypt::encryptString($newPan);
+                    $update['pan_encrypted'] = PiiCrypter::encryptString($newPan);
                 }
                 if ($newAadhaar !== '') {
                     $update['aadhaar_last4'] = substr($newAadhaar, -4);
-                    $update['aadhaar_encrypted'] = Crypt::encryptString($newAadhaar);
+                    $update['aadhaar_encrypted'] = PiiCrypter::encryptString($newAadhaar);
                     // Phase 1 stub ref — replaced by the AUA/KUA partner
                     // response in Phase 2+. The new ref invalidates any
                     // earlier audit references to the prior submission.
@@ -426,7 +427,7 @@ final class AdminDistributorEditController extends Controller
             } else {
                 $distributorUpdate['bank_ifsc'] = strtoupper($ifscInput);
                 if ($accountInput !== '') {
-                    $distributorUpdate['bank_account_enc'] = Crypt::encryptString($accountInput);
+                    $distributorUpdate['bank_account_enc'] = PiiCrypter::encryptString($accountInput);
                 }
             }
             $distributor->update($distributorUpdate);
