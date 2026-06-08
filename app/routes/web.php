@@ -50,6 +50,7 @@ use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
 use App\Modules\Public\Http\Controllers\ContactController;
+use App\Modules\Public\Http\Controllers\FindMyIdController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('landing.index'))->name('home');
@@ -360,6 +361,12 @@ Route::get('/compliance-documents/{document}/download', [PublicComplianceDocumen
 
 Route::get('/contact-us', [ContactController::class, 'show'])->name('contact.show');
 Route::post('/contact-us', [ContactController::class, 'submit'])->name('contact.submit');
+
+// Find My ID — recover a forgotten ADN by registered name + PAN. Throttled at
+// the route on top of the controller's per-IP limiter (anti-enumeration).
+Route::get('/find-my-id', [FindMyIdController::class, 'show'])->name('find-my-id.show');
+Route::post('/find-my-id', [FindMyIdController::class, 'lookup'])
+    ->middleware('throttle:8,10')->name('find-my-id.lookup');
 
 // ── Public Storefront (Commerce) ─────────────────────────────────────────────
 
