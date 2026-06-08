@@ -66,4 +66,96 @@ function eyeClosedSvg() {
     );
 }
 
-document.addEventListener('DOMContentLoaded', () => decoratePasswordInputs());
+// ── ID-photo crop / pan / zoom ──────────────────────────────────────────────
+// When the dashboard owner picks a photo, open a crop modal (3:4 passport
+// frame) instead of submitting immediately. On save we export the cropped
+// canvas to a JPEG and drop it back onto the form's file input, so the
+// existing IdPhotoController upload path is unchanged.
+import Cropper from 'cropperjs';
+
+function initIdPhotoCropper() {
+    const input = document.getElementById('idPhotoInput');
+    const form = document.getElementById('idPhotoForm');
+    const modal = document.getElementById('idPhotoCropModal');
+    if (!input || !form || !modal) return;
+
+    const image = document.getElementById('idPhotoCropImage');
+    const saveBtn = document.getElementById('idPhotoCropSave');
+    const cancelBtn = document.getElementById('idPhotoCropCancel');
+    const zoom = document.getElementById('idPhotoCropZoom');
+
+    let cropper = null;
+    let lastZoom = 0;
+    let objectUrl = null;
+
+    const cleanup = () => {
+        if (cropper) { cropper.destroy(); cropper = null; }
+        if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        // Reset so picking the same file again re-fires "change".
+        input.value = '';
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save photo';
+        if (zoom) { zoom.value = '0'; lastZoom = 0; }
+    };
+
+    input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        objectUrl = URL.createObjectURL(file);
+        image.src = objectUrl;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(image, {
+            aspectRatio: 3 / 4,
+            viewMode: 1,
+            dragMode: 'move',
+            autoCropArea: 1,
+            background: false,
+            responsive: true,
+        });
+    });
+
+    if (zoom) {
+        zoom.addEventListener('input', () => {
+            if (!cropper) return;
+            const v = parseFloat(zoom.value);
+            cropper.zoom(v - lastZoom); // relative delta
+            lastZoom = v;
+        });
+    }
+
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('click', (e) => { if (e.target === modal) cleanup(); });
+
+    saveBtn.addEventListener('click', () => {
+        if (!cropper) return;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+
+        const canvas = cropper.getCroppedCanvas({
+            width: 600,
+            height: 800, // 3:4, comfortably inside the 200..4000 server bounds
+            imageSmoothingQuality: 'high',
+        });
+        if (!canvas) { cleanup(); return; }
+
+        canvas.toBlob((blob) => {
+            if (!blob) { cleanup(); return; }
+            const dt = new DataTransfer();
+            dt.items.add(new File([blob], 'id-photo.jpg', { type: 'image/jpeg' }));
+            input.files = dt.files;
+            // Submit directly (don't re-trigger the change handler).
+            form.submit();
+        }, 'image/jpeg', 0.9);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    decoratePasswordInputs();
+    initIdPhotoCropper();
+});

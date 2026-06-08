@@ -104,16 +104,54 @@
                         </div>
                     @endif
                 </label>
+                {{-- No auto-submit: app.js intercepts "change", opens the crop
+                     modal, and submits the cropped JPEG. With JS off the form
+                     still works as a plain upload. --}}
                 <input id="idPhotoInput"
                     name="photo"
                     type="file"
                     accept="image/jpeg,image/png"
-                    class="hidden"
-                    onchange="document.getElementById('idPhotoForm').submit();">
+                    class="hidden">
+                <noscript>
+                    <button type="submit" class="mt-1.5 w-full text-[11px] text-center text-brand-600 font-medium">Upload</button>
+                </noscript>
             </form>
             @error('photo')
                 <p class="mt-2 text-xs text-red-600 max-w-[160px]">{{ $message }}</p>
             @enderror
+
+            {{-- ── Crop / pan / zoom modal (Cropper.js, wired in app.js) ──────── --}}
+            <div id="idPhotoCropModal"
+                class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-900/60 p-4"
+                role="dialog" aria-modal="true" aria-label="Crop your ID photo">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-200">
+                        <p class="text-base font-bold text-gray-900">Crop your ID photo</p>
+                        <p class="text-xs text-gray-600 mt-0.5">Drag to reposition, use the slider to zoom. The frame is passport style (3:4).</p>
+                    </div>
+                    <div class="bg-gray-900/5 p-4">
+                        <div class="max-h-[60vh]">
+                            {{-- Cropper replaces this img with its own canvas UI. --}}
+                            <img id="idPhotoCropImage" alt="" class="block max-w-full">
+                        </div>
+                        <div class="flex items-center gap-3 mt-4">
+                            <span class="text-xs text-gray-500">Zoom</span>
+                            <input id="idPhotoCropZoom" type="range" min="-0.5" max="1.5" step="0.01" value="0"
+                                class="flex-1 accent-brand-600">
+                        </div>
+                    </div>
+                    <div class="px-5 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
+                        <button type="button" id="idPhotoCropCancel"
+                            class="px-4 py-2.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
+                            Cancel
+                        </button>
+                        <button type="button" id="idPhotoCropSave"
+                            class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 text-sm transition-colors">
+                            Save photo
+                        </button>
+                    </div>
+                </div>
+            </div>
         @endif
     </div>
 </div>

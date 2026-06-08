@@ -102,3 +102,19 @@ it('PS-02: profile-stats redirects to the dashboard when registration is incompl
         ->get(route('profile-stats.show'))
         ->assertRedirect(route('dashboard'));
 });
+
+it('DSH-03: dashboard ID-photo input opens the crop modal (no auto-submit)', function () {
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    $response = $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    // The Cropper.js crop/pan/zoom modal markup is present...
+    $response->assertSee('id="idPhotoCropModal"', false);
+    $response->assertSee('id="idPhotoCropImage"', false);
+    $response->assertSee('id="idPhotoCropSave"', false);
+    $response->assertSee('Crop your ID photo', false);
+
+    // ...and the file input no longer auto-submits the form on change.
+    $response->assertDontSee("onchange=\"document.getElementById('idPhotoForm').submit();\"", false);
+});
