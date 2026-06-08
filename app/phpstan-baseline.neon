@@ -397,12 +397,6 @@ parameters:
 			path: app/Modules/Commerce/Models/Cart.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Commerce/Models/Cart.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$unit_price_paise\.$#'
 			identifier: property.notFound
 			count: 2
@@ -431,12 +425,6 @@ parameters:
 			identifier: argument.type
 			count: 2
 			path: app/Modules/Commerce/Models/Cart.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/CartItem.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$unit_price_paise\.$#'
@@ -646,12 +634,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Cart\:\:\$coupon_id\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Modules/Commerce/Services/CartService.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Modules/Commerce/Services/CartService.php
 
 		-
@@ -1431,7 +1413,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 9
+			count: 14
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
@@ -1747,12 +1729,6 @@ parameters:
 			path: tests/Modules/Commerce/CartBvDisplayTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$qty\.$#'
-			identifier: property.notFound
-			count: 3
-			path: tests/Modules/Commerce/CartQuantityTest.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$anonymous_key\.$#'
 			identifier: property.notFound
 			count: 3
@@ -1777,12 +1753,6 @@ parameters:
 			path: tests/Modules/Commerce/CartQuantityTest.php
 
 		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
-			count: 3
-			path: tests/Modules/Commerce/CartQuantityTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -1793,6 +1763,12 @@ parameters:
 			identifier: offsetAccess.notFound
 			count: 1
 			path: tests/Modules/Commerce/CheckoutCodToggleTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/CheckoutDistributorDetailsTest.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -1987,6 +1963,12 @@ parameters:
 			path: tests/Modules/Commerce/OrderCancelTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Commerce/OrderInvoiceTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2003,6 +1985,42 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Commerce/OrderNotificationTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/SharedCartTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\CartItem\:\:\$unit_price_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Commerce/SharedCartTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/SharedCartTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Commerce/SharedCartTest.php
+
+		-
+			message: '#^Function sctCartFor\(\) has parameter \$variants with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Commerce/SharedCartTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Commerce/SharedCartTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
@@ -2157,7 +2175,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 5
 			path: tests/Modules/Identity/DashboardRenderTest.php
 
 		-
@@ -2171,6 +2189,24 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Identity/DistributorDetailsEndpointTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Identity/FindMyIdTest.php
+
+		-
+			message: '#^Function fmiPost\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Modules/Identity/FindMyIdTest.php
+
+		-
+			message: '#^Function fmiPost\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Identity/FindMyIdTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -2345,6 +2381,24 @@ parameters:
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Identity/RegistrationFlowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/RegistrationReviewInlineTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/RegistrationReviewInlineTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withSession\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/RegistrationReviewInlineTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
