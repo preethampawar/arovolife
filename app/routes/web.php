@@ -416,6 +416,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
     Route::get('/orders/{orderNo}', [MyOrdersController::class, 'show'])->name('orders.show');
+    Route::get('/orders/{orderNo}/invoice', [MyOrdersController::class, 'invoice'])->name('orders.invoice');
     Route::post('/orders/{orderNo}/cancel', [MyOrdersController::class, 'cancel'])->name('orders.cancel');
 
     // Saved shipping-address book ("My Addresses") — reused at checkout.

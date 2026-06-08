@@ -54,6 +54,28 @@ final class MyOrdersController extends Controller
     }
 
     /**
+     * Printable tax invoice for the customer's own order. The invoice is in the
+     * customer's name (buyer) and, when the sale is attributed to a distributor
+     * (e.g. an Easy Purchase / shared-link order), also shows that distributor's
+     * name + ADN. BV is never shown here — this is a customer-facing tax
+     * document (hard rule #3).
+     */
+    public function invoice(Request $request, string $orderNo): View
+    {
+        $order = Order::query()
+            ->where('order_no', $orderNo)
+            ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
+            ->with(['items', 'customer', 'distributor.user'])
+            ->first();
+
+        if ($order === null) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('shop.orders.invoice', ['order' => $order]);
+    }
+
+    /**
      * Customer-initiated cancellation, allowed only BEFORE the order ships
      * (placed/paid). Once shipped, the statutory return/refund path applies
      * instead (Phase 3). Scoped to the user's own order; releases reserved
