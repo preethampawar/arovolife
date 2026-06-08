@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
-use App\Modules\Kyc\Models\KycDocument;
+use App\Modules\Shared\Features\HibpPasswordCheck;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Pennant\Feature;
-use App\Modules\Shared\Features\HibpPasswordCheck;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -368,4 +369,37 @@ it('DPS-04: direct password set revokes any pending password_reset_tokens', func
         ->assertRedirect();
 
     expect(DB::table('password_reset_tokens')->where('email', $user->email)->exists())->toBeFalse();
+});
+
+it('DIA-09: identity update succeeds when the stored PAN/Aadhaar were encrypted under a DIFFERENT APP_KEY (MAC-invalid regression)', function (): void {
+    ['distributor_id' => $id] = diaSeedDistributor('AAAA');
+    $admin = diaAdmin();
+
+    // Simulate PII copied in from another environment: overwrite the encrypted
+    // columns with ciphertext made under a DIFFERENT key, so decrypting with
+    // the current APP_KEY throws "The MAC is invalid" (the reported 500).
+    $foreign = new Encrypter(random_bytes(32), config('app.cipher'));
+    DB::table('distributors')->where('id', $id)->update([
+        'pan_encrypted' => $foreign->encryptString('OLDPAN1234X'),
+        'aadhaar_encrypted' => $foreign->encryptString('111122223333'),
+    ]);
+
+    // Sanity: the stored value is genuinely undecryptable under the app key.
+    expect(fn () => Crypt::decryptString(DB::table('distributors')->where('id', $id)->value('pan_encrypted')))
+        ->toThrow(DecryptException::class);
+
+    $newPan = 'BCDEF2345G';
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.identity', $id), ['pan_number' => $newPan])
+        ->assertRedirect()              // NOT a 500
+        ->assertSessionHasNoErrors();
+
+    // The row is recovered: new last4/hash, and the value now decrypts under
+    // the current key.
+    $row = DB::table('distributors')->where('id', $id)->first();
+    expect($row->pan_last4)->toBe(substr($newPan, -4))
+        ->and($row->pan_hash)->toBe(hash('sha256', $newPan, true))
+        ->and(Crypt::decryptString($row->pan_encrypted))->toBe($newPan);
 });

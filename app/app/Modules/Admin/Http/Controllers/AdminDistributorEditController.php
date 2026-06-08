@@ -249,25 +249,32 @@ final class AdminDistributorEditController extends Controller
                     'aadhaar_last4' => $distributor->aadhaar_last4,
                 ];
 
-                // Distributor model has `encrypted` casts on pan_encrypted +
-                // aadhaar_encrypted, so we assign plaintext here and the
-                // cast handles AES round-tripping. Pre-encrypting would
-                // double-wrap (encrypt(encrypt(value))) and break decrypt.
+                // Encrypt the PII columns MANUALLY and write them with a raw
+                // query, instead of assigning plaintext to the model's
+                // `encrypted`-cast attributes. Reason: on $model->update(),
+                // Eloquent's dirty-check DECRYPTS the existing value to compare
+                // it against the new one — and a row whose ciphertext was
+                // written under a different/lost APP_KEY (e.g. data copied from
+                // another environment) throws "The MAC is invalid", 500-ing the
+                // whole edit. Replacing identity must never require reading the
+                // old value. Crypt::encryptString() is byte-compatible with the
+                // `encrypted` cast's reader, so later reads round-trip normally.
                 $update = [];
                 if ($newPan !== '') {
                     $update['pan_hash'] = hash('sha256', $newPan, true);
                     $update['pan_last4'] = substr($newPan, -4);
-                    $update['pan_encrypted'] = $newPan;
+                    $update['pan_encrypted'] = Crypt::encryptString($newPan);
                 }
                 if ($newAadhaar !== '') {
                     $update['aadhaar_last4'] = substr($newAadhaar, -4);
-                    $update['aadhaar_encrypted'] = $newAadhaar;
+                    $update['aadhaar_encrypted'] = Crypt::encryptString($newAadhaar);
                     // Phase 1 stub ref — replaced by the AUA/KUA partner
                     // response in Phase 2+. The new ref invalidates any
                     // earlier audit references to the prior submission.
                     $update['aadhaar_ref'] = 'STUB_'.strtoupper(uniqid('REF', true));
                 }
-                $distributor->update($update);
+                $update['updated_at'] = now();
+                DB::table('distributors')->where('id', $distributor->id)->update($update);
 
                 // Reset KYC review state on every document attached to
                 // this distributor. The admin must re-approve via
