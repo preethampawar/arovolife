@@ -55,6 +55,7 @@
                         class="input-refined">
                     <p class="mt-1.5 text-[11px] text-slate-500">
                         Sign in with your <strong>9-digit ADN</strong>.
+                        <a href="{{ route('find-my-id.show') }}" class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">Forgot your ADN?</a>
                     </p>
                 </div>
 

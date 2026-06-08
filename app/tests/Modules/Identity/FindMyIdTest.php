@@ -150,3 +150,10 @@ it('FMI-08: the lookup requires privacy consent (DPDP)', function (): void {
 
     expect(AuditLog::where('action', 'identity.find_my_id.success')->count())->toBe(0);
 });
+
+it('FMI-09: the login page links to Find My ID', function (): void {
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertSee('Forgot your ADN?')
+        ->assertSee(route('find-my-id.show'), false);
+});
