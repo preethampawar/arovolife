@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
+use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
+use App\Modules\Commerce\Models\SharedCart;
+use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\ShippingService;
@@ -13,6 +16,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
 
 final class CartController extends Controller
 {
@@ -20,6 +24,7 @@ final class CartController extends Controller
         private readonly CartService $cartService,
         private readonly CouponService $coupons,
         private readonly ShippingService $shipping,
+        private readonly AttributionService $attribution,
     ) {}
 
     public function show(Request $request): View
@@ -113,5 +118,101 @@ final class CartController extends Controller
         $this->cartService->remove($item);
 
         return redirect()->route('shop.cart');
+    }
+
+    /**
+     * Snapshot the current cart into a shareable "Easy Purchase" link. Only a
+     * logged-in distributor can share (the link credits them, mirroring the
+     * single-product ?ref share); no income is shown or implied.
+     */
+    public function share(Request $request): RedirectResponse
+    {
+        $adn = $request->user()?->distributor?->adn;
+        if ($adn === null) {
+            return redirect()->route('shop.cart')
+                ->withErrors(['share' => 'Only distributors can create a share link.']);
+        }
+
+        $cart = $this->cartService->currentCart($request);
+
+        $items = CartItem::query()
+            ->where('cart_id', $cart->id)
+            ->get()
+            ->map(fn (CartItem $i): array => ['variant_id' => $i->product_variant_id, 'qty' => $i->qty])
+            ->values()
+            ->all();
+
+        if ($items === []) {
+            return redirect()->route('shop.cart')
+                ->withErrors(['share' => 'Add at least one product before sharing.']);
+        }
+
+        $shared = SharedCart::create([
+            'code' => $this->uniqueShareCode(),
+            'distributor_id' => $request->user()->distributor->id,
+            'ref_adn' => $adn,
+            'created_by_user_id' => $request->user()->id,
+            'items' => $items,
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        return redirect()->route('shop.cart')
+            ->with('shared_cart_url', $shared->url());
+    }
+
+    /**
+     * Open a shared cart: credit the sharer (attribution cookie) and load the
+     * snapshot into the visitor's own cart, re-pricing each line from the live
+     * variant. Inactive / removed products are skipped silently.
+     */
+    public function openShared(Request $request, string $code): RedirectResponse
+    {
+        $shared = SharedCart::where('code', $code)->first();
+
+        if ($shared === null || $shared->isExpired()) {
+            return redirect()->route('shop.index')
+                ->withErrors(['share' => 'This share link is invalid or has expired.']);
+        }
+
+        // Credit the sharing distributor (same 30-day attribution as ?ref).
+        if (is_string($shared->ref_adn) && $shared->ref_adn !== '') {
+            $this->attribution->recordTouch($request, $shared->ref_adn);
+        }
+
+        $cart = $this->cartService->currentCart($request);
+
+        $added = 0;
+        foreach ($shared->items as $line) {
+            $variantId = (int) ($line['variant_id'] ?? 0);
+            $qty = max(1, min(10, (int) ($line['qty'] ?? 1)));
+            if ($variantId <= 0) {
+                continue;
+            }
+
+            $variant = ProductVariant::where('id', $variantId)->where('status', 'active')->first();
+            if ($variant === null) {
+                continue; // product archived / variant pulled since the link was made
+            }
+
+            $this->cartService->addItem($cart, $variantId, $qty);
+            $added++;
+        }
+
+        if ($added === 0) {
+            return redirect()->route('shop.index')
+                ->withErrors(['share' => 'None of the shared products are available right now.']);
+        }
+
+        return redirect()->route('shop.cart')
+            ->with('status', $added === 1 ? '1 product added from a shared cart.' : "{$added} products added from a shared cart.");
+    }
+
+    private function uniqueShareCode(): string
+    {
+        do {
+            $code = Str::upper(Str::random(10));
+        } while (SharedCart::where('code', $code)->exists());
+
+        return $code;
     }
 }

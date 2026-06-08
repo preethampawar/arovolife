@@ -126,6 +126,38 @@
             Proceed to Checkout
         </a>
         <p class="text-xs text-gray-500 mt-3 text-center">30-day return window on every order.</p>
+
+        @if(auth()->user()?->distributor)
+        {{-- Easy Purchase (multi-product): a distributor can share this whole
+             cart with a customer. The link sets the 30-day attribution cookie
+             so purchases through it are credited to them. No income is shown
+             or implied here (hard rule #3). --}}
+        <div class="mt-5 pt-5 border-t border-gray-200">
+            @error('share')
+                <p class="mb-2 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+            @if(session('shared_cart_url'))
+                <p class="text-sm font-semibold text-gray-800 mb-1">Easy Purchase link ready</p>
+                <p class="text-xs text-gray-500 mb-2">Send this to a customer. Purchases through it for the next 30 days are attributed to you (ADN {{ auth()->user()->distributor->adn }}).</p>
+                <div class="flex items-center gap-2">
+                    <input type="text" readonly value="{{ session('shared_cart_url') }}" id="sharedCartInput"
+                        class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-mono text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <button type="button"
+                        onclick="const b=this; navigator.clipboard.writeText(document.getElementById('sharedCartInput').value).then(function(){b.textContent='Copied!';setTimeout(function(){b.textContent='Copy';},1500);})"
+                        class="shrink-0 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-colors">Copy</button>
+                </div>
+            @else
+                <form method="POST" action="{{ route('shop.cart.share') }}">
+                    @csrf
+                    <button type="submit"
+                        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-brand-300 bg-brand-50/40 hover:bg-brand-50 text-brand-700 font-semibold text-sm transition-colors">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"/></svg>
+                        Share this cart (Easy Purchase)
+                    </button>
+                </form>
+            @endif
+        </div>
+        @endif
     </div>
 </div>
 @endif

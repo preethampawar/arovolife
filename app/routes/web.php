@@ -374,6 +374,10 @@ Route::middleware('capture.attribution')->group(function (): void {
     Route::post('/shop/cart/coupon', [CartController::class, 'applyCoupon'])->name('shop.cart.coupon.apply');
     Route::delete('/shop/cart/coupon', [CartController::class, 'removeCoupon'])->name('shop.cart.coupon.remove');
 
+    // Multi-product "Easy Purchase": share the current cart, and open a shared one.
+    Route::post('/shop/cart/share', [CartController::class, 'share'])->name('shop.cart.share');
+    Route::get('/shop/easy-cart/{code}', [CartController::class, 'openShared'])->name('shop.easy-cart');
+
     Route::get('/shop/checkout', [CheckoutController::class, 'show'])->name('shop.checkout');
     Route::post('/shop/checkout', [CheckoutController::class, 'place'])->name('shop.checkout.place');
     Route::get('/shop/confirmation/{orderNo}', [CheckoutController::class, 'confirmation'])->name('shop.confirmation');

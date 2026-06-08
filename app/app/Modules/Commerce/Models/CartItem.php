@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $cart_id
  * @property int $product_variant_id
+ * @property int $qty
  */
 final class CartItem extends Model
 {
