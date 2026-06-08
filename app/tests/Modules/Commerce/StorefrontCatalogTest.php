@@ -95,6 +95,26 @@ it('SCAT-02: /shop?category= filters products to that category', function (): vo
     $response->assertDontSee('Glow Serum');
 });
 
+it('SCAT-02b: /shop renders a mobile category dropdown (no horizontal scroll on phones)', function (): void {
+    scatEnableStorefront();
+    $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+    ProductCategory::create(['slug' => 'skin-and-beauty', 'name' => 'Skin and Beauty', 'sort' => 2, 'status' => 'active']);
+    scatProduct('AV-T1', 't1', $health);
+
+    // No category selected → "All products" is the dropdown's selected option.
+    $this->get(route('shop.index'))
+        ->assertOk()
+        ->assertSee('id="categorySelect"', false)
+        ->assertSee('<option value="'.route('shop.index', ['category' => 'health-care']).'"', false);
+
+    // Selecting a category marks its option selected; the pill row stays
+    // desktop-only (hidden sm:flex).
+    $this->get(route('shop.index', ['category' => 'health-care']))
+        ->assertOk()
+        ->assertSee('hidden lg:flex', false)
+        ->assertSee('value="'.route('shop.index', ['category' => 'health-care']).'" selected', false);
+});
+
 /** Minimal active distributor (user + self-referencing distributors row) with a known ADN. */
 function scatDistributor(string $adn): User
 {

@@ -109,7 +109,21 @@
     ];
 @endphp
 @if($categories->isNotEmpty())
-<div class="flex items-center gap-2 mb-8 overflow-x-auto pb-1">
+{{-- Mobile & tablet (< lg): a single dropdown — no more sideways scrolling to
+     switch category. Navigates on change. --}}
+<div class="lg:hidden mb-6">
+    <label for="categorySelect" class="sr-only">Choose a category</label>
+    <select id="categorySelect" onchange="if(this.value){window.location.href=this.value;}"
+        class="w-full rounded-full border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <option value="{{ route('shop.index') }}" @selected(($activeSlug ?? null) === null)>All products</option>
+        @foreach($categories as $cat)
+            <option value="{{ route('shop.index', ['category' => $cat->slug]) }}" @selected(($activeSlug ?? null) === $cat->slug)>{{ $cat->name }}</option>
+        @endforeach
+    </select>
+</div>
+
+{{-- lg and up: the colour-cycled pill row. --}}
+<div class="hidden lg:flex items-center gap-2 mb-8 overflow-x-auto pb-1">
     <a href="{{ route('shop.index') }}"
        class="shrink-0 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
        {{ ($activeSlug ?? null) === null ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/30' : 'bg-white border-gray-200 text-gray-700 hover:border-brand-500' }}">
