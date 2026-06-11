@@ -18,6 +18,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $mfa_secret_enc
  * @property Carbon|null $mfa_enabled_at
  * @property string|null $full_name
+ * @property string|null $address
  * @property string|null $date_of_birth
  * @property string $status
  * @property string|null $closure_type
@@ -37,6 +38,7 @@ final class User extends Authenticatable
 
     protected $fillable = [
         'full_name',
+        'address',
         'email',
         'phone_e164',
         'password_hash',

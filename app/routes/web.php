@@ -472,7 +472,12 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Profile + change-password (any logged-in user; admins included).
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    // Throttled: update() issues+emails an OTP, confirm() verifies it — cap
+    // both so a code can't be email-spammed or its attempt counter reset.
+    Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:6,10')->name('profile.update');
+    // OTP confirmation for a mobile/email change.
+    Route::post('/profile/contact-otp', [ProfileController::class, 'confirmOtp'])->middleware('throttle:10,10')->name('profile.otp.confirm');
+    Route::post('/profile/contact-otp/resend', [ProfileController::class, 'resendOtp'])->middleware('throttle:6,10')->name('profile.otp.resend');
     Route::get('/profile/password', [ProfileController::class, 'showPasswordForm'])->name('profile.password.show');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 
