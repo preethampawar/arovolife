@@ -43,7 +43,13 @@ final class ProductImageStorage
             throw new \RuntimeException('We could not process that image. Please upload a valid JPG or PNG.');
         }
 
-        Storage::disk('s3')->put($key, $cleaned, ['visibility' => 'public']);
+        // No per-object ACL: the bucket has ACLs disabled, so a 'public' ACL is
+        // rejected and the write SILENTLY fails (the disk is throw=false),
+        // leaving a dead s3_key. Write without an ACL and fail loudly instead;
+        // the object is served via a signed URL ({@see ProductImage::url()}).
+        if (Storage::disk('s3')->put($key, $cleaned) === false) {
+            throw new \RuntimeException('Could not upload the image to storage. Please try again.');
+        }
 
         $nextSort = $productId !== null
             ? (int) ProductImage::query()->where('product_id', $productId)->where('kind', $kind)->max('sort') + 1
@@ -98,7 +104,10 @@ final class ProductImageStorage
         }
 
         $key = sprintf('%s/%s.%s', rtrim($prefix, '/'), Str::uuid()->toString(), $ext);
-        Storage::disk('s3')->put($key, $cleaned, ['visibility' => 'public']);
+        // See store(): no ACL (bucket rejects it), fail loudly, serve signed.
+        if (Storage::disk('s3')->put($key, $cleaned) === false) {
+            throw new \RuntimeException('Could not upload the image to storage. Please try again.');
+        }
 
         return $key;
     }

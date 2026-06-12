@@ -91,6 +91,27 @@ it('BAN-05: admin can delete a banner', function (): void {
     expect(Banner::find($banner->id))->toBeNull();
 });
 
+it('BAN-07: an uploaded banner is written to S3 and served via a signed URL (not a dead public URL)', function (): void {
+    Storage::fake('s3');
+    // The fake (local) disk needs a stub for signed URLs, mirroring real S3.
+    Storage::disk('s3')->buildTemporaryUrlsUsing(fn (string $path, $exp) => 'https://signed.example/'.$path);
+
+    $this->actingAs(banAdmin())->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.banners.store'), [
+            'title' => 'Uploaded banner',
+            'image' => UploadedFile::fake()->image('mall.png', 1520, 350),
+            'sort' => 0, 'status' => 'active',
+        ])->assertRedirect(route('admin.catalog.banners.index'));
+
+    $banner = Banner::first();
+    expect($banner->s3_key)->not->toBeNull();
+    expect($banner->external_url)->toBeNull();
+    // The object was actually written (the silent-fail bug is gone)...
+    Storage::disk('s3')->assertExists($banner->s3_key);
+    // ...and url() returns a SIGNED url, not a plain (403-ing) public one.
+    expect($banner->url())->toBe('https://signed.example/'.$banner->s3_key);
+});
+
 it('BAN-06: the admin banners index renders a status flash exactly once (no duplicate)', function (): void {
     $response = $this->actingAs(banAdmin())
         ->withSession(['status' => 'Banner removed.'])

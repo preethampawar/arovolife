@@ -45,6 +45,7 @@ final class ProductImage extends Model
             return $this->external_url;
         }
 
-        return $this->s3_key !== null ? Storage::disk('s3')->url($this->s3_key) : '';
+        // Private s3 bucket → signed, time-limited URL (a plain ->url() 403s).
+        return $this->s3_key !== null ? Storage::disk('s3')->temporaryUrl($this->s3_key, now()->addDay()) : '';
     }
 }

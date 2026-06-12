@@ -64,8 +64,9 @@ final class ProductCategory extends Model
      */
     public function imageUrl(): ?string
     {
+        // Private s3 bucket → signed, time-limited URL (a plain ->url() 403s).
         return $this->image_s3_key !== null
-            ? Storage::disk('s3')->url($this->image_s3_key)
+            ? Storage::disk('s3')->temporaryUrl($this->image_s3_key, now()->addDay())
             : null;
     }
 
@@ -80,7 +81,7 @@ final class ProductCategory extends Model
         }
 
         return $this->banner_s3_key !== null
-            ? Storage::disk('s3')->url($this->banner_s3_key)
+            ? Storage::disk('s3')->temporaryUrl($this->banner_s3_key, now()->addDay())
             : null;
     }
 }

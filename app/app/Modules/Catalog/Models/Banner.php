@@ -47,7 +47,10 @@ final class Banner extends Model
             return $this->external_url;
         }
 
-        return $this->s3_key !== null ? Storage::disk('s3')->url($this->s3_key) : '';
+        // Catalog images live on the PRIVATE s3 bucket (no public ACL/policy),
+        // so they're served via a signed, time-limited URL — same as KYC/ID
+        // photos. A plain ->url() would 403 in the browser.
+        return $this->s3_key !== null ? Storage::disk('s3')->temporaryUrl($this->s3_key, now()->addDay()) : '';
     }
 
     public function hasImage(): bool
