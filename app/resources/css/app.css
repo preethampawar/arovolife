@@ -99,10 +99,11 @@
     z-index: 0;
 }
 
-/* Lift normal content above the ::before grid. Exclude fixed/absolute
-   children (e.g. the confirm-modal overlay) — forcing position:relative on
-   them clobbers their own positioning and drops them into normal flow. */
-.wizard-stage > *:where(:not(.fixed):not(.absolute)) { position: relative; z-index: 1; }
+/* Lift normal content above the ::before grid. Exclude fixed/absolute/sticky
+   children (e.g. the confirm-modal overlay, the sticky top nav) — forcing
+   position:relative on them clobbers their own positioning (the sticky header
+   would stop sticking and scroll away). */
+.wizard-stage > *:where(:not(.fixed):not(.absolute):not(.sticky)) { position: relative; z-index: 1; }
 
 .text-display {
     font-family: var(--font-display);
