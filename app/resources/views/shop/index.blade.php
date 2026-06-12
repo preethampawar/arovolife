@@ -108,16 +108,7 @@
 </script>
 @endif
 
-{{-- Category pill row — colour-cycled --}}
-@php
-    // Tone cycle for category pills + product card accents.
-    $catTones = [
-        ['active' => 'bg-leaf-500 text-white border-leaf-500',       'idle' => 'bg-leaf-50 text-leaf-700 border-leaf-200 hover:bg-leaf-100'],
-        ['active' => 'bg-brand-500 text-white border-brand-500',     'idle' => 'bg-brand-50 text-brand-700 border-brand-200 hover:bg-brand-100'],
-        ['active' => 'bg-sunrise-500 text-white border-sunrise-500', 'idle' => 'bg-sunrise-50 text-sunrise-700 border-sunrise-200 hover:bg-sunrise-100'],
-        ['active' => 'bg-violet-500 text-white border-violet-500',   'idle' => 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100'],
-    ];
-@endphp
+{{-- Category filter pills --}}
 @if($categories->isNotEmpty())
 {{-- Mobile & tablet (< lg): a single dropdown — no more sideways scrolling to
      switch category. Navigates on change. --}}
@@ -132,18 +123,21 @@
     </select>
 </div>
 
-{{-- lg and up: the colour-cycled pill row. --}}
+{{-- lg and up: a clean, consistent filter-pill row. One brand-filled active
+     pill; the rest are neutral outlined pills that tint on hover. --}}
+@php
+    $pillBase   = 'shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40';
+    $pillActive = 'bg-brand-500 text-white border-brand-500 shadow-sm shadow-brand-500/30';
+    $pillIdle   = 'bg-white text-gray-600 border-gray-200 hover:border-brand-300 hover:text-brand-700 hover:bg-brand-50';
+@endphp
 <div class="hidden lg:flex items-center gap-2 mb-8 overflow-x-auto pb-1">
     <a href="{{ route('shop.index') }}"
-       class="shrink-0 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
-       {{ ($activeSlug ?? null) === null ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white border-brand-600 shadow-md shadow-brand-500/30' : 'bg-white border-gray-200 text-gray-700 hover:border-brand-500' }}">
+       class="{{ $pillBase }} {{ ($activeSlug ?? null) === null ? $pillActive : $pillIdle }}">
         All products
     </a>
-    @foreach($categories as $i => $cat)
-        @php $tone = $catTones[$i % count($catTones)]; @endphp
+    @foreach($categories as $cat)
         <a href="{{ route('shop.index', ['category' => $cat->slug]) }}"
-           class="shrink-0 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors
-           {{ ($activeSlug ?? null) === $cat->slug ? $tone['active'].' shadow-md' : $tone['idle'] }}">
+           class="{{ $pillBase }} {{ ($activeSlug ?? null) === $cat->slug ? $pillActive : $pillIdle }}">
             {{ $cat->name }}
         </a>
     @endforeach
