@@ -3,7 +3,15 @@
 
 @section('content')
 
-@if(($banners ?? collect())->isNotEmpty())
+@if(($activeCategory ?? null))
+{{-- Category page: hide the shopping-mall carousel and show ONLY this
+     category's banner, in the same rounded mall-banner style. --}}
+@if($activeCategory->bannerUrl())
+<section class="relative mb-8 rounded-3xl overflow-hidden shadow-sm">
+    <img src="{{ $activeCategory->bannerUrl() }}" alt="{{ $activeCategory->name }}" class="w-full aspect-[1280/290] object-cover bg-gray-100">
+</section>
+@endif
+@elseif(($banners ?? collect())->isNotEmpty())
 {{-- Shopping-mall carousel (admin-managed banners, recommended 1520×350). --}}
 <section class="relative mb-8 rounded-3xl overflow-hidden shadow-sm" data-carousel>
     <div class="relative aspect-[1520/350] bg-gray-100 overflow-hidden">
@@ -122,13 +130,6 @@
             <p class="mt-2 text-sm text-gray-700 font-semibold text-center">Direct from arovolife — no resellers</p>
         </div>
     </div>
-</section>
-@endif
-
-{{-- Selected-category banner (Atomy-style, recommended 1280×290). --}}
-@if(($activeCategory ?? null) && $activeCategory->bannerUrl())
-<section class="mb-8 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-    <img src="{{ $activeCategory->bannerUrl() }}" alt="{{ $activeCategory->name }}" class="w-full aspect-[1280/290] object-cover">
 </section>
 @endif
 

@@ -122,17 +122,25 @@ it('BAN-06: the admin banners index renders a status flash exactly once (no dupl
     expect(substr_count($response->getContent(), 'Banner removed.'))->toBe(1);
 });
 
-it('CATBAN-01: a category banner shows on the category-filtered shop view', function (): void {
-    $cat = ProductCategory::create([
+it('CATBAN-01: the category page shows ONLY the category banner — the mall carousel is hidden', function (): void {
+    ProductCategory::create([
         'slug' => 'health', 'name' => 'Health', 'status' => 'active', 'sort' => 0,
         'banner_external_url' => 'https://cdn.example.com/cat.jpg',
     ]);
+    // A mall banner that WOULD show the carousel on the unfiltered shop.
+    Banner::create(['title' => 'Mall', 'external_url' => 'https://cdn.example.com/mall.jpg', 'status' => 'active', 'sort' => 0]);
 
+    // Category page: category banner shown, mall carousel hidden.
     $this->get(route('shop.index', ['category' => 'health']))->assertOk()
-        ->assertSee('https://cdn.example.com/cat.jpg', false);
+        ->assertSee('https://cdn.example.com/cat.jpg', false)
+        ->assertDontSee('data-carousel', false)
+        ->assertDontSee('https://cdn.example.com/mall.jpg', false);
 
-    // Not shown on the unfiltered shop.
-    $this->get(route('shop.index'))->assertOk()->assertDontSee('https://cdn.example.com/cat.jpg', false);
+    // Unfiltered shop: mall carousel shown, category banner not.
+    $this->get(route('shop.index'))->assertOk()
+        ->assertSee('data-carousel', false)
+        ->assertSee('https://cdn.example.com/mall.jpg', false)
+        ->assertDontSee('https://cdn.example.com/cat.jpg', false);
 });
 
 it('CATNAV-01: active top-level categories appear in the storefront categories dropdown', function (): void {
