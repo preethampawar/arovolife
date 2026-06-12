@@ -185,7 +185,7 @@
     ];
     $shownIndex = 0;
 @endphp
-<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
     @foreach($products as $product)
         @php $variant = $product->primaryVariant(); @endphp
         @if($variant === null) @continue @endif
@@ -195,40 +195,40 @@
             $catLabel = $product->productCategory?->name ?? ($product->category ? str_replace('-', ' ', $product->category) : null);
         @endphp
         <a href="{{ route('shop.product', $product->slug) }}"
-           class="bg-white rounded-2xl border-2 border-gray-200 {{ $tone['borderHover'] }} overflow-hidden shadow-sm hover:shadow-xl {{ $tone['shadow'] }} hover:-translate-y-1 transition-all duration-300 group flex flex-col">
+           class="bg-white rounded-xl border border-gray-200 {{ $tone['borderHover'] }} overflow-hidden shadow-sm hover:shadow-lg {{ $tone['shadow'] }} hover:-translate-y-0.5 transition-all duration-300 group flex flex-col">
             <div class="relative aspect-square bg-gradient-to-br {{ $tone['gradient'] }} flex items-center justify-center overflow-hidden">
                 @if($cardImage)
                     <img src="{{ $cardImage }}" alt="{{ $product->name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
                 @else
                     <div class="text-center {{ $tone['iconColor'] }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto mb-2 opacity-70" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-2 opacity-70" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.41 11.59c.8-.8 2.1-.8 2.9 0l4.56 4.56m-1.5-1.5 1.66-1.66c.8-.8 2.1-.8 2.9 0l2.83 2.83M3 16.5V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5m-18 0A2.25 2.25 0 0 0 5.25 18.75h13.5A2.25 2.25 0 0 0 21 16.5m-18 0L7 12.5"/>
                         </svg>
                     </div>
                 @endif
                 @if($variant->hasDiscount())
-                    <span class="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-red-500 text-white shadow-md">
+                    <span class="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500 text-white shadow-md">
                         −{{ $variant->discountPercent() }}%
                     </span>
                 @endif
                 @if($catLabel)
-                    <span class="absolute top-3 right-3 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider {{ $tone['badgeBg'] }} {{ $tone['badgeTxt'] }} backdrop-blur-sm shadow-sm">
+                    <span class="absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider {{ $tone['badgeBg'] }} {{ $tone['badgeTxt'] }} backdrop-blur-sm shadow-sm">
                         {{ $catLabel }}
                     </span>
                 @endif
             </div>
-            <div class="p-4 flex-1 flex flex-col">
-                <h3 class="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors leading-snug flex items-start gap-1.5">
+            <div class="p-3 flex-1 flex flex-col">
+                <h3 class="text-sm font-semibold text-gray-900 group-hover:text-brand-700 transition-colors leading-snug flex items-start gap-1.5">
                     <x-veg-mark :type="$product->food_type" size="sm" class="mt-0.5" />
-                    <span>{{ $product->name }}</span>
+                    <span class="line-clamp-2">{{ $product->name }}</span>
                 </h3>
                 @if($product->short_description)
-                    <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ $product->short_description }}</p>
+                    <p class="text-xs text-gray-500 mt-1 line-clamp-1">{{ $product->short_description }}</p>
                 @endif
-                <div class="flex items-baseline gap-2 mt-3 pt-3 border-t border-gray-100 mt-auto">
-                    <span class="text-lg font-bold text-gray-900">{{ $variant->displayPrice() }}</span>
+                <div class="flex items-baseline gap-1.5 mt-2 pt-2 border-t border-gray-100 mt-auto">
+                    <span class="text-base font-bold text-gray-900">{{ $variant->displayPrice() }}</span>
                     @if($variant->hasDiscount())
-                        <span class="text-sm text-gray-400 line-through">{{ $variant->displayMrp() }}</span>
+                        <span class="text-xs text-gray-400 line-through">{{ $variant->displayMrp() }}</span>
                     @endif
                 </div>
                 {{-- BV shown only to logged-in distributors — a factual point value
