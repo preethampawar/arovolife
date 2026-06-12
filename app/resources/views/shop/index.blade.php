@@ -210,7 +210,7 @@
                             <span class="text-xs text-gray-400 line-through">{{ $variant->displayMrp() }}</span>
                         @endif
                     </div>
-                    <form method="POST" action="{{ route('shop.cart.add') }}" class="shrink-0">
+                    <form method="POST" action="{{ route('shop.cart.add') }}" class="shrink-0" data-add-to-cart>
                         @csrf
                         <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
                         <input type="hidden" name="qty" value="1">
@@ -241,5 +241,39 @@
     No products available yet — check back soon.
 </div>
 @endif
+
+{{-- Add to cart from a listing card without leaving the page: AJAX add →
+     toast + cart-badge bump. Falls back to a normal submit if JS is off. --}}
+<script>
+(function () {
+    document.querySelectorAll('form[data-add-to-cart]').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn) { btn.disabled = true; }
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+            .then(function (data) {
+                if (window.showToast) { window.showToast(data.message || 'Product successfully added to cart.', 'success'); }
+                document.querySelectorAll('[data-cart-count]').forEach(function (el) {
+                    var c = data.count || 0;
+                    el.textContent = c > 99 ? '99+' : c;
+                    el.classList.toggle('hidden', c <= 0);
+                });
+            })
+            .catch(function () {
+                if (window.showToast) { window.showToast('Could not add to cart. Please try again.', 'error'); }
+                else { form.submit(); }
+            })
+            .finally(function () { if (btn) { btn.disabled = false; } });
+        });
+    });
+})();
+</script>
 
 @endsection

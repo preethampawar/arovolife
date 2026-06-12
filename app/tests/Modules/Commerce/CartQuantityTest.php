@@ -87,6 +87,20 @@ it('flashes the just-added variant id so the cart can highlight it', function ()
         ->assertSessionHas('added_variant_id', $variant->id);
 });
 
+it('an AJAX add returns JSON (count + message) and does NOT redirect', function (): void {
+    $n = random_int(10000, 99999);
+    $product = Product::create(['sku' => "AJX-{$n}", 'slug' => "ajx-{$n}", 'name' => "Ajax {$n}", 'hsn_code' => '3004', 'status' => 'active']);
+    $variant = ProductVariant::create([
+        'product_id' => $product->id, 'variant_sku' => "AJX-{$n}-V1", 'name' => 'Default',
+        'mrp_paise' => 50000, 'sale_price_paise' => 50000, 'gst_rate_bp' => 1800,
+        'inventory_policy' => 'no_track', 'status' => 'active',
+    ]);
+
+    $this->postJson(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 2])
+        ->assertOk()
+        ->assertJson(['ok' => true, 'count' => 2, 'message' => 'Product successfully added to cart.']);
+});
+
 it('highlights the just-added line on the cart page (and not other lines)', function (): void {
     $item = cqtItem(2); // line A (the "just added" one)
     // A second, different line that must NOT be highlighted.

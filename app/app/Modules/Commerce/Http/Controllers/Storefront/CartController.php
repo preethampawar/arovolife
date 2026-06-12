@@ -13,6 +13,7 @@ use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\ShippingService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -85,7 +86,7 @@ final class CartController extends Controller
         return $userId !== null ? Customer::where('user_id', $userId)->first() : null;
     }
 
-    public function add(Request $request): RedirectResponse
+    public function add(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
@@ -95,6 +96,16 @@ final class CartController extends Controller
         $cart = $this->cartService->currentCart($request);
         $variantId = (int) $validated['product_variant_id'];
         $this->cartService->addItem($cart, $variantId, (int) ($validated['qty'] ?? 1));
+
+        // AJAX add (from a listing card): stay on the page — return the new cart
+        // count + message for the toast instead of redirecting to the cart.
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'count' => (int) $cart->items()->sum('qty'),
+                'message' => 'Product successfully added to cart.',
+            ]);
+        }
 
         // Flash the just-added variant so the cart page can highlight that line.
         return redirect()->route('shop.cart')

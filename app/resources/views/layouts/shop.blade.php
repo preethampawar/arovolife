@@ -27,6 +27,7 @@
     </main>
 
     <x-confirm-modal />
+    @include('partials._toast-container')
 
     {{-- Footer --}}
     <footer class="bg-gray-900 text-gray-400 mt-16 py-10">
