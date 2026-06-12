@@ -1,32 +1,28 @@
 @extends('layouts.shop')
 @section('title', 'Shop')
 
-@section('content')
-
-@php
-    // Whether THIS page renders a sliding carousel (mall on home, or the
-    // category's banners on a category page) — drives the slider script below.
-    $hasCarousel = ($activeCategory ?? null)
-        ? ($categoryBanners ?? collect())->isNotEmpty()
-        : ($banners ?? collect())->isNotEmpty();
-@endphp
-
+{{-- Full-bleed banner: rendered in the layout's `banner` slot so it spans the
+     whole viewport width and sits flush under the header (no side gutters, no
+     gap). The hero fallback stays centered in the normal content container. --}}
+@section('banner')
 @if(($activeCategory ?? null))
 {{-- Category page: show this category's banners (sliding); the shopping-mall
      carousel is hidden. Falls back to the legacy single category banner. --}}
 @if(($categoryBanners ?? collect())->isNotEmpty())
-    @include('partials._banner-carousel', ['slides' => $categoryBanners, 'aspectClass' => 'aspect-[1520/350]'])
+    @include('partials._banner-carousel', ['slides' => $categoryBanners, 'aspectClass' => 'aspect-[1520/350]', 'wrapperClass' => ''])
 @elseif($activeCategory->bannerUrl())
-<section class="relative mb-8 rounded-3xl overflow-hidden shadow-sm">
-    <img src="{{ $activeCategory->bannerUrl() }}" alt="{{ $activeCategory->name }}" class="w-full aspect-[1280/290] object-cover bg-gray-100">
+<section class="relative overflow-hidden">
+    <img src="{{ $activeCategory->bannerUrl() }}" alt="{{ $activeCategory->name }}" class="w-full aspect-[1520/350] object-cover bg-gray-100">
 </section>
 @endif
 @elseif(($banners ?? collect())->isNotEmpty())
 {{-- Shopping-mall carousel (admin-managed banners, recommended 1520×350). --}}
-@include('partials._banner-carousel', ['slides' => $banners, 'aspectClass' => 'aspect-[1520/350]'])
+@include('partials._banner-carousel', ['slides' => $banners, 'aspectClass' => 'aspect-[1520/350]', 'wrapperClass' => ''])
 @else
-{{-- Hero band — multi-tint gradient + floating accent blobs (shown when no banners) --}}
-<section class="relative mb-8 rounded-3xl overflow-hidden p-8 md:p-12">
+{{-- Hero band — multi-tint gradient + floating accent blobs (shown when no
+     banners). Kept centered in the normal content container (no full bleed). --}}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+<section class="relative rounded-3xl overflow-hidden p-8 md:p-12">
     <div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-leaf-50 to-sunrise-50"></div>
     <div class="absolute -top-16 -right-12 w-72 h-72 bg-brand-200/50 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute -bottom-16 -left-12 w-64 h-64 bg-leaf-200/50 rounded-full blur-3xl pointer-events-none"></div>
@@ -61,7 +57,19 @@
         </div>
     </div>
 </section>
+</div>
 @endif
+@endsection
+
+@section('content')
+
+@php
+    // Whether THIS page renders a sliding carousel (mall on home, or the
+    // category's banners on a category page) — drives the slider script below.
+    $hasCarousel = ($activeCategory ?? null)
+        ? ($categoryBanners ?? collect())->isNotEmpty()
+        : ($banners ?? collect())->isNotEmpty();
+@endphp
 
 {{-- Atomy-style slider driver — initialises every banner carousel on the page
      (mall or category). Right-to-left auto-advance, seamless loop, pause-on-hover. --}}

@@ -13,6 +13,9 @@
 
     @include('partials.public-topnav')
 
+    {{-- Full-bleed banner slot — sits flush under the header, edge to edge. --}}
+    @yield('banner')
+
     {{-- Flash messages --}}
     @if(session('status'))
     <div class="max-w-7xl mx-auto px-4 sm:px-6 mt-4">

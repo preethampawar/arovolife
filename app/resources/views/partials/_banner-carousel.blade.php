@@ -1,8 +1,13 @@
 {{-- Reusable Atomy-style sliding banner carousel.
      Vars: $slides (collection of Banner), $aspectClass (e.g. 'aspect-[1520/350]').
      The init script lives once in shop/index and drives every [data-carousel]. --}}
-@php $aspectClass = $aspectClass ?? 'aspect-[1520/350]'; @endphp
-<section class="relative mb-8 rounded-3xl overflow-hidden shadow-sm" data-carousel>
+@php
+    $aspectClass = $aspectClass ?? 'aspect-[1520/350]';
+    // Caller controls the outer chrome (margin / rounding). Default keeps the
+    // boxed look; pass '' for a full-bleed, flush banner.
+    $wrapperClass = $wrapperClass ?? 'mb-8 rounded-3xl shadow-sm';
+@endphp
+<section class="relative overflow-hidden {{ $wrapperClass }}" data-carousel>
     <div class="relative {{ $aspectClass }} bg-gray-100 overflow-hidden">
         {{-- Horizontal track: slides side-by-side; translated left so each slides
              in from the right. --}}
