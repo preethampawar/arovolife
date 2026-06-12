@@ -10,6 +10,8 @@
     ];
 @endphp
 
+{{-- The whole header — utility strip + main nav — sticks to the top together. --}}
+<header class="sticky top-0 z-40">
 {{-- Utility strip: deep blue. Hidden below sm so the mobile header doesn't
      stack two coloured strips. --}}
 <div class="hidden sm:block bg-brand-700 text-white text-xs">
@@ -178,8 +180,8 @@
     })();
 </script>
 
-{{-- Main header --}}
-<nav class="bg-brand-500 border-b border-brand-600 sticky top-0 z-40">
+{{-- Main nav (sticky is handled by the wrapping <header>). --}}
+<nav class="bg-brand-500 border-b border-brand-600">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-6 lg:gap-8">
 
         <a href="{{ route('home') }}" class="flex items-center shrink-0 py-2.5">
@@ -361,3 +363,4 @@
         </div>
     </div>
 </nav>
+</header>
