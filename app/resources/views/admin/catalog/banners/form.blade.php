@@ -78,12 +78,16 @@
         </button>
         <a href="{{ route('admin.catalog.banners.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit)
-        <form method="POST" action="{{ route('admin.catalog.banners.destroy', $banner) }}" class="ml-auto"
-            data-confirm="Delete this banner?" data-confirm-title="Delete banner" data-confirm-impact="Removes the banner from the storefront carousel. This cannot be undone.">
-            @csrf @method('DELETE')
-            <button type="submit" class="text-sm text-red-600 hover:text-red-700 font-medium">Delete</button>
-        </form>
+        {{-- Submits the separate delete form below via form= (forms must not nest). --}}
+        <button type="submit" form="bannerDeleteForm" class="ml-auto text-sm text-red-600 hover:text-red-700 font-medium">Delete</button>
         @endif
     </div>
 </form>
+
+@if($isEdit)
+<form id="bannerDeleteForm" method="POST" action="{{ route('admin.catalog.banners.destroy', $banner) }}" class="hidden"
+    data-confirm="Delete this banner?" data-confirm-title="Delete banner" data-confirm-impact="Removes the banner from the storefront carousel. This cannot be undone.">
+    @csrf @method('DELETE')
+</form>
+@endif
 @endsection
