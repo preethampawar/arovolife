@@ -6,20 +6,24 @@
 @if(($banners ?? collect())->isNotEmpty())
 {{-- Shopping-mall carousel (admin-managed banners, recommended 1520×350). --}}
 <section class="relative mb-8 rounded-3xl overflow-hidden shadow-sm" data-carousel>
-    <div class="relative aspect-[1520/350] bg-gray-100">
-        @foreach($banners as $i => $b)
-        <a href="{{ $b->link_url ?: '' }}" @if(! $b->link_url) onclick="return false;" @endif
-           data-slide="{{ $i }}"
-           class="absolute inset-0 transition-opacity duration-700 {{ $i === 0 ? 'opacity-100' : 'opacity-0 pointer-events-none' }}">
-            <img src="{{ $b->url() }}" alt="{{ $b->title }}" class="w-full h-full object-cover">
-            @if($b->title || $b->caption)
-            <div class="absolute inset-0 flex flex-col justify-center px-8 md:px-14 bg-gradient-to-r from-black/35 via-black/10 to-transparent">
-                @if($b->title)<h2 class="text-2xl md:text-4xl font-bold text-white drop-shadow-md">{{ $b->title }}</h2>@endif
-                @if($b->caption)<p class="mt-2 text-sm md:text-base text-white/90 max-w-md drop-shadow">{{ $b->caption }}</p>@endif
-            </div>
-            @endif
-        </a>
-        @endforeach
+    <div class="relative aspect-[1520/350] bg-gray-100 overflow-hidden">
+        {{-- Horizontal track: all slides side-by-side; it translates left so each
+             banner slides in from the right (Atomy shopping-mall style). --}}
+        <div class="flex h-full" data-track style="will-change: transform;">
+            @foreach($banners as $i => $b)
+            <a href="{{ $b->link_url ?: '' }}" @if(! $b->link_url) onclick="return false;" @endif
+               data-slide="{{ $i }}"
+               class="relative block w-full h-full shrink-0">
+                <img src="{{ $b->url() }}" alt="{{ $b->title }}" class="w-full h-full object-cover">
+                @if($b->title || $b->caption)
+                <div class="absolute inset-0 flex flex-col justify-center px-8 md:px-14 bg-gradient-to-r from-black/35 via-black/10 to-transparent">
+                    @if($b->title)<h2 class="text-2xl md:text-4xl font-bold text-white drop-shadow-md">{{ $b->title }}</h2>@endif
+                    @if($b->caption)<p class="mt-2 text-sm md:text-base text-white/90 max-w-md drop-shadow">{{ $b->caption }}</p>@endif
+                </div>
+                @endif
+            </a>
+            @endforeach
+        </div>
     </div>
     @if($banners->count() > 1)
     <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2" data-dots>
@@ -34,22 +38,52 @@
 (function () {
     var root = document.querySelector('[data-carousel]');
     if (!root) return;
-    var slides = root.querySelectorAll('[data-slide]');
+    var track = root.querySelector('[data-track]');
+    var slides = Array.prototype.slice.call(track.querySelectorAll('[data-slide]'));
     var dots = root.querySelectorAll('[data-dot]');
-    if (slides.length < 2) return;
-    var i = 0;
-    function show(n) {
-        i = (n + slides.length) % slides.length;
-        slides.forEach(function (s, k) {
-            var on = k === i;
-            s.style.opacity = on ? '1' : '0';
-            s.style.pointerEvents = on ? '' : 'none';
+    var n = slides.length;
+    if (!track || n < 2) return;
+
+    var SPEED = 700, INTERVAL = 4000;
+    // Clone the first slide onto the end so the wrap from last→first keeps
+    // sliding right-to-left with no jump back (seamless infinite loop).
+    var clone = slides[0].cloneNode(true);
+    clone.removeAttribute('data-slide');
+    track.appendChild(clone);
+
+    var i = 0, animating = false;
+
+    function setDot(active) {
+        dots.forEach(function (d, k) {
+            d.className = 'w-2.5 h-2.5 rounded-full transition-colors ' + (k === active ? 'bg-white' : 'bg-white/50 hover:bg-white/80');
         });
-        dots.forEach(function (d, k) { d.className = d.className.replace(/bg-white(\/\d+)?( hover:bg-white\/80)?/, '') + (k === i ? ' bg-white' : ' bg-white/50 hover:bg-white/80'); });
     }
-    dots.forEach(function (d, k) { d.addEventListener('click', function () { show(k); reset(); }); });
-    var timer = setInterval(function () { show(i + 1); }, 5000);
-    function reset() { clearInterval(timer); timer = setInterval(function () { show(i + 1); }, 5000); }
+    function go(to) {
+        i = to;
+        track.style.transition = 'transform ' + SPEED + 'ms ease-out';
+        track.style.transform = 'translateX(' + (-i * 100) + '%)';
+        setDot(i % n);
+    }
+    track.addEventListener('transitionend', function () {
+        if (i === n) {            // landed on the clone → snap to the real first slide
+            track.style.transition = 'none';
+            i = 0;
+            track.style.transform = 'translateX(0)';
+            void track.offsetWidth; // force reflow so the next move animates
+        }
+        animating = false;
+    });
+    function next() { if (!animating) { animating = true; go(i + 1); } }
+
+    var timer = setInterval(next, INTERVAL);
+    function reset() { clearInterval(timer); timer = setInterval(next, INTERVAL); }
+
+    dots.forEach(function (d, k) {
+        d.addEventListener('click', function () { if (!animating) { animating = true; go(k); reset(); } });
+    });
+    // Pause while hovering, like the Atomy carousel.
+    root.addEventListener('mouseenter', function () { clearInterval(timer); });
+    root.addEventListener('mouseleave', reset);
 })();
 </script>
 @else
