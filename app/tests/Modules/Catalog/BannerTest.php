@@ -91,6 +91,16 @@ it('BAN-05: admin can delete a banner', function (): void {
     expect(Banner::find($banner->id))->toBeNull();
 });
 
+it('BAN-06: the admin banners index renders a status flash exactly once (no duplicate)', function (): void {
+    $response = $this->actingAs(banAdmin())
+        ->withSession(['status' => 'Banner removed.'])
+        ->get(route('admin.catalog.banners.index'))
+        ->assertOk();
+
+    // The layout is the single source of the flash — the view must not echo it again.
+    expect(substr_count($response->getContent(), 'Banner removed.'))->toBe(1);
+});
+
 it('CATBAN-01: a category banner shows on the category-filtered shop view', function (): void {
     $cat = ProductCategory::create([
         'slug' => 'health', 'name' => 'Health', 'status' => 'active', 'sort' => 0,

@@ -9,11 +9,7 @@
     parent. Approving moves their placement only — the sponsor is never changed.
 </p>
 
-@if(session('status'))
-<div class="mb-4 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
-    {{ session('status') }}
-</div>
-@endif
+{{-- Status flash is rendered once by the admin layout. --}}
 
 <div class="flex items-center gap-2 mb-6">
     <a href="{{ route('admin.line-changes.index', ['tab' => 'pending']) }}"

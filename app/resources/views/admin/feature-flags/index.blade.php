@@ -16,11 +16,7 @@
         <code class="px-1 rounded bg-gray-100 text-gray-800">feature_flag.toggled</code>.
     </p>
 
-    @if (session('status'))
-        <div class="mb-6 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-            {{ session('status') }}
-        </div>
-    @endif
+    {{-- Status flash is rendered once by the admin layout. --}}
 
     <div class="space-y-4">
         @foreach ($flags as $key => $flag)

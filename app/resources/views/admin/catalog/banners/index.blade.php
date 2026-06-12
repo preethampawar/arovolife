@@ -3,10 +3,7 @@
 @section('heading', 'Shopping Mall Banners')
 
 @section('content')
-@if(session('status'))
-<div class="mb-5 rounded-lg border border-leaf-200 bg-leaf-50 p-3 text-sm text-leaf-800">{{ session('status') }}</div>
-@endif
-
+{{-- Flash is rendered once by the admin layout (admin.blade.php). --}}
 <div class="flex items-center justify-between mb-5">
     <p class="text-sm text-gray-600">Carousel banners shown at the top of the shop. Recommended 1520&nbsp;×&nbsp;350&nbsp;px.</p>
     <a href="{{ route('admin.catalog.banners.create') }}" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold">+ New banner</a>
