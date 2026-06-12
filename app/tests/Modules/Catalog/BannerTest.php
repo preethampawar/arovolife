@@ -143,6 +143,39 @@ it('CATBAN-01: the category page shows ONLY the category banner — the mall car
         ->assertDontSee('https://cdn.example.com/cat.jpg', false);
 });
 
+it('CATBAN-02: banners assigned to a category slide on its page (and only there)', function (): void {
+    $cat = ProductCategory::create(['slug' => 'health', 'name' => 'Health', 'status' => 'active', 'sort' => 0]);
+
+    // Two banners for the category + one shopping-mall banner.
+    Banner::create(['category_id' => $cat->id, 'external_url' => 'https://cdn.example.com/cat-a.jpg', 'status' => 'active', 'sort' => 0]);
+    Banner::create(['category_id' => $cat->id, 'external_url' => 'https://cdn.example.com/cat-b.jpg', 'status' => 'active', 'sort' => 1]);
+    Banner::create(['external_url' => 'https://cdn.example.com/mall.jpg', 'status' => 'active', 'sort' => 0]);
+
+    // Category page: its banners slide; mall banner hidden.
+    $this->get(route('shop.index', ['category' => 'health']))->assertOk()
+        ->assertSee('data-carousel', false)
+        ->assertSee('https://cdn.example.com/cat-a.jpg', false)
+        ->assertSee('https://cdn.example.com/cat-b.jpg', false)
+        ->assertDontSee('https://cdn.example.com/mall.jpg', false);
+
+    // Home shop: only the mall banner.
+    $this->get(route('shop.index'))->assertOk()
+        ->assertSee('https://cdn.example.com/mall.jpg', false)
+        ->assertDontSee('https://cdn.example.com/cat-a.jpg', false);
+});
+
+it('CATBAN-03: admin can assign a banner to a category', function (): void {
+    $cat = ProductCategory::create(['slug' => 'health', 'name' => 'Health', 'status' => 'active', 'sort' => 0]);
+
+    $this->actingAs(banAdmin())->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.banners.store'), [
+            'category_id' => $cat->id, 'title' => 'Cat banner',
+            'external_url' => 'https://cdn.example.com/c.jpg', 'sort' => 0, 'status' => 'active',
+        ])->assertRedirect(route('admin.catalog.banners.index'));
+
+    expect(Banner::first()->category_id)->toBe($cat->id);
+});
+
 it('CATNAV-01: active top-level categories appear in the storefront categories dropdown', function (): void {
     ProductCategory::create(['slug' => 'beauty', 'name' => 'Beauty Care', 'status' => 'active', 'sort' => 1]);
 

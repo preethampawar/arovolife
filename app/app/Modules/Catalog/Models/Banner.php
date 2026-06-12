@@ -7,14 +7,19 @@ namespace App\Modules\Catalog\Models;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * A storefront shopping-mall carousel banner. The image is EITHER an uploaded
- * S3 object (`s3_key`) OR an external URL (`external_url`) — same convention as
+ * A storefront carousel banner. The image is EITHER an uploaded S3 object
+ * (`s3_key`) OR an external URL (`external_url`) — same convention as
  * {@see ProductImage}.
  *
+ * Placement: `category_id` NULL = shopping-mall (home) carousel; a category_id
+ * assigns the banner to that category's page, where several slide together.
+ *
  * @property int $id
+ * @property int|null $category_id
  * @property string|null $title
  * @property string|null $caption
  * @property string|null $link_url
@@ -32,8 +37,14 @@ final class Banner extends Model
     protected $table = 'banners';
 
     protected $fillable = [
-        'title', 'caption', 'link_url', 's3_key', 'external_url', 'sort', 'status',
+        'category_id', 'title', 'caption', 'link_url', 's3_key', 'external_url', 'sort', 'status',
     ];
+
+    /** @return BelongsTo<ProductCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class);
+    }
 
     protected function casts(): array
     {
@@ -72,5 +83,27 @@ final class Banner extends Model
             })
             ->orderBy('sort')
             ->orderByDesc('id');
+    }
+
+    /**
+     * Shopping-mall (home) banners — those not tied to a category.
+     *
+     * @param  Builder<Banner>  $query
+     */
+    #[Scope]
+    protected function mall(Builder $query): void
+    {
+        $query->whereNull('category_id');
+    }
+
+    /**
+     * Banners assigned to a given category page.
+     *
+     * @param  Builder<Banner>  $query
+     */
+    #[Scope]
+    protected function forCategory(Builder $query, int $categoryId): void
+    {
+        $query->where('category_id', $categoryId);
     }
 }

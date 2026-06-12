@@ -16,6 +16,7 @@
                 <th class="px-4 py-3 font-semibold w-12">S.No</th>
                 <th class="px-4 py-3 font-semibold">Preview</th>
                 <th class="px-4 py-3 font-semibold">Title</th>
+                <th class="px-4 py-3 font-semibold">Placement</th>
                 <th class="px-4 py-3 font-semibold">Source</th>
                 <th class="px-4 py-3 font-semibold text-right">Sort</th>
                 <th class="px-4 py-3 font-semibold">Status</th>
@@ -34,6 +35,13 @@
                         @endif
                     </td>
                     <td class="px-4 py-3 text-gray-900">{{ $banner->title ?: '—' }}</td>
+                    <td class="px-4 py-3 text-gray-700 text-xs">
+                        @if($banner->category)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200">{{ $banner->category->name }}</span>
+                        @else
+                            <span class="text-gray-500">Shopping Mall</span>
+                        @endif
+                    </td>
                     <td class="px-4 py-3 text-gray-600 text-xs">{{ $banner->external_url ? 'URL' : ($banner->s3_key ? 'Uploaded' : '—') }}</td>
                     <td class="px-4 py-3 text-right text-gray-700">{{ $banner->sort }}</td>
                     <td class="px-4 py-3">
@@ -44,7 +52,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="px-4 py-10 text-center text-gray-500">No banners yet. <a href="{{ route('admin.catalog.banners.create') }}" class="text-brand-600 underline">Create one</a>.</td></tr>
+                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">No banners yet. <a href="{{ route('admin.catalog.banners.create') }}" class="text-brand-600 underline">Create one</a>.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -62,7 +62,12 @@ final class ShopController extends Controller
             'categories' => $categories,
             'activeSlug' => $activeSlug,
             'activeCategory' => $activeCategory,
-            'banners' => Banner::query()->displayable()->get(),
+            // Shopping-mall carousel (home/unfiltered shop).
+            'banners' => Banner::query()->displayable()->mall()->get(),
+            // Banners assigned to the active category — slide on its page.
+            'categoryBanners' => $activeCategory !== null
+                ? Banner::query()->displayable()->forCategory($activeCategory->id)->get()
+                : collect(),
             'cart' => $this->cartService->currentCart($request),
             'freeShippingThresholdRupees' => intdiv($this->shipping->freeThresholdPaise(), 100),
         ]);

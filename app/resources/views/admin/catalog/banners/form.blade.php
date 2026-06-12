@@ -26,6 +26,16 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block sm:col-span-2">
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Placement</span>
+                <select name="category_id" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="">Shopping Mall (home page)</option>
+                    @foreach(($categories ?? []) as $cat)
+                        <option value="{{ $cat->id }}" @selected((int) old('category_id', $banner->category_id) === $cat->id)>Category: {{ $cat->name }}</option>
+                    @endforeach
+                </select>
+                <span class="block text-xs text-gray-500 mt-1">Where this banner shows. Banners for the same category slide together on that category's page.</span>
+            </label>
+            <label class="block sm:col-span-2">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Title (optional)</span>
                 <input type="text" name="title" value="{{ old('title', $banner->title) }}" maxlength="150"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
