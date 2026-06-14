@@ -27,18 +27,23 @@
 
     <div class="lg:col-span-2 space-y-5">
         @if($buyerDistributor)
-        {{-- Read-only identity of the logged-in distributor placing the order.
-             Sourced from their account; not editable here. --}}
+        @php $isReferral = ($buyerDistributor['mode'] ?? 'self') === 'referral'; @endphp
+        {{-- Read-only distributor identity. `self` = a logged-in distributor
+             buying for themselves (full identity + autofill). `referral` = a
+             guest who opened a shared "Easy Purchase" cart — only the sharing
+             distributor's ADN + name, informational, not editable. --}}
         <div class="bg-brand-50 rounded-2xl border border-brand-200 p-6"
              data-distributor
+             @unless($isReferral)
              data-dist-name="{{ $buyerDistributor['name'] }}"
              data-dist-email="{{ $buyerDistributor['email'] }}"
-             data-dist-phone="{{ $buyerDistributor['phone_local'] }}">
+             data-dist-phone="{{ $buyerDistributor['phone_local'] }}"
+             @endunless>
             <div class="flex items-center justify-between gap-3 mb-4">
                 <h2 class="font-semibold text-gray-900">Distributor details</h2>
                 <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-700">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd" /></svg>
-                    From your account
+                    {{ $isReferral ? 'Purchasing through' : 'From your account' }}
                 </span>
             </div>
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -50,6 +55,7 @@
                     <dt class="text-gray-500">Name</dt>
                     <dd class="font-medium text-gray-900">{{ $buyerDistributor['name'] }}</dd>
                 </div>
+                @unless($isReferral)
                 <div class="flex justify-between sm:block">
                     <dt class="text-gray-500">Email</dt>
                     <dd class="font-medium text-gray-900 break-all">{{ $buyerDistributor['email'] }}</dd>
@@ -58,14 +64,18 @@
                     <dt class="text-gray-500">Mobile</dt>
                     <dd class="font-medium text-gray-900">{{ $buyerDistributor['phone_e164'] }}</dd>
                 </div>
+                @endunless
             </dl>
+            @if($isReferral)
+            <p class="mt-3 text-xs text-gray-600">You're buying through this distributor. Enter your own details below for delivery — the order is placed with arovolife and credited to this distributor.</p>
+            @endif
         </div>
         @endif
 
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
                 <h2 class="font-semibold text-gray-900">Customer Details</h2>
-                @if($buyerDistributor)
+                @if($buyerDistributor && ($buyerDistributor['mode'] ?? 'self') === 'self')
                 <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                     <input type="checkbox" name="same_as_distributor" id="sameAsDistributor" value="1"
                         {{ old('same_as_distributor') ? 'checked' : '' }}

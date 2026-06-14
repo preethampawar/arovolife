@@ -6,12 +6,14 @@ namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\ShippingService;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
@@ -40,7 +42,7 @@ final class CheckoutController extends Controller
     {
         $this->ensureCheckoutEnabled();
 
-        if ($redirect = $this->membersOnlyRedirect()) {
+        if ($redirect = $this->membersOnlyRedirect($request)) {
             return $redirect;
         }
 
@@ -67,23 +69,6 @@ final class CheckoutController extends Controller
             }
         }
 
-        // The logged-in distributor's own identity, shown as a read-only block
-        // and offered as a "same as distributor" shortcut for the customer
-        // fields (self-consumption is the common case). Null for guests /
-        // plain customers, who only see the editable customer block.
-        $buyerDistributor = null;
-        $authUser = $request->user();
-        if ($authUser?->distributor !== null) {
-            $buyerDistributor = [
-                'adn' => $authUser->distributor->adn,
-                'name' => $authUser->full_name,
-                'email' => $authUser->email,
-                'phone_e164' => $authUser->phone_e164,
-                // 10-digit local form for the buyer_phone field (drops +91).
-                'phone_local' => preg_replace('/^\+91/', '', (string) $authUser->phone_e164),
-            ];
-        }
-
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
@@ -94,7 +79,7 @@ final class CheckoutController extends Controller
             'refAdn' => $request->cookie(AttributionService::COOKIE_NAME),
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
-            'buyerDistributor' => $buyerDistributor,
+            'buyerDistributor' => $this->resolveBuyerDistributor($request),
         ]);
     }
 
@@ -102,7 +87,7 @@ final class CheckoutController extends Controller
     {
         $this->ensureCheckoutEnabled();
 
-        if ($redirect = $this->membersOnlyRedirect()) {
+        if ($redirect = $this->membersOnlyRedirect($request)) {
             return $redirect;
         }
 
@@ -210,6 +195,11 @@ final class CheckoutController extends Controller
         // exposing it to anyone who can guess the order number (IDOR).
         $request->session()->push('recent_order_nos', $order->order_no);
 
+        // Close the shared-cart guest pass once the order is placed. The pass is
+        // scoped to that one shared purchase — it must not keep the members-only
+        // gate open for a later, unrelated cart the guest builds themselves.
+        $request->session()->forget(SharedCart::SESSION_DISTRIBUTOR_KEY);
+
         return redirect()->route('shop.confirmation', $order->order_no);
     }
 
@@ -259,15 +249,77 @@ final class CheckoutController extends Controller
      * Members-only buying: when guest checkout is disabled and the visitor is
      * not authenticated, send them to login first (preserving the intended
      * URL). Browsing the storefront stays open — only checkout is gated.
+     *
+     * Scoped exception: a guest who opened a valid shared ("Easy Purchase")
+     * cart keeps a session pass that lets *that* visitor check out as a guest
+     * (the order is attributed to the sharing distributor). Everyone else stays
+     * members-only.
      */
-    private function membersOnlyRedirect(): ?RedirectResponse
+    private function membersOnlyRedirect(Request $request): ?RedirectResponse
     {
-        if ($this->flag('commerce.guest_checkout.enabled') || Auth::check()) {
+        if ($this->flag('commerce.guest_checkout.enabled')
+            || Auth::check()
+            || $request->session()->has(SharedCart::SESSION_DISTRIBUTOR_KEY)) {
             return null;
         }
 
         return redirect()->guest(route('login'))
             ->with('status', 'Please sign in to complete your purchase.');
+    }
+
+    /**
+     * The read-only "Distributor details" block shown at checkout.
+     *
+     * - `self`: a logged-in distributor buying for themselves (self-consumption)
+     *   — full identity + a "same as distributor" autofill shortcut.
+     * - `referral`: a guest who opened a shared cart — only the sharing
+     *   distributor's ADN + name (no contact PII), informational, no autofill.
+     *
+     * @return array{mode: string, adn: string, name: string, email?: string, phone_e164?: string, phone_local?: string}|null
+     */
+    private function resolveBuyerDistributor(Request $request): ?array
+    {
+        $authUser = $request->user();
+        if ($authUser?->distributor !== null) {
+            return [
+                'mode' => 'self',
+                'adn' => $authUser->distributor->adn,
+                'name' => $authUser->full_name,
+                'email' => $authUser->email,
+                'phone_e164' => $authUser->phone_e164,
+                // 10-digit local form for the buyer_phone field (drops +91).
+                'phone_local' => preg_replace('/^\+91/', '', (string) $authUser->phone_e164),
+            ];
+        }
+
+        $distributor = $this->sharedCartDistributor($request);
+        if ($distributor !== null) {
+            return [
+                'mode' => 'referral',
+                'adn' => $distributor->adn,
+                'name' => $distributor->user->full_name,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * The distributor a guest's shared-cart session is attributed to, if any.
+     * Returns null for logged-in visitors or when there is no shared-cart pass.
+     */
+    private function sharedCartDistributor(Request $request): ?Distributor
+    {
+        if (Auth::check()) {
+            return null;
+        }
+
+        $distributorId = $request->session()->get(SharedCart::SESSION_DISTRIBUTOR_KEY);
+        if ($distributorId === null) {
+            return null;
+        }
+
+        return Distributor::with('user')->find((int) $distributorId);
     }
 
     private function flag(string $key): bool

@@ -190,6 +190,14 @@ final class CartController extends Controller
             $this->attribution->recordTouch($request, $shared->ref_adn);
         }
 
+        // Mark this session as having arrived via a valid shared cart. This is
+        // the guest's pass through the members-only checkout gate (scoped: only
+        // shared-link recipients may guest-checkout) and names the distributor
+        // whose read-only details the customer sees at checkout.
+        if ($shared->distributor_id !== null) {
+            $request->session()->put(SharedCart::SESSION_DISTRIBUTOR_KEY, $shared->distributor_id);
+        }
+
         $cart = $this->cartService->currentCart($request);
 
         $added = 0;

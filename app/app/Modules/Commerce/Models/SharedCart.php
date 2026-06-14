@@ -21,6 +21,13 @@ use Illuminate\Support\Carbon;
  */
 final class SharedCart extends Model
 {
+    /**
+     * Session key set when a guest opens a shared ("Easy Purchase") cart. Its
+     * presence is the guest's pass through the members-only checkout gate, and
+     * it names the distributor the order is attributed to / shown read-only.
+     */
+    public const SESSION_DISTRIBUTOR_KEY = 'easy_cart.distributor_id';
+
     protected $table = 'shared_carts';
 
     protected $fillable = [

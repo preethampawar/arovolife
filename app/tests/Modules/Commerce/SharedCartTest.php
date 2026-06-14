@@ -8,9 +8,11 @@ use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Identity\Models\User;
+use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -182,4 +184,129 @@ it('SCT-05: a non-distributor cannot create a share link', function (): void {
         ->assertSessionHasErrors('share');
 
     expect(SharedCart::count())->toBe(0);
+});
+
+/**
+ * Members-only buying + Easy Purchase: a shared cart link is the guest's pass
+ * through the members-only checkout gate. Without it (members-only ON), a guest
+ * is sent to login. The order is still attributed to the sharing distributor.
+ */
+function sctSetting(string $key, string $value): void
+{
+    DB::table('settings')->updateOrInsert(['key' => $key], ['value' => $value, 'version' => 1, 'updated_at' => now()]);
+}
+
+/** A guest cart holding one shared item, resolvable via the anon cookie. */
+function sctGuestCart(ProductVariant $v): Cart
+{
+    $cart = Cart::create(['anonymous_key' => 'k'.random_int(10000, 99999), 'expires_at' => now()->addDay()]);
+    CartItem::create([
+        'cart_id' => $cart->id, 'product_variant_id' => $v->id, 'qty' => 1,
+        'unit_price_paise' => $v->sale_price_paise, 'bv_paise' => $v->bv_paise, 'gst_rate_bp' => $v->gst_rate_bp,
+    ]);
+
+    return $cart;
+}
+
+it('SCT-06: a shared-cart guest passes the members-only gate and sees the sharing distributor (ADN + name only)', function (): void {
+    sctSetting('commerce.checkout.enabled', 'true');
+    sctSetting('commerce.guest_checkout.enabled', 'false'); // members-only globally
+
+    $adn = 'ADN'.random_int(10000, 99999);
+    $sharer = sctDistributorUser($adn); // name "Sharer Distributor"
+    $cart = sctGuestCart(sctVariant());
+
+    // The session pass is what openShared() sets when a valid link is opened.
+    // withCookie() (encrypted, as the app expects) so currentCart() resolves it.
+    $res = $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withSession([SharedCart::SESSION_DISTRIBUTOR_KEY => $sharer->distributor->id])
+        ->get(route('shop.checkout'));
+
+    // NOT redirected to login; the page renders with the sharing distributor
+    // shown read-only.
+    $res->assertOk();
+    $res->assertSee($adn);
+    $res->assertSee('Sharer Distributor');
+    $res->assertSee('Purchasing through');
+    $res->assertDontSee($sharer->email);        // distributor contact PII NOT exposed
+    $res->assertDontSee('Same as distributor'); // no self-consumption autofill for a guest
+});
+
+it('SCT-07: the bypass is scoped — a guest with a cart but no shared-cart pass is still sent to login', function (): void {
+    sctSetting('commerce.checkout.enabled', 'true');
+    sctSetting('commerce.guest_checkout.enabled', 'false');
+
+    $cart = sctGuestCart(sctVariant());
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->get(route('shop.checkout'))
+        ->assertRedirect(route('login'));
+});
+
+it('SCT-08: an order placed by a shared-cart guest is attributed to the sharing distributor', function (): void {
+    $this->seed(LedgerAccountSeeder::class);
+    sctSetting('commerce.checkout.enabled', 'true');
+    sctSetting('commerce.guest_checkout.enabled', 'false');
+    sctSetting('payments.cod.enabled', 'true');
+
+    $adn = 'ADN'.random_int(10000, 99999);
+    $sharer = sctDistributorUser($adn);
+    // resolveForCheckout() only credits an active/pending distributor by ADN.
+    DB::table('distributors')->where('id', $sharer->distributor->id)->update(['status' => 'active']);
+    $cart = sctGuestCart(sctVariant());
+
+    // Guest fills their OWN details and places a COD order — no login required.
+    // The session pass + the av_ref cookie are what openShared() establishes.
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withCookie(AttributionService::COOKIE_NAME, $adn)
+        ->withSession([SharedCart::SESSION_DISTRIBUTOR_KEY => $sharer->distributor->id])
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('shop.checkout.place'), [
+            'buyer_name' => 'Guest Customer',
+            'buyer_email' => 'guest-'.uniqid().'@test.com',
+            'buyer_phone' => '9800000000',
+            'ship_line1' => '1 Test St',
+            'ship_city' => 'Pune',
+            'ship_state' => 'MH',
+            'ship_pincode' => '411001',
+            'payment_method' => 'cod',
+            'billing_same' => '1',
+            'accept_terms' => '1',
+        ])->assertRedirect();
+
+    $order = Order::latest('id')->first();
+    expect($order)->not->toBeNull();
+    expect($order->attributed_distributor_id)->toBe($sharer->distributor->id); // credited to the sharer
+    expect($order->self_consumption)->toBeFalse();                             // a customer bought, not the distributor
+});
+
+it('SCT-09: placing the shared-cart order clears the guest pass (gate re-closes for later self-built carts)', function (): void {
+    $this->seed(LedgerAccountSeeder::class);
+    sctSetting('commerce.checkout.enabled', 'true');
+    sctSetting('commerce.guest_checkout.enabled', 'false');
+    sctSetting('payments.cod.enabled', 'true');
+
+    $adn = 'ADN'.random_int(10000, 99999);
+    $sharer = sctDistributorUser($adn);
+    DB::table('distributors')->where('id', $sharer->distributor->id)->update(['status' => 'active']);
+    $cart = sctGuestCart(sctVariant());
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withCookie(AttributionService::COOKIE_NAME, $adn)
+        ->withSession([SharedCart::SESSION_DISTRIBUTOR_KEY => $sharer->distributor->id])
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('shop.checkout.place'), [
+            'buyer_name' => 'Guest Customer',
+            'buyer_email' => 'guest-'.uniqid().'@test.com',
+            'buyer_phone' => '9800000000',
+            'ship_line1' => '1 Test St',
+            'ship_city' => 'Pune',
+            'ship_state' => 'MH',
+            'ship_pincode' => '411001',
+            'payment_method' => 'cod',
+            'billing_same' => '1',
+            'accept_terms' => '1',
+        ])
+        ->assertRedirect()
+        ->assertSessionMissing(SharedCart::SESSION_DISTRIBUTOR_KEY); // pass consumed
 });
