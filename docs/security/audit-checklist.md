@@ -28,7 +28,7 @@ open.
 | 3 | Authorization | PASS | Admin behind `auth`+`role:admin`; KYC/doc endpoints enforce `distributor_id` ownership; confirmation pages IDOR-safe. |
 | 4 | Input/output | PASS w/ Medium | No SQLi/XSS/mass-assignment. **F2**: CSV formula-injection in exports — **FIXED** (`Shared\Support\Csv::safe`). |
 | 5 | Secrets & crypto | PASS | No committed secrets; AES-256-CBC at rest. Run gitleaks in CI before launch. |
-| 6 | Dependencies | **FAIL** | **F1**: Laravel 13.5.0 (High, CVE-2026-48019 email-rule CRLF); npm `shell-quote` (Critical) + `vite` (High), build-chain. **Blocking — needs dep update.** |
+| 6 | Dependencies | **PASS** (was FAIL) | **F1 FIXED:** laravel/framework → 13.16.1 (CVE-2026-48019 patched); npm vite fixed + `shell-quote` pinned to 1.8.4 via `overrides`. `composer audit` + `npm audit` both clean. |
 | 7 | Logging & privacy | PASS | PiiScrubber redacts PAN/Aadhaar/OTP/etc.; audit-log with before/after hashes. |
 | 8 | Compliance cross-check | PASS | Money/KYC/consent surfaces flagged; compliance-officer reviewed separately. |
 | 9 | File uploads | PASS w/ Low | Magic-byte + MIME + size cap + GD re-encode + private `kyc` disk + signed URLs; no traversal. Low: no AV scan (backlog). |
@@ -36,7 +36,7 @@ open.
 
 **Recently-added surfaces audited clean:** shared-cart guest checkout (non-enumerable code, scoped/cleared session pass, ADN+name-only PII), Admin Help & Reference (allow-listed slug, HTML stripped — no traversal/XSS), Find My ID (dual-match, rate-limited, no PAN oracle), OTP service (SHA-256, hash_equals, 5-attempt cap), PII crypter.
 
-**Verdict: BLOCKED — 3 Critical/High** (all F1 dependency CVEs, fixed by routine updates). Plus **F3 (hard rule #8 deviation) needs sign-off** before phase exit. F2 fixed; F4 already handled (`PII_ENCRYPTION_KEY` in `.env.example`); F5 Low/backlog.
+**Verdict (updated 2026-06-17 after remediation): no open Critical/High.** F1 dependency CVEs **fixed** (commit `56a6150`); F2 CSV injection **fixed** (`a98c220`); F4 already handled. **Remaining before phase exit:** F3 — the hard-rule-#8 deviation (full PAN/Aadhaar pre-KYC, R-31) needs a formal Compliance Officer + PO sign-off (record in `docs/security/risk-acceptances.md`). F5 (no AV scan) is Low/backlog. Once F3 is signed: **READY FOR UAT.**
 
 ## How to run
 
