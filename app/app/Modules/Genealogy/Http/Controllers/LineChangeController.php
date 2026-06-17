@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Genealogy\Http\Controllers;
 
+use App\Modules\Commerce\Services\DistributorCommerceActivity;
 use App\Modules\Genealogy\Models\GenealogyClosure;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyProcessedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeHasCommerceError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeNewParentTooNewError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
@@ -24,6 +26,7 @@ final class LineChangeController extends Controller
 {
     public function __construct(
         private readonly RequestLineChange $requestLineChange,
+        private readonly DistributorCommerceActivity $commerceActivity,
     ) {}
 
     public function show(): View|RedirectResponse
@@ -50,6 +53,8 @@ final class LineChangeController extends Controller
             ->where('depth', '>=', 1)
             ->exists();
 
+        $hasCommerceActivity = $this->commerceActivity->has($self->id);
+
         return view('genealogy.line-change', [
             'self' => $self,
             'businessDaysSince' => $businessDaysSince,
@@ -57,6 +62,7 @@ final class LineChangeController extends Controller
             'existing' => $existing,
             'alreadyUsed' => $alreadyUsed,
             'hasDownline' => $hasDownline,
+            'hasCommerceActivity' => $hasCommerceActivity,
         ]);
     }
 
@@ -109,6 +115,8 @@ final class LineChangeController extends Controller
             return back()->withErrors(['line_change' => 'The 5-business-day window has ended.']);
         } catch (LineChangeHasDownlineError) {
             return back()->withErrors(['line_change' => 'You already have referrals in your tree; line-change is not available.']);
+        } catch (LineChangeHasCommerceError) {
+            return back()->withErrors(['line_change' => 'You have order or BV activity on your account; line-change is no longer available.']);
         } catch (LineChangeAlreadyRequestedError) {
             return back()->withErrors(['line_change' => 'A line-change request is already pending for your account.']);
         } catch (LineChangeAlreadyProcessedError) {

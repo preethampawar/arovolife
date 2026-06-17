@@ -53,6 +53,12 @@
         <dt class="text-gray-600">Status</dt>
         <dd class="text-gray-900">{{ ucfirst($lcr->status) }}</dd>
 
+        <dt class="text-gray-600">Commerce activity</dt>
+        <dd class="{{ $commerceActivity['total'] > 0 ? 'text-red-700 font-semibold' : 'text-gray-900' }}">
+            {{ $commerceActivity['orders'] }} order(s), {{ $commerceActivity['bv_entries'] }} BV entry(ies)
+            @if($commerceActivity['total'] > 0)<span class="block text-xs font-normal">Line-change is no longer permitted for this distributor.</span>@endif
+        </dd>
+
         @if($lcr->status !== 'pending')
         <dt class="text-gray-600">Decision note</dt>
         <dd class="text-gray-900">{{ $lcr->decision_note ?: '—' }}</dd>
@@ -61,7 +67,12 @@
 </div>
 
 @if($lcr->status === 'pending')
-    @if($freeSides === [])
+    @if($commerceActivity['total'] > 0)
+    <div class="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800 mb-6">
+        <p class="font-semibold mb-1">Distributor has commerce activity — cannot approve</p>
+        <p>This distributor now has order or BV activity, so moving their placement would corrupt BV / commission attribution. Reject this request with a reason below.</p>
+    </div>
+    @elseif($freeSides === [])
     <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900 mb-6">
         <p class="font-semibold mb-1">No free group under the requested parent</p>
         <p>Both groups are taken, so this move cannot be approved. Reject it with a reason below.</p>

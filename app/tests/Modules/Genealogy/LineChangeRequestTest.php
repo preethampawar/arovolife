@@ -7,6 +7,7 @@ use App\Modules\Genealogy\Events\LineChangeRequested;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyProcessedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeHasCommerceError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeNewParentTooNewError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
@@ -21,8 +22,8 @@ uses(RefreshDatabase::class);
 
 /**
  * T&C §10: a distributor may request a line-change within 5 working days
- * of registration, provided they have no downline (and no purchases — which
- * is a no-op in Phase 1 since Commerce isn't yet a registration concern).
+ * of registration, provided they have no downline AND no commerce activity
+ * (Phase-2 block — see LCR-COMMERCE-BLOCK).
  */
 function lcrSeed(int $userId, ?int $effectiveAtBusinessDaysAgo = null, ?int $sponsorId = null): int
 {
@@ -287,4 +288,44 @@ it('LCR-09: rejects when the target parent has no open slot', function () {
         toPlacementParentId: $targetId,
         actorUserId: $applicantUser->id,
     ))->toThrow(LineChangePlacementSlotFullError::class);
+});
+
+/** Seed one product order (via a linked customer) so the distributor has commerce activity. */
+function lcrSeedCommerce(int $distributorId): void
+{
+    $customerId = DB::table('customers')->insertGetId([
+        'display_name' => 'LCR Customer',
+        'distributor_id' => $distributorId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('orders')->insert([
+        'order_no' => 'LCR-'.$distributorId.'-'.random_int(1000, 99999),
+        'idempotency_key' => 'lcr-'.$distributorId.'-'.uniqid(),
+        'customer_id' => $customerId,
+        'attributed_distributor_id' => $distributorId,
+        'attribution_source' => 'logged_in',
+        'status' => 'placed',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
+
+it('LCR-COMMERCE-BLOCK: request rejected when the distributor has commerce activity', function () {
+    $rootId = lcrSeed(lcrUser('root')->id, effectiveAtBusinessDaysAgo: 30);
+    $newParentId = lcrSeed(lcrUser('newSp')->id, effectiveAtBusinessDaysAgo: 10);
+    $applicantUser = lcrUser('app');
+    // Within the 5-day window and a leaf — only the commerce activity should block it.
+    $applicantId = lcrSeed($applicantUser->id, effectiveAtBusinessDaysAgo: 2, sponsorId: $rootId);
+
+    lcrSeedCommerce($applicantId);
+
+    expect(fn () => app(RequestLineChange::class)(
+        distributorId: $applicantId,
+        toPlacementParentId: $newParentId,
+        actorUserId: $applicantUser->id,
+    ))->toThrow(LineChangeHasCommerceError::class);
+
+    // Nothing was recorded — the guard fires before the request row is created.
+    expect(LineChangeRequest::query()->where('distributor_id', $applicantId)->exists())->toBeFalse();
 });

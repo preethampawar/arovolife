@@ -61,6 +61,12 @@
         <p>You already have referrals placed in your tree, so your placement can't be moved. For help, contact
             <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
     </div>
+    @elseif($hasCommerceActivity)
+    <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
+        <p class="font-semibold mb-1">Line-change is no longer available</p>
+        <p>You have order or BV activity on your account. To keep everyone's volumes fair, your placement can't be moved once you've started buying. For help, contact
+            <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
+    </div>
     @elseif($existing && $existing->status === 'pending')
     <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
         <p class="font-semibold mb-1">Pending request</p>
@@ -75,7 +81,7 @@
     </div>
     @endif
 
-    @if(! $alreadyUsed && ! $hasDownline && (! $existing || $existing->status !== 'pending') && $isWithinWindow)
+    @if(! $alreadyUsed && ! $hasDownline && ! $hasCommerceActivity && (! $existing || $existing->status !== 'pending') && $isWithinWindow)
     <form method="POST" action="{{ route('line-change.submit') }}" class="space-y-5"
         data-confirm="Submit this line-change request for admin review?"
         data-confirm-title="Confirm line-change request"
@@ -107,7 +113,7 @@
             Submit request
         </button>
     </form>
-    @elseif(! $alreadyUsed && ! $hasDownline && (! $existing || $existing->status !== 'pending'))
+    @elseif(! $alreadyUsed && ! $hasDownline && ! $hasCommerceActivity && (! $existing || $existing->status !== 'pending'))
     <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
         <p class="font-semibold mb-2">The 5-working-day window has ended.</p>
         <p>For account changes outside this window, please contact

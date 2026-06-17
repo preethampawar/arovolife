@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Genealogy\Services;
 
+use App\Modules\Commerce\Services\DistributorCommerceActivity;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Events\LineChangeApproved;
 use App\Modules\Genealogy\Models\LineChangeRequest;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeHasCommerceError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeLockTimeoutError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeNotPendingError;
@@ -28,6 +30,7 @@ final class ApproveLineChange
 {
     public function __construct(
         private readonly DatabaseManager $db,
+        private readonly DistributorCommerceActivity $commerceActivity,
     ) {}
 
     public function __invoke(int $requestId, int $reviewerUserId, string $chosenSide): void
@@ -84,6 +87,15 @@ final class ApproveLineChange
                 if ($hasDownline) {
                     throw new LineChangeHasDownlineError(
                         "Distributor {$distributorId} is no longer a leaf; line-change cannot be executed safely.",
+                    );
+                }
+
+                // Same staleness window for commerce: the requester may have placed
+                // an order between request and approval. Re-check so an approval can
+                // never move a distributor who now has BV / commission attribution.
+                if ($this->commerceActivity->has($distributorId)) {
+                    throw new LineChangeHasCommerceError(
+                        "Distributor {$distributorId} now has commerce activity; line-change cannot be executed.",
                     );
                 }
 

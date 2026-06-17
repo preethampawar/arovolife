@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Genealogy\Services;
 
+use App\Modules\Commerce\Services\DistributorCommerceActivity;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Events\LineChangeRequested;
 use App\Modules\Genealogy\Models\GenealogyClosure;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyProcessedError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeAlreadyRequestedError;
+use App\Modules\Genealogy\Services\Exceptions\LineChangeHasCommerceError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasDownlineError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeNewParentTooNewError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
@@ -32,6 +34,7 @@ final class RequestLineChange
 
     public function __construct(
         private readonly DatabaseManager $db,
+        private readonly DistributorCommerceActivity $commerceActivity,
     ) {}
 
     public function __invoke(
@@ -65,6 +68,16 @@ final class RequestLineChange
             if ($hasDownline) {
                 throw new LineChangeHasDownlineError(
                     "Distributor {$distributorId} has descendants and cannot request a line-change.",
+                );
+            }
+
+            // Commerce block (Phase 2): once a distributor has any order or BV
+            // in their name, moving their placement would retroactively corrupt
+            // BV / commission attribution for others. Block at the first
+            // commerce event.
+            if ($this->commerceActivity->has($distributorId)) {
+                throw new LineChangeHasCommerceError(
+                    "Distributor {$distributorId} has commerce activity and cannot request a line-change.",
                 );
             }
 
