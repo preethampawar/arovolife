@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property string|null $food_type
+ * @property int|null $category_id
+ * @property string|null $category
+ * @property string $slug
  */
 final class Product extends Model
 {

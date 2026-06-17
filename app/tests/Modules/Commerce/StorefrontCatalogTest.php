@@ -227,3 +227,25 @@ it('SCAT-05: the shop listing shows the BV badge to a distributor but not to the
     $dist = scatDistributor('AV87654321');
     $this->actingAs($dist)->get(route('shop.index'))->assertOk()->assertSee('550 BV');
 });
+
+it('SCAT-07: the All-products view segregates products by category, capped at 5, with a View-all link', function (): void {
+    scatEnableStorefront();
+    $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+
+    // Six products in one category — only the first five (by name) show on the
+    // "All products" view; the sixth needs the full category page.
+    foreach (range(1, 6) as $n) {
+        scatProduct("SEG{$n}", "seg-{$n}", $health, ['name' => "Segmented Item {$n}"]);
+    }
+
+    $res = $this->get(route('shop.index'))->assertOk();
+    $res->assertSee('Segmented Item 1');
+    $res->assertSee('Segmented Item 5');
+    $res->assertDontSee('Segmented Item 6');                       // capped at 5
+    $res->assertSee(route('shop.index', ['category' => 'health-care']), false); // "View all" link
+
+    // The full category page is NOT capped — the sixth product is listed there.
+    $this->get(route('shop.index', ['category' => 'health-care']))
+        ->assertOk()
+        ->assertSee('Segmented Item 6');
+});

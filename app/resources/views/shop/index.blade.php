@@ -160,88 +160,41 @@
         ['gradient' => 'from-sunrise-100 to-sunrise-50', 'iconColor' => 'text-sunrise-500', 'badgeBg' => 'bg-sunrise-100', 'badgeTxt' => 'text-sunrise-700', 'borderHover' => 'hover:border-sunrise-400', 'shadow' => 'hover:shadow-sunrise-500/20'],
         ['gradient' => 'from-violet-100 to-violet-50',   'iconColor' => 'text-violet-500',  'badgeBg' => 'bg-violet-100',  'badgeTxt' => 'text-violet-700',  'borderHover' => 'hover:border-violet-400',  'shadow' => 'hover:shadow-violet-500/20'],
     ];
-    $shownIndex = 0;
+    $toneFor = fn (int $i) => $cardTones[$i % count($cardTones)];
 @endphp
-<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-    @foreach($products as $product)
-        @php $variant = $product->primaryVariant(); @endphp
-        @if($variant === null) @continue @endif
-        @php
-            $tone = $cardTones[$shownIndex % count($cardTones)]; $shownIndex++;
-            $cardImage = $product->galleryImages->first()?->url() ?? $product->image_url;
-            $catLabel = $product->productCategory?->name ?? ($product->category ? str_replace('-', ' ', $product->category) : null);
-        @endphp
-        <div class="bg-white rounded-xl border border-gray-200 {{ $tone['borderHover'] }} overflow-hidden shadow-sm hover:shadow-lg {{ $tone['shadow'] }} hover:-translate-y-0.5 transition-all duration-300 group flex flex-col">
-            <a href="{{ route('shop.product', $product->slug) }}"
-               class="relative block aspect-square bg-gradient-to-br {{ $tone['gradient'] }} flex items-center justify-center overflow-hidden">
-                @if($cardImage)
-                    <img src="{{ $cardImage }}" alt="{{ $product->name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-                @else
-                    <div class="text-center {{ $tone['iconColor'] }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-2 opacity-70" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.41 11.59c.8-.8 2.1-.8 2.9 0l4.56 4.56m-1.5-1.5 1.66-1.66c.8-.8 2.1-.8 2.9 0l2.83 2.83M3 16.5V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5m-18 0A2.25 2.25 0 0 0 5.25 18.75h13.5A2.25 2.25 0 0 0 21 16.5m-18 0L7 12.5"/>
-                        </svg>
-                    </div>
-                @endif
-                @if($variant->hasDiscount())
-                    <span class="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500 text-white shadow-md">
-                        −{{ $variant->discountPercent() }}%
-                    </span>
-                @endif
-                @if($catLabel)
-                    <span class="absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider {{ $tone['badgeBg'] }} {{ $tone['badgeTxt'] }} backdrop-blur-sm shadow-sm">
-                        {{ $catLabel }}
-                    </span>
-                @endif
-            </a>
-            <div class="p-3 flex-1 flex flex-col">
-                <a href="{{ route('shop.product', $product->slug) }}" class="block">
-                    <h3 class="text-sm font-semibold text-gray-900 group-hover:text-brand-700 transition-colors leading-snug flex items-start gap-1.5">
-                        <x-veg-mark :type="$product->food_type" size="sm" class="mt-0.5" />
-                        <span class="line-clamp-2">{{ $product->name }}</span>
-                    </h3>
-                </a>
-                @if($product->short_description)
-                    <p class="text-xs text-gray-500 mt-1 line-clamp-1">{{ $product->short_description }}</p>
-                @endif
-                {{-- Price row + Add-to-Cart icon --}}
-                <div class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-100 mt-auto">
-                    <div class="flex items-baseline gap-1.5 min-w-0">
-                        <span class="text-base font-bold text-gray-900">{{ $variant->displayPrice() }}</span>
-                        @if($variant->hasDiscount())
-                            <span class="text-xs text-gray-400 line-through">{{ $variant->displayMrp() }}</span>
-                        @endif
-                    </div>
-                    <form method="POST" action="{{ route('shop.cart.add') }}" class="shrink-0" data-add-to-cart>
-                        @csrf
-                        <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
-                        <input type="hidden" name="qty" value="1">
-                        <button type="submit" aria-label="Add {{ $product->name }} to cart" title="Add to cart"
-                            class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-brand-500 hover:bg-brand-600 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
-                        </button>
-                    </form>
-                </div>
-                {{-- BV shown only to logged-in distributors — a factual point value
-                     for the compensation plan, never an earnings figure
-                     (DSR Rule 5(1)(d) / hard rule #3). Mirrors the product page. --}}
-                @auth
-                    @if(auth()->user()->distributor && $variant && $variant->bv_paise > 0)
-                    <div class="mt-2">
-                        <span class="inline-block text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded" title="Business Volume — points used in the compensation plan">{{ number_format($variant->bv_paise / 100, 0) }} BV</span>
-                    </div>
-                    @endif
-                @endauth
+@if(($activeCategory ?? null) === null && ($productsByCategory ?? collect())->isNotEmpty())
+    {{-- "All products" view: products grouped into per-category sections, up to
+         5 each, with a "View all" link to the full category page. --}}
+    @php $cardIdx = 0; @endphp
+    @foreach($productsByCategory as $group)
+        <section class="mb-10">
+            <div class="flex items-end justify-between gap-3 mb-4">
+                <h2 class="text-lg font-bold text-gray-900">{{ $group['category']->name }}</h2>
+                <a href="{{ route('shop.index', ['category' => $group['category']->slug]) }}"
+                   class="text-sm font-medium text-brand-600 hover:text-brand-700 whitespace-nowrap">View all →</a>
             </div>
-        </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                @foreach($group['products'] as $product)
+                    @include('partials._product-card', ['product' => $product, 'tone' => $toneFor($cardIdx)])
+                    @php $cardIdx++; @endphp
+                @endforeach
+            </div>
+        </section>
     @endforeach
-</div>
+@else
+    {{-- Single-category page (or fallback): a flat grid of all matching products. --}}
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        @foreach($products as $i => $product)
+            @include('partials._product-card', ['product' => $product, 'tone' => $toneFor($i)])
+        @endforeach
+    </div>
 
-@if($products->isEmpty())
-<div class="bg-white rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center text-gray-500">
-    <span class="text-5xl block mb-3 opacity-50">🛒</span>
-    No products available yet — check back soon.
-</div>
+    @if($products->isEmpty())
+    <div class="bg-white rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center text-gray-500">
+        <span class="text-5xl block mb-3 opacity-50">🛒</span>
+        No products available yet — check back soon.
+    </div>
+    @endif
 @endif
 
 {{-- Add to cart from a listing card without leaving the page: AJAX add →

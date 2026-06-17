@@ -57,8 +57,26 @@ final class ShopController extends Controller
             ->orderBy('name')
             ->get();
 
+        // "All products" view (no category filter): present products grouped
+        // into per-category sections, up to 5 each, with a "View all" link to
+        // the full category page. A product belongs to a category by FK or the
+        // legacy `category` slug (same matching as the ?category= filter).
+        $productsByCategory = $activeCategory !== null
+            ? collect()
+            : $categories
+                ->map(fn (ProductCategory $cat): array => [
+                    'category' => $cat,
+                    'products' => $products
+                        ->filter(fn (Product $p): bool => $p->category_id === $cat->id || $p->category === $cat->slug)
+                        ->take(5)
+                        ->values(),
+                ])
+                ->filter(fn (array $group): bool => $group['products']->isNotEmpty())
+                ->values();
+
         return view('shop.index', [
             'products' => $products,
+            'productsByCategory' => $productsByCategory,
             'categories' => $categories,
             'activeSlug' => $activeSlug,
             'activeCategory' => $activeCategory,
