@@ -49,11 +49,26 @@ final class ApproveLineChange
             $distributorId = (int) $request->distributor_id;
             $newParentId = (int) $request->to_placement_parent_id;
 
+            // R-16: hold the advisory lock on BOTH the requester and the target
+            // parent (same `placement:{id}` key the PlacementEngine uses), so a
+            // concurrent registration placing a child UNDER the requester is
+            // fully serialised against the leaf re-check below — not just one
+            // landing under the target parent. Acquire in ascending id order so
+            // two concurrent approvals can never deadlock (AB/BA).
             $usingMysql = $this->db->connection()->getDriverName() === 'mysql';
+            $lockIds = array_unique([$distributorId, $newParentId]);
+            sort($lockIds);
+            $acquired = [];
             if ($usingMysql) {
-                $got = $this->db->selectOne('SELECT GET_LOCK(?, 5) AS got', ["placement:{$newParentId}"]);
-                if ((int) ($got->got ?? 0) !== 1) {
-                    throw new LineChangeLockTimeoutError("Could not lock target parent {$newParentId}.");
+                foreach ($lockIds as $lockId) {
+                    $got = $this->db->selectOne('SELECT GET_LOCK(?, 5) AS got', ["placement:{$lockId}"]);
+                    if ((int) ($got->got ?? 0) !== 1) {
+                        foreach (array_reverse($acquired) as $held) {
+                            $this->db->statement('SELECT RELEASE_LOCK(?)', ["placement:{$held}"]);
+                        }
+                        throw new LineChangeLockTimeoutError("Could not lock placement {$lockId}.");
+                    }
+                    $acquired[] = $lockId;
                 }
             }
 
@@ -166,7 +181,9 @@ final class ApproveLineChange
                 );
             } finally {
                 if ($usingMysql) {
-                    $this->db->statement('SELECT RELEASE_LOCK(?)', ["placement:{$newParentId}"]);
+                    foreach (array_reverse($acquired) as $held) {
+                        $this->db->statement('SELECT RELEASE_LOCK(?)', ["placement:{$held}"]);
+                    }
                 }
             }
         });
