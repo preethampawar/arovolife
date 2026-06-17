@@ -125,11 +125,14 @@
                             data-state="{{ $sa->state }}" data-pincode="{{ $sa->pincode }}"
                             {{ $sa->is_default ? 'checked' : '' }}>
                         <span class="min-w-0">
+                            {{-- Concise: label + recipient only. The full address
+                                 isn't printed here — selecting fills it into the
+                                 fields below (partner feedback). --}}
                             <span class="flex items-center gap-1.5 text-sm font-medium text-gray-900">
                                 @if($sa->label)<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700">{{ $sa->label }}</span>@endif
                                 {{ $sa->name }}
                             </span>
-                            <span class="block text-xs text-gray-600 mt-0.5">{{ $sa->oneLine() }}</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">{{ $sa->city }}{{ $sa->pincode ? ' · '.$sa->pincode : '' }}</span>
                         </span>
                     </label>
                     @endforeach
@@ -340,8 +343,15 @@
         if (!radios.length) return;
         const set = (name, val) => { const el = document.querySelector('[name="' + name + '"]'); if (el) el.value = val || ''; };
 
+        const shipFields = ['ship_line1', 'ship_line2', 'ship_city', 'ship_state', 'ship_pincode'];
+
         function fill(radio) {
-            if (!radio.value) return; // "Use a new address" — leave fields as-is
+            if (!radio.value) {
+                // "Use a new address" — clear the shipping fields for fresh entry
+                // (partner feedback). Buyer name/phone are left as the user typed.
+                shipFields.forEach((n) => set(n, ''));
+                return;
+            }
             const d = radio.dataset;
             set('buyer_name', d.name);
             set('buyer_phone', d.phone);
