@@ -83,6 +83,8 @@ function initIdPhotoCropper() {
     const saveBtn = document.getElementById('idPhotoCropSave');
     const cancelBtn = document.getElementById('idPhotoCropCancel');
     const zoom = document.getElementById('idPhotoCropZoom');
+    const rotateLeft = document.getElementById('idPhotoRotateLeft');
+    const rotateRight = document.getElementById('idPhotoRotateRight');
 
     let cropper = null;
     let lastZoom = 0;
@@ -128,6 +130,9 @@ function initIdPhotoCropper() {
             lastZoom = v;
         });
     }
+
+    if (rotateLeft) rotateLeft.addEventListener('click', () => { if (cropper) cropper.rotate(-90); });
+    if (rotateRight) rotateRight.addEventListener('click', () => { if (cropper) cropper.rotate(90); });
 
     cancelBtn.addEventListener('click', cleanup);
     modal.addEventListener('click', (e) => { if (e.target === modal) cleanup(); });

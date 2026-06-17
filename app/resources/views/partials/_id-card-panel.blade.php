@@ -135,9 +135,24 @@
                             <img id="idPhotoCropImage" alt="" class="block max-w-full">
                         </div>
                         <div class="flex items-center gap-3 mt-4">
-                            <span class="text-xs text-gray-500">Zoom</span>
+                            <span class="text-xs text-gray-500 w-12 shrink-0">Zoom</span>
                             <input id="idPhotoCropZoom" type="range" min="-0.5" max="1.5" step="0.01" value="0"
                                 class="flex-1 accent-brand-600">
+                        </div>
+                        {{-- Rotate ("360 adjustment") — drag to pan, slider to zoom,
+                             these to rotate the photo in 90° steps. --}}
+                        <div class="flex items-center gap-2 mt-3">
+                            <span class="text-xs text-gray-500 w-12 shrink-0">Rotate</span>
+                            <button type="button" id="idPhotoRotateLeft" title="Rotate left 90°"
+                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                                Left
+                            </button>
+                            <button type="button" id="idPhotoRotateRight" title="Rotate right 90°"
+                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"/></svg>
+                                Right
+                            </button>
                         </div>
                     </div>
                     <div class="px-5 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
