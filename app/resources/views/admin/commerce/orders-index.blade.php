@@ -22,6 +22,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50">
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-12">S.No</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Attribution</th>
@@ -35,6 +36,7 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($orders as $o)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-600 tabular-nums">{{ ($orders->firstItem() ?? 1) + $loop->index }}</td>
                     <td class="px-4 py-3 font-mono text-brand-600 font-medium">{{ $o->order_no }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $o->customer->display_name ?? '—' }}</td>
                     <td class="px-4 py-3 text-xs text-gray-500">
@@ -58,7 +60,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No orders yet.</td></tr>
+                <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">No orders yet.</td></tr>
                 @endforelse
             </tbody>
         </table>
