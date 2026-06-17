@@ -26,6 +26,31 @@ final class AdminHelpController extends Controller
      * @var array<string, array{title: string, description: string, file: string}>
      */
     private const DOCS = [
+        'glossary' => [
+            'title' => 'Glossary',
+            'description' => 'The vocabulary used across the platform and our policies — ADN, BV, Genos, sponsor vs placement, cooling-off, KYC and more.',
+            'file' => 'glossary.md',
+        ],
+        'compliance-dos-and-donts' => [
+            'title' => "Compliance Do's & Don'ts",
+            'description' => 'The eight hard rules in plain language, plus the do/don\'t list every admin must follow under DSR 2021, the Direct Seller Agreement and DPDP.',
+            'file' => 'compliance-dos-and-donts.md',
+        ],
+        'kyc-review-guide' => [
+            'title' => 'KYC Review Guide',
+            'description' => 'How to review identity documents — the required set, approve / reject / flag-for-reupload, and handling personal data safely.',
+            'file' => 'kyc-review-guide.md',
+        ],
+        'admin-actions' => [
+            'title' => 'Admin Actions & Separation of Duties',
+            'description' => 'What each account action does (Block / Unblock / Terminate / Deactivate), what is reversible, and who should do it.',
+            'file' => 'admin-actions.md',
+        ],
+        'cooling-off' => [
+            'title' => 'Cooling-off & Cancellation',
+            'description' => 'The statutory 30-day cancellation window, the one-click refund flow, reminders, and edge cases.',
+            'file' => 'cooling-off.md',
+        ],
         'status-reference' => [
             'title' => 'Status Reference',
             'description' => 'Every status / lifecycle value across the platform — accounts, KYC, genealogy, catalog, orders, payments, returns and more — with plain-English explanations.',

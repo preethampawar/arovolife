@@ -28,13 +28,34 @@ function helpAdmin(): User
     return $admin;
 }
 
-it('AH-01: an admin sees the help index listing the status reference', function (): void {
+it('AH-01: an admin sees the help index listing every reference', function (): void {
     $this->actingAs(helpAdmin())
         ->get(route('admin.help.index'))
         ->assertOk()
         ->assertSee('Help &amp; Reference', false)
+        ->assertSee('Glossary')
+        ->assertSee('Compliance Do')           // "Compliance Do's & Don'ts" (apostrophe is HTML-encoded)
+        ->assertSee('KYC Review Guide')
+        ->assertSee('Separation of Duties')
+        ->assertSee('Cooling-off')
         ->assertSee('Status Reference');
 });
+
+it('AH-06: every registered reference doc renders as HTML', function (string $slug, string $needle): void {
+    $this->actingAs(helpAdmin())
+        ->get(route('admin.help.show', $slug))
+        ->assertOk()
+        ->assertSee('markdown-doc', false)
+        ->assertSee('<table>', false)
+        ->assertSee($needle);
+})->with([
+    'glossary' => ['glossary', 'Business Volume'],
+    'compliance' => ['compliance-dos-and-donts', 'income projections'],
+    'kyc' => ['kyc-review-guide', 'Aadhaar'],
+    'admin-actions' => ['admin-actions', 'irreversible'],
+    'cooling-off' => ['cooling-off', '30 days'],
+    'status' => ['status-reference', 'Blocked'],
+]);
 
 it('AH-02: an admin can read the rendered status-reference doc (markdown → HTML)', function (): void {
     $response = $this->actingAs(helpAdmin())
