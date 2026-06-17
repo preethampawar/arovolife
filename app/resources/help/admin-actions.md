@@ -60,16 +60,24 @@ payouts should **not** be able to freeze accounts, and a compliance role that
 freezes/holds should **not** be able to approve payouts. This is a control
 against both error and abuse.
 
-**Where we are today (current phase):** there is a **single `admin` role**.
-Dedicated roles (`admin-finance`, `admin-compliance`, `admin-operations`) are
-**planned but not yet in force**, so today any admin can perform any admin
-action. Because of that, two compensating controls matter even more:
+**Where we are today:** the role split is **in force** (R-17). There is a
+super-admin plus three scoped roles:
 
-1. **Every action is audit-logged** with the actor and a reason — so any action
-   is traceable after the fact.
-2. **Keep the admin team small and trusted**, and follow the duties split
-   *by convention* until the roles are enforced in code: whoever handles money
-   shouldn't also be the one freezing/terminating accounts.
+| Role | Can do | Cannot do |
+|---|---|---|
+| **`admin`** (super-admin) | Everything | — |
+| **`admin-operations`** | Approve/reject line-change | Block/terminate accounts, record payments |
+| **`admin-finance`** | Record payments (e.g. mark COD paid), refunds | Block/terminate accounts, decide line-change |
+| **`admin-compliance`** | Block / unblock / terminate accounts | Record payments, decide line-change |
+
+So **admin-finance cannot block** an account and **admin-compliance cannot
+record payments** — enforced in code (each sensitive action checks a permission
+the scoped role grants). A full **`admin`** keeps doing everything. Two
+compensating controls still apply:
+
+1. **Every action is audit-logged** with the actor and a reason — traceable after the fact.
+2. Give a person the **narrowest** role that lets them do their job; reserve the
+   full `admin` role for the few who genuinely need it.
 
 If you believe an action needs a second pair of eyes, get one before acting.
 

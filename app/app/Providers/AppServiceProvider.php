@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
+use App\Modules\Identity\Models\User;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -25,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->assertS3IsConfigured();
+
+        // Super-admin: the `admin` role bypasses every permission check (R-17
+        // separation of duties). The specialised roles (admin-operations /
+        // admin-finance / admin-compliance) carry only their scoped
+        // permissions, so e.g. admin-finance can't freeze and admin-compliance
+        // can't record payments — while a full `admin` keeps doing everything.
+        Gate::before(fn (User $user) => $user->hasRole('admin') ? true : null);
 
         if ($this->app->runningInConsole()) {
             $this->commands([

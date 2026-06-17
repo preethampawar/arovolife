@@ -65,6 +65,9 @@ final class ProductionSeeder extends Seeder
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
 
+        // Separation-of-duties roles + scoped permissions (R-17).
+        $this->call(RolesAndPermissionsSeeder::class);
+
         $email = (string) config('arovolife.seeder.admin.email', '');
         $password = (string) config('arovolife.seeder.admin.password', '');
 

@@ -168,7 +168,11 @@ Route::middleware([])->group(function (): void {
 
 // ── Admin Console ────────────────────────────────────────────────────────────
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
+// The admin area admits the whole admin family (R-17). `admin` is the
+// super-admin (Gate::before); the scoped roles can browse the console but each
+// sensitive action is additionally gated by a `can:` permission so e.g.
+// admin-finance can't freeze and admin-compliance can't record payments.
+Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-compliance'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/distributors', [AdminDistributorController::class, 'index'])->name('distributors.index');
@@ -187,9 +191,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/distributors/{id}/set-password', [AdminDistributorEditController::class, 'setPassword'])->whereNumber('id')->name('distributors.set-password');
     Route::post('/distributors/{id}/identity', [AdminDistributorEditController::class, 'updateIdentity'])->whereNumber('id')->name('distributors.identity');
     Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
-    Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->name('distributors.freeze');
-    Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->name('distributors.unfreeze');
-    Route::post('/distributors/{id}/terminate', [AdminDistributorController::class, 'terminate'])->whereNumber('id')->name('distributors.terminate');
+    // Account discipline (block / unblock / terminate) — admin-compliance (R-17).
+    Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.freeze');
+    Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.unfreeze');
+    Route::post('/distributors/{id}/terminate', [AdminDistributorController::class, 'terminate'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.terminate');
     Route::post('/distributors/{id}/activate', [AdminDistributorController::class, 'activate'])->whereNumber('id')->name('distributors.activate');
     Route::post('/distributors/{id}/deactivate', [AdminDistributorController::class, 'deactivate'])->whereNumber('id')->name('distributors.deactivate');
 
@@ -237,15 +242,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Line-change requests — review queue + approve/reject
     Route::get('/line-changes', [AdminLineChangeController::class, 'index'])->name('line-changes.index');
     Route::get('/line-changes/{id}', [AdminLineChangeController::class, 'show'])->whereNumber('id')->name('line-changes.show');
-    Route::post('/line-changes/{id}/approve', [AdminLineChangeController::class, 'approve'])->whereNumber('id')->name('line-changes.approve');
-    Route::post('/line-changes/{id}/reject', [AdminLineChangeController::class, 'reject'])->whereNumber('id')->name('line-changes.reject');
+    // Line-change decisions — admin-operations (R-17).
+    Route::post('/line-changes/{id}/approve', [AdminLineChangeController::class, 'approve'])->whereNumber('id')->middleware('can:placement.decide')->name('line-changes.approve');
+    Route::post('/line-changes/{id}/reject', [AdminLineChangeController::class, 'reject'])->whereNumber('id')->middleware('can:placement.decide')->name('line-changes.reject');
 
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');
     Route::get('/commerce/orders/{order}', [AdminOrderController::class, 'show'])->name('commerce.orders.show');
     Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
     Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
-    Route::post('/commerce/orders/{order}/mark-cod-paid', [AdminOrderController::class, 'markCodPaid'])->name('commerce.orders.mark-cod-paid');
+    // Recording money received — admin-finance (R-17 / R-20).
+    Route::post('/commerce/orders/{order}/mark-cod-paid', [AdminOrderController::class, 'markCodPaid'])->middleware('can:finance.record')->name('commerce.orders.mark-cod-paid');
     Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
 
     // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
