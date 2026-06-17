@@ -50,6 +50,13 @@
             @endforeach
         </div>
         <div class="mt-4 pt-4 border-t border-gray-200 space-y-1">
+            @if($showBv && $order->bvTotalPaise() > 0)
+            {{-- BV at the TOP of the totals, mirroring the cart's Order Summary. --}}
+            <div class="flex justify-between text-brand-700 pb-2 mb-2 border-b border-gray-100">
+                <span class="font-semibold">Total BV</span>
+                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span>
+            </div>
+            @endif
             <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span>₹{{ number_format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
             <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ number_format($order->gst_paise / 100, 2) }}</span></div>
             @if($order->discount_paise > 0)
@@ -59,9 +66,6 @@
                 @if($order->shipping_paise > 0)<span>₹{{ number_format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
             </div>
             <div class="flex justify-between font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span>{{ $order->displayTotal() }}</span></div>
-            @if($showBv && $order->bvTotalPaise() > 0)
-            <div class="flex justify-between text-sm text-brand-700 pt-1"><span>Total BV</span><span class="font-semibold">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span></div>
-            @endif
         </div>
     </div>
 
