@@ -110,7 +110,7 @@ final class User extends Authenticatable
         return match ($this->status) {
             'active' => ['dot' => self::STATUS_DOTS['active'],    'bg' => 'bg-leaf-50',    'border' => 'border-leaf-400',    'pill' => 'text-leaf-700 bg-leaf-50 border-leaf-200',           'card_label' => 'Active',     'pill_label' => 'Verified'],
             'pending' => ['dot' => self::STATUS_DOTS['pending'],  'bg' => 'bg-yellow-50',  'border' => 'border-yellow-400',  'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'New Member', 'pill_label' => 'Pending'],
-            'frozen' => ['dot' => self::STATUS_DOTS['frozen'],    'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-400', 'pill' => 'text-sunrise-700 bg-sunrise-50 border-sunrise-200',  'card_label' => 'Suspended',  'pill_label' => 'Suspended'],
+            'frozen' => ['dot' => self::STATUS_DOTS['frozen'],    'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-400', 'pill' => 'text-sunrise-700 bg-sunrise-50 border-sunrise-200',  'card_label' => 'Blocked',    'pill_label' => 'Blocked'],
             'rejected' => ['dot' => self::STATUS_DOTS['rejected'], 'bg' => 'bg-amber-50',   'border' => 'border-amber-400',   'pill' => 'text-amber-700 bg-amber-50 border-amber-200',         'card_label' => 'Rejected',   'pill_label' => 'Rejected'],
             default => ['dot' => 'bg-gray-400',    'bg' => 'bg-gray-50',    'border' => 'border-gray-400',    'pill' => 'text-gray-700 bg-gray-50 border-gray-200',            'card_label' => ucfirst((string) $this->status), 'pill_label' => ucfirst((string) $this->status)],
         };
@@ -132,6 +132,40 @@ final class User extends Authenticatable
     ];
 
     /**
+     * The single canonical, user-facing label for each account status — the one
+     * source every surface (distributor dashboard, admin, reports, tree legend)
+     * must use so the same status never reads as three different words. A
+     * 'frozen' account is "Blocked" everywhere (was "Suspended"/"Frozen"/
+     * "Blocked" across surfaces). 'terminated' has a context nuance handled by
+     * {@see self::statusLabel()} (a cooling-off self-cancellation reads
+     * "Cancelled").
+     *
+     * @var array<string, string>
+     */
+    public const STATUS_LABELS = [
+        'pending' => 'Pending',
+        'active' => 'Active',
+        'frozen' => 'Blocked',
+        'terminated' => 'Terminated',
+        'rejected' => 'Rejected',
+    ];
+
+    /**
+     * Canonical user-facing status label for THIS account. Use everywhere a
+     * status is shown as text. 'terminated' splits into "Cancelled" (the
+     * distributor's own cooling-off cancellation) vs "Terminated" (admin
+     * closure); every other status comes straight from {@see self::STATUS_LABELS}.
+     */
+    public function statusLabel(): string
+    {
+        if ($this->status === 'terminated') {
+            return $this->isCoolingOffCancellation() ? 'Cancelled' : 'Terminated';
+        }
+
+        return self::STATUS_LABELS[$this->status] ?? ucfirst((string) $this->status);
+    }
+
+    /**
      * The genealogy tree colour-key legend: generic status buckets (not
      * per-record labels), driven by the same {@see self::STATUS_DOTS} the
      * cards use. A closed account (cancelled or terminated) shares the red
@@ -146,7 +180,7 @@ final class User extends Authenticatable
             ['dot' => self::STATUS_DOTS['pending'],    'label' => 'New Member'],
             ['dot' => self::STATUS_DOTS['active'],     'label' => 'Active'],
             ['dot' => self::STATUS_DOTS['terminated'], 'label' => 'Terminated'],
-            ['dot' => self::STATUS_DOTS['frozen'],     'label' => 'Suspended'],
+            ['dot' => self::STATUS_DOTS['frozen'],     'label' => 'Blocked'],
         ];
     }
 
@@ -204,7 +238,7 @@ final class User extends Authenticatable
 
         return match ($this->status) {
             'active' => ['label' => 'Active', 'class' => 'bg-green-50 text-green-700 border-green-200'],
-            'frozen' => ['label' => 'Frozen', 'class' => 'bg-red-50 text-red-700 border-red-200'],
+            'frozen' => ['label' => 'Blocked', 'class' => 'bg-red-50 text-red-700 border-red-200'],
             'rejected' => ['label' => 'Rejected', 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
             'pending' => ['label' => 'Pending', 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
             default => ['label' => ucfirst((string) $this->status), 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],

@@ -31,7 +31,7 @@
         <a href="{{ route('admin.distributors.index', array_merge(request()->query(), ['status' => $s])) }}"
            class="px-3 py-1 rounded-full text-xs font-medium border transition-colors
                   {{ $isActive ? $style['active'] : $style['inactive'] }}">
-            {{ ucfirst($s) }}
+            {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$s] ?? ucfirst($s) }}
             @if(isset($statusCounts[$s])) ({{ $statusCounts[$s] }}) @endif
         </a>
     @endforeach
@@ -122,7 +122,7 @@
                              : ($d->status === 'frozen'    ? 'bg-red-50 text-red-700 border-red-200'
                              : ($d->status === 'terminated'? 'bg-white text-gray-500 border-gray-200'
                              : 'bg-amber-50 text-amber-700 border-amber-200')) }}">
-                            {{ $d->status }}
+                            {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$d->status] ?? ucfirst((string) $d->status) }}
                         </span>
                     </td>
                     <td class="px-4 py-3">

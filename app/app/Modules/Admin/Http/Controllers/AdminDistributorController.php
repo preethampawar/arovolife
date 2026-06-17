@@ -160,7 +160,7 @@ final class AdminDistributorController extends Controller
         $user = User::findOrFail($distributor->user_id);
 
         if (! in_array($user->status, ['active', 'pending'])) {
-            return back()->withErrors(['reason' => 'User cannot be frozen in current status: '.$user->status]);
+            return back()->withErrors(['reason' => 'User cannot be blocked in current status: '.$user->status]);
         }
 
         $user->update(['status' => 'frozen']);
@@ -177,7 +177,7 @@ final class AdminDistributorController extends Controller
         DistributorFrozen::dispatch($id, (int) auth()->id(), (string) $request->reason, Carbon::now());
 
         return redirect()->route('admin.distributors.show', $id)
-            ->with('status', 'Distributor frozen successfully.');
+            ->with('status', 'Distributor blocked successfully.');
     }
 
     public function unfreeze(Request $request, int $id): RedirectResponse
@@ -186,7 +186,7 @@ final class AdminDistributorController extends Controller
         $user = User::findOrFail($distributor->user_id);
 
         if ($user->status !== 'frozen') {
-            return back()->withErrors(['error' => 'User is not currently frozen.']);
+            return back()->withErrors(['error' => 'User is not currently blocked.']);
         }
 
         $user->update(['status' => 'active']);
@@ -203,7 +203,7 @@ final class AdminDistributorController extends Controller
         DistributorUnfrozen::dispatch($id, (int) auth()->id(), Carbon::now());
 
         return redirect()->route('admin.distributors.show', $id)
-            ->with('status', 'Distributor account unfrozen.');
+            ->with('status', 'Distributor account unblocked.');
     }
 
     public function terminate(Request $request, int $id): RedirectResponse

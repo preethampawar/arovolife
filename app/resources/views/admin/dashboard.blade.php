@@ -54,9 +54,9 @@
             'icon'     => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />',
         ],
         [
-            'label'    => 'Frozen Accounts',
+            'label'    => 'Blocked Accounts',
             'value'    => $stats['frozen_users'],
-            'hint'     => 'Suspended by compliance',
+            'hint'     => 'Blocked by compliance',
             'tone'     => 'slate',
             'href'     => route('admin.distributors.index', ['status' => 'frozen']),
             'icon'     => '<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />',
@@ -123,7 +123,7 @@
                         {{ $d->status === 'active' ? 'bg-green-50 text-green-700 border border-green-200'
                          : ($d->status === 'frozen' ? 'bg-red-50 text-red-700 border border-red-200'
                          : 'bg-amber-50 text-amber-700 border border-amber-200') }}">
-                        {{ $d->status }}
+                        {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$d->status] ?? ucfirst((string) $d->status) }}
                     </span>
                     <p class="text-xs text-gray-600 mt-0.5">{{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y, h:i A') }}</p>
                 </div>

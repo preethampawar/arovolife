@@ -1,6 +1,6 @@
 @extends('emails.layouts.branded', [
-    'subject'     => 'Your arovolife account has been temporarily frozen',
-    'previewText' => 'Your distributor account '.$adn.' has been temporarily frozen.',
+    'subject'     => 'Your arovolife account has been temporarily blocked',
+    'previewText' => 'Your distributor account '.$adn.' has been temporarily blocked.',
     'accentColor' => '#b45309',
     'accentDarker' => '#92400e',
 ])
@@ -10,7 +10,7 @@
     <tr>
         <td>
             <p class="ar-h1" style="margin: 0 0 18px 0; font-size: 22px; line-height: 28px; font-weight: 700; color: #111827;">
-                Your account has been temporarily frozen
+                Your account has been temporarily blocked
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Hi {{ $fullName }},
@@ -18,7 +18,7 @@
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Your arovolife distributor account
                 <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $adn }}</span>
-                was temporarily frozen on <strong style="color: #111827;">{{ $frozenAtFormatted }}</strong>.
+                was temporarily blocked on <strong style="color: #111827;">{{ $frozenAtFormatted }}</strong>.
                 You will not be able to sign in until the account has been reviewed.
             </p>
 

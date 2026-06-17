@@ -68,7 +68,7 @@
                 } else {
                     $statusBadge = match ($distributor->status) {
                         'active'   => ['label' => 'Active',   'class' => 'bg-green-50 text-green-700 border-green-200'],
-                        'frozen'   => ['label' => 'Frozen',   'class' => 'bg-red-50 text-red-700 border-red-200'],
+                        'frozen'   => ['label' => 'Blocked',  'class' => 'bg-red-50 text-red-700 border-red-200'],
                         default    => ['label' => ucfirst($distributor->status), 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
                     };
                 }
@@ -206,13 +206,13 @@
 
         @if($distributor->status === 'frozen')
         <form method="POST" action="{{ route('admin.distributors.unfreeze', $distributor->id) }}"
-            data-confirm="Unfreeze this account?"
-            data-confirm-title="Confirm unfreeze"
-            data-confirm-impact="The account is unfrozen and the distributor can sign in again. This is reversible — you can freeze the account again later.">
+            data-confirm="Unblock this account?"
+            data-confirm-title="Confirm unblock"
+            data-confirm-impact="The account is unblocked and the distributor can sign in again. This is reversible — you can block the account again later.">
             @csrf
             <button type="submit"
                 class="px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium transition-colors">
-                ✓ Unfreeze Account
+                ✓ Unblock Account
             </button>
         </form>
         @endif
@@ -220,7 +220,7 @@
         @if(in_array($distributor->status, ['active','pending']))
         <button onclick="document.getElementById('freeze-form').classList.toggle('hidden')"
             class="px-4 py-2 rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white text-sm font-medium transition-colors">
-            ⚠ Freeze Account
+            ⚠ Block Account
         </button>
         @endif
 
@@ -258,16 +258,16 @@
 
     <form id="freeze-form" method="POST"
         action="{{ route('admin.distributors.freeze', $distributor->id) }}"
-        data-confirm="Freeze this account?"
-        data-confirm-title="Confirm freeze"
-        data-confirm-impact="The account is frozen and the distributor cannot sign in until it is unfrozen. This is reversible."
+        data-confirm="Block this account?"
+        data-confirm-title="Confirm block"
+        data-confirm-impact="The account is blocked and the distributor cannot sign in until it is unblocked. This is reversible."
         class="hidden mt-4 space-y-3 border-t border-gray-200 pt-4">
         @csrf
-        <label class="block text-sm text-gray-700">Reason for freezing <span class="text-red-700">*</span></label>
+        <label class="block text-sm text-gray-700">Reason for blocking <span class="text-red-700">*</span></label>
         <textarea name="reason" required rows="2" placeholder="Enter reason…"
             class="w-full max-w-lg rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"></textarea>
         <button type="submit" class="px-4 py-2 rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white text-sm font-medium transition-colors">
-            Confirm Freeze
+            Confirm Block
         </button>
     </form>
 
@@ -278,7 +278,7 @@
         data-confirm-impact="The account is permanently closed and the distributor can never sign in again. This is irreversible."
         class="hidden mt-4 space-y-3 border-t border-gray-200 pt-4">
         @csrf
-        <p class="text-sm text-red-700 font-medium">⚠ This action is irreversible. The distributor's ADN will be frozen.</p>
+        <p class="text-sm text-red-700 font-medium">⚠ This action is irreversible. The distributor's ADN will be permanently closed.</p>
         <label class="block text-sm text-gray-700">Reason for termination <span class="text-red-700">*</span></label>
         <textarea name="reason" required rows="2" placeholder="Enter reason (required for audit log)…"
             class="w-full max-w-lg rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"></textarea>

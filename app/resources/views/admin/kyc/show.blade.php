@@ -23,7 +23,7 @@
         'active'     => ['bg' => 'bg-green-50',  'border' => 'border-green-200',  'text' => 'text-green-900',  'label' => 'Already approved',   'note' => 'This distributor was already approved. Re-approving will reset their activation timestamp.'],
         'rejected'   => ['bg' => 'bg-red-50',    'border' => 'border-red-200',    'text' => 'text-red-900',    'label' => 'Rejected',           'note' => 'The applicant was previously rejected and has not yet resubmitted. They can log in and re-upload at /kyc/resubmit.'],
         'terminated' => ['bg' => 'bg-gray-100',  'border' => 'border-gray-300',   'text' => 'text-gray-900',   'label' => 'Account closed',     'note' => 'This account is permanently terminated. No further action is normally appropriate here.'],
-        'frozen'     => ['bg' => 'bg-purple-50', 'border' => 'border-purple-200', 'text' => 'text-purple-900', 'label' => 'Frozen (hold)',      'note' => 'This account is on a compliance hold.'],
+        'frozen'     => ['bg' => 'bg-purple-50', 'border' => 'border-purple-200', 'text' => 'text-purple-900', 'label' => 'Blocked (hold)',     'note' => 'This account is on a compliance hold.'],
     ][$status] ?? ['bg' => 'bg-gray-50', 'border' => 'border-gray-200', 'text' => 'text-gray-900', 'label' => ucfirst($status), 'note' => ''];
 @endphp
 <div class="rounded-xl border {{ $statusMeta['border'] }} {{ $statusMeta['bg'] }} p-4 mb-6">
