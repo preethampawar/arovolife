@@ -41,13 +41,14 @@
                 </tbody>
             </table>
             <div class="mt-4 pt-4 border-t border-gray-200 flex flex-col items-end text-sm space-y-1">
+                {{-- BV at the TOP of the totals, mirroring the cart / order summary. --}}
+                <div class="flex gap-8 text-brand-700 pb-2 mb-2 border-b border-gray-200"><span class="font-semibold">Total BV</span><span class="w-32 text-right font-bold">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span></div>
                 <div class="flex gap-8"><span class="text-gray-600">Subtotal (taxable)</span><span class="w-32 text-right">₹{{ number_format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
                 <div class="flex gap-8"><span class="text-gray-600">GST</span><span class="w-32 text-right">₹{{ number_format($order->gst_paise / 100, 2) }}</span></div>
                 @if($order->discount_paise > 0)
                 <div class="flex gap-8 text-green-700"><span>Discount</span><span class="w-32 text-right">−₹{{ number_format($order->discount_paise / 100, 2) }}</span></div>
                 @endif
                 <div class="flex gap-8"><span class="text-gray-600">Shipping</span><span class="w-32 text-right">@if($order->shipping_paise > 0)₹{{ number_format($order->shipping_paise / 100, 2) }}@else<span class="text-green-700">Free</span>@endif</span></div>
-                <div class="flex gap-8"><span class="text-gray-600">Total BV</span><span class="w-32 text-right text-brand-700">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span></div>
                 <div class="flex gap-8 font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span class="w-32 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
         </div>
