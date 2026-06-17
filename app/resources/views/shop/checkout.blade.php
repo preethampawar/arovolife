@@ -353,8 +353,13 @@
                 return;
             }
             const d = radio.dataset;
-            set('buyer_name', d.name);
-            set('buyer_phone', d.phone);
+            // Leave buyer name/phone alone while the distributor-copy toggle has
+            // locked them to the distributor's own contact details.
+            const sameToggle = document.getElementById('sameAsDistributor');
+            if (!sameToggle || !sameToggle.checked) {
+                set('buyer_name', d.name);
+                set('buyer_phone', d.phone);
+            }
             set('ship_line1', d.line1);
             set('ship_line2', d.line2);
             set('ship_city', d.city);

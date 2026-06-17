@@ -69,7 +69,7 @@
                     $statusBadge = match ($distributor->status) {
                         'active'   => ['label' => 'Active',   'class' => 'bg-green-50 text-green-700 border-green-200'],
                         'frozen'   => ['label' => 'Blocked',  'class' => 'bg-red-50 text-red-700 border-red-200'],
-                        default    => ['label' => ucfirst($distributor->status), 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
+                        default    => ['label' => \App\Modules\Identity\Models\User::STATUS_LABELS[$distributor->status] ?? ucfirst((string) $distributor->status), 'class' => 'bg-amber-50 text-amber-700 border-amber-200'],
                     };
                 }
 

@@ -138,11 +138,6 @@ parameters:
 			count: 1
 			path: app/Modules/Catalog/Models/Product.php
 
-		-
-			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:primaryVariant\(\) should return App\\Modules\\Catalog\\Models\\ProductVariant\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Modules/Catalog/Models/Product.php
 
 		-
 			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:productAttributes\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'

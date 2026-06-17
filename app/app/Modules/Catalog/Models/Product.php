@@ -45,6 +45,7 @@ final class Product extends Model
         return $this->food_type === self::FOOD_VEG;
     }
 
+    /** @return HasMany<ProductVariant, $this> */
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
@@ -83,6 +84,13 @@ final class Product extends Model
 
     public function primaryVariant(): ?ProductVariant
     {
+        // Reuse the eager-loaded relation when present (the storefront grids and
+        // product page both load `variants` constrained to active+ordered), so
+        // rendering many cards doesn't fire an N+1 query per card.
+        if ($this->relationLoaded('variants')) {
+            return $this->variants->firstWhere('status', 'active');
+        }
+
         return $this->variants()->where('status', 'active')->orderBy('id')->first();
     }
 
