@@ -9,6 +9,7 @@ use App\Modules\Admin\Http\Controllers\AdminDistributorController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorCreateController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorEditController;
 use App\Modules\Admin\Http\Controllers\AdminFeatureFlagController;
+use App\Modules\Admin\Http\Controllers\AdminHelpController;
 use App\Modules\Admin\Http\Controllers\AdminImpersonationController;
 use App\Modules\Admin\Http\Controllers\AdminKycController;
 use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
@@ -202,6 +203,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         ->name('settings.update');
 
     Route::get('/audit-log', [AdminAuditLogController::class, 'index'])->name('audit-log');
+
+    // Help & Reference — in-admin rendering of curated docs/ markdown.
+    Route::get('/help', [AdminHelpController::class, 'index'])->name('help.index');
+    Route::get('/help/{slug}', [AdminHelpController::class, 'show'])
+        ->where('slug', '[a-z0-9-]+')->name('help.show');
 
     // Feature flags — admin-toggleable runtime switches (T-5.4). Includes the
     // registration killswitch; every toggle writes an audit_log entry.

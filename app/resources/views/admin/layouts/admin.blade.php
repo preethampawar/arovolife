@@ -100,6 +100,7 @@
                     ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => '⚙'],
                     ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => '⚑', 'prefix' => 'admin.feature-flags'],
                     ['route' => 'admin.audit-log',                'label' => 'Audit Log',      'icon' => '☰'],
+                    ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => '❔', 'prefix' => 'admin.help'],
                 ];
             @endphp
             @foreach($navItems as $item)

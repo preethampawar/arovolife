@@ -207,3 +207,31 @@
         transparent 8px
     );
 }
+
+/* =====================================================================
+   .markdown-doc — readable rendering of repo markdown inside the admin
+   "Help & Reference" pages (no Tailwind Typography plugin needed).
+   ===================================================================== */
+.markdown-doc { color: #334155; font-size: 0.9375rem; line-height: 1.7; }
+.markdown-doc > :first-child { margin-top: 0; }
+.markdown-doc h1 { font-size: 1.6rem; font-weight: 700; color: #0f172a; margin: 0 0 0.75rem; letter-spacing: -0.01em; }
+.markdown-doc h2 { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 2rem 0 0.6rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
+.markdown-doc h3 { font-size: 1.02rem; font-weight: 600; color: #111827; margin: 1.4rem 0 0.4rem; }
+.markdown-doc p { margin: 0.7rem 0; }
+.markdown-doc a { color: var(--color-brand-700); text-decoration: underline; text-underline-offset: 2px; }
+.markdown-doc a:hover { color: var(--color-brand-600); }
+.markdown-doc ul, .markdown-doc ol { margin: 0.7rem 0; padding-left: 1.4rem; }
+.markdown-doc ul { list-style: disc; }
+.markdown-doc ol { list-style: decimal; }
+.markdown-doc li { margin: 0.3rem 0; }
+.markdown-doc strong { color: #0f172a; font-weight: 600; }
+.markdown-doc code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.82em; background: #f1f5f9; color: #0a719f; padding: 0.12em 0.4em; border-radius: 0.3rem; }
+.markdown-doc pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.6rem; overflow-x: auto; margin: 1rem 0; }
+.markdown-doc pre code { background: none; color: inherit; padding: 0; }
+.markdown-doc blockquote { border-left: 3px solid var(--color-brand-300); background: var(--color-brand-50); padding: 0.6rem 1rem; margin: 1rem 0; border-radius: 0 0.5rem 0.5rem 0; color: #475569; }
+.markdown-doc blockquote p { margin: 0.3rem 0; }
+.markdown-doc hr { border: 0; border-top: 1px solid #e2e8f0; margin: 1.75rem 0; }
+.markdown-doc table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; display: block; overflow-x: auto; }
+.markdown-doc th, .markdown-doc td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+.markdown-doc th { background: #f8fafc; font-weight: 600; color: #0f172a; white-space: nowrap; }
+.markdown-doc tbody tr:nth-child(even) { background: #fcfdfe; }
