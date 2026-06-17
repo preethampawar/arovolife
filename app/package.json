@@ -15,5 +15,8 @@
     },
     "dependencies": {
         "cropperjs": "^1.6.2"
+    },
+    "overrides": {
+        "shell-quote": "^1.8.4"
     }
 }
