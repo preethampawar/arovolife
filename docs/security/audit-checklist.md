@@ -19,6 +19,25 @@ open.
 | 9 | File uploads — magic-byte + MIME + AV + size cap + path-traversal-safe | Not started | |
 | 10 | PII at rest — column encryption verified; key custody for PAN/Aadhaar | Not started | |
 
+## Audit run — 2026-06-17 (security-auditor subagent, T-6.1)
+
+| # | Item | Verdict | Notes |
+|---|---|---|---|
+| 1 | Threat model | PASS | New endpoints reviewed; threat-model.md present. |
+| 2 | Authentication | PASS | Login lockout 5/15-min per email+IP, generic errors, session regenerate/migrate, reset throttled + HIBP. |
+| 3 | Authorization | PASS | Admin behind `auth`+`role:admin`; KYC/doc endpoints enforce `distributor_id` ownership; confirmation pages IDOR-safe. |
+| 4 | Input/output | PASS w/ Medium | No SQLi/XSS/mass-assignment. **F2**: CSV formula-injection in exports — **FIXED** (`Shared\Support\Csv::safe`). |
+| 5 | Secrets & crypto | PASS | No committed secrets; AES-256-CBC at rest. Run gitleaks in CI before launch. |
+| 6 | Dependencies | **FAIL** | **F1**: Laravel 13.5.0 (High, CVE-2026-48019 email-rule CRLF); npm `shell-quote` (Critical) + `vite` (High), build-chain. **Blocking — needs dep update.** |
+| 7 | Logging & privacy | PASS | PiiScrubber redacts PAN/Aadhaar/OTP/etc.; audit-log with before/after hashes. |
+| 8 | Compliance cross-check | PASS | Money/KYC/consent surfaces flagged; compliance-officer reviewed separately. |
+| 9 | File uploads | PASS w/ Low | Magic-byte + MIME + size cap + GD re-encode + private `kyc` disk + signed URLs; no traversal. Low: no AV scan (backlog). |
+| 10 | PII at rest | **OPEN** | **F3**: full PAN + full Aadhaar held encrypted pre-KYC (PO-requested), then nulled to last-4 on approval. Deviates from hard rule #8 and is **not yet logged** in the risk register — see **R-31**. Needs Compliance Officer + PO sign-off. |
+
+**Recently-added surfaces audited clean:** shared-cart guest checkout (non-enumerable code, scoped/cleared session pass, ADN+name-only PII), Admin Help & Reference (allow-listed slug, HTML stripped — no traversal/XSS), Find My ID (dual-match, rate-limited, no PAN oracle), OTP service (SHA-256, hash_equals, 5-attempt cap), PII crypter.
+
+**Verdict: BLOCKED — 3 Critical/High** (all F1 dependency CVEs, fixed by routine updates). Plus **F3 (hard rule #8 deviation) needs sign-off** before phase exit. F2 fixed; F4 already handled (`PII_ENCRYPTION_KEY` in `.env.example`); F5 Low/backlog.
+
 ## How to run
 
 1. `/threat-model` — refresh entries for the phase's new features.

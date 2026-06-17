@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Modules\Identity\Services\TeamStatsService;
+use App\Modules\Shared\Support\Csv;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -67,10 +68,10 @@ final class TeamRosterController extends Controller
             foreach ($rows as $i => $row) {
                 fputcsv($out, [
                     $i + 1,
-                    $row['adn'],
-                    $row['name'],
-                    $row['state'],
-                    $row['status'],
+                    Csv::safe($row['adn']),
+                    Csv::safe($row['name']),
+                    Csv::safe($row['state']),
+                    Csv::safe($row['status']),
                 ]);
             }
             fclose($out);

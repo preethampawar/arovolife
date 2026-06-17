@@ -11,6 +11,7 @@ use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Csv;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -314,7 +315,7 @@ final class AdminDistributorController extends Controller
                 : ($d->is_primary_couple ? 'Primary' : 'Secondary');
 
             $csv .= implode(',', array_map(
-                fn ($v) => '"'.str_replace('"', '""', (string) ($v ?? '')).'"',
+                fn ($v) => '"'.str_replace('"', '""', Csv::safe($v)).'"',
                 [
                     $d->adn, $d->full_name, $d->email, $d->phone_e164,
                     $d->state, $d->pan_last4, $d->aadhaar_last4 ?? '', $d->bank_ifsc,
