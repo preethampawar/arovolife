@@ -126,7 +126,10 @@ Defined in: `app/app/Modules/Catalog/Database/Migrations/..._create_catalog_tabl
 | `delivered` | Delivered to the customer. |
 | `confirmed` | Delivery confirmed / cooling-off window running. |
 | `cancelled` | Cancelled before fulfilment. |
-| `refund_requested` → `refund_inspection` → `refunded` | The return / refund pipeline (cooling-off returns). |
+| `refund_requested` | Customer has opened a return request; awaiting admin inspection (non-cooling-off) or auto-processing (cooling-off). |
+| `refund_inspection` | Admin has recorded the physical inspection; awaiting approve/reject decision. |
+| `refund_approved` | **Phase-2 terminal refund state.** Ledger reversed, BV reversed. Refund initiated; money credited within 7 working days once Phase-3 gateway settlement runs. Customer copy: *"Refund initiated."* |
+| `refunded` | Gateway has confirmed money returned (Phase 3). |
 
 Defined in: `app/app/Modules/Commerce/Models/Order.php` (`STATUS_*` constants).
 
@@ -161,15 +164,14 @@ Defined in: `app/app/Modules/Content/Database/Migrations/..._create_content_page
 
 ---
 
-## Fulfilment / Returns / Grievance (scaffolded — later phases)
-
-Schema exists; these flows are not yet wired into day-to-day operations.
+## Fulfilment / Returns / Grievance
 
 | Module · field | Values | Default | Meaning |
 |---|---|---|---|
-| Fulfilment · `shipments.status` | `created` · `picked` · `dispatched` · `delivered` · `returned_to_origin` | `created` | Courier-side movement of a shipment. |
-| Returns · `returns.status` | `opened` · `pickup_scheduled` · `received` · `inspected` · `approved` · `rejected` · `refunded` | `opened` | Return-merchandise pipeline (buyback / cooling-off returns). |
-| Grievance · `grievances.status` | `open` · `acknowledged` · `in_progress` · `resolved` · `closed` | `open` | DSR-2021 grievance-redressal SLA workflow. |
+| Fulfilment · `shipments.status` | `created` · `picked` · `dispatched` · `delivered` · `returned_to_origin` | `created` | Courier-side movement of a shipment. (Scaffolded — later phases.) |
+| Returns · `return_requests.reason` | `cooling_off` · `damage` · `dissatisfaction` · `general_buyback` · `termination_buyback` | — | T&C §8 / BuybackMatrix return reason. (Phase 2 — live.) |
+| Returns · `return_requests.status` | `opened` · `approved` · `rejected` | `opened` | Return request lifecycle. `opened` = awaiting review; `approved` = refund executed; `rejected` = admin rejected. (Phase 2 — live.) |
+| Grievance · `grievances.status` | `open` · `acknowledged` · `in_progress` · `resolved` · `closed` | `open` | DSR-2021 grievance-redressal SLA workflow. (Scaffolded.) |
 
 Defined in: `app/app/Modules/Fulfilment/Database/Migrations/..._create_shipments_table.php`,
 `app/app/Modules/Returns/Database/Migrations/..._create_returns_tables.php`,

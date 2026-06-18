@@ -20,6 +20,7 @@ final class LedgerAccountSeeder extends Seeder
 
             // Liabilities
             ['code' => 'liability.customer_prepayment', 'name' => 'Customer prepayment (paid, not delivered)', 'type' => 'liability'],
+            ['code' => 'liability.refund_payable',    'name' => 'Refund payable (approved, pending gateway settlement)', 'type' => 'liability'],
             ['code' => 'liability.commission_held',   'name' => 'Commissions held (cooling-off)',  'type' => 'liability'],
             ['code' => 'liability.commission_payable', 'name' => 'Commissions payable (unlocked)',   'type' => 'liability'],
             ['code' => 'liability.tds_payable',       'name' => 'TDS payable to Income Tax Dept',  'type' => 'liability'],

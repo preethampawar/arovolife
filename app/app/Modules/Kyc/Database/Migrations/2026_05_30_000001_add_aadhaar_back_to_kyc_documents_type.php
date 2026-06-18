@@ -18,19 +18,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement(
-            "ALTER TABLE kyc_documents MODIFY COLUMN type ENUM("
-            ."'pan','aadhaar','aadhaar_back','cheque','address_proof_front','address_proof_back','photo'"
-            .") NOT NULL"
-        );
+        // MySQL-only: SQLite has no native ENUM and already accepts any string value.
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement(
+                'ALTER TABLE kyc_documents MODIFY COLUMN type ENUM('
+                ."'pan','aadhaar','aadhaar_back','cheque','address_proof_front','address_proof_back','photo'"
+                .') NOT NULL'
+            );
+        }
     }
 
     public function down(): void
     {
-        DB::statement(
-            "ALTER TABLE kyc_documents MODIFY COLUMN type ENUM("
-            ."'pan','aadhaar','cheque','address_proof_front','address_proof_back','photo'"
-            .") NOT NULL"
-        );
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement(
+                'ALTER TABLE kyc_documents MODIFY COLUMN type ENUM('
+                ."'pan','aadhaar','cheque','address_proof_front','address_proof_back','photo'"
+                .') NOT NULL'
+            );
+        }
     }
 };

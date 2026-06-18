@@ -112,5 +112,42 @@
         </form>
     </div>
     @endif
+
+    {{-- Return / refund (after delivery, within applicable windows) --}}
+    @if(in_array($order->status, ['delivered', 'confirmed'], true))
+    <div class="mt-6">
+        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+            <h2 class="font-semibold text-gray-900 mb-1">Returns &amp; Refunds</h2>
+            @if($order->coolingOff && $order->coolingOff->status === 'open' && $order->coolingOff->ends_at->isFuture())
+            <p class="text-sm text-blue-700 mb-3">
+                Your <strong>30-day cooling-off window</strong> is open — {{ $order->coolingOff->daysRemaining() }} day{{ $order->coolingOff->daysRemaining() === 1 ? '' : 's' }} remaining. You can return this order for a full refund.
+            </p>
+            @else
+            <p class="text-sm text-gray-600 mb-3">You may be eligible to return this order under our buyback / refund policy (damage, dissatisfaction, general buyback).</p>
+            @endif
+            <a href="{{ route('orders.return.create', $order->order_no) }}"
+               class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m15 15-6 6m0 0-6-6m6 6V9a6 6 0 0 1 12 0v3"/></svg>
+                Return or refund this order →
+            </a>
+        </div>
+    </div>
+    @endif
+
+    {{-- Refund status (after a return has been opened or processed) --}}
+    @if(in_array($order->status, ['refund_requested', 'refund_inspection', 'refund_approved', 'refunded'], true))
+    <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <h2 class="font-semibold text-amber-900 mb-1">Return / Refund Status</h2>
+        @if($order->status === 'refund_requested')
+        <p class="text-sm text-amber-800">Your return request has been received and is awaiting review by our team. We'll update you within 5 working days.</p>
+        @elseif($order->status === 'refund_inspection')
+        <p class="text-sm text-amber-800">Your return is being inspected. A decision will be communicated shortly.</p>
+        @elseif($order->status === 'refund_approved')
+        <p class="text-sm text-green-800 font-medium">Refund initiated — you will receive the amount within 7 working days to your original payment method.</p>
+        @elseif($order->status === 'refunded')
+        <p class="text-sm text-green-800 font-medium">Refund complete.</p>
+        @endif
+    </div>
+    @endif
 </div>
 @endsection

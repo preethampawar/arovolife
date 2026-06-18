@@ -58,9 +58,29 @@ and the account must be **Active** (not already Blocked/Terminated).
 ## Refund amount
 
 For a **cooling-off cancellation** of saleable goods within 30 days, the refund
-is the **full Direct Seller Price** (with the tax invoice). Other return cases
-(general buyback, damage, dissatisfaction) follow a different matrix — see
+is the **full amount the customer paid** (DS Price incl. GST + shipping — full
+`total_paise`). A GST credit note is issued (the sale is reversed). Other return
+cases (general buyback, damage, dissatisfaction) follow a different matrix — see
 **Compliance Do's & Don'ts → Returns, buyback & refunds**.
+
+### Ledger treatment (Phase 2)
+
+When the refund is approved, the platform posts a **double-entry ledger reversal**
+immediately (ADR-0009):
+- Dr `revenue.sales` · Dr `liability.gst_output` · Dr `revenue.shipping` (if paid)
+- Cr `revenue.discounts` (if a coupon was used — reversal of the contra-revenue)
+- Cr `liability.refund_payable` (what we now owe the customer)
+
+The `refund_payable` liability is **settled in Phase 3** when the Razorpay refund
+is processed. Until then, the order status is `refund_approved` — meaning:
+*"refund initiated in our ledger, money will be returned to the customer within
+7 working days."* The order does **not** show `refunded` until the gateway
+confirms the money has been returned.
+
+> **Admin note:** "refund_approved" in the ledger ≠ "money back in the customer's
+> bank." Phase 3 wires the Razorpay refund and moves the order to `refunded`.
+> Until then, communicate to customers: *"Refund initiated — credited within 7
+> working days."*
 
 ---
 

@@ -48,6 +48,8 @@ final class Order extends Model
 
     public const STATUS_REFUND_INSPECTION = 'refund_inspection';
 
+    public const STATUS_REFUND_APPROVED = 'refund_approved';
+
     public const STATUS_REFUNDED = 'refunded';
 
     public const PAYMENT_ONLINE = 'online';
@@ -60,7 +62,7 @@ final class Order extends Model
         'subtotal_paise', 'gst_paise', 'discount_paise', 'shipping_paise', 'total_paise',
         'ship_name', 'ship_phone_e164', 'ship_line1', 'ship_line2',
         'ship_city', 'ship_state', 'ship_pincode', 'ship_carrier', 'ship_tracking_no',
-        'placed_at', 'paid_at', 'shipped_at', 'delivered_at', 'cancelled_at', 'refunded_at',
+        'placed_at', 'paid_at', 'shipped_at', 'delivered_at', 'cancelled_at', 'refund_approved_at', 'refunded_at',
         'idempotency_key', 'tnc_of_sale_consent_id',
     ];
 
@@ -78,6 +80,7 @@ final class Order extends Model
             'shipped_at' => 'datetime',
             'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'refund_approved_at' => 'datetime',
             'refunded_at' => 'datetime',
         ];
     }

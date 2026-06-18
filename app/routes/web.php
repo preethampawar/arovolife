@@ -52,6 +52,8 @@ use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
 use App\Modules\Public\Http\Controllers\ContactController;
 use App\Modules\Public\Http\Controllers\FindMyIdController;
+use App\Modules\Returns\Http\Controllers\Admin\AdminReturnController;
+use App\Modules\Returns\Http\Controllers\Storefront\ReturnController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('landing.index'))->name('home');
@@ -255,6 +257,13 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
     Route::post('/commerce/orders/{order}/mark-cod-paid', [AdminOrderController::class, 'markCodPaid'])->middleware('can:finance.record')->name('commerce.orders.mark-cod-paid');
     Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
 
+    // Returns — admin inspection / approve / reject (finance.record, R-17; ADR-0009).
+    Route::get('/returns', [AdminReturnController::class, 'index'])->name('returns.index');
+    Route::get('/returns/{return}', [AdminReturnController::class, 'show'])->whereNumber('return')->name('returns.show');
+    Route::post('/returns/{return}/inspect', [AdminReturnController::class, 'inspect'])->middleware('can:finance.record')->whereNumber('return')->name('returns.inspect');
+    Route::post('/returns/{return}/approve', [AdminReturnController::class, 'approve'])->middleware('can:finance.record')->whereNumber('return')->name('returns.approve');
+    Route::post('/returns/{return}/reject', [AdminReturnController::class, 'reject'])->middleware('can:finance.record')->whereNumber('return')->name('returns.reject');
+
     // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
     // The static `export` path is declared before the {distributor} wildcard
     // so "export" is never captured as a distributor id.
@@ -431,6 +440,10 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/orders/{orderNo}', [MyOrdersController::class, 'show'])->name('orders.show');
     Route::get('/orders/{orderNo}/invoice', [MyOrdersController::class, 'invoice'])->name('orders.invoice');
     Route::post('/orders/{orderNo}/cancel', [MyOrdersController::class, 'cancel'])->name('orders.cancel');
+
+    // Returns — customer-initiated (cooling-off + buyback; ADR-0009).
+    Route::get('/orders/{orderNo}/return', [ReturnController::class, 'create'])->name('orders.return.create');
+    Route::post('/orders/{orderNo}/return', [ReturnController::class, 'store'])->name('orders.return.store');
 
     // Saved shipping-address book ("My Addresses") — reused at checkout.
     Route::get('/addresses', [AddressController::class, 'index'])->name('addresses.index');

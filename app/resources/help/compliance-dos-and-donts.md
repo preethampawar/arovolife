@@ -52,14 +52,37 @@ admin access must know them.
 Refund amount depends on the case and whether goods are **saleable** (unopened,
 ≤ 30% consumed, unexpired, non-seasonal, not on special promotion):
 
-| Case | Window | Refund |
-|---|---|---|
-| **Cooling-off** (saleable) | 30 days | Direct Seller Price — **full** |
-| General / termination buyback (saleable) | — | DS Price **less GST** |
-| Damaged goods (saleable) | 10 days | DS Price |
-| Damaged goods (non-saleable) | 10 days | DS Price **less GST** |
-| Dissatisfaction (saleable) | 30 days | DS Price |
-| Dissatisfaction (non-saleable) | 30 days | DS Price **less GST** |
+| Case | Window | Eligible | Refund | GST credit note |
+|---|---|---|---|---|
+| **Cooling-off** (saleable) | 30 days | ✅ | Full total paid (incl. shipping + GST) | Yes |
+| **Cooling-off** (non-saleable) | 30 days | ❌ | — | — |
+| Damage (saleable) | 10 days | ✅ | DS Price incl. GST | Yes |
+| Damage (non-saleable) | 10 days | ✅ | DS Price **less GST** | No |
+| Dissatisfaction (saleable) | 30 days | ✅ | DS Price incl. GST | Yes |
+| Dissatisfaction (non-saleable) | 30 days | ✅ | DS Price **less GST** | No |
+| General buyback (saleable) | None | ✅ | DS Price **less GST** | No |
+| General buyback (non-saleable) | None | ❌ | — | — |
+| Termination buyback (saleable) | None | ✅ | DS Price **less GST** | No |
+| Termination buyback (non-saleable) | None | ❌ | — | — |
+
+### How refunds are processed (Phase 2)
+
+1. **Customer opens return** via My Orders → Return this order (storefront).
+2. **Cooling-off** is processed **immediately, one-click** (non-discretionary — hard rule #5). No admin gate.
+3. **All other reasons**: admin receives a refund review task, records the physical inspection (saleable/non-saleable/damaged), and approves or rejects.
+4. On approval: the platform posts a double-entry ledger reversal and reverses BV. Order status → `refund_approved`.
+5. Customer receives the refund within **7 working days** to the original payment method. (Phase-2 stub — gateway settlement wires in Phase 3.)
+
+**Admin permissions:**
+- Viewing return requests: any admin role.
+- Recording inspection + approving/rejecting: `finance.record` (admin-finance) only. (R-17.)
+
+**Do's and Don'ts:**
+- **Do** honour every in-window cooling-off cancellation immediately and unconditionally.
+- **Do** verify physical condition before approving a damage/dissatisfaction/buyback return.
+- **Don't** use an inspection requirement to delay or block a cooling-off refund — inspection is post-facto only for cooling-off.
+- **Don't** approve a refund for non-eligible cases (e.g. cooling-off on non-saleable goods).
+- **Don't** tell a customer "refund complete" until Phase 3 confirms the gateway settlement. Use the phrase *"Refund initiated — credited within 7 working days."*
 
 ---
 
