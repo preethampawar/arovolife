@@ -140,6 +140,30 @@ final class Order extends Model
             return ['state' => 'none', 'label' => '—'];
         }
 
+        return $this->bvAccrualState();
+    }
+
+    /**
+     * BV accumulation status for the attributing distributor's "My Sales" view —
+     * shows whether BV from a customer-attributed order has been credited.
+     * Requires `items` and `bvLedgerEntries` to be loaded.
+     *
+     * @return array{state: 'none'|'pending'|'accumulated'|'reversed', label: string}
+     */
+    public function salesBvStatus(): array
+    {
+        if ($this->attributed_distributor_id === null || $this->bvTotalPaise() <= 0) {
+            return ['state' => 'none', 'label' => '—'];
+        }
+
+        return $this->bvAccrualState();
+    }
+
+    /**
+     * @return array{state: 'none'|'pending'|'accumulated'|'reversed', label: string}
+     */
+    private function bvAccrualState(): array
+    {
         if ($this->bvLedgerEntries->firstWhere('type', BvLedgerEntry::TYPE_REVERSAL) !== null) {
             return ['state' => 'reversed', 'label' => 'Reversed (refunded)'];
         }
@@ -148,8 +172,6 @@ final class Order extends Model
             return ['state' => 'accumulated', 'label' => 'Accumulated'];
         }
 
-        // Self-consumption order with BV but not yet paid → BV accrues once
-        // payment is received.
         return ['state' => 'pending', 'label' => 'Awaiting payment'];
     }
 }

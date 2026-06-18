@@ -125,9 +125,20 @@ final class BvLedgerService
 
     private function shouldAccrue(Order $order): bool
     {
-        return $order->self_consumption
-            && $order->attributed_distributor_id !== null
-            && $this->selfPurchaseEarnsBv();
+        if ($order->attributed_distributor_id === null) {
+            return false;
+        }
+
+        // Self-consumption (distributor buying for themselves) is gated by the
+        // admin setting — the company may disable self-purchase BV to prevent
+        // artificial volume accumulation.
+        if ($order->self_consumption) {
+            return $this->selfPurchaseEarnsBv();
+        }
+
+        // Customer sale via Easy Purchase / shared-cart link — the attributed
+        // distributor always earns BV (hard rule #2: BV tied to product sale).
+        return true;
     }
 
     private function selfPurchaseEarnsBv(): bool

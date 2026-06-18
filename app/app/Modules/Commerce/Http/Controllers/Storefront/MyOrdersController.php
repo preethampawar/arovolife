@@ -35,6 +35,27 @@ final class MyOrdersController extends Controller
         ]);
     }
 
+    /**
+     * Orders placed by third-party customers via the distributor's shared cart
+     * (Easy Purchase) link — i.e. orders attributed to this distributor but NOT
+     * self-consumption. BV from these sales accrues to the distributor.
+     */
+    public function mySales(Request $request): View
+    {
+        $distributor = $request->user()?->distributor;
+
+        abort_unless($distributor !== null, 403);
+
+        $sales = Order::query()
+            ->where('attributed_distributor_id', $distributor->id)
+            ->where('self_consumption', false)
+            ->with(['items', 'customer', 'bvLedgerEntries'])
+            ->latest('placed_at')
+            ->paginate(15);
+
+        return view('shop.orders.sales', ['sales' => $sales]);
+    }
+
     public function show(Request $request, string $orderNo): View
     {
         $order = Order::query()

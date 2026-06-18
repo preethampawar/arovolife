@@ -126,13 +126,54 @@ it('is idempotent — re-running accrual does not double-count', function (): vo
     expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(50000);
 });
 
-it('does NOT accrue when the order is not self-consumption', function (): void {
+it('accrues BV for an attributed customer sale (self_consumption=false)', function (): void {
+    // A customer places an order via the distributor's Easy Purchase / shared-cart
+    // link — self_consumption is false but attributed_distributor_id is set.
+    // BV must still accrue so the distributor is credited (hard rule #2: BV tied
+    // to a product sale, not just self-purchase).
     $distId = blDistributorId();
     $order = blOrder($distId, 50000, selfConsumption: false);
 
     app(OrderStateMachine::class)->markPaid($order);
 
-    expect(BvLedgerEntry::where('distributor_id', $distId)->count())->toBe(0);
+    expect(BvLedgerEntry::where('distributor_id', $distId)->where('type', 'accrual')->count())->toBe(1);
+    expect(app(BvLedgerService::class)->totalPersonalBvPaise($distId))->toBe(50000);
+});
+
+it('does NOT accrue when there is no attributed distributor (direct/unattributed order)', function (): void {
+    // An order with no attribution (customer landed directly, no ?ref= cookie)
+    // should never create a BV entry.
+    $distId = blDistributorId();
+    $customer = Customer::create(['display_name' => 'Direct Buyer', 'distributor_id' => null]);
+    $order = Order::create([
+        'order_no' => 'ORD-DIRECT-'.random_int(1000, 9999),
+        'customer_id' => $customer->id,
+        'attributed_distributor_id' => null, // no attribution
+        'attribution_source' => 'direct',
+        'payment_method' => Order::PAYMENT_ONLINE,
+        'status' => Order::STATUS_PLACED,
+        'self_consumption' => false,
+        'subtotal_paise' => 100000, 'gst_paise' => 15254, 'discount_paise' => 0,
+        'shipping_paise' => 0, 'total_paise' => 100000,
+        'ship_name' => 'Direct', 'ship_phone_e164' => '+919800000001',
+        'ship_line1' => '2 St', 'ship_city' => 'Pune', 'ship_state' => 'MH', 'ship_pincode' => '411001',
+        'placed_at' => now(), 'idempotency_key' => 'idem-direct-'.uniqid(),
+    ]);
+    disableTestForeignKeys();
+    try {
+        OrderItem::create([
+            'order_id' => $order->id, 'product_variant_id' => 1,
+            'product_name_snapshot' => 'Item', 'variant_sku_snapshot' => 'I-1', 'hsn_code_snapshot' => '3004',
+            'qty' => 1, 'unit_price_paise' => 100000, 'bv_paise' => 50000, 'gst_rate_bp' => 1800,
+            'taxable_value_paise' => 84746, 'gst_paise' => 15254, 'line_total_paise' => 100000,
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    app(OrderStateMachine::class)->markPaid($order->load('items'));
+
+    expect(BvLedgerEntry::where('order_id', $order->id)->count())->toBe(0);
 });
 
 it('does NOT accrue when self-purchase BV is disabled', function (): void {
