@@ -3,7 +3,20 @@
 
 @section('content')
 
-<h1 class="text-2xl font-bold mb-6">Your Cart</h1>
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Your Cart</h1>
+    @if(! $cart->items->isEmpty())
+    <form method="POST" action="{{ route('shop.cart.clear') }}"
+          data-confirm="Remove all items from your cart?"
+          data-confirm-title="Clear cart"
+          data-confirm-impact="All {{ $cart->items->count() }} {{ $cart->items->count() === 1 ? 'item' : 'items' }} will be removed. This cannot be undone.">
+        @csrf @method('DELETE')
+        <button type="submit" class="text-sm text-red-600 hover:text-red-700 font-medium transition-colors">
+            Clear all items
+        </button>
+    </form>
+    @endif
+</div>
 
 @if($cart->items->isEmpty())
 <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">

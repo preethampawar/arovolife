@@ -507,7 +507,7 @@
         <div class="max-w-7xl mx-auto px-6 relative">
             <div class="text-center mb-10 max-w-2xl mx-auto">
                 <p class="text-sm font-medium text-leaf-600 uppercase tracking-wider mb-2">Our products</p>
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Best-in-class. <span class="text-leaf-600">Best for life.</span></h2>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2"><span class="text-brand-600">Best-in-class.</span> <span class="text-leaf-600">Best for life.</span></h2>
                 <p class="text-gray-800">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
             </div>
 

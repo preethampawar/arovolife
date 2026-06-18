@@ -400,6 +400,7 @@ Route::middleware('capture.attribution')->group(function (): void {
     Route::post('/shop/cart/add', [CartController::class, 'add'])->name('shop.cart.add');
     Route::patch('/shop/cart/items/{item}', [CartController::class, 'update'])->name('shop.cart.update');
     Route::delete('/shop/cart/items/{item}', [CartController::class, 'remove'])->name('shop.cart.remove');
+    Route::delete('/shop/cart', [CartController::class, 'clearAll'])->name('shop.cart.clear');
     Route::post('/shop/cart/coupon', [CartController::class, 'applyCoupon'])->name('shop.cart.coupon.apply');
     Route::delete('/shop/cart/coupon', [CartController::class, 'removeCoupon'])->name('shop.cart.coupon.remove');
 
@@ -437,6 +438,8 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
+    // Literal path before {orderNo} wildcard to prevent route collision.
+    Route::get('/orders/sales', [MyOrdersController::class, 'mySales'])->name('orders.sales');
     Route::get('/orders/{orderNo}', [MyOrdersController::class, 'show'])->name('orders.show');
     Route::get('/orders/{orderNo}/invoice', [MyOrdersController::class, 'invoice'])->name('orders.invoice');
     Route::post('/orders/{orderNo}/cancel', [MyOrdersController::class, 'cancel'])->name('orders.cancel');

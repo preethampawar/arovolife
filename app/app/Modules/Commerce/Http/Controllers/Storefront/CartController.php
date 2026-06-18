@@ -131,6 +131,14 @@ final class CartController extends Controller
         return redirect()->route('shop.cart');
     }
 
+    public function clearAll(Request $request): RedirectResponse
+    {
+        $cart = $this->cartService->currentCart($request);
+        $this->cartService->clear($cart);
+
+        return redirect()->route('shop.cart')->with('status', 'Cart cleared.');
+    }
+
     /**
      * Snapshot the current cart into a shareable "Easy Purchase" link. Only a
      * logged-in distributor can share (the link credits them, mirroring the
