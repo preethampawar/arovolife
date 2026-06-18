@@ -14,6 +14,7 @@ use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
@@ -120,6 +121,27 @@ final class CheckoutController extends Controller
             'address_label' => ['nullable', 'string', 'max:40'],
             'accept_terms' => ['required', 'accepted'],
         ]);
+
+        // Guard: the buyer_email must not belong to another registered user on
+        // this platform (particularly distributors). Using the authenticated
+        // user's own email is fine. Any other match would cause a DB unique
+        // constraint violation in CheckoutService and is a sign the person
+        // typed the wrong email — show a clear message instead of a 500.
+        $emailInput = strtolower(trim($validated['buyer_email']));
+        $conflictUser = User::where('email', $emailInput)
+            ->when(Auth::id(), fn ($q) => $q->where('id', '!=', Auth::id()))
+            ->with('distributor')
+            ->first();
+
+        if ($conflictUser !== null) {
+            $message = $conflictUser->distributor !== null
+                ? 'This email address belongs to a registered arovolife Direct Seller. Please use a different email address to continue.'
+                : 'This email address is already registered with an arovolife account. Please use a different email address or sign in to continue.';
+
+            return redirect()->route('shop.checkout')
+                ->withErrors(['buyer_email' => $message])
+                ->withInput();
+        }
 
         $cart = $this->cartService->currentCart($request);
 

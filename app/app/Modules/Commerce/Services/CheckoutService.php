@@ -70,10 +70,12 @@ final class CheckoutService
                 if ($match !== null && ($match->user_id === null || $match->user_id === $authUserId)) {
                     // Unclaimed (a prior guest order) or already mine — safe to reuse.
                     $customer = $match;
-                } elseif ($match !== null && $authUserId !== null) {
-                    // The email belongs to a DIFFERENT user. Don't reuse their
-                    // row, and drop the hash on the new row so it can't collide
-                    // on the unique email_hash index (identity is the user_id).
+                } elseif ($match !== null) {
+                    // The email belongs to a DIFFERENT claimed user. Drop the
+                    // hash on this order's customer row so it can't collide on
+                    // the unique email_hash index. Covers both logged-in-other
+                    // and guest-vs-claimed cases (defensive; the controller
+                    // should have blocked this earlier with a user-facing error).
                     $emailHash = null;
                 }
             }
