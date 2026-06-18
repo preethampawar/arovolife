@@ -56,6 +56,30 @@ final class MyOrdersController extends Controller
         return view('shop.orders.sales', ['sales' => $sales]);
     }
 
+    /**
+     * Distributor's detail view of a single attributed customer-sale order.
+     * Scoped to orders attributed to this distributor that are NOT self-consumption,
+     * so a distributor cannot access another distributor's attributed sales.
+     */
+    public function salesShow(Request $request, string $orderNo): View
+    {
+        $distributor = $request->user()?->distributor;
+        abort_unless($distributor !== null, 403);
+
+        $order = Order::query()
+            ->where('order_no', $orderNo)
+            ->where('attributed_distributor_id', $distributor->id)
+            ->where('self_consumption', false)
+            ->with(['items', 'customer', 'bvLedgerEntries'])
+            ->first();
+
+        if ($order === null) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('shop.orders.sales-show', ['order' => $order]);
+    }
+
     public function show(Request $request, string $orderNo): View
     {
         $order = Order::query()

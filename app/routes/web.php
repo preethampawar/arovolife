@@ -24,6 +24,7 @@ use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
+use App\Modules\Commerce\Http\Controllers\Storefront\MyBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
@@ -438,11 +439,15 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
-    // Literal path before {orderNo} wildcard to prevent route collision.
+    // Literal paths before the {orderNo} wildcard to prevent route collision.
     Route::get('/orders/sales', [MyOrdersController::class, 'mySales'])->name('orders.sales');
+    Route::get('/orders/sales/{orderNo}', [MyOrdersController::class, 'salesShow'])->name('orders.sales.show');
     Route::get('/orders/{orderNo}', [MyOrdersController::class, 'show'])->name('orders.show');
     Route::get('/orders/{orderNo}/invoice', [MyOrdersController::class, 'invoice'])->name('orders.invoice');
     Route::post('/orders/{orderNo}/cancel', [MyOrdersController::class, 'cancel'])->name('orders.cancel');
+
+    // Distributor BV ledger — personal accruals + reversals history.
+    Route::get('/bv-ledger', [MyBvLedgerController::class, 'index'])->name('bv-ledger.index');
 
     // Returns — customer-initiated (cooling-off + buyback; ADR-0009).
     Route::get('/orders/{orderNo}/return', [ReturnController::class, 'create'])->name('orders.return.create');
