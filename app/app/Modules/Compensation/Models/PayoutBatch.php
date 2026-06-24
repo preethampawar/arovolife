@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -45,5 +46,10 @@ final class PayoutBatch extends Model
             'total_net_paise' => 'integer',
             'distributor_count' => 'integer',
         ];
+    }
+
+    public function lineItems(): HasMany
+    {
+        return $this->hasMany(PayoutLineItem::class, 'payout_batch_id');
     }
 }

@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
-use Illuminate\Http\Response;
+use App\Modules\Compensation\Models\PayoutBatch;
+use Illuminate\Contracts\View\View;
+use Illuminate\Routing\Controller;
 
-final class AdminWeeklyPayoutController
+final class AdminWeeklyPayoutController extends Controller
 {
-    public function index(): Response
+    public function index(): View
     {
-        return response('stub');
+        $batches = PayoutBatch::orderByDesc('batch_date')->paginate(20);
+
+        return view('admin.compensation.weekly-payouts.index', compact('batches'));
     }
 
-    public function show(int $batch): Response
+    public function show(PayoutBatch $batch): View
     {
-        return response('stub');
+        $lines = $batch->lineItems()->with('distributor.user')->paginate(50);
+
+        return view('admin.compensation.weekly-payouts.show', compact('batch', 'lines'));
     }
 }

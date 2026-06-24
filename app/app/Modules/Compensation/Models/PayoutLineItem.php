@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Models;
 
+use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -43,5 +45,10 @@ final class PayoutLineItem extends Model
             'repurchase_deduction_paise' => 'integer',
             'net_transferred_paise' => 'integer',
         ];
+    }
+
+    public function distributor(): BelongsTo
+    {
+        return $this->belongsTo(Distributor::class);
     }
 }
