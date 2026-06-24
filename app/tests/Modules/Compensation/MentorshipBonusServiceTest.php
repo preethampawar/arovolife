@@ -120,3 +120,28 @@ it('floors MB rate at 1%', function () {
     expect($mb->mb_rate_pct)->toBe(1);
     expect($mb->mb_paise)->toBe(1_000);
 });
+
+it('is idempotent — calling twice for the same cutoff does not double-credit', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+
+    $cutoffResult = GsbCutoffResult::create([
+        'distributor_id' => $sponsee->id,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => 1, 'gross_gsb_paise' => 100_000,
+        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 100_000,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'credited',
+    ]);
+
+    $svc = app(MentorshipBonusService::class);
+    $svc->processForSponsee($sponsee->id, $cutoffResult);
+    $svc->processForSponsee($sponsee->id, $cutoffResult);  // second call — should be a no-op
+
+    expect(MentorshipBonusResult::count())->toBe(1);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(1);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(10_000);
+});

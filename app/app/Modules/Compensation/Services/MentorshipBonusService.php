@@ -41,6 +41,16 @@ final class MentorshipBonusService
             return null;
         }
 
+        // Idempotency: if already credited for this cutoff date, return existing row.
+        $alreadyCredited = MentorshipBonusResult::where('sponsee_id', $sponseeId)
+            ->whereDate('cutoff_date', $cutoffResult->cutoff_date->toDateString())
+            ->where('status', MentorshipBonusResult::STATUS_CREDITED)
+            ->first();
+
+        if ($alreadyCredited !== null) {
+            return $alreadyCredited;
+        }
+
         // Cumulative sponsee GSB seen by this sponsor-sponsee pair (from previous MB results).
         $prevCumulative = (int) MentorshipBonusResult::where('sponsor_id', $sponsorId)
             ->where('sponsee_id', $sponseeId)
@@ -54,25 +64,27 @@ final class MentorshipBonusService
 
         $mbPaise = (int) round($cutoffResult->gross_gsb_paise * $rate / 100);
 
-        $result = MentorshipBonusResult::create([
-            'sponsor_id' => $sponsorId,
-            'sponsee_id' => $sponseeId,
-            'cutoff_date' => $cutoffResult->cutoff_date->toDateString(),
-            'sponsee_gsb_paise' => $cutoffResult->gross_gsb_paise,
-            'mb_rate_pct' => $rate,
-            'mb_paise' => $mbPaise,
-            'sponsee_cumulative_gsb_paise' => $newCumulative,
-            'status' => MentorshipBonusResult::STATUS_CREDITED,
-        ]);
+        return DB::transaction(function () use ($sponsorId, $sponseeId, $cutoffResult, $rate, $mbPaise, $newCumulative): MentorshipBonusResult {
+            $result = MentorshipBonusResult::create([
+                'sponsor_id' => $sponsorId,
+                'sponsee_id' => $sponseeId,
+                'cutoff_date' => $cutoffResult->cutoff_date->toDateString(),
+                'sponsee_gsb_paise' => $cutoffResult->gross_gsb_paise,
+                'mb_rate_pct' => $rate,
+                'mb_paise' => $mbPaise,
+                'sponsee_cumulative_gsb_paise' => $newCumulative,
+                'status' => MentorshipBonusResult::STATUS_CREDITED,
+            ]);
 
-        $this->wallet->credit(
-            distributorId: (int) $sponsorId,
-            amountPaise: $mbPaise,
-            type: 'mb_credit',
-            referenceId: $result->id,
-            referenceType: 'mentorship_bonus_result',
-        );
+            $this->wallet->credit(
+                distributorId: (int) $sponsorId,
+                amountPaise: $mbPaise,
+                type: 'mb_credit',
+                referenceId: $result->id,
+                referenceType: 'mentorship_bonus_result',
+            );
 
-        return $result;
+            return $result;
+        });
     }
 }
