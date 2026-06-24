@@ -73,24 +73,30 @@ it('applies repurchase deduction from prior month gsb and mb credits', function 
 
     $walletSvc = app(WalletService::class);
 
-    // Credit prior-month GSB (₹2,000) — 10% deduction = ₹200 = 20,000 paise
-    Carbon::setTestNow(Carbon::today()->subMonth()->startOfMonth()->addDays(14));
-    $walletSvc->credit($dist->id, 200_000, 'gsb_credit'); // ₹2,000
-    Carbon::setTestNow(null);
+    // Pin to the middle of the prior month so the credit is unambiguously in the prior period.
+    $today = Carbon::create(2026, 7, 15, 12, 0, 0);
+    $priorMonthMid = Carbon::create(2026, 6, 15, 12, 0, 0);
 
-    // Credit current month balance (₹1,000) so net after deduction = ₹800 = 80,000 paise
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000
+    // Credit prior-month GSB: ₹2,000 = 200,000 paise → 10% deduction = 20,000 paise
+    Carbon::setTestNow($priorMonthMid);
+    $walletSvc->credit($dist->id, 200_000, 'gsb_credit');
+
+    // Credit current-month GSB: ₹1,000 = 100,000 paise (not included in deduction)
+    Carbon::setTestNow($today);
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
 
     $svc = app(PayoutService::class);
-    $batch = $svc->runBatch(Carbon::today());
+    $batch = $svc->runBatch($today);
 
     $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
     expect($line->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED);
-    expect($line->repurchase_deduction_paise)->toBe(20_000); // 10% of ₹2,000
+    expect($line->repurchase_deduction_paise)->toBe(20_000); // 10% of prior-month ₹2,000
 
-    // After payout: balance = debit(300,000) + credit(20,000 repurchase back) = -280,000 net
-    // But wallet was 300,000 paise total, debit = 300,000, credit back = 20,000 → balance = 20,000
+    // wallet_balance_paise = 300,000; payout_debit = -300,000; repurchase_deduction credit = +20,000
+    // final balance = 300,000 - 300,000 + 20,000 = 20,000 paise (the deduction is returned to wallet)
     expect($walletSvc->balancePaise($dist->id))->toBe(20_000);
+
+    Carbon::setTestNow(null);
 });
 
 it('skips distributors with zero or negative wallet balance', function () {
