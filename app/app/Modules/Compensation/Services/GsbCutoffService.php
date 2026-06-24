@@ -170,12 +170,6 @@ final class GsbCutoffService
         $cfBeforePower = $cf->power_side_bv_paise;
         $cfBeforeSlab1 = $cf->slab1_weaker_bv_paise;
 
-        $cf->update([
-            'power_side_bv_paise' => $newPowerCf,
-            'power_side' => $strongerSide,
-            'slab1_weaker_bv_paise' => 0,  // reset — weaker side was matched
-        ]);
-
         $baseData = [
             'distributor_id' => $distributorId,
             'cutoff_date' => $date->toDateString(),
@@ -202,11 +196,18 @@ final class GsbCutoffService
             ]);
         }
 
-        // Credit wallet inside a transaction.
+        // Credit wallet inside a transaction — CF update is atomic with the wallet credit.
         try {
             $savedResult = null;
 
-            DB::transaction(function () use ($distributorId, $net, $baseData, $existing, &$savedResult): void {
+            DB::transaction(function () use ($distributorId, $net, $baseData, $existing, $cf, $strongerSide, $newPowerCf, &$savedResult): void {
+                // Move carry-forward update inside the transaction so it rolls back if credit fails.
+                $cf->update([
+                    'power_side_bv_paise' => $newPowerCf,
+                    'power_side' => $strongerSide,
+                    'slab1_weaker_bv_paise' => 0,
+                ]);
+
                 $savedResult = $this->saveResult($existing, [
                     ...$baseData,
                     'status' => GsbCutoffResult::STATUS_CALCULATED,
@@ -225,6 +226,7 @@ final class GsbCutoffService
         } catch (Throwable $e) {
             return $this->saveResult($existing, [
                 ...$baseData,
+                'slab1_weaker_cf_after_paise' => $cfBeforeSlab1,  // CF was NOT zeroed (transaction rolled back)
                 'status' => GsbCutoffResult::STATUS_FAILED,
                 'failure_reason' => $e->getMessage(),
             ]);

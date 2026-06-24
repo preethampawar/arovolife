@@ -168,6 +168,9 @@ it('marks status as frozen when distributor GSB is frozen', function () {
     expect($result->status)->toBe(GsbCutoffResult::STATUS_FROZEN);
     expect($result->slab)->toBe(3);
     expect($result->gross_gsb_paise)->toBe(600_000);
+    expect($result->admin_charge_paise)->toBe(18_000);   // 3% × 600,000
+    expect($result->tds_paise)->toBe(29_100);             // 5% × (600,000 − 18,000) = 5% × 582,000
+    expect($result->net_gsb_paise)->toBe(552_900);        // 600,000 − 18,000 − 29,100
     // Wallet should NOT have been credited
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(0);
 });
