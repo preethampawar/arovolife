@@ -14,7 +14,7 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <select name="status" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
         <option value="">All statuses</option>
-        @foreach(['credited', 'failed', 'no_match', 'frozen', 'below_600bv'] as $s)
+        @foreach(['credited', 'failed', 'no_match', 'frozen', 'below_600bv', 'calculated'] as $s)
         <option value="{{ $s }}" {{ $status === $s ? 'selected' : '' }}>
             {{ str_replace('_', ' ', ucfirst($s)) }}
         </option>
@@ -23,7 +23,7 @@
     <input type="text" name="q" value="{{ $q }}" placeholder="Search ADN…"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-40">
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
-    <a href="{{ route('admin.compensation.daily-cutoffs.export', ['date' => $date->toDateString()]) }}"
+    <a href="{{ route('admin.compensation.daily-cutoffs.export', array_filter(['date' => $date->toDateString(), 'status' => $status, 'q' => $q])) }}"
        class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">⬇ CSV</a>
 </form>
 
@@ -42,7 +42,9 @@
                     <th class="px-3 py-2 text-right text-gray-500">
                         Left BV <x-help-tip text="Left Genos group BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">Right BV</th>
+                    <th class="px-3 py-2 text-right text-gray-500">
+                        Right BV <x-help-tip text="Right Genos group BV accumulated today (fresh, excluding carry-forward)." />
+                    </th>
                     <th class="px-3 py-2 text-center text-gray-500">
                         Slab <x-help-tip text="Slab 1=15K, 2=30K, 3=90K, 4=2.7L, 5=8L, 6=24L, 7=72L BV matched on the weaker side." />
                     </th>

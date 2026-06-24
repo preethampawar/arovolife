@@ -47,19 +47,25 @@ final class AdminDailyCutoffController extends Controller
 
         $rows = GsbCutoffResult::with('distributor.user')
             ->where('cutoff_date', $parsed->toDateString())
-            ->orderByRaw("FIELD(status, 'failed', 'credited', 'no_match', 'below_600bv', 'frozen')")
-            ->paginate(self::PER_PAGE);
+            ->orderByRaw("FIELD(status, 'failed', 'credited', 'no_match', 'below_600bv', 'frozen', 'calculated')")
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
 
         return view('admin.compensation.daily-cutoffs.show', compact('rows', 'parsed'));
     }
 
     public function export(Request $request): Response
     {
-        $request->validate(['date' => ['nullable', 'date'], 'status' => ['nullable', 'string']]);
+        $request->validate([
+            'date' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:credited,failed,no_match,frozen,below_600bv,calculated'],
+        ]);
         $date = $request->query('date') ? Carbon::parse((string) $request->query('date')) : Carbon::today();
+        $status = $request->query('status');
 
         $rows = GsbCutoffResult::with('distributor.user')
             ->where('cutoff_date', $date->toDateString())
+            ->when($status, fn ($b) => $b->where('status', $status))
             ->get();
 
         $csv = "ADN,Name,Left BV,Right BV,Slab,Gross GSB (Rs),Admin Charge (Rs),TDS (Rs),Net GSB (Rs),Status\n";
@@ -68,12 +74,12 @@ final class AdminDailyCutoffController extends Controller
                 .'"'.($r->distributor->user?->full_name ?? '').'",'
                 .(int) ($r->left_bv_paise / 100).','
                 .(int) ($r->right_bv_paise / 100).','
-                .($r->slab ?? '').','
+                .'"'.($r->slab ?? '').'",'
                 .number_format($r->gross_gsb_paise / 100, 2).','
                 .number_format($r->admin_charge_paise / 100, 2).','
                 .number_format($r->tds_paise / 100, 2).','
                 .number_format($r->net_gsb_paise / 100, 2).','
-                .$r->status."\n";
+                .'"'.$r->status.'"'."\n";
         }
 
         return response($csv, 200, [

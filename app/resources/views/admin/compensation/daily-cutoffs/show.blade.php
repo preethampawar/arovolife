@@ -25,13 +25,27 @@
                 <tr>
                     <th class="px-3 py-2 text-left text-gray-500">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-500">Name</th>
-                    <th class="px-3 py-2 text-right text-gray-500">Left BV</th>
-                    <th class="px-3 py-2 text-right text-gray-500">Right BV</th>
-                    <th class="px-3 py-2 text-center text-gray-500">Slab</th>
-                    <th class="px-3 py-2 text-right text-gray-500">Gross GSB</th>
-                    <th class="px-3 py-2 text-right text-gray-500">Admin 3%</th>
-                    <th class="px-3 py-2 text-right text-gray-500">TDS 5%</th>
-                    <th class="px-3 py-2 text-right text-gray-500">Net GSB</th>
+                    <th class="px-3 py-2 text-right text-gray-500">
+                        Left BV <x-help-tip text="Left Genos group BV accumulated today (fresh, excluding carry-forward)." />
+                    </th>
+                    <th class="px-3 py-2 text-right text-gray-500">
+                        Right BV <x-help-tip text="Right Genos group BV accumulated today (fresh, excluding carry-forward)." />
+                    </th>
+                    <th class="px-3 py-2 text-center text-gray-500">
+                        Slab <x-help-tip text="Slab 1=15K, 2=30K, 3=90K, 4=2.7L, 5=8L, 6=24L, 7=72L BV matched on the weaker side." />
+                    </th>
+                    <th class="px-3 py-2 text-right text-gray-500">
+                        Gross GSB <x-help-tip text="Before admin charge and TDS." />
+                    </th>
+                    <th class="px-3 py-2 text-right text-gray-500">
+                        Admin 3% <x-help-tip text="3% of gross or ₹30,000 max." />
+                    </th>
+                    <th class="px-3 py-2 text-right text-gray-500">
+                        TDS 5% <x-help-tip text="5% of (gross − admin charge)." />
+                    </th>
+                    <th class="px-3 py-2 text-right text-gray-500">
+                        Net GSB <x-help-tip text="Amount credited to wallet." />
+                    </th>
                     <th class="px-3 py-2 text-center text-gray-500">Status</th>
                 </tr>
             </thead>
@@ -44,6 +58,7 @@
                         'no_match'    => 'bg-gray-100 text-gray-500',
                         'frozen'      => 'bg-blue-100 text-blue-700',
                         'below_600bv' => 'bg-amber-100 text-amber-700',
+                        'calculated'  => 'bg-purple-100 text-purple-700',
                     ];
                 @endphp
                 <tr class="{{ $row->status === 'failed' ? 'bg-red-50' : '' }}">
