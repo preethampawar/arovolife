@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 final class AdminManualControlsController extends Controller
 {
@@ -50,31 +51,36 @@ final class AdminManualControlsController extends Controller
 
         $distributor = Distributor::where('adn', $request->input('adn'))->firstOrFail();
         $date = Carbon::parse((string) $request->input('date'));
+        $reason = $request->input('reason');
+        $ip = $request->ip();
 
-        $before = GsbCutoffResult::where('distributor_id', $distributor->id)
-            ->where('cutoff_date', $date->toDateString())
-            ->first();
+        $result = DB::transaction(function () use ($distributor, $date, $reason, $ip) {
+            $before = GsbCutoffResult::where('distributor_id', $distributor->id)
+                ->where('cutoff_date', $date->toDateString())
+                ->where('status', GsbCutoffResult::STATUS_FAILED)
+                ->first();
 
-        if ($before !== null && $before->status === GsbCutoffResult::STATUS_FAILED) {
-            $before->delete();
-        }
+            $before?->delete();
 
-        $result = $this->cutoff->runForDistributor($distributor->id, $date);
+            $result = $this->cutoff->runForDistributor($distributor->id, $date);
 
-        AuditLog::create([
-            'actor_id' => auth()->id(),
-            'action' => 'compensation.cutoff.manual_retry',
-            'subject_type' => 'distributor',
-            'subject_id' => $distributor->id,
-            'details' => [
-                'adn' => $distributor->adn,
-                'date' => $date->toDateString(),
-                'result_status' => $result->status,
-                'net_gsb_paise' => $result->net_gsb_paise,
-                'reason' => $request->input('reason'),
-            ],
-            'ip' => $request->ip(),
-        ]);
+            AuditLog::create([
+                'actor_id' => auth()->id(),
+                'action' => 'compensation.cutoff.manual_retry',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributor->id,
+                'details' => [
+                    'adn' => $distributor->adn,
+                    'date' => $date->toDateString(),
+                    'result_status' => $result->status,
+                    'net_gsb_paise' => $result->net_gsb_paise,
+                    'reason' => $reason,
+                ],
+                'ip' => $ip,
+            ]);
+
+            return $result;
+        });
 
         return redirect()->route('admin.compensation.distributors.show', $distributor)
             ->with('status', "Cut-off retry for {$distributor->adn} on {$date->format('d M')} completed — status: {$result->status}.");
@@ -115,42 +121,49 @@ final class AdminManualControlsController extends Controller
         ]);
 
         $distributor = Distributor::where('adn', $request->input('adn'))->firstOrFail();
-        $result = GsbCutoffResult::where('distributor_id', $distributor->id)
-            ->where('cutoff_date', Carbon::parse((string) $request->input('date'))->toDateString())
-            ->where('status', GsbCutoffResult::STATUS_CREDITED)
-            ->firstOrFail();
+        $reason = $request->input('reason');
+        $ip = $request->ip();
 
-        $before = $this->wallet->balancePaise($distributor->id);
+        $amountReversed = DB::transaction(function () use ($distributor, $request, $reason, $ip) {
+            $result = GsbCutoffResult::where('distributor_id', $distributor->id)
+                ->where('cutoff_date', Carbon::parse((string) $request->input('date'))->toDateString())
+                ->where('status', GsbCutoffResult::STATUS_CREDITED)
+                ->firstOrFail();
 
-        $this->wallet->debit(
-            distributorId: $distributor->id,
-            amountPaise: $result->net_gsb_paise,
-            type: 'reversal',
-            referenceId: $result->id,
-            referenceType: 'gsb_cutoff_result',
-            memo: 'Admin reversal — '.$request->input('reason'),
-        );
+            $before = $this->wallet->balancePaise($distributor->id);
 
-        $result->update(['status' => 'reversed']);
+            $this->wallet->debit(
+                distributorId: $distributor->id,
+                amountPaise: $result->net_gsb_paise,
+                type: 'reversal',
+                referenceId: $result->id,
+                referenceType: 'gsb_cutoff_result',
+                memo: 'Admin reversal — '.$reason,
+            );
 
-        AuditLog::create([
-            'actor_id' => auth()->id(),
-            'action' => 'compensation.gsb.reversed',
-            'subject_type' => 'distributor',
-            'subject_id' => $distributor->id,
-            'details' => [
-                'adn' => $distributor->adn,
-                'date' => $result->cutoff_date->toDateString(),
-                'amount_paise' => $result->net_gsb_paise,
-                'wallet_before' => $before,
-                'wallet_after' => $this->wallet->balancePaise($distributor->id),
-                'reason' => $request->input('reason'),
-            ],
-            'ip' => $request->ip(),
-        ]);
+            $result->update(['status' => 'reversed']);
+
+            AuditLog::create([
+                'actor_id' => auth()->id(),
+                'action' => 'compensation.gsb.reversed',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributor->id,
+                'details' => [
+                    'adn' => $distributor->adn,
+                    'date' => $result->cutoff_date->toDateString(),
+                    'amount_paise' => $result->net_gsb_paise,
+                    'wallet_before' => $before,
+                    'wallet_after' => $this->wallet->balancePaise($distributor->id),
+                    'reason' => $reason,
+                ],
+                'ip' => $ip,
+            ]);
+
+            return $result->net_gsb_paise;
+        });
 
         return redirect()->route('admin.compensation.distributors.show', $distributor)
-            ->with('status', '₹'.number_format($result->net_gsb_paise / 100, 2).' GSB reversed for '.$distributor->adn.'.');
+            ->with('status', '₹'.number_format($amountReversed / 100, 2).' GSB reversed for '.$distributor->adn.'.');
     }
 
     public function recalcCarryForward(Request $request): RedirectResponse
@@ -189,29 +202,34 @@ final class AdminManualControlsController extends Controller
 
         $distributor = Distributor::where('adn', $request->input('adn'))->firstOrFail();
         $amountPaise = (int) round((float) $request->input('amount') * 100);
-        $before = $this->wallet->balancePaise($distributor->id);
+        $reason = $request->input('reason');
+        $ip = $request->ip();
 
-        $this->wallet->credit(
-            distributorId: $distributor->id,
-            amountPaise: $amountPaise,
-            type: 'manual_credit',
-            memo: 'Admin: '.$request->input('reason'),
-        );
+        DB::transaction(function () use ($distributor, $amountPaise, $reason, $ip): void {
+            $before = $this->wallet->balancePaise($distributor->id);
 
-        AuditLog::create([
-            'actor_id' => auth()->id(),
-            'action' => 'compensation.gsb.manual_credit',
-            'subject_type' => 'distributor',
-            'subject_id' => $distributor->id,
-            'details' => [
-                'adn' => $distributor->adn,
-                'amount_paise' => $amountPaise,
-                'wallet_before' => $before,
-                'wallet_after' => $this->wallet->balancePaise($distributor->id),
-                'reason' => $request->input('reason'),
-            ],
-            'ip' => $request->ip(),
-        ]);
+            $this->wallet->credit(
+                distributorId: $distributor->id,
+                amountPaise: $amountPaise,
+                type: 'manual_credit',
+                memo: 'Admin: '.$reason,
+            );
+
+            AuditLog::create([
+                'actor_id' => auth()->id(),
+                'action' => 'compensation.gsb.manual_credit',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributor->id,
+                'details' => [
+                    'adn' => $distributor->adn,
+                    'amount_paise' => $amountPaise,
+                    'wallet_before' => $before,
+                    'wallet_after' => $this->wallet->balancePaise($distributor->id),
+                    'reason' => $reason,
+                ],
+                'ip' => $ip,
+            ]);
+        });
 
         return redirect()->route('admin.compensation.distributors.show', $distributor)
             ->with('status', '₹'.number_format($amountPaise / 100, 2).' manual credit added for '.$distributor->adn.'.');
