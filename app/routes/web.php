@@ -33,6 +33,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompControll
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
+use App\Modules\Compensation\Http\Controllers\IncomeController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
@@ -486,6 +487,15 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Distributor BV ledger — personal accruals + reversals history.
     Route::get('/bv-ledger', [MyBvLedgerController::class, 'index'])->name('bv-ledger.index');
+
+    // My Income (Compensation — Phase 4)
+    Route::get('/income', [IncomeController::class, 'dashboard'])->name('income.dashboard');
+    Route::get('/income/genos-bv', [IncomeController::class, 'genosBv'])->name('income.genos-bv');
+    Route::get('/income/gsb-history', [IncomeController::class, 'gsbHistory'])->name('income.gsb-history');
+    Route::get('/income/gsb-history/export', [IncomeController::class, 'exportGsb'])->name('income.gsb-history.export');
+    Route::get('/income/mentorship', [IncomeController::class, 'mentorship'])->name('income.mentorship');
+    Route::get('/income/wallet', [IncomeController::class, 'wallet'])->name('income.wallet');
+    Route::get('/income/wallet/export', [IncomeController::class, 'exportWallet'])->name('income.wallet.export');
 
     // Returns — customer-initiated (cooling-off + buyback; ADR-0009).
     Route::get('/orders/{orderNo}/return', [ReturnController::class, 'create'])->name('orders.return.create');
