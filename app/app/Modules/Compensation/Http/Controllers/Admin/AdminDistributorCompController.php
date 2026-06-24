@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
@@ -33,6 +34,7 @@ final class AdminDistributorCompController extends Controller
             'tab' => ['nullable', 'in:gsb,mb,bv-log,wallet,payouts,audit'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:no_match,calculated,credited,failed,frozen,below_600bv'],
         ]);
 
         $tab = $request->query('tab', 'gsb');
@@ -47,11 +49,17 @@ final class AdminDistributorCompController extends Controller
         $cf = GsbCarryforward::where('distributor_id', $distributor->id)->first();
         $walletBalance = $this->wallet->balancePaise($distributor->id);
 
+        $failedToday = GsbCutoffResult::where('distributor_id', $distributor->id)
+            ->where('status', GsbCutoffResult::STATUS_FAILED)
+            ->whereDate('cutoff_date', today())
+            ->first();
+
         $tabData = match ($tab) {
             'gsb' => [
                 'rows' => GsbCutoffResult::where('distributor_id', $distributor->id)
                     ->when($from, fn ($b) => $b->where('cutoff_date', '>=', $from->toDateString()))
                     ->when($to, fn ($b) => $b->where('cutoff_date', '<=', $to->toDateString()))
+                    ->when($request->status, fn ($b) => $b->where('status', $request->status))
                     ->orderByDesc('cutoff_date')->paginate(30)->withQueryString(),
             ],
             'mb' => [
@@ -62,10 +70,10 @@ final class AdminDistributorCompController extends Controller
                     ->orderByDesc('cutoff_date')->paginate(30)->withQueryString(),
             ],
             'bv-log' => [
-                'rows' => GroupBvDaily::where('distributor_id', $distributor->id)
-                    ->when($from, fn ($b) => $b->where('date', '>=', $from->toDateString()))
-                    ->when($to, fn ($b) => $b->where('date', '<=', $to->toDateString()))
-                    ->orderByDesc('date')->paginate(30)->withQueryString(),
+                'rows' => BvLedgerEntry::forDistributor($distributor->id)
+                    ->dateRange($from, $to)
+                    ->with('order')
+                    ->orderByDesc('effective_at')->paginate(30)->withQueryString(),
             ],
             'wallet' => [
                 'ledger' => $this->wallet->ledgerWithRunningBalance($distributor->id),
@@ -88,9 +96,11 @@ final class AdminDistributorCompController extends Controller
             'todayBv' => $todayBv,
             'cf' => $cf,
             'walletBalance' => $walletBalance,
+            'failedToday' => $failedToday,
             'tab' => $tab,
             'from' => $request->query('from'),
             'to' => $request->query('to'),
+            'status' => $request->query('status'),
         ], $tabData));
     }
 

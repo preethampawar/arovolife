@@ -86,11 +86,6 @@
 </div>
 
 {{-- Failed cut-off alert --}}
-@php
-$failedToday = \App\Modules\Compensation\Models\GsbCutoffResult::where('distributor_id', $distributor->id)
-    ->where('cutoff_date', today()->toDateString())
-    ->where('status', 'failed')->first();
-@endphp
 @if($failedToday)
 <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex items-center gap-3">
     <span>⚠ <strong>Today's cut-off failed</strong> — {{ $failedToday->failure_reason ?? 'unknown error' }}</span>

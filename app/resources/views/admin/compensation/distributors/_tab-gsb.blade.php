@@ -1,6 +1,26 @@
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Shows every daily cut-off result for this distributor. Gross GSB is before deductions. Failed rows have not been credited to the wallet — use Retry. Reversed rows have a debit entry in the wallet ledger.
 </div>
+
+{{-- Filters --}}
+<form method="GET" class="flex flex-wrap items-center gap-3 mb-4">
+    <input type="hidden" name="tab" value="gsb">
+    <input type="date" name="from" value="{{ $from ?? '' }}"
+           class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" placeholder="From">
+    <input type="date" name="to" value="{{ $to ?? '' }}"
+           class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" placeholder="To">
+    <select name="status" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
+        <option value="">All statuses</option>
+        @foreach(['credited' => 'Credited', 'failed' => 'Failed', 'no_match' => 'No match', 'frozen' => 'Frozen', 'below_600bv' => 'Below 600 BV', 'calculated' => 'Calculated'] as $value => $label)
+        <option value="{{ $value }}" {{ ($status ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
+        @endforeach
+    </select>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    @if($from || $to || ($status ?? ''))
+    <a href="{{ route('admin.compensation.distributors.show', [$distributor, 'tab' => 'gsb']) }}"
+       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+    @endif
+</form>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-400 text-center">No GSB history yet.</p>
