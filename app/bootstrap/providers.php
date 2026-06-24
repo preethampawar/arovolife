@@ -3,6 +3,7 @@
 use App\Modules\Admin\AdminServiceProvider;
 use App\Modules\Catalog\CatalogServiceProvider;
 use App\Modules\Commerce\CommerceServiceProvider;
+use App\Modules\Compensation\CompensationServiceProvider;
 use App\Modules\Compliance\ComplianceServiceProvider;
 use App\Modules\Consent\ConsentServiceProvider;
 use App\Modules\Content\ContentServiceProvider;
@@ -35,6 +36,7 @@ return [
     LedgerServiceProvider::class,
     CatalogServiceProvider::class,
     CommerceServiceProvider::class,
+    CompensationServiceProvider::class,
     TaxServiceProvider::class,
     PaymentsServiceProvider::class,
     FulfilmentServiceProvider::class,
