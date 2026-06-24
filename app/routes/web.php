@@ -280,16 +280,16 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
     Route::get('/commerce/bv-ledger/{distributor}/export', [AdminBvLedgerController::class, 'exportShow'])->whereNumber('distributor')->name('commerce.bv-ledger.show.export');
 
     // Compensation (Phase 4) — GSB + Mentorship Bonus admin
-    Route::prefix('compensation')->name('compensation.')->group(function () {
+    Route::prefix('compensation')->name('compensation.')->group(function (): void {
         Route::get('/', CompensationOverviewController::class)->name('overview');
 
-        Route::prefix('daily-cutoffs')->name('daily-cutoffs.')->group(function () {
+        Route::prefix('daily-cutoffs')->name('daily-cutoffs.')->group(function (): void {
             Route::get('/', [AdminDailyCutoffController::class, 'index'])->name('index');
             Route::get('/export', [AdminDailyCutoffController::class, 'export'])->name('export');
             Route::get('/{date}', [AdminDailyCutoffController::class, 'show'])->name('show')->where('date', '\d{4}-\d{2}-\d{2}');
         });
 
-        Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function () {
+        Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
             Route::get('/', [AdminWeeklyPayoutController::class, 'index'])->name('index');
             Route::get('/{batch}', [AdminWeeklyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
         });
@@ -300,14 +300,14 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
             ->name('distributors.show')
             ->whereNumber('distributor');
 
-        Route::prefix('manual-controls')->name('manual-controls.')->group(function () {
+        Route::prefix('manual-controls')->name('manual-controls.')->group(function (): void {
             Route::get('/', [AdminManualControlsController::class, 'index'])->name('index');
-            Route::post('retry', [AdminManualControlsController::class, 'retryCutoff'])->name('retry');
-            Route::post('recalc-cf', [AdminManualControlsController::class, 'recalcCarryForward'])->name('recalc-cf');
-            Route::post('credit', [AdminManualControlsController::class, 'manualCredit'])->name('credit');
-            Route::post('reverse', [AdminManualControlsController::class, 'reverseCredit'])->name('reverse');
-            Route::post('force-payout', [AdminManualControlsController::class, 'forcePayout'])->name('force-payout');
-            Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb');
+            Route::post('retry', [AdminManualControlsController::class, 'retryCutoff'])->name('retry')->middleware('can:compensation.manage');
+            Route::post('recalc-cf', [AdminManualControlsController::class, 'recalcCarryForward'])->name('recalc-cf')->middleware('can:compensation.manage');
+            Route::post('credit', [AdminManualControlsController::class, 'manualCredit'])->name('credit')->middleware('can:compensation.manage');
+            Route::post('reverse', [AdminManualControlsController::class, 'reverseCredit'])->name('reverse')->middleware('can:compensation.manage');
+            Route::post('force-payout', [AdminManualControlsController::class, 'forcePayout'])->name('force-payout')->middleware('can:compensation.manage');
+            Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb')->middleware('can:compensation.manage');
         });
     });
 
