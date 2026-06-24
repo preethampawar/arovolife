@@ -21,6 +21,10 @@ use Illuminate\Support\Carbon;
  */
 final class MentorshipBonusResult extends Model
 {
+    public const STATUS_CREDITED = 'credited';
+
+    public const STATUS_FAILED = 'failed';
+
     protected $table = 'mentorship_bonus_results';
 
     protected $fillable = [

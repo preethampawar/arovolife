@@ -20,6 +20,14 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class PayoutLineItem extends Model
 {
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_TRANSFERRED = 'transferred';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_BELOW_MINIMUM = 'below_minimum';
+
     protected $table = 'payout_line_items';
 
     protected $fillable = [

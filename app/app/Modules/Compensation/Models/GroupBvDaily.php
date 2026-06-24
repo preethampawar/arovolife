@@ -20,6 +20,10 @@ final class GroupBvDaily extends Model
 
     protected $table = 'group_bv_daily';
 
+    protected $fillable = [
+        'distributor_id', 'date', 'left_bv_paise', 'right_bv_paise',
+    ];
+
     protected function casts(): array
     {
         return [
