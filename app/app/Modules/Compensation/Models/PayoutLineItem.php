@@ -51,4 +51,9 @@ final class PayoutLineItem extends Model
     {
         return $this->belongsTo(Distributor::class);
     }
+
+    public function payoutBatch(): BelongsTo
+    {
+        return $this->belongsTo(PayoutBatch::class, 'payout_batch_id');
+    }
 }

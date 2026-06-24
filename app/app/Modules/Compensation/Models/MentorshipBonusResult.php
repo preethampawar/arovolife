@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Models;
 
+use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -42,5 +44,10 @@ final class MentorshipBonusResult extends Model
             'mb_paise' => 'integer',
             'sponsee_cumulative_gsb_paise' => 'integer',
         ];
+    }
+
+    public function sponsee(): BelongsTo
+    {
+        return $this->belongsTo(Distributor::class, 'sponsee_id');
     }
 }
