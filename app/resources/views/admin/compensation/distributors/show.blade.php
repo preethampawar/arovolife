@@ -105,6 +105,6 @@
     @endforeach
 </div>
 
-@include('admin.compensation.distributors._tab-'.$tab)
+@include('admin.compensation.distributors._tab-'.(in_array($tab, ['gsb','mb','bv-log','wallet','payouts','audit'], true) ? $tab : 'gsb'))
 
 @endsection

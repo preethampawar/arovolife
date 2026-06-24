@@ -1,5 +1,8 @@
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Append-only double-entry wallet ledger. Credits (GSB, MB) are positive; debits (payouts, reversals) are negative. The running balance is the wallet balance at that point in time.
+    @if(!empty($ledger) && $ledger->count() >= 500)
+        <span class="block mt-1 text-amber-700 font-medium">Showing the most recent 500 entries. Older entries are omitted from this view.</span>
+    @endif
 </div>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($ledger) || $ledger->isEmpty())

@@ -15,10 +15,12 @@ use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 final class AdminDistributorCompController extends Controller
 {
@@ -105,7 +107,7 @@ final class AdminDistributorCompController extends Controller
         ], $tabData));
     }
 
-    private function fetchAuditRows(int $distributorId): mixed
+    private function fetchAuditRows(int $distributorId): LengthAwarePaginator|Collection
     {
         // AuditLog may not exist in this phase — graceful degradation.
         if (! class_exists(AuditLog::class)) {

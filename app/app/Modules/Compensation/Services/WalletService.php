@@ -51,13 +51,19 @@ class WalletService
         ]);
     }
 
-    /** Running balance ledger with cumulative sum, ordered by created_at. */
-    public function ledgerWithRunningBalance(int $distributorId): Collection
+    /**
+     * Running balance ledger with cumulative sum, ordered by created_at.
+     * Capped at the most recent 500 entries to prevent unbounded memory use.
+     */
+    public function ledgerWithRunningBalance(int $distributorId, int $limit = 500): Collection
     {
         $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get();
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->reverse()
+            ->values();
 
         $running = 0;
 
