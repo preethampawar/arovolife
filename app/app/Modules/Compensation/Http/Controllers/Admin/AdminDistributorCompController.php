@@ -70,7 +70,8 @@ final class AdminDistributorCompController extends Controller
                     ->orderByDesc('cutoff_date')->paginate(30)->withQueryString(),
             ],
             'bv-log' => [
-                'rows' => BvLedgerEntry::forDistributor($distributor->id)
+                'rows' => BvLedgerEntry::query()
+                    ->forDistributor($distributor->id)
                     ->dateRange($from, $to)
                     ->with('order')
                     ->orderByDesc('effective_at')->paginate(30)->withQueryString(),
