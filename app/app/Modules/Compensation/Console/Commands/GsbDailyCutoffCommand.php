@@ -29,9 +29,17 @@ final class GsbDailyCutoffCommand extends Command
 
     public function handle(): int
     {
-        $date = $this->option('date')
-            ? Carbon::parse((string) $this->option('date'))
-            : Carbon::today();
+        if ($this->option('date') !== null) {
+            $rawDate = (string) $this->option('date');
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
+                $this->error("--date must be in YYYY-MM-DD format, got: {$rawDate}");
+
+                return self::FAILURE;
+            }
+            $date = Carbon::createFromFormat('Y-m-d', $rawDate)->startOfDay();
+        } else {
+            $date = Carbon::today();
+        }
 
         $singleId = $this->option('distributor')
             ? (int) $this->option('distributor')
@@ -65,7 +73,13 @@ final class GsbDailyCutoffCommand extends Command
                 }
             } catch (\Throwable $e) {
                 $failed++;
-                Log::error('gsb.cutoff.exception', ['distributor_id' => $distributorId, 'error' => $e->getMessage()]);
+                Log::error('gsb.cutoff.exception', [
+                    'distributor_id' => $distributorId,
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
             }
         }
 
