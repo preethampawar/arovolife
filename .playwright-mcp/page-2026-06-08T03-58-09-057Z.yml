@@ -1,0 +1,80 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "← Back to order" [ref=e5] [cursor=pointer]:
+          - /url: http://localhost:8084/orders/ORD-260608-91080
+        - heading "Order summary" [level=1] [ref=e6]
+      - button "Download / Print" [ref=e7]:
+        - img [ref=e8]
+        - text: Download / Print
+    - paragraph [ref=e10]: The button opens your browser's print dialog — choose Save as PDF to download.
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - img "arovolife" [ref=e15]
+        - generic [ref=e16]:
+          - paragraph [ref=e17]: Arovolife Private Limited
+          - paragraph [ref=e18]: CIN U46909TS2026PTC210896
+      - generic [ref=e19]:
+        - paragraph [ref=e20]: Order Summary
+        - paragraph [ref=e21]: ORD-260608-91080
+        - paragraph [ref=e22]: 08 Jun 2026
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - paragraph [ref=e25]: Billed to
+        - paragraph [ref=e26]: Staging Test Reg
+        - paragraph [ref=e27]:
+          - text: Staging Test Reg
+          - text: "+919411728048"
+          - text: 12 MG Road
+          - text: Hyderabad, TG 500032
+      - generic [ref=e28]:
+        - paragraph [ref=e29]: Your arovolife distributor
+        - paragraph [ref=e30]: Staging Test Reg
+        - paragraph [ref=e31]: ADN 597431458
+    - table [ref=e32]:
+      - rowgroup [ref=e33]:
+        - row "Item HSN Qty Rate GST Amount" [ref=e34]:
+          - columnheader "Item" [ref=e35]
+          - columnheader "HSN" [ref=e36]
+          - columnheader "Qty" [ref=e37]
+          - columnheader "Rate" [ref=e38]
+          - columnheader "GST" [ref=e39]
+          - columnheader "Amount" [ref=e40]
+      - rowgroup [ref=e41]:
+        - row "arovolife Multi-Vitamin AV-MV-001-V1 2936 2 ₹799.00 12% ₹1,598.00" [ref=e42]:
+          - cell "arovolife Multi-Vitamin AV-MV-001-V1" [ref=e43]:
+            - text: arovolife Multi-Vitamin
+            - generic [ref=e44]: AV-MV-001-V1
+          - cell "2936" [ref=e45]
+          - cell "2" [ref=e46]
+          - cell "₹799.00" [ref=e47]
+          - cell "12%" [ref=e48]
+          - cell "₹1,598.00" [ref=e49]
+    - generic [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]: Taxable value
+        - generic [ref=e54]: ₹1,426.79
+      - generic [ref=e55]:
+        - generic [ref=e56]: GST
+        - generic [ref=e57]: ₹171.21
+      - generic [ref=e58]:
+        - generic [ref=e59]: Shipping
+        - generic [ref=e60]: ₹60.00
+      - generic [ref=e61]:
+        - generic [ref=e62]: Total
+        - generic [ref=e63]: ₹1,658.00
+      - paragraph [ref=e64]: "Amounts are inclusive of GST. Payment: COD."
+      - paragraph [ref=e65]: This is an order summary / payment receipt, not a GST tax invoice.
+    - generic [ref=e66]:
+      - paragraph [ref=e67]: Arovolife Private Limited · CIN U46909TS2026PTC210896
+      - paragraph [ref=e68]:
+        - link "+91 88866 62949" [ref=e69] [cursor=pointer]:
+          - /url: tel:+918886662949
+        - text: "|"
+        - link "support@arovolife.com" [ref=e70] [cursor=pointer]:
+          - /url: mailto:support@arovolife.com
+        - text: "|"
+        - link "www.arovolife.com" [ref=e71] [cursor=pointer]:
+          - /url: https://www.arovolife.com

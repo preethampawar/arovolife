@@ -1,0 +1,277 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - button "TA Test Admin" [ref=e6]:
+        - generic [ref=e7]: TA
+        - generic [ref=e8]: Test Admin
+        - img [ref=e9]
+      - generic [ref=e11]: "|"
+      - group "Adjust font size" [ref=e12]:
+        - button "Smaller text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: −
+        - button "Default text" [ref=e15]: A
+        - button "Larger text" [ref=e16]:
+          - text: A
+          - generic [ref=e17]: +
+        - button "Largest text" [ref=e18]:
+          - text: A
+          - generic [ref=e19]: ++
+        - button "Reset font size" [ref=e20]: ↺
+      - generic [ref=e21]: "|"
+      - link "Admin Console" [ref=e22] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+      - generic [ref=e23]: "|"
+      - generic [ref=e24]: India 🇮🇳
+    - navigation [ref=e25]:
+      - generic [ref=e26]:
+        - link "arovolife" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e28]
+        - generic [ref=e29]:
+          - link "Home" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e32] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e33] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e34] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e36]:
+            - text: Categories
+            - img [ref=e37]
+          - link "Messages" [ref=e39] [cursor=pointer]:
+            - /url: http://localhost:8084/messages
+            - img [ref=e40]
+          - link "Cart — 14 items" [ref=e42] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e46]: "14"
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - generic [ref=e50]:
+        - link "arovolife Best In Class Hair Care arovolife Best In Class Hair Care Recapture Your Confidence" [ref=e51] [cursor=pointer]:
+          - /url: ""
+          - img "arovolife Best In Class Hair Care" [ref=e52]
+          - generic [ref=e53]:
+            - heading "arovolife Best In Class Hair Care" [level=2] [ref=e54]
+            - paragraph [ref=e55]: Recapture Your Confidence
+        - link "arovolife Absolute Skin Care arovolife Absolute Skin Care Recapture The Skin of Your Youth" [ref=e56] [cursor=pointer]:
+          - /url: ""
+          - img "arovolife Absolute Skin Care" [ref=e57]
+          - generic [ref=e58]:
+            - heading "arovolife Absolute Skin Care" [level=2] [ref=e59]
+            - paragraph [ref=e60]: Recapture The Skin of Your Youth
+        - link "Uploaded Mall Banner (recheck) Uploaded Mall Banner (recheck)" [ref=e61] [cursor=pointer]:
+          - /url: ""
+          - img "Uploaded Mall Banner (recheck)" [ref=e62]
+          - heading "Uploaded Mall Banner (recheck)" [level=2] [ref=e64]
+        - link "arovolife Best In Class Hair Care arovolife Best In Class Hair Care Recapture Your Confidence" [ref=e65] [cursor=pointer]:
+          - /url: ""
+          - img "arovolife Best In Class Hair Care" [ref=e66]
+          - generic [ref=e67]:
+            - heading "arovolife Best In Class Hair Care" [level=2] [ref=e68]
+            - paragraph [ref=e69]: Recapture Your Confidence
+      - generic [ref=e70]:
+        - button "Show slide 1" [ref=e71]
+        - button "Show slide 2" [ref=e72]
+        - button "Show slide 3" [ref=e73]
+    - generic [ref=e74]:
+      - link "All products" [ref=e75] [cursor=pointer]:
+        - /url: http://localhost:8084/shop
+      - link "Health Care" [ref=e76] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=health-care
+      - link "Skin and Beauty" [ref=e77] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=skin-and-beauty
+      - link "Personal Care" [ref=e78] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=personal-care
+      - link "Home Care" [ref=e79] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=home-care
+      - link "Agri Care" [ref=e80] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=agri-care
+      - link "Lifestyle" [ref=e81] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=lifestyle
+      - link "Food and Beverages" [ref=e82] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=food-and-beverages
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - link "arovolife Aloe Face Wash −15% Personal Care" [ref=e85] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/aloe-face-wash
+          - img "arovolife Aloe Face Wash" [ref=e86]
+          - generic [ref=e87]: −15%
+          - generic [ref=e88]: Personal Care
+        - generic [ref=e89]:
+          - link "arovolife Aloe Face Wash" [ref=e90] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/aloe-face-wash
+            - heading "arovolife Aloe Face Wash" [level=3] [ref=e91]:
+              - generic [ref=e92]: arovolife Aloe Face Wash
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]: ₹299.00
+              - generic [ref=e96]: ₹350.00
+            - button "Add arovolife Aloe Face Wash to cart" [ref=e98]:
+              - img [ref=e99]
+      - generic [ref=e101]:
+        - link "arovolife Gentle Hand Wash −17% Personal Care" [ref=e102] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/gentle-hand-wash
+          - img "arovolife Gentle Hand Wash" [ref=e103]
+          - generic [ref=e104]: −17%
+          - generic [ref=e105]: Personal Care
+        - generic [ref=e106]:
+          - link "arovolife Gentle Hand Wash" [ref=e107] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/gentle-hand-wash
+            - heading "arovolife Gentle Hand Wash" [level=3] [ref=e108]:
+              - generic [ref=e109]: arovolife Gentle Hand Wash
+          - paragraph [ref=e110]: Aloe vera & neem. 250 ml pump bottle.
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - generic [ref=e113]: ₹245.00
+              - generic [ref=e114]: ₹295.00
+            - button "Add arovolife Gentle Hand Wash to cart" [ref=e116]:
+              - img [ref=e117]
+      - generic [ref=e119]:
+        - link "−17% Food and Beverages" [ref=e120] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/food-and-beverages
+          - img [ref=e122]
+          - generic [ref=e124]: −17%
+          - generic [ref=e125]: Food and Beverages
+        - generic [ref=e126]:
+          - link "arovolife Green Tea" [ref=e127] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/food-and-beverages
+            - heading "arovolife Green Tea" [level=3] [ref=e128]:
+              - generic [ref=e129]: arovolife Green Tea
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - generic [ref=e132]: ₹1,500.00
+              - generic [ref=e133]: ₹1,800.00
+            - button "Add arovolife Green Tea to cart" [ref=e135]:
+              - img [ref=e136]
+      - generic [ref=e138]:
+        - link "arovolife Hair Essential Oil −13% Personal Care" [ref=e139] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/hair-essential-oil
+          - img "arovolife Hair Essential Oil" [ref=e140]
+          - generic [ref=e141]: −13%
+          - generic [ref=e142]: Personal Care
+        - generic [ref=e143]:
+          - link "arovolife Hair Essential Oil" [ref=e144] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/hair-essential-oil
+            - heading "arovolife Hair Essential Oil" [level=3] [ref=e145]:
+              - generic [ref=e146]: arovolife Hair Essential Oil
+          - paragraph [ref=e147]: Bhringraj & amla. 200 ml.
+          - generic [ref=e148]:
+            - generic [ref=e149]:
+              - generic [ref=e150]: ₹999.00
+              - generic [ref=e151]: ₹1,150.00
+            - button "Add arovolife Hair Essential Oil to cart" [ref=e153]:
+              - img [ref=e154]
+      - generic [ref=e156]:
+        - link "arovolife Herbal Green Tea −11% Health Care" [ref=e157] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/herbal-green-tea
+          - img "arovolife Herbal Green Tea" [ref=e158]
+          - generic [ref=e159]: −11%
+          - generic [ref=e160]: Health Care
+        - generic [ref=e161]:
+          - link "arovolife Herbal Green Tea" [ref=e162] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/herbal-green-tea
+            - heading "arovolife Herbal Green Tea" [level=3] [ref=e163]:
+              - generic [ref=e164]: arovolife Herbal Green Tea
+          - paragraph [ref=e165]: 25 bags. Tulsi & ashwagandha.
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - generic [ref=e168]: ₹399.00
+              - generic [ref=e169]: ₹450.00
+            - button "Add arovolife Herbal Green Tea to cart" [ref=e171]:
+              - img [ref=e172]
+      - generic [ref=e174]:
+        - link "arovolife Immunity Booster −16% Health Care" [ref=e175] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/immunity-booster
+          - img "arovolife Immunity Booster" [ref=e176]
+          - generic [ref=e177]: −16%
+          - generic [ref=e178]: Health Care
+        - generic [ref=e179]:
+          - link "arovolife Immunity Booster" [ref=e180] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/immunity-booster
+            - heading "arovolife Immunity Booster" [level=3] [ref=e181]:
+              - generic [ref=e182]: arovolife Immunity Booster
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - generic [ref=e185]: ₹549.00
+              - generic [ref=e186]: ₹650.00
+            - button "Add arovolife Immunity Booster to cart" [ref=e188]:
+              - img [ref=e189]
+      - generic [ref=e191]:
+        - link "arovolife Multi-Vitamin −11% Health Care" [ref=e192] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/multi-vitamin
+          - img "arovolife Multi-Vitamin" [ref=e193]
+          - generic [ref=e194]: −11%
+          - generic [ref=e195]: Health Care
+        - generic [ref=e196]:
+          - link "arovolife Multi-Vitamin" [ref=e197] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/multi-vitamin
+            - heading "arovolife Multi-Vitamin" [level=3] [ref=e198]:
+              - generic [ref=e199]: arovolife Multi-Vitamin
+          - paragraph [ref=e200]: 30 tablets. Daily essentials.
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - generic [ref=e203]: ₹799.00
+              - generic [ref=e204]: ₹899.00
+            - button "Add arovolife Multi-Vitamin to cart" [ref=e206]:
+              - img [ref=e207]
+      - generic [ref=e209]:
+        - link "arovolife ScalpCare Shampoo −15% Personal Care" [ref=e210] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/scalpcare-shampoo
+          - img "arovolife ScalpCare Shampoo" [ref=e211]
+          - generic [ref=e212]: −15%
+          - generic [ref=e213]: Personal Care
+        - generic [ref=e214]:
+          - link "arovolife ScalpCare Shampoo" [ref=e215] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/scalpcare-shampoo
+            - heading "arovolife ScalpCare Shampoo" [level=3] [ref=e216]:
+              - generic [ref=e217]: arovolife ScalpCare Shampoo
+          - paragraph [ref=e218]: Anti-dandruff formula. 300 ml.
+          - generic [ref=e219]:
+            - generic [ref=e220]:
+              - generic [ref=e221]: ₹1,150.00
+              - generic [ref=e222]: ₹1,350.00
+            - button "Add arovolife ScalpCare Shampoo to cart" [ref=e224]:
+              - img [ref=e225]
+      - generic [ref=e227]:
+        - link "arovolife Vitamin C Serum −17% Skin and Beauty" [ref=e228] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/vitamin-c-serum
+          - img "arovolife Vitamin C Serum" [ref=e229]
+          - generic [ref=e230]: −17%
+          - generic [ref=e231]: Skin and Beauty
+        - generic [ref=e232]:
+          - link "arovolife Vitamin C Serum" [ref=e233] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/vitamin-c-serum
+            - heading "arovolife Vitamin C Serum" [level=3] [ref=e234]:
+              - generic [ref=e235]: arovolife Vitamin C Serum
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - generic [ref=e238]: ₹749.00
+              - generic [ref=e239]: ₹899.00
+            - button "Add arovolife Vitamin C Serum to cart" [ref=e241]:
+              - img [ref=e242]
+  - contentinfo [ref=e244]:
+    - generic [ref=e245]:
+      - paragraph [ref=e246]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e247]:
+        - link "Terms" [ref=e248] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e249] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e250] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e251] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e252]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e253] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e254] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

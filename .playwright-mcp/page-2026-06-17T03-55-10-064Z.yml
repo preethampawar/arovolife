@@ -1,0 +1,182 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "Register with us" [ref=e5] [cursor=pointer]:
+        - /url: http://localhost:8084/join
+      - generic [ref=e6]: "|"
+      - link "Sign in" [ref=e7] [cursor=pointer]:
+        - /url: http://localhost:8084/login
+      - generic [ref=e8]: "|"
+      - group "Adjust font size" [ref=e9]:
+        - button "Smaller text" [ref=e10]:
+          - text: A
+          - generic [ref=e11]: −
+        - button "Default text" [ref=e12]: A
+        - button "Larger text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: +
+        - button "Largest text" [ref=e15]:
+          - text: A
+          - generic [ref=e16]: ++
+        - button "Reset font size" [ref=e17]: ↺
+      - generic [ref=e18]: "|"
+      - link "About Us" [ref=e19] [cursor=pointer]:
+        - /url: http://localhost:8084/about-us
+      - generic [ref=e20]: "|"
+      - generic [ref=e21]: India 🇮🇳
+    - navigation [ref=e22]:
+      - generic [ref=e23]:
+        - link "arovolife" [ref=e24] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e25]
+        - generic [ref=e26]:
+          - link "Home" [ref=e27] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e28] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e29] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e33]:
+            - text: Categories
+            - img [ref=e34]
+          - link "Cart — 3 items" [ref=e36] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - generic [ref=e40]: "3"
+          - link "Sign In" [ref=e41] [cursor=pointer]:
+            - /url: http://localhost:8084/login
+  - main [ref=e42]:
+    - heading "Checkout" [level=1] [ref=e43]
+    - generic [ref=e44]:
+      - strong [ref=e45]: "Referred by:"
+      - text: "444555666"
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - heading "Distributor details" [level=2] [ref=e50]
+            - generic [ref=e51]:
+              - img [ref=e52]
+              - text: Purchasing through
+          - generic [ref=e54]:
+            - generic [ref=e55]:
+              - term [ref=e56]: Distributor (ADN)
+              - definition [ref=e57]: "444555666"
+            - generic [ref=e58]:
+              - term [ref=e59]: Name
+              - definition [ref=e60]: Arovolife Private Limited
+          - paragraph [ref=e61]: You're buying through this distributor. Enter your own details below for delivery — the order is placed with arovolife and credited to this distributor.
+        - generic [ref=e62]:
+          - heading "Customer Details" [level=2] [ref=e64]
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: Full Name *
+              - textbox [ref=e68]
+            - generic [ref=e69]:
+              - generic [ref=e70]: Email *
+              - textbox "you@example.com" [ref=e71]
+            - generic [ref=e72]:
+              - generic [ref=e73]: Mobile *
+              - generic [ref=e74]:
+                - generic [ref=e75]: "+91"
+                - textbox "9876543210" [ref=e76]
+        - generic [ref=e77]:
+          - heading "Shipping Address" [level=2] [ref=e78]
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e81]: Address Line 1 *
+              - textbox "House/Flat no., building, street" [ref=e82]
+            - generic [ref=e83]:
+              - generic [ref=e84]: Address Line 2
+              - textbox "Landmark, area" [ref=e85]
+            - generic [ref=e86]:
+              - generic [ref=e87]: City *
+              - textbox [ref=e88]
+            - generic [ref=e89]:
+              - generic [ref=e90]: State *
+              - textbox "e.g. Karnataka" [ref=e91]
+            - generic [ref=e92]:
+              - generic [ref=e93]: Pincode *
+              - textbox [ref=e94]
+        - generic [ref=e96]:
+          - heading "Billing Address" [level=2] [ref=e97]
+          - generic [ref=e98] [cursor=pointer]:
+            - checkbox "Same as shipping" [checked] [ref=e99]
+            - text: Same as shipping
+        - generic [ref=e100]:
+          - heading "Payment Method" [level=2] [ref=e101]
+          - generic [ref=e102]:
+            - generic [ref=e103] [cursor=pointer]:
+              - radio "Pay online — card / UPI / netbanking" [checked] [ref=e104]
+              - generic [ref=e105]:
+                - strong [ref=e106]: Pay online
+                - text: — card / UPI / netbanking
+            - generic [ref=e107] [cursor=pointer]:
+              - radio "Cash on Delivery — pay when your order arrives" [ref=e108]
+              - generic [ref=e109]:
+                - strong [ref=e110]: Cash on Delivery
+                - text: — pay when your order arrives
+        - generic [ref=e111]:
+          - heading "Consent" [level=2] [ref=e112]
+          - generic [ref=e113] [cursor=pointer]:
+            - checkbox "I accept the Terms of Sale and Privacy Policy, and understand I have a 30-day cooling-off window per DSR 2021." [ref=e114]
+            - generic [ref=e115]:
+              - text: I accept the
+              - link "Terms of Sale" [ref=e116]:
+                - /url: http://localhost:8084/p/terms
+              - text: and
+              - link "Privacy Policy" [ref=e117]:
+                - /url: http://localhost:8084/p/privacy
+              - text: ", and understand I have a 30-day cooling-off window per DSR 2021."
+          - generic [ref=e118] [cursor=pointer]:
+            - checkbox "Email me about new products and offers (optional)." [ref=e119]
+            - generic [ref=e120]: Email me about new products and offers (optional).
+      - generic [ref=e121]:
+        - heading "Order Summary" [level=2] [ref=e122]
+        - generic [ref=e123]:
+          - generic [ref=e124]:
+            - generic [ref=e125]: arovolife Gentle Hand Wash × 2
+            - generic [ref=e126]: ₹490.00
+          - generic [ref=e127]:
+            - generic [ref=e128]: arovolife Herbal Green Tea × 1
+            - generic [ref=e129]: ₹399.00
+        - generic [ref=e130]:
+          - generic [ref=e131]:
+            - generic [ref=e132]: Subtotal
+            - generic [ref=e133]: ₹795.25
+          - generic [ref=e134]:
+            - generic [ref=e135]: GST
+            - generic [ref=e136]: ₹93.75
+          - generic [ref=e137]:
+            - generic [ref=e138]: Shipping
+            - generic [ref=e139]: ₹60.00
+        - generic [ref=e140]:
+          - generic [ref=e141]: Total
+          - generic [ref=e142]: ₹949.00
+        - button "Place Order" [ref=e143]
+        - paragraph [ref=e144]: Test gateway — no real money moves.
+  - contentinfo [ref=e145]:
+    - generic [ref=e146]:
+      - paragraph [ref=e147]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e148]:
+        - link "Terms" [ref=e149] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e150] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e151] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e152] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e153]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e154] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e155] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

@@ -1,0 +1,133 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - button "TA Test Admin" [ref=e5]:
+      - generic [ref=e6]: TA
+      - generic [ref=e7]: Test Admin
+      - img [ref=e8]
+    - generic [ref=e10]: "|"
+    - group "Adjust font size" [ref=e11]:
+      - button "Smaller text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: −
+      - button "Default text" [ref=e14]: A
+      - button "Larger text" [ref=e15]:
+        - text: A
+        - generic [ref=e16]: +
+      - button "Largest text" [ref=e17]:
+        - text: A
+        - generic [ref=e18]: ++
+      - button "Reset font size" [ref=e19]: ↺
+    - generic [ref=e20]: "|"
+    - link "Admin Console" [ref=e21] [cursor=pointer]:
+      - /url: http://localhost:8084/admin
+    - generic [ref=e22]: "|"
+    - generic [ref=e23]: India 🇮🇳
+  - navigation [ref=e24]:
+    - generic [ref=e25]:
+      - link "arovolife" [ref=e26] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e27]
+      - generic [ref=e28]:
+        - link "Home" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e32] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e33] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e35]:
+          - text: Categories
+          - img [ref=e36]
+        - link "Messages" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/messages
+          - img [ref=e39]
+        - link "Cart — 3 items" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - generic [ref=e42]:
+            - img [ref=e43]
+            - generic [ref=e45]: "3"
+  - main [ref=e46]:
+    - link "Wellness Sale — up to 20% off Wellness Sale — up to 20% off" [ref=e49] [cursor=pointer]:
+      - /url: ""
+      - img "Wellness Sale — up to 20% off" [ref=e50]
+      - heading "Wellness Sale — up to 20% off" [level=2] [ref=e52]
+    - img "Health Care" [ref=e54]
+    - generic [ref=e55]:
+      - link "All products" [ref=e56] [cursor=pointer]:
+        - /url: http://localhost:8084/shop
+      - link "Health Care" [ref=e57] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=health-care
+      - link "Skin and Beauty" [ref=e58] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=skin-and-beauty
+      - link "Personal Care" [ref=e59] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=personal-care
+      - link "Home Care" [ref=e60] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=home-care
+      - link "Agri Care" [ref=e61] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=agri-care
+      - link "Lifestyle" [ref=e62] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=lifestyle
+      - link "Food and Beverages" [ref=e63] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=food-and-beverages
+    - generic [ref=e64]:
+      - link "arovolife Herbal Green Tea −11% Health Care arovolife Herbal Green Tea 25 bags. Tulsi & ashwagandha. ₹399.00 ₹450.00" [ref=e65] [cursor=pointer]:
+        - /url: http://localhost:8084/shop/p/herbal-green-tea
+        - generic [ref=e66]:
+          - img "arovolife Herbal Green Tea" [ref=e67]
+          - generic [ref=e68]: −11%
+          - generic [ref=e69]: Health Care
+        - generic [ref=e70]:
+          - heading "arovolife Herbal Green Tea" [level=3] [ref=e71]:
+            - generic [ref=e72]: arovolife Herbal Green Tea
+          - paragraph [ref=e73]: 25 bags. Tulsi & ashwagandha.
+          - generic [ref=e74]:
+            - generic [ref=e75]: ₹399.00
+            - generic [ref=e76]: ₹450.00
+      - link "arovolife Immunity Booster −16% Health Care arovolife Immunity Booster ₹549.00 ₹650.00" [ref=e77] [cursor=pointer]:
+        - /url: http://localhost:8084/shop/p/immunity-booster
+        - generic [ref=e78]:
+          - img "arovolife Immunity Booster" [ref=e79]
+          - generic [ref=e80]: −16%
+          - generic [ref=e81]: Health Care
+        - generic [ref=e82]:
+          - heading "arovolife Immunity Booster" [level=3] [ref=e83]:
+            - generic [ref=e84]: arovolife Immunity Booster
+          - generic [ref=e85]:
+            - generic [ref=e86]: ₹549.00
+            - generic [ref=e87]: ₹650.00
+      - link "arovolife Multi-Vitamin −11% Health Care arovolife Multi-Vitamin 30 tablets. Daily essentials. ₹799.00 ₹899.00" [ref=e88] [cursor=pointer]:
+        - /url: http://localhost:8084/shop/p/multi-vitamin
+        - generic [ref=e89]:
+          - img "arovolife Multi-Vitamin" [ref=e90]
+          - generic [ref=e91]: −11%
+          - generic [ref=e92]: Health Care
+        - generic [ref=e93]:
+          - heading "arovolife Multi-Vitamin" [level=3] [ref=e94]:
+            - generic [ref=e95]: arovolife Multi-Vitamin
+          - paragraph [ref=e96]: 30 tablets. Daily essentials.
+          - generic [ref=e97]:
+            - generic [ref=e98]: ₹799.00
+            - generic [ref=e99]: ₹899.00
+  - contentinfo [ref=e100]:
+    - generic [ref=e101]:
+      - paragraph [ref=e102]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e103]:
+        - link "Terms" [ref=e104] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e105] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e106] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e107] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e108]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e109] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e110] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

@@ -1,115 +1,267 @@
 ---
 name: arovolife-compensation-plan
-description: Reference for the Arovolife compensation plan — slabs, ranks, Auto Pool, mentorship, caps and repurchase rules. Mostly informational during Phase 1 (no commissions yet); becomes operational from Phase 4 onwards. Use whenever a feature needs to understand how a rupee flows.
+description: Reference for the Arovolife compensation plan — slabs, ranks, Fortune Bonus, mentorship, caps and repurchase rules. Source of truth = doc dated 2026-06-19. Mostly informational during Phase 1-3; becomes operational from Phase 4 onwards. Use whenever a feature needs to understand how a rupee flows.
 ---
 
 # Arovolife Compensation Plan — reference
 
-**Phase 1 note:** no compensation is calculated in Phase 1. This skill
-exists so that the Phase 1 data model, events and audit trails are
-*forward-compatible* with the engines that arrive in Phases 4-6.
+**Source document:** "Arovolife Is Our New Life" dated 2026-06-19 (the partner's latest authoritative document).
+**Phase note:** No compensation is calculated in Phases 1–3. This skill exists so that the data model, events and audit trails are *forward-compatible* with the engines that arrive in Phases 4+.
+
+---
 
 ## Revenue sharing envelope
 
-| Component | Share of revenue | Cadence | Phase introduced |
+| Component | % of revenue | Cadence | Phase introduced |
 |---|---|---|---|
-| Retail margin | 10–30% | Per sale | Phase 2 |
-| Group Sales Bonus (GSB) | 40% | Daily cut-off 23:59; weekly Tuesday payout | Phase 4 |
-| Auto Pool | participation-based | Monthly | Phase 6 |
-| Mentorship Bonus | 5% (slab 10 % → 1 %) | With GSB | Phase 4 |
-| Rank Bonus | ~21% | Monthly 8th | Phase 5 |
-| Lifetime Rewards | 32% (non-cash) | On rank achievement | Phase 5 |
-| Franchise Bonus | 3%, cap ₹1 L/month | Monthly 8th | Phase 7 |
+| Retail Margin | 10–30% | Per sale | Phase 2 |
+| Genos Sales Bonus (GSB) | 40% | Daily cut-off 23:59; weekly Tuesday payout | Phase 4 |
+| Mentorship Bonus | 5% (slab 10%→1%) | With GSB | Phase 4 |
+| Growth Booster Bonus | 5% of monthly turnover | Monthly | Phase 4 |
+| Rank Bonus | 21% (see pool table) | Monthly 8th | Phase 5 |
+| Fortune Bonus | 3×9 matrix, participation-based | Monthly reset | Phase 6 |
+| Lifetime Awards & Rewards | 32% (non-cash) | On rank achievement | Phase 5 |
+| Arete Development Center Bonus | 3%, cap ₹1 L/month | Monthly 8th | Phase 7 |
+
+**Payout schedule (5 payouts/month):**
+- GSB: every Tuesday (4× per month)
+- Rank Bonus: 8th of month
+- Arete Development Center Bonus: 8th of month
+
+---
 
 ## Caps and deductions
 
-- Total distributor-side commission = 35% of sales revenue, hard-capped at ₹50 lakh/month.
-- Admin charge: 3% or ₹30,000, whichever is lower; applies to GSB, MB, RB. Exempt: awards & rewards and Franchise Bonus.
-- TDS: 5% (per Income Tax rules; verify current rate on payout).
-- Repurchase wallet deduction: 10% of last-month GSB/MB/RB, cap ₹10,000.
+- Total distributor-side commission hard-capped at ₹50 lakh/month.
+- Admin charge: 3% or ₹30,000, whichever is lower; applies to GSB, Mentorship Bonus, Rank Bonus. Exempt: Lifetime Awards & Rewards, Fortune Bonus, Arete Development Center Bonus.
+- TDS: 5% (verify current IT rate at payout time).
+- Repurchase wallet deduction: 10% of prior-month GSB + Mentorship Bonus + Rank Bonus, capped at ₹10,000.
 - Minimum payout: ₹500.
-- Mandatory monthly repurchase: 600 BV on or before the 15th; wallet must
-  also be cleared to zero before the 15th.
+- Mandatory monthly repurchase: 600 BV on or before the 15th; repurchase wallet must be zeroed before the 15th.
 
-## Partner personal purchase ladder (A→ND)
+---
 
-| Level | BV | Title |
+## Partner personal purchase ladder (lifetime accumulated BV → Title)
+
+These are lifetime BV ranges, not single-purchase thresholds.
+
+| Level | BV range (lifetime) | Title |
 |---|---|---|
-| 1 | 3,000 | Agent |
-| 2 | 5,000 | Retailer |
-| 3 | 15,000 | Dealer |
-| 4 | 50,000 | Wholesaler |
-| 5 | 1,00,000 | Distributor |
-| 6 | 2,00,000 | Regional Distributor |
-| 7 | 3,00,000 | National Distributor |
+| 1 | 3,000 – 4,999 | Retailer |
+| 2 | 5,000 – 14,999 | Dealer |
+| 3 | 15,000 – 49,999 | Wholesaler |
+| 4 | 50,000 – 99,999 | Distributor |
+| 5 | 1,00,000 – 1,99,999 | Regional Distributor |
+| 6 | 2,00,000 – 2,99,999 | National Distributor |
+| 7 | 3,00,000 + | Global Distributor |
 
-## GSB slab table (matched BV on weaker leg)
+**Note on previous skill:** Old names Agent/Retailer/Dealer/Wholesaler/Distributor/Regional/National are deprecated. New names above are canonical.
 
-| Left / Right matched | Personal purchase title | Score | Incentive |
+### 600 BV / 3,000 BV eligibility gates
+
+- **Below 600 BV personal:** Downline (Genos left/right) BV is NOT added to the distributor's account at all.
+- **600 BV to 2,999 BV personal:** Downline BV accumulates and displays in back-office. GSB is computed and credited to web account only — NOT transferred to bank.
+- **3,000+ BV personal (Retailer title):** All bonuses transfer to bank account normally.
+
+---
+
+## 1st Benefit: Genos Sales Bonus (GSB) — 40%
+
+GSB is earned on the BV generated by purchases of distributors in the Left and Right Genos (the binary placement tree).
+
+### How the daily slab is determined
+
+Every day at 23:59, the system:
+1. Computes Left Genos BV and Right Genos BV generated that day.
+2. Takes the **weaker side** (lower of the two).
+3. Looks up the applicable slab from the table below — capped by whichever is lower: the matched BV slab OR the distributor's personal purchase title (whichever corresponds to a lower slab).
+4. Pays the bonus for that slab, sets the weaker side to **zero**, and caps the power side at **4,50,000 BV** (excess is flushed, not carried forward).
+
+### Special rule for 1st Slab (15K/15K)
+
+The 1st slab has **no daily cutoff and no time limit**. It accumulates lifetime until the 15K match is hit, then pays and resets the weaker side to zero. All other slabs (2nd–7th) use the daily 23:59 cutoff.
+
+### GSB slab table
+
+| Left / Right matched BV | Personal purchase title required | Score | Bonus |
 |---|---|---|---|
-| 15,000 / 15,000 | Agent (3,000 BV) | 4 | ₹1,000 |
-| 30,000 / 30,000 | Retailer (5,000 BV) | 12 | ₹3,000 |
-| 90,000 / 90,000 | Dealer (15,000 BV) | 24 | ₹6,000 |
-| 2,70,000 / 2,70,000 | Wholesaler (50,000 BV) | 48 | ₹12,000 |
-| 8,00,000 / 8,00,000 | Distributor (1,00,000 BV) | 96 | ₹24,000 |
-| 24,00,000 / 24,00,000 | Regional (2,00,000 BV) | 160 | ₹40,000 |
-| 72,00,000 / 72,00,000 | National (3,00,000 BV) | 240 | ₹60,000 |
+| 15,000 / 15,000 | Retailer (3,000 BV) | 4 | ₹1,000 |
+| 30,000 / 30,000 | Dealer (5,000 BV) | 12 | ₹3,000 |
+| 90,000 / 90,000 | Wholesaler (15,000 BV) | 24 | ₹6,000 |
+| 2,70,000 / 2,70,000 | Distributor (50,000 BV) | 48 | ₹12,000 |
+| 8,00,000 / 8,00,000 | Regional Distributor (1,00,000 BV) | 96 | ₹24,000 |
+| 24,00,000 / 24,00,000 | National Distributor (2,00,000 BV) | 160 | ₹40,000 |
+| 72,00,000 / 72,00,000 | Global Distributor (3,00,000 BV) | 240 | ₹60,000 |
 
-## Mentorship Bonus slab (on top of GSB)
+### Personal BV added to Rank 1 / Rank 2 weaker leg (only for rank qualification)
 
-10%, 9%, 8%, 7%, 6%, 5%, 4%, 3%, 2%, then 1% lifetime — stepped per
-30,000 cumulative GSB received.
+- **Rank 1 (Silver):** up to 15,000 of current-month personal BV may be added to the weaker Genos leg.
+- **Rank 2 (Pearl):** up to 30,000 of current-month personal BV may be added to the weaker Genos leg.
+- This top-up applies ONLY to rank qualification (not to GSB slab calculation).
+- Also, for Rank 1 and Rank 2 only: the distributor's current-month personal BV is added to the weaker side for rank achievement. This is NOT applicable to Ranks 3–9.
 
-## Rank ladder (Phase 5)
+### Carry-forward rules
 
-| Rank | Name | Criteria (high level) | Pool | Months |
-|---|---|---|---|---|
-| 1 | Silver | 3 L / 3 L Group BV (with 2.5 L substitution rule) | 7% | 1 + 2 |
-| 2 | Pearl | 5 L / 5 L (with 4 L substitution rule) | 4% | 1 + 2 |
-| 3 | Emerald | Two rank-2 leaders on each side | 3% | 1 + 1 |
-| 4 | Gold | Two rank-3 leaders on each side | 2.3% | 1 + 1 |
-| 5 | Diamond | Two rank-4 leaders on each side | 1.7% | 1 + 1 |
-| 6 | Blue Diamond | Two rank-5 leaders on each side | 1.2% | 1 |
-| 7 | Royal Diamond | Two rank-6 leaders on each side | 0.9% | 1 |
-| 8 | Crown Diamond | Two rank-7 leaders on each side | 0.6% | 1 |
-| 9 | Elite Diamond | Two rank-8 leaders on each side | 0.3% | 1 |
+- After each bonus payment: **weaker side = 0**, power side capped at **4,50,000 BV** (excess flushed).
+- 1st slab (15K/15K): weaker side carry-forwards indefinitely (no time limit).
+- 2nd–7th slabs: no carry-forward; calculated fresh each day within the 24-hour window.
 
-Ranks 3+ require "Prove Your Position" — re-achieve the pattern twice
-(or thrice for ranks 6-9) in a calendar month before the promotion is
-confirmed.
+---
 
-## Auto Pool (₹51 · 3×9 matrix)
+## 2nd Benefit: Mentorship Bonus — 5%
 
-| Level | Members |
+Paid on top of GSB. A sponsor earns a % of each **directly sponsored** distributor's GSB income.
+
+### Slab (per directly sponsored person)
+
+The % starts at 10% for the first ₹30,000 of that person's cumulative GSB received, then steps down 1% per additional ₹30,000, stabilising at 1% for life:
+
+| Cumulative GSB from that sponsee | Mentorship % |
 |---|---|
-| 0 (You) | 1 |
-| 1 | 3 |
-| 2 | 9 |
-| 3 | 27 |
-| 4 | 81 |
-| 5 | 243 |
-| 6 | 729 |
-| 7 | 2,187 |
-| 8 | 6,561 |
-| 9 | 19,683 |
+| 1st ₹30,000 | 10% |
+| 2nd ₹30,000 | 9% |
+| 3rd ₹30,000 | 8% |
+| 4th ₹30,000 | 7% |
+| 5th ₹30,000 | 6% |
+| 6th ₹30,000 | 5% |
+| 7th ₹30,000 | 4% |
+| 8th ₹30,000 | 3% |
+| 9th ₹30,000 | 2% |
+| 10th ₹30,000 onwards | **1% (lifetime)** |
 
-Total members = 29,523; total turnover at ₹51 = ₹15,05,673.
+**Applies only to direct sponsees' GSB.** Does not apply to any other benefit type.
+Tracked per sponsor–sponsee pair individually (not aggregate).
 
-Eligibility gates (summary):
+---
 
-- New joiner: self-purchase 5,000 BV + 15,000 BV fresh on each leg in the same month.
-- Non-rank holder: 600 BV personal + wallet zero + 15,000 BV fresh on each leg in the current month.
-- Rank 1: 15,000 BV position + 1,000 BV repurchase + wallet zero, repeat any rank 2× within the month.
-- Rank 2: 1,000 BV repurchase + wallet zero, repeat any rank 3× within the month.
-- Rank 3: 1,000 BV repurchase + wallet zero, repeat any rank 4× within the month.
-- Rank 4: 1,000 BV repurchase + wallet zero, repeat any rank 5× within the month.
-- Rank 5: 1,000 BV repurchase + wallet zero, repeat any rank 6× within the month.
-- Pool benefit is capped at rank 5.
+## 3rd Benefit: Growth Booster Bonus (NEW — not in old skill)
 
-## Compliance notes (repeat of the mandatory ones)
+A monthly bonus for distributors who are not yet ranked (or achieving rank for the first time in the current month). Designed to reward early-stage growth activity.
 
-- Every pool entry, every rank promotion, every bonus row must be tied
-  to a `product_sale_id`. Recruitment alone never earns.
-- Never display a "potential earnings" chart anywhere.
-- Non-cash rewards (cars, insurance, trips) are fulfilled via vendor
-  workflows; perquisite tax treatment verified before release.
+### Arovolife Growth Points (AGP)
+
+AGP is awarded per GSB slab earned in the month:
+- 1st GSB slab (15K match) earned: **12 AGP**
+- 2nd GSB slab (30K match) earned: **5 AGP**
+- 3rd GSB slab (90K match) earned: **2 AGP**
+- 4th–7th slabs: no AGP
+
+Distributors can earn these slabs multiple times in a month; each occurrence adds AGP.
+**Maximum 120 AGP from any single distributor.**
+
+### Eligibility
+
+- Eligible: distributors with **no rank in the previous month** (new and early-stage).
+- Also eligible: distributors achieving **a rank for the first time** in the current month.
+- **Not eligible:** distributors who held any rank in the previous month.
+
+### Payout calculation
+
+- 5% of company's total monthly turnover is the Growth Booster Bonus pool.
+- Point value = pool ÷ total AGP earned by all eligible distributors.
+- Each distributor receives: point value × their total AGP.
+
+---
+
+## 4th Benefit: Rank Bonus — 21% pool (across 9 ranks)
+
+Company total turnover pool split across 9 ranks, paid monthly on 8th:
+
+| Rank | Name | Personal title required | Qualification criteria | Pool % | Months (1+2 rule) |
+|---|---|---|---|---|---|
+| 1 | Silver Partner | Dealer (15,000 BV lifetime) | 3L / 3L Genos BV in a calendar month | 7% | 1 + 2 |
+| 2 | Pearl Partner | Wholesaler (15,000 BV lifetime) | 5L / 5L Genos BV in a calendar month | 4% | 1 + 2 |
+| 3 | Emerald Partner | Distributor (50,000 BV lifetime) | 2 Pearl Partners each Genos side | 3% | — |
+| 4 | Gold Partner | Regional Distributor (1,00,000 BV) | 2 Emerald Partners each side | 2.3% | — |
+| 5 | Diamond Partner | National Distributor (2,00,000 BV) | 2 Gold Partners each side | 1.7% | — |
+| 6 | Blue Diamond Partner | Global Distributor (3,00,000 BV) | 2 Diamond Partners each side | 1.2% | — |
+| 7 | Royal Diamond Partner | Global Distributor | 2 Blue Diamond Partners each side | 0.9% | — |
+| 8 | Crown Diamond Partner | Global Distributor | 2 Royal Diamond Partners each side | 0.6% | — |
+| 9 | Elite Diamond Partner | Global Distributor | 2 Crown Diamond Partners each side | 0.3% | — |
+
+**Total pool = 7+4+3+2.3+1.7+1.2+0.9+0.6+0.3 = 21%**
+
+### 1+2 Rule (Ranks 1 and 2 only)
+
+- When a distributor qualifies for Rank 1 in month M, they receive the 7% share in M, M+1, and M+2 — even if they don't re-qualify in M+1/M+2, provided they complete 1,000 BV repurchase and zero their wallet each month.
+- After the 1+2 window expires, they must re-qualify to restart the cycle.
+- This "1+2" benefit can be availed any number of times for Rank 1 (until Rank 2 is achieved).
+- If Rank 2 is achieved, the Rank 1 "1+2" is cancelled.
+- Same 1+2 rule applies to Rank 2 (4% pool).
+
+### Prove Your Position (PYP)
+
+- Ranks 1 & 2: no PYP needed for initial achievement.
+- Ranks 3–5: must re-achieve the rank **twice** in the same calendar month before promotion is confirmed; subsequent re-qualifications require 1,000 BV + wallet zero.
+- Ranks 6–9: must re-achieve the rank **three times** in the same calendar month.
+
+---
+
+## 5th Benefit: Fortune Bonus (replaces "Auto Pool" from old plan)
+
+A 3×9 matrix-based monthly bonus, reset each month. Distributors are placed "first-come, first-served" based on GSB activity.
+
+### Matrix structure
+
+| Level | Members | Bonus per member (₹) |
+|---|---|---|
+| 0 (You) | 1 | 3.39 |
+| 1 | 3 | 10.17 |
+| 2 | 9 | 30.50 |
+| 3 | 27 | 45.79 |
+| 4 | 81 | 68.88 |
+| 5 | 243 | 25.00 |
+| 6 | 729 | 60.00 |
+| 7 | 2,187 | 55.00 |
+| 8 | 6,561 | 51.00 |
+| 9 | 19,683 | — |
+| **Total** | **29,524** | **₹449.73** |
+
+Fortune Bonus is capped at rank 5. Ranks 6–9 are **not eligible**.
+
+### Eligibility gates (per month)
+
+- **New joiner (month 1):** complete 3,000 BV personal purchases (Retailer title) AND qualify for GSB 1st income (15K/15K in same calendar month).
+- **Non-ranked (month 2+):** 600 BV personal repurchase + wallet zero + achieve at least one of the 7 GSB slabs.
+- **Rank 1:** 1,000 BV repurchase + wallet zero + achieve any 4 GSB slabs in the month.
+- **Rank 2:** 1,000 BV repurchase + wallet zero + achieve any 6 GSB slabs.
+- **Rank 3:** 1,000 BV repurchase + wallet zero + achieve any 8 GSB slabs.
+- **Rank 4:** 1,000 BV repurchase + wallet zero + achieve any 10 GSB slabs.
+- **Rank 5:** 1,000 BV repurchase + wallet zero + achieve any 12 GSB slabs.
+
+---
+
+## 6th Benefit: Lifetime Awards & Rewards — 32% (non-cash)
+
+Non-cash rewards delivered on rank achievement, subject to delivery conditions:
+- Ranks 1–2: awarded and delivered in the same month of achievement (no PYP needed).
+- Ranks 3–5: awarded after proving the rank **twice**.
+- Ranks 6–9: awarded after proving the rank **three times**.
+
+Non-cash perquisite tax treatment must be verified before any reward is released.
+
+---
+
+## 7th Benefit: Arete Development Center Bonus — 3%
+
+Replaces "Franchise Bonus" from old plan. An official center established with company approval; assigned to a qualifying distributor.
+
+- **Earning:** 3% on BV generated by distributors who are connected to and served by that center.
+- **Cap:** ₹1,00,000/month per center.
+- **Payout:** monthly on the 8th.
+- **Center development phases** (linked to income milestones):
+  - Up to ₹20K income: 400 sq ft space, basic furniture/AV
+  - Up to ₹40K income: 600 sq ft, TV + Wi-Fi + stage
+  - Up to ₹60K income: 900 sq ft, AC + projector
+  - Up to ₹80K income: 1,200 sq ft, full facility incl. kitchen + VIP room
+
+---
+
+## Compliance notes (mandatory — never relax)
+
+- Every GSB row, every rank share, every Fortune Bonus entry, every Mentorship Bonus credit must be tied to a `product_sale_id`. Recruitment alone NEVER earns.
+- Never display potential earnings projections or forward-looking income charts.
+- Non-cash rewards (cars, insurance, trips) fulfilled via vendor workflows; perquisite tax verified before release.
+- Admin charge (3% or ₹30,000) applies to GSB, Mentorship Bonus, Rank Bonus. NOT to awards, Fortune Bonus, or Arete Development Center Bonus.
+- TDS 5% applies at payout. Verify current Income Tax rate.
+- Bank transfer of bonuses blocked until distributor reaches Retailer title (3,000 BV personal lifetime).

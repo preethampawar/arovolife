@@ -1,0 +1,129 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "Register with us" [ref=e5] [cursor=pointer]:
+        - /url: http://localhost:8084/join
+      - generic [ref=e6]: "|"
+      - link "Sign in" [ref=e7] [cursor=pointer]:
+        - /url: http://localhost:8084/login
+      - generic [ref=e8]: "|"
+      - group "Adjust font size" [ref=e9]:
+        - button "Smaller text" [ref=e10]:
+          - text: A
+          - generic [ref=e11]: −
+        - button "Default text" [ref=e12]: A
+        - button "Larger text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: +
+        - button "Largest text" [ref=e15]:
+          - text: A
+          - generic [ref=e16]: ++
+        - button "Reset font size" [ref=e17]: ↺
+      - generic [ref=e18]: "|"
+      - link "About Us" [ref=e19] [cursor=pointer]:
+        - /url: http://localhost:8084/about-us
+      - generic [ref=e20]: "|"
+      - generic [ref=e21]: India 🇮🇳
+    - navigation [ref=e22]:
+      - generic [ref=e23]:
+        - link "arovolife" [ref=e24] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e25]
+        - generic [ref=e26]:
+          - link "Home" [ref=e27] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e28] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e29] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e33]:
+            - text: Categories
+            - img [ref=e34]
+          - link "Cart — 3 items" [ref=e36] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - generic [ref=e40]: "3"
+          - link "Sign In" [ref=e41] [cursor=pointer]:
+            - /url: http://localhost:8084/login
+  - generic [ref=e43]: 1 product added from a shared cart.
+  - main [ref=e44]:
+    - heading "Your Cart" [level=1] [ref=e45]
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - img [ref=e50]
+          - generic [ref=e51]:
+            - link "arovolife Gentle Hand Wash" [ref=e52] [cursor=pointer]:
+              - /url: http://localhost:8084/shop/p/gentle-hand-wash
+            - paragraph [ref=e53]: SKU AV-HW-001-V1
+            - paragraph [ref=e54]: ₹245.00
+          - generic [ref=e55]:
+            - button "Remove this item" [ref=e57]:
+              - img [ref=e58]
+              - text: Remove
+            - generic [ref=e60]:
+              - button "Decrease quantity" [ref=e62]: −
+              - generic [ref=e63]: "2"
+              - button "Increase quantity" [ref=e65]: +
+        - generic [ref=e66]:
+          - img [ref=e68]
+          - generic [ref=e69]:
+            - link "arovolife Herbal Green Tea" [ref=e70] [cursor=pointer]:
+              - /url: http://localhost:8084/shop/p/herbal-green-tea
+            - paragraph [ref=e71]: SKU AV-FD-001-V1
+            - paragraph [ref=e72]: ₹399.00
+          - generic [ref=e73]:
+            - button "Remove this item" [ref=e75]:
+              - img [ref=e76]
+              - text: Remove
+            - generic [ref=e78]:
+              - button "Decrease quantity" [disabled] [ref=e80]: −
+              - generic [ref=e81]: "1"
+              - button "Increase quantity" [ref=e83]: +
+      - generic [ref=e84]:
+        - heading "Order Summary" [level=2] [ref=e85]
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - generic [ref=e88]: Subtotal
+            - generic [ref=e89]: ₹795.25
+          - generic [ref=e90]:
+            - generic [ref=e91]: GST
+            - generic [ref=e92]: ₹93.75
+          - generic [ref=e93]:
+            - generic [ref=e94]: Shipping
+            - generic [ref=e95]: ₹60.00
+          - paragraph [ref=e96]: Add ₹3,111.00 more to get free shipping.
+        - generic [ref=e98]:
+          - textbox "Promo code" [ref=e99]
+          - button "Apply" [ref=e100]
+        - generic [ref=e101]:
+          - generic [ref=e102]: Total
+          - generic [ref=e103]: ₹949.00
+        - link "Proceed to Checkout" [ref=e104] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/checkout
+        - paragraph [ref=e105]: 30-day return window on every order.
+  - contentinfo [ref=e106]:
+    - generic [ref=e107]:
+      - paragraph [ref=e108]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e109]:
+        - link "Terms" [ref=e110] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e111] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e112] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e113] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e114]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e115] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e116] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

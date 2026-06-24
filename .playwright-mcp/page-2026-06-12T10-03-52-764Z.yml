@@ -1,0 +1,74 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Register with us" [ref=e4] [cursor=pointer]:
+      - /url: http://localhost:8084/join
+    - generic [ref=e5]: "|"
+    - link "Sign in" [ref=e6] [cursor=pointer]:
+      - /url: http://localhost:8084/login
+    - generic [ref=e7]: "|"
+    - group "Adjust font size" [ref=e8]:
+      - button "Smaller text" [ref=e9]:
+        - text: A
+        - generic [ref=e10]: −
+      - button "Default text" [ref=e11]: A
+      - button "Larger text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: +
+      - button "Largest text" [ref=e14]:
+        - text: A
+        - generic [ref=e15]: ++
+      - button "Reset font size" [ref=e16]: ↺
+    - generic [ref=e17]: "|"
+    - link "About Us" [ref=e18] [cursor=pointer]:
+      - /url: http://localhost:8084/about-us
+    - generic [ref=e19]: "|"
+    - generic [ref=e20]: India 🇮🇳
+  - navigation [ref=e21]:
+    - generic [ref=e22]:
+      - link "arovolife" [ref=e23] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e24]
+      - generic [ref=e25]:
+        - link "Cart" [ref=e26] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - img [ref=e28]
+        - button "Open menu" [ref=e30]:
+          - img [ref=e31]
+  - generic [ref=e33]:
+    - generic [ref=e34]:
+      - paragraph [ref=e35]: Welcome back
+      - heading "Sign in to your arovolife account." [level=1] [ref=e36]
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - generic [ref=e41]: ADN
+          - textbox "ADN" [ref=e42]:
+            - /placeholder: 9-digit ADN
+          - paragraph [ref=e43]:
+            - text: Sign in with your
+            - strong [ref=e44]: 9-digit ADN
+            - text: .
+            - link "Forgot your ADN?" [ref=e45] [cursor=pointer]:
+              - /url: http://localhost:8084/find-my-id
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: Password
+            - link "Forgot?" [ref=e49] [cursor=pointer]:
+              - /url: http://localhost:8084/forgot-password
+          - generic [ref=e50]:
+            - textbox "Password Forgot?" [ref=e51]:
+              - /placeholder: ••••••••
+            - button "Show password" [ref=e52]:
+              - img [ref=e53]
+        - generic [ref=e57] [cursor=pointer]:
+          - checkbox "Remember me" [ref=e58]
+          - generic [ref=e59]: Remember me
+        - button "Sign in" [ref=e60]:
+          - generic [ref=e61]:
+            - text: Sign in
+            - img [ref=e62]
+      - paragraph [ref=e66]:
+        - text: New to arovolife?
+        - link "Talk to our team →" [ref=e67] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+    - paragraph [ref=e69]: Arovolife Private Limited — CIN U46909TS2026PTC210896

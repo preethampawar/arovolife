@@ -1,0 +1,64 @@
+<h2>Where does compensation monitoring live in the admin?</h2>
+<p class="subtitle">We need to place personal BV, group BV (L/R), daily cut-offs, weekly payouts, carry-forwards, wallets, and manual override controls. Three structural options:</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>New "Compensation" section in admin sidebar</h3>
+      <p>A dedicated top-level sidebar section with sub-pages: GSB Overview, Daily Cut-offs, Weekly Payouts, Carry-forwards, Wallet Ledger, Manual Controls. The existing distributor profile page gets a "Compensation →" quick-link that jumps to their data within this section.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>All compensation data in one place</li>
+          <li>Easy to build reports across all distributors</li>
+          <li>Manual controls isolated from identity/KYC admin</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>Admin must navigate away from distributor profile to see their comp data</li>
+          <li>More sidebar links to manage</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Extra tabs on the existing distributor profile page</h3>
+      <p>The distributor show page (which already has identity, KYC, tree, BV ledger links) gets new tabs: Personal BV | Group BV | Wallet | GSB History | Payouts | Overrides. All compensation data is per-distributor, inline.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>Everything about a distributor in one page</li>
+          <li>No context switch when investigating a specific account</li>
+          <li>Follows existing pattern (BV Ledger is already a linked sub-page)</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>No cross-distributor aggregate view (e.g. "show all failed cut-offs today")</li>
+          <li>Distributor profile page gets very busy</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Both: new sidebar section + per-distributor deep-link (recommended)</h3>
+      <p>A "Compensation" sidebar section for aggregate views (all daily cut-offs, all pending payouts, failed jobs, company-wide GSB pool). The distributor profile page gets a "Compensation →" tab/button that deep-links into that distributor's slice within the compensation section.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>Aggregate monitoring (failed cut-offs, payout batches) in one place</li>
+          <li>Per-distributor drill-down from profile page</li>
+          <li>Scales as more comp features are added (ranks, fortune bonus, etc.)</li>
+          <li>Mirrors how BV Ledger works today (global list + per-distributor show)</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>More pages to build</li>
+          <li>Slightly more navigation steps to reach one distributor's data</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>

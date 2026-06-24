@@ -1,0 +1,107 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - button "TA Test Admin" [ref=e6]:
+        - generic [ref=e7]: TA
+        - generic [ref=e8]: Test Admin
+        - img [ref=e9]
+      - generic [ref=e11]: "|"
+      - group "Adjust font size" [ref=e12]:
+        - button "Smaller text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: −
+        - button "Default text" [ref=e15]: A
+        - button "Larger text" [ref=e16]:
+          - text: A
+          - generic [ref=e17]: +
+        - button "Largest text" [ref=e18]:
+          - text: A
+          - generic [ref=e19]: ++
+        - button "Reset font size" [ref=e20]: ↺
+      - generic [ref=e21]: "|"
+      - link "Admin Console" [ref=e22] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+      - generic [ref=e23]: "|"
+      - generic [ref=e24]: India 🇮🇳
+    - navigation [ref=e25]:
+      - generic [ref=e26]:
+        - link "arovolife" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e28]
+        - generic [ref=e29]:
+          - link "Home" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e32] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e33] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e34] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e36]:
+            - text: Categories
+            - img [ref=e37]
+          - link "Messages" [ref=e39] [cursor=pointer]:
+            - /url: http://localhost:8084/messages
+            - img [ref=e40]
+          - link "Cart — 14 items" [ref=e42] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e46]: "14"
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - link "All products" [ref=e49] [cursor=pointer]:
+        - /url: http://localhost:8084/shop
+      - link "Health Care" [ref=e50] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=health-care
+      - link "Skin and Beauty" [ref=e51] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=skin-and-beauty
+      - link "Personal Care" [ref=e52] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=personal-care
+      - link "Home Care" [ref=e53] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=home-care
+      - link "Agri Care" [ref=e54] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=agri-care
+      - link "Lifestyle" [ref=e55] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=lifestyle
+      - link "Food and Beverages" [ref=e56] [cursor=pointer]:
+        - /url: http://localhost:8084/shop?category=food-and-beverages
+    - generic [ref=e58]:
+      - link "arovolife Vitamin C Serum −17% Skin and Beauty" [ref=e59] [cursor=pointer]:
+        - /url: http://localhost:8084/shop/p/vitamin-c-serum
+        - img "arovolife Vitamin C Serum" [ref=e60]
+        - generic [ref=e61]: −17%
+        - generic [ref=e62]: Skin and Beauty
+      - generic [ref=e63]:
+        - link "arovolife Vitamin C Serum" [ref=e64] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/p/vitamin-c-serum
+          - heading "arovolife Vitamin C Serum" [level=3] [ref=e65]:
+            - generic [ref=e66]: arovolife Vitamin C Serum
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e69]: ₹749.00
+            - generic [ref=e70]: ₹899.00
+          - button "Add arovolife Vitamin C Serum to cart" [ref=e72]:
+            - img [ref=e73]
+  - contentinfo [ref=e75]:
+    - generic [ref=e76]:
+      - paragraph [ref=e77]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e78]:
+        - link "Terms" [ref=e79] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e80] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e81] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e82] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e83]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e84] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e85] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
