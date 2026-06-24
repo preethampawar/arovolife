@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -41,6 +41,7 @@ final class GsbCutoffService
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
         private readonly WalletService $wallet,
+        private readonly BvLedgerService $bvLedger,
     ) {}
 
     /**
@@ -61,9 +62,7 @@ final class GsbCutoffService
         $distributor = Distributor::findOrFail($distributorId);
 
         // Eligibility gate: 600 BV minimum personal purchase.
-        $personalBvPaise = (int) BvLedgerEntry::where('distributor_id', $distributorId)
-            ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
-            ->sum('bv_paise');
+        $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
 
         if ($personalBvPaise < self::MIN_PERSONAL_BV_PAISE) {
             return $this->saveResult($existing, [
@@ -189,7 +188,15 @@ final class GsbCutoffService
         ];
 
         // Frozen distributors: calculate but do not credit wallet.
+        // Advance CF identically to the no-match path so stale slab1 BV doesn't
+        // phantom-accumulate during the freeze and double-credit on unfreeze.
         if ($distributor->gsb_frozen_at !== null) {
+            $cf->update([
+                'power_side_bv_paise' => $newPowerCf,
+                'power_side' => $strongerSide,
+                'slab1_weaker_bv_paise' => 0,
+            ]);
+
             return $this->saveResult($existing, [
                 ...$baseData,
                 'status' => GsbCutoffResult::STATUS_FROZEN,
@@ -221,6 +228,7 @@ final class GsbCutoffService
                     referenceType: 'gsb_cutoff_result',
                 );
 
+                // STATUS_CALCULATED is transient; the daily command should treat past-date CALCULATED rows as failed on restart.
                 $savedResult->update(['status' => GsbCutoffResult::STATUS_CREDITED]);
             });
         } catch (Throwable $e) {

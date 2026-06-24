@@ -42,6 +42,7 @@ use Illuminate\Support\Carbon;
  * @property int $depth
  * @property Carbon $effective_date
  * @property Carbon $cooling_off_end_at
+ * @property Carbon|null $gsb_frozen_at
  * @property string $state
  * @property int|null $spouse_distributor_id
  * @property bool $is_primary_couple

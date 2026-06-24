@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\GsbCutoffService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -189,5 +190,97 @@ it('is idempotent — second call returns existing credited result', function ()
     $r2 = $svc->runForDistributor($dist->id, Carbon::today());
 
     expect($r1->id)->toBe($r2->id);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
+});
+
+it('frozen run advances carry-forward so unfreeze does not double-credit', function () {
+    // Distributor has enough BV on both sides to match slab 1 (15,000 BV weaker threshold).
+    $dist = makeDistributorWithBv(300_000);  // Retailer
+    $dist->update(['gsb_frozen_at' => now()]);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 2_000_000,   // 20,000 BV
+        'right_bv_paise' => 1_600_000,  // 16,000 BV weaker — qualifies for slab 1
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+
+    // First call: frozen — no wallet credit, but CF must be advanced.
+    $frozen = $svc->runForDistributor($dist->id, Carbon::today());
+    expect($frozen->status)->toBe(GsbCutoffResult::STATUS_FROZEN);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(0);
+
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    // slab1 CF must be reset to 0 so it doesn't re-accumulate while frozen.
+    expect($cf->slab1_weaker_bv_paise)->toBe(0);
+    // Power CF should be set (stronger - threshold = 2,000,000 - 1,500,000 = 500,000).
+    expect($cf->power_side_bv_paise)->toBe(500_000);
+
+    // Unfreeze the distributor.
+    $dist->update(['gsb_frozen_at' => null]);
+
+    // Second call on a different date (tomorrow) to avoid the idempotency guard.
+    $tomorrow = Carbon::today()->addDay();
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => $tomorrow->toDateString(),
+        'left_bv_paise' => 2_000_000,
+        'right_bv_paise' => 1_600_000,
+    ]);
+
+    $credited = $svc->runForDistributor($dist->id, $tomorrow);
+    expect($credited->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
+    // Exactly one wallet entry — no double-credit.
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
+});
+
+it('retries after failure and credits exactly once', function () {
+    $dist = makeDistributorWithBv(300_000);  // Retailer — qualifies for slab 1
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 2_000_000,
+        'right_bv_paise' => 1_600_000,
+    ]);
+
+    // WalletService is final — substitute via container binding with an
+    // anonymous subclass that throws on the first call only.
+    $shouldThrow = true;
+
+    app()->bind(WalletService::class, function () use (&$shouldThrow) {
+        if ($shouldThrow) {
+            return new class extends WalletService
+            {
+                public function credit(
+                    int $distributorId,
+                    int $amountPaise,
+                    string $type,
+                    ?int $referenceId = null,
+                    ?string $referenceType = null,
+                    ?string $memo = null,
+                ): WalletLedgerEntry {
+                    throw new RuntimeException('Payment gateway timeout');
+                }
+            };
+        }
+
+        return new WalletService;
+    });
+
+    $svc = app(GsbCutoffService::class);
+
+    // First call: wallet throws → STATUS_FAILED.
+    $failed = $svc->runForDistributor($dist->id, Carbon::today());
+    expect($failed->status)->toBe(GsbCutoffResult::STATUS_FAILED);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(0);
+
+    // Stop throwing so the second call uses the real WalletService.
+    $shouldThrow = false;
+
+    // Second call: should succeed and credit exactly once.
+    $svc2 = app(GsbCutoffService::class);
+    $credited = $svc2->runForDistributor($dist->id, Carbon::today());
+    expect($credited->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
 });

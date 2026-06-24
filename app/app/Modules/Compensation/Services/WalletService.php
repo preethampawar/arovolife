@@ -7,7 +7,7 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use Illuminate\Support\Collection;
 
-final class WalletService
+class WalletService
 {
     public function balancePaise(int $distributorId): int
     {
