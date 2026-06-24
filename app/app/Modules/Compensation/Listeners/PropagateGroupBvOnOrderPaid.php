@@ -18,7 +18,7 @@ final class PropagateGroupBvOnOrderPaid
             return;
         }
 
-        $order = Order::with('distributor')->find($event->orderId);
+        $order = Order::find($event->orderId);
         if ($order === null || $order->attributed_distributor_id === null) {
             return;
         }
