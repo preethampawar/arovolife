@@ -278,6 +278,10 @@ it('retries after failure and credits exactly once', function () {
     // Stop throwing so the second call uses the real WalletService.
     $shouldThrow = false;
 
+    // Clear container instances so GsbCutoffService re-injects the non-throwing WalletService.
+    app()->forgetInstance(WalletService::class);
+    app()->forgetInstance(GsbCutoffService::class);
+
     // Second call: should succeed and credit exactly once.
     $svc2 = app(GsbCutoffService::class);
     $credited = $svc2->runForDistributor($dist->id, Carbon::today());
