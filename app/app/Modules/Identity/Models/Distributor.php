@@ -81,6 +81,7 @@ final class Distributor extends Model
         'spouse_distributor_id',
         'is_primary_couple',
         'status',
+        'gsb_frozen_at',
     ];
 
     protected $hidden = [
@@ -95,6 +96,7 @@ final class Distributor extends Model
         return [
             'effective_date' => 'datetime',
             'cooling_off_end_at' => 'datetime',
+            'gsb_frozen_at' => 'datetime',
             'is_primary_couple' => 'boolean',
             'depth' => 'integer',
             // Encrypted at rest with the dedicated PII key (ADR-0008), not
