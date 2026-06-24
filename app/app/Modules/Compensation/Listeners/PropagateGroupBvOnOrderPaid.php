@@ -36,7 +36,7 @@ final class PropagateGroupBvOnOrderPaid
             orderId: $event->orderId,
             distributorId: $order->attributed_distributor_id,
             bvPaise: $bvPaise,
-            date: Carbon::now()->toDateString(),
+            date: $order->paid_at?->toDateString() ?? Carbon::now()->toDateString(),
         );
     }
 }

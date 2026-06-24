@@ -15,9 +15,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class GroupBvAccumulatorService
 {
-    /** Max BV cap for the power side carry-forward (450,000 BV × 100 paise). */
-    public const POWER_CF_CAP_PAISE = 45_000_000;
-
     public function propagate(int $distributorId, int $bvPaise, Carbon $date): void
     {
         // For each ancestor A of D (at any depth), find the direct child of A on
@@ -37,14 +34,24 @@ final class GroupBvAccumulatorService
             ->select('gc_anc.ancestor_id', 'dc.placement_side as side')
             ->get();
 
+        if ($pairs->isEmpty()) {
+            return;
+        }
+
         $dateStr = $date->toDateString();
 
-        foreach ($pairs as $pair) {
-            $leftAdd = $pair->side === 'L' ? $bvPaise : 0;
-            $rightAdd = $pair->side === 'R' ? $bvPaise : 0;
-
-            $this->upsertAccumulator($pair->ancestor_id, $dateStr, $leftAdd, $rightAdd);
-        }
+        // Wrap the entire ancestor loop in a single outer transaction so that if the
+        // worker dies mid-loop the DB server rolls back the whole batch. On retry all
+        // ancestors are processed from scratch with no double-counting.
+        // Inner upsertAccumulator() calls use DB::transaction() too; on MySQL those
+        // become savepoints within this outer transaction automatically.
+        DB::transaction(function () use ($pairs, $bvPaise, $dateStr): void {
+            foreach ($pairs as $pair) {
+                $leftAdd = $pair->side === 'L' ? $bvPaise : 0;
+                $rightAdd = $pair->side === 'R' ? $bvPaise : 0;
+                $this->upsertAccumulator($pair->ancestor_id, $dateStr, $leftAdd, $rightAdd);
+            }
+        });
     }
 
     /**
@@ -107,8 +114,8 @@ final class GroupBvAccumulatorService
                     ->where('distributor_id', $ancestorId)
                     ->where('date', $dateStr)
                     ->update([
-                        'left_bv_paise' => DB::raw("left_bv_paise + {$leftAdd}"),
-                        'right_bv_paise' => DB::raw("right_bv_paise + {$rightAdd}"),
+                        'left_bv_paise' => DB::raw('left_bv_paise + '.(int) $leftAdd),
+                        'right_bv_paise' => DB::raw('right_bv_paise + '.(int) $rightAdd),
                     ]);
             }
         });

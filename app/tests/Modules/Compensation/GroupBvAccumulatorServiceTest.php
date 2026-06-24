@@ -86,3 +86,31 @@ it('adds to existing accumulator on the same date', function () {
     $row = GroupBvDaily::where('distributor_id', $root->id)->where('date', $date->toDateString())->first();
     expect($row->left_bv_paise)->toBe(500_000);
 });
+
+it('produces no accumulator rows for a tree root with no ancestors', function () {
+    $root = Distributor::factory()->create(['depth' => 0]);
+    DB::table('genealogy_closure')->insert(['ancestor_id' => $root->id, 'descendant_id' => $root->id, 'depth' => 0]);
+
+    $svc = app(GroupBvAccumulatorService::class);
+    $svc->propagate($root->id, 500_000, Carbon::today());
+
+    expect(GroupBvDaily::where('distributor_id', $root->id)->count())->toBe(0);
+});
+
+it('propagation on one date does not affect a different date', function () {
+    $root = Distributor::factory()->create(['depth' => 0]);
+    DB::table('genealogy_closure')->insert(['ancestor_id' => $root->id, 'descendant_id' => $root->id, 'depth' => 0]);
+    $leftChild = makePlacedDistributor($root, 'L');
+
+    $svc = app(GroupBvAccumulatorService::class);
+    $dateA = Carbon::today();
+    $dateB = Carbon::today()->subDay();
+
+    $svc->propagate($leftChild->id, 200_000, $dateA);
+
+    $rowA = GroupBvDaily::where('distributor_id', $root->id)->whereDate('date', $dateA->toDateString())->first();
+    $rowB = GroupBvDaily::where('distributor_id', $root->id)->whereDate('date', $dateB->toDateString())->first();
+
+    expect($rowA->left_bv_paise)->toBe(200_000);
+    expect($rowB)->toBeNull();
+});
