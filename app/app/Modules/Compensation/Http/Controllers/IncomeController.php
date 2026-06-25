@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers;
 
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\AdcBonusResult;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
+use App\Modules\Compensation\Models\GroupBvDaily;
+use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
@@ -21,6 +25,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -34,7 +39,35 @@ final class IncomeController extends Controller
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
 
-        return view('income.dashboard', ['distributor' => $distributor]);
+        $distributorId = $distributor->id;
+
+        try {
+            $walletService = app(WalletService::class);
+            $walletBalancePaise = $walletService->balancePaise($distributorId);
+
+            $bvLedger = app(BvLedgerService::class);
+            $personalBvPaise = $bvLedger->totalPersonalBvPaise($distributorId);
+            $titleService = app(PersonalBvTitleService::class);
+            $title = $titleService->forBvPaise($personalBvPaise);
+
+            $today = Carbon::today('Asia/Kolkata')->toDateString();
+            $dailyBv = GroupBvDaily::where('distributor_id', $distributorId)
+                ->whereDate('date', $today)
+                ->first();
+
+            $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
+        } catch (QueryException) {
+            $walletBalancePaise = null;
+            $personalBvPaise = null;
+            $title = null;
+            $dailyBv = null;
+            $cf = null;
+        }
+
+        return view('income.dashboard', compact(
+            'distributor', 'walletBalancePaise', 'personalBvPaise',
+            'title', 'dailyBv', 'cf',
+        ));
     }
 
     public function genosBv(Request $request): View
