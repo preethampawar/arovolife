@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -61,6 +64,9 @@ it('redirects unauthenticated users from all income routes', function (): void {
 });
 
 it('returns 403 for authenticated user with no distributor record', function (): void {
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+
     $user = User::create([
         'full_name' => 'No Dist',
         'email' => 'nodist-'.uniqid().'@test.com',
@@ -105,12 +111,27 @@ it('renders gsb history page with empty state', function (): void {
 });
 
 it('renders mentorship page with empty state', function (): void {
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
     ['user' => $user] = incomeDistributor();
     $this->actingAs($user);
 
     $this->get(route('income.mentorship'))
         ->assertOk()
         ->assertSee('Mentorship Bonus');
+});
+
+it('returns 404 for mentorship page when feature flag is off', function (): void {
+    ['user' => $user] = incomeDistributor();
+    $this->actingAs($user);
+
+    $this->get(route('income.mentorship'))->assertNotFound();
+});
+
+it('returns 404 for growth booster page when feature flag is off', function (): void {
+    ['user' => $user] = incomeDistributor();
+    $this->actingAs($user);
+
+    $this->get(route('income.growth-booster'))->assertNotFound();
 });
 
 it('renders wallet page with empty state', function (): void {

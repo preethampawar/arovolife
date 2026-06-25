@@ -1,15 +1,20 @@
 @php
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
+use Laravel\Pennant\Feature;
+
 $tabs = [
-    ['route' => 'income.dashboard',   'label' => 'Dashboard'],
-    ['route' => 'income.genos-bv',    'label' => 'Genos BV'],
-    ['route' => 'income.gsb-history', 'label' => 'GSB History'],
-    ['route' => 'income.mentorship',  'label' => 'Mentorship'],
-    ['route' => 'income.growth-booster', 'label' => 'Growth Booster'],
-    ['route' => 'income.wallet',         'label' => 'Wallet & Payouts'],
+    ['route' => 'income.dashboard',   'label' => 'Dashboard', 'visible' => true],
+    ['route' => 'income.genos-bv',    'label' => 'Genos BV',  'visible' => true],
+    ['route' => 'income.gsb-history', 'label' => 'GSB History', 'visible' => true],
+    ['route' => 'income.mentorship',  'label' => 'Mentorship', 'visible' => Feature::for(null)->active(MentorshipBonusFeature::class)],
+    ['route' => 'income.growth-booster', 'label' => 'Growth Booster', 'visible' => Feature::for(null)->active(GrowthBoosterBonusFeature::class)],
+    ['route' => 'income.wallet',         'label' => 'Wallet & Payouts', 'visible' => true],
 ];
 @endphp
 <div class="flex flex-wrap gap-2 mb-6">
     @foreach($tabs as $tab)
+        @if($tab['visible'])
         <a href="{{ route($tab['route']) }}"
            class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors
                   {{ request()->routeIs($tab['route'])
@@ -17,5 +22,6 @@ $tabs = [
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
             {{ $tab['label'] }}
         </a>
+        @endif
     @endforeach
 </div>

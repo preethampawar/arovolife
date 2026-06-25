@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\GrowthBoosterBonusService;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Laravel\Pennant\Feature;
 
 final class GbbMonthlyRunCommand extends Command
 {
@@ -22,6 +24,12 @@ final class GbbMonthlyRunCommand extends Command
 
     public function handle(): int
     {
+        if (! Feature::for(null)->active(GrowthBoosterBonusFeature::class)) {
+            $this->warn('Growth Booster Bonus feature flag is OFF — skipping run.');
+
+            return self::SUCCESS;
+        }
+
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->subMonth()->startOfMonth();

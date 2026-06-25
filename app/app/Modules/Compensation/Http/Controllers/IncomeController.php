@@ -9,10 +9,13 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class IncomeController extends Controller
@@ -100,6 +103,8 @@ final class IncomeController extends Controller
 
     public function mentorship(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(MentorshipBonusFeature::class), 404);
+
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
 
@@ -129,6 +134,8 @@ final class IncomeController extends Controller
 
     public function growthBooster(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(GrowthBoosterBonusFeature::class), 404);
+
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
 
