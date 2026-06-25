@@ -31,6 +31,7 @@ use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
@@ -310,6 +311,11 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
             Route::get('/{month}', [AdminRankBonusController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
         });
 
+        Route::prefix('fortune-bonus')->name('fortune-bonus.')->group(function (): void {
+            Route::get('/', [AdminFortuneBonusController::class, 'index'])->name('index');
+            Route::get('/{month}', [AdminFortuneBonusController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
+        });
+
         Route::get('distributors/{distributor}', [AdminDistributorCompController::class, 'show'])
             ->name('distributors.show')
             ->whereNumber('distributor');
@@ -515,6 +521,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/income/mentorship', [IncomeController::class, 'mentorship'])->name('income.mentorship');
     Route::get('/income/growth-booster', [IncomeController::class, 'growthBooster'])->name('income.growth-booster');
     Route::get('/income/rank-bonus', [IncomeController::class, 'rankBonus'])->name('income.rank-bonus');
+    Route::get('/income/fortune-bonus', [IncomeController::class, 'fortuneBonus'])->name('income.fortune-bonus');
     Route::get('/income/wallet', [IncomeController::class, 'wallet'])->name('income.wallet');
     Route::get('/income/wallet/export', [IncomeController::class, 'exportWallet'])->name('income.wallet.export');
 

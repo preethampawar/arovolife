@@ -68,6 +68,7 @@
 
 {{-- Quick links --}}
 @php
+    use App\Modules\Shared\Features\FortuneBonusFeature;
     use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
     use App\Modules\Shared\Features\LifetimeAwardsFeature;
     use App\Modules\Shared\Features\RankBonusFeature;
@@ -83,6 +84,9 @@
     @endif
     @if(Feature::for(null)->active(LifetimeAwardsFeature::class))
     <a href="{{ route('admin.lifetime-awards.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Lifetime Awards →</a>
+    @endif
+    @if(Feature::for(null)->active(FortuneBonusFeature::class))
+    <a href="{{ route('admin.compensation.fortune-bonus.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Fortune Bonus →</a>
     @endif
     <a href="{{ route('admin.compensation.carry-forwards.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Carry-forwards →</a>
     <a href="{{ route('admin.compensation.manual-controls.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Manual Controls →</a>

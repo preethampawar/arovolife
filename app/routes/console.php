@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
@@ -36,6 +37,13 @@ Schedule::command(GbbMonthlyRunCommand::class)
 // Rank Bonus runs on the 8th of each month at 08:00 IST.
 Schedule::command(RankBonusRunCommand::class)
     ->monthlyOn(8, '08:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Fortune Bonus runs on the 9th of each month at 09:00 IST (after rank bonus is processed).
+Schedule::command(FortuneBonusRunCommand::class)
+    ->monthlyOn(9, '09:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

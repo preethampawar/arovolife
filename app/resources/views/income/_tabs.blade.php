@@ -1,4 +1,5 @@
 @php
+use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -11,6 +12,7 @@ $tabs = [
     ['route' => 'income.mentorship',  'label' => 'Mentorship', 'visible' => Feature::for(null)->active(MentorshipBonusFeature::class)],
     ['route' => 'income.growth-booster', 'label' => 'Growth Booster', 'visible' => Feature::for(null)->active(GrowthBoosterBonusFeature::class)],
     ['route' => 'income.rank-bonus',  'label' => 'Rank Bonus', 'visible' => Feature::for(null)->active(RankBonusFeature::class)],
+    ['route' => 'income.fortune-bonus', 'label' => 'Fortune Bonus', 'visible' => Feature::for(null)->active(FortuneBonusFeature::class)],
     ['route' => 'income.wallet',         'label' => 'Wallet & Payouts', 'visible' => true],
 ];
 @endphp

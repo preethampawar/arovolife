@@ -17,6 +17,7 @@ return new class extends Migration
                 'mb_credit',
                 'gbb_credit',
                 'rank_credit',
+                'fortune_credit',
                 'payout_debit',
                 'repurchase_deduction',
                 'manual_credit',
