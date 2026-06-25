@@ -108,7 +108,7 @@ it('SCT-02: opening a shared link loads items into a fresh visitor cart + sets t
     $v1 = sctVariant();
     $v2 = sctVariant();
 
-    $shared = SharedCart::create([
+    SharedCart::create([
         'code' => 'SHARECODE1', 'distributor_id' => $sharer->distributor->id, 'ref_adn' => $adn,
         'created_by_user_id' => $sharer->id,
         'items' => [['variant_id' => $v1->id, 'qty' => 2], ['variant_id' => $v2->id, 'qty' => 1]],

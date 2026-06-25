@@ -76,8 +76,7 @@ function cscAddr(): array
     return ['name' => 'SC Buyer', 'phone' => '+919800000000', 'line1' => '1 Test St', 'line2' => null, 'city' => 'Pune', 'state' => 'MH', 'pincode' => '411001'];
 }
 
-/** @param array{0:int,1:int} $dist */
-function cscPlace(array $dist, string $email, ?int $attributedDistributorId, ?int $authUserId, ?int $buyerDistributorId): Order
+function cscPlace(string $email, ?int $attributedDistributorId, ?int $authUserId, ?int $buyerDistributorId): Order
 {
     return app(CheckoutService::class)->place(
         cart: cscCart(),
@@ -107,7 +106,7 @@ it('flags self_consumption + backfills distributor_id when the buyer is a logged
         'claimed_at' => now(),
     ]);
 
-    $order = cscPlace([$userId, $distId], $email, attributedDistributorId: $distId, authUserId: $userId, buyerDistributorId: $distId);
+    $order = cscPlace($email, attributedDistributorId: $distId, authUserId: $userId, buyerDistributorId: $distId);
 
     expect($order->self_consumption)->toBeTrue();
     expect($customer->fresh()->distributor_id)->toBe($distId); // backfilled
@@ -132,7 +131,7 @@ it('attaches a logged-in buyer\'s order to their OWN customer row, never a stran
     ]);
 
     // Shankar (logged in) checks out typing the SAME email as the stranger.
-    $order = cscPlace([$buyerUserId, $buyerDistId], $sharedEmail, attributedDistributorId: $buyerDistId, authUserId: $buyerUserId, buyerDistributorId: $buyerDistId)->load('customer');
+    $order = cscPlace($sharedEmail, attributedDistributorId: $buyerDistId, authUserId: $buyerUserId, buyerDistributorId: $buyerDistId)->load('customer');
 
     expect($order->customer_id)->not->toBe($stranger->id);     // not the stranger's row
     expect($order->customer->user_id)->toBe($buyerUserId);     // the buyer's own row
@@ -143,13 +142,13 @@ it('attaches a logged-in buyer\'s order to their OWN customer row, never a stran
 it('flags self_consumption for a logged-in distributor buying for the first time', function (): void {
     [$userId, $distId] = cscDistributor();
 
-    $order = cscPlace([$userId, $distId], 'first-'.uniqid().'@test.com', attributedDistributorId: $distId, authUserId: $userId, buyerDistributorId: $distId);
+    $order = cscPlace('first-'.uniqid().'@test.com', attributedDistributorId: $distId, authUserId: $userId, buyerDistributorId: $distId);
 
     expect($order->self_consumption)->toBeTrue();
 });
 
 it('does NOT flag self_consumption for a guest / house order', function (): void {
-    $order = cscPlace([0, 0], 'guest-'.uniqid().'@test.com', attributedDistributorId: null, authUserId: null, buyerDistributorId: null);
+    $order = cscPlace('guest-'.uniqid().'@test.com', attributedDistributorId: null, authUserId: null, buyerDistributorId: null);
 
     expect($order->self_consumption)->toBeFalse();
 });
@@ -160,7 +159,7 @@ it('does NOT flag self_consumption when the sale is attributed to a different re
 
     // Buyer is a distributor, but the sale is attributed to someone else (their
     // referrer) — it is not the buyer's own personal-BV purchase.
-    $order = cscPlace([$buyerUserId, $buyerDistId], 'ref-'.uniqid().'@test.com', attributedDistributorId: $referrerDistId, authUserId: $buyerUserId, buyerDistributorId: $buyerDistId);
+    $order = cscPlace('ref-'.uniqid().'@test.com', attributedDistributorId: $referrerDistId, authUserId: $buyerUserId, buyerDistributorId: $buyerDistId);
 
     expect($order->self_consumption)->toBeFalse();
 });
@@ -177,7 +176,7 @@ it('accrues the buyer\'s personal BV on payment for the partly-linked case (end-
         'claimed_at' => now(),
     ]);
 
-    $order = cscPlace([$userId, $distId], $email, attributedDistributorId: $distId, authUserId: $userId, buyerDistributorId: $distId);
+    $order = cscPlace($email, attributedDistributorId: $distId, authUserId: $userId, buyerDistributorId: $distId);
     app(OrderStateMachine::class)->markPaid($order->fresh()->load('items'));
 
     expect((int) BvLedgerEntry::where('distributor_id', $distId)->where('type', 'accrual')->sum('bv_paise'))->toBe(50000);

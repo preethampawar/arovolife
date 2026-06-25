@@ -15,6 +15,7 @@ use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
