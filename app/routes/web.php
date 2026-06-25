@@ -296,6 +296,8 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
             Route::get('/', [AdminWeeklyPayoutController::class, 'index'])->name('index');
             Route::get('/{batch}', [AdminWeeklyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
+            Route::post('/{batch}/approve', [AdminWeeklyPayoutController::class, 'approve'])->name('approve')->whereNumber('batch');
+            Route::get('/{batch}/neft', [AdminWeeklyPayoutController::class, 'exportNeft'])->name('neft')->whereNumber('batch');
         });
 
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');

@@ -15,6 +15,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Migrate any legacy COD orders to 'online' before narrowing the enum.
+        DB::table('orders')->where('payment_method', 'cod')->update(['payment_method' => 'online']);
+
         if (DB::connection()->getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE `orders` MODIFY COLUMN `payment_method` ENUM('online') NOT NULL DEFAULT 'online'");
         } else {

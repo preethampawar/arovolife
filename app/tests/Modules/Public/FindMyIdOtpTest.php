@@ -24,8 +24,8 @@ uses(RefreshDatabase::class);
  * FMI-06: verifyOtp without a session → lookup step with session-expired message
  */
 
-/** Build a distributor with a known name + PAN for lookup. */
-function fmiDistributor(string $name, string $pan, string $email): User
+/** Build a distributor with a known name + PAN for OTP-gate lookup tests. */
+function fmiOtpDistributor(string $name, string $pan, string $email): User
 {
     $user = User::create([
         'full_name'     => $name,
@@ -81,7 +81,7 @@ function fmiLookup(string $name, string $pan): \Illuminate\Testing\TestResponse
 
 it('FMI-01: valid name+PAN sends OTP email and shows otp step — ADN NOT revealed', function (): void {
     Notification::fake();
-    $user = fmiDistributor('Priya Sharma', 'ABCDE1234F', 'priya@example.com');
+    $user = fmiOtpDistributor('Priya Sharma', 'ABCDE1234F', 'priya@example.com');
 
     $res = fmiLookup('Priya Sharma', 'ABCDE1234F');
 
@@ -94,7 +94,7 @@ it('FMI-01: valid name+PAN sends OTP email and shows otp step — ADN NOT reveal
 
 it('FMI-02: correct OTP reveals ADN, clears session, audit event fired', function (): void {
     Notification::fake();
-    $user = fmiDistributor('Ravi Kumar', 'BCDEF2345G', 'ravi@example.com');
+    $user = fmiOtpDistributor('Ravi Kumar', 'BCDEF2345G', 'ravi@example.com');
 
     // Step 1: lookup — capture the issued OTP via the service
     $otp = app(OtpService::class);
@@ -124,7 +124,7 @@ it('FMI-02: correct OTP reveals ADN, clears session, audit event fired', functio
 
 it('FMI-03: wrong OTP shows error, step stays otp, ADN not revealed', function (): void {
     Notification::fake();
-    $user = fmiDistributor('Sunita Reddy', 'CDEFG3456H', 'sunita@example.com');
+    $user = fmiOtpDistributor('Sunita Reddy', 'CDEFG3456H', 'sunita@example.com');
 
     fmiLookup('Sunita Reddy', 'CDEFG3456H');
     $distId = $user->distributor->id;
@@ -141,7 +141,7 @@ it('FMI-03: wrong OTP shows error, step stays otp, ADN not revealed', function (
 
 it('FMI-04: 5 wrong OTPs exhausts attempts, falls back to lookup step', function (): void {
     Notification::fake();
-    $user = fmiDistributor('Anil Verma', 'DEFGH4567I', 'anil@example.com');
+    $user = fmiOtpDistributor('Anil Verma', 'DEFGH4567I', 'anil@example.com');
 
     fmiLookup('Anil Verma', 'DEFGH4567I');
     $distId = $user->distributor->id;
@@ -160,7 +160,7 @@ it('FMI-04: 5 wrong OTPs exhausts attempts, falls back to lookup step', function
 
 it('FMI-05: resend issues a new OTP and shows the otp step with resent flag', function (): void {
     Notification::fake();
-    $user = fmiDistributor('Meena Pillai', 'EFGHI5678J', 'meena@example.com');
+    $user = fmiOtpDistributor('Meena Pillai', 'EFGHI5678J', 'meena@example.com');
 
     fmiLookup('Meena Pillai', 'EFGHI5678J');
     $distId = $user->distributor->id;

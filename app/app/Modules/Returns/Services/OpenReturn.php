@@ -7,6 +7,7 @@ namespace App\Modules\Returns\Services;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Returns\Models\ReturnRequest;
 use Illuminate\Database\DatabaseManager;
@@ -137,6 +138,23 @@ final class OpenReturn
             ->exists();
         if ($existing) {
             throw new RuntimeException("A return request is already open or approved for order {$order->order_no}.");
+        }
+
+        // GSB disbursement gate (non-cooling-off returns only).
+        // Cooling-off is a statutory right (DSR Rule 5(1)(g) + Hard Rule #5) that cannot
+        // be blocked. For all other reasons: once a payout batch has been generated after
+        // this order was placed, the attributed distributor's GSB for that order's BV has
+        // been swept into the payout pipeline — the product can no longer be returned.
+        if ($reason !== ReturnRequest::REASON_COOLING_OFF) {
+            $gsbDisbursed = PayoutBatch::where('processed_at', '>', $order->created_at)
+                ->whereNotIn('status', [PayoutBatch::STATUS_FAILED])
+                ->exists();
+
+            if ($gsbDisbursed) {
+                throw new RuntimeException(
+                    'This order is no longer eligible for return. The GSB commission for this order\'s BV has been disbursed in a payout batch. Only cooling-off cancellations (within 30 days) are permitted after GSB disbursal.'
+                );
+            }
         }
     }
 

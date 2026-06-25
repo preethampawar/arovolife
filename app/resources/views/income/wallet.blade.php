@@ -17,30 +17,32 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500">Wallet Balance</p>
-                <x-help-tip text="Total GSB and Mentorship Bonus credits in your wallet awaiting the next Tuesday payout." />
+                <x-help-tip text="Your current wallet balance — GSB and other bonus credits net of any debits. This will be transferred to your bank account on the next payout date." />
             </div>
-            <p class="text-2xl font-bold text-gray-900">₹—</p>
+            <p class="text-2xl font-bold {{ $walletBalancePaise > 0 ? 'text-green-700' : 'text-gray-900' }}">
+                ₹{{ number_format($walletBalancePaise / 100, 2) }}
+            </p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500">Total Paid Out</p>
-                <x-help-tip text="Total amount transferred to your bank account since you joined." />
+                <x-help-tip text="Total net amount transferred to your bank account since you joined." />
             </div>
-            <p class="text-2xl font-bold text-gray-900">₹—</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ number_format($totalPaidOutPaise / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500">Next Payout Date</p>
             </div>
-            <p class="text-2xl font-bold text-gray-900">—</p>
-            <p class="text-xs text-gray-400 mt-0.5">Every Tuesday</p>
+            <p class="text-2xl font-bold text-gray-900">{{ $nextPayout->format('d M') }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Every Tuesday (IST)</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500">Min. Payout</p>
-                <x-help-tip text="Wallet balances below ₹500 roll over to the next Tuesday." />
+                <x-help-tip text="Wallet balances below this threshold roll over to the next Tuesday batch." />
             </div>
-            <p class="text-2xl font-bold text-gray-900">₹500</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ number_format($minThresholdPaise / 100, 0) }}</p>
         </div>
     </div>
 

@@ -7,6 +7,7 @@ use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
@@ -62,18 +63,19 @@ beforeEach(function (): void {
     RateLimiter::clear('find-my-id-daily:127.0.0.1');
 });
 
-it('FMI-01: exact name + PAN returns the ADN and audits the disclosure', function (): void {
+it('FMI-01: exact name + PAN sends OTP and shows OTP step — ADN NOT revealed yet (R-27)', function (): void {
+    \Illuminate\Support\Facades\Notification::fake();
     fmiDistributor('100200300', 'Ravi Kumar', 'ABCDE1234F');
 
     $response = fmiPost(['full_name' => 'Ravi Kumar', 'pan' => 'ABCDE1234F']);
 
     $response->assertOk();
-    $response->assertSee('100200300');
-    $response->assertSee('We found your account');
+    $response->assertDontSee('100200300');           // ADN not revealed yet
+    $response->assertSee('Verification code');        // OTP step shown
 
-    expect(AuditLog::where('action', 'identity.find_my_id.success')->count())->toBe(1);
-    // The audit row carries no PAN.
-    $log = AuditLog::where('action', 'identity.find_my_id.success')->first();
+    expect(AuditLog::where('action', 'identity.find_my_id.otp_issued')->count())->toBe(1);
+    // The audit row must not carry the PAN.
+    $log = AuditLog::where('action', 'identity.find_my_id.otp_issued')->first();
     expect(json_encode($log->details))->not->toContain('ABCDE1234F');
 });
 
@@ -98,13 +100,15 @@ it('FMI-03: correct name but wrong PAN does not reveal the ADN', function (): vo
     $response->assertSee('matching those details');
 });
 
-it('FMI-04: name is case/space-insensitive and lowercase PAN still matches', function (): void {
+it('FMI-04: name is case/space-insensitive and lowercase PAN still matches → shows OTP step', function (): void {
+    \Illuminate\Support\Facades\Notification::fake();
     fmiDistributor('100200303', 'Ravi Kumar', 'ABCDE1234F');
 
     $response = fmiPost(['full_name' => '  ravi KUMAR ', 'pan' => 'abcde1234f']);
 
     $response->assertOk();
-    $response->assertSee('100200303');
+    $response->assertDontSee('100200303');    // ADN not revealed — OTP gate active
+    $response->assertSee('Verification code');
 });
 
 it('FMI-05: a malformed PAN is rejected before any lookup', function (): void {

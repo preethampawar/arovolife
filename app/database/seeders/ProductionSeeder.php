@@ -235,6 +235,8 @@ final class ProductionSeeder extends Seeder
 
             'payments.gateway.razorpay.enabled' => 'false',
             'payments.gateway.stub.enabled' => 'false',
+
+            'payout.min_threshold_paise' => '50000',
         ];
 
         $this->insertSettingsIfMissing($defaults);

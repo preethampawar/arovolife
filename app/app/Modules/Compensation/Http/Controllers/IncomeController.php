@@ -21,6 +21,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -263,7 +264,23 @@ final class IncomeController extends Controller
             $payoutRows = collect();
         }
 
-        return view('income.wallet', compact('distributor', 'ledgerRows', 'payoutRows'));
+        $walletBalancePaise = $walletService->balancePaise($distributor->id);
+
+        $totalPaidOutPaise = (int) PayoutLineItem::where('distributor_id', $distributor->id)
+            ->where('status', 'transferred')
+            ->sum('net_transferred_paise');
+
+        // Next Tuesday (or today if it is Tuesday).
+        $today = now()->timezone('Asia/Kolkata');
+        $daysUntilTuesday = (2 - $today->dayOfWeek + 7) % 7;
+        $nextPayout = $daysUntilTuesday === 0 ? $today->copy() : $today->copy()->addDays($daysUntilTuesday);
+
+        $minThresholdPaise = (int) (DB::table('settings')->where('key', 'payout.min_threshold_paise')->value('value') ?? 50000);
+
+        return view('income.wallet', compact(
+            'distributor', 'ledgerRows', 'payoutRows',
+            'walletBalancePaise', 'totalPaidOutPaise', 'nextPayout', 'minThresholdPaise',
+        ));
     }
 
     public function exportWallet(Request $request): StreamedResponse

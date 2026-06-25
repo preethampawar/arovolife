@@ -238,6 +238,17 @@ final class AdminSettingsController extends Controller
                 'default' => 'orders@arovolife.com',
             ],
 
+            // ── Payout configuration ───────────────────────────────────────
+            'payout.min_threshold_paise' => [
+                'group' => 'payout',
+                'label' => 'Payout: minimum threshold (paise)',
+                'description' => 'Wallet balances below this amount roll over to the next payout batch. 50000 = ₹500. Must be a positive integer.',
+                'type' => 'integer',
+                'min' => 1,
+                'max' => 10000000,
+                'default' => '50000',
+            ],
+
             // ── Payments ───────────────────────────────────────────────────
             'payments.gateway.razorpay.enabled' => [
                 'group' => 'payments',
@@ -295,6 +306,10 @@ final class AdminSettingsController extends Controller
             'payments' => [
                 'label' => 'Payments',
                 'description' => 'Payment methods offered at checkout and the gateways that process them.',
+            ],
+            'payout' => [
+                'label' => 'Payout configuration',
+                'description' => 'Rules for the weekly and monthly bank transfer batches.',
             ],
             'notifications' => [
                 'label' => 'Notifications',

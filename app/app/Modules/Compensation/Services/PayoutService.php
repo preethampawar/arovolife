@@ -13,28 +13,42 @@ use Illuminate\Support\Facades\DB;
 
 final class PayoutService
 {
-    /** Minimum payout threshold: ₹500 = 50,000 paise. */
-    private const MIN_PAYOUT_PAISE = 50_000;
-
     /** Max repurchase deduction: ₹10,000 = 1,000,000 paise. */
     private const MAX_REPURCHASE_PAISE = 1_000_000;
 
+    /** Fallback minimum when the setting is absent. */
+    private const DEFAULT_MIN_PAYOUT_PAISE = 50_000;
+
     public function __construct(private readonly WalletService $wallet) {}
 
-    public function runBatch(Carbon $batchDate): PayoutBatch
+    /**
+     * Generate a payout batch for the given date. After generation the batch
+     * status is set to PENDING — an admin must call approve() to mark it
+     * COMPLETED and confirm the NEFT transfers have been sent.
+     *
+     * Wallet debits are posted during generation (preventing double-spend
+     * between generation and approval). The distributor's wallet therefore
+     * shows zero pending balance immediately after the batch runs.
+     */
+    public function runBatch(Carbon $batchDate, string $batchType = PayoutBatch::TYPE_GSB_WEEKLY): PayoutBatch
     {
+        $minPayoutPaise = $this->minPayoutPaise();
+
         // Idempotent: one batch per date.
-        // Use whereDate() to avoid date-cast vs string mismatch on SQLite.
         $batch = PayoutBatch::whereDate('batch_date', $batchDate->toDateString())->first()
             ?? PayoutBatch::create([
+                'batch_type' => $batchType,
                 'batch_date' => $batchDate->toDateString(),
                 'status' => PayoutBatch::STATUS_PENDING,
             ]);
 
-        // Guard against both COMPLETED (clean finish) and PROCESSING (crash mid-run).
-        // A PROCESSING batch that survived a crash must be manually reset to PENDING
-        // by an admin before it can be re-run, preventing double-debit on auto-retry.
-        if (in_array($batch->status, [PayoutBatch::STATUS_COMPLETED, PayoutBatch::STATUS_PROCESSING], true)) {
+        // Guard: do not re-run a batch that is already in flight, generated, or approved.
+        // - PROCESSING: currently running (crash-safe: admin resets to PENDING to retry)
+        // - COMPLETED: admin-approved, NEFT confirmed
+        // - PENDING with processed_at set: wallets already debited, awaiting admin approval
+        if ($batch->status === PayoutBatch::STATUS_PROCESSING
+            || $batch->status === PayoutBatch::STATUS_COMPLETED
+            || ($batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null)) {
             return $batch;
         }
 
@@ -60,8 +74,8 @@ final class PayoutService
             $repurchase = $this->repurchaseDeductionPaise((int) $distributorId, $batchDate);
             $net = $balance - $repurchase;
 
-            if ($net < self::MIN_PAYOUT_PAISE) {
-                // Below minimum: record the line item but do not touch the wallet.
+            if ($net < $minPayoutPaise) {
+                // Below minimum: record the line item but do not debit the wallet.
                 PayoutLineItem::create([
                     'payout_batch_id' => $batch->id,
                     'distributor_id' => $distributorId,
@@ -74,10 +88,9 @@ final class PayoutService
                 continue;
             }
 
-            // Wrap each distributor's wallet ops + line-item write in a transaction so a
-            // mid-distributor crash cannot leave the wallet debited with a PENDING line item.
-            // Phase 4 stub: marks as transferred immediately; Phase 5 integrates a real
-            // bank transfer API with UTR number.
+            // Debit wallet atomically with line-item creation. This locks in
+            // the balance so the distributor cannot accrue more credits and
+            // double-dip before admin approval of the NEFT batch.
             DB::transaction(function () use (
                 $distributorId, $batch, $balance, $repurchase, $net,
                 &$totalGross, &$totalDeductions, &$totalNet, &$count,
@@ -86,7 +99,7 @@ final class PayoutService
                     distributorId: (int) $distributorId,
                     amountPaise: $balance,
                     type: 'payout_debit',
-                    referenceId: null,      // set after line item is created; Phase 5 may link UTR
+                    referenceId: null,
                     referenceType: 'payout_line_item',
                 );
 
@@ -106,7 +119,8 @@ final class PayoutService
                     'wallet_balance_paise' => $balance,
                     'repurchase_deduction_paise' => $repurchase,
                     'net_transferred_paise' => $net,
-                    'status' => PayoutLineItem::STATUS_TRANSFERRED,
+                    'bank_account_last4' => $this->bankLast4ForDistributor((int) $distributorId),
+                    'status' => PayoutLineItem::STATUS_PENDING,
                 ]);
 
                 $totalGross += $balance;
@@ -116,8 +130,9 @@ final class PayoutService
             });
         }
 
+        // Batch moves from PROCESSING → PENDING (awaiting admin approval).
         $batch->update([
-            'status' => PayoutBatch::STATUS_COMPLETED,
+            'status' => PayoutBatch::STATUS_PENDING,
             'total_gross_paise' => $totalGross,
             'total_deductions_paise' => $totalDeductions,
             'total_net_paise' => $totalNet,
@@ -129,10 +144,35 @@ final class PayoutService
     }
 
     /**
+     * Admin-initiated approval: mark the batch as completed and all pending
+     * line items as transferred. Records who approved and when.
+     */
+    public function approve(PayoutBatch $batch, int $approvedByUserId): PayoutBatch
+    {
+        if ($batch->status !== PayoutBatch::STATUS_PENDING) {
+            return $batch;
+        }
+
+        DB::transaction(function () use ($batch, $approvedByUserId): void {
+            $batch->lineItems()
+                ->where('status', PayoutLineItem::STATUS_PENDING)
+                ->update(['status' => PayoutLineItem::STATUS_TRANSFERRED]);
+
+            $batch->update([
+                'status' => PayoutBatch::STATUS_COMPLETED,
+                'approved_by' => $approvedByUserId,
+                'approved_at' => now(),
+            ]);
+        });
+
+        return $batch->refresh();
+    }
+
+    /**
      * 10% of prior month's GSB + MB net credits, capped at ₹10,000.
      *
-     * Only positive `amount_paise` entries are summed — reversal entries of the
-     * same types would carry negative values and must not reduce the deduction.
+     * Only positive amount_paise entries are summed — reversal entries of the
+     * same types carry negative values and must not reduce the deduction.
      */
     private function repurchaseDeductionPaise(int $distributorId, Carbon $batchDate): int
     {
@@ -146,5 +186,23 @@ final class PayoutService
             ->sum('amount_paise');
 
         return max(0, min((int) round($earned * 0.10), self::MAX_REPURCHASE_PAISE));
+    }
+
+    private function minPayoutPaise(): int
+    {
+        $raw = DB::table('settings')->where('key', 'payout.min_threshold_paise')->value('value');
+
+        return $raw !== null ? (int) $raw : self::DEFAULT_MIN_PAYOUT_PAISE;
+    }
+
+    private function bankLast4ForDistributor(int $distributorId): ?string
+    {
+        $raw = DB::table('distributors')->where('id', $distributorId)->value('bank_account_enc');
+
+        if ($raw === null || $raw === 'stub') {
+            return null;
+        }
+
+        return mb_strlen((string) $raw) >= 4 ? mb_substr((string) $raw, -4) : null;
     }
 }

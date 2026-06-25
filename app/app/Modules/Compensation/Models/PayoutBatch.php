@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Models;
 
+use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property string $batch_type
  * @property Carbon $batch_date
  * @property string $status
  * @property int $total_gross_paise
@@ -17,6 +20,8 @@ use Illuminate\Support\Carbon;
  * @property int $total_net_paise
  * @property int $distributor_count
  * @property Carbon|null $processed_at
+ * @property int|null $approved_by
+ * @property Carbon|null $approved_at
  */
 final class PayoutBatch extends Model
 {
@@ -28,12 +33,16 @@ final class PayoutBatch extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const TYPE_GSB_WEEKLY = 'gsb_weekly';
+
+    public const TYPE_MANUAL = 'manual';
+
     protected $table = 'payout_batches';
 
     protected $fillable = [
-        'batch_date', 'status',
+        'batch_type', 'batch_date', 'status',
         'total_gross_paise', 'total_deductions_paise', 'total_net_paise',
-        'distributor_count', 'processed_at',
+        'distributor_count', 'processed_at', 'approved_by', 'approved_at',
     ];
 
     protected function casts(): array
@@ -41,6 +50,7 @@ final class PayoutBatch extends Model
         return [
             'batch_date' => 'date',
             'processed_at' => 'datetime',
+            'approved_at' => 'datetime',
             'total_gross_paise' => 'integer',
             'total_deductions_paise' => 'integer',
             'total_net_paise' => 'integer',
@@ -51,5 +61,10 @@ final class PayoutBatch extends Model
     public function lineItems(): HasMany
     {
         return $this->hasMany(PayoutLineItem::class, 'payout_batch_id');
+    }
+
+    public function approvedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }
