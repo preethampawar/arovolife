@@ -22,7 +22,6 @@ final class AdminNewOrderNotification extends Notification implements ShouldQueu
         public readonly string $orderNo,
         public readonly string $buyerName,
         public readonly string $totalFormatted,
-        public readonly string $paymentMethod,
         public readonly string $adminUrl,
     ) {}
 
@@ -40,7 +39,7 @@ final class AdminNewOrderNotification extends Notification implements ShouldQueu
             ->line("Order: {$this->orderNo}")
             ->line("Customer: {$this->buyerName}")
             ->line("Total: {$this->totalFormatted}")
-            ->line('Payment: '.($this->paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online'))
+            ->line('Payment: Online')
             ->action('View order in admin', $this->adminUrl)
             ->line('Review and fulfil it from the admin Orders screen.');
     }

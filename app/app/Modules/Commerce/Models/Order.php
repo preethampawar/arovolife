@@ -54,8 +54,6 @@ final class Order extends Model
 
     public const PAYMENT_ONLINE = 'online';
 
-    public const PAYMENT_COD = 'cod';
-
     protected $fillable = [
         'order_no', 'customer_id', 'attributed_distributor_id', 'attribution_source',
         'payment_method', 'status', 'self_consumption',

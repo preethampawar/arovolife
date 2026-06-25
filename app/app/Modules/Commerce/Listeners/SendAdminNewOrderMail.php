@@ -37,7 +37,6 @@ final class SendAdminNewOrderMail implements ShouldQueue
             orderNo: $order->order_no,
             buyerName: (string) ($order->ship_name ?: 'Customer'),
             totalFormatted: $order->displayTotal(),
-            paymentMethod: $order->payment_method,
             adminUrl: url('/admin/commerce/orders/'.$order->id),
         ));
     }

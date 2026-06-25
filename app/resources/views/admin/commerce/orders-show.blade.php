@@ -58,15 +58,6 @@
             <h3 class="font-semibold text-gray-900 mb-3">Fulfilment Actions</h3>
             @error('cancel')<p class="mb-3 text-sm text-red-600">{{ $message }}</p>@enderror
             <div class="flex flex-wrap items-end gap-3">
-                @if($order->payment_method === 'cod' && $order->status === 'placed')
-                <form method="POST" action="{{ route('admin.commerce.orders.mark-cod-paid', $order) }}"
-                    data-confirm="Record COD payment as collected?"
-                    data-confirm-title="Confirm COD payment"
-                    data-confirm-impact="Impact: marks this Cash-on-Delivery order as PAID and posts the cash-in ledger entry (debits bank, settles the customer prepayment). Use only once you have actually collected the cash — it cannot be undone from here.">@csrf
-                    <button class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium">Mark COD Paid</button>
-                </form>
-                @endif
-
                 @if($order->status === 'paid')
                 {{-- Ship: capture courier + tracking, then confirm. --}}
                 <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}"
@@ -130,10 +121,7 @@
 
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
             <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Payment</p>
-            <p class="text-sm font-medium text-gray-900">{{ $order->payment_method === 'cod' ? 'Cash on Delivery' : 'Online' }}</p>
-            @if($order->payment_method === 'cod' && $order->status === 'placed')
-            <p class="text-xs text-amber-700 mt-1">Awaiting COD collection</p>
-            @endif
+            <p class="text-sm font-medium text-gray-900">Online</p>
         </div>
 
         @if($order->coolingOff)

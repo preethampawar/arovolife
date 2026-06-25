@@ -28,7 +28,6 @@ final class CheckoutService
 {
     public function __construct(
         private readonly DatabaseManager $db,
-        private readonly AttributionService $attribution,
         private readonly LedgerPoster $ledger,
         private readonly CouponService $coupons,
         private readonly ShippingService $shipping,
@@ -238,12 +237,7 @@ final class CheckoutService
                 $this->coupons->recordRedemption($appliedCoupon, $order->id, $customer->id, $discountPaise);
             }
 
-            // 4. Ledger — ONLINE only: Dr razorpay cash (money held), Cr
-            // customer_prepayment (we owe the customer the product). For COD no
-            // cash has been received at placement, so no entry is posted now;
-            // the cash-in is posted when the COD payment is marked collected
-            // (OrderStateMachine::markPaid), keeping the ledger balanced and the
-            // revenue-recognition-on-ship step correct for both methods.
+            // 4. Ledger — Dr razorpay cash (money held), Cr customer_prepayment.
             if ($paymentMethod === Order::PAYMENT_ONLINE && $totalPaise > 0) {
                 $this->ledger->transfer(
                     sourceModule: 'Commerce',

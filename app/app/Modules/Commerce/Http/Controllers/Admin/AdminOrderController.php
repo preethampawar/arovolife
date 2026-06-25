@@ -44,15 +44,6 @@ final class AdminOrderController extends Controller
         return view('admin.commerce.orders-show', ['order' => $order]);
     }
 
-    public function markCodPaid(Order $order): RedirectResponse
-    {
-        // markPaid guards status === placed and posts the COD cash-in ledger
-        // entry for cod orders (no-op ledger for online).
-        $this->stateMachine->markPaid($order, auth()->id());
-
-        return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} marked paid (COD collected).");
-    }
-
     public function markShipped(Request $request, Order $order): RedirectResponse
     {
         $validated = $request->validate([

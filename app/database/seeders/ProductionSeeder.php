@@ -233,7 +233,6 @@ final class ProductionSeeder extends Seeder
             'notifications.email_on_status_change' => 'true',
             'notifications.admin_order_email' => 'orders@arovolife.com', // placeholder — set real mailbox before launch
 
-            'payments.cod.enabled' => 'false',
             'payments.gateway.razorpay.enabled' => 'false',
             'payments.gateway.stub.enabled' => 'false',
         ];

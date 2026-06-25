@@ -42,25 +42,6 @@ final class OrderStateMachine
                 'paid_at' => Carbon::now(),
             ]);
 
-            // COD: cash is received at THIS moment (collection), so post the
-            // cash-in entry the online flow already posted at placement —
-            // Dr bank cash, Cr customer_prepayment. Online orders skip this
-            // (their prepayment liability already exists). Either way, by the
-            // time an order is PAID the prepayment liability is on the books,
-            // so revenue recognition on ship works identically for both.
-            if ($order->payment_method === Order::PAYMENT_COD && $order->total_paise > 0) {
-                $this->ledger->transfer(
-                    sourceModule: 'Commerce',
-                    sourceType: 'order.cod_collected',
-                    sourceId: $order->id,
-                    idempotencyKey: "order.cod_collected:{$order->id}",
-                    debitAccount: 'asset.cash.bank.settlement',
-                    creditAccount: 'liability.customer_prepayment',
-                    amountPaise: $order->total_paise,
-                    memo: "COD collected for {$order->order_no}",
-                );
-            }
-
             AuditLog::create([
                 'actor_id' => $actorUserId,
                 'action' => 'order.paid',

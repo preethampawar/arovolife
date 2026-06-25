@@ -50,7 +50,7 @@ function seedOrder(int $totalPaise, Carbon $createdAt): void
         'customer_id' => 1,
         'attributed_distributor_id' => null,
         'status' => Order::STATUS_DELIVERED,
-        'payment_method' => 'cod',
+        'payment_method' => 'online',
         'subtotal_paise' => $totalPaise,
         'gst_paise' => 0,
         'discount_paise' => 0,

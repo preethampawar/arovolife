@@ -28,7 +28,7 @@ final class RolesAndPermissionsSeeder extends Seeder
      */
     private const SCOPED = [
         'placement.decide' => 'admin-operations',   // approve/reject line-change
-        'finance.record' => 'admin-finance',        // record COD payment, refunds
+        'finance.record' => 'admin-finance',        // record refunds and finance actions
         'compliance.discipline' => 'admin-compliance', // freeze / unfreeze / terminate
     ];
 

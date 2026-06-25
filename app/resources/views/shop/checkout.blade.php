@@ -235,22 +235,14 @@
             </div>
         </div>
 
-        {{-- Payment method --}}
+        {{-- Payment method (online only) --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Payment Method</h2>
-            <div class="space-y-3">
-                @if($onlineEnabled)
-                <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-                    <input type="radio" name="payment_method" value="online" @checked(old('payment_method', $onlineEnabled ? 'online' : 'cod') === 'online') class="text-brand-600 focus:ring-brand-500">
+            <div>
+                <label class="flex items-center gap-3 p-3 rounded-lg border border-brand-500 bg-brand-50">
+                    <input type="radio" name="payment_method" value="online" checked class="text-brand-600 focus:ring-brand-500">
                     <span class="text-sm"><strong class="text-gray-900">Pay online</strong> <span class="text-gray-500">— card / UPI / netbanking</span></span>
                 </label>
-                @endif
-                @if($codEnabled)
-                <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-                    <input type="radio" name="payment_method" value="cod" @checked(old('payment_method', $onlineEnabled ? 'online' : 'cod') === 'cod') class="text-brand-600 focus:ring-brand-500">
-                    <span class="text-sm"><strong class="text-gray-900">Cash on Delivery</strong> <span class="text-gray-500">— pay when your order arrives</span></span>
-                </label>
-                @endif
             </div>
         </div>
 

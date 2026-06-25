@@ -48,7 +48,6 @@ final class CommerceFeatureFlagSeeder extends Seeder
             // Payments
             ['key' => 'payments.gateway.razorpay.enabled',        'value' => 'false'],
             ['key' => 'payments.gateway.stub.enabled',            'value' => 'true'],    // Dev default
-            ['key' => 'payments.cod.enabled',                     'value' => 'false'],   // Cash on delivery — default OFF (online-only)
         ];
 
         foreach ($flags as $flag) {

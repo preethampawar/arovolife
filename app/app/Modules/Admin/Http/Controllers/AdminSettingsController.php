@@ -239,13 +239,6 @@ final class AdminSettingsController extends Controller
             ],
 
             // ── Payments ───────────────────────────────────────────────────
-            'payments.cod.enabled' => [
-                'group' => 'payments',
-                'label' => 'Cash on Delivery',
-                'description' => 'Offer Cash on Delivery at checkout. Default OFF — when off, only online payment is available and the invoice is generated after payment.',
-                'type' => 'bool',
-                'default' => 'false',
-            ],
             'payments.gateway.razorpay.enabled' => [
                 'group' => 'payments',
                 'label' => 'Payments: Razorpay gateway',

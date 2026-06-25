@@ -76,7 +76,6 @@ final class CheckoutController extends Controller
             'shippingPaise' => $this->shipping->feePaise($cart->subtotalPaise()),
             'guestAllowed' => $guestAllowed,
             'onlineEnabled' => $this->onlineEnabled(),
-            'codEnabled' => $this->flag('payments.cod.enabled'),
             'refAdn' => $request->cookie(AttributionService::COOKIE_NAME),
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
@@ -92,11 +91,7 @@ final class CheckoutController extends Controller
             return $redirect;
         }
 
-        // Only offer payment methods the admin has enabled.
-        $allowedMethods = array_values(array_filter([
-            $this->onlineEnabled() ? Order::PAYMENT_ONLINE : null,
-            $this->flag('payments.cod.enabled') ? Order::PAYMENT_COD : null,
-        ]));
+        $allowedMethods = [Order::PAYMENT_ONLINE];
 
         $billingSame = $request->boolean('billing_same');
 
@@ -200,9 +195,7 @@ final class CheckoutController extends Controller
             shippingLabel: $validated['address_label'] ?? null,
         );
 
-        // ONLINE: capture immediately via the gateway (Phase 2 stub auto-captures
-        // → order paid). COD: leave the order PLACED (unpaid) — payment is
-        // collected later and recorded by the admin "mark COD paid" action.
+        // Capture immediately via the gateway (Phase 2 stub auto-captures → order paid).
         if ($order->payment_method === Order::PAYMENT_ONLINE) {
             $intent = $this->gateway->createIntent($order, 'order:'.$order->id);
             $this->gateway->capture($intent);

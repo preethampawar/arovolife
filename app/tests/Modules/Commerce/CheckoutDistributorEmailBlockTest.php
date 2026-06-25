@@ -23,7 +23,6 @@ beforeEach(function (): void {
     $this->seed(LedgerAccountSeeder::class);
     DB::table('settings')->updateOrInsert(['key' => 'commerce.checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
     DB::table('settings')->updateOrInsert(['key' => 'commerce.guest_checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
-    DB::table('settings')->updateOrInsert(['key' => 'payments.cod.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
     DB::table('settings')->updateOrInsert(['key' => 'payments.gateway.stub.enabled'], ['value' => 'false', 'version' => 1, 'updated_at' => now()]);
 });
 
@@ -94,7 +93,7 @@ function cdebPayload(string $email): array
         'ship_state' => 'Telangana',
         'ship_pincode' => '500001',
         'billing_same' => '1',
-        'payment_method' => 'cod',
+        'payment_method' => 'online',
         'accept_terms' => '1',
     ];
 }

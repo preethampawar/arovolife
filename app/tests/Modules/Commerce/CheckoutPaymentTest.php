@@ -51,14 +51,6 @@ function cpoAddr(string $city = 'Pune', string $line1 = '1 Test St'): array
     return ['name' => 'Pay Buyer', 'phone' => '+919800000000', 'line1' => $line1, 'line2' => null, 'city' => $city, 'state' => 'MH', 'pincode' => '411001'];
 }
 
-it('E4-01: a COD order is placed unpaid with NO cash ledger entry at placement', function (): void {
-    $order = app(CheckoutService::class)->place(cpoCart(), cpoBuyer(), cpoAddr(), cpoAddr(), null, 'direct', Order::PAYMENT_COD);
-
-    expect($order->payment_method)->toBe('cod');
-    expect($order->status)->toBe('placed');
-    expect(DB::table('ledger_tx')->where('source_type', 'order.placed')->where('source_id', $order->id)->count())->toBe(0);
-});
-
 it('E4-02: an online order posts the prepayment cash-in ledger entry at placement', function (): void {
     $order = app(CheckoutService::class)->place(cpoCart(), cpoBuyer(), cpoAddr(), cpoAddr(), null, 'direct', Order::PAYMENT_ONLINE);
 
@@ -66,18 +58,9 @@ it('E4-02: an online order posts the prepayment cash-in ledger entry at placemen
     expect(DB::table('ledger_tx')->where('source_type', 'order.placed')->where('source_id', $order->id)->count())->toBe(1);
 });
 
-it('E4-03: marking a COD order paid posts the cash-in ledger entry and flips to paid', function (): void {
-    $order = app(CheckoutService::class)->place(cpoCart(), cpoBuyer(), cpoAddr(), cpoAddr(), null, 'direct', Order::PAYMENT_COD);
-
-    app(OrderStateMachine::class)->markPaid($order->fresh());
-
-    expect($order->fresh()->status)->toBe('paid');
-    expect(DB::table('ledger_tx')->where('source_type', 'order.cod_collected')->where('source_id', $order->id)->count())->toBe(1);
-});
-
 it('E4-04: checkout saves shipping + billing addresses on file for the customer', function (): void {
     $order = app(CheckoutService::class)->place(
-        cpoCart(), cpoBuyer(), cpoAddr('Pune', '1 Ship St'), cpoAddr('Mumbai', '9 Bill Rd'), null, 'direct', Order::PAYMENT_COD
+        cpoCart(), cpoBuyer(), cpoAddr('Pune', '1 Ship St'), cpoAddr('Mumbai', '9 Bill Rd'), null, 'direct', Order::PAYMENT_ONLINE
     );
     $customer = Order::find($order->id)->customer;
 
@@ -90,7 +73,7 @@ it('E4-04: checkout saves shipping + billing addresses on file for the customer'
 it('E4-04b: checkout saves the shipping address into the book with a label + as default', function (): void {
     $order = app(CheckoutService::class)->place(
         cpoCart(), cpoBuyer(), cpoAddr('Pune', '7 Home St'), cpoAddr(), null, 'direct',
-        Order::PAYMENT_COD, null, null, null, true, 'Home'
+        Order::PAYMENT_ONLINE, null, null, null, true, 'Home'
     );
     $customer = Order::find($order->id)->customer;
 
@@ -104,7 +87,7 @@ it('E4-04b: checkout saves the shipping address into the book with a label + as 
 it('E4-04c: opting out (saveShippingAddress=false) does not save a shipping address', function (): void {
     $order = app(CheckoutService::class)->place(
         cpoCart(), cpoBuyer(), cpoAddr('Pune', '7 Home St'), cpoAddr(), null, 'direct',
-        Order::PAYMENT_COD, null, null, null, false, null
+        Order::PAYMENT_ONLINE, null, null, null, false, null
     );
     $customer = Order::find($order->id)->customer;
 
@@ -151,28 +134,27 @@ it('E4-05: shipping a DISCOUNTED order posts a BALANCED revenue-recognition entr
     expect($hasContra)->toBeTrue();
 });
 
-it('E4-06: COD order with shipping ships without a 500 and books shipping revenue (KP regression)', function (): void {
-    // Reproduces the reported flow: admin marks a COD order paid, then "Mark as
-    // Shipped". Before the fix the revenue-recognition entry was out of balance
-    // by the shipping amount (shipping sits inside total_paise on the debit side
-    // but was never credited), so the LedgerPoster rejected it → 500.
+it('E4-06: online order with shipping ships without a 500 and books shipping revenue (KP regression)', function (): void {
+    // Reproduces the reported flow: "Mark as Shipped" on a paid online order.
+    // Before the fix the revenue-recognition entry was out of balance by the
+    // shipping amount (shipping sits inside total_paise on the debit side but was
+    // never credited), so the LedgerPoster rejected it → 500.
     $customer = Customer::create(['display_name' => 'Ship Buyer']);
     // subtotal 1500.00, gst 228.81, no discount, shipping 60.00 → total 1560.00.
     $order = Order::create([
         'order_no' => 'ORD-SHIP-'.random_int(1000, 9999),
         'customer_id' => $customer->id,
         'attribution_source' => 'direct',
-        'payment_method' => Order::PAYMENT_COD,
-        'status' => Order::STATUS_PLACED,
+        'payment_method' => Order::PAYMENT_ONLINE,
+        'status' => Order::STATUS_PAID,
         'subtotal_paise' => 150000, 'gst_paise' => 22881, 'discount_paise' => 0,
         'shipping_paise' => 6000, 'total_paise' => 156000,
         'ship_name' => 'Ship Buyer', 'ship_phone_e164' => '+919800000000',
         'ship_line1' => '1 St', 'ship_city' => 'Pune', 'ship_state' => 'MH', 'ship_pincode' => '411001',
-        'placed_at' => now(), 'idempotency_key' => 'idem-'.uniqid(),
+        'placed_at' => now(), 'paid_at' => now(), 'idempotency_key' => 'idem-'.uniqid(),
     ]);
 
     $sm = app(OrderStateMachine::class);
-    $sm->markPaid($order->fresh());            // COD cash-in (includes shipping)
     $sm->markShipped($order->fresh());          // revenue recognition — must not throw
 
     expect($order->fresh()->status)->toBe('shipped');

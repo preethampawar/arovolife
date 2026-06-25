@@ -86,7 +86,7 @@ function cscPlace(array $dist, string $email, ?int $attributedDistributorId, ?in
         billing: cscAddr(),
         attributedDistributorId: $attributedDistributorId,
         attributionSource: $attributedDistributorId !== null ? 'logged_in' : 'direct',
-        paymentMethod: Order::PAYMENT_COD,
+        paymentMethod: Order::PAYMENT_ONLINE,
         authUserId: $authUserId,
         buyerDistributorId: $buyerDistributorId,
     );

@@ -247,7 +247,6 @@ it('SCT-08: an order placed by a shared-cart guest is attributed to the sharing 
     $this->seed(LedgerAccountSeeder::class);
     sctSetting('commerce.checkout.enabled', 'true');
     sctSetting('commerce.guest_checkout.enabled', 'false');
-    sctSetting('payments.cod.enabled', 'true');
 
     $adn = 'ADN'.random_int(10000, 99999);
     $sharer = sctDistributorUser($adn);
@@ -269,7 +268,7 @@ it('SCT-08: an order placed by a shared-cart guest is attributed to the sharing 
             'ship_city' => 'Pune',
             'ship_state' => 'MH',
             'ship_pincode' => '411001',
-            'payment_method' => 'cod',
+            'payment_method' => 'online',
             'billing_same' => '1',
             'accept_terms' => '1',
         ])->assertRedirect();
@@ -284,7 +283,6 @@ it('SCT-09: placing the shared-cart order clears the guest pass (gate re-closes 
     $this->seed(LedgerAccountSeeder::class);
     sctSetting('commerce.checkout.enabled', 'true');
     sctSetting('commerce.guest_checkout.enabled', 'false');
-    sctSetting('payments.cod.enabled', 'true');
 
     $adn = 'ADN'.random_int(10000, 99999);
     $sharer = sctDistributorUser($adn);
@@ -303,7 +301,7 @@ it('SCT-09: placing the shared-cart order clears the guest pass (gate re-closes 
             'ship_city' => 'Pune',
             'ship_state' => 'MH',
             'ship_pincode' => '411001',
-            'payment_method' => 'cod',
+            'payment_method' => 'online',
             'billing_same' => '1',
             'accept_terms' => '1',
         ])

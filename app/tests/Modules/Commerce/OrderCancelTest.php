@@ -52,7 +52,7 @@ function ocPlace(User $user): Order
         $cart,
         ['name' => 'OC', 'email' => $user->email, 'phone' => '+919800000000', 'marketing_opt_in' => false],
         ['name' => 'OC', 'phone' => '+919800000000', 'line1' => '1 St', 'line2' => null, 'city' => 'Pune', 'state' => 'MH', 'pincode' => '411001'],
-        [], null, 'direct', Order::PAYMENT_COD, null, $user->id, null,
+        [], null, 'direct', Order::PAYMENT_ONLINE, null, $user->id, null,
     );
 }
 
@@ -107,7 +107,7 @@ it('CANCEL-01b: cancelling a PAID self-consumption order reverses its accrued BV
         $cart,
         ['name' => 'OC', 'email' => $user->email, 'phone' => '+919800000000', 'marketing_opt_in' => false],
         ['name' => 'OC', 'phone' => '+919800000000', 'line1' => '1 St', 'line2' => null, 'city' => 'Pune', 'state' => 'MH', 'pincode' => '411001'],
-        [], $distId, 'logged_in', Order::PAYMENT_COD, null, $user->id, $distId,
+        [], $distId, 'logged_in', Order::PAYMENT_ONLINE, null, $user->id, $distId,
     );
     $sm = app(OrderStateMachine::class);
     $sm->markPaid($order->fresh()); // accrues BV (self-consumption)
