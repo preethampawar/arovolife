@@ -15,6 +15,7 @@ return new class extends Migration
             $table->enum('type', [
                 'gsb_credit',
                 'mb_credit',
+                'gbb_credit',
                 'payout_debit',
                 'repurchase_deduction',
                 'manual_credit',

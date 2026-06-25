@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use Illuminate\Foundation\Inspiring;
@@ -20,6 +21,13 @@ Schedule::command(GsbDailyCutoffCommand::class)
 // Tuesday weekly payout at 09:00 IST (weeklyOn: 2 = Tuesday).
 Schedule::command(GsbWeeklyPayoutCommand::class)
     ->weeklyOn(2, '09:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// GBB runs on the 2nd of each month at 08:00 IST (after the previous month's orders are settled).
+Schedule::command(GbbMonthlyRunCommand::class)
+    ->monthlyOn(2, '08:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

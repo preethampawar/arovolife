@@ -4,7 +4,8 @@ $tabs = [
     ['route' => 'income.genos-bv',    'label' => 'Genos BV'],
     ['route' => 'income.gsb-history', 'label' => 'GSB History'],
     ['route' => 'income.mentorship',  'label' => 'Mentorship'],
-    ['route' => 'income.wallet',      'label' => 'Wallet & Payouts'],
+    ['route' => 'income.growth-booster', 'label' => 'Growth Booster'],
+    ['route' => 'income.wallet',         'label' => 'Wallet & Payouts'],
 ];
 @endphp
 <div class="flex flex-wrap gap-2 mb-6">

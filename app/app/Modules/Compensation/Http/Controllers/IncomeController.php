@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers;
 
+use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
@@ -124,6 +125,31 @@ final class IncomeController extends Controller
         }
 
         return view('income.mentorship', compact('distributor', 'rows'));
+    }
+
+    public function growthBooster(Request $request): View
+    {
+        $distributor = $request->user()?->distributor;
+        abort_unless($distributor !== null, 403);
+
+        try {
+            $rows = GbbMonthlyResult::where('distributor_id', $distributor->id)
+                ->where('status', GbbMonthlyResult::STATUS_CREDITED)
+                ->when($request->filled('from'), fn ($q) => $q->where('year_month', '>=', $request->input('from').'-01'))
+                ->when($request->filled('to'), fn ($q) => $q->where('year_month', '<=', $request->input('to').'-01'))
+                ->orderByDesc('year_month')
+                ->paginate(self::PER_PAGE)
+                ->withQueryString();
+
+            $totalAgp = $rows->getCollection()->sum('agp_earned');
+            $totalNet = $rows->getCollection()->sum('gbb_net_paise');
+        } catch (QueryException) {
+            $rows = collect();
+            $totalAgp = 0;
+            $totalNet = 0;
+        }
+
+        return view('income.growth-booster', compact('distributor', 'rows', 'totalAgp', 'totalNet'));
     }
 
     public function wallet(Request $request): View

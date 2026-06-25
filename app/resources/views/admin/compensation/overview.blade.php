@@ -66,6 +66,14 @@
 </div>
 @endif
 
+{{-- Quick links --}}
+<div class="flex flex-wrap gap-2 mb-6">
+    <a href="{{ route('admin.compensation.weekly-payouts.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Weekly Payouts →</a>
+    <a href="{{ route('admin.compensation.gbb.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Growth Booster Bonus →</a>
+    <a href="{{ route('admin.compensation.carry-forwards.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Carry-forwards →</a>
+    <a href="{{ route('admin.compensation.manual-controls.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Manual Controls →</a>
+</div>
+
 {{-- Today's cut-off table --}}
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">

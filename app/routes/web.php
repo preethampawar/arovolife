@@ -30,6 +30,7 @@ use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
@@ -297,6 +298,11 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
 
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
 
+        Route::prefix('gbb')->name('gbb.')->group(function (): void {
+            Route::get('/', [AdminGbbController::class, 'index'])->name('index');
+            Route::get('/{month}', [AdminGbbController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
+        });
+
         Route::get('distributors/{distributor}', [AdminDistributorCompController::class, 'show'])
             ->name('distributors.show')
             ->whereNumber('distributor');
@@ -494,6 +500,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/income/gsb-history', [IncomeController::class, 'gsbHistory'])->name('income.gsb-history');
     Route::get('/income/gsb-history/export', [IncomeController::class, 'exportGsb'])->name('income.gsb-history.export');
     Route::get('/income/mentorship', [IncomeController::class, 'mentorship'])->name('income.mentorship');
+    Route::get('/income/growth-booster', [IncomeController::class, 'growthBooster'])->name('income.growth-booster');
     Route::get('/income/wallet', [IncomeController::class, 'wallet'])->name('income.wallet');
     Route::get('/income/wallet/export', [IncomeController::class, 'exportWallet'])->name('income.wallet.export');
 
