@@ -14,11 +14,18 @@ use Illuminate\Support\Facades\DB;
  * Rate ladder: starts at 10%, drops 1% per ₹30,000 (3,000,000 paise) of
  * cumulative GSB earned by the sponsee, floors at 1% permanently.
  * Each sponsor-sponsee pair is tracked independently.
+ *
+ * Deductions applied before wallet credit (same as GSB):
+ *   - Admin charge: 3% of gross MB, capped at ₹30,000.
+ *   - TDS: 5% of (gross − admin charge).
  */
 final class MentorshipBonusService
 {
     /** Rate step: ₹30,000 cumulative GSB = 3,000,000 paise per rate decrement. */
     private const STEP_PAISE = 3_000_000;
+
+    /** Max admin charge: ₹30,000 = 3,000,000 paise. */
+    private const MAX_ADMIN_CHARGE_PAISE = 3_000_000;
 
     public function __construct(private readonly WalletService $wallet) {}
 
@@ -62,23 +69,29 @@ final class MentorshipBonusService
         $stepsCompleted = (int) floor($prevCumulative / self::STEP_PAISE);
         $rate = max(1, 10 - $stepsCompleted);
 
-        $mbPaise = (int) round($cutoffResult->gross_gsb_paise * $rate / 100);
+        $mbGross = (int) round($cutoffResult->gross_gsb_paise * $rate / 100);
+        $adminCharge = (int) min(round($mbGross * 0.03), self::MAX_ADMIN_CHARGE_PAISE);
+        $tds = (int) round(($mbGross - $adminCharge) * 0.05);
+        $mbNet = $mbGross - $adminCharge - $tds;
 
-        return DB::transaction(function () use ($sponsorId, $sponseeId, $cutoffResult, $rate, $mbPaise, $newCumulative): MentorshipBonusResult {
+        return DB::transaction(function () use ($sponsorId, $sponseeId, $cutoffResult, $rate, $mbGross, $adminCharge, $tds, $mbNet, $newCumulative): MentorshipBonusResult {
             $result = MentorshipBonusResult::create([
                 'sponsor_id' => $sponsorId,
                 'sponsee_id' => $sponseeId,
                 'cutoff_date' => $cutoffResult->cutoff_date->toDateString(),
                 'sponsee_gsb_paise' => $cutoffResult->gross_gsb_paise,
                 'mb_rate_pct' => $rate,
-                'mb_paise' => $mbPaise,
+                'mb_gross_paise' => $mbGross,
+                'mb_admin_charge_paise' => $adminCharge,
+                'mb_tds_paise' => $tds,
+                'mb_paise' => $mbNet,
                 'sponsee_cumulative_gsb_paise' => $newCumulative,
                 'status' => MentorshipBonusResult::STATUS_CREDITED,
             ]);
 
             $this->wallet->credit(
                 distributorId: (int) $sponsorId,
-                amountPaise: $mbPaise,
+                amountPaise: $mbNet,
                 type: 'mb_credit',
                 referenceId: $result->id,
                 referenceType: 'mentorship_bonus_result',

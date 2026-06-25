@@ -235,6 +235,39 @@ it('frozen run advances carry-forward so unfreeze does not double-credit', funct
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
 });
 
+it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
+    // Bug regression: slab1 CF must only apply to slab-1 matching,
+    // not to slabs 2–7 (which require fresh daily BV only).
+    $dist = makeDistributorWithBv(500_000);  // Dealer (5,000 BV) — can unlock slab 2
+
+    // Existing slab1 CF of 10,000 BV accumulated from previous days.
+    GsbCarryforward::create([
+        'distributor_id'       => $dist->id,
+        'power_side_bv_paise'  => 0,
+        'power_side'           => null,
+        'slab1_weaker_bv_paise' => 1_000_000,  // 10,000 BV accumulated
+    ]);
+
+    // Today's fresh BV: weaker = 25,000 BV. With slab1 CF = 35,000 > 30,000 BV (slab 2 threshold),
+    // but slab 2 must NOT match because the CF only applies to slab 1.
+    // Fresh weaker 25,000 BV is below 30,000 BV slab-2 threshold so slab 2 should NOT fire.
+    // Fresh weaker IS above 15,000 BV slab-1 threshold, so slab 1 SHOULD fire.
+    GroupBvDaily::create([
+        'distributor_id'   => $dist->id,
+        'date'             => today()->toDateString(),
+        'left_bv_paise'    => 3_500_000,   // 35,000 BV stronger
+        'right_bv_paise'   => 2_500_000,   // 25,000 BV weaker (fresh)
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $result = $svc->runForDistributor($dist->id, Carbon::today());
+
+    // Must match slab 1 (not slab 2) because slabs 2–7 use fresh BV only.
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
+    expect($result->slab)->toBe(1);
+    expect($result->gross_gsb_paise)->toBe(100_000);  // slab 1 = ₹1,000
+});
+
 it('retries after failure and credits exactly once', function () {
     $dist = makeDistributorWithBv(300_000);  // Retailer — qualifies for slab 1
     GroupBvDaily::create([

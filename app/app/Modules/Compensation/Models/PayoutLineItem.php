@@ -30,6 +30,9 @@ final class PayoutLineItem extends Model
 
     public const STATUS_BELOW_MINIMUM = 'below_minimum';
 
+    /** Personal BV < 3,000 BV (Retailer): balance held in wallet, NEFT blocked. */
+    public const STATUS_WEB_ONLY = 'web_only';
+
     protected $table = 'payout_line_items';
 
     protected $fillable = [

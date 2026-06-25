@@ -1,0 +1,144 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - button "AP Arovolife Private Limited" [ref=e6]:
+        - generic [ref=e7]: AP
+        - generic [ref=e8]: Arovolife Private Limited
+        - img [ref=e9]
+      - generic [ref=e11]: "|"
+      - group "Adjust font size" [ref=e12]:
+        - button "Smaller text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: −
+        - button "Default text" [ref=e15]: A
+        - button "Larger text" [ref=e16]:
+          - text: A
+          - generic [ref=e17]: +
+        - button "Largest text" [ref=e18]:
+          - text: A
+          - generic [ref=e19]: ++
+        - button "Reset font size" [ref=e20]: ↺
+      - generic [ref=e21]: "|"
+      - link "My Dashboard" [ref=e22] [cursor=pointer]:
+        - /url: http://localhost:8084/dashboard
+      - generic [ref=e23]: "|"
+      - generic [ref=e24]: India 🇮🇳
+    - navigation [ref=e25]:
+      - generic [ref=e26]:
+        - link "arovolife" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e28]
+        - generic [ref=e29]:
+          - link "Home" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e32] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e33] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e34] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e36]:
+            - text: Categories
+            - img [ref=e37]
+          - link "Messages" [ref=e39] [cursor=pointer]:
+            - /url: http://localhost:8084/messages
+            - img [ref=e40]
+          - link "Cart" [ref=e42] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e46]: "0"
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - heading "My Income" [level=1] [ref=e49]
+      - generic [ref=e50]:
+        - link "Dashboard" [ref=e51] [cursor=pointer]:
+          - /url: http://localhost:8084/income
+        - link "Genos BV" [ref=e52] [cursor=pointer]:
+          - /url: http://localhost:8084/income/genos-bv
+        - link "GSB History" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/income/gsb-history
+        - link "Mentorship" [ref=e54] [cursor=pointer]:
+          - /url: http://localhost:8084/income/mentorship
+        - link "Wallet & Payouts" [ref=e55] [cursor=pointer]:
+          - /url: http://localhost:8084/income/wallet
+      - generic [ref=e56]: You earn a Mentorship Bonus on the Genos Sales Bonus (GSB) earned by each distributor you directly sponsored. The rate starts at 10% of their GSB and steps down by 1% for every ₹30,000 of cumulative GSB they earn, stabilising at 1% for life. This bonus applies only to directly sponsored distributors' GSB — not to any other income type.
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - paragraph [ref=e59]: MB Earned This Month
+          - paragraph [ref=e60]: ₹—
+        - generic [ref=e61]:
+          - paragraph [ref=e62]: MB Earned Lifetime
+          - paragraph [ref=e63]: ₹—
+        - generic [ref=e64]:
+          - paragraph [ref=e65]: Active Sponsees Contributing
+          - paragraph [ref=e66]: —
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - generic [ref=e69]: From
+          - textbox [ref=e70]
+        - generic [ref=e71]:
+          - generic [ref=e72]: To
+          - textbox [ref=e73]
+        - button "Filter" [ref=e74]
+      - table [ref=e76]:
+        - rowgroup [ref=e77]:
+          - row "Sponsee ADN More information Your directly sponsored distributor's ADN, partially masked for privacy. Their GSB More information Net GSB earned by this sponsee for the cut-off date. MB % More information Starts at 10%. Steps down 1% per ₹30,000 cumulative GSB they earn, stabilising at 1% for life. MB earned Their cumulative GSB More information Total GSB earned by this sponsee since joining. Determines your current MB % rate for them. Slab step" [ref=e78]:
+            - columnheader "Sponsee ADN More information Your directly sponsored distributor's ADN, partially masked for privacy." [ref=e79]:
+              - generic [ref=e80]:
+                - text: Sponsee ADN
+                - generic [ref=e81]:
+                  - button "More information" [ref=e82]: i
+                  - tooltip "Your directly sponsored distributor's ADN, partially masked for privacy."
+            - columnheader "Their GSB More information Net GSB earned by this sponsee for the cut-off date." [ref=e83]:
+              - generic [ref=e84]:
+                - text: Their GSB
+                - generic [ref=e85]:
+                  - button "More information" [ref=e86]: i
+                  - tooltip "Net GSB earned by this sponsee for the cut-off date."
+            - columnheader "MB % More information Starts at 10%. Steps down 1% per ₹30,000 cumulative GSB they earn, stabilising at 1% for life." [ref=e87]:
+              - generic [ref=e88]:
+                - text: MB %
+                - generic [ref=e89]:
+                  - button "More information" [ref=e90]: i
+                  - tooltip "Starts at 10%. Steps down 1% per ₹30,000 cumulative GSB they earn, stabilising at 1% for life."
+            - columnheader "MB earned" [ref=e91]
+            - columnheader "Their cumulative GSB More information Total GSB earned by this sponsee since joining. Determines your current MB % rate for them." [ref=e92]:
+              - generic [ref=e93]:
+                - text: Their cumulative GSB
+                - generic [ref=e94]:
+                  - button "More information" [ref=e95]: i
+                  - tooltip "Total GSB earned by this sponsee since joining. Determines your current MB % rate for them."
+            - columnheader "Slab step" [ref=e96]
+        - rowgroup [ref=e97]:
+          - row "17***19 ₹922 10% ₹92 ₹922 Step 1 / 10" [ref=e98]:
+            - cell "17***19" [ref=e99]
+            - cell "₹922" [ref=e100]
+            - cell "10%" [ref=e101]:
+              - generic [ref=e102]: 10%
+            - cell "₹92" [ref=e103]
+            - cell "₹922" [ref=e104]
+            - cell "Step 1 / 10" [ref=e105]: Step 1 / 10
+  - contentinfo [ref=e108]:
+    - generic [ref=e109]:
+      - link "Terms" [ref=e110] [cursor=pointer]:
+        - /url: http://localhost:8084/p/terms
+      - link "Privacy" [ref=e111] [cursor=pointer]:
+        - /url: http://localhost:8084/p/privacy
+      - link "Code of Ethics" [ref=e112] [cursor=pointer]:
+        - /url: http://localhost:8084/p/ethics
+      - link "Grievance" [ref=e113] [cursor=pointer]:
+        - /url: http://localhost:8084/p/grievance
+      - link "Compliance Documents" [ref=e114] [cursor=pointer]:
+        - /url: http://localhost:8084/compliance-documents
+    - paragraph [ref=e115]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e116] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e117] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
+    - paragraph [ref=e118]: Arovolife Private Limited — CIN U46909TS2026PTC210896

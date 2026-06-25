@@ -31,6 +31,12 @@ final class GsbWeeklyPayoutCommand extends Command
         $batch = $this->payoutService->runBatch($date);
         $this->info("Batch #{$batch->id} {$batch->status} — {$batch->distributor_count} distributors, net ₹".number_format($batch->total_net_paise / 100, 2));
 
-        return $batch->status === PayoutBatch::STATUS_COMPLETED ? self::SUCCESS : self::FAILURE;
+        // Batch moves to PENDING (awaiting admin approval) after a successful run —
+        // it only reaches COMPLETED after the admin calls approve(). Treat PENDING
+        // with a processed_at timestamp as a successful run to avoid false-positive
+        // cron alerts.
+        return $batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null
+            ? self::SUCCESS
+            : self::FAILURE;
     }
 }

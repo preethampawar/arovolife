@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -19,7 +20,16 @@ final class PayoutService
     /** Fallback minimum when the setting is absent. */
     private const DEFAULT_MIN_PAYOUT_PAISE = 50_000;
 
-    public function __construct(private readonly WalletService $wallet) {}
+    /**
+     * Retailer title requires 3,000 BV personal lifetime purchases.
+     * Below this threshold wallet credits are web-only — NEFT is blocked.
+     */
+    private const RETAILER_MIN_PAISE = 300_000;
+
+    public function __construct(
+        private readonly WalletService $wallet,
+        private readonly BvLedgerService $bvLedger,
+    ) {}
 
     /**
      * Generate a payout batch for the given date. After generation the batch
@@ -68,6 +78,23 @@ final class PayoutService
             $balance = $this->wallet->balancePaise((int) $distributorId);
 
             if ($balance <= 0) {
+                continue;
+            }
+
+            // 3,000 BV gate — distributors below Retailer title earn web-only credits.
+            // Their wallet balance is recorded but NOT included in the NEFT batch.
+            $personalBvPaise = $this->bvLedger->totalPersonalBvPaise((int) $distributorId);
+
+            if ($personalBvPaise < self::RETAILER_MIN_PAISE) {
+                PayoutLineItem::create([
+                    'payout_batch_id' => $batch->id,
+                    'distributor_id' => $distributorId,
+                    'wallet_balance_paise' => $balance,
+                    'repurchase_deduction_paise' => 0,
+                    'net_transferred_paise' => 0,
+                    'status' => PayoutLineItem::STATUS_WEB_ONLY,
+                ]);
+
                 continue;
             }
 

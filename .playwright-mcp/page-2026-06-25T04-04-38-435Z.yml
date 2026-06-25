@@ -1,0 +1,154 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - button "AP Arovolife Private Limited" [ref=e6]:
+        - generic [ref=e7]: AP
+        - generic [ref=e8]: Arovolife Private Limited
+        - img [ref=e9]
+      - generic [ref=e11]: "|"
+      - group "Adjust font size" [ref=e12]:
+        - button "Smaller text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: −
+        - button "Default text" [ref=e15]: A
+        - button "Larger text" [ref=e16]:
+          - text: A
+          - generic [ref=e17]: +
+        - button "Largest text" [ref=e18]:
+          - text: A
+          - generic [ref=e19]: ++
+        - button "Reset font size" [ref=e20]: ↺
+      - generic [ref=e21]: "|"
+      - link "My Dashboard" [ref=e22] [cursor=pointer]:
+        - /url: http://localhost:8084/dashboard
+      - generic [ref=e23]: "|"
+      - generic [ref=e24]: India 🇮🇳
+    - navigation [ref=e25]:
+      - generic [ref=e26]:
+        - link "arovolife" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e28]
+        - generic [ref=e29]:
+          - link "Home" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e32] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e33] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e34] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e36]:
+            - text: Categories
+            - img [ref=e37]
+          - link "Messages" [ref=e39] [cursor=pointer]:
+            - /url: http://localhost:8084/messages
+            - img [ref=e40]
+          - link "Cart" [ref=e42] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e46]: "0"
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - heading "My Income" [level=1] [ref=e49]
+      - generic [ref=e50]:
+        - link "Dashboard" [ref=e51] [cursor=pointer]:
+          - /url: http://localhost:8084/income
+        - link "Genos BV" [ref=e52] [cursor=pointer]:
+          - /url: http://localhost:8084/income/genos-bv
+        - link "GSB History" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/income/gsb-history
+        - link "Mentorship" [ref=e54] [cursor=pointer]:
+          - /url: http://localhost:8084/income/mentorship
+        - link "Wallet & Payouts" [ref=e55] [cursor=pointer]:
+          - /url: http://localhost:8084/income/wallet
+      - generic [ref=e56]: Your Genos Sales Bonus (GSB) is calculated at 23:59 every day based on the BV your Genos groups generated. The gross amount is reduced by a 3% admin charge (max ₹30,000), 5% TDS (Tax Deducted at Source), and a repurchase deduction before reaching your wallet. Each row below is one daily cut-off result.
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]: From
+          - textbox [ref=e60]
+        - generic [ref=e61]:
+          - generic [ref=e62]: To
+          - textbox [ref=e63]
+        - button "Filter" [ref=e64]
+        - link "⬇ CSV" [ref=e65] [cursor=pointer]:
+          - /url: http://localhost:8084/income/gsb-history/export
+      - table [ref=e67]:
+        - rowgroup [ref=e68]:
+          - 'row "Date Left BV matched Right BV matched Slab More information Slab 1: 15K BV = ₹1,000. Slab 2: 30K = ₹3,000. Slab 3: 90K = ₹6,000. Slab 4: 2.7L = ₹12,000. Slab 5: 8L = ₹24,000. Slab 6: 24L = ₹40,000. Slab 7: 72L = ₹60,000. Gross GSB More information The Genos Sales Bonus before any deductions. Admin 3% More information 3% of gross GSB or ₹30,000 — whichever is lower. TDS 5% More information Tax Deducted at Source at 5% of gross minus admin charge. Net GSB More information Amount credited to your wallet after the admin charge and TDS deductions. Status" [ref=e69]':
+            - columnheader "Date" [ref=e70]
+            - columnheader "Left BV matched" [ref=e71]
+            - columnheader "Right BV matched" [ref=e72]
+            - 'columnheader "Slab More information Slab 1: 15K BV = ₹1,000. Slab 2: 30K = ₹3,000. Slab 3: 90K = ₹6,000. Slab 4: 2.7L = ₹12,000. Slab 5: 8L = ₹24,000. Slab 6: 24L = ₹40,000. Slab 7: 72L = ₹60,000." [ref=e73]':
+              - generic [ref=e74]:
+                - text: Slab
+                - generic [ref=e75]:
+                  - button "More information" [ref=e76]: i
+                  - 'tooltip "Slab 1: 15K BV = ₹1,000. Slab 2: 30K = ₹3,000. Slab 3: 90K = ₹6,000. Slab 4: 2.7L = ₹12,000. Slab 5: 8L = ₹24,000. Slab 6: 24L = ₹40,000. Slab 7: 72L = ₹60,000."'
+            - columnheader "Gross GSB More information The Genos Sales Bonus before any deductions." [ref=e77]:
+              - generic [ref=e78]:
+                - text: Gross GSB
+                - generic [ref=e79]:
+                  - button "More information" [ref=e80]: i
+                  - tooltip "The Genos Sales Bonus before any deductions."
+            - columnheader "Admin 3% More information 3% of gross GSB or ₹30,000 — whichever is lower." [ref=e81]:
+              - generic [ref=e82]:
+                - text: Admin 3%
+                - generic [ref=e83]:
+                  - button "More information" [ref=e84]: i
+                  - tooltip "3% of gross GSB or ₹30,000 — whichever is lower."
+            - columnheader "TDS 5% More information Tax Deducted at Source at 5% of gross minus admin charge." [ref=e85]:
+              - generic [ref=e86]:
+                - text: TDS 5%
+                - generic [ref=e87]:
+                  - button "More information" [ref=e88]: i
+                  - tooltip "Tax Deducted at Source at 5% of gross minus admin charge."
+            - columnheader "Net GSB More information Amount credited to your wallet after the admin charge and TDS deductions." [ref=e89]:
+              - generic [ref=e90]:
+                - text: Net GSB
+                - generic [ref=e91]:
+                  - button "More information" [ref=e92]: i
+                  - tooltip "Amount credited to your wallet after the admin charge and TDS deductions."
+            - columnheader "Status" [ref=e93]
+        - rowgroup [ref=e94]:
+          - row "20 Jun 2026 15,000 18,000 Slab 1 ₹1,000 -₹30 -₹49 ₹922 Credited" [ref=e95]:
+            - cell "20 Jun 2026" [ref=e96]
+            - cell "15,000" [ref=e97]
+            - cell "18,000" [ref=e98]
+            - cell "Slab 1" [ref=e99]:
+              - generic [ref=e100]: Slab 1
+            - cell "₹1,000" [ref=e101]
+            - cell "-₹30" [ref=e102]
+            - cell "-₹49" [ref=e103]
+            - cell "₹922" [ref=e104]
+            - cell "Credited" [ref=e105]:
+              - generic [ref=e106]: Credited
+          - row "Month total ₹1,000 ₹922" [ref=e107]:
+            - cell "Month total" [ref=e108]
+            - cell "₹1,000" [ref=e109]
+            - cell [ref=e110]
+            - cell "₹922" [ref=e111]
+            - cell [ref=e112]
+  - contentinfo [ref=e113]:
+    - generic [ref=e114]:
+      - link "Terms" [ref=e115] [cursor=pointer]:
+        - /url: http://localhost:8084/p/terms
+      - link "Privacy" [ref=e116] [cursor=pointer]:
+        - /url: http://localhost:8084/p/privacy
+      - link "Code of Ethics" [ref=e117] [cursor=pointer]:
+        - /url: http://localhost:8084/p/ethics
+      - link "Grievance" [ref=e118] [cursor=pointer]:
+        - /url: http://localhost:8084/p/grievance
+      - link "Compliance Documents" [ref=e119] [cursor=pointer]:
+        - /url: http://localhost:8084/compliance-documents
+    - paragraph [ref=e120]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e121] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e122] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
+    - paragraph [ref=e123]: Arovolife Private Limited — CIN U46909TS2026PTC210896

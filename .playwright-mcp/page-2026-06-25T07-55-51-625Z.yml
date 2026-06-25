@@ -1,0 +1,242 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - button "AP Arovolife Private Limited" [ref=e6]:
+        - generic [ref=e7]: AP
+        - generic [ref=e8]: Arovolife Private Limited
+        - img [ref=e9]
+      - generic [ref=e11]: "|"
+      - group "Adjust font size" [ref=e12]:
+        - button "Smaller text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: −
+        - button "Default text" [ref=e15]: A
+        - button "Larger text" [ref=e16]:
+          - text: A
+          - generic [ref=e17]: +
+        - button "Largest text" [ref=e18]:
+          - text: A
+          - generic [ref=e19]: ++
+        - button "Reset font size" [ref=e20]: ↺
+      - generic [ref=e21]: "|"
+      - link "My Dashboard" [ref=e22] [cursor=pointer]:
+        - /url: http://localhost:8084/dashboard
+      - generic [ref=e23]: "|"
+      - generic [ref=e24]: India 🇮🇳
+    - navigation [ref=e25]:
+      - generic [ref=e26]:
+        - link "arovolife" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e28]
+        - generic [ref=e29]:
+          - link "Home" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e32] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e33] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e34] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e36]:
+            - text: Categories
+            - img [ref=e37]
+          - link "Messages" [ref=e39] [cursor=pointer]:
+            - /url: http://localhost:8084/messages
+            - img [ref=e40]
+          - link "Cart" [ref=e42] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e46]: "0"
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - link "Manage my KYC documents →" [ref=e50] [cursor=pointer]:
+          - /url: http://localhost:8084/dashboard/documents
+        - heading "Welcome, Arovolife Private Limited" [level=1] [ref=e51]
+        - paragraph [ref=e52]:
+          - text: "Status:"
+          - generic [ref=e53]: Active
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - paragraph [ref=e56]: My Referral Link
+          - generic [ref=e57]: Personal invite
+        - generic [ref=e58]:
+          - textbox [ref=e59]: http://localhost:8084/join?sponsor=444555666
+          - button "Copy" [ref=e60]
+        - paragraph [ref=e61]:
+          - generic [ref=e62]: Direct slots full.
+          - link "My Genos →" [ref=e64] [cursor=pointer]:
+            - /url: http://localhost:8084/tree?levels=10
+    - generic [ref=e65]:
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - paragraph [ref=e68]: Profile Stats
+          - link "Download PDF" [ref=e69] [cursor=pointer]:
+            - /url: http://localhost:8084/dashboard/profile-stats
+            - img [ref=e70]
+            - text: Download PDF
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - term [ref=e74]: Name
+            - definition [ref=e75]: Arovolife Private Limited
+            - term [ref=e76]: ID Number
+            - definition [ref=e77]: "444555666"
+            - term [ref=e78]: Registration Date
+            - definition [ref=e79]: 21 May 2026, 06:51 AM
+            - term [ref=e80]: Franchise
+            - definition [ref=e81]: Arovolife Private Limited
+            - term [ref=e82]: Region
+            - definition [ref=e83]: India
+            - term [ref=e84]: Status
+            - definition [ref=e85]:
+              - generic [ref=e86]: Verified
+            - term [ref=e87]: Activation Date
+            - definition [ref=e88]: 21 May 2026
+            - term [ref=e89]: Personal Sales Position
+            - definition [ref=e90]: —
+            - term [ref=e91]: Left Team
+            - definition [ref=e92]: "43"
+            - term [ref=e93]: Right Team
+            - definition [ref=e94]: "21"
+            - term [ref=e95]: Total Team
+            - definition [ref=e96]: "64"
+            - term [ref=e97]: Highest Rank
+            - definition [ref=e98]: —
+            - term [ref=e99]: Current Rank
+            - definition [ref=e100]: —
+            - term [ref=e101]: Total Personal BV
+            - definition [ref=e102]: —
+            - term [ref=e103]: Total Withdrawal Income
+            - definition [ref=e104]: —
+          - generic "Click to upload or change your ID photo" [ref=e107] [cursor=pointer]:
+            - img "Your ID photo" [ref=e108]
+            - generic [ref=e109]: Change photo
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - paragraph [ref=e112]: Placement
+          - generic [ref=e114]:
+            - generic [ref=e115]: Position
+            - generic [ref=e116]: → Right group
+          - generic [ref=e117]:
+            - link "My Genos →" [ref=e118] [cursor=pointer]:
+              - /url: http://localhost:8084/tree
+            - link "My Referrals →" [ref=e119] [cursor=pointer]:
+              - /url: http://localhost:8084/tree/sponsorship
+            - link "My Orders →" [ref=e120] [cursor=pointer]:
+              - /url: http://localhost:8084/orders
+            - generic "The 5-business-day line-change window has ended." [ref=e121]: Request line-change
+        - generic [ref=e122]:
+          - paragraph [ref=e123]: Cooling-Off Period
+          - paragraph [ref=e124]: Cooling-off period expired
+        - generic [ref=e125]:
+          - paragraph [ref=e127]: Messages
+          - paragraph [ref=e128]: No messages yet.
+          - paragraph [ref=e129]: Open a card in the tree view and click "Send Message" to start a conversation.
+          - link "Open inbox" [ref=e130] [cursor=pointer]:
+            - /url: http://localhost:8084/messages
+            - text: Open inbox
+            - img [ref=e131]
+      - generic [ref=e133]:
+        - paragraph [ref=e135]: Documents
+        - generic [ref=e136]:
+          - link "arovolife Direct Seller Application Your registration details on file with arovolife — view, print or save as PDF. Open →" [ref=e137] [cursor=pointer]:
+            - /url: http://localhost:8084/dashboard/direct-seller-application
+            - generic [ref=e138]:
+              - img [ref=e140]
+              - paragraph [ref=e143]: arovolife Direct Seller Application
+            - paragraph [ref=e144]: Your registration details on file with arovolife — view, print or save as PDF.
+            - paragraph [ref=e145]: Open →
+          - link "Membership Card View, print or download your front-and-back arovolife ID card. Open →" [ref=e146] [cursor=pointer]:
+            - /url: http://localhost:8084/dashboard/membership-card
+            - generic [ref=e147]:
+              - img [ref=e149]
+              - paragraph [ref=e152]: Membership Card
+            - paragraph [ref=e153]: View, print or download your front-and-back arovolife ID card.
+            - paragraph [ref=e154]: Open →
+          - link "TDS (Tax Statements) Quarterly TDS certificates and the annual Form 26AS reconciliation. Open →" [ref=e155] [cursor=pointer]:
+            - /url: http://localhost:8084/dashboard/tax-statements
+            - generic [ref=e156]:
+              - img [ref=e158]
+              - paragraph [ref=e161]: TDS (Tax Statements)
+            - paragraph [ref=e162]: Quarterly TDS certificates and the annual Form 26AS reconciliation.
+            - paragraph [ref=e163]: Open →
+      - generic [ref=e164]:
+        - generic [ref=e165]:
+          - generic [ref=e166]:
+            - paragraph [ref=e167]: My Team
+            - paragraph [ref=e168]: A live view of your Genos downline and direct referrals.
+          - generic [ref=e169]:
+            - link "Genos →" [ref=e170] [cursor=pointer]:
+              - /url: http://localhost:8084/tree
+            - generic [ref=e171]: ·
+            - link "Direct referrals →" [ref=e172] [cursor=pointer]:
+              - /url: http://localhost:8084/tree/sponsorship
+        - generic [ref=e173]:
+          - button "Total team 64 members in your Genos downline" [ref=e174]:
+            - paragraph [ref=e175]: Total team
+            - paragraph [ref=e176]: "64"
+            - paragraph [ref=e177]: members in your Genos downline
+          - button "Direct referrals 2 people you personally invited" [ref=e178]:
+            - paragraph [ref=e179]: Direct referrals
+            - paragraph [ref=e180]: "2"
+            - paragraph [ref=e181]: people you personally invited
+          - button "← Left team 43 members under your left group" [ref=e182]:
+            - paragraph [ref=e183]: ← Left team
+            - paragraph [ref=e184]: "43"
+            - paragraph [ref=e185]: members under your left group
+          - button "Right team → 21 members under your right group" [ref=e186]:
+            - paragraph [ref=e187]: Right team →
+            - paragraph [ref=e188]: "21"
+            - paragraph [ref=e189]: members under your right group
+        - generic [ref=e190]:
+          - paragraph [ref=e191]: By status
+          - generic [ref=e192]:
+            - generic [ref=e193]:
+              - generic [ref=e194]: Active
+              - generic [ref=e196]: "56"
+            - generic [ref=e197]:
+              - generic [ref=e198]: Pending
+              - generic [ref=e200]: "6"
+            - generic [ref=e201]:
+              - generic [ref=e202]: Blocked
+              - generic [ref=e204]: "0"
+            - generic [ref=e205]:
+              - generic [ref=e206]: Terminated
+              - generic [ref=e208]: "2"
+        - generic [ref=e209]:
+          - generic [ref=e210]:
+            - generic [ref=e211]: Registered this week
+            - generic [ref=e212]: "0"
+          - generic [ref=e213]:
+            - generic [ref=e214]: Registered this month
+            - generic [ref=e215]: "0"
+          - generic [ref=e216]:
+            - generic [ref=e217]: Cooling-off active
+            - generic [ref=e218]: "15"
+    - generic [ref=e219]:
+      - strong [ref=e220]: Phase 1 Platform
+      - text: — Product catalogue, orders, commissions and wallet features are coming in later phases. For support, email support@arovolife.com.
+  - contentinfo [ref=e221]:
+    - generic [ref=e222]:
+      - link "Terms" [ref=e223] [cursor=pointer]:
+        - /url: http://localhost:8084/p/terms
+      - link "Privacy" [ref=e224] [cursor=pointer]:
+        - /url: http://localhost:8084/p/privacy
+      - link "Code of Ethics" [ref=e225] [cursor=pointer]:
+        - /url: http://localhost:8084/p/ethics
+      - link "Grievance" [ref=e226] [cursor=pointer]:
+        - /url: http://localhost:8084/p/grievance
+      - link "Compliance Documents" [ref=e227] [cursor=pointer]:
+        - /url: http://localhost:8084/compliance-documents
+    - paragraph [ref=e228]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e229] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e230] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
+    - paragraph [ref=e231]: Arovolife Private Limited — CIN U46909TS2026PTC210896

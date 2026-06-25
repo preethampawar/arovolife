@@ -1,0 +1,173 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e2]:
+    - generic [ref=e3]:
+      - link "arovolife" [ref=e4] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+        - img "arovolife" [ref=e5]
+      - generic [ref=e6]: Admin Console
+    - generic [ref=e7]:
+      - navigation [ref=e8]:
+        - link "⬡ Dashboard" [ref=e9] [cursor=pointer]:
+          - /url: http://localhost:8084/admin
+          - generic [ref=e10]: ⬡
+          - generic [ref=e11]: Dashboard
+        - link "◉ Distributors" [ref=e12] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e13]: ◉
+          - generic [ref=e14]: Distributors
+        - link "⌬ Genealogy tree" [ref=e15] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/tree
+          - generic [ref=e16]: ⌬
+          - generic [ref=e17]: Genealogy tree
+        - link "✓ KYC review" [ref=e18] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/kyc
+          - generic [ref=e19]: ✓
+          - generic [ref=e20]: KYC review
+        - link "⇄ Line changes" [ref=e21] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/line-changes
+          - generic [ref=e22]: ⇄
+          - generic [ref=e23]: Line changes
+        - link "✉ Contact Inbox 5" [ref=e24] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/contact-inquiries
+          - generic [ref=e25]: ✉
+          - generic [ref=e26]: Contact Inbox
+          - generic [ref=e27]: "5"
+        - link "🛒 Orders" [ref=e28] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/orders
+          - generic [ref=e29]: 🛒
+          - generic [ref=e30]: Orders
+        - link "📊 BV Ledger" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/bv-ledger
+          - generic [ref=e32]: 📊
+          - generic [ref=e33]: BV Ledger
+        - link "💰 Compensation" [ref=e34] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation
+          - generic [ref=e36]: 💰
+          - generic [ref=e37]: Compensation
+        - link "🏷 Coupons" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/coupons
+          - generic [ref=e39]: 🏷
+          - generic [ref=e40]: Coupons
+        - link "📦 Products" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/products
+          - generic [ref=e42]: 📦
+          - generic [ref=e43]: Products
+        - link "🗂 Categories" [ref=e44] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/categories
+          - generic [ref=e45]: 🗂
+          - generic [ref=e46]: Categories
+        - link "🖼 Banners" [ref=e47] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/banners
+          - generic [ref=e48]: 🖼
+          - generic [ref=e49]: Banners
+        - link "📄 Content Pages" [ref=e50] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/content
+          - generic [ref=e51]: 📄
+          - generic [ref=e52]: Content Pages
+        - link "🛡 Compliance Docs" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compliance-documents
+          - generic [ref=e54]: 🛡
+          - generic [ref=e55]: Compliance Docs
+        - link "⚙ Settings" [ref=e56] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/settings
+          - generic [ref=e57]: ⚙
+          - generic [ref=e58]: Settings
+        - link "⚑ Feature flags" [ref=e59] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/feature-flags
+          - generic [ref=e60]: ⚑
+          - generic [ref=e61]: Feature flags
+        - link "☰ Audit Log" [ref=e62] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/audit-log
+          - generic [ref=e63]: ☰
+          - generic [ref=e64]: Audit Log
+        - link "❔ Help & Reference" [ref=e65] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/help
+          - generic [ref=e66]: ❔
+          - generic [ref=e67]: Help & Reference
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: admin@arovolife.test
+        - button "⏻ Sign out" [ref=e71]:
+          - generic [ref=e72]: ⏻
+          - text: Sign out
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]: Admin
+        - heading "Compensation — Manual Controls" [level=1] [ref=e77]
+      - generic [ref=e78]:
+        - generic [ref=e79]: 25 Jun 2026, 09:32 IST
+        - generic [ref=e80]: "|"
+        - link "← Distributor view" [ref=e81] [cursor=pointer]:
+          - /url: http://localhost:8084/dashboard
+    - main [ref=e82]:
+      - generic [ref=e83]:
+        - strong [ref=e84]: These controls affect real money and wallet balances.
+        - text: Every action is permanently audit-logged with your admin ID, a timestamp, the before/after state, and the reason you provide. There is no undo — use Reverse if a credit needs to be walked back. When in doubt, use
+        - strong [ref=e85]: Retry
+        - text: (which is safe and idempotent) before using
+        - strong [ref=e86]: Manual Credit
+        - text: .
+      - generic [ref=e87]:
+        - link "Retry Daily Cut-off Re-run 23:59 GSB calculation for one distributor + date. Idempotent if already credited." [ref=e88] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/manual-controls?action=retry&date=2026-06-25
+          - heading "Retry Daily Cut-off" [level=4] [ref=e89]
+          - paragraph [ref=e90]: Re-run 23:59 GSB calculation for one distributor + date. Idempotent if already credited.
+        - link "Recalculate Carry-forward Recompute slab-1 weaker CF and power-side CF from full GSB history." [ref=e91] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/manual-controls?action=recalc-cf&date=2026-06-25
+          - heading "Recalculate Carry-forward" [level=4] [ref=e92]
+          - paragraph [ref=e93]: Recompute slab-1 weaker CF and power-side CF from full GSB history.
+        - link "Manual GSB Credit Credit a custom amount to wallet. Requires amount + reason. Use only when Retry fails." [ref=e94] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/manual-controls?action=credit&date=2026-06-25
+          - heading "Manual GSB Credit" [level=4] [ref=e95]
+          - paragraph [ref=e96]: Credit a custom amount to wallet. Requires amount + reason. Use only when Retry fails.
+        - link "Reverse GSB Credit Write a debit reversing a specific GSB credit. Affects next payout." [ref=e97] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/manual-controls?action=reverse&date=2026-06-25
+          - heading "Reverse GSB Credit" [level=4] [ref=e98]
+          - paragraph [ref=e99]: Write a debit reversing a specific GSB credit. Affects next payout.
+        - link "Force Weekly Payout Trigger payout for one distributor immediately. Only if automated batch failed." [ref=e100] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/manual-controls?action=force-payout&date=2026-06-25
+          - heading "Force Weekly Payout" [level=4] [ref=e101]
+          - paragraph [ref=e102]: Trigger payout for one distributor immediately. Only if automated batch failed.
+        - link "Freeze / Unfreeze GSB Block GSB credits without terminating account. GSB calculated but held." [ref=e103] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/manual-controls?action=freeze&date=2026-06-25
+          - heading "Freeze / Unfreeze GSB" [level=4] [ref=e104]
+          - paragraph [ref=e105]: Block GSB credits without terminating account. GSB calculated but held.
+      - generic [ref=e106]: Select an action above to get started.
+      - generic [ref=e107]:
+        - generic [ref=e108]: Recent manual actions
+        - generic [ref=e109]:
+          - generic [ref=e110]:
+            - generic [ref=e111]: carryforward.recalculated
+            - generic [ref=e112]:
+              - strong [ref=e113]: "444555666"
+              - text: · 25 Jun 09:20 · by admin@arovolife.test · "QA test recalc carry forward - verifying audit log"
+          - generic [ref=e114]:
+            - generic [ref=e115]: payout.force_triggered
+            - generic [ref=e116]:
+              - strong [ref=e117]: "444555666"
+              - text: · 25 Jun 09:19 · by admin@arovolife.test · "QA test force payout trigger"
+          - generic [ref=e118]:
+            - generic [ref=e119]: gsb.reversed
+            - generic [ref=e120]:
+              - strong [ref=e121]: "444555666"
+              - text: · 25 Jun 09:19 · by admin@arovolife.test · "QA test reverse of Jun 21 credit - fixed enum bug"
+          - generic [ref=e122]:
+            - generic [ref=e123]: gsb.manual_credit
+            - generic [ref=e124]:
+              - strong [ref=e125]: "444555666"
+              - text: · 25 Jun 09:17 · by admin@arovolife.test · "QA test manual credit tied to Jun 20 cutoff result"
+          - generic [ref=e126]:
+            - generic [ref=e127]: gsb.unfrozen
+            - generic [ref=e128]:
+              - strong [ref=e129]: "444555666"
+              - text: · 25 Jun 09:16 · by admin@arovolife.test · "Unfreezing after QA test - restoring normal state"
+          - generic [ref=e130]:
+            - generic [ref=e131]: gsb.frozen
+            - generic [ref=e132]:
+              - strong [ref=e133]: "444555666"
+              - text: · 25 Jun 09:16 · by admin@arovolife.test · "Testing GSB freeze functionality for QA purposes"
+          - generic [ref=e134]:
+            - generic [ref=e135]: cutoff.manual_retry
+            - generic [ref=e136]:
+              - strong [ref=e137]: "444555666"
+              - text: · 25 Jun 09:15 · by admin@arovolife.test · "Testing retry of failed June 23 cutoff"

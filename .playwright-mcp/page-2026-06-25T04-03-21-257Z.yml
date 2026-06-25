@@ -1,0 +1,280 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e2]:
+    - generic [ref=e3]:
+      - link "arovolife" [ref=e4] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+        - img "arovolife" [ref=e5]
+      - generic [ref=e6]: Admin Console
+    - generic [ref=e7]:
+      - navigation [ref=e8]:
+        - link "⬡ Dashboard" [ref=e9] [cursor=pointer]:
+          - /url: http://localhost:8084/admin
+          - generic [ref=e11]: ⬡
+          - generic [ref=e12]: Dashboard
+        - link "◉ Distributors" [ref=e13] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e14]: ◉
+          - generic [ref=e15]: Distributors
+        - link "⌬ Genealogy tree" [ref=e16] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/tree
+          - generic [ref=e17]: ⌬
+          - generic [ref=e18]: Genealogy tree
+        - link "✓ KYC review" [ref=e19] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/kyc
+          - generic [ref=e20]: ✓
+          - generic [ref=e21]: KYC review
+        - link "⇄ Line changes" [ref=e22] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/line-changes
+          - generic [ref=e23]: ⇄
+          - generic [ref=e24]: Line changes
+        - link "✉ Contact Inbox 5" [ref=e25] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/contact-inquiries
+          - generic [ref=e26]: ✉
+          - generic [ref=e27]: Contact Inbox
+          - generic [ref=e28]: "5"
+        - link "🛒 Orders" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/orders
+          - generic [ref=e30]: 🛒
+          - generic [ref=e31]: Orders
+        - link "📊 BV Ledger" [ref=e32] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/bv-ledger
+          - generic [ref=e33]: 📊
+          - generic [ref=e34]: BV Ledger
+        - link "💰 Compensation" [ref=e35] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation
+          - generic [ref=e36]: 💰
+          - generic [ref=e37]: Compensation
+        - link "🏷 Coupons" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/coupons
+          - generic [ref=e39]: 🏷
+          - generic [ref=e40]: Coupons
+        - link "📦 Products" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/products
+          - generic [ref=e42]: 📦
+          - generic [ref=e43]: Products
+        - link "🗂 Categories" [ref=e44] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/categories
+          - generic [ref=e45]: 🗂
+          - generic [ref=e46]: Categories
+        - link "🖼 Banners" [ref=e47] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/banners
+          - generic [ref=e48]: 🖼
+          - generic [ref=e49]: Banners
+        - link "📄 Content Pages" [ref=e50] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/content
+          - generic [ref=e51]: 📄
+          - generic [ref=e52]: Content Pages
+        - link "🛡 Compliance Docs" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compliance-documents
+          - generic [ref=e54]: 🛡
+          - generic [ref=e55]: Compliance Docs
+        - link "⚙ Settings" [ref=e56] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/settings
+          - generic [ref=e57]: ⚙
+          - generic [ref=e58]: Settings
+        - link "⚑ Feature flags" [ref=e59] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/feature-flags
+          - generic [ref=e60]: ⚑
+          - generic [ref=e61]: Feature flags
+        - link "☰ Audit Log" [ref=e62] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/audit-log
+          - generic [ref=e63]: ☰
+          - generic [ref=e64]: Audit Log
+        - link "❔ Help & Reference" [ref=e65] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/help
+          - generic [ref=e66]: ❔
+          - generic [ref=e67]: Help & Reference
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: admin@arovolife.test
+        - button "⏻ Sign out" [ref=e71]:
+          - generic [ref=e72]: ⏻
+          - text: Sign out
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]: Admin
+        - heading "Dashboard" [level=1] [ref=e77]
+      - generic [ref=e78]:
+        - generic [ref=e79]: 25 Jun 2026, 09:33 IST
+        - generic [ref=e80]: "|"
+        - link "← Distributor view" [ref=e81] [cursor=pointer]:
+          - /url: http://localhost:8084/dashboard
+    - main [ref=e82]:
+      - generic [ref=e83]:
+        - link "Total Users 66 All registered accounts" [ref=e84] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e85]:
+            - img [ref=e87]
+            - generic [ref=e89]: →
+          - paragraph [ref=e90]: Total Users
+          - paragraph [ref=e91]: "66"
+          - paragraph [ref=e92]: All registered accounts
+        - link "Active Distributors 57 With issued ADN" [ref=e93] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors?status=active
+          - generic [ref=e94]:
+            - img [ref=e96]
+            - generic [ref=e98]: →
+          - paragraph [ref=e99]: Active Distributors
+          - paragraph [ref=e100]: "57"
+          - paragraph [ref=e101]: With issued ADN
+        - link "Pending Registration 6 Incomplete signups" [ref=e102] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors?status=pending
+          - generic [ref=e103]:
+            - img [ref=e105]
+            - generic [ref=e107]: →
+          - paragraph [ref=e108]: Pending Registration
+          - paragraph [ref=e109]: "6"
+          - paragraph [ref=e110]: Incomplete signups
+        - link "Cooling-Off Active 9 Within 30-day window" [ref=e111] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors?cooling_off=active
+          - generic [ref=e112]:
+            - img [ref=e114]
+            - generic [ref=e116]: →
+          - paragraph [ref=e117]: Cooling-Off Active
+          - paragraph [ref=e118]: "9"
+          - paragraph [ref=e119]: Within 30-day window
+        - link "Expiring (7 days) 9 Cooling-off ending soon" [ref=e120] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors?cooling_off=expiring
+          - generic [ref=e121]:
+            - img [ref=e123]
+            - generic [ref=e125]: →
+          - paragraph [ref=e126]: Expiring (7 days)
+          - paragraph [ref=e127]: "9"
+          - paragraph [ref=e128]: Cooling-off ending soon
+        - link "Blocked Accounts 0 Blocked by compliance" [ref=e129] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors?status=frozen
+          - generic [ref=e130]:
+            - img [ref=e132]
+            - generic [ref=e134]: →
+          - paragraph [ref=e135]: Blocked Accounts
+          - paragraph [ref=e136]: "0"
+          - paragraph [ref=e137]: Blocked by compliance
+        - link "Audit Events Today 8 System activity" [ref=e138] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/audit-log?from=2026-06-25&to=2026-06-25
+          - generic [ref=e139]:
+            - img [ref=e141]
+            - generic [ref=e143]: →
+          - paragraph [ref=e144]: Audit Events Today
+          - paragraph [ref=e145]: "8"
+          - paragraph [ref=e146]: System activity
+      - generic [ref=e147]:
+        - generic [ref=e148]:
+          - generic [ref=e149]:
+            - heading "Recent Registrations" [level=3] [ref=e150]
+            - link "View all →" [ref=e151] [cursor=pointer]:
+              - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e152]:
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - link "757759241" [ref=e155] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/65
+                - paragraph [ref=e156]: hkn khan
+              - generic [ref=e157]:
+                - text: Pending
+                - paragraph [ref=e158]: 31 May 2026, 06:52 PM
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - link "111215402" [ref=e161] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/64
+                - paragraph [ref=e162]: G Vamshi
+              - generic [ref=e163]:
+                - text: Active
+                - paragraph [ref=e164]: 31 May 2026, 06:44 PM
+            - generic [ref=e165]:
+              - generic [ref=e166]:
+                - link "346040125" [ref=e167] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/63
+                - paragraph [ref=e168]: kvn raju
+              - generic [ref=e169]:
+                - text: Pending
+                - paragraph [ref=e170]: 31 May 2026, 06:29 PM
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - link "408251395" [ref=e173] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/62
+                - paragraph [ref=e174]: P RAMESH
+              - generic [ref=e175]:
+                - text: Pending
+                - paragraph [ref=e176]: 28 May 2026, 06:29 PM
+            - generic [ref=e177]:
+              - generic [ref=e178]:
+                - link "711523668" [ref=e179] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/61
+                - paragraph [ref=e180]: G UPENDAR
+              - generic [ref=e181]:
+                - text: Active
+                - paragraph [ref=e182]: 28 May 2026, 06:13 PM
+            - generic [ref=e183]:
+              - generic [ref=e184]:
+                - link "229703642" [ref=e185] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/60
+                - paragraph [ref=e186]: N AJAY
+              - generic [ref=e187]:
+                - text: Pending
+                - paragraph [ref=e188]: 28 May 2026, 06:03 PM
+            - generic [ref=e189]:
+              - generic [ref=e190]:
+                - link "394325128" [ref=e191] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/59
+                - paragraph [ref=e192]: K RAMAKRISHNA
+              - generic [ref=e193]:
+                - text: Pending
+                - paragraph [ref=e194]: 28 May 2026, 05:29 PM
+            - generic [ref=e195]:
+              - generic [ref=e196]:
+                - link "167649900" [ref=e197] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/distributors/58
+                - paragraph [ref=e198]: nagaraju
+              - generic [ref=e199]:
+                - text: Terminated
+                - paragraph [ref=e200]: 28 May 2026, 04:39 PM
+        - generic [ref=e201]:
+          - generic [ref=e202]:
+            - heading "Recent Audit Events" [level=3] [ref=e203]
+            - link "View all →" [ref=e204] [cursor=pointer]:
+              - /url: http://localhost:8084/admin/audit-log
+          - generic [ref=e205]:
+            - generic [ref=e206]:
+              - generic [ref=e207]:
+                - paragraph [ref=e208]: Compensation carryforward recalculated
+                - generic [ref=e209]: 13 minutes ago
+              - paragraph [ref=e210]: by admin@arovolife.test
+            - generic [ref=e211]:
+              - generic [ref=e212]:
+                - paragraph [ref=e213]: Compensation payout force triggered
+                - generic [ref=e214]: 13 minutes ago
+              - paragraph [ref=e215]: by admin@arovolife.test
+            - generic [ref=e216]:
+              - generic [ref=e217]:
+                - paragraph [ref=e218]: Compensation gsb reversed
+                - generic [ref=e219]: 13 minutes ago
+              - paragraph [ref=e220]: by admin@arovolife.test
+            - generic [ref=e221]:
+              - generic [ref=e222]:
+                - paragraph [ref=e223]: Compensation gsb manual credit
+                - generic [ref=e224]: 16 minutes ago
+              - paragraph [ref=e225]: by admin@arovolife.test
+            - generic [ref=e226]:
+              - generic [ref=e227]:
+                - paragraph [ref=e228]: Compensation gsb unfrozen
+                - generic [ref=e229]: 16 minutes ago
+              - paragraph [ref=e230]: by admin@arovolife.test
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - paragraph [ref=e233]: Compensation gsb frozen
+                - generic [ref=e234]: 16 minutes ago
+              - paragraph [ref=e235]: by admin@arovolife.test
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - paragraph [ref=e238]: Compensation cutoff manual retry
+                - generic [ref=e239]: 18 minutes ago
+              - paragraph [ref=e240]: by admin@arovolife.test
+            - generic [ref=e242]:
+              - paragraph [ref=e243]: Old contact-form inquiries were cleared (data-retention sweep)
+              - generic [ref=e244]: 6 hours ago
+            - generic [ref=e246]:
+              - paragraph [ref=e247]: Old contact-form inquiries were cleared (data-retention sweep)
+              - generic [ref=e248]: 1 week ago
+            - generic [ref=e250]:
+              - paragraph [ref=e251]: Old contact-form inquiries were cleared (data-retention sweep)
+              - generic [ref=e252]: 1 week ago

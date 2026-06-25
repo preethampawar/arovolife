@@ -46,11 +46,18 @@ it('credits sponsor with 10% of sponsee GSB when sponsee cumulative < 30K GSB', 
 
     expect($mb)->not->toBeNull();
     expect($mb->mb_rate_pct)->toBe(10);
-    expect($mb->mb_paise)->toBe(10_000);  // 10% of 100,000
+    // MB gross = 10% of 100,000 = 10,000
+    expect($mb->mb_gross_paise)->toBe(10_000);
+    // Admin charge = 3% of 10,000 = 300
+    expect($mb->mb_admin_charge_paise)->toBe(300);
+    // TDS = 5% of (10,000 - 300) = 5% of 9,700 = 485
+    expect($mb->mb_tds_paise)->toBe(485);
+    // Net = 10,000 - 300 - 485 = 9,215
+    expect($mb->mb_paise)->toBe(9_215);
     expect($mb->status)->toBe('credited');
 
-    // Sponsor wallet should have received 10,000 paise
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(10_000);
+    // Sponsor wallet credited with net amount.
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(9_215);
 });
 
 it('steps down MB rate after each 30K cumulative GSB milestone', function () {
@@ -87,7 +94,9 @@ it('steps down MB rate after each 30K cumulative GSB milestone', function () {
     $mb = $svc->processForSponsee($sponsee->id, $cutoffResult);
 
     expect($mb->mb_rate_pct)->toBe(8);  // 10 - 2 steps (60K = 2 × 30K milestones)
-    expect($mb->mb_paise)->toBe(8_000);
+    // MB gross = 8% of 100,000 = 8,000; admin = 240; TDS = round(7,760 × 5%) = 388; net = 7,372
+    expect($mb->mb_gross_paise)->toBe(8_000);
+    expect($mb->mb_paise)->toBe(7_372);
 });
 
 it('floors MB rate at 1%', function () {
@@ -118,7 +127,9 @@ it('floors MB rate at 1%', function () {
     $mb = $svc->processForSponsee($sponsee->id, $cutoffResult);
 
     expect($mb->mb_rate_pct)->toBe(1);
-    expect($mb->mb_paise)->toBe(1_000);
+    // MB gross = 1% of 100,000 = 1,000; admin = 30; TDS = round(970 × 5%) = 49; net = 921
+    expect($mb->mb_gross_paise)->toBe(1_000);
+    expect($mb->mb_paise)->toBe(921);
 });
 
 it('is idempotent — calling twice for the same cutoff does not double-credit', function () {
@@ -143,5 +154,6 @@ it('is idempotent — calling twice for the same cutoff does not double-credit',
 
     expect(MentorshipBonusResult::count())->toBe(1);
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(1);
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(10_000);
+    // Net MB (10% of 100K, after 3% admin + 5% TDS) = 9,215
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(9_215);
 });

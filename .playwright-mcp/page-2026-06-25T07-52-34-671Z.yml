@@ -1,0 +1,227 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e10]: Internal Server Error
+    - button "Copy as Markdown" [ref=e11] [cursor=pointer]:
+      - img [ref=e12]
+      - generic [ref=e15]: Copy as Markdown
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - heading "Illuminate\\Database\\QueryException" [level=1] [ref=e20]
+      - generic [ref=e22]: vendor/laravel/framework/src/Illuminate/Database/Connection.php:843
+      - paragraph [ref=e23]: "SQLSTATE[42S22]: Column not found: 1054 Unknown column 'password' in 'field list' (Connection: mysql, Host: db, Port: 3306, Database: arovolife, SQL: update `users` set `password` = $2y$12$sg.dHGwaU/hfQirEvBcaTeQ/4ISPDywP5ceJsZ.FBEfl/WHNq.y3G, `users`.`updated_at` = 2026-06-25 13:22:33 where `id` = 1)"
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: LARAVEL
+          - generic [ref=e28]: 13.16.1
+        - generic [ref=e29]:
+          - generic [ref=e30]: PHP
+          - generic [ref=e31]: 8.4.22
+      - generic [ref=e32]:
+        - img [ref=e33]
+        - text: UNHANDLED
+      - generic [ref=e36]: CODE 42S22
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - img [ref=e40]
+        - text: "500"
+      - generic [ref=e43]:
+        - img [ref=e44]
+        - text: POST
+      - generic [ref=e47]: http://localhost:8084/login
+      - button [ref=e48] [cursor=pointer]:
+        - img [ref=e49]
+  - generic [ref=e53]:
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - img [ref=e57]
+        - heading "Exception trace" [level=3] [ref=e60]
+        - link "1 previous exception" [ref=e61] [cursor=pointer]:
+          - /url: "#previous-exceptions"
+      - generic [ref=e62]:
+        - generic [ref=e64] [cursor=pointer]:
+          - img [ref=e65]
+          - generic [ref=e69]: 15 vendor frames
+          - button [ref=e70]:
+            - img [ref=e71]
+        - generic [ref=e75]:
+          - generic [ref=e76] [cursor=pointer]:
+            - generic [ref=e79]:
+              - code [ref=e83]:
+                - generic [ref=e84]: Illuminate\Support\Facades\Facade::__callStatic(string, array)
+              - generic [ref=e86]: app/Modules/Identity/Http/Controllers/Auth/LoginController.php:121
+            - button [ref=e88]:
+              - img [ref=e89]
+          - code [ref=e97]:
+            - generic [ref=e98]: 116 return back()
+            - generic [ref=e99]: 117 ->withInput($request->only('login'))
+            - generic [ref=e100]: 118 ->withErrors(['login' => 'Your account has not been activated yet. Please use the activation link sent to your email, or contact support@arovolife.com.']);
+            - generic [ref=e101]: "119 }"
+            - generic [ref=e102]: "120"
+            - generic [ref=e103]: "121 if (Auth::attempt(['email' => $email, 'password' => $credentials['password']], $request->boolean('remember'))) {"
+            - generic [ref=e104]: 122 RateLimiter::clear($key);
+            - generic [ref=e105]: 123 $request->session()->regenerate();
+            - generic [ref=e106]: "124"
+            - generic [ref=e107]: 125 $user = Auth::user();
+            - generic [ref=e108]: "126"
+            - generic [ref=e109]: 127 // Terminated accounts can authenticate against the password but
+            - generic [ref=e110]: 128 // are immediately signed out and shown an error — they have no
+            - generic [ref=e111]: 129 // place to go. Same pattern as banks use on closed accounts.
+            - generic [ref=e112]: "130 if ($user->status === 'terminated') {"
+            - generic [ref=e113]: 131 Auth::logout();
+            - generic [ref=e114]: 132 $request->session()->invalidate();
+            - generic [ref=e115]: "133"
+        - generic [ref=e117] [cursor=pointer]:
+          - img [ref=e118]
+          - generic [ref=e122]: 52 vendor frames
+          - button [ref=e123]:
+            - img [ref=e124]
+        - generic [ref=e129] [cursor=pointer]:
+          - generic [ref=e132]:
+            - code [ref=e136]:
+              - generic [ref=e137]: Illuminate\Foundation\Application->handleRequest(object(Illuminate\Http\Request))
+            - generic [ref=e139]: public/index.php:20
+          - button [ref=e141]:
+            - img [ref=e142]
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - img [ref=e149]
+        - heading "Previous exception" [level=3] [ref=e152]
+      - generic [ref=e156] [cursor=pointer]:
+        - generic [ref=e157]:
+          - heading "PDOException" [level=4] [ref=e158]
+          - paragraph [ref=e159]: "SQLSTATE[42S22]: Column not found: 1054 Unknown column 'password' in 'field list'"
+        - button [ref=e160]:
+          - img [ref=e161]
+    - generic [ref=e165]:
+      - generic [ref=e166]:
+        - generic [ref=e167]:
+          - img [ref=e169]
+          - heading "Queries" [level=3] [ref=e171]
+        - generic [ref=e173]: 1-4 of 4
+      - generic [ref=e174]:
+        - generic [ref=e175]:
+          - generic [ref=e176]:
+            - generic [ref=e177]:
+              - img [ref=e178]
+              - generic [ref=e180]: mysql
+            - code [ref=e184]:
+              - generic [ref=e185]: "select * from `users` where `email` = 'admin@arovolife.test' limit 1"
+          - generic [ref=e186]: 1.78ms
+        - generic [ref=e187]:
+          - generic [ref=e188]:
+            - generic [ref=e189]:
+              - img [ref=e190]
+              - generic [ref=e192]: mysql
+            - code [ref=e196]:
+              - generic [ref=e197]: "select `roles`.*, `model_has_roles`.`model_id` as `pivot_model_id`, `model_has_roles`.`role_id` as `pivot_role_id`, `model_has_roles`.`model_type` as `pivot_model_type` from `roles` inner join `model_has_roles` on `roles`.`id` = `model_has_roles`.`role_id` where `model_has_roles`.`model_id` in (1) and `model_has_roles`.`model_type` = 'App\\Modules\\Identity\\Models\\User'"
+          - generic [ref=e198]: 0.48ms
+        - generic [ref=e199]:
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - generic [ref=e204]: mysql
+            - code [ref=e208]:
+              - generic [ref=e209]: "select * from `cache` where `key` in ('arovolife-cache-login:admin@arovolife.test|192.168.65.1')"
+          - generic [ref=e210]: 0.22ms
+        - generic [ref=e211]:
+          - generic [ref=e212]:
+            - generic [ref=e213]:
+              - img [ref=e214]
+              - generic [ref=e216]: mysql
+            - code [ref=e220]:
+              - generic [ref=e221]: "select * from `users` where `email` = 'admin@arovolife.test' limit 1"
+          - generic [ref=e222]: 0.21ms
+  - generic [ref=e224]:
+    - generic [ref=e225]:
+      - heading "Headers" [level=2] [ref=e226]
+      - generic [ref=e227]:
+        - generic [ref=e228]:
+          - generic [ref=e229]: cookie
+          - generic [ref=e231]: XSRF-TOKEN=eyJpdiI6InNoN2xLbmsvMERIWnZtWHFXUXMyS1E9PSIsInZhbHVlIjoiSXJMYmV4cnNzMUpmSDNoK25FUkorY0JzTlhJYnV0bGc1UmNlL29BS0dFdUNxdmtSb3JxemQ3NDVNMCtjRm9BOWllR0lkUHlOOEFBY0dSWWdubTNGVFBoVEVaeENyd1grV2dDaS9NeHBOV3R1bkJWTy9FTklYY3FSd1pzU1RmV3kiLCJtYWMiOiJmOWQzNDJhYWNmM2MwZjJkYmQ4MzNkMDIwZGZmYTQ4MTNkYTg3NWIzZDNmMzYwOTk0MWUwMDY4OWI3N2QxYjBmIiwidGFnIjoiIn0%3D; arovolife-session=eyJpdiI6ImxwRy9Wa0xoN0YxdWdZbDkySjNyZGc9PSIsInZhbHVlIjoiQ2x4NEVVdjNtcHJWUVBCQjJiVXgrVVg5dWFwWXBZMjVXTkxwbE12R0VrbW4yYUo4V0EzcGpIU2FXbjdpMHRlamZrbm1EQm9pdWlKWDd2Z0JDWHJtTXVzNGtVVU9WWDBaaFcrK1g3UDl1NkI5b1Vud2U3YWlsYk9MbmVITVh4RWUiLCJtYWMiOiI4MzhhZGE3ZDQ1N2MzNmNmODQxMzExNmJiZTJmYWU0M2ZmMDM0NjE3ZjU2ZGU1ZjY2OWJlNmNiMzUxMTFhZmVmIiwidGFnIjoiIn0%3D
+        - generic [ref=e232]:
+          - generic [ref=e233]: accept-language
+          - generic [ref=e235]: en-GB,en-US;q=0.9,en;q=0.8
+        - generic [ref=e236]:
+          - generic [ref=e237]: accept-encoding
+          - generic [ref=e239]: gzip, deflate, br, zstd
+        - generic [ref=e240]:
+          - generic [ref=e241]: referer
+          - generic [ref=e243]: http://localhost:8084/login
+        - generic [ref=e244]:
+          - generic [ref=e245]: sec-fetch-dest
+          - generic [ref=e247]: document
+        - generic [ref=e248]:
+          - generic [ref=e249]: sec-fetch-user
+          - generic [ref=e251]: "?1"
+        - generic [ref=e252]:
+          - generic [ref=e253]: sec-fetch-mode
+          - generic [ref=e255]: navigate
+        - generic [ref=e256]:
+          - generic [ref=e257]: sec-fetch-site
+          - generic [ref=e259]: same-origin
+        - generic [ref=e260]:
+          - generic [ref=e261]: accept
+          - generic [ref=e263]: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+        - generic [ref=e264]:
+          - generic [ref=e265]: origin
+          - generic [ref=e267]: http://localhost:8084
+        - generic [ref=e268]:
+          - generic [ref=e269]: user-agent
+          - generic [ref=e271]: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36
+        - generic [ref=e272]:
+          - generic [ref=e273]: content-type
+          - generic [ref=e275]: application/x-www-form-urlencoded
+        - generic [ref=e276]:
+          - generic [ref=e277]: upgrade-insecure-requests
+          - generic [ref=e279]: "1"
+        - generic [ref=e280]:
+          - generic [ref=e281]: sec-ch-ua-platform
+          - generic [ref=e283]: "\"macOS\""
+        - generic [ref=e284]:
+          - generic [ref=e285]: sec-ch-ua-mobile
+          - generic [ref=e287]: "?0"
+        - generic [ref=e288]:
+          - generic [ref=e289]: sec-ch-ua
+          - generic [ref=e291]: "\"Google Chrome\";v=\"149\", \"Chromium\";v=\"149\", \"Not)A;Brand\";v=\"24\""
+        - generic [ref=e292]:
+          - generic [ref=e293]: cache-control
+          - generic [ref=e295]: max-age=0
+        - generic [ref=e296]:
+          - generic [ref=e297]: content-length
+          - generic [ref=e299]: "108"
+        - generic [ref=e300]:
+          - generic [ref=e301]: connection
+          - generic [ref=e303]: keep-alive
+        - generic [ref=e304]:
+          - generic [ref=e305]: host
+          - generic [ref=e307]: localhost:8084
+    - generic [ref=e308]:
+      - heading "Body" [level=2] [ref=e309]
+      - code [ref=e314]:
+        - generic [ref=e315]: "{"
+        - generic [ref=e316]: "\"_token\": \"AccjCrO6J49IWPXuVv3vXgBWsZFdckBKRF9LHaNO\","
+        - generic [ref=e317]: "\"login\": \"admin@arovolife.test\","
+        - generic [ref=e318]: "\"password\": \"Admin@1234\","
+        - generic [ref=e319]: "\"primary\": \"1\""
+        - generic [ref=e320]: "}"
+    - generic [ref=e321]:
+      - heading "Routing" [level=2] [ref=e322]
+      - generic [ref=e323]:
+        - generic [ref=e324]:
+          - generic [ref=e325]: controller
+          - generic [ref=e327]: App\Modules\Identity\Http\Controllers\Auth\LoginController@login
+        - generic [ref=e328]:
+          - generic [ref=e329]: route name
+          - generic [ref=e331]: login.post
+        - generic [ref=e332]:
+          - generic [ref=e333]: middleware
+          - generic [ref=e335]: web, guest
+    - generic [ref=e336]:
+      - heading "Routing parameters" [level=2] [ref=e337]
+      - generic [ref=e338]: // No routing parameters
+  - generic [ref=e341]:
+    - img [ref=e343]
+    - img [ref=e3381]

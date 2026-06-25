@@ -1,0 +1,123 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e2]:
+    - generic [ref=e3]:
+      - link "arovolife" [ref=e4] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+        - img "arovolife" [ref=e5]
+      - generic [ref=e6]: Admin Console
+    - generic [ref=e7]:
+      - navigation [ref=e8]:
+        - link "⬡ Dashboard" [ref=e9] [cursor=pointer]:
+          - /url: http://localhost:8084/admin
+          - generic [ref=e10]: ⬡
+          - generic [ref=e11]: Dashboard
+        - link "◉ Distributors" [ref=e12] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e13]: ◉
+          - generic [ref=e14]: Distributors
+        - link "⌬ Genealogy tree" [ref=e15] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/tree
+          - generic [ref=e16]: ⌬
+          - generic [ref=e17]: Genealogy tree
+        - link "✓ KYC review" [ref=e18] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/kyc
+          - generic [ref=e19]: ✓
+          - generic [ref=e20]: KYC review
+        - link "⇄ Line changes" [ref=e21] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/line-changes
+          - generic [ref=e22]: ⇄
+          - generic [ref=e23]: Line changes
+        - link "✉ Contact Inbox 5" [ref=e24] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/contact-inquiries
+          - generic [ref=e25]: ✉
+          - generic [ref=e26]: Contact Inbox
+          - generic [ref=e27]: "5"
+        - link "🛒 Orders" [ref=e28] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/orders
+          - generic [ref=e29]: 🛒
+          - generic [ref=e30]: Orders
+        - link "📊 BV Ledger" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/bv-ledger
+          - generic [ref=e32]: 📊
+          - generic [ref=e33]: BV Ledger
+        - link "💰 Compensation" [ref=e34] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation
+          - generic [ref=e36]: 💰
+          - generic [ref=e37]: Compensation
+        - link "🏷 Coupons" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/coupons
+          - generic [ref=e39]: 🏷
+          - generic [ref=e40]: Coupons
+        - link "📦 Products" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/products
+          - generic [ref=e42]: 📦
+          - generic [ref=e43]: Products
+        - link "🗂 Categories" [ref=e44] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/categories
+          - generic [ref=e45]: 🗂
+          - generic [ref=e46]: Categories
+        - link "🖼 Banners" [ref=e47] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/banners
+          - generic [ref=e48]: 🖼
+          - generic [ref=e49]: Banners
+        - link "📄 Content Pages" [ref=e50] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/content
+          - generic [ref=e51]: 📄
+          - generic [ref=e52]: Content Pages
+        - link "🛡 Compliance Docs" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compliance-documents
+          - generic [ref=e54]: 🛡
+          - generic [ref=e55]: Compliance Docs
+        - link "⚙ Settings" [ref=e56] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/settings
+          - generic [ref=e57]: ⚙
+          - generic [ref=e58]: Settings
+        - link "⚑ Feature flags" [ref=e59] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/feature-flags
+          - generic [ref=e60]: ⚑
+          - generic [ref=e61]: Feature flags
+        - link "☰ Audit Log" [ref=e62] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/audit-log
+          - generic [ref=e63]: ☰
+          - generic [ref=e64]: Audit Log
+        - link "❔ Help & Reference" [ref=e65] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/help
+          - generic [ref=e66]: ❔
+          - generic [ref=e67]: Help & Reference
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: admin@arovolife.test
+        - button "⏻ Sign out" [ref=e71]:
+          - generic [ref=e72]: ⏻
+          - text: Sign out
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]: Admin
+        - heading "Daily GSB Cut-offs" [level=1] [ref=e77]
+      - generic [ref=e78]:
+        - generic [ref=e79]: 25 Jun 2026, 09:31 IST
+        - generic [ref=e80]: "|"
+        - link "← Distributor view" [ref=e81] [cursor=pointer]:
+          - /url: http://localhost:8084/dashboard
+    - main [ref=e82]:
+      - generic [ref=e83]:
+        - text: "Each row is one 23:59 cut-off for one distributor. The slab is determined by the lower of the distributor's personal purchase title and the matched left/right group BV. After each cut-off: weaker leg resets to zero, power leg carries forward (capped 4,50,000 BV). Slab 1 (15,000 BV) is lifetime — the weaker leg accumulates until matched. Use"
+        - link "Manual Controls" [ref=e84] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/manual-controls
+        - text: to retry failed rows or reverse incorrect credits.
+      - generic [ref=e85]:
+        - textbox [ref=e86]: 2026-06-25
+        - combobox [ref=e87]:
+          - option "All statuses" [selected]
+          - option "Credited"
+          - option "Reversed"
+          - option "Failed"
+          - option "No match"
+          - option "Frozen"
+          - option "Below 600bv"
+          - option "Calculated"
+        - textbox "Search ADN…" [ref=e88]
+        - button "Apply" [ref=e89]
+        - link "⬇ CSV" [ref=e90] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation/daily-cutoffs/export?date=2026-06-25
+      - paragraph [ref=e92]: No cut-off data for 25 Jun 2026. GSB engine not yet active.

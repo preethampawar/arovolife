@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutService;
@@ -17,8 +18,26 @@ beforeEach(function (): void {
     disableTestForeignKeys();
 });
 
-it('generates a PENDING batch after run — wallets debited, awaiting admin approval', function () {
+/**
+ * Create a distributor with sufficient personal BV to pass the Retailer gate
+ * (3,000 BV = 300,000 paise) and receive NEFT payouts.
+ */
+function makePayoutEligibleDistributor(): Distributor
+{
     $dist = Distributor::factory()->create();
+    BvLedgerEntry::create([
+        'distributor_id' => $dist->id,
+        'order_id'       => 900_000 + $dist->id,  // unique per distributor
+        'bv_paise'       => 300_000,               // exactly 3,000 BV — Retailer threshold
+        'type'           => 'accrual',
+        'effective_at'   => now(),
+    ]);
+
+    return $dist;
+}
+
+it('generates a PENDING batch after run — wallets debited, awaiting admin approval', function () {
+    $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
     $walletSvc->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000
@@ -42,7 +61,7 @@ it('generates a PENDING batch after run — wallets debited, awaiting admin appr
 
 it('approve() marks batch COMPLETED and line items TRANSFERRED', function () {
     $admin = User::factory()->create();
-    $dist = Distributor::factory()->create();
+    $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
     $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
@@ -61,7 +80,7 @@ it('approve() marks batch COMPLETED and line items TRANSFERRED', function () {
 });
 
 it('skips wallet below minimum payout threshold', function () {
-    $dist = Distributor::factory()->create();
+    $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
     $walletSvc->credit($dist->id, 40_000, 'gsb_credit'); // ₹400 — below ₹500 minimum
@@ -77,7 +96,7 @@ it('skips wallet below minimum payout threshold', function () {
 });
 
 it('is idempotent — running twice returns the same batch without double-debiting', function () {
-    $dist = Distributor::factory()->create();
+    $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
     $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
@@ -95,7 +114,7 @@ it('is idempotent — running twice returns the same batch without double-debiti
 });
 
 it('applies repurchase deduction from prior month gsb and mb credits', function () {
-    $dist = Distributor::factory()->create();
+    $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
 
@@ -124,7 +143,7 @@ it('applies repurchase deduction from prior month gsb and mb credits', function 
 });
 
 it('skips distributors with zero wallet balance', function () {
-    $dist = Distributor::factory()->create();
+    $dist = makePayoutEligibleDistributor();
 
     $svc = app(PayoutService::class);
     $batch = $svc->runBatch(Carbon::today());
@@ -134,8 +153,8 @@ it('skips distributors with zero wallet balance', function () {
 });
 
 it('accumulates totals correctly across multiple distributors', function () {
-    $dist1 = Distributor::factory()->create();
-    $dist2 = Distributor::factory()->create();
+    $dist1 = makePayoutEligibleDistributor();
+    $dist2 = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
     $walletSvc->credit($dist1->id, 100_000, 'gsb_credit');
@@ -148,4 +167,29 @@ it('accumulates totals correctly across multiple distributors', function () {
     expect($batch->total_gross_paise)->toBe(300_000);
     expect($batch->total_net_paise)->toBe(300_000);
     expect($batch->status)->toBe(PayoutBatch::STATUS_PENDING);
+});
+
+it('marks web_only for distributor with personal BV below 3,000 BV Retailer threshold', function () {
+    // Distributor with only 2,999 BV — below Retailer title, NEFT blocked.
+    $dist = Distributor::factory()->create();
+    BvLedgerEntry::create([
+        'distributor_id' => $dist->id,
+        'order_id'       => 800_000 + $dist->id,
+        'bv_paise'       => 299_900,   // 2,999 BV — one BV below the threshold
+        'type'           => 'accrual',
+        'effective_at'   => now(),
+    ]);
+
+    $walletSvc = app(WalletService::class);
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
+
+    $svc = app(PayoutService::class);
+    $svc->runBatch(Carbon::today());
+
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_WEB_ONLY);
+    expect($line->net_transferred_paise)->toBe(0);
+
+    // Wallet balance is NOT debited — balance stays available in back-office.
+    expect($walletSvc->balancePaise($dist->id))->toBe(100_000);
 });

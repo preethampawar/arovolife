@@ -113,17 +113,25 @@ final class GsbCutoffService
             $weakerEffective = $leftEffective;
         }
 
-        // Add slab-1 carry-forward to weaker side for matching purposes.
+        // Slab 1 carry-forward is lifetime-accumulated (spec: "no daily cutoff, no time limit").
+        // Slabs 2–7 use fresh weaker BV ONLY (spec: "no carry-forward; calculated fresh each day").
+        // $weakerTotal is computed once here — also used by the no-match path to accumulate CF.
         $weakerTotal = $weakerEffective + $cf->slab1_weaker_bv_paise;
 
-        // Find the highest matching slab, capped by personal title.
         $matchedSlab = null;
 
-        foreach (array_reverse(self::SLABS, preserve_keys: true) as $slabIndex => [$threshold, $incentive]) {
-            if ($slabIndex <= $title->maxGsbSlab && $weakerTotal >= $threshold) {
+        // Slabs 7→2: fresh weaker BV only — slab1 CF must NOT apply here.
+        foreach ([7, 6, 5, 4, 3, 2] as $slabIndex) {
+            [$threshold, $incentive] = self::SLABS[$slabIndex];
+            if ($slabIndex <= $title->maxGsbSlab && $weakerEffective >= $threshold) {
                 $matchedSlab = ['index' => $slabIndex, 'threshold' => $threshold, 'incentive' => $incentive];
                 break;
             }
+        }
+
+        // Slab 1: lifetime accumulation (includes today's fresh + historical CF).
+        if ($matchedSlab === null && $title->maxGsbSlab >= 1 && $weakerTotal >= self::SLABS[1][0]) {
+            $matchedSlab = ['index' => 1, 'threshold' => self::SLABS[1][0], 'incentive' => self::SLABS[1][1]];
         }
 
         if ($matchedSlab === null) {

@@ -1,0 +1,181 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - button "AP Arovolife Private Limited" [ref=e6]:
+        - generic [ref=e7]: AP
+        - generic [ref=e8]: Arovolife Private Limited
+        - img [ref=e9]
+      - generic [ref=e11]: "|"
+      - group "Adjust font size" [ref=e12]:
+        - button "Smaller text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: −
+        - button "Default text" [ref=e15]: A
+        - button "Larger text" [ref=e16]:
+          - text: A
+          - generic [ref=e17]: +
+        - button "Largest text" [ref=e18]:
+          - text: A
+          - generic [ref=e19]: ++
+        - button "Reset font size" [ref=e20]: ↺
+      - generic [ref=e21]: "|"
+      - link "My Dashboard" [ref=e22] [cursor=pointer]:
+        - /url: http://localhost:8084/dashboard
+      - generic [ref=e23]: "|"
+      - generic [ref=e24]: India 🇮🇳
+    - navigation [ref=e25]:
+      - generic [ref=e26]:
+        - link "arovolife" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084
+          - img "arovolife" [ref=e28]
+        - generic [ref=e29]:
+          - link "Home" [ref=e30] [cursor=pointer]:
+            - /url: http://localhost:8084
+          - link "Shop" [ref=e31] [cursor=pointer]:
+            - /url: http://localhost:8084/shop
+          - link "About" [ref=e32] [cursor=pointer]:
+            - /url: http://localhost:8084/about-us
+          - link "How It Works" [ref=e33] [cursor=pointer]:
+            - /url: http://localhost:8084#how-it-works
+          - link "Contact" [ref=e34] [cursor=pointer]:
+            - /url: http://localhost:8084/contact-us
+          - button "Categories" [ref=e36]:
+            - text: Categories
+            - img [ref=e37]
+          - link "Messages" [ref=e39] [cursor=pointer]:
+            - /url: http://localhost:8084/messages
+            - img [ref=e40]
+          - link "Cart" [ref=e42] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/cart
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e46]: "0"
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - heading "My Income" [level=1] [ref=e49]
+      - generic [ref=e50]:
+        - link "Dashboard" [ref=e51] [cursor=pointer]:
+          - /url: http://localhost:8084/income
+        - link "Genos BV" [ref=e52] [cursor=pointer]:
+          - /url: http://localhost:8084/income/genos-bv
+        - link "GSB History" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/income/gsb-history
+        - link "Mentorship" [ref=e54] [cursor=pointer]:
+          - /url: http://localhost:8084/income/mentorship
+        - link "Wallet & Payouts" [ref=e55] [cursor=pointer]:
+          - /url: http://localhost:8084/income/wallet
+      - generic [ref=e56]: "Your wallet receives GSB and Mentorship Bonus credits after each 23:59 cut-off. Every Tuesday, your wallet balance (minus deductions) is transferred to your registered bank account — provided the balance is at least ₹500. Repurchase deduction: 10% of your previous month's GSB + Mentorship Bonus (max ₹10,000) is held back to fund your mandatory monthly repurchase. Balances below ₹500 roll over to the next Tuesday."
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - paragraph [ref=e60]: Wallet Balance
+            - generic [ref=e61]:
+              - button "More information" [ref=e62]: i
+              - tooltip "Total GSB and Mentorship Bonus credits in your wallet awaiting the next Tuesday payout."
+          - paragraph [ref=e63]: ₹—
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - paragraph [ref=e66]: Total Paid Out
+            - generic [ref=e67]:
+              - button "More information" [ref=e68]: i
+              - tooltip "Total amount transferred to your bank account since you joined."
+          - paragraph [ref=e69]: ₹—
+        - generic [ref=e70]:
+          - paragraph [ref=e72]: Next Payout Date
+          - paragraph [ref=e73]: —
+          - paragraph [ref=e74]: Every Tuesday
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - paragraph [ref=e77]: Min. Payout
+            - generic [ref=e78]:
+              - button "More information" [ref=e79]: i
+              - tooltip "Wallet balances below ₹500 roll over to the next Tuesday."
+          - paragraph [ref=e80]: ₹500
+      - generic [ref=e81]:
+        - heading "Wallet Ledger" [level=2] [ref=e82]
+        - link "⬇ CSV" [ref=e83] [cursor=pointer]:
+          - /url: http://localhost:8084/income/wallet/export
+      - table [ref=e85]:
+        - rowgroup [ref=e86]:
+          - row "Date Type More information gsb_credit = daily GSB. mb_credit = Mentorship Bonus. payout_debit = Tuesday bank transfer. manual_credit = admin adjustment. Amount Running balance More information Your wallet balance immediately after this entry." [ref=e87]:
+            - columnheader "Date" [ref=e88]
+            - columnheader "Type More information gsb_credit = daily GSB. mb_credit = Mentorship Bonus. payout_debit = Tuesday bank transfer. manual_credit = admin adjustment." [ref=e89]:
+              - generic [ref=e90]:
+                - text: Type
+                - generic [ref=e91]:
+                  - button "More information" [ref=e92]: i
+                  - tooltip "gsb_credit = daily GSB. mb_credit = Mentorship Bonus. payout_debit = Tuesday bank transfer. manual_credit = admin adjustment."
+            - columnheader "Amount" [ref=e93]
+            - columnheader "Running balance More information Your wallet balance immediately after this entry." [ref=e94]:
+              - generic [ref=e95]:
+                - text: Running balance
+                - generic [ref=e96]:
+                  - button "More information" [ref=e97]: i
+                  - tooltip "Your wallet balance immediately after this entry."
+        - rowgroup [ref=e98]:
+          - row "25 Jun 2026 gsb_credit +₹921.50 ₹921.50" [ref=e99]:
+            - cell "25 Jun 2026" [ref=e100]
+            - cell "gsb_credit" [ref=e101]
+            - cell "+₹921.50" [ref=e102]
+            - cell "₹921.50" [ref=e103]
+          - row "25 Jun 2026 gsb_credit +₹2,764.50 ₹3,686.00" [ref=e104]:
+            - cell "25 Jun 2026" [ref=e105]
+            - cell "gsb_credit" [ref=e106]
+            - cell "+₹2,764.50" [ref=e107]
+            - cell "₹3,686.00" [ref=e108]
+          - row "25 Jun 2026 mb_credit +₹92.15 ₹3,778.15" [ref=e109]:
+            - cell "25 Jun 2026" [ref=e110]
+            - cell "mb_credit" [ref=e111]
+            - cell "+₹92.15" [ref=e112]
+            - cell "₹3,778.15" [ref=e113]
+          - row "25 Jun 2026 manual_credit +₹100.00 ₹3,878.15" [ref=e114]:
+            - cell "25 Jun 2026" [ref=e115]
+            - cell "manual_credit" [ref=e116]
+            - cell "+₹100.00" [ref=e117]
+            - cell "₹3,878.15" [ref=e118]
+          - row "25 Jun 2026 reversal -₹2,764.50 ₹1,113.65" [ref=e119]:
+            - cell "25 Jun 2026" [ref=e120]
+            - cell "reversal" [ref=e121]
+            - cell "-₹2,764.50" [ref=e122]
+            - cell "₹1,113.65" [ref=e123]
+      - heading "Payout History" [level=2] [ref=e124]
+      - table [ref=e126]:
+        - rowgroup [ref=e127]:
+          - row "Date Net transferred More information Amount actually sent to your bank account after all deductions. Status UTR" [ref=e128]:
+            - columnheader "Date" [ref=e129]
+            - columnheader "Net transferred More information Amount actually sent to your bank account after all deductions." [ref=e130]:
+              - generic [ref=e131]:
+                - text: Net transferred
+                - generic [ref=e132]:
+                  - button "More information" [ref=e133]: i
+                  - tooltip "Amount actually sent to your bank account after all deductions."
+            - columnheader "Status" [ref=e134]
+            - columnheader "UTR" [ref=e135]
+        - rowgroup [ref=e136]:
+          - row "25 Jun 2026 ₹3,400.34 Transferred UTR20260624001" [ref=e137]:
+            - cell "25 Jun 2026" [ref=e138]
+            - cell "₹3,400.34" [ref=e139]
+            - cell "Transferred" [ref=e140]:
+              - generic [ref=e141]: Transferred
+            - cell "UTR20260624001" [ref=e142]
+  - contentinfo [ref=e143]:
+    - generic [ref=e144]:
+      - link "Terms" [ref=e145] [cursor=pointer]:
+        - /url: http://localhost:8084/p/terms
+      - link "Privacy" [ref=e146] [cursor=pointer]:
+        - /url: http://localhost:8084/p/privacy
+      - link "Code of Ethics" [ref=e147] [cursor=pointer]:
+        - /url: http://localhost:8084/p/ethics
+      - link "Grievance" [ref=e148] [cursor=pointer]:
+        - /url: http://localhost:8084/p/grievance
+      - link "Compliance Documents" [ref=e149] [cursor=pointer]:
+        - /url: http://localhost:8084/compliance-documents
+    - paragraph [ref=e150]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e151] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e152] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
+    - paragraph [ref=e153]: Arovolife Private Limited — CIN U46909TS2026PTC210896

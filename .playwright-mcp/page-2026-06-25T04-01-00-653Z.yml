@@ -1,0 +1,157 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e2]:
+    - generic [ref=e3]:
+      - link "arovolife" [ref=e4] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+        - img "arovolife" [ref=e5]
+      - generic [ref=e6]: Admin Console
+    - generic [ref=e7]:
+      - navigation [ref=e8]:
+        - link "⬡ Dashboard" [ref=e9] [cursor=pointer]:
+          - /url: http://localhost:8084/admin
+          - generic [ref=e10]: ⬡
+          - generic [ref=e11]: Dashboard
+        - link "◉ Distributors" [ref=e12] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e13]: ◉
+          - generic [ref=e14]: Distributors
+        - link "⌬ Genealogy tree" [ref=e15] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/tree
+          - generic [ref=e16]: ⌬
+          - generic [ref=e17]: Genealogy tree
+        - link "✓ KYC review" [ref=e18] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/kyc
+          - generic [ref=e19]: ✓
+          - generic [ref=e20]: KYC review
+        - link "⇄ Line changes" [ref=e21] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/line-changes
+          - generic [ref=e22]: ⇄
+          - generic [ref=e23]: Line changes
+        - link "✉ Contact Inbox 5" [ref=e24] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/contact-inquiries
+          - generic [ref=e25]: ✉
+          - generic [ref=e26]: Contact Inbox
+          - generic [ref=e27]: "5"
+        - link "🛒 Orders" [ref=e28] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/orders
+          - generic [ref=e29]: 🛒
+          - generic [ref=e30]: Orders
+        - link "📊 BV Ledger" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/bv-ledger
+          - generic [ref=e32]: 📊
+          - generic [ref=e33]: BV Ledger
+        - link "💰 Compensation" [ref=e34] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation
+          - generic [ref=e36]: 💰
+          - generic [ref=e37]: Compensation
+        - link "🏷 Coupons" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/coupons
+          - generic [ref=e39]: 🏷
+          - generic [ref=e40]: Coupons
+        - link "📦 Products" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/products
+          - generic [ref=e42]: 📦
+          - generic [ref=e43]: Products
+        - link "🗂 Categories" [ref=e44] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/categories
+          - generic [ref=e45]: 🗂
+          - generic [ref=e46]: Categories
+        - link "🖼 Banners" [ref=e47] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/banners
+          - generic [ref=e48]: 🖼
+          - generic [ref=e49]: Banners
+        - link "📄 Content Pages" [ref=e50] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/content
+          - generic [ref=e51]: 📄
+          - generic [ref=e52]: Content Pages
+        - link "🛡 Compliance Docs" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compliance-documents
+          - generic [ref=e54]: 🛡
+          - generic [ref=e55]: Compliance Docs
+        - link "⚙ Settings" [ref=e56] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/settings
+          - generic [ref=e57]: ⚙
+          - generic [ref=e58]: Settings
+        - link "⚑ Feature flags" [ref=e59] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/feature-flags
+          - generic [ref=e60]: ⚑
+          - generic [ref=e61]: Feature flags
+        - link "☰ Audit Log" [ref=e62] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/audit-log
+          - generic [ref=e63]: ☰
+          - generic [ref=e64]: Audit Log
+        - link "❔ Help & Reference" [ref=e65] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/help
+          - generic [ref=e66]: ❔
+          - generic [ref=e67]: Help & Reference
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: admin@arovolife.test
+        - button "⏻ Sign out" [ref=e71]:
+          - generic [ref=e72]: ⏻
+          - text: Sign out
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]: Admin
+        - heading "Payout Batch — 24 Jun 2026" [level=1] [ref=e77]
+      - generic [ref=e78]:
+        - generic [ref=e79]: 25 Jun 2026, 09:31 IST
+        - generic [ref=e80]: "|"
+        - link "← Distributor view" [ref=e81] [cursor=pointer]:
+          - /url: http://localhost:8084/dashboard
+    - main [ref=e82]:
+      - link "← Back to payout batches" [ref=e84] [cursor=pointer]:
+        - /url: http://localhost:8084/admin/compensation/weekly-payouts
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - paragraph [ref=e87]: Distributors
+          - paragraph [ref=e88]: "1"
+        - generic [ref=e89]:
+          - paragraph [ref=e90]:
+            - text: Total gross
+            - generic [ref=e91]:
+              - button "More information" [ref=e92]: i
+              - tooltip "Sum of wallet balances before repurchase deduction."
+          - paragraph [ref=e93]: ₹3,778.15
+        - generic [ref=e94]:
+          - paragraph [ref=e95]:
+            - text: Deductions
+            - generic [ref=e96]:
+              - button "More information" [ref=e97]: i
+              - tooltip "Repurchase wallet deductions across all line items."
+          - paragraph [ref=e98]: ₹377.81
+        - generic [ref=e99]:
+          - paragraph [ref=e100]: Net transferred
+          - paragraph [ref=e101]: ₹3,400.34
+      - generic [ref=e102]:
+        - generic [ref=e103]: Line items
+        - table [ref=e105]:
+          - rowgroup [ref=e106]:
+            - row "ADN Name Wallet balance More information Total wallet balance at time of payout batch. Repurchase deduction More information 10% of prior month GSB+MB+RB, capped ₹10,000. Net transferred UTR Status" [ref=e107]:
+              - columnheader "ADN" [ref=e108]
+              - columnheader "Name" [ref=e109]
+              - columnheader "Wallet balance More information Total wallet balance at time of payout batch." [ref=e110]:
+                - text: Wallet balance
+                - generic [ref=e111]:
+                  - button "More information" [ref=e112]: i
+                  - tooltip "Total wallet balance at time of payout batch."
+              - columnheader "Repurchase deduction More information 10% of prior month GSB+MB+RB, capped ₹10,000." [ref=e113]:
+                - text: Repurchase deduction
+                - generic [ref=e114]:
+                  - button "More information" [ref=e115]: i
+                  - tooltip "10% of prior month GSB+MB+RB, capped ₹10,000."
+              - columnheader "Net transferred" [ref=e116]
+              - columnheader "UTR" [ref=e117]
+              - columnheader "Status" [ref=e118]
+          - rowgroup [ref=e119]:
+            - row "444555666 Arovolife Private Limited ₹3,778.15 ₹377.81 ₹3,400.34 UTR20260624001 Transferred" [ref=e120]:
+              - cell "444555666" [ref=e121]:
+                - link "444555666" [ref=e122] [cursor=pointer]:
+                  - /url: http://localhost:8084/admin/compensation/distributors/1
+              - cell "Arovolife Private Limited" [ref=e123]
+              - cell "₹3,778.15" [ref=e124]
+              - cell "₹377.81" [ref=e125]
+              - cell "₹3,400.34" [ref=e126]
+              - cell "UTR20260624001" [ref=e127]
+              - cell "Transferred" [ref=e128]:
+                - generic [ref=e129]: Transferred

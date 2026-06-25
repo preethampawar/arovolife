@@ -1,0 +1,209 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e2]:
+    - generic [ref=e3]:
+      - link "arovolife" [ref=e4] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+        - img "arovolife" [ref=e5]
+      - generic [ref=e6]: Admin Console
+    - generic [ref=e7]:
+      - navigation [ref=e8]:
+        - link "⬡ Dashboard" [ref=e9] [cursor=pointer]:
+          - /url: http://localhost:8084/admin
+          - generic [ref=e10]: ⬡
+          - generic [ref=e11]: Dashboard
+        - link "◉ Distributors" [ref=e12] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e13]: ◉
+          - generic [ref=e14]: Distributors
+        - link "⌬ Genealogy tree" [ref=e15] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/tree
+          - generic [ref=e16]: ⌬
+          - generic [ref=e17]: Genealogy tree
+        - link "✓ KYC review" [ref=e18] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/kyc
+          - generic [ref=e19]: ✓
+          - generic [ref=e20]: KYC review
+        - link "⇄ Line changes" [ref=e21] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/line-changes
+          - generic [ref=e22]: ⇄
+          - generic [ref=e23]: Line changes
+        - link "✉ Contact Inbox 5" [ref=e24] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/contact-inquiries
+          - generic [ref=e25]: ✉
+          - generic [ref=e26]: Contact Inbox
+          - generic [ref=e27]: "5"
+        - link "🛒 Orders" [ref=e28] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/orders
+          - generic [ref=e29]: 🛒
+          - generic [ref=e30]: Orders
+        - link "📊 BV Ledger" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/bv-ledger
+          - generic [ref=e32]: 📊
+          - generic [ref=e33]: BV Ledger
+        - link "💰 Compensation" [ref=e34] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compensation
+          - generic [ref=e35]: 💰
+          - generic [ref=e36]: Compensation
+        - link "🏷 Coupons" [ref=e37] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/coupons
+          - generic [ref=e38]: 🏷
+          - generic [ref=e39]: Coupons
+        - link "📦 Products" [ref=e40] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/products
+          - generic [ref=e41]: 📦
+          - generic [ref=e42]: Products
+        - link "🗂 Categories" [ref=e43] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/categories
+          - generic [ref=e44]: 🗂
+          - generic [ref=e45]: Categories
+        - link "🖼 Banners" [ref=e46] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/banners
+          - generic [ref=e47]: 🖼
+          - generic [ref=e48]: Banners
+        - link "📄 Content Pages" [ref=e49] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/content
+          - generic [ref=e50]: 📄
+          - generic [ref=e51]: Content Pages
+        - link "🛡 Compliance Docs" [ref=e52] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compliance-documents
+          - generic [ref=e53]: 🛡
+          - generic [ref=e54]: Compliance Docs
+        - link "⚙ Settings" [ref=e55] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/settings
+          - generic [ref=e56]: ⚙
+          - generic [ref=e57]: Settings
+        - link "⚑ Feature flags" [ref=e58] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/feature-flags
+          - generic [ref=e60]: ⚑
+          - generic [ref=e61]: Feature flags
+        - link "☰ Audit Log" [ref=e62] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/audit-log
+          - generic [ref=e63]: ☰
+          - generic [ref=e64]: Audit Log
+        - link "❔ Help & Reference" [ref=e65] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/help
+          - generic [ref=e66]: ❔
+          - generic [ref=e67]: Help & Reference
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: admin@arovolife.test
+        - button "⏻ Sign out" [ref=e71]:
+          - generic [ref=e72]: ⏻
+          - text: Sign out
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]: Admin
+        - heading "Feature flags" [level=1] [ref=e77]
+      - generic [ref=e78]:
+        - generic [ref=e79]: 25 Jun 2026, 13:23 IST
+        - generic [ref=e80]: "|"
+        - link "← Distributor view" [ref=e81] [cursor=pointer]:
+          - /url: http://localhost:8084/dashboard
+    - main [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - paragraph [ref=e85]: Feature flags
+          - paragraph [ref=e86]: Runtime switches that enable or disable platform features. Some (like the registration killswitch) have wide impact; every toggle is audit-logged.
+        - paragraph [ref=e87]:
+          - text: Runtime toggles for rollouts and killswitches. Every change writes an
+          - code [ref=e88]: audit_log
+          - text: entry of action
+          - code [ref=e89]: feature_flag.toggled
+          - text: .
+        - generic [ref=e90]:
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - code [ref=e94]: registration.killswitch
+                - generic [ref=e95]: Active
+              - generic [ref=e96]:
+                - text: Registration killswitch
+                - generic [ref=e97]:
+                  - button "More information" [ref=e98]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e99]: When OFF, the public /register and /join entry points return a "temporarily closed" page. In-progress wizards continue.
+            - button "Deactivate" [ref=e101]
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - code [ref=e105]: password.hibp_check
+                - generic [ref=e106]: Active
+              - generic [ref=e107]:
+                - text: HIBP password breach check
+                - generic [ref=e108]:
+                  - button "More information" [ref=e109]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e110]: Extra layer of password security. When ON, every new/changed password is checked against the Have-I-Been-Pwned breach database via k-anonymity API (api.pwnedpasswords.com). When OFF, the breach check is skipped — only the zxcvbn entropy gate runs. Keep ON in production; safe to turn OFF on offline staging boxes or for demo seeding.
+            - button "Deactivate" [ref=e112]
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]:
+                - code [ref=e116]: compensation.mentorship_bonus
+                - generic [ref=e117]: Inactive
+              - generic [ref=e118]:
+                - text: Mentorship Bonus (Phase 4)
+                - generic [ref=e119]:
+                  - button "More information" [ref=e120]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e121]: Shows the Mentorship Bonus income tab and admin views for distributors. Enable after partners approve the 5% mentorship plan. Slabs step down from 10% → 1% per ₹30k of sponsee GSB.
+            - button "Activate" [ref=e123]
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - code [ref=e127]: compensation.growth_booster_bonus
+                - generic [ref=e128]: Inactive
+              - generic [ref=e129]:
+                - text: Growth Booster Bonus (Phase 4)
+                - generic [ref=e130]:
+                  - button "More information" [ref=e131]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e132]: Enables the monthly GBB pool (5% of turnover) distributed via AGP points. Shows the Growth Booster tab in income views and admin GBB dashboard. Also gates the gbb:monthly-run artisan command.
+            - button "Activate" [ref=e134]
+          - generic [ref=e135]:
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - code [ref=e138]: compensation.rank_bonus
+                - generic [ref=e139]: Inactive
+              - generic [ref=e140]:
+                - text: Rank Bonus (Phase 5)
+                - generic [ref=e141]:
+                  - button "More information" [ref=e142]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e143]: Enables the 21% rank bonus pool split across 9 ranks (Silver → Elite Diamond). Paid monthly on the 8th. Requires rank qualification engine and 1+2 rule tracking.
+            - button "Activate" [ref=e145]
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - generic [ref=e148]:
+                - code [ref=e149]: compensation.lifetime_awards
+                - generic [ref=e150]: Inactive
+              - generic [ref=e151]:
+                - text: Lifetime Awards & Rewards (Phase 5)
+                - generic [ref=e152]:
+                  - button "More information" [ref=e153]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e154]: Non-cash rewards triggered on rank achievement (32% of turnover, non-cash). Tracks award delivery workflow for cars, insurance, trips. Requires perquisite tax verification before release.
+            - button "Activate" [ref=e156]
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - generic [ref=e159]:
+                - code [ref=e160]: compensation.fortune_bonus
+                - generic [ref=e161]: Inactive
+              - generic [ref=e162]:
+                - text: Fortune Bonus (Phase 6)
+                - generic [ref=e163]:
+                  - button "More information" [ref=e164]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e165]: Enables the 3×9 monthly matrix bonus (replaces Auto Pool). Participation-based, first-come-first-served placement. Monthly reset. Capped at Rank 5.
+            - button "Activate" [ref=e167]
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - code [ref=e171]: compensation.arete_development_center_bonus
+                - generic [ref=e172]: Inactive
+              - generic [ref=e173]:
+                - text: Arete Development Center Bonus (Phase 7)
+                - generic [ref=e174]:
+                  - button "More information" [ref=e175]: i
+                  - tooltip "Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible."
+              - generic [ref=e176]: Enables 3% BV-based bonus for official Arete Development Centers, capped at ₹1 lakh/month per center. Paid on the 8th. Requires center assignment and approved center records.
+            - button "Activate" [ref=e178]
