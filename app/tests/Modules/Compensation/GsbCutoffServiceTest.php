@@ -268,6 +268,44 @@ it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
     expect($result->gross_gsb_paise)->toBe(100_000);  // slab 1 = ₹1,000
 });
 
+it('slab1 does NOT match when stronger side is below 15K threshold even if weaker total exceeds it', function () {
+    // Scenario: 14 no-match days accumulated 14K BV on the weaker (left) side via slab1_cf.
+    // Today, weaker adds 2K (total 16K ≥ 15K) but the stronger side only has 12K.
+    // Per spec "15K/15K", the stronger side must ALSO be ≥ 15K for slab 1 to fire.
+    $dist = makeDistributorWithBv(300_000);  // Retailer
+
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 1_200_000,  // 12,000 BV power CF on the right (stronger) side
+        'power_side' => 'R',
+        'slab1_weaker_bv_paise' => 1_400_000,  // 14,000 BV accumulated on left (weaker)
+    ]);
+
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 200_000,   // 2,000 BV today (left)
+        'right_bv_paise' => 0,        // 0 BV today (right) — effective right = 0 + 1,200K = 1,200K
+    ]);
+
+    // right effective = 1,200K (power CF) > left effective = 200K → right stronger.
+    // weakerTotal = 200K + 1,400K = 1,600K ≥ 1,500K (15K threshold) ✓
+    // strongerEffective = 1,200K < 1,500K ✗ → should NOT match.
+
+    $svc = app(GsbCutoffService::class);
+    $result = $svc->runForDistributor($dist->id, Carbon::today());
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_NO_MATCH);
+    expect($result->slab)->toBeNull();
+
+    // CF must continue accumulating — slab1 weaker = 200K + 1,400K = 1,600K.
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->slab1_weaker_bv_paise)->toBe(1_600_000);
+    // Power CF = stronger effective = 1,200K (unchanged, still on R).
+    expect($cf->power_side_bv_paise)->toBe(1_200_000);
+    expect($cf->power_side)->toBe('R');
+});
+
 it('retries after failure and credits exactly once', function () {
     $dist = makeDistributorWithBv(300_000);  // Retailer — qualifies for slab 1
     GroupBvDaily::create([

@@ -130,7 +130,12 @@ final class GsbCutoffService
         }
 
         // Slab 1: lifetime accumulation (includes today's fresh + historical CF).
-        if ($matchedSlab === null && $title->maxGsbSlab >= 1 && $weakerTotal >= self::SLABS[1][0]) {
+        // Both the accumulated weaker-side total AND the stronger side (effective) must
+        // reach the 15,000 BV threshold — "15K/15K" requires both Genos sides to qualify.
+        if ($matchedSlab === null
+            && $title->maxGsbSlab >= 1
+            && $weakerTotal >= self::SLABS[1][0]
+            && $strongerEffective >= self::SLABS[1][0]) {
             $matchedSlab = ['index' => 1, 'threshold' => self::SLABS[1][0], 'incentive' => self::SLABS[1][1]];
         }
 
