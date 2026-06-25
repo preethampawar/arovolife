@@ -33,6 +33,11 @@ final class CompensationOverviewController extends Controller
             ->where('created_at', '>=', $weekStart)
             ->sum('amount_paise');
 
+        // Reversals are stored as negative amounts; abs() gives the display value.
+        $gsbReversalsThisWeekPaise = abs((int) WalletLedgerEntry::where('type', 'reversal')
+            ->where('created_at', '>=', $weekStart)
+            ->sum('amount_paise'));
+
         $failedCutoffs = GsbCutoffResult::with('distributor')
             ->where('cutoff_date', $today)
             ->where('status', GsbCutoffResult::STATUS_FAILED)
@@ -45,7 +50,8 @@ final class CompensationOverviewController extends Controller
             ->paginate(50);
 
         return view('admin.compensation.overview', compact(
-            'cutoffStatus', 'todayFailed', 'pendingPayoutPaise', 'gsbThisWeekPaise',
+            'cutoffStatus', 'todayFailed', 'pendingPayoutPaise',
+            'gsbThisWeekPaise', 'gsbReversalsThisWeekPaise',
             'failedCutoffs', 'cutoffTable', 'today',
         ));
     }

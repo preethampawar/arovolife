@@ -37,9 +37,12 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             GSB this week
-            <x-help-tip text="Net GSB (after admin charge + TDS) credited to wallets since last Tuesday 00:00." />
+            <x-help-tip text="GSB credited to wallets (after admin charge + TDS) since last Tuesday 00:00. Reversals are shown separately — they do not reduce this figure." />
         </p>
         <p class="mt-1 text-lg font-bold text-purple-700">₹{{ number_format($gsbThisWeekPaise / 100, 2) }}</p>
+        @if($gsbReversalsThisWeekPaise > 0)
+            <p class="text-xs text-amber-600 font-medium mt-0.5">₹{{ number_format($gsbReversalsThisWeekPaise / 100, 2) }} reversed</p>
+        @endif
     </div>
 </div>
 
