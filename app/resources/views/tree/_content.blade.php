@@ -20,6 +20,7 @@
     $contextSubtitlePre  = $contextSubtitlePre  ?? 'Showing your placement and descendants up to ';
     $contextSubtitleHi   = $contextSubtitleHi   ?? null;
     $contextSubtitlePost = $contextSubtitlePost ?? '';
+    $contextNote         = $contextNote         ?? null;
     $showSponsorshipLink = $showSponsorshipLink ?? true;
     $adminContext        = $adminContext        ?? false;
     $expandAllUrl        = request()->fullUrlWithQuery(['levels' => max(1, $maxObservedDepth)]);
@@ -33,6 +34,12 @@
     $rerootKey           = $rerootKey   ?? 'adn';
     $isSponsorshipModeTop = ($mode ?? 'binary') === 'sponsorship';
 @endphp
+
+@if($contextNote)
+<div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-4">
+    {{ $contextNote }}
+</div>
+@endif
 
 <div class="mb-4 flex flex-wrap items-end justify-between gap-3 sm:gap-4">
     <div class="min-w-0">

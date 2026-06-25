@@ -12,7 +12,11 @@
 @endphp
 
 <div class="max-w-5xl mx-auto px-4 py-8">
-    <h1 class="text-2xl font-bold text-gray-900 mb-4">My Orders</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">My Orders</h1>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-4">
+        All products you purchased from the arovolife catalogue. Each order accrues BV to your lifetime personal BV total — which determines your purchase title and unlocks higher GSB slabs. Orders include a downloadable invoice; BV status shows whether the BV has been counted, is pending, or was reversed due to a return.
+    </div>
 
     @if($showBv ?? false)
     {{-- Tab bar — only visible to distributors who can also have attributed customer sales --}}

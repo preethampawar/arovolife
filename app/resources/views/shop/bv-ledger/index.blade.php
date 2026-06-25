@@ -4,7 +4,9 @@
 @section('content')
 <div class="max-w-4xl mx-auto px-4 py-8">
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My BV Ledger</h1>
-    <p class="text-sm text-gray-500 mb-6">Business Volume accrued and reversed on your account. BV accumulates from product sales only — personal purchases and attributed customer sales.</p>
+    <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
+        Business Volume (BV) is the points value attached to each product you purchase or sell. Your lifetime personal BV determines your purchase title (Retailer, Dealer, Wholesaler, etc.) which unlocks higher GSB slabs and NEFT payouts. BV only accrues from product sales — your own purchases and attributed customer sales both count. Reversals appear when orders are returned.
+    </div>
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-3 gap-4 mb-8">

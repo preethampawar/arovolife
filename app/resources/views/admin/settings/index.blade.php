@@ -56,7 +56,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <label for="{{ $fieldId }}" class="text-base font-semibold text-gray-900">{{ $meta['label'] }} <x-help-tip text="A platform-wide setting that applies to all users on arovolife; changes are audit-logged and versioned." /></label>
+                                <label for="{{ $fieldId }}" class="text-base font-semibold text-gray-900">{{ $meta['label'] }} <x-help-tip :text="($meta['impact'] ?? null) ? $meta['description'] . ' — ' . $meta['impact'] : $meta['description']" /></label>
                                 @if($readOnly)
                                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Read-only</span>
                                 @endif

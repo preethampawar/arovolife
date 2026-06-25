@@ -12,5 +12,6 @@
     'contextTitle'        => 'My direct referrals',
     'contextSubtitlePre'  => 'The distributors you directly sponsored — exactly ',
     'showSponsorshipLink' => false,
+    'contextNote'         => 'This page lists everyone you personally introduced and sponsored — your direct referrals only. You earn a Mentorship Bonus (starting at 10% of their GSB) on each of these distributors\' Genos Sales Bonus income. The deeper Genos placement tree is on the Genos tab.',
 ])
 @endsection

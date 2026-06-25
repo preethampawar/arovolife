@@ -26,9 +26,9 @@
         </a>
     </div>
 
-    <p class="text-sm text-gray-500 mb-4">
-        Orders placed by customers via your shared product links. BV from these sales is credited to your account.
-    </p>
+    <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-4">
+        Orders placed by your customers via your shared product links. Each customer sale accrues BV directly to your lifetime personal BV account — exactly the same as your own purchases. This BV counts toward your purchase title and GSB eligibility. You can view the full details of each sale and download the invoice.
+    </div>
 
     @if($sales->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
