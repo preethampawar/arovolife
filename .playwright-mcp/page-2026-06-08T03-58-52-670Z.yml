@@ -1,0 +1,119 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - button "ST Staging Test Reg" [ref=e5]:
+      - generic [ref=e6]: ST
+      - generic [ref=e7]: Staging Test Reg
+      - img [ref=e8]
+    - generic [ref=e10]: "|"
+    - group "Adjust font size" [ref=e11]:
+      - button "Smaller text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: −
+      - button "Default text" [ref=e14]: A
+      - button "Larger text" [ref=e15]:
+        - text: A
+        - generic [ref=e16]: +
+      - button "Largest text" [ref=e17]:
+        - text: A
+        - generic [ref=e18]: ++
+      - button "Reset font size" [ref=e19]: ↺
+    - generic [ref=e20]: "|"
+    - link "My Dashboard" [ref=e21] [cursor=pointer]:
+      - /url: http://localhost:8084/dashboard
+    - generic [ref=e22]: "|"
+    - generic [ref=e23]: India 🇮🇳
+  - navigation [ref=e24]:
+    - generic [ref=e25]:
+      - link "arovolife" [ref=e26] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e27]
+      - generic [ref=e28]:
+        - link "Home" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e32] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e33] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e35]:
+          - text: Categories
+          - img [ref=e36]
+        - link "Messages" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/messages
+          - img [ref=e39]
+        - link "Cart" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - img [ref=e43]
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - link "← Back to my orders" [ref=e47] [cursor=pointer]:
+        - /url: http://localhost:8084/orders
+      - generic [ref=e48]:
+        - heading "Order ORD-260608-91080" [level=1] [ref=e49]
+        - generic [ref=e50]:
+          - link "Order summary" [ref=e51] [cursor=pointer]:
+            - /url: http://localhost:8084/orders/ORD-260608-91080/invoice
+            - img [ref=e52]
+            - text: Order summary
+          - generic [ref=e54]: Placed
+      - generic [ref=e55]:
+        - heading "Items" [level=2] [ref=e56]
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - strong [ref=e60]: arovolife Multi-Vitamin
+            - text: × 2 (1,000 BV)
+          - generic [ref=e61]: ₹1,598.00
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - generic [ref=e64]: Subtotal
+            - generic [ref=e65]: ₹1,426.79
+          - generic [ref=e66]:
+            - generic [ref=e67]: GST
+            - generic [ref=e68]: ₹171.21
+          - generic [ref=e69]:
+            - generic [ref=e70]: Shipping
+            - generic [ref=e71]: ₹60.00
+          - generic [ref=e72]:
+            - generic [ref=e73]: Total
+            - generic [ref=e74]: ₹1,658.00
+          - generic [ref=e75]:
+            - generic [ref=e76]: Total BV
+            - generic [ref=e77]: 1,000 BV
+      - generic [ref=e78]:
+        - heading "Business Volume" [level=2] [ref=e79]
+        - generic [ref=e80]:
+          - generic [ref=e81]: Awaiting payment
+          - generic [ref=e82]: 1,000 BV from this order
+        - paragraph [ref=e83]: BV is counted toward your personal volume once payment is received. It is reversed if the order is refunded.
+      - generic [ref=e84]:
+        - heading "Shipping to" [level=2] [ref=e85]
+        - paragraph [ref=e86]:
+          - text: Staging Test Reg
+          - text: "+919411728048"
+          - text: 12 MG Road
+          - text: Hyderabad, TG 500032
+      - button "Cancel this order" [ref=e89]
+  - contentinfo [ref=e90]:
+    - generic [ref=e91]:
+      - link "Terms" [ref=e92] [cursor=pointer]:
+        - /url: http://localhost:8084/p/terms
+      - link "Privacy" [ref=e93] [cursor=pointer]:
+        - /url: http://localhost:8084/p/privacy
+      - link "Code of Ethics" [ref=e94] [cursor=pointer]:
+        - /url: http://localhost:8084/p/ethics
+      - link "Grievance" [ref=e95] [cursor=pointer]:
+        - /url: http://localhost:8084/p/grievance
+      - link "Compliance Documents" [ref=e96] [cursor=pointer]:
+        - /url: http://localhost:8084/compliance-documents
+    - paragraph [ref=e97]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e98] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e99] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
+    - paragraph [ref=e100]: Arovolife Private Limited — CIN U46909TS2026PTC210896

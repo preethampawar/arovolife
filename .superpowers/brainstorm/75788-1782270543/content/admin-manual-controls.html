@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design — Admin Manual Controls</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f7f6; color: #111827; padding: 24px; font-size: 13px; }
+  .page-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #6b7280; font-size: 12px; margin-bottom: 20px; }
+  .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card-desc { font-size: 11px; color: #6b7280; margin-bottom: 14px; line-height: 1.5; }
+  .warning-box { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 11px; color: #92400e; line-height: 1.5; }
+  .danger-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 11px; color: #991b1b; line-height: 1.5; }
+  label { display: block; font-size: 11px; font-weight: 500; color: #374151; margin-bottom: 4px; }
+  input, select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #111827; margin-bottom: 12px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; }
+  .btn-danger { background: #dc2626; color: white; }
+  .btn-amber { background: #d97706; color: white; }
+  .btn-primary { background: #4f46e5; color: white; }
+  .btn-outline { background: white; color: #374151; border: 1px solid #d1d5db; }
+  .section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
+  .audit-row { font-size: 10px; color: #6b7280; background: #f9fafb; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
+  .audit-row span { color: #111827; font-weight: 500; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .grid-actions { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px; }
+  .action-card { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; cursor: pointer; transition: border-color .15s; }
+  .action-card:hover { border-color: #4f46e5; }
+  .action-card .icon { font-size: 20px; margin-bottom: 8px; }
+  .action-card h4 { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .action-card p { font-size: 10px; color: #6b7280; line-height: 1.4; }
+  .action-card.danger { border-color: #fecaca; }
+  .action-card.danger h4 { color: #991b1b; }
+  h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .section-gap { margin-top: 28px; }
+  .confirm-modal { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.12); max-width: 480px; }
+  .modal-overlay { background: rgba(0,0,0,.4); padding: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; margin-bottom: 16px; }
+  .impact-list { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #374151; margin: 10px 0; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Admin → Compensation → Manual Controls</div>
+<div class="subtitle">Fallback controls for failed cut-offs, payouts, and carry-forward corrections. Every action is audit-logged and requires a reason.</div>
+
+<!-- Warning banner -->
+<div class="warning-box" style="margin-bottom:16px">
+  ⚠ <strong>These controls affect real money and wallet balances.</strong> Every action is permanently audit-logged with your admin ID, a timestamp, the before/after state, and the reason you provide. There is no undo — use the Reverse action if a credit needs to be walked back. When in doubt, use <strong>Retry</strong> (which is safe and idempotent) before using <strong>Manual Credit</strong>.
+</div>
+
+<!-- Quick action cards -->
+<div class="section-label">Available actions</div>
+<div class="grid-actions">
+  <div class="action-card">
+    <div class="icon">🔄</div>
+    <h4>Retry Daily Cut-off</h4>
+    <p>Re-run the 23:59 GSB calculation for a specific distributor and date. Safe to run multiple times — idempotent if already credited.</p>
+  </div>
+  <div class="action-card">
+    <div class="icon">📊</div>
+    <h4>Recalculate Carry-forward</h4>
+    <p>Re-compute a distributor's slab-1 weaker CF and power-side CF from their full GSB history. Use after a BV reversal mid-cut-off.</p>
+  </div>
+  <div class="action-card">
+    <div class="icon">💸</div>
+    <h4>Manual GSB Credit</h4>
+    <p>Credit a custom GSB amount to a distributor's wallet. Requires a reference order ID or reason. Use only when retry fails.</p>
+  </div>
+  <div class="action-card danger">
+    <div class="icon">↩️</div>
+    <h4>Reverse GSB Credit</h4>
+    <p>Write a debit entry to reverse a specific GSB credit. The distributor's next payout will be reduced by this amount.</p>
+  </div>
+  <div class="action-card">
+    <div class="icon">⚡</div>
+    <h4>Force Weekly Payout</h4>
+    <p>Trigger the Tuesday payout batch immediately for a single distributor. Only if the batch failed for this distributor.</p>
+  </div>
+  <div class="action-card danger">
+    <div class="icon">🔒</div>
+    <h4>Freeze GSB</h4>
+    <p>Block a distributor from receiving GSB without terminating their account. GSB is calculated but held — not credited to wallet.</p>
+  </div>
+</div>
+
+<!-- FORM EXAMPLE: Retry Cut-off -->
+<div class="section-gap">
+  <h2>Form example — Retry Daily Cut-off</h2>
+  <div style="font-size:11px;color:#6b7280;margin-bottom:14px">This is what the admin sees after clicking "Retry Daily Cut-off" above</div>
+</div>
+
+<div class="card">
+  <div class="card-title">🔄 Retry Daily Cut-off</div>
+  <div class="card-desc">Re-runs the 23:59 GSB calculation for one distributor on one date. If GSB was already credited for this date, the system will detect the duplicate and skip — no double-credit. If the carry-forward was not updated, it will be corrected.</div>
+
+  <div class="form-row">
+    <div>
+      <label>Distributor ADN</label>
+      <input type="text" value="AV-00078" placeholder="e.g. AV-00042">
+    </div>
+    <div>
+      <label>Cut-off date</label>
+      <input type="date" value="2026-06-24">
+    </div>
+  </div>
+  <label>Reason for retry (required)</label>
+  <textarea rows="2" placeholder="e.g. Wallet write failed due to DB timeout at 23:59:14 — retrying after DB recovery">Wallet write failed due to DB timeout at 23:59:14 — retrying after DB recovery</textarea>
+
+  <!-- Preview of what will happen -->
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:12px;font-size:11px">
+    <div style="font-weight:600;color:#166534;margin-bottom:6px">What will happen</div>
+    <div style="color:#374151;line-height:1.7">
+      Re-run cut-off for <strong>AV-00078</strong> on <strong>24 Jun 2026</strong><br>
+      Calculated slab: <strong>3rd (90,000 BV match)</strong><br>
+      Gross GSB: <strong>₹6,000</strong> → after admin charge (₹180) + TDS (₹291) → <strong>net ₹5,529</strong><br>
+      Power-side carry-forward will update from <strong>47,300 → 54,200 BV</strong><br>
+      Weaker side will reset to <strong>0</strong>
+    </div>
+  </div>
+
+  <button class="btn btn-primary">Preview &amp; Confirm →</button>
+</div>
+
+<!-- Confirm modal design -->
+<div class="section-gap">
+  <h2>Confirm modal (appears before any action executes)</h2>
+  <div style="font-size:11px;color:#6b7280;margin-bottom:14px">Every action requires explicit confirmation showing exact impact</div>
+</div>
+
+<div class="modal-overlay">
+  <div class="confirm-modal">
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">Confirm: Retry Daily Cut-off</div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:14px">This action will be permanently audit-logged</div>
+
+    <div style="font-size:11px;font-weight:600;margin-bottom:6px">Impact</div>
+    <div class="impact-list">
+      • Distributor <strong>AV-00078</strong> (Rajesh Kumar Sharma)<br>
+      • Date: <strong>24 Jun 2026</strong> 23:59 cut-off<br>
+      • GSB credit: <strong>₹5,529 net</strong> → added to wallet (currently ₹892)<br>
+      • Wallet will become: <strong>₹6,421</strong><br>
+      • Power-side CF: <strong>47,300 → 54,200 BV</strong><br>
+      • Weaker side: reset to <strong>0 BV</strong>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;margin-bottom:6px">Reason logged</div>
+    <div style="background:#f9fafb;border-radius:6px;padding:8px 10px;font-size:11px;color:#374151;margin-bottom:14px;font-style:italic">"Wallet write failed due to DB timeout at 23:59:14 — retrying after DB recovery"</div>
+
+    <div style="font-size:10px;color:#9ca3af;margin-bottom:14px">Performed by: admin@arovolife.in · 24 Jun 2026 11:42 AM</div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline" style="flex:1;justify-content:center">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center">Yes, execute retry</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audit log section -->
+<div class="section-gap">
+  <h2>Recent manual actions (audit log — compensation)</h2>
+  <div style="font-size:11px;color:#6b7280;margin-bottom:14px">All manual override actions are shown here. Full audit log is in Admin → Audit Log filtered by compensation actions.</div>
+</div>
+
+<div class="card" style="padding:14px">
+  <div class="audit-row">
+    <span class="badge badge-green" style="margin-right:8px">Retry cut-off</span>
+    <span>AV-00042</span> · 24 Jun 11:38 AM · by admin@arovolife.in · GSB ₹5,529 credited · "DB timeout retry"
+  </div>
+  <div class="audit-row">
+    <span class="badge badge-amber" style="margin-right:8px">Recalc CF</span>
+    <span>AV-00203</span> · 23 Jun 2:14 PM · by admin@arovolife.in · Power CF recalculated 41,200→39,100 · "BV reversal on order ORD-8821"
+  </div>
+  <div class="audit-row">
+    <span class="badge badge-red" style="margin-right:8px">Reverse credit</span>
+    <span>AV-00119</span> · 20 Jun 9:01 AM · by admin@arovolife.in · GSB ₹3,000 reversed · "Order ORD-8804 cancelled post-cut-off"
+  </div>
+</div>
+
+</body>
+</html>

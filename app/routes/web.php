@@ -27,6 +27,13 @@ use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
+use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
+use App\Modules\Compensation\Http\Controllers\IncomeController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
@@ -273,6 +280,38 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
     Route::get('/commerce/bv-ledger/{distributor}', [AdminBvLedgerController::class, 'show'])->whereNumber('distributor')->name('commerce.bv-ledger.show');
     Route::get('/commerce/bv-ledger/{distributor}/export', [AdminBvLedgerController::class, 'exportShow'])->whereNumber('distributor')->name('commerce.bv-ledger.show.export');
 
+    // Compensation (Phase 4) — GSB + Mentorship Bonus admin
+    Route::prefix('compensation')->name('compensation.')->group(function (): void {
+        Route::get('/', CompensationOverviewController::class)->name('overview');
+
+        Route::prefix('daily-cutoffs')->name('daily-cutoffs.')->group(function (): void {
+            Route::get('/', [AdminDailyCutoffController::class, 'index'])->name('index');
+            Route::get('/export', [AdminDailyCutoffController::class, 'export'])->name('export');
+            Route::get('/{date}', [AdminDailyCutoffController::class, 'show'])->name('show')->where('date', '\d{4}-\d{2}-\d{2}');
+        });
+
+        Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
+            Route::get('/', [AdminWeeklyPayoutController::class, 'index'])->name('index');
+            Route::get('/{batch}', [AdminWeeklyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
+        });
+
+        Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
+
+        Route::get('distributors/{distributor}', [AdminDistributorCompController::class, 'show'])
+            ->name('distributors.show')
+            ->whereNumber('distributor');
+
+        Route::prefix('manual-controls')->name('manual-controls.')->group(function (): void {
+            Route::get('/', [AdminManualControlsController::class, 'index'])->name('index');
+            Route::post('retry', [AdminManualControlsController::class, 'retryCutoff'])->name('retry')->middleware('can:finance.record');
+            Route::post('recalc-cf', [AdminManualControlsController::class, 'recalcCarryForward'])->name('recalc-cf')->middleware('can:finance.record');
+            Route::post('credit', [AdminManualControlsController::class, 'manualCredit'])->name('credit')->middleware('can:finance.record');
+            Route::post('reverse', [AdminManualControlsController::class, 'reverseCredit'])->name('reverse')->middleware('can:compliance.discipline');
+            Route::post('force-payout', [AdminManualControlsController::class, 'forcePayout'])->name('force-payout')->middleware('can:finance.record');
+            Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb')->middleware('can:compliance.discipline');
+        });
+    });
+
     // Commerce — coupons / discounts (Epic 3)
     Route::get('/commerce/coupons', [AdminCouponController::class, 'index'])->name('commerce.coupons.index');
     Route::get('/commerce/coupons/create', [AdminCouponController::class, 'create'])->name('commerce.coupons.create');
@@ -448,6 +487,15 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Distributor BV ledger — personal accruals + reversals history.
     Route::get('/bv-ledger', [MyBvLedgerController::class, 'index'])->name('bv-ledger.index');
+
+    // My Income (Compensation — Phase 4)
+    Route::get('/income', [IncomeController::class, 'dashboard'])->name('income.dashboard');
+    Route::get('/income/genos-bv', [IncomeController::class, 'genosBv'])->name('income.genos-bv');
+    Route::get('/income/gsb-history', [IncomeController::class, 'gsbHistory'])->name('income.gsb-history');
+    Route::get('/income/gsb-history/export', [IncomeController::class, 'exportGsb'])->name('income.gsb-history.export');
+    Route::get('/income/mentorship', [IncomeController::class, 'mentorship'])->name('income.mentorship');
+    Route::get('/income/wallet', [IncomeController::class, 'wallet'])->name('income.wallet');
+    Route::get('/income/wallet/export', [IncomeController::class, 'exportWallet'])->name('income.wallet.export');
 
     // Returns — customer-initiated (cooling-off + buyback; ADR-0009).
     Route::get('/orders/{orderNo}/return', [ReturnController::class, 'create'])->name('orders.return.create');

@@ -15,6 +15,7 @@ use App\Modules\Shared\Casts\PiiEncrypted;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,6 +42,7 @@ use Illuminate\Support\Carbon;
  * @property int $depth
  * @property Carbon $effective_date
  * @property Carbon $cooling_off_end_at
+ * @property Carbon|null $gsb_frozen_at
  * @property string $state
  * @property int|null $spouse_distributor_id
  * @property bool $is_primary_couple
@@ -53,6 +55,8 @@ use Illuminate\Support\Carbon;
  */
 final class Distributor extends Model
 {
+    use HasFactory;
+
     protected $table = 'distributors';
 
     protected $fillable = [
@@ -78,6 +82,7 @@ final class Distributor extends Model
         'spouse_distributor_id',
         'is_primary_couple',
         'status',
+        'gsb_frozen_at',
     ];
 
     protected $hidden = [
@@ -92,6 +97,7 @@ final class Distributor extends Model
         return [
             'effective_date' => 'datetime',
             'cooling_off_end_at' => 'datetime',
+            'gsb_frozen_at' => 'datetime',
             'is_primary_couple' => 'boolean',
             'depth' => 'integer',
             // Encrypted at rest with the dedicated PII key (ADR-0008), not

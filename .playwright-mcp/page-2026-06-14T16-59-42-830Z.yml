@@ -1,0 +1,267 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "Register with us" [ref=e5] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/join
+      - generic [ref=e6]: "|"
+      - link "Sign in" [ref=e7] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/login
+      - generic [ref=e8]: "|"
+      - group "Adjust font size" [ref=e9]:
+        - button "Smaller text" [ref=e10]:
+          - text: A
+          - generic [ref=e11]: −
+        - button "Default text" [ref=e12]: A
+        - button "Larger text" [ref=e13]:
+          - text: A
+          - generic [ref=e14]: +
+        - button "Largest text" [ref=e15]:
+          - text: A
+          - generic [ref=e16]: ++
+        - button "Reset font size" [ref=e17]: ↺
+      - generic [ref=e18]: "|"
+      - link "About Us" [ref=e19] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/about-us
+      - generic [ref=e20]: "|"
+      - generic [ref=e21]: India 🇮🇳
+    - navigation [ref=e22]:
+      - generic [ref=e23]:
+        - link "arovolife" [ref=e24] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com
+          - img "arovolife" [ref=e25]
+        - generic [ref=e26]:
+          - link "Home" [ref=e27] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com
+          - link "Shop" [ref=e28] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop
+          - link "About" [ref=e29] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/about-us
+          - link "How It Works" [ref=e30] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com#how-it-works
+          - link "Contact" [ref=e31] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/contact-us
+          - button "Categories" [ref=e33]:
+            - text: Categories
+            - img [ref=e34]
+          - link "Cart" [ref=e36] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/cart
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - generic [ref=e40]: "0"
+          - link "Sign In" [ref=e41] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/login
+  - generic [ref=e45]:
+    - generic [ref=e46]:
+      - paragraph [ref=e47]: arovolife shopping mall
+      - heading "Quality essentials, delivered honestly." [level=1] [ref=e48]
+      - paragraph [ref=e49]: A small, curated range of nutraceuticals and personal care — every label transparent, every batch certified.
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - img [ref=e52]
+          - text: 30-day returns
+        - generic [ref=e54]:
+          - img [ref=e55]
+          - text: GST invoice
+        - generic [ref=e57]:
+          - img [ref=e58]
+          - text: Free shipping ₹4,000+
+    - generic [ref=e60]:
+      - generic [ref=e61]: 🛍
+      - paragraph [ref=e62]: Direct from arovolife — no resellers
+  - main [ref=e63]:
+    - generic [ref=e64]:
+      - link "All products" [ref=e65] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop
+      - link "Health Care" [ref=e66] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop?category=health-care
+      - link "Food and Beverages" [ref=e67] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop?category=food-and-beverages
+      - link "Skin and Beauty" [ref=e68] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop?category=skin-and-beauty
+      - link "Personal Care" [ref=e69] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop?category=personal-care
+      - link "Home Care" [ref=e70] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop?category=home-care
+      - link "Agri Care" [ref=e71] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop?category=agri-care
+      - link "Lifestyle" [ref=e72] [cursor=pointer]:
+        - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop?category=lifestyle
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - link "arovolife Aloe Face Wash −15% Personal Care" [ref=e75] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/aloe-face-wash
+          - img "arovolife Aloe Face Wash" [ref=e76]
+          - generic [ref=e77]: −15%
+          - generic [ref=e78]: Personal Care
+        - generic [ref=e79]:
+          - link "arovolife Aloe Face Wash" [ref=e80] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/aloe-face-wash
+            - heading "arovolife Aloe Face Wash" [level=3] [ref=e81]:
+              - generic [ref=e82]: arovolife Aloe Face Wash
+          - generic [ref=e83]:
+            - generic [ref=e84]:
+              - generic [ref=e85]: ₹299.00
+              - generic [ref=e86]: ₹350.00
+            - button "Add arovolife Aloe Face Wash to cart" [ref=e88]:
+              - img [ref=e89]
+      - generic [ref=e91]:
+        - link "arovolife Gentle Hand Wash −17% Personal Care" [ref=e92] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/gentle-hand-wash
+          - img "arovolife Gentle Hand Wash" [ref=e93]
+          - generic [ref=e94]: −17%
+          - generic [ref=e95]: Personal Care
+        - generic [ref=e96]:
+          - link "arovolife Gentle Hand Wash" [ref=e97] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/gentle-hand-wash
+            - heading "arovolife Gentle Hand Wash" [level=3] [ref=e98]:
+              - generic [ref=e99]: arovolife Gentle Hand Wash
+          - paragraph [ref=e100]: Aloe vera & neem. 250 ml pump bottle.
+          - generic [ref=e101]:
+            - generic [ref=e102]:
+              - generic [ref=e103]: ₹245.00
+              - generic [ref=e104]: ₹295.00
+            - button "Add arovolife Gentle Hand Wash to cart" [ref=e106]:
+              - img [ref=e107]
+      - generic [ref=e109]:
+        - link "−17% Food and Beverages" [ref=e110] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/food-and-beverages
+          - img [ref=e112]
+          - generic [ref=e114]: −17%
+          - generic [ref=e115]: Food and Beverages
+        - generic [ref=e116]:
+          - link "arovolife Green Tea" [ref=e117] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/food-and-beverages
+            - heading "arovolife Green Tea" [level=3] [ref=e118]:
+              - generic [ref=e119]: arovolife Green Tea
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - generic [ref=e122]: ₹1,500.00
+              - generic [ref=e123]: ₹1,800.00
+            - button "Add arovolife Green Tea to cart" [ref=e125]:
+              - img [ref=e126]
+      - generic [ref=e128]:
+        - link "arovolife Hair Essential Oil −13% Personal Care" [ref=e129] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/hair-essential-oil
+          - img "arovolife Hair Essential Oil" [ref=e130]
+          - generic [ref=e131]: −13%
+          - generic [ref=e132]: Personal Care
+        - generic [ref=e133]:
+          - link "arovolife Hair Essential Oil" [ref=e134] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/hair-essential-oil
+            - heading "arovolife Hair Essential Oil" [level=3] [ref=e135]:
+              - generic [ref=e136]: arovolife Hair Essential Oil
+          - paragraph [ref=e137]: Bhringraj & amla. 200 ml.
+          - generic [ref=e138]:
+            - generic [ref=e139]:
+              - generic [ref=e140]: ₹999.00
+              - generic [ref=e141]: ₹1,150.00
+            - button "Add arovolife Hair Essential Oil to cart" [ref=e143]:
+              - img [ref=e144]
+      - generic [ref=e146]:
+        - link "arovolife Herbal Green Tea −11% Health Care" [ref=e147] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/herbal-green-tea
+          - img "arovolife Herbal Green Tea" [ref=e148]
+          - generic [ref=e149]: −11%
+          - generic [ref=e150]: Health Care
+        - generic [ref=e151]:
+          - link "arovolife Herbal Green Tea" [ref=e152] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/herbal-green-tea
+            - heading "arovolife Herbal Green Tea" [level=3] [ref=e153]:
+              - generic [ref=e154]: arovolife Herbal Green Tea
+          - paragraph [ref=e155]: 25 bags. Tulsi & ashwagandha.
+          - generic [ref=e156]:
+            - generic [ref=e157]:
+              - generic [ref=e158]: ₹399.00
+              - generic [ref=e159]: ₹450.00
+            - button "Add arovolife Herbal Green Tea to cart" [ref=e161]:
+              - img [ref=e162]
+      - generic [ref=e164]:
+        - link "arovolife Immunity Booster −16% Health Care" [ref=e165] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/immunity-booster
+          - img "arovolife Immunity Booster" [ref=e166]
+          - generic [ref=e167]: −16%
+          - generic [ref=e168]: Health Care
+        - generic [ref=e169]:
+          - link "arovolife Immunity Booster" [ref=e170] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/immunity-booster
+            - heading "arovolife Immunity Booster" [level=3] [ref=e171]:
+              - generic [ref=e172]: arovolife Immunity Booster
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - generic [ref=e175]: ₹549.00
+              - generic [ref=e176]: ₹650.00
+            - button "Add arovolife Immunity Booster to cart" [ref=e178]:
+              - img [ref=e179]
+      - generic [ref=e181]:
+        - link "arovolife Multi-Vitamin −11% Health Care" [ref=e182] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/multi-vitamin
+          - img "arovolife Multi-Vitamin" [ref=e183]
+          - generic [ref=e184]: −11%
+          - generic [ref=e185]: Health Care
+        - generic [ref=e186]:
+          - link "arovolife Multi-Vitamin" [ref=e187] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/multi-vitamin
+            - heading "arovolife Multi-Vitamin" [level=3] [ref=e188]:
+              - generic [ref=e189]: arovolife Multi-Vitamin
+          - paragraph [ref=e190]: 30 tablets. Daily essentials.
+          - generic [ref=e191]:
+            - generic [ref=e192]:
+              - generic [ref=e193]: ₹799.00
+              - generic [ref=e194]: ₹899.00
+            - button "Add arovolife Multi-Vitamin to cart" [ref=e196]:
+              - img [ref=e197]
+      - generic [ref=e199]:
+        - link "arovolife ScalpCare Shampoo −15% Personal Care" [ref=e200] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/scalpcare-shampoo
+          - img "arovolife ScalpCare Shampoo" [ref=e201]
+          - generic [ref=e202]: −15%
+          - generic [ref=e203]: Personal Care
+        - generic [ref=e204]:
+          - link "arovolife ScalpCare Shampoo" [ref=e205] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/scalpcare-shampoo
+            - heading "arovolife ScalpCare Shampoo" [level=3] [ref=e206]:
+              - generic [ref=e207]: arovolife ScalpCare Shampoo
+          - paragraph [ref=e208]: Anti-dandruff formula. 300 ml.
+          - generic [ref=e209]:
+            - generic [ref=e210]:
+              - generic [ref=e211]: ₹1,150.00
+              - generic [ref=e212]: ₹1,350.00
+            - button "Add arovolife ScalpCare Shampoo to cart" [ref=e214]:
+              - img [ref=e215]
+      - generic [ref=e217]:
+        - link "arovolife Vitamin C Serum −17% Skin and Beauty" [ref=e218] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/vitamin-c-serum
+          - img "arovolife Vitamin C Serum" [ref=e219]
+          - generic [ref=e220]: −17%
+          - generic [ref=e221]: Skin and Beauty
+        - generic [ref=e222]:
+          - link "arovolife Vitamin C Serum" [ref=e223] [cursor=pointer]:
+            - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/shop/p/vitamin-c-serum
+            - heading "arovolife Vitamin C Serum" [level=3] [ref=e224]:
+              - generic [ref=e225]: arovolife Vitamin C Serum
+          - generic [ref=e226]:
+            - generic [ref=e227]:
+              - generic [ref=e228]: ₹749.00
+              - generic [ref=e229]: ₹899.00
+            - button "Add arovolife Vitamin C Serum to cart" [ref=e231]:
+              - img [ref=e232]
+  - contentinfo [ref=e234]:
+    - generic [ref=e235]:
+      - paragraph [ref=e236]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e237]:
+        - link "Terms" [ref=e238] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/p/terms
+        - link "Privacy" [ref=e239] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/p/privacy
+        - link "Grievance" [ref=e240] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/p/grievance
+        - link "Compliance Documents" [ref=e241] [cursor=pointer]:
+          - /url: https://phplaravel-1611779-6390605.cloudwaysapps.com/compliance-documents
+    - generic [ref=e242]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e243] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e244] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

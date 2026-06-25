@@ -1,0 +1,161 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Register with us" [ref=e4] [cursor=pointer]:
+      - /url: http://localhost:8084/join
+    - generic [ref=e5]: "|"
+    - link "Sign in" [ref=e6] [cursor=pointer]:
+      - /url: http://localhost:8084/login
+    - generic [ref=e7]: "|"
+    - group "Adjust font size" [ref=e8]:
+      - button "Smaller text" [ref=e9]:
+        - text: A
+        - generic [ref=e10]: −
+      - button "Default text" [ref=e11]: A
+      - button "Larger text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: +
+      - button "Largest text" [ref=e14]:
+        - text: A
+        - generic [ref=e15]: ++
+      - button "Reset font size" [ref=e16]: ↺
+    - generic [ref=e17]: "|"
+    - link "About Us" [ref=e18] [cursor=pointer]:
+      - /url: http://localhost:8084/about-us
+    - generic [ref=e19]: "|"
+    - generic [ref=e20]: India 🇮🇳
+  - navigation [ref=e21]:
+    - generic [ref=e22]:
+      - link "arovolife" [ref=e23] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e24]
+      - generic [ref=e25]:
+        - link "Home" [ref=e26] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e28] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e32]:
+          - text: Categories
+          - img [ref=e33]
+        - link "Cart" [ref=e35] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - img [ref=e37]
+        - link "Sign In" [ref=e39] [cursor=pointer]:
+          - /url: http://localhost:8084/login
+  - main [ref=e40]:
+    - link "← Back to shop" [ref=e42] [cursor=pointer]:
+      - /url: http://localhost:8084/shop
+    - generic [ref=e43]:
+      - generic [ref=e45]:
+        - img "arovolife Multi-Vitamin" [ref=e46]
+        - generic:
+          - img
+          - text: Tap to zoom
+      - generic [ref=e47]:
+        - link "Health Care" [ref=e48] [cursor=pointer]:
+          - /url: http://localhost:8084/shop?category=health-care
+        - heading "Vegetarian arovolife Multi-Vitamin" [level=1] [ref=e49]:
+          - img "Vegetarian" [ref=e50]
+          - generic [ref=e52]: arovolife Multi-Vitamin
+        - paragraph [ref=e53]: 30 tablets. Daily essentials.
+        - generic [ref=e54]:
+          - generic [ref=e55]: ₹799.00
+          - generic [ref=e56]: ₹899.00
+          - generic [ref=e57]: 11% off
+        - paragraph [ref=e58]: "Inclusive of all taxes. HSN: 2936"
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - generic [ref=e62]: Qty
+            - generic [ref=e63]:
+              - button "Decrease quantity" [ref=e64]: −
+              - textbox [ref=e65]: "1"
+              - button "Increase quantity" [ref=e66]: +
+          - button "Add to Cart" [ref=e67]:
+            - img [ref=e68]
+            - text: Add to Cart
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - img [ref=e72]
+            - generic [ref=e74]:
+              - strong [ref=e75]: 30-day returns
+              - text: Cooling-off window on every order.
+          - generic [ref=e76]:
+            - img [ref=e77]
+            - generic [ref=e79]:
+              - strong [ref=e80]: GST invoice
+              - text: Issued for every order.
+        - generic [ref=e81]:
+          - heading "Product facts" [level=2] [ref=e82]
+          - table [ref=e83]:
+            - rowgroup [ref=e84]:
+              - row "Country of origin India" [ref=e85]:
+                - cell "Country of origin" [ref=e86]
+                - cell "India" [ref=e87]
+              - row "Food type Vegetarian Vegetarian" [ref=e88]:
+                - cell "Food type" [ref=e89]
+                - cell "Vegetarian Vegetarian" [ref=e90]:
+                  - generic [ref=e91]:
+                    - img "Vegetarian" [ref=e92]
+                    - text: Vegetarian
+              - row "HSN code 2936" [ref=e94]:
+                - cell "HSN code" [ref=e95]
+                - cell "2936" [ref=e96]
+    - generic [ref=e97]:
+      - heading "Product information" [level=2] [ref=e98]
+      - generic [ref=e99]:
+        - generic [ref=e100]:
+          - heading "Directions for use" [level=3] [ref=e101]
+          - paragraph [ref=e103]: Take 1 tablet daily after breakfast, or as directed by your healthcare professional. Do not exceed the recommended dose.
+        - generic [ref=e104]:
+          - heading "Nutritional information (per tablet)" [level=3] [ref=e105]
+          - table [ref=e107]:
+            - rowgroup [ref=e108]:
+              - row "Nutrient Amount % RDA" [ref=e109]:
+                - columnheader "Nutrient" [ref=e110]
+                - columnheader "Amount" [ref=e111]
+                - columnheader "% RDA" [ref=e112]
+            - rowgroup [ref=e113]:
+              - row "Vitamin C 40 mg 100%" [ref=e114]:
+                - cell "Vitamin C" [ref=e115]
+                - cell "40 mg" [ref=e116]
+                - cell "100%" [ref=e117]
+              - row "Vitamin D3 10 mcg 50%" [ref=e118]:
+                - cell "Vitamin D3" [ref=e119]
+                - cell "10 mcg" [ref=e120]
+                - cell "50%" [ref=e121]
+              - row "Zinc 10 mg 91%" [ref=e122]:
+                - cell "Zinc" [ref=e123]
+                - cell "10 mg" [ref=e124]
+                - cell "91%" [ref=e125]
+              - row "Iron 14 mg 74%" [ref=e126]:
+                - cell "Iron" [ref=e127]
+                - cell "14 mg" [ref=e128]
+                - cell "74%" [ref=e129]
+    - generic [ref=e130]:
+      - heading "Product details" [level=2] [ref=e131]
+      - paragraph [ref=e132]: Daily multivitamin with 12 vitamins and 9 minerals. Consult a physician before use.
+  - contentinfo [ref=e133]:
+    - generic [ref=e134]:
+      - paragraph [ref=e135]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e136]:
+        - link "Terms" [ref=e137] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e138] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e139] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e140] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e141]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e142] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e143] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

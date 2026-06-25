@@ -1,0 +1,85 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "arovolife" [ref=e4] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e5]
+      - generic [ref=e6]:
+        - link "Messages" [ref=e7] [cursor=pointer]:
+          - /url: http://localhost:8084/messages
+          - img [ref=e8]
+        - link "Cart — 3 items" [ref=e10] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - generic [ref=e11]:
+            - img [ref=e12]
+            - generic [ref=e14]: "3"
+        - button "Open menu" [ref=e15]:
+          - img [ref=e16]
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - heading "My profile" [level=1] [ref=e20]
+      - paragraph [ref=e21]: Your verified identity is shown for reference; update the contact details we use to reach you below.
+      - generic [ref=e22]:
+        - paragraph [ref=e23]: Your profile
+        - paragraph [ref=e24]:
+          - text: Your name, ADN and KYC details (PAN, Aadhaar, bank) are
+          - strong [ref=e25]: locked
+          - text: — they are your verified identity and can only be changed by arovolife after KYC review. You can update your
+          - strong [ref=e26]: mobile, email and address
+          - text: below.
+      - generic [ref=e27]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - text: Full name
+            - generic [ref=e31]:
+              - button "More information" [ref=e32]: i
+              - tooltip "this is part of your verified identity and can only be changed by arovolife after KYC review."
+          - textbox [disabled] [ref=e33]: Test Admin
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]:
+              - text: Mobile (+91…)
+              - generic [ref=e37]:
+                - button "More information" [ref=e38]: i
+                - tooltip "use your indian mobile number in +91 format; arovolife uses it for account and service messages."
+            - textbox "Mobile (+91…) More information use your indian mobile number in +91 format; arovolife uses it for account and service messages." [ref=e39]: "+919999999999"
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - text: Email ID
+              - generic [ref=e42]:
+                - button "More information" [ref=e43]: i
+                - tooltip "the address arovolife uses for account, order and service emails."
+            - textbox "Email ID More information the address arovolife uses for account, order and service emails." [ref=e44]: admin@arovolife.test
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - text: Address
+              - generic [ref=e47]:
+                - button "More information" [ref=e48]: i
+                - tooltip "your mailing address for arovolife correspondence."
+            - textbox "Address More information your mailing address for arovolife correspondence." [ref=e49]:
+              - /placeholder: House / street, area, city, state, PIN
+        - generic [ref=e50]:
+          - link "Change password →" [ref=e51] [cursor=pointer]:
+            - /url: http://localhost:8084/profile/password
+          - button "Save changes" [ref=e52]
+  - contentinfo [ref=e53]:
+    - generic [ref=e54]:
+      - link "Terms" [ref=e55] [cursor=pointer]:
+        - /url: http://localhost:8084/p/terms
+      - link "Privacy" [ref=e56] [cursor=pointer]:
+        - /url: http://localhost:8084/p/privacy
+      - link "Code of Ethics" [ref=e57] [cursor=pointer]:
+        - /url: http://localhost:8084/p/ethics
+      - link "Grievance" [ref=e58] [cursor=pointer]:
+        - /url: http://localhost:8084/p/grievance
+      - link "Compliance Documents" [ref=e59] [cursor=pointer]:
+        - /url: http://localhost:8084/compliance-documents
+    - paragraph [ref=e60]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e61] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e62] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
+    - paragraph [ref=e63]: Arovolife Private Limited — CIN U46909TS2026PTC210896

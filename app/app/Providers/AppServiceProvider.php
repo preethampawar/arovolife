@@ -1,9 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
+use App\Modules\Commerce\Events\OrderStatusChanged;
+use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
+use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
+use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Identity\Models\User;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
@@ -28,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->assertS3IsConfigured();
 
+        Event::listen(OrderStatusChanged::class, PropagateGroupBvOnOrderPaid::class);
+
         // Super-admin: the `admin` role bypasses every permission check (R-17
         // separation of duties). The specialised roles (admin-operations /
         // admin-finance / admin-compliance) carry only their scoped
@@ -39,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
             $this->commands([
                 DeployCommand::class,
                 ResetAdnsCommand::class,
+                GsbDailyCutoffCommand::class,
+                GsbWeeklyPayoutCommand::class,
             ]);
         }
 

@@ -1,0 +1,130 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Register with us" [ref=e4] [cursor=pointer]:
+      - /url: http://localhost:8084/join
+    - generic [ref=e5]: "|"
+    - link "Sign in" [ref=e6] [cursor=pointer]:
+      - /url: http://localhost:8084/login
+    - generic [ref=e7]: "|"
+    - group "Adjust font size" [ref=e8]:
+      - button "Smaller text" [ref=e9]:
+        - text: A
+        - generic [ref=e10]: −
+      - button "Default text" [ref=e11]: A
+      - button "Larger text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: +
+      - button "Largest text" [ref=e14]:
+        - text: A
+        - generic [ref=e15]: ++
+      - button "Reset font size" [ref=e16]: ↺
+    - generic [ref=e17]: "|"
+    - link "About Us" [ref=e18] [cursor=pointer]:
+      - /url: http://localhost:8084/about-us
+    - generic [ref=e19]: "|"
+    - generic [ref=e20]: India 🇮🇳
+  - navigation [ref=e21]:
+    - generic [ref=e22]:
+      - link "arovolife" [ref=e23] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e24]
+      - generic [ref=e25]:
+        - link "Home" [ref=e26] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e28] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e32]:
+          - text: Categories
+          - img [ref=e33]
+        - link "Cart" [ref=e35] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - img [ref=e37]
+        - link "Sign In" [ref=e39] [cursor=pointer]:
+          - /url: http://localhost:8084/login
+  - main [ref=e40]:
+    - link "← Back to shop" [ref=e42] [cursor=pointer]:
+      - /url: http://localhost:8084/shop
+    - generic [ref=e43]:
+      - generic [ref=e45]:
+        - img "arovolife Herbal Green Tea" [ref=e46]
+        - generic:
+          - img
+          - text: Tap to zoom
+      - generic [ref=e47]:
+        - link "Health Care" [ref=e48] [cursor=pointer]:
+          - /url: http://localhost:8084/shop?category=health-care
+        - heading "Non-vegetarian arovolife Herbal Green Tea" [level=1] [ref=e49]:
+          - img "Non-vegetarian" [ref=e50]
+          - generic [ref=e52]: arovolife Herbal Green Tea
+        - paragraph [ref=e53]: 25 bags. Tulsi & ashwagandha.
+        - generic [ref=e54]:
+          - generic [ref=e55]: ₹399.00
+          - generic [ref=e56]: ₹450.00
+          - generic [ref=e57]: 11% off
+        - paragraph [ref=e58]: "Inclusive of all taxes. HSN: 0902"
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - generic [ref=e62]: Qty
+            - generic [ref=e63]:
+              - button "Decrease quantity" [ref=e64]: −
+              - textbox [ref=e65]: "1"
+              - button "Increase quantity" [ref=e66]: +
+          - button "Add to Cart" [ref=e67]:
+            - img [ref=e68]
+            - text: Add to Cart
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - img [ref=e72]
+            - generic [ref=e74]:
+              - strong [ref=e75]: 30-day returns
+              - text: Cooling-off window on every order.
+          - generic [ref=e76]:
+            - img [ref=e77]
+            - generic [ref=e79]:
+              - strong [ref=e80]: GST invoice
+              - text: Issued for every order.
+        - generic [ref=e81]:
+          - heading "Product facts" [level=2] [ref=e82]
+          - table [ref=e83]:
+            - rowgroup [ref=e84]:
+              - row "Country of origin India" [ref=e85]:
+                - cell "Country of origin" [ref=e86]
+                - cell "India" [ref=e87]
+              - row "Food type Non-vegetarian Non-vegetarian" [ref=e88]:
+                - cell "Food type" [ref=e89]
+                - cell "Non-vegetarian Non-vegetarian" [ref=e90]:
+                  - generic [ref=e91]:
+                    - img "Non-vegetarian" [ref=e92]
+                    - text: Non-vegetarian
+              - row "HSN code 0902" [ref=e94]:
+                - cell "HSN code" [ref=e95]
+                - cell "0902" [ref=e96]
+    - generic [ref=e97]:
+      - heading "Product details" [level=2] [ref=e98]
+      - paragraph [ref=e99]: Daily wellness tea blend with tulsi, ashwagandha and green tea leaves. Caffeine-lite.
+  - contentinfo [ref=e100]:
+    - generic [ref=e101]:
+      - paragraph [ref=e102]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e103]:
+        - link "Terms" [ref=e104] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e105] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e106] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e107] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e108]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e109] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e110] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

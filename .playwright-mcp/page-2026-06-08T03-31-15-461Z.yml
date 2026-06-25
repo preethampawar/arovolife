@@ -1,0 +1,75 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Register with us" [ref=e4] [cursor=pointer]:
+      - /url: http://localhost:8084/join
+    - generic [ref=e5]: "|"
+    - link "Sign in" [ref=e6] [cursor=pointer]:
+      - /url: http://localhost:8084/login
+    - generic [ref=e7]: "|"
+    - group "Adjust font size" [ref=e8]:
+      - button "Smaller text" [ref=e9]:
+        - text: A
+        - generic [ref=e10]: −
+      - button "Default text" [ref=e11]: A
+      - button "Larger text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: +
+      - button "Largest text" [ref=e14]:
+        - text: A
+        - generic [ref=e15]: ++
+      - button "Reset font size" [ref=e16]: ↺
+    - generic [ref=e17]: "|"
+    - link "About Us" [ref=e18] [cursor=pointer]:
+      - /url: http://localhost:8084/about-us
+    - generic [ref=e19]: "|"
+    - generic [ref=e20]: India 🇮🇳
+  - navigation [ref=e21]:
+    - generic [ref=e22]:
+      - link "arovolife" [ref=e23] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e24]
+      - generic [ref=e25]:
+        - link "Home" [ref=e26] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e28] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e32]:
+          - text: Categories
+          - img [ref=e33]
+        - link "Cart" [ref=e35] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - img [ref=e37]
+        - link "Sign In" [ref=e39] [cursor=pointer]:
+          - /url: http://localhost:8084/login
+  - generic [ref=e40]:
+    - generic [ref=e41]:
+      - paragraph [ref=e42]: Account recovery
+      - heading "Find my ID." [level=1] [ref=e43]
+      - paragraph [ref=e44]: Forgotten your Distributor Number (ADN)? Enter your registered name and PAN to retrieve it. Your PAN is only used to verify your identity — it is never stored or shown.
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e47]: Registered full name
+        - textbox [ref=e48]
+      - generic [ref=e49]:
+        - generic [ref=e50]: PAN
+        - textbox "ABCDE1234F" [ref=e51]
+        - paragraph [ref=e52]: Used only to verify it's you. We match it securely and never store or display it.
+      - generic [ref=e54] [cursor=pointer]:
+        - checkbox "I agree to arovolife using my PAN solely to verify my identity and retrieve my ADN. It is matched as a secure one-way hash and is not stored from this form. See our Privacy Policy." [ref=e55]
+        - generic [ref=e56]:
+          - text: I agree to arovolife using my PAN solely to verify my identity and retrieve my ADN. It is matched as a secure one-way hash and is not stored from this form. See our
+          - link "Privacy Policy" [ref=e57]:
+            - /url: http://localhost:8084/p/privacy
+          - text: .
+      - button "Find my ID" [ref=e58]
+    - paragraph [ref=e59]:
+      - text: Still stuck?
+      - link "Contact support" [ref=e60] [cursor=pointer]:
+        - /url: http://localhost:8084/contact-us
+      - text: .

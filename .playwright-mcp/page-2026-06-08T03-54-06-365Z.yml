@@ -1,0 +1,166 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - button "ST Staging Test Reg" [ref=e5]:
+      - generic [ref=e6]: ST
+      - generic [ref=e7]: Staging Test Reg
+      - img [ref=e8]
+    - generic [ref=e10]: "|"
+    - group "Adjust font size" [ref=e11]:
+      - button "Smaller text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: −
+      - button "Default text" [ref=e14]: A
+      - button "Larger text" [ref=e15]:
+        - text: A
+        - generic [ref=e16]: +
+      - button "Largest text" [ref=e17]:
+        - text: A
+        - generic [ref=e18]: ++
+      - button "Reset font size" [ref=e19]: ↺
+    - generic [ref=e20]: "|"
+    - link "My Dashboard" [ref=e21] [cursor=pointer]:
+      - /url: http://localhost:8084/dashboard
+    - generic [ref=e22]: "|"
+    - generic [ref=e23]: India 🇮🇳
+  - navigation [ref=e24]:
+    - generic [ref=e25]:
+      - link "arovolife" [ref=e26] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e27]
+      - generic [ref=e28]:
+        - link "Home" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e32] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e33] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e35]:
+          - text: Categories
+          - img [ref=e36]
+        - link "Messages" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/messages
+          - img [ref=e39]
+        - link "Cart" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - img [ref=e43]
+  - main [ref=e45]:
+    - link "← Back to shop" [ref=e47] [cursor=pointer]:
+      - /url: http://localhost:8084/shop
+    - generic [ref=e48]:
+      - generic [ref=e50]:
+        - img "arovolife Multi-Vitamin" [ref=e51]
+        - generic:
+          - img
+          - text: Tap to zoom
+      - generic [ref=e52]:
+        - link "Health Care" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/shop?category=health-care
+        - heading "arovolife Multi-Vitamin" [level=1] [ref=e54]:
+          - generic [ref=e55]: arovolife Multi-Vitamin
+        - paragraph [ref=e56]: 30 tablets. Daily essentials.
+        - generic [ref=e57]:
+          - generic [ref=e58]: ₹799.00
+          - generic [ref=e59]: ₹899.00
+          - generic [ref=e60]: 11% off
+          - generic "Business Volume — points used in the compensation plan" [ref=e61]: 500 BV
+        - generic [ref=e62]:
+          - generic [ref=e63]: Distributor price
+          - generic [ref=e64]: ₹650.00
+        - paragraph [ref=e65]: "Inclusive of all taxes. HSN: 2936"
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e69]: Qty
+            - generic [ref=e70]:
+              - button "Decrease quantity" [ref=e71]: −
+              - textbox [ref=e72]: "1"
+              - button "Increase quantity" [ref=e73]: +
+          - button "Add to Cart" [ref=e74]:
+            - img [ref=e75]
+            - text: Add to Cart
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - img [ref=e79]
+            - generic [ref=e81]: Easy Purchase — share with a customer
+          - paragraph [ref=e82]: Send this link. Purchases made through it for the next 30 days are attributed to you (ADN 597431458).
+          - generic [ref=e83]:
+            - textbox [ref=e84]: http://localhost:8084/shop/p/multi-vitamin?ref=597431458
+            - button "Copy link" [ref=e85]
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - img [ref=e88]
+            - generic [ref=e90]:
+              - strong [ref=e91]: 30-day returns
+              - text: Cooling-off window on every order.
+          - generic [ref=e92]:
+            - img [ref=e93]
+            - generic [ref=e95]:
+              - strong [ref=e96]: GST invoice
+              - text: Issued for every order.
+        - generic [ref=e97]:
+          - heading "Product facts" [level=2] [ref=e98]
+          - table [ref=e99]:
+            - rowgroup [ref=e100]:
+              - row "Country of origin India" [ref=e101]:
+                - cell "Country of origin" [ref=e102]
+                - cell "India" [ref=e103]
+              - row "HSN code 2936" [ref=e104]:
+                - cell "HSN code" [ref=e105]
+                - cell "2936" [ref=e106]
+    - generic [ref=e107]:
+      - heading "Product information" [level=2] [ref=e108]
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - heading "Directions for use" [level=3] [ref=e111]
+          - paragraph [ref=e113]: Take 1 tablet daily after breakfast, or as directed by your healthcare professional. Do not exceed the recommended dose.
+        - generic [ref=e114]:
+          - heading "Nutritional information (per tablet)" [level=3] [ref=e115]
+          - table [ref=e117]:
+            - rowgroup [ref=e118]:
+              - row "Nutrient Amount % RDA" [ref=e119]:
+                - columnheader "Nutrient" [ref=e120]
+                - columnheader "Amount" [ref=e121]
+                - columnheader "% RDA" [ref=e122]
+            - rowgroup [ref=e123]:
+              - row "Vitamin C 40 mg 100%" [ref=e124]:
+                - cell "Vitamin C" [ref=e125]
+                - cell "40 mg" [ref=e126]
+                - cell "100%" [ref=e127]
+              - row "Vitamin D3 10 mcg 50%" [ref=e128]:
+                - cell "Vitamin D3" [ref=e129]
+                - cell "10 mcg" [ref=e130]
+                - cell "50%" [ref=e131]
+              - row "Zinc 10 mg 91%" [ref=e132]:
+                - cell "Zinc" [ref=e133]
+                - cell "10 mg" [ref=e134]
+                - cell "91%" [ref=e135]
+              - row "Iron 14 mg 74%" [ref=e136]:
+                - cell "Iron" [ref=e137]
+                - cell "14 mg" [ref=e138]
+                - cell "74%" [ref=e139]
+    - generic [ref=e140]:
+      - heading "Product details" [level=2] [ref=e141]
+      - paragraph [ref=e142]: Daily multivitamin with 12 vitamins and 9 minerals. Consult a physician before use.
+  - contentinfo [ref=e143]:
+    - generic [ref=e144]:
+      - paragraph [ref=e145]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e146]:
+        - link "Terms" [ref=e147] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e148] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e149] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e150] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e151]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e152] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e153] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

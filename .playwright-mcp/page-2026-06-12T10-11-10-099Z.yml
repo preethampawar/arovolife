@@ -1,0 +1,122 @@
+- generic [active] [ref=e1]:
+  - button "Open menu" [ref=e2]:
+    - img [ref=e3]
+  - complementary [ref=e5]:
+    - generic [ref=e6]:
+      - link "arovolife" [ref=e7] [cursor=pointer]:
+        - /url: http://localhost:8084/admin
+        - img "arovolife" [ref=e8]
+      - generic [ref=e9]: Admin Console
+    - generic [ref=e10]:
+      - navigation [ref=e11]:
+        - link "⬡ Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: http://localhost:8084/admin
+          - generic [ref=e13]: ⬡
+          - generic [ref=e14]: Dashboard
+        - link "◉ Distributors" [ref=e15] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/distributors
+          - generic [ref=e16]: ◉
+          - generic [ref=e17]: Distributors
+        - link "⌬ Genealogy tree" [ref=e18] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/tree
+          - generic [ref=e19]: ⌬
+          - generic [ref=e20]: Genealogy tree
+        - link "✓ KYC review" [ref=e21] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/kyc
+          - generic [ref=e22]: ✓
+          - generic [ref=e23]: KYC review
+        - link "⇄ Line changes" [ref=e24] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/line-changes
+          - generic [ref=e25]: ⇄
+          - generic [ref=e26]: Line changes
+        - link "✉ Contact Inbox 5" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/contact-inquiries
+          - generic [ref=e28]: ✉
+          - generic [ref=e29]: Contact Inbox
+          - generic [ref=e30]: "5"
+        - link "🛒 Orders" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/orders
+          - generic [ref=e32]: 🛒
+          - generic [ref=e33]: Orders
+        - link "📊 BV Ledger" [ref=e34] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/bv-ledger
+          - generic [ref=e35]: 📊
+          - generic [ref=e36]: BV Ledger
+        - link "🏷 Coupons" [ref=e37] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/commerce/coupons
+          - generic [ref=e38]: 🏷
+          - generic [ref=e39]: Coupons
+        - link "📦 Products" [ref=e40] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/products
+          - generic [ref=e41]: 📦
+          - generic [ref=e42]: Products
+        - link "🗂 Categories" [ref=e43] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/categories
+          - generic [ref=e44]: 🗂
+          - generic [ref=e45]: Categories
+        - link "🖼 Banners" [ref=e46] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/banners
+          - generic [ref=e48]: 🖼
+          - generic [ref=e49]: Banners
+        - link "📄 Content Pages" [ref=e50] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/content
+          - generic [ref=e51]: 📄
+          - generic [ref=e52]: Content Pages
+        - link "🛡 Compliance Docs" [ref=e53] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/compliance-documents
+          - generic [ref=e54]: 🛡
+          - generic [ref=e55]: Compliance Docs
+        - link "⚙ Settings" [ref=e56] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/settings
+          - generic [ref=e57]: ⚙
+          - generic [ref=e58]: Settings
+        - link "⚑ Feature flags" [ref=e59] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/feature-flags
+          - generic [ref=e60]: ⚑
+          - generic [ref=e61]: Feature flags
+        - link "☰ Audit Log" [ref=e62] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/audit-log
+          - generic [ref=e63]: ☰
+          - generic [ref=e64]: Audit Log
+      - generic [ref=e65]:
+        - paragraph [ref=e66]: admin@arovolife.test
+        - button "⏻ Sign out" [ref=e68]:
+          - generic [ref=e69]: ⏻
+          - text: Sign out
+  - generic [ref=e70]:
+    - banner [ref=e71]:
+      - generic [ref=e72]:
+        - generic [ref=e73]: Admin
+        - heading "Shopping Mall Banners" [level=1] [ref=e74]
+      - generic [ref=e75]:
+        - generic [ref=e76]: 12 Jun 2026, 15:41 IST
+        - generic [ref=e77]: "|"
+        - link "← Distributor view" [ref=e78] [cursor=pointer]:
+          - /url: http://localhost:8084/dashboard
+    - main [ref=e79]:
+      - generic [ref=e80]:
+        - paragraph [ref=e81]: Carousel banners shown at the top of the shop. Recommended 1520 × 350 px.
+        - link "+ New banner" [ref=e82] [cursor=pointer]:
+          - /url: http://localhost:8084/admin/catalog/banners/create
+      - table [ref=e84]:
+        - rowgroup [ref=e85]:
+          - row "S.No Preview Title Source Sort Status" [ref=e86]:
+            - columnheader "S.No" [ref=e87]
+            - columnheader "Preview" [ref=e88]
+            - columnheader "Title" [ref=e89]
+            - columnheader "Source" [ref=e90]
+            - columnheader "Sort" [ref=e91]
+            - columnheader "Status" [ref=e92]
+            - columnheader [ref=e93]
+        - rowgroup [ref=e94]:
+          - row "1 Uploaded Mall Banner (recheck) Uploaded 0 Active Edit" [ref=e95]:
+            - cell "1" [ref=e96]
+            - cell [ref=e97]
+            - cell "Uploaded Mall Banner (recheck)" [ref=e98]
+            - cell "Uploaded" [ref=e99]
+            - cell "0" [ref=e100]
+            - cell "Active" [ref=e101]:
+              - generic [ref=e102]: Active
+            - cell "Edit" [ref=e103]:
+              - link "Edit" [ref=e104] [cursor=pointer]:
+                - /url: http://localhost:8084/admin/catalog/banners/6/edit

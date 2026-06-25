@@ -1,0 +1,130 @@
+<h2>What is the Compensation section's main landing page?</h2>
+<p class="subtitle">When an admin clicks "Compensation" in the sidebar, what do they see first?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Operations Dashboard (recommended)</h3>
+      <p>The landing page is a live ops view — "what needs attention right now?" Stat cards at the top (today's cut-off status, pending payouts, failed jobs, total GSB distributed this week). Below that: a feed of today's daily cut-off results and any failed/pending items needing manual action. Per-distributor lookup is a search box.</p>
+      <div class="mockup">
+        <div class="mockup-header">Admin → Compensation (overview)</div>
+        <div class="mockup-body" style="font-size:12px;color:#374151">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px">
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Today's Cut-off</div>
+              <div style="font-size:16px;font-weight:700;color:#15803d;margin-top:4px">✓ Run at 23:59</div>
+            </div>
+            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px">
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Failed Jobs</div>
+              <div style="font-size:16px;font-weight:700;color:#c2410c;margin-top:4px">3 need attention</div>
+            </div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px">
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Pending Payouts</div>
+              <div style="font-size:16px;font-weight:700;color:#1d4ed8;margin-top:4px">₹4,82,000</div>
+            </div>
+            <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px">
+              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">GSB Distributed (week)</div>
+              <div style="font-size:16px;font-weight:700;color:#7c3aed;margin-top:4px">₹28,40,000</div>
+            </div>
+          </div>
+          <div style="background:white;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+            <div style="padding:10px 12px;border-bottom:1px solid #f3f4f6;font-weight:600;font-size:11px;color:#111827;display:flex;justify-content:space-between">
+              <span>Today's Cut-off Results (24 Jun 2026)</span>
+              <span style="color:#4f46e5;cursor:pointer;font-size:10px">▶ Re-run cut-off</span>
+            </div>
+            <table style="width:100%;font-size:11px">
+              <thead><tr style="background:#f9fafb">
+                <th style="padding:6px 12px;text-align:left;color:#6b7280">ADN</th>
+                <th style="padding:6px 12px;text-align:right;color:#6b7280">Left BV</th>
+                <th style="padding:6px 12px;text-align:right;color:#6b7280">Right BV</th>
+                <th style="padding:6px 12px;text-align:right;color:#6b7280">Slab</th>
+                <th style="padding:6px 12px;text-align:right;color:#6b7280">GSB</th>
+                <th style="padding:6px 12px;text-align:center;color:#6b7280">Status</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-top:1px solid #f3f4f6"><td style="padding:6px 12px;font-family:monospace">AV-00042</td><td style="padding:6px 12px;text-align:right">18,240</td><td style="padding:6px 12px;text-align:right">22,100</td><td style="padding:6px 12px;text-align:right">1st</td><td style="padding:6px 12px;text-align:right;color:#15803d;font-weight:600">₹1,000</td><td style="padding:6px 12px;text-align:center"><span style="background:#dcfce7;color:#166534;border-radius:4px;padding:2px 6px;font-size:10px">Credited</span></td></tr>
+                <tr style="border-top:1px solid #f3f4f6;background:#fff7ed"><td style="padding:6px 12px;font-family:monospace">AV-00078</td><td style="padding:6px 12px;text-align:right">91,500</td><td style="padding:6px 12px;text-align:right">88,900</td><td style="padding:6px 12px;text-align:right">3rd</td><td style="padding:6px 12px;text-align:right;color:#c2410c;font-weight:600">₹6,000</td><td style="padding:6px 12px;text-align:center"><span style="background:#fff7ed;color:#c2410c;border-radius:4px;padding:2px 6px;font-size:10px">⚠ Failed</span></td></tr>
+                <tr style="border-top:1px solid #f3f4f6"><td style="padding:6px 12px;font-family:monospace">AV-00103</td><td style="padding:6px 12px;text-align:right">0</td><td style="padding:6px 12px;text-align:right">4,200</td><td style="padding:6px 12px;text-align:right">—</td><td style="padding:6px 12px;text-align:right;color:#6b7280">—</td><td style="padding:6px 12px;text-align:center"><span style="background:#f3f4f6;color:#6b7280;border-radius:4px;padding:2px 6px;font-size:10px">No match</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Distributor List with Compensation Snapshot</h3>
+      <p>The landing page is the full distributor list with compensation columns added: Personal BV, Title, Left Group BV, Right Group BV, Last GSB Earned, Wallet Balance. Paginated, sortable, filterable. Each row links to that distributor's compensation detail page. Aggregate stats appear as a header banner.</p>
+      <div class="mockup">
+        <div class="mockup-header">Admin → Compensation (distributor list)</div>
+        <div class="mockup-body" style="font-size:12px;color:#374151">
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:10px;display:flex;gap:20px">
+            <span>Active distributors: <strong>842</strong></span>
+            <span>GSB eligible: <strong>318</strong></span>
+            <span>Week GSB pool: <strong>₹28.4L</strong></span>
+            <span style="color:#c2410c">Failed cut-offs: <strong>3</strong></span>
+          </div>
+          <div style="background:white;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+            <table style="width:100%;font-size:11px">
+              <thead><tr style="background:#f9fafb">
+                <th style="padding:6px 10px;text-align:left;color:#6b7280">ADN</th>
+                <th style="padding:6px 10px;text-align:right;color:#6b7280">Personal BV</th>
+                <th style="padding:6px 10px;text-align:center;color:#6b7280">Title</th>
+                <th style="padding:6px 10px;text-align:right;color:#6b7280">Left BV</th>
+                <th style="padding:6px 10px;text-align:right;color:#6b7280">Right BV</th>
+                <th style="padding:6px 10px;text-align:right;color:#6b7280">Wallet</th>
+                <th style="padding:6px 10px;text-align:right;color:#6b7280">Last GSB</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-top:1px solid #f3f4f6"><td style="padding:6px 10px;font-family:monospace;color:#4f46e5">AV-00042</td><td style="padding:6px 10px;text-align:right">12,400</td><td style="padding:6px 10px;text-align:center"><span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 5px">Retailer</span></td><td style="padding:6px 10px;text-align:right">18,240</td><td style="padding:6px 10px;text-align:right">22,100</td><td style="padding:6px 10px;text-align:right;color:#15803d">₹1,000</td><td style="padding:6px 10px;text-align:right">₹1,000</td></tr>
+                <tr style="border-top:1px solid #f3f4f6;background:#fff7ed"><td style="padding:6px 10px;font-family:monospace;color:#4f46e5">AV-00078</td><td style="padding:6px 10px;text-align:right">32,100</td><td style="padding:6px 10px;text-align:center"><span style="background:#f3e8ff;color:#7e22ce;border-radius:4px;padding:1px 5px">Wholesaler</span></td><td style="padding:6px 10px;text-align:right">91,500</td><td style="padding:6px 10px;text-align:right">88,900</td><td style="padding:6px 10px;text-align:right;color:#c2410c">⚠ ₹0</td><td style="padding:6px 10px;text-align:right;color:#c2410c">Failed</td></tr>
+                <tr style="border-top:1px solid #f3f4f6"><td style="padding:6px 10px;font-family:monospace;color:#4f46e5">AV-00103</td><td style="padding:6px 10px;text-align:right">480</td><td style="padding:6px 10px;text-align:center"><span style="background:#f3f4f6;color:#6b7280;border-radius:4px;padding:1px 5px">—</span></td><td style="padding:6px 10px;text-align:right">0</td><td style="padding:6px 10px;text-align:right">4,200</td><td style="padding:6px 10px;text-align:right">₹0</td><td style="padding:6px 10px;text-align:right;color:#6b7280">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tabbed section: Overview + Sub-pages (recommended)</h3>
+      <p>A tabbed admin section. The "Overview" tab = ops dashboard (stat cards + today's cut-off feed + failed items). Separate sub-pages: Daily Cut-offs | Weekly Payouts | Carry-forwards | Distributor Lookup. Each sub-page is its own route so admins can bookmark "show me all pending payouts" directly.</p>
+      <div class="mockup">
+        <div class="mockup-header">Admin → Compensation</div>
+        <div class="mockup-body" style="font-size:12px;color:#374151">
+          <div style="display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:12px">
+            <span style="padding:6px 14px;border-bottom:2px solid #4f46e5;color:#4f46e5;font-weight:600;margin-bottom:-2px;font-size:11px">Overview</span>
+            <span style="padding:6px 14px;color:#6b7280;font-size:11px">Daily Cut-offs</span>
+            <span style="padding:6px 14px;color:#6b7280;font-size:11px">Weekly Payouts</span>
+            <span style="padding:6px 14px;color:#6b7280;font-size:11px">Carry-forwards</span>
+            <span style="padding:6px 14px;color:#6b7280;font-size:11px">Distributor Lookup</span>
+            <span style="padding:6px 14px;color:#6b7280;font-size:11px">Manual Controls</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px"><div style="font-size:10px;color:#6b7280">Cut-off status</div><div style="font-weight:700;color:#15803d">✓ Done</div></div>
+            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px"><div style="font-size:10px;color:#6b7280">Failed jobs</div><div style="font-weight:700;color:#c2410c">3 ⚠</div></div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px"><div style="font-size:10px;color:#6b7280">Pending payouts</div><div style="font-weight:700;color:#1d4ed8">₹4.82L</div></div>
+            <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:8px"><div style="font-size:10px;color:#6b7280">This week GSB</div><div style="font-weight:700;color:#7c3aed">₹28.4L</div></div>
+          </div>
+          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;margin-bottom:8px">
+            <div style="font-weight:600;font-size:11px;color:#92400e;margin-bottom:6px">⚠ 3 items need attention</div>
+            <div style="font-size:10px;color:#374151;line-height:1.6">
+              AV-00078 — GSB ₹6,000 cut-off failed (wallet write error) <a href="#" style="color:#4f46e5">Retry →</a><br>
+              AV-00119 — Mentorship Bonus propagation stuck <a href="#" style="color:#4f46e5">Retry →</a><br>
+              AV-00203 — Carry-forward not updated (BV reversal mid-cut-off) <a href="#" style="color:#4f46e5">Recalculate →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

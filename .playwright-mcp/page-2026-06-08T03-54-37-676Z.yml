@@ -1,0 +1,119 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - button "ST Staging Test Reg" [ref=e5]:
+      - generic [ref=e6]: ST
+      - generic [ref=e7]: Staging Test Reg
+      - img [ref=e8]
+    - generic [ref=e10]: "|"
+    - group "Adjust font size" [ref=e11]:
+      - button "Smaller text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: −
+      - button "Default text" [ref=e14]: A
+      - button "Larger text" [ref=e15]:
+        - text: A
+        - generic [ref=e16]: +
+      - button "Largest text" [ref=e17]:
+        - text: A
+        - generic [ref=e18]: ++
+      - button "Reset font size" [ref=e19]: ↺
+    - generic [ref=e20]: "|"
+    - link "My Dashboard" [ref=e21] [cursor=pointer]:
+      - /url: http://localhost:8084/dashboard
+    - generic [ref=e22]: "|"
+    - generic [ref=e23]: India 🇮🇳
+  - navigation [ref=e24]:
+    - generic [ref=e25]:
+      - link "arovolife" [ref=e26] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e27]
+      - generic [ref=e28]:
+        - link "Home" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e32] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e33] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e35]:
+          - text: Categories
+          - img [ref=e36]
+        - link "Messages" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/messages
+          - img [ref=e39]
+        - link "Cart — 1 item" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - generic [ref=e42]:
+            - img [ref=e43]
+            - generic [ref=e45]: "1"
+  - main [ref=e46]:
+    - heading "Your Cart" [level=1] [ref=e47]
+    - generic [ref=e48]:
+      - generic [ref=e50]:
+        - img [ref=e52]
+        - generic [ref=e53]:
+          - link "arovolife Multi-Vitamin" [ref=e54] [cursor=pointer]:
+            - /url: http://localhost:8084/shop/p/multi-vitamin
+          - paragraph [ref=e55]: SKU AV-MV-001-V1
+          - paragraph [ref=e56]: ₹799.00
+          - paragraph [ref=e57]: 500 BV
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - button "Decrease quantity" [disabled] [ref=e61]: −
+            - generic [ref=e62]: "1"
+            - button "Increase quantity" [ref=e64]: +
+          - button "Remove" [ref=e66]
+      - generic [ref=e67]:
+        - heading "Order Summary" [level=2] [ref=e68]
+        - generic [ref=e69]:
+          - generic [ref=e70]: Total BV
+          - generic "Business Volume — points used in the compensation plan" [ref=e71]: 500 BV
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - generic [ref=e74]: Subtotal
+            - generic [ref=e75]: ₹713.39
+          - generic [ref=e76]:
+            - generic [ref=e77]: GST
+            - generic [ref=e78]: ₹85.61
+          - generic [ref=e79]:
+            - generic [ref=e80]: Shipping
+            - generic [ref=e81]: ₹60.00
+          - paragraph [ref=e82]: Add ₹3,201.00 more to get free shipping.
+        - generic [ref=e84]:
+          - textbox "Promo code" [ref=e85]
+          - button "Apply" [ref=e86]
+        - generic [ref=e87]:
+          - generic [ref=e88]: Total
+          - generic [ref=e89]: ₹859.00
+        - link "Proceed to Checkout" [ref=e90] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/checkout
+        - paragraph [ref=e91]: 30-day return window on every order.
+        - generic [ref=e92]:
+          - paragraph [ref=e93]: Easy Purchase link ready
+          - paragraph [ref=e94]: Send this to a customer. Purchases through it for the next 30 days are attributed to you (ADN 597431458).
+          - generic [ref=e95]:
+            - textbox [ref=e96]: http://localhost:8084/shop/easy-cart/JLDW7MM6SM
+            - button "Copy" [ref=e97]
+  - contentinfo [ref=e98]:
+    - generic [ref=e99]:
+      - paragraph [ref=e100]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e101]:
+        - link "Terms" [ref=e102] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e103] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e104] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e105] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e106]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e107] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e108] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays

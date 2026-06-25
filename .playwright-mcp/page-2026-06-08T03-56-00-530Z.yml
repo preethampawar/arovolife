@@ -1,0 +1,196 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - button "ST Staging Test Reg" [ref=e5]:
+      - generic [ref=e6]: ST
+      - generic [ref=e7]: Staging Test Reg
+      - img [ref=e8]
+    - generic [ref=e10]: "|"
+    - group "Adjust font size" [ref=e11]:
+      - button "Smaller text" [ref=e12]:
+        - text: A
+        - generic [ref=e13]: −
+      - button "Default text" [ref=e14]: A
+      - button "Larger text" [ref=e15]:
+        - text: A
+        - generic [ref=e16]: +
+      - button "Largest text" [ref=e17]:
+        - text: A
+        - generic [ref=e18]: ++
+      - button "Reset font size" [ref=e19]: ↺
+    - generic [ref=e20]: "|"
+    - link "My Dashboard" [ref=e21] [cursor=pointer]:
+      - /url: http://localhost:8084/dashboard
+    - generic [ref=e22]: "|"
+    - generic [ref=e23]: India 🇮🇳
+  - navigation [ref=e24]:
+    - generic [ref=e25]:
+      - link "arovolife" [ref=e26] [cursor=pointer]:
+        - /url: http://localhost:8084
+        - img "arovolife" [ref=e27]
+      - generic [ref=e28]:
+        - link "Home" [ref=e29] [cursor=pointer]:
+          - /url: http://localhost:8084
+        - link "Shop" [ref=e30] [cursor=pointer]:
+          - /url: http://localhost:8084/shop
+        - link "About" [ref=e31] [cursor=pointer]:
+          - /url: http://localhost:8084/about-us
+        - link "How It Works" [ref=e32] [cursor=pointer]:
+          - /url: http://localhost:8084#how-it-works
+        - link "Contact" [ref=e33] [cursor=pointer]:
+          - /url: http://localhost:8084/contact-us
+        - button "Categories" [ref=e35]:
+          - text: Categories
+          - img [ref=e36]
+        - link "Messages" [ref=e38] [cursor=pointer]:
+          - /url: http://localhost:8084/messages
+          - img [ref=e39]
+        - link "Cart — 2 items" [ref=e41] [cursor=pointer]:
+          - /url: http://localhost:8084/shop/cart
+          - generic [ref=e42]:
+            - img [ref=e43]
+            - generic [ref=e45]: "2"
+  - main [ref=e46]:
+    - heading "Checkout" [level=1] [ref=e47]
+    - generic [ref=e48]:
+      - strong [ref=e49]: "Referred by:"
+      - text: "597431458"
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - heading "Distributor details" [level=2] [ref=e54]
+            - generic [ref=e55]:
+              - img [ref=e56]
+              - text: From your account
+          - generic [ref=e58]:
+            - generic [ref=e59]:
+              - term [ref=e60]: Distributor (ADN)
+              - definition [ref=e61]: "597431458"
+            - generic [ref=e62]:
+              - term [ref=e63]: Name
+              - definition [ref=e64]: Staging Test Reg
+            - generic [ref=e65]:
+              - term [ref=e66]: Email
+              - definition [ref=e67]: stagetest1779644410284@arovolife.local
+            - generic [ref=e68]:
+              - term [ref=e69]: Mobile
+              - definition [ref=e70]: "+919411728048"
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - heading "Customer Details" [level=2] [ref=e73]
+            - generic [ref=e74] [cursor=pointer]:
+              - checkbox "Same as distributor" [ref=e75]
+              - text: Same as distributor
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - generic [ref=e78]: Full Name *
+              - textbox [ref=e79]
+            - generic [ref=e80]:
+              - generic [ref=e81]: Email *
+              - textbox "you@example.com" [ref=e82]
+            - generic [ref=e83]:
+              - generic [ref=e84]: Mobile *
+              - generic [ref=e85]:
+                - generic [ref=e86]: "+91"
+                - textbox "9876543210" [ref=e87]
+        - generic [ref=e88]:
+          - heading "Shipping Address" [level=2] [ref=e89]
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: Address Line 1 *
+              - textbox "House/Flat no., building, street" [ref=e93]
+            - generic [ref=e94]:
+              - generic [ref=e95]: Address Line 2
+              - textbox "Landmark, area" [ref=e96]
+            - generic [ref=e97]:
+              - generic [ref=e98]: City *
+              - textbox [ref=e99]
+            - generic [ref=e100]:
+              - generic [ref=e101]: State *
+              - textbox "e.g. Karnataka" [ref=e102]
+            - generic [ref=e103]:
+              - generic [ref=e104]: Pincode *
+              - textbox [ref=e105]
+          - generic [ref=e106]:
+            - generic [ref=e107]:
+              - checkbox "Save this delivery address for next time" [checked] [ref=e108]
+              - text: Save this delivery address for next time
+            - generic [ref=e109]:
+              - generic [ref=e110]: Label (optional)
+              - combobox "Home, Work, Office…" [ref=e111]
+        - generic [ref=e113]:
+          - heading "Billing Address" [level=2] [ref=e114]
+          - generic [ref=e115] [cursor=pointer]:
+            - checkbox "Same as shipping" [checked] [ref=e116]
+            - text: Same as shipping
+        - generic [ref=e117]:
+          - heading "Payment Method" [level=2] [ref=e118]
+          - generic [ref=e119]:
+            - generic [ref=e120] [cursor=pointer]:
+              - radio "Pay online — card / UPI / netbanking" [checked] [ref=e121]
+              - generic [ref=e122]:
+                - strong [ref=e123]: Pay online
+                - text: — card / UPI / netbanking
+            - generic [ref=e124] [cursor=pointer]:
+              - radio "Cash on Delivery — pay when your order arrives" [ref=e125]
+              - generic [ref=e126]:
+                - strong [ref=e127]: Cash on Delivery
+                - text: — pay when your order arrives
+        - generic [ref=e128]:
+          - heading "Consent" [level=2] [ref=e129]
+          - generic [ref=e130] [cursor=pointer]:
+            - checkbox "I accept the Terms of Sale and Privacy Policy, and understand I have a 30-day cooling-off window per DSR 2021." [ref=e131]
+            - generic [ref=e132]:
+              - text: I accept the
+              - link "Terms of Sale" [ref=e133]:
+                - /url: http://localhost:8084/p/terms
+              - text: and
+              - link "Privacy Policy" [ref=e134]:
+                - /url: http://localhost:8084/p/privacy
+              - text: ", and understand I have a 30-day cooling-off window per DSR 2021."
+          - generic [ref=e135] [cursor=pointer]:
+            - checkbox "Email me about new products and offers (optional)." [ref=e136]
+            - generic [ref=e137]: Email me about new products and offers (optional).
+      - generic [ref=e138]:
+        - heading "Order Summary" [level=2] [ref=e139]
+        - generic [ref=e141]:
+          - generic [ref=e142]: arovolife Multi-Vitamin × 2
+          - generic [ref=e143]: ₹1,598.00
+        - generic [ref=e144]:
+          - generic [ref=e145]: Total BV
+          - generic "Business Volume — points used in the compensation plan" [ref=e146]: 1,000 BV
+        - generic [ref=e147]:
+          - generic [ref=e148]:
+            - generic [ref=e149]: Subtotal
+            - generic [ref=e150]: ₹1,426.79
+          - generic [ref=e151]:
+            - generic [ref=e152]: GST
+            - generic [ref=e153]: ₹171.21
+          - generic [ref=e154]:
+            - generic [ref=e155]: Shipping
+            - generic [ref=e156]: ₹60.00
+        - generic [ref=e157]:
+          - generic [ref=e158]: Total
+          - generic [ref=e159]: ₹1,658.00
+        - button "Place Order" [ref=e160]
+        - paragraph [ref=e161]: Test gateway — no real money moves.
+  - contentinfo [ref=e162]:
+    - generic [ref=e163]:
+      - paragraph [ref=e164]: © 2026 Arovolife Private Limited. CIN U46909TS2026PTC210896.
+      - generic [ref=e165]:
+        - link "Terms" [ref=e166] [cursor=pointer]:
+          - /url: http://localhost:8084/p/terms
+        - link "Privacy" [ref=e167] [cursor=pointer]:
+          - /url: http://localhost:8084/p/privacy
+        - link "Grievance" [ref=e168] [cursor=pointer]:
+          - /url: http://localhost:8084/p/grievance
+        - link "Compliance Documents" [ref=e169] [cursor=pointer]:
+          - /url: http://localhost:8084/compliance-documents
+    - generic [ref=e170]:
+      - text: "Customer Care:"
+      - link "+91 88866 62949" [ref=e171] [cursor=pointer]:
+        - /url: tel:+918886662949
+      - text: ·
+      - link "support@arovolife.com" [ref=e172] [cursor=pointer]:
+        - /url: mailto:support@arovolife.com
+      - text: · 9:30 am – 5:30 pm, every day except Sundays & public holidays
