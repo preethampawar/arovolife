@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,13 @@ final class MentorshipBonusService
     /** Max admin charge: ₹30,000 = 3,000,000 paise. */
     private const MAX_ADMIN_CHARGE_PAISE = 3_000_000;
 
-    public function __construct(private readonly WalletService $wallet) {}
+    /** Cached value of payout.gsb_min_bv_paise to avoid N DB reads per batch. */
+    private ?int $cachedGsbMinBvPaise = null;
+
+    public function __construct(
+        private readonly WalletService $wallet,
+        private readonly BvLedgerService $bvLedger,
+    ) {}
 
     /**
      * Compute and credit MB to the sponsor of $sponseeId for today's cut-off.
@@ -45,6 +52,13 @@ final class MentorshipBonusService
             ->value('sponsor_id');
 
         if ($sponsorId === null) {
+            return null;
+        }
+
+        // Sponsor must have minimum personal BV to be eligible for any bonus.
+        $sponsorBvPaise = $this->bvLedger->totalPersonalBvPaise((int) $sponsorId);
+
+        if ($sponsorBvPaise < $this->gsbMinBvPaise()) {
             return null;
         }
 
@@ -99,5 +113,16 @@ final class MentorshipBonusService
 
             return $result;
         });
+    }
+
+    /** Reads the configurable bonus-eligibility BV threshold from admin settings. */
+    private function gsbMinBvPaise(): int
+    {
+        if ($this->cachedGsbMinBvPaise === null) {
+            $raw = DB::table('settings')->where('key', 'payout.gsb_min_bv_paise')->value('value');
+            $this->cachedGsbMinBvPaise = $raw !== null ? (int) $raw : 60_000;
+        }
+
+        return $this->cachedGsbMinBvPaise;
     }
 }

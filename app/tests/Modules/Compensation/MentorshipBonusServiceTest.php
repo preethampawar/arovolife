@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -25,10 +26,23 @@ function makeSponsorship(Distributor $sponsor, Distributor $sponsee): void
     ]);
 }
 
+/** Give a sponsor exactly the minimum 600 BV (60,000 paise) needed for bonus eligibility. */
+function giveSponsorMinBv(Distributor $sponsor): void
+{
+    BvLedgerEntry::create([
+        'distributor_id' => $sponsor->id,
+        'order_id' => 700_000 + $sponsor->id,
+        'bv_paise' => 60_000,
+        'type' => 'accrual',
+        'effective_at' => now(),
+    ]);
+}
+
 it('credits sponsor with 10% of sponsee GSB when sponsee cumulative < 30K GSB', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
 
     $cutoffResult = GsbCutoffResult::create([
         'distributor_id' => $sponsee->id,
@@ -64,6 +78,7 @@ it('steps down MB rate after each 30K cumulative GSB milestone', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
 
     // Sponsee has already earned 60K cumulative GSB → rate should be 8% (10 - 2 steps)
     MentorshipBonusResult::create([
@@ -103,6 +118,7 @@ it('floors MB rate at 1%', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
 
     // Sponsee cumulative = 270K GSB (9 × 30K milestones → rate = max(10-9, 1) = 1%)
     MentorshipBonusResult::create([
@@ -136,6 +152,7 @@ it('is idempotent — calling twice for the same cutoff does not double-credit',
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
 
     $cutoffResult = GsbCutoffResult::create([
         'distributor_id' => $sponsee->id,
@@ -156,4 +173,37 @@ it('is idempotent — calling twice for the same cutoff does not double-credit',
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(1);
     // Net MB (10% of 100K, after 3% admin + 5% TDS) = 9,215
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(9_215);
+});
+
+it('blocks MB credit when sponsor personal BV is below the minimum threshold', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+
+    // Sponsor has only 599 BV (59,900 paise) — one BV below the 600 BV gate.
+    BvLedgerEntry::create([
+        'distributor_id' => $sponsor->id,
+        'order_id' => 700_000 + $sponsor->id,
+        'bv_paise' => 59_900,
+        'type' => 'accrual',
+        'effective_at' => now(),
+    ]);
+
+    $cutoffResult = GsbCutoffResult::create([
+        'distributor_id' => $sponsee->id,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => 1, 'gross_gsb_paise' => 100_000,
+        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 100_000,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'credited',
+    ]);
+
+    $svc = app(MentorshipBonusService::class);
+    $mb = $svc->processForSponsee($sponsee->id, $cutoffResult);
+
+    expect($mb)->toBeNull();
+    expect(MentorshipBonusResult::count())->toBe(0);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(0);
 });

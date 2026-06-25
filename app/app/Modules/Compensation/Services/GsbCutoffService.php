@@ -18,11 +18,11 @@ final class GsbCutoffService
     /** Power-side carry-forward hard cap: 450,000 BV = 45,000,000 paise. */
     private const POWER_CF_CAP_PAISE = 45_000_000;
 
-    /** Minimum personal BV to participate: 600 BV = 60,000 paise. */
-    private const MIN_PERSONAL_BV_PAISE = 60_000;
-
     /** Max admin charge: ₹30,000 = 3,000,000 paise. */
     private const MAX_ADMIN_CHARGE_PAISE = 3_000_000;
+
+    /** Cached value of payout.gsb_min_bv_paise to avoid N DB reads per batch. */
+    private ?int $cachedGsbMinBvPaise = null;
 
     /**
      * [slab_index => [threshold_bv_paise, incentive_money_paise]]
@@ -61,10 +61,10 @@ final class GsbCutoffService
 
         $distributor = Distributor::findOrFail($distributorId);
 
-        // Eligibility gate: 600 BV minimum personal purchase.
+        // Eligibility gate: configurable minimum personal BV (default 600 BV).
         $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
 
-        if ($personalBvPaise < self::MIN_PERSONAL_BV_PAISE) {
+        if ($personalBvPaise < $this->gsbMinBvPaise()) {
             return $this->saveResult($existing, [
                 'distributor_id' => $distributorId,
                 'cutoff_date' => $date->toDateString(),
@@ -251,6 +251,17 @@ final class GsbCutoffService
         return GsbCutoffResult::where('distributor_id', $distributorId)
             ->whereDate('cutoff_date', $date->toDateString())
             ->firstOrFail();
+    }
+
+    /** Reads the configurable bonus-eligibility BV threshold from admin settings. */
+    private function gsbMinBvPaise(): int
+    {
+        if ($this->cachedGsbMinBvPaise === null) {
+            $raw = DB::table('settings')->where('key', 'payout.gsb_min_bv_paise')->value('value');
+            $this->cachedGsbMinBvPaise = $raw !== null ? (int) $raw : 60_000;
+        }
+
+        return $this->cachedGsbMinBvPaise;
     }
 
     private function saveResult(?GsbCutoffResult $existing, array $data): GsbCutoffResult

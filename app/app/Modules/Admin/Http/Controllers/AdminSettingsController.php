@@ -241,12 +241,30 @@ final class AdminSettingsController extends Controller
             // ── Payout configuration ───────────────────────────────────────
             'payout.min_threshold_paise' => [
                 'group' => 'payout',
-                'label' => 'Payout: minimum threshold (paise)',
+                'label' => 'Payout: minimum payout threshold (paise)',
                 'description' => 'Wallet balances below this amount roll over to the next payout batch. 50000 = ₹500. Must be a positive integer.',
                 'type' => 'integer',
                 'min' => 1,
                 'max' => 10000000,
                 'default' => '50000',
+            ],
+            'payout.gsb_min_bv_paise' => [
+                'group' => 'payout',
+                'label' => 'Payout: minimum personal BV for bonus eligibility (paise)',
+                'description' => 'A distributor must have at least this many personal BV (lifetime) for any GSB or Mentorship Bonus to be credited to their wallet. 60000 = 600 BV. Changing this affects all future cutoff runs.',
+                'type' => 'integer',
+                'min' => 1,
+                'max' => 100_000_000,
+                'default' => '60000',
+            ],
+            'payout.neft_min_bv_paise' => [
+                'group' => 'payout',
+                'label' => 'Payout: minimum personal BV for NEFT bank transfer (paise)',
+                'description' => 'A distributor must have at least this many personal BV (lifetime) to be included in a NEFT payout batch. Below this threshold, wallet credits stay web-only. 300000 = 3,000 BV (Retailer title). Changing this affects the next payout batch run.',
+                'type' => 'integer',
+                'min' => 1,
+                'max' => 100_000_000,
+                'default' => '300000',
             ],
 
             // ── Payments ───────────────────────────────────────────────────

@@ -20,11 +20,8 @@ final class PayoutService
     /** Fallback minimum when the setting is absent. */
     private const DEFAULT_MIN_PAYOUT_PAISE = 50_000;
 
-    /**
-     * Retailer title requires 3,000 BV personal lifetime purchases.
-     * Below this threshold wallet credits are web-only — NEFT is blocked.
-     */
-    private const RETAILER_MIN_PAISE = 300_000;
+    /** Fallback when payout.neft_min_bv_paise is absent from settings (3,000 BV). */
+    private const DEFAULT_NEFT_MIN_PAISE = 300_000;
 
     public function __construct(
         private readonly WalletService $wallet,
@@ -85,7 +82,7 @@ final class PayoutService
             // Their wallet balance is recorded but NOT included in the NEFT batch.
             $personalBvPaise = $this->bvLedger->totalPersonalBvPaise((int) $distributorId);
 
-            if ($personalBvPaise < self::RETAILER_MIN_PAISE) {
+            if ($personalBvPaise < $this->neftMinBvPaise()) {
                 PayoutLineItem::create([
                     'payout_batch_id' => $batch->id,
                     'distributor_id' => $distributorId,
@@ -220,6 +217,13 @@ final class PayoutService
         $raw = DB::table('settings')->where('key', 'payout.min_threshold_paise')->value('value');
 
         return $raw !== null ? (int) $raw : self::DEFAULT_MIN_PAYOUT_PAISE;
+    }
+
+    private function neftMinBvPaise(): int
+    {
+        $raw = DB::table('settings')->where('key', 'payout.neft_min_bv_paise')->value('value');
+
+        return $raw !== null ? (int) $raw : self::DEFAULT_NEFT_MIN_PAISE;
     }
 
     private function bankLast4ForDistributor(int $distributorId): ?string
