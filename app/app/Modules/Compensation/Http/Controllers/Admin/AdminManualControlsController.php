@@ -141,7 +141,7 @@ final class AdminManualControlsController extends Controller
                 memo: 'Admin reversal — '.$reason,
             );
 
-            $result->update(['status' => 'reversed']);
+            $result->update(['status' => GsbCutoffResult::STATUS_REVERSED]);
 
             AuditLog::create([
                 'actor_id' => auth()->id(),

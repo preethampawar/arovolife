@@ -77,7 +77,7 @@
                         <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
                         <td class="px-4 py-3 font-mono text-gray-600 text-xs">{{ $entry->type }}</td>
                         <td class="px-4 py-3 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">
-                            {{ $entry->amount_paise >= 0 ? '+' : '' }}₹{{ number_format(abs($entry->amount_paise) / 100, 2) }}
+                            {{ $entry->amount_paise >= 0 ? '+' : '-' }}₹{{ number_format(abs($entry->amount_paise) / 100, 2) }}
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-blue-700">
                             ₹{{ number_format($runningBalance / 100, 2) }}

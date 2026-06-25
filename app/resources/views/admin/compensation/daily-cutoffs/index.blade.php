@@ -14,7 +14,7 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <select name="status" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
         <option value="">All statuses</option>
-        @foreach(['credited', 'failed', 'no_match', 'frozen', 'below_600bv', 'calculated'] as $s)
+        @foreach(['credited', 'reversed', 'failed', 'no_match', 'frozen', 'below_600bv', 'calculated'] as $s)
         <option value="{{ $s }}" {{ $status === $s ? 'selected' : '' }}>
             {{ str_replace('_', ' ', ucfirst($s)) }}
         </option>
@@ -69,6 +69,7 @@
                 @php
                     $badges = [
                         'credited'    => 'bg-green-100 text-green-700',
+                        'reversed'    => 'bg-red-100 text-red-700',
                         'failed'      => 'bg-red-100 text-red-700',
                         'no_match'    => 'bg-gray-100 text-gray-500',
                         'frozen'      => 'bg-blue-100 text-blue-700',

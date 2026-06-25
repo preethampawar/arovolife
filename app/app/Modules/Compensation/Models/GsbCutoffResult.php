@@ -43,6 +43,8 @@ final class GsbCutoffResult extends Model
 
     public const STATUS_BELOW_600BV = 'below_600bv';
 
+    public const STATUS_REVERSED = 'reversed';
+
     protected $table = 'gsb_cutoff_results';
 
     protected $fillable = [

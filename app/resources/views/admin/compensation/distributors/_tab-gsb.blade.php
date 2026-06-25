@@ -11,7 +11,7 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" placeholder="To">
     <select name="status" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
         <option value="">All statuses</option>
-        @foreach(['credited' => 'Credited', 'failed' => 'Failed', 'no_match' => 'No match', 'frozen' => 'Frozen', 'below_600bv' => 'Below 600 BV', 'calculated' => 'Calculated'] as $value => $label)
+        @foreach(['credited' => 'Credited', 'reversed' => 'Reversed', 'failed' => 'Failed', 'no_match' => 'No match', 'frozen' => 'Frozen', 'below_600bv' => 'Below 600 BV', 'calculated' => 'Calculated'] as $value => $label)
         <option value="{{ $value }}" {{ ($status ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
         @endforeach
     </select>
@@ -42,7 +42,7 @@
         </thead>
         <tbody class="divide-y divide-gray-50">
             @foreach($rows as $row)
-            @php $b = ['credited' => 'bg-green-100 text-green-700', 'failed' => 'bg-red-100 text-red-700', 'no_match' => 'bg-gray-100 text-gray-500', 'frozen' => 'bg-blue-100 text-blue-700', 'below_600bv' => 'bg-amber-100 text-amber-700']; @endphp
+            @php $b = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'failed' => 'bg-red-100 text-red-700', 'no_match' => 'bg-gray-100 text-gray-500', 'frozen' => 'bg-blue-100 text-blue-700', 'below_600bv' => 'bg-amber-100 text-amber-700']; @endphp
             <tr class="{{ $row->status === 'failed' ? 'bg-red-50' : '' }}">
                 <td class="px-3 py-2 font-medium">{{ $row->cutoff_date->format('d M Y') }}</td>
                 <td class="px-3 py-2 text-right">@bv($row->left_bv_paise)</td>

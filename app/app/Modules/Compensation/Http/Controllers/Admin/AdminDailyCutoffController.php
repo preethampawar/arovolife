@@ -19,7 +19,7 @@ final class AdminDailyCutoffController extends Controller
     {
         $request->validate([
             'date' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:credited,failed,no_match,frozen,below_600bv,calculated'],
+            'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated'],
             'q' => ['nullable', 'string', 'max:64'],
         ]);
 
@@ -58,7 +58,7 @@ final class AdminDailyCutoffController extends Controller
     {
         $request->validate([
             'date' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:credited,failed,no_match,frozen,below_600bv,calculated'],
+            'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated'],
         ]);
         $date = $request->query('date') ? Carbon::parse((string) $request->query('date')) : Carbon::today();
         $status = $request->query('status');
