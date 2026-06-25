@@ -196,22 +196,32 @@ final class AdminManualControlsController extends Controller
     {
         $request->validate([
             'adn' => ['required', 'string'],
+            'gsb_cutoff_result_id' => ['required', 'integer', 'min:1'],
             'amount' => ['required', 'numeric', 'min:1'],
             'reason' => ['required', 'string', 'min:10', 'max:500'],
         ]);
 
         $distributor = Distributor::where('adn', $request->input('adn'))->firstOrFail();
+
+        // Sale-chain linkage: manual credit must reference an existing cut-off result
+        // for this distributor — that result traces back to BV → paid product orders.
+        $cutoffResult = GsbCutoffResult::where('id', (int) $request->input('gsb_cutoff_result_id'))
+            ->where('distributor_id', $distributor->id)
+            ->firstOrFail();
+
         $amountPaise = (int) round((float) $request->input('amount') * 100);
         $reason = $request->input('reason');
         $ip = $request->ip();
 
-        DB::transaction(function () use ($distributor, $amountPaise, $reason, $ip): void {
+        DB::transaction(function () use ($distributor, $amountPaise, $reason, $ip, $cutoffResult): void {
             $before = $this->wallet->balancePaise($distributor->id);
 
             $this->wallet->credit(
                 distributorId: $distributor->id,
                 amountPaise: $amountPaise,
                 type: 'manual_credit',
+                referenceId: $cutoffResult->id,
+                referenceType: 'gsb_cutoff_result',
                 memo: 'Admin: '.$reason,
             );
 
@@ -222,6 +232,8 @@ final class AdminManualControlsController extends Controller
                 'subject_id' => $distributor->id,
                 'details' => [
                     'adn' => $distributor->adn,
+                    'gsb_cutoff_result_id' => $cutoffResult->id,
+                    'cutoff_date' => $cutoffResult->cutoff_date->toDateString(),
                     'amount_paise' => $amountPaise,
                     'wallet_before' => $before,
                     'wallet_after' => $this->wallet->balancePaise($distributor->id),

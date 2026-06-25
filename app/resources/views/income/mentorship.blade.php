@@ -74,7 +74,7 @@
                     @foreach($rows as $row)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 font-mono text-gray-700">
-                            {{ substr($row->sponsee_adn, 0, 2) }}***{{ substr($row->sponsee_adn, -2) }}
+                            {{ $row->sponsee_adn }}
                         </td>
                         <td class="px-4 py-3 text-right font-mono">₹{{ number_format($row->sponsee_gsb_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">

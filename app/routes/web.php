@@ -303,12 +303,12 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
 
         Route::prefix('manual-controls')->name('manual-controls.')->group(function (): void {
             Route::get('/', [AdminManualControlsController::class, 'index'])->name('index');
-            Route::post('retry', [AdminManualControlsController::class, 'retryCutoff'])->name('retry')->middleware('can:compensation.manage');
-            Route::post('recalc-cf', [AdminManualControlsController::class, 'recalcCarryForward'])->name('recalc-cf')->middleware('can:compensation.manage');
-            Route::post('credit', [AdminManualControlsController::class, 'manualCredit'])->name('credit')->middleware('can:compensation.manage');
-            Route::post('reverse', [AdminManualControlsController::class, 'reverseCredit'])->name('reverse')->middleware('can:compensation.manage');
-            Route::post('force-payout', [AdminManualControlsController::class, 'forcePayout'])->name('force-payout')->middleware('can:compensation.manage');
-            Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb')->middleware('can:compensation.manage');
+            Route::post('retry', [AdminManualControlsController::class, 'retryCutoff'])->name('retry')->middleware('can:finance.record');
+            Route::post('recalc-cf', [AdminManualControlsController::class, 'recalcCarryForward'])->name('recalc-cf')->middleware('can:finance.record');
+            Route::post('credit', [AdminManualControlsController::class, 'manualCredit'])->name('credit')->middleware('can:finance.record');
+            Route::post('reverse', [AdminManualControlsController::class, 'reverseCredit'])->name('reverse')->middleware('can:compliance.discipline');
+            Route::post('force-payout', [AdminManualControlsController::class, 'forcePayout'])->name('force-payout')->middleware('can:finance.record');
+            Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb')->middleware('can:compliance.discipline');
         });
     });
 

@@ -112,7 +112,10 @@ final class IncomeController extends Controller
                 ->withQueryString();
 
             $rows->getCollection()->transform(function (MentorshipBonusResult $row): MentorshipBonusResult {
-                $row->sponsee_adn = $row->sponsee?->adn ?? '—';
+                $adn = $row->sponsee?->adn ?? '';
+                $row->sponsee_adn = $adn !== ''
+                    ? mb_substr($adn, 0, 2).'***'.mb_substr($adn, -2)
+                    : '—';
 
                 return $row;
             });
