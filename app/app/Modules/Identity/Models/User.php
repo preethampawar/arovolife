@@ -251,6 +251,12 @@ final class User extends Authenticatable
         return $this->password_hash;
     }
 
+    /** Tell Laravel 11's rehash/reset flows to use our column name. */
+    public function getAuthPasswordName(): string
+    {
+        return 'password_hash';
+    }
+
     public function distributor(): HasOne
     {
         return $this->hasOne(Distributor::class);
