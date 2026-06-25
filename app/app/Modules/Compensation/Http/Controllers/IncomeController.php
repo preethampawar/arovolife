@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers;
 
+use App\Modules\Compensation\Models\AdcBonusResult;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -11,6 +12,7 @@ use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
@@ -212,6 +214,32 @@ final class IncomeController extends Controller
         }
 
         return view('income.fortune-bonus', compact('distributor', 'rows', 'totalNet'));
+    }
+
+    public function adcBonus(Request $request): View
+    {
+        abort_unless(Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class), 404);
+
+        $distributor = $request->user()?->distributor;
+        abort_unless($distributor !== null, 403);
+
+        try {
+            $rows = AdcBonusResult::where('distributor_id', $distributor->id)
+                ->where('status', AdcBonusResult::STATUS_CREDITED)
+                ->with('center')
+                ->when($request->filled('from'), fn ($q) => $q->where('month_start', '>=', $request->input('from').'-01'))
+                ->when($request->filled('to'), fn ($q) => $q->where('month_start', '<=', $request->input('to').'-01'))
+                ->orderByDesc('month_start')
+                ->paginate(self::PER_PAGE)
+                ->withQueryString();
+
+            $totalNet = $rows->getCollection()->sum('net_paise');
+        } catch (QueryException) {
+            $rows = collect();
+            $totalNet = 0;
+        }
+
+        return view('income.adc-bonus', compact('distributor', 'rows', 'totalNet'));
     }
 
     public function wallet(Request $request): View

@@ -1,4 +1,5 @@
 @php
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
@@ -13,6 +14,7 @@ $tabs = [
     ['route' => 'income.growth-booster', 'label' => 'Growth Booster', 'visible' => Feature::for(null)->active(GrowthBoosterBonusFeature::class)],
     ['route' => 'income.rank-bonus',  'label' => 'Rank Bonus', 'visible' => Feature::for(null)->active(RankBonusFeature::class)],
     ['route' => 'income.fortune-bonus', 'label' => 'Fortune Bonus', 'visible' => Feature::for(null)->active(FortuneBonusFeature::class)],
+    ['route' => 'income.adc-bonus',   'label' => 'ADC Bonus', 'visible' => Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class)],
     ['route' => 'income.wallet',         'label' => 'Wallet & Payouts', 'visible' => true],
 ];
 @endphp

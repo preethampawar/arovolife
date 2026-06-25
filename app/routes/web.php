@@ -28,6 +28,7 @@ use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
@@ -316,6 +317,15 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
             Route::get('/{month}', [AdminFortuneBonusController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
         });
 
+        Route::prefix('adc-bonus')->name('adc-bonus.')->group(function (): void {
+            Route::get('/', [AdminAdcBonusController::class, 'index'])->name('index');
+            Route::get('/centers', [AdminAdcBonusController::class, 'centersIndex'])->name('centers.index');
+            Route::get('/centers/create', [AdminAdcBonusController::class, 'centersCreate'])->name('centers.create');
+            Route::post('/centers', [AdminAdcBonusController::class, 'centersStore'])->name('centers.store');
+            Route::post('/centers/{center}/members', [AdminAdcBonusController::class, 'centersAddMember'])->name('centers.add-member')->whereNumber('center');
+            Route::get('/{month}', [AdminAdcBonusController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
+        });
+
         Route::get('distributors/{distributor}', [AdminDistributorCompController::class, 'show'])
             ->name('distributors.show')
             ->whereNumber('distributor');
@@ -522,6 +532,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/income/growth-booster', [IncomeController::class, 'growthBooster'])->name('income.growth-booster');
     Route::get('/income/rank-bonus', [IncomeController::class, 'rankBonus'])->name('income.rank-bonus');
     Route::get('/income/fortune-bonus', [IncomeController::class, 'fortuneBonus'])->name('income.fortune-bonus');
+    Route::get('/income/adc-bonus', [IncomeController::class, 'adcBonus'])->name('income.adc-bonus');
     Route::get('/income/wallet', [IncomeController::class, 'wallet'])->name('income.wallet');
     Route::get('/income/wallet/export', [IncomeController::class, 'exportWallet'])->name('income.wallet.export');
 

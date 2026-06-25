@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
@@ -44,6 +45,13 @@ Schedule::command(RankBonusRunCommand::class)
 // Fortune Bonus runs on the 9th of each month at 09:00 IST (after rank bonus is processed).
 Schedule::command(FortuneBonusRunCommand::class)
     ->monthlyOn(9, '09:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// ADC Bonus runs on the 8th of each month at 09:30 IST (after rank bonus at 08:00).
+Schedule::command(AdcBonusRunCommand::class)
+    ->monthlyOn(8, '09:30')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
