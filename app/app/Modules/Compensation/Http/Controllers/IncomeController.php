@@ -8,9 +8,11 @@ use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -157,6 +159,32 @@ final class IncomeController extends Controller
         }
 
         return view('income.growth-booster', compact('distributor', 'rows', 'totalAgp', 'totalNet'));
+    }
+
+    public function rankBonus(Request $request): View
+    {
+        abort_unless(Feature::for(null)->active(RankBonusFeature::class), 404);
+
+        $distributor = $request->user()?->distributor;
+        abort_unless($distributor !== null, 403);
+
+        try {
+            $rows = RankBonusResult::where('distributor_id', $distributor->id)
+                ->where('status', RankBonusResult::STATUS_CREDITED)
+                ->when($request->filled('from'), fn ($q) => $q->where('month_start', '>=', $request->input('from').'-01'))
+                ->when($request->filled('to'), fn ($q) => $q->where('month_start', '<=', $request->input('to').'-01'))
+                ->orderByDesc('month_start')
+                ->orderBy('rank_number')
+                ->paginate(self::PER_PAGE)
+                ->withQueryString();
+
+            $totalNet = $rows->getCollection()->sum('net_paise');
+        } catch (QueryException) {
+            $rows = collect();
+            $totalNet = 0;
+        }
+
+        return view('income.rank-bonus', compact('distributor', 'rows', 'totalNet'));
     }
 
     public function wallet(Request $request): View

@@ -12,6 +12,7 @@ use App\Modules\Admin\Http\Controllers\AdminFeatureFlagController;
 use App\Modules\Admin\Http\Controllers\AdminHelpController;
 use App\Modules\Admin\Http\Controllers\AdminImpersonationController;
 use App\Modules\Admin\Http\Controllers\AdminKycController;
+use App\Modules\Admin\Http\Controllers\AdminLifetimeAwardsController;
 use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
@@ -32,6 +33,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
 use App\Modules\Compensation\Http\Controllers\IncomeController;
@@ -303,6 +305,11 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
             Route::get('/{month}', [AdminGbbController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
         });
 
+        Route::prefix('rank-bonus')->name('rank-bonus.')->group(function (): void {
+            Route::get('/', [AdminRankBonusController::class, 'index'])->name('index');
+            Route::get('/{month}', [AdminRankBonusController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
+        });
+
         Route::get('distributors/{distributor}', [AdminDistributorCompController::class, 'show'])
             ->name('distributors.show')
             ->whereNumber('distributor');
@@ -316,6 +323,12 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
             Route::post('force-payout', [AdminManualControlsController::class, 'forcePayout'])->name('force-payout')->middleware('can:finance.record');
             Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb')->middleware('can:compliance.discipline');
         });
+    });
+
+    // Lifetime Awards (Phase 5)
+    Route::prefix('lifetime-awards')->name('lifetime-awards.')->group(function (): void {
+        Route::get('/', [AdminLifetimeAwardsController::class, 'index'])->name('index');
+        Route::post('/{milestone}/deliver', [AdminLifetimeAwardsController::class, 'markDelivered'])->name('deliver')->whereNumber('milestone');
     });
 
     // Commerce — coupons / discounts (Epic 3)
@@ -501,6 +514,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/income/gsb-history/export', [IncomeController::class, 'exportGsb'])->name('income.gsb-history.export');
     Route::get('/income/mentorship', [IncomeController::class, 'mentorship'])->name('income.mentorship');
     Route::get('/income/growth-booster', [IncomeController::class, 'growthBooster'])->name('income.growth-booster');
+    Route::get('/income/rank-bonus', [IncomeController::class, 'rankBonus'])->name('income.rank-bonus');
     Route::get('/income/wallet', [IncomeController::class, 'wallet'])->name('income.wallet');
     Route::get('/income/wallet/export', [IncomeController::class, 'exportWallet'])->name('income.wallet.export');
 
