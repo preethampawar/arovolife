@@ -462,6 +462,10 @@ Route::post('/contact-us', [ContactController::class, 'submit'])->name('contact.
 Route::get('/find-my-id', [FindMyIdController::class, 'show'])->name('find-my-id.show');
 Route::post('/find-my-id', [FindMyIdController::class, 'lookup'])
     ->middleware('throttle:8,10')->name('find-my-id.lookup');
+Route::post('/find-my-id/verify', [FindMyIdController::class, 'verifyOtp'])
+    ->middleware('throttle:10,5')->name('find-my-id.verify');
+Route::post('/find-my-id/resend', [FindMyIdController::class, 'resendOtp'])
+    ->middleware('throttle:3,60')->name('find-my-id.resend');
 
 // ── Public Storefront (Commerce) ─────────────────────────────────────────────
 

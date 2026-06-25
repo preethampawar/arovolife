@@ -21,13 +21,31 @@
                 Find my <span class="text-brand-600">ID</span>.
             </h1>
             <p class="text-sm text-gray-600 mt-3">
-                Forgotten your Distributor Number (ADN)? Enter your registered name and PAN to retrieve it.
-                Your PAN is only used to verify your identity — it is never stored or shown.
+                @if(($step ?? 'lookup') === 'otp')
+                    We sent a verification code to your registered email. Enter it below to retrieve your ADN.
+                @else
+                    Forgotten your Distributor Number (ADN)? Enter your registered name and PAN to retrieve it.
+                    Your PAN is only used to verify your identity — it is never stored or shown.
+                @endif
             </p>
         </div>
 
-        @if($result)
-            {{-- Match found — show the ADN. --}}
+        @if(!empty($error))
+            <div class="card-refined p-4 mb-6 bg-amber-50 border border-amber-200 lift-in" style="animation-delay: 100ms;">
+                <p class="text-sm text-amber-800">{{ $error }}</p>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="card-refined p-4 mb-6 bg-red-50 border border-red-200">
+                <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
+                    @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if(($step ?? 'lookup') === 'result' && isset($result))
+            {{-- ── Step 3: ADN revealed after OTP verification ─────────────────── --}}
             <div class="card-refined p-6 sm:p-7 mb-6 bg-leaf-50 border border-leaf-200 lift-in text-center" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-leaf-700 mb-1">We found your account</p>
                 <p class="text-xs text-gray-600 mb-4">{{ $result['name'] }} · {{ $result['state'] }}</p>
@@ -38,21 +56,50 @@
                     Log in →
                 </a>
             </div>
+
+        @elseif(($step ?? 'lookup') === 'otp')
+            {{-- ── Step 2: OTP entry ───────────────────────────────────────────── --}}
+            @if(!empty($resent))
+                <div class="card-refined p-4 mb-6 bg-leaf-50 border border-leaf-200 lift-in" style="animation-delay: 100ms;">
+                    <p class="text-sm text-leaf-800">A new code has been sent. Please check your email.</p>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('find-my-id.verify') }}" class="card-refined p-6 sm:p-7 space-y-5 lift-in" style="animation-delay: 120ms;">
+                @csrf
+                <div class="text-center">
+                    <p class="text-sm text-gray-600">
+                        We sent a 6-digit code to
+                        <strong class="text-gray-900 font-mono">{{ $maskedContact ?? '***' }}</strong>.
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">It expires in 10 minutes.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Verification code</label>
+                    <input type="text" name="otp_code" required inputmode="numeric" maxlength="6"
+                        placeholder="000000" autocomplete="one-time-code"
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        autofocus>
+                </div>
+
+                <button type="submit"
+                    class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    Verify &amp; reveal my ADN
+                </button>
+            </form>
+
+            <form method="POST" action="{{ route('find-my-id.resend') }}" class="mt-4 text-center">
+                @csrf
+                <p class="text-xs text-gray-500">
+                    Didn't receive the code?
+                    <button type="submit" class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">
+                        Resend code
+                    </button>
+                </p>
+            </form>
+
         @else
-            @if(!empty($error))
-                <div class="card-refined p-4 mb-6 bg-amber-50 border border-amber-200 lift-in" style="animation-delay: 100ms;">
-                    <p class="text-sm text-amber-800">{{ $error }}</p>
-                </div>
-            @endif
-
-            @if($errors->any())
-                <div class="card-refined p-4 mb-6 bg-red-50 border border-red-200">
-                    <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
-                        @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
-                    </ul>
-                </div>
-            @endif
-
+            {{-- ── Step 1: Name + PAN lookup ───────────────────────────────────── --}}
             <form method="POST" action="{{ route('find-my-id.lookup') }}" class="card-refined p-6 sm:p-7 space-y-5 lift-in" style="animation-delay: 120ms;">
                 @csrf
                 <div>
