@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property int $pool_paise
  * @property int $total_pool_agp
  * @property int $gbb_gross_paise
+ * @property int $admin_charge_paise
  * @property int $tds_paise
  * @property int $gbb_net_paise
  * @property string $status
@@ -33,15 +34,9 @@ final class GbbMonthlyResult extends Model
 
     public const STATUS_REVERSED = 'reversed';
 
-    /** Max AGP a single distributor can earn per month. */
-    public const AGP_CAP = 120;
-
-    /** AGP awarded per GSB slab occurrence (slabs 4–7 give 0). */
-    public const AGP_BY_SLAB = [
-        1 => 12,
-        2 => 5,
-        3 => 2,
-    ];
+    // AGP cap and per-slab AGP now live in the admin-editable `gsb_slabs` table
+    // (agp_per_occurrence column) and the `comp.gbb.agp_cap` setting — read them
+    // through CompensationPlanSettingsService, not constants on this model.
 
     protected $fillable = [
         'distributor_id',
@@ -51,6 +46,7 @@ final class GbbMonthlyResult extends Model
         'pool_paise',
         'total_pool_agp',
         'gbb_gross_paise',
+        'admin_charge_paise',
         'tds_paise',
         'gbb_net_paise',
         'status',
@@ -65,6 +61,7 @@ final class GbbMonthlyResult extends Model
             'pool_paise' => 'int',
             'total_pool_agp' => 'int',
             'gbb_gross_paise' => 'int',
+            'admin_charge_paise' => 'int',
             'tds_paise' => 'int',
             'gbb_net_paise' => 'int',
             'credited_at' => 'datetime',

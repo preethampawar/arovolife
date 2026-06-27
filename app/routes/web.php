@@ -35,6 +35,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompControll
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
@@ -286,6 +287,18 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
     // Compensation (Phase 4) — GSB + Mentorship Bonus admin
     Route::prefix('compensation')->name('compensation.')->group(function (): void {
         Route::get('/', CompensationOverviewController::class)->name('overview');
+
+        Route::prefix('plan-settings')->name('plan-settings.')->group(function (): void {
+            Route::get('/', [AdminPlanSettingsController::class, 'index'])->name('index');
+            Route::post('/gsb-slab/{slab}', [AdminPlanSettingsController::class, 'updateGsbSlab'])
+                ->middleware('can:finance.record')->name('gsb-slab.update')->whereNumber('slab');
+            Route::post('/rank-tier/{rank}', [AdminPlanSettingsController::class, 'updateRankTier'])
+                ->middleware('can:finance.record')->name('rank-tier.update')->whereNumber('rank');
+            Route::post('/fortune-level/{level}', [AdminPlanSettingsController::class, 'updateFortuneLevel'])
+                ->middleware('can:finance.record')->name('fortune-level.update')->whereNumber('level');
+            Route::post('/fortune-tier/{tier}', [AdminPlanSettingsController::class, 'updateFortuneTier'])
+                ->middleware('can:finance.record')->name('fortune-tier.update');
+        });
 
         Route::prefix('daily-cutoffs')->name('daily-cutoffs.')->group(function (): void {
             Route::get('/', [AdminDailyCutoffController::class, 'index'])->name('index');

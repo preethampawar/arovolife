@@ -21,41 +21,9 @@ use Illuminate\Support\Carbon;
  */
 final class FortuneBonusParticipant extends Model
 {
-    /** Bonus in paise earned by a participant at each matrix level (0-9). */
-    public const array LEVEL_BONUS_PAISE = [
-        0 => 339,
-        1 => 1017,
-        2 => 3050,
-        3 => 4579,
-        4 => 6888,
-        5 => 2500,
-        6 => 6000,
-        7 => 5500,
-        8 => 5100,
-        9 => 0,
-    ];
-
-    /** Minimum personal BV required by eligibility tier (in paise). */
-    public const array BV_REQUIRED_PAISE = [
-        'new_joiner' => 300_000,
-        'non_ranked' => 60_000,
-        'rank_1' => 100_000,
-        'rank_2' => 100_000,
-        'rank_3' => 100_000,
-        'rank_4' => 100_000,
-        'rank_5' => 100_000,
-    ];
-
-    /** Minimum GSB slabs required by eligibility tier. */
-    public const array SLABS_REQUIRED = [
-        'new_joiner' => 1,
-        'non_ranked' => 1,
-        'rank_1' => 4,
-        'rank_2' => 6,
-        'rank_3' => 8,
-        'rank_4' => 10,
-        'rank_5' => 12,
-    ];
+    // Level bonuses live in the admin-editable `fortune_bonus_levels` table and
+    // the per-tier BV/slab gates in `fortune_bonus_tiers` — read them through
+    // CompensationPlanSettingsService, not constants on this model.
 
     protected $fillable = [
         'distributor_id',

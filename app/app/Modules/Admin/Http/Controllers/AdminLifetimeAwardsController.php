@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
-use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Illuminate\Contracts\View\View;
@@ -31,7 +31,7 @@ final class AdminLifetimeAwardsController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $rankNames = RankQualification::RANK_NAMES;
+        $rankNames = app(CompensationPlanSettingsService::class)->rankNames();
 
         return view('admin.lifetime-awards.index', compact('milestones', 'rankNames'));
     }

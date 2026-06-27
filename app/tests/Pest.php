@@ -1,5 +1,9 @@
 <?php
 
+use Database\Seeders\FortuneBonusLevelsSeeder;
+use Database\Seeders\FortuneBonusTiersSeeder;
+use Database\Seeders\GsbSlabsSeeder;
+use Database\Seeders\RankTiersSeeder;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -16,6 +20,36 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->in('Feature', 'Modules');
+
+/*
+|--------------------------------------------------------------------------
+| Compensation plan config tables
+|--------------------------------------------------------------------------
+|
+| The compensation engines read their slab/rank/fortune ladders from DB tables
+| (gsb_slabs, rank_tiers, fortune_bonus_levels, fortune_bonus_tiers) via
+| CompensationPlanSettingsService instead of hardcoded constants. RefreshDatabase
+| starts each test with empty tables, so seed the KP-confirmed defaults before
+| every Compensation test. Scalar settings (rates, caps) fall back to the
+| service's built-in registry defaults, so only the tables need seeding here.
+| Individual tests may override a seeded row to prove a value is read from config.
+|
+*/
+pest()->beforeEach(function (): void {
+    seedCompensationPlanTables();
+})->in('Modules/Compensation');
+
+function seedCompensationPlanTables(): void
+{
+    foreach ([
+        GsbSlabsSeeder::class,
+        RankTiersSeeder::class,
+        FortuneBonusLevelsSeeder::class,
+        FortuneBonusTiersSeeder::class,
+    ] as $seeder) {
+        (new $seeder)->run();
+    }
+}
 
 /*
 |--------------------------------------------------------------------------

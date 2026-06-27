@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use Illuminate\Support\Carbon;
@@ -22,16 +23,18 @@ use Illuminate\Support\Facades\DB;
  * Eligibility for Phase 4: all active distributors with at least 1 AGP.
  * Phase 5 will gate this on "no rank held in prior month" once the rank
  * engine exists.
+ *
+ * Pool rate, AGP cap, admin charge and TDS are all admin-editable via
+ * CompensationPlanSettingsService. KP's 2026-06-26 amendment brought GBB into
+ * the admin-charge scope, so net = gross − admin charge − TDS.
  */
 final class GrowthBoosterBonusService
 {
-    /** 5% of monthly company turnover forms the GBB pool. */
-    private const POOL_RATE = 0.05;
-
-    /** TDS rate (5%). No admin charge applies to GBB per the plan. */
-    private const TDS_RATE = 0.05;
-
-    public function __construct(private readonly WalletService $wallet) {}
+    public function __construct(
+        private readonly WalletService $wallet,
+        private readonly CompensationPlanSettingsService $plan,
+        private readonly BonusDeductionService $deductions,
+    ) {}
 
     /**
      * Run the GBB calculation for the given calendar month.
@@ -46,7 +49,7 @@ final class GrowthBoosterBonusService
         $monthEnd = $month->copy()->endOfMonth();
 
         $turnoverPaise = $this->companyTurnoverPaise($monthStart, $monthEnd);
-        $poolPaise = (int) round($turnoverPaise * self::POOL_RATE);
+        $poolPaise = (int) round($turnoverPaise * $this->plan->gbbPoolRateBp() / 10_000);
 
         // Compute AGP per eligible distributor for the month.
         $agpMap = $this->buildAgpMap($monthStart, $monthEnd);
@@ -89,8 +92,10 @@ final class GrowthBoosterBonusService
                 }
 
                 $gross = $pointValuePaise * $agp;
-                $tds = (int) round($gross * self::TDS_RATE);
-                $net = $gross - $tds;
+                $deduction = $this->deductions->for(BonusType::GrowthBooster, $gross);
+                $adminCharge = $deduction->adminChargePaise;
+                $tds = $deduction->tdsPaise;
+                $net = $deduction->netPaise;
 
                 $result = GbbMonthlyResult::updateOrCreate(
                     ['distributor_id' => $distributorId, 'year_month' => $yearMonth],
@@ -100,6 +105,7 @@ final class GrowthBoosterBonusService
                         'pool_paise' => $poolPaise,
                         'total_pool_agp' => $totalAgp,
                         'gbb_gross_paise' => $gross,
+                        'admin_charge_paise' => $adminCharge,
                         'tds_paise' => $tds,
                         'gbb_net_paise' => $net,
                         'status' => GbbMonthlyResult::STATUS_PENDING,
@@ -156,14 +162,18 @@ final class GrowthBoosterBonusService
         /** @var Collection<int, int> $agpMap distributor_id → raw (pre-cap) AGP */
         $agpMap = collect();
 
+        $agpBySlab = $this->plan->agpBySlab();
+
         foreach ($rows as $row) {
             $distributorId = (int) $row->distributor_id;
-            $agpPerOccurrence = GbbMonthlyResult::AGP_BY_SLAB[(int) $row->slab] ?? 0;
+            $agpPerOccurrence = $agpBySlab[(int) $row->slab] ?? 0;
             $agpMap[$distributorId] = ($agpMap[$distributorId] ?? 0) + ($agpPerOccurrence * (int) $row->occurrences);
         }
 
         // Apply per-distributor cap.
-        return $agpMap->map(fn (int $agp) => min($agp, GbbMonthlyResult::AGP_CAP));
+        $cap = $this->plan->gbbAgpCap();
+
+        return $agpMap->map(fn (int $agp) => min($agp, $cap));
     }
 
     /**

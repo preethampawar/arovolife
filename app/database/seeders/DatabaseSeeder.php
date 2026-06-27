@@ -16,6 +16,10 @@ class DatabaseSeeder extends Seeder
             ProductCategorySeeder::class,
             ProductCatalogSeeder::class,
             CommerceFeatureFlagSeeder::class,
+            GsbSlabsSeeder::class,
+            RankTiersSeeder::class,
+            FortuneBonusLevelsSeeder::class,
+            FortuneBonusTiersSeeder::class,
         ]);
     }
 }

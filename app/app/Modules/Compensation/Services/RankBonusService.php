@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankQualification;
@@ -16,19 +17,20 @@ use Illuminate\Support\Facades\DB;
  *
  * Pool per rank = company_turnover * pool_pct[rank] / 100.
  * Per-distributor gross = floor(pool / qualifier_count).
- * Admin charge = min(floor(gross * 0.03), 3_000_000).
- * TDS = round(gross * 0.05) — applied to gross, NOT to (gross - admin_charge).
+ * Admin charge = min(floor(gross * rate), cap) — Rank uses floor (not round).
+ * TDS = round(gross * tds_rate) — applied to gross, NOT to (gross - admin_charge).
  * Net = gross - admin_charge - tds.
+ *
+ * All rates, caps and pool/PYP figures are read from
+ * CompensationPlanSettingsService (admin-editable), not hardcoded.
  */
 final class RankBonusService
 {
-    private const float ADMIN_CHARGE_RATE = 0.03;
-
-    private const int ADMIN_CHARGE_CAP_PAISE = 3_000_000; // ₹30,000
-
-    private const float TDS_RATE = 0.05;
-
-    public function __construct(private readonly WalletService $wallet) {}
+    public function __construct(
+        private readonly WalletService $wallet,
+        private readonly CompensationPlanSettingsService $plan,
+        private readonly BonusDeductionService $deductions,
+    ) {}
 
     /**
      * Run the Rank Bonus for the given calendar month.
@@ -55,9 +57,9 @@ final class RankBonusService
             $monthStart, $turnoverPaise, &$credited, &$byRank,
         ): void {
             foreach (range(1, 9) as $rank) {
-                $poolPct = RankQualification::POOL_PCT[$rank];
+                $poolPct = $this->plan->rankPoolPct($rank);
                 $poolPaise = (int) round($turnoverPaise * $poolPct / 100);
-                $pypRequired = RankQualification::PYP_REQUIRED[$rank];
+                $pypRequired = $this->plan->rankPypRequired($rank);
 
                 $qualifierIds = RankQualification::where('month_start', $monthStart)
                     ->where('rank_number', $rank)
@@ -103,9 +105,12 @@ final class RankBonusService
                         continue;
                     }
 
-                    $adminCharge = min((int) floor($grossPerDistributor * self::ADMIN_CHARGE_RATE), self::ADMIN_CHARGE_CAP_PAISE);
-                    $tds = (int) round($grossPerDistributor * self::TDS_RATE);
-                    $net = $grossPerDistributor - $adminCharge - $tds;
+                    // Rank floors its admin charge and charges TDS on gross
+                    // (BonusType::Rank encodes both conventions).
+                    $deduction = $this->deductions->for(BonusType::Rank, $grossPerDistributor);
+                    $adminCharge = $deduction->adminChargePaise;
+                    $tds = $deduction->tdsPaise;
+                    $net = $deduction->netPaise;
 
                     $result = RankBonusResult::updateOrCreate(
                         [
@@ -126,7 +131,7 @@ final class RankBonusService
                     );
 
                     if ($net > 0) {
-                        $rankName = RankQualification::RANK_NAMES[$rank];
+                        $rankName = $this->plan->rankName($rank);
                         $this->wallet->credit(
                             distributorId: $distributorId,
                             amountPaise: $net,
@@ -174,7 +179,7 @@ final class RankBonusService
             return;
         }
 
-        $rankName = RankQualification::RANK_NAMES[$rank];
+        $rankName = $this->plan->rankName($rank);
 
         LifetimeAwardMilestone::create([
             'distributor_id' => $distributorId,

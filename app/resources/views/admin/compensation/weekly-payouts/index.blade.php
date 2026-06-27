@@ -4,8 +4,10 @@
 
 @section('content')
 
+@php($minPayout = number_format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0))
+
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Payouts run automatically every Tuesday covering all wallets with a balance of ₹500 or more. Each batch shows total gross, deductions (repurchase), and net transferred. Minimum payout is ₹500 — below-minimum wallets roll over to the next week. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls → Force Payout</a> only if the automated batch failed for a specific distributor.
+    Payouts run automatically every Tuesday covering all wallets with a balance of ₹{{ $minPayout }} or more. Each batch shows total gross, deductions (repurchase), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over to the next week. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls → Force Payout</a> only if the automated batch failed for a specific distributor.
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -18,7 +20,7 @@
                 <tr>
                     <th class="px-4 py-2 text-left text-gray-500">Batch date</th>
                     <th class="px-4 py-2 text-right text-gray-500">
-                        Distributors <x-help-tip text="Number of distributors included in this payout batch (wallet ≥ ₹500)." />
+                        Distributors <x-help-tip text="Number of distributors included in this payout batch (wallet ≥ ₹{{ $minPayout }})." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-500">
                         Total gross <x-help-tip text="Sum of all wallet balances included in the batch before deductions." />

@@ -70,7 +70,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($rows as $row)
                     @php
-                    $rankNames = \App\Modules\Compensation\Models\RankQualification::RANK_NAMES;
+                    $rankNames = app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->rankNames();
                     $sc = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'pending' => 'bg-gray-100 text-gray-600'];
                     @endphp
                     <tr class="hover:bg-gray-50">

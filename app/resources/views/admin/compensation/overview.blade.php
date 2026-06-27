@@ -30,7 +30,7 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             Pending payouts
-            <x-help-tip text="Total amount queued for the next Tuesday bank transfer. Does not include wallets below the ₹500 minimum." />
+            <x-help-tip text="Total amount queued for the next Tuesday bank transfer. Does not include wallets below the ₹{{ number_format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum." />
         </p>
         <p class="mt-1 text-lg font-bold text-blue-700">₹{{ number_format($pendingPayoutPaise / 100, 2) }}</p>
     </div>
@@ -97,6 +97,7 @@
     @endif
     <a href="{{ route('admin.compensation.carry-forwards.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Carry-forwards →</a>
     <a href="{{ route('admin.compensation.manual-controls.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Manual Controls →</a>
+    <a href="{{ route('admin.compensation.plan-settings.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Plan Settings →</a>
 </div>
 
 {{-- Today's cut-off table --}}

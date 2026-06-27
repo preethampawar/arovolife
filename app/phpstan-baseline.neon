@@ -307,12 +307,6 @@ parameters:
 			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
 
 		-
-			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markPaid\(\) expects int\|null, int\|string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
-
-		-
 			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markShipped\(\) expects int\|null, int\|string\|null given\.$#'
 			identifier: argument.type
 			count: 1
@@ -523,6 +517,12 @@ parameters:
 			path: app/Modules/Commerce/Models/CustomerAddress.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Commerce/Models/Order.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
 			identifier: property.notFound
 			count: 1
@@ -679,12 +679,6 @@ parameters:
 			path: app/Modules/Commerce/Services/CheckoutService.php
 
 		-
-			message: '#^Property App\\Modules\\Commerce\\Services\\CheckoutService\:\:\$attribution is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Modules/Commerce/Services/CheckoutService.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$max_discount_paise\.$#'
 			identifier: property.notFound
 			count: 1
@@ -767,6 +761,246 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Support/OrderBuyerNotifier.php
+
+		-
+			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Modules/Compensation/Console/Commands/AdcBonusRunCommand.php
+
+		-
+			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Modules/Compensation/Console/Commands/FortuneBonusEnrollCommand.php
+
+		-
+			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Modules/Compensation/Console/Commands/FortuneBonusRunCommand.php
+
+		-
+			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Modules/Compensation/Console/Commands/GbbMonthlyRunCommand.php
+
+		-
+			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Modules/Compensation/Console/Commands/RankBonusRunCommand.php
+
+		-
+			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Modules/Compensation/Console/Commands/RankCheckCommand.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminDailyCutoffController.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Http\\Controllers\\Admin\\AdminDistributorCompController\:\:fetchAuditRows\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminDistributorCompController.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Http\\Controllers\\Admin\\AdminDistributorCompController\:\:fetchAuditRows\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminDistributorCompController.php
+
+		-
+			message: '#^Parameter \$actorId of class App\\Modules\\Compensation\\Events\\CompensationPlanChanged constructor expects int\|null, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminPlanSettingsController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$net_transferred_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\MentorshipBonusResult\:\:\$sponsee_adn\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$adn\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 4
+			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>adn" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Listeners/PropagateGroupBvOnOrderPaid.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$paid_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Listeners/PropagateGroupBvOnOrderPaid.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\GbbMonthlyResult\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/GbbMonthlyResult.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\GsbCarryforward\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/GsbCarryforward.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\LifetimeAwardMilestone\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/LifetimeAwardMilestone.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\MentorshipBonusResult\:\:sponsee\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/MentorshipBonusResult.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\PayoutBatch\:\:approvedByUser\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/PayoutBatch.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\PayoutBatch\:\:lineItems\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/PayoutBatch.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/PayoutLineItem.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:payoutBatch\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/PayoutLineItem.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\RankBonusResult\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/RankBonusResult.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\RankQualification\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/RankQualification.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\RankQualification\:\:\$max_rank\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Services/FortuneBonusService.php
+
+		-
+			message: '#^Parameter \#1 \$value of static method Illuminate\\Database\\Connection\:\:raw\(\) expects float\|int\|literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Modules/Compensation/Services/GroupBvAccumulatorService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\GsbCutoffResult\:\:\$occurrences\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Services/GrowthBoosterBonusService.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Services\\GsbCutoffService\:\:saveResult\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Modules/Compensation/Services/GsbCutoffService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>left_bv_paise" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Services/GsbCutoffService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>right_bv_paise" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Services/GsbCutoffService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Modules/Compensation/Services/MentorshipBonusService.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Services\\WalletService\:\:ledgerWithRunningBalance\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Services/WalletService.php
 
 		-
 			message: '#^Method App\\Modules\\Compliance\\Models\\AuditLog\:\:actor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -967,6 +1201,12 @@ parameters:
 			path: app/Modules/Identity/Http/Controllers/TeamRosterController.php
 
 		-
+			message: '#^Class App\\Modules\\Identity\\Models\\Distributor uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/Distributor.php
+
+		-
 			message: '#^Method App\\Modules\\Identity\\Models\\Distributor\:\:closureAncestors\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1049,6 +1289,12 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Identity/Models/Distributor.php
+
+		-
+			message: '#^Class App\\Modules\\Identity\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Identity/Models/User.php
 
 		-
 			message: '#^Method App\\Modules\\Identity\\Models\\User\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -1165,6 +1411,12 @@ parameters:
 			path: app/Modules/Public/Http/Controllers/ContactController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Http/Controllers/Admin/AdminReturnController.php
+
+		-
 			message: '#^Method App\\Modules\\Returns\\Models\\BuybackDecision\:\:returnRequest\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1189,6 +1441,12 @@ parameters:
 			path: app/Modules/Returns/Models/ReturnRequest.php
 
 		-
+			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:openedByCustomer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Returns/Models/ReturnRequest.php
+
+		-
 			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1199,6 +1457,78 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Returns/Models/ReturnRequest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$condition\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/InspectReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Returns/Services/InspectReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$net_refund_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/InspectReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_no\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Modules/Returns/Services/InspectReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Modules/Returns/Services/InspectReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$subtotal_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/InspectReturn.php
+
+		-
+			message: '#^Parameter \$order of method App\\Modules\\Returns\\Services\\RefundOrder\:\:execute\(\) expects App\\Modules\\Commerce\\Models\\Order, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Returns/Services/InspectReturn.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/OpenReturn.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$delivered_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/OpenReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/OpenReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/OpenReturn.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Returns/Services/RefundOrder.php
 
 		-
 			message: '#^Method App\\Modules\\Tax\\Models\\Invoice\:\:lines\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -1563,6 +1893,18 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Admin/AdminRoleSeparationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminRoleSeparationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 8
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
@@ -1747,22 +2089,34 @@ parameters:
 			path: tests/Modules/Commerce/CartQuantityTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Commerce/CheckoutCodToggleTest.php
-
-		-
-			message: '#^Offset ''default'' might not exist on array\{group\: string, label\: string, description\: string, type\: string, default\?\: string, options\?\: array\<int, array\{value\: string, label\: string, note\?\: string\}\>, min\?\: int, max\?\: int, \.\.\.\}\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: tests/Modules/Commerce/CheckoutCodToggleTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Commerce/CheckoutDistributorDetailsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
+
+		-
+			message: '#^Function cdebPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -2093,6 +2447,48 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Modules/Commerce/StorefrontCatalogTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Compensation/AdminPlanSettingsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminPlanSettingsTest.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 10
+			path: tests/Modules/Compensation/IncomeControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 15
+			path: tests/Modules/Compensation/IncomeControllerTest.php
+
+		-
+			message: '#^Function incomeDistributor\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
 			message: '#^Function seedActiveDistributor\(\) return type has no value type specified in iterable type array\.$#'
@@ -2573,6 +2969,102 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Public/ContactRetentionPurgeTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Public/FindMyIdOtpTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Public/FindMyIdOtpTest.php
+
+		-
+			message: '#^Function fmiLookup\(\) return type with generic class Illuminate\\Testing\\TestResponse does not specify its types\: TResponse$#'
+			identifier: missingType.generics
+			count: 1
+			path: tests/Modules/Public/FindMyIdOtpTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$approved_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Returns/InspectReturnTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$approved_by_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Returns/InspectReturnTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$gst_adjustment_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Returns/InspectReturnTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$net_refund_paise\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Returns/InspectReturnTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Returns/InspectReturnTest.php
+
+		-
+			message: '#^Function inspectReturnFixture\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Returns/InspectReturnTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 5
+			path: tests/Modules/Returns/InspectReturnTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\ReturnRequest\:\:\$notes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Returns/OpenReturnTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Returns/OpenReturnTest.php
+
+		-
+			message: '#^Function openReturnFixture\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Returns/OpenReturnTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Returns/OpenReturnTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Returns/RefundOrderTest.php
+
+		-
+			message: '#^Function refundOrderFixture\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Returns/RefundOrderTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'

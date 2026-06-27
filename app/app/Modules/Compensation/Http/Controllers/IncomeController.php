@@ -14,6 +14,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -26,7 +27,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -308,7 +308,7 @@ final class IncomeController extends Controller
         $daysUntilTuesday = (2 - $today->dayOfWeek + 7) % 7;
         $nextPayout = $daysUntilTuesday === 0 ? $today->copy() : $today->copy()->addDays($daysUntilTuesday);
 
-        $minThresholdPaise = (int) (DB::table('settings')->where('key', 'payout.min_threshold_paise')->value('value') ?? 50000);
+        $minThresholdPaise = app(CompensationPlanSettingsService::class)->minPayoutPaise();
 
         return view('income.wallet', compact(
             'distributor', 'ledgerRows', 'payoutRows',

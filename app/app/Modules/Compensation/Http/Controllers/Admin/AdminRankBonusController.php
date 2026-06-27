@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankBonusResult;
-use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -62,7 +62,7 @@ final class AdminRankBonusController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $rankNames = RankQualification::RANK_NAMES;
+        $rankNames = app(CompensationPlanSettingsService::class)->rankNames();
 
         return view('admin.compensation.rank-bonus.show', compact('rows', 'rankSummaries', 'date', 'rankNames'));
     }

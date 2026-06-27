@@ -203,11 +203,17 @@ it('runForMonth credits correct wallet amount for a level-0 participant', functi
 
     expect($result['credited'])->toBe(1);
 
+    // KP 2026-06-26: Fortune Bonus now carries the 3% admin charge; TDS on (gross − admin).
+    $expectedAdmin = (int) round(339 * 0.03);                       // 10
+    $expectedTds = (int) round((339 - $expectedAdmin) * 0.05);      // 16
+    $expectedNet = 339 - $expectedAdmin - $expectedTds;            // 313
+
     $bonusResult = FortuneBonusResult::where('distributor_id', $dist->id)->first();
     expect($bonusResult)->not->toBeNull();
     expect($bonusResult->gross_paise)->toBe(339);
-    expect($bonusResult->tds_paise)->toBe((int) round(339 * 0.05)); // 17
-    expect($bonusResult->net_paise)->toBe(339 - (int) round(339 * 0.05)); // 322
+    expect($bonusResult->admin_charge_paise)->toBe($expectedAdmin);
+    expect($bonusResult->tds_paise)->toBe($expectedTds);
+    expect($bonusResult->net_paise)->toBe($expectedNet);
     expect($bonusResult->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
 
     $ledger = WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'fortune_credit')->first();

@@ -7,6 +7,7 @@ use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\AreteDevelopmentCenterBonusService;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -72,9 +73,10 @@ it('credits 3% of member BV to the assigned distributor', function (): void {
     $bonus = AdcBonusResult::where('center_id', $center->id)->first();
     expect($bonus)->not->toBeNull();
     expect($bonus->total_member_bv_paise)->toBe(1_000_000);
-    expect($bonus->gross_paise)->toBe(30_000);                   // 3% of 1,000,000
-    expect($bonus->tds_paise)->toBe((int) round(30_000 * 0.05)); // 1,500
-    expect($bonus->net_paise)->toBe(30_000 - (int) round(30_000 * 0.05)); // 28,500
+    expect($bonus->gross_paise)->toBe(30_000);                    // 3% of 1,000,000
+    expect($bonus->admin_charge_paise)->toBe(900);                // 3% admin of 30,000 (KP 2026-06-27)
+    expect($bonus->tds_paise)->toBe((int) round((30_000 - 900) * 0.05)); // 5% of (gross − admin) = 1,455
+    expect($bonus->net_paise)->toBe(30_000 - 900 - 1_455);        // 27,645
     expect($bonus->status)->toBe(AdcBonusResult::STATUS_CREDITED);
 
     $ledger = WalletLedgerEntry::where('distributor_id', $assignee->id)
@@ -98,8 +100,60 @@ it('applies the monthly cap of ₹1,00,000 (10,000,000 paise)', function (): voi
 
     $bonus = AdcBonusResult::where('center_id', $center->id)->first();
     expect($bonus->gross_paise)->toBe(10_000_000); // capped at ₹1,00,000
-    expect($bonus->tds_paise)->toBe((int) round(10_000_000 * 0.05));
-    expect($bonus->net_paise)->toBe(10_000_000 - (int) round(10_000_000 * 0.05));
+    expect($bonus->admin_charge_paise)->toBe(300_000); // 3% of 10,000,000 (< ₹30,000 cap)
+    expect($bonus->tds_paise)->toBe((int) round((10_000_000 - 300_000) * 0.05)); // 485,000
+    expect($bonus->net_paise)->toBe(10_000_000 - 300_000 - 485_000); // 9,215,000
+});
+
+it('exempts ADC from the admin charge when the applies_to toggle is off', function (): void {
+    DB::table('settings')->insert([
+        'key' => 'comp.admin_charge.applies_to_adc', 'value' => 'false', 'version' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $assignee = Distributor::factory()->create();
+    $member = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    $center = makeActiveCenter($assignee->id);
+    addCenterMember($center->id, $member->id);
+    seedMemberBv($member->id, 1_000_000); // gross = 30,000
+
+    app(AreteDevelopmentCenterBonusService::class)->runForMonth($month);
+
+    $bonus = AdcBonusResult::where('center_id', $center->id)->first();
+    expect($bonus->admin_charge_paise)->toBe(0);                  // toggle off → no admin charge
+    expect($bonus->tds_paise)->toBe((int) round(30_000 * 0.05));  // TDS on full gross = 1,500
+    expect($bonus->net_paise)->toBe(30_000 - 1_500);              // 28,500
+});
+
+it('finalizes a zero-net result as credited and stays idempotent', function (): void {
+    // TDS at 100% drives net to 0 (gross 30,000 − admin 900 − tds 29,100 = 0).
+    DB::table('settings')->insert([
+        'key' => 'comp.tds.rate_bp', 'value' => '10000', 'version' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+
+    $assignee = Distributor::factory()->create();
+    $member = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    $center = makeActiveCenter($assignee->id);
+    addCenterMember($center->id, $member->id);
+    seedMemberBv($member->id, 1_000_000); // gross = 30,000
+
+    $svc = app(AreteDevelopmentCenterBonusService::class);
+    $first = $svc->runForMonth($month);
+    $second = $svc->runForMonth($month); // re-run must not reprocess
+
+    $bonus = AdcBonusResult::where('center_id', $center->id)->first();
+    expect($bonus->net_paise)->toBe(0);
+    expect($bonus->status)->toBe(AdcBonusResult::STATUS_CREDITED);     // finalized despite net 0
+    expect($first['credited'])->toBe(1);
+    expect($second['credited'])->toBe(0);                              // idempotent: already credited
+    expect(AdcBonusResult::where('center_id', $center->id)->count())->toBe(1);
+    expect(WalletLedgerEntry::where('type', 'adc_credit')->where('distributor_id', $assignee->id)->count())->toBe(0); // no payout
 });
 
 it('skips a center with no member BV in the month', function (): void {

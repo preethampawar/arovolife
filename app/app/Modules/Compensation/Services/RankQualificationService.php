@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class RankQualificationService
 {
+    public function __construct(
+        private readonly CompensationPlanSettingsService $plan,
+    ) {}
+
     /**
      * Run qualification checks for the given month and occurrence number.
      *
@@ -143,8 +147,10 @@ final class RankQualificationService
         int $occurrenceNumber,
         array $personalBvMap,
     ): array {
-        $personalBvRequired = RankQualification::PERSONAL_BV_REQUIRED[$rank];
-        $groupBvRequired = RankQualification::GROUP_BV_REQUIRED[$rank];
+        $personalBvRequired = $this->plan->rankPersonalBvRequired($rank);
+        // Ranks 1-2 always have a group-BV gate; fall back to an impossible
+        // threshold if it is ever unset so nobody qualifies by accident.
+        $groupBvRequired = $this->plan->rankGroupBvRequired($rank) ?? PHP_INT_MAX;
 
         $groupBvRows = DB::table('group_bv_daily')
             ->whereBetween('date', [$monthStart, $monthEnd])
@@ -213,7 +219,8 @@ final class RankQualificationService
             return [];
         }
 
-        $personalBvRequired = RankQualification::PERSONAL_BV_REQUIRED[$rank];
+        $personalBvRequired = $this->plan->rankPersonalBvRequired($rank);
+        $qualifiersPerSide = $this->plan->rankStructuralQualifiersPerSide($rank);
 
         $rows = DB::table('genealogy_closure as gc_anc')
             ->join('genealogy_closure as gc_child', function ($join): void {
@@ -242,7 +249,7 @@ final class RankQualificationService
         $qualifiedIds = [];
 
         foreach ($sideCountMap as $distributorId => $sides) {
-            if ($sides['L'] < 2 || $sides['R'] < 2) {
+            if ($sides['L'] < $qualifiersPerSide || $sides['R'] < $qualifiersPerSide) {
                 continue;
             }
             $personalBv = $personalBvMap[$distributorId] ?? 0;

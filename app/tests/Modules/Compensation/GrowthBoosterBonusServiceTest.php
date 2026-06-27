@@ -146,20 +146,23 @@ it('distributes pool proportionally between two distributors', function () {
     expect($result['credited'])->toBe(2);
 });
 
-it('deducts 5% TDS and no admin charge', function () {
+it('deducts 3% admin charge and 5% TDS', function () {
+    // KP 2026-06-26: GBB is now within the admin-charge scope.
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
     seedOrder(200_000, $month->copy()->addDays(5));  // pool = 10,000 paise
-    seedCutoffResult($dist->id, '2026-06-05', 1);   // 12 AGP → gross = 10,000 paise
+    seedCutoffResult($dist->id, '2026-06-05', 1);   // 12 AGP → gross ≈ 10,000 paise
 
     $svc = app(GrowthBoosterBonusService::class);
     $svc->runForMonth($month);
 
     $row = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
-    $expectedTds = (int) round($row->gbb_gross_paise * 0.05);
+    $expectedAdmin = (int) round($row->gbb_gross_paise * 0.03);
+    $expectedTds = (int) round(($row->gbb_gross_paise - $expectedAdmin) * 0.05);
 
+    expect($row->admin_charge_paise)->toBe($expectedAdmin);
     expect($row->tds_paise)->toBe($expectedTds);
-    expect($row->gbb_net_paise)->toBe($row->gbb_gross_paise - $row->tds_paise);
+    expect($row->gbb_net_paise)->toBe($row->gbb_gross_paise - $expectedAdmin - $expectedTds);
 });
 
 it('credits wallet via gbb_credit type', function () {

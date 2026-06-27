@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
-use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Console\Command;
@@ -18,8 +18,10 @@ final class RankBonusRunCommand extends Command
 
     protected $description = 'Calculate and credit the Rank Bonus for a calendar month (runs on 8th)';
 
-    public function __construct(private readonly RankBonusService $rankBonus)
-    {
+    public function __construct(
+        private readonly RankBonusService $rankBonus,
+        private readonly CompensationPlanSettingsService $plan,
+    ) {
         parent::__construct();
     }
 
@@ -45,7 +47,7 @@ final class RankBonusRunCommand extends Command
 
         $rows = [];
         foreach ($result['by_rank'] as $rank => $data) {
-            $rankName = RankQualification::RANK_NAMES[$rank];
+            $rankName = $this->plan->rankName($rank);
             $rows[] = [
                 $rank,
                 $rankName,

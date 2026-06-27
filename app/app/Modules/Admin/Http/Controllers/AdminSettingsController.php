@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -243,11 +244,11 @@ final class AdminSettingsController extends Controller
             'payout.min_threshold_paise' => [
                 'group' => 'payout',
                 'label' => 'Payout: minimum payout threshold (paise)',
-                'description' => 'Wallet balances below this amount roll over to the next payout batch. 50000 = ₹500. Must be a positive integer.',
-                'type' => 'integer',
+                'description' => 'Wallet balances below this amount roll over to the next payout batch. 10000 = ₹100 (KP-confirmed minimum). Must be a positive integer.',
+                'type' => 'int',
                 'min' => 1,
                 'max' => 10000000,
-                'default' => '50000',
+                'default' => '10000',
             ],
             'payout.gsb_min_bv_paise' => [
                 'group' => 'payout',
@@ -268,6 +269,229 @@ final class AdminSettingsController extends Controller
                 'min' => 1,
                 'max' => 100_000_000,
                 'default' => '300000',
+            ],
+
+            // ── Compensation plan — rates, caps & periods ──────────────────
+            // KP-confirmed parameters. Rates are stored as integer basis points
+            // (5% = 500) because this registry has no float type;
+            // CompensationPlanSettingsService divides by 10,000. The GSB slab
+            // ladder, rank tiers and Fortune tables are edited on the dedicated
+            // /admin/compensation/plan-settings page, not here.
+            'comp.admin_charge.rate_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge rate (basis points)',
+                'description' => 'Admin charge applied to all seven bonus streams (GSB, Mentorship, Rank, Growth Booster, Fortune, ADC, Lifetime Awards) — per the applies-to toggles below. 300 = 3%. Stored in basis points (100 bp = 1%).',
+                'impact' => 'Raising this reduces every distributor\'s net bonus. Takes effect from the next engine run.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '300',
+            ],
+            'comp.admin_charge.cap_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge monthly cap (paise)',
+                'description' => 'Maximum admin charge per bonus event. 3000000 = ₹30,000.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 1_000_000_000,
+                'default' => '3000000',
+            ],
+            // Admin-charge scope — KP Q&A 2026-06-27: applies to all 7 bonuses.
+            // Each toggle exempts one stream when turned OFF.
+            'comp.admin_charge.applies_to_gsb' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge: apply to Genos Sales Bonus',
+                'description' => 'When ON, the admin charge is deducted from GSB payouts. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.admin_charge.applies_to_mb' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge: apply to Mentorship Bonus',
+                'description' => 'When ON, the admin charge is deducted from Mentorship Bonus payouts. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.admin_charge.applies_to_rank' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge: apply to Rank Bonus',
+                'description' => 'When ON, the admin charge is deducted from Rank Bonus payouts. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.admin_charge.applies_to_gbb' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge: apply to Growth Booster Bonus',
+                'description' => 'When ON, the admin charge is deducted from Growth Booster Bonus payouts. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.admin_charge.applies_to_fortune' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge: apply to Fortune Bonus',
+                'description' => 'When ON, the admin charge is deducted from Fortune Bonus payouts. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.admin_charge.applies_to_adc' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge: apply to Arete Development Center Bonus',
+                'description' => 'When ON, the admin charge is deducted from ADC payouts. KP-confirmed ON (2026-06-27; previously exempt).',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.admin_charge.applies_to_awards' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge: apply to Lifetime Awards & Rewards',
+                'description' => 'When ON, the admin charge is deducted from Lifetime Awards. KP-confirmed ON (2026-06-27). NOTE: the Lifetime Awards payout engine ships in a later phase — this toggle has no effect until then, and how the charge applies to non-cash rewards is still pending KP (see kp-clarifications Round-2 Q7).',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.tds.rate_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'TDS rate (basis points)',
+                'description' => 'Tax deducted at source on bonuses. 500 = 5%. Verify the current Income Tax rate before changing.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '500',
+            ],
+            'comp.gsb.score_rate_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'GSB score rate (paise per point)',
+                'description' => 'Each GSB slab bonus = slab score × this rate. 36000 = ₹360 per score point (KP-confirmed).',
+                'impact' => 'Directly scales every GSB slab payout. Takes effect from the next daily cut-off.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100_000_000,
+                'default' => '36000',
+            ],
+            'comp.gsb.power_cf_cap_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'GSB power-side carry-forward cap (BV paise)',
+                'description' => 'Maximum BV carried forward on the stronger Genos side after a bonus. 45000000 = 4,50,000 BV. Excess is flushed.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100_000_000_000,
+                'default' => '45000000',
+            ],
+            'comp.mb.step_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Mentorship Bonus step size (paise)',
+                'description' => 'Cumulative sponsee GSB per Mentorship Bonus rate step. 3000000 = ₹30,000.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 1_000_000_000,
+                'default' => '3000000',
+            ],
+            'comp.mb.start_rate_pct' => [
+                'group' => 'compensation_plan',
+                'label' => 'Mentorship Bonus starting rate (%)',
+                'description' => 'Mentorship Bonus rate on the first step of a sponsee\'s GSB. Default 10%.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 100,
+                'default' => '10',
+            ],
+            'comp.mb.floor_rate_pct' => [
+                'group' => 'compensation_plan',
+                'label' => 'Mentorship Bonus floor rate (%)',
+                'description' => 'Lifetime minimum Mentorship Bonus rate after the rate has stepped down. Default 1%.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100,
+                'default' => '1',
+            ],
+            'comp.gbb.pool_rate_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'Growth Booster pool rate (basis points)',
+                'description' => 'Share of monthly company turnover funding the Growth Booster Bonus pool. 500 = 5%.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '500',
+            ],
+            'comp.gbb.agp_cap' => [
+                'group' => 'compensation_plan',
+                'label' => 'Growth Booster AGP cap per distributor',
+                'description' => 'Maximum Arovolife Growth Points a single distributor can earn in a month. Default 120.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 100000,
+                'default' => '120',
+            ],
+            'comp.adc.rate_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'Arete Development Center bonus rate (basis points)',
+                'description' => 'Rate on BV served by a center. 300 = 3%. ADC is exempt from the admin charge.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '300',
+            ],
+            'comp.adc.cap_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Arete Development Center monthly cap (paise)',
+                'description' => 'Maximum ADC bonus per center per month. 10000000 = ₹1,00,000.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10_000_000_000,
+                'default' => '10000000',
+            ],
+            'comp.repurchase.rate_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'Repurchase wallet rate (basis points)',
+                'description' => 'Share of prior-month GSB + MB + GBB + Fortune + Rank bonuses moved to the repurchase wallet. 1000 = 10%.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '1000',
+            ],
+            'comp.repurchase.cap_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Repurchase wallet cap (paise)',
+                'description' => 'Maximum repurchase-wallet deduction per payout. 1000000 = ₹10,000.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 1_000_000_000,
+                'default' => '1000000',
+            ],
+            'comp.repurchase.grace_days' => [
+                'group' => 'compensation_plan',
+                'label' => 'Repurchase grace period (days)',
+                'description' => 'Days after the repurchase due date during which income is calculated but held before suspension. KP-confirmed 7.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 90,
+                'default' => '7',
+            ],
+            'comp.fortune.exclude_rank_6' => [
+                'group' => 'compensation_plan',
+                'label' => 'Fortune Bonus: exclude Rank 6 (Blue Diamond)',
+                'description' => 'When ON, Rank 6 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.fortune.exclude_rank_7' => [
+                'group' => 'compensation_plan',
+                'label' => 'Fortune Bonus: exclude Rank 7 (Royal Diamond)',
+                'description' => 'When ON, Rank 7 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.fortune.exclude_rank_8' => [
+                'group' => 'compensation_plan',
+                'label' => 'Fortune Bonus: exclude Rank 8 (Crown Diamond)',
+                'description' => 'When ON, Rank 8 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'comp.fortune.exclude_rank_9' => [
+                'group' => 'compensation_plan',
+                'label' => 'Fortune Bonus: exclude Rank 9 (Elite Diamond)',
+                'description' => 'When ON, Rank 9 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
+                'type' => 'bool',
+                'default' => 'true',
             ],
 
             // ── Payments ───────────────────────────────────────────────────
@@ -323,6 +547,10 @@ final class AdminSettingsController extends Controller
             'compensation' => [
                 'label' => 'Compensation engine',
                 'description' => 'Master switches for the Phase 4+ commission engine. Read-only from this UI.',
+            ],
+            'compensation_plan' => [
+                'label' => 'Compensation plan — rates, caps & periods',
+                'description' => 'Tunable bonus rates, caps and periods (KP-confirmed). The GSB slab ladder, rank tiers and Fortune tables are edited on the Compensation → Plan settings page. Changes are audit-logged and take effect on the next engine run.',
             ],
             'payments' => [
                 'label' => 'Payments',
@@ -538,6 +766,19 @@ final class AdminSettingsController extends Controller
             ],
             'ip' => $request->ip(),
         ]);
+
+        // Compensation-plan scalars also emit the domain event (like the plan
+        // table editors do) so listeners can bust caches / snapshot the version.
+        // Dispatched after persistence + audit so a listener fault can't roll
+        // back the admin's change.
+        if (str_starts_with($key, 'comp.') || str_starts_with($key, 'payout.')) {
+            $actorId = auth()->id();
+            event(new CompensationPlanChanged(
+                area: 'scalar',
+                key: $key,
+                actorId: $actorId !== null ? (int) $actorId : null,
+            ));
+        }
     }
 
     public function updateStateAgeMinimums(Request $request): RedirectResponse

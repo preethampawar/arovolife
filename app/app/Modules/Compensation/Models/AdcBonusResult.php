@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property int $member_count
  * @property int $total_member_bv_paise
  * @property int $gross_paise
+ * @property int $admin_charge_paise
  * @property int $tds_paise
  * @property int $net_paise
  * @property string $status
@@ -24,10 +25,8 @@ use Illuminate\Support\Carbon;
  */
 final class AdcBonusResult extends Model
 {
-    /** 3% of member BV, capped at ₹1,00,000/month (10,000,000 paise). */
-    public const float BONUS_RATE = 0.03;
-
-    public const int MONTHLY_CAP_PAISE = 10_000_000;
+    // Bonus rate and monthly cap now live in the admin-editable `comp.adc.*`
+    // settings — read them through CompensationPlanSettingsService.
 
     public const string STATUS_PENDING = 'pending';
 
@@ -42,6 +41,7 @@ final class AdcBonusResult extends Model
         'member_count',
         'total_member_bv_paise',
         'gross_paise',
+        'admin_charge_paise',
         'tds_paise',
         'net_paise',
         'status',
@@ -54,6 +54,7 @@ final class AdcBonusResult extends Model
             'member_count' => 'integer',
             'total_member_bv_paise' => 'integer',
             'gross_paise' => 'integer',
+            'admin_charge_paise' => 'integer',
             'tds_paise' => 'integer',
             'net_paise' => 'integer',
             'credited_at' => 'datetime',

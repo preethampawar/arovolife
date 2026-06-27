@@ -86,14 +86,14 @@ it('credits slab 1 when weaker side meets 15,000 BV threshold', function () {
 
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($result->slab)->toBe(1);
-    expect($result->gross_gsb_paise)->toBe(100_000);   // ₹1,000
+    expect($result->gross_gsb_paise)->toBe(180_000);   // slab 1 = ₹1,800 (KP, score 5 × ₹360)
 
-    // Admin charge = 3% × 100,000 = 3,000 paise = ₹30
-    expect($result->admin_charge_paise)->toBe(3_000);
+    // Admin charge = 3% × 180,000 = 5,400 paise
+    expect($result->admin_charge_paise)->toBe(5_400);
 
-    // TDS = 5% × (100,000 - 3,000) = 5% × 97,000 = 4,850 paise
-    expect($result->tds_paise)->toBe(4_850);
-    expect($result->net_gsb_paise)->toBe(92_150);  // 100,000 - 3,000 - 4,850
+    // TDS = 5% × (180,000 - 5,400) = 5% × 174,600 = 8,730 paise
+    expect($result->tds_paise)->toBe(8_730);
+    expect($result->net_gsb_paise)->toBe(165_870);  // 180,000 - 5,400 - 8,730
 
     // Power CF = stronger (2,000,000) - threshold (1,500,000) = 500,000
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
@@ -140,7 +140,7 @@ it('caps power CF at 45,000,000 paise (450,000 BV)', function () {
         'distributor_id' => $dist->id,
         'date' => today()->toDateString(),
         'left_bv_paise' => 800_000_000,  // 8M BV stronger
-        'right_bv_paise' => 80_000_000,  // 800K BV weaker — matches slab 5
+        'right_bv_paise' => 81_000_000,  // 810K BV weaker — matches slab 5 (KP threshold)
     ]);
 
     $svc = app(GsbCutoffService::class);
@@ -168,10 +168,10 @@ it('marks status as frozen when distributor GSB is frozen', function () {
 
     expect($result->status)->toBe(GsbCutoffResult::STATUS_FROZEN);
     expect($result->slab)->toBe(3);
-    expect($result->gross_gsb_paise)->toBe(600_000);
-    expect($result->admin_charge_paise)->toBe(18_000);   // 3% × 600,000
-    expect($result->tds_paise)->toBe(29_100);             // 5% × (600,000 − 18,000) = 5% × 582,000
-    expect($result->net_gsb_paise)->toBe(552_900);        // 600,000 − 18,000 − 29,100
+    expect($result->gross_gsb_paise)->toBe(720_000);     // slab 3 = ₹7,200 (KP, score 20 × ₹360)
+    expect($result->admin_charge_paise)->toBe(21_600);   // 3% × 720,000
+    expect($result->tds_paise)->toBe(34_920);             // 5% × (720,000 − 21,600) = 5% × 698,400
+    expect($result->net_gsb_paise)->toBe(663_480);        // 720,000 − 21,600 − 34,920
     // Wallet should NOT have been credited
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(0);
 });
@@ -242,9 +242,9 @@ it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
 
     // Existing slab1 CF of 10,000 BV accumulated from previous days.
     GsbCarryforward::create([
-        'distributor_id'       => $dist->id,
-        'power_side_bv_paise'  => 0,
-        'power_side'           => null,
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 0,
+        'power_side' => null,
         'slab1_weaker_bv_paise' => 1_000_000,  // 10,000 BV accumulated
     ]);
 
@@ -253,10 +253,10 @@ it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
     // Fresh weaker 25,000 BV is below 30,000 BV slab-2 threshold so slab 2 should NOT fire.
     // Fresh weaker IS above 15,000 BV slab-1 threshold, so slab 1 SHOULD fire.
     GroupBvDaily::create([
-        'distributor_id'   => $dist->id,
-        'date'             => today()->toDateString(),
-        'left_bv_paise'    => 3_500_000,   // 35,000 BV stronger
-        'right_bv_paise'   => 2_500_000,   // 25,000 BV weaker (fresh)
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 3_500_000,   // 35,000 BV stronger
+        'right_bv_paise' => 2_500_000,   // 25,000 BV weaker (fresh)
     ]);
 
     $svc = app(GsbCutoffService::class);
@@ -265,7 +265,7 @@ it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
     // Must match slab 1 (not slab 2) because slabs 2–7 use fresh BV only.
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($result->slab)->toBe(1);
-    expect($result->gross_gsb_paise)->toBe(100_000);  // slab 1 = ₹1,000
+    expect($result->gross_gsb_paise)->toBe(180_000);  // slab 1 = ₹1,800 (KP)
 });
 
 it('slab1 does NOT match when stronger side is below 15K threshold even if weaker total exceeds it', function () {

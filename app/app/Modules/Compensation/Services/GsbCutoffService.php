@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -15,33 +16,12 @@ use Throwable;
 
 final class GsbCutoffService
 {
-    /** Power-side carry-forward hard cap: 450,000 BV = 45,000,000 paise. */
-    private const POWER_CF_CAP_PAISE = 45_000_000;
-
-    /** Max admin charge: ₹30,000 = 3,000,000 paise. */
-    private const MAX_ADMIN_CHARGE_PAISE = 3_000_000;
-
-    /** Cached value of payout.gsb_min_bv_paise to avoid N DB reads per batch. */
-    private ?int $cachedGsbMinBvPaise = null;
-
-    /**
-     * [slab_index => [threshold_bv_paise, incentive_money_paise]]
-     * Threshold in BV paise (BV × 100); incentive in money paise (₹ × 100).
-     */
-    private const SLABS = [
-        1 => [1_500_000, 100_000],
-        2 => [3_000_000, 300_000],
-        3 => [9_000_000, 600_000],
-        4 => [27_000_000, 1_200_000],
-        5 => [80_000_000, 2_400_000],
-        6 => [240_000_000, 4_000_000],
-        7 => [720_000_000, 6_000_000],
-    ];
-
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
+        private readonly CompensationPlanSettingsService $plan,
+        private readonly BonusDeductionService $deductions,
     ) {}
 
     /**
@@ -64,7 +44,7 @@ final class GsbCutoffService
         // Eligibility gate: configurable minimum personal BV (default 600 BV).
         $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
 
-        if ($personalBvPaise < $this->gsbMinBvPaise()) {
+        if ($personalBvPaise < $this->plan->gsbMinBvPaise()) {
             return $this->saveResult($existing, [
                 'distributor_id' => $distributorId,
                 'cutoff_date' => $date->toDateString(),
@@ -121,8 +101,14 @@ final class GsbCutoffService
         $matchedSlab = null;
 
         // Slabs 7→2: fresh weaker BV only — slab1 CF must NOT apply here.
+        // Inactive slabs (e.g. slab 7 while its bonus is TBD) are skipped.
         foreach ([7, 6, 5, 4, 3, 2] as $slabIndex) {
-            [$threshold, $incentive] = self::SLABS[$slabIndex];
+            $slabRow = $this->plan->gsbSlab($slabIndex);
+            if ($slabRow === null || ! $slabRow['is_active'] || $slabRow['bonus_paise'] === null) {
+                continue;
+            }
+            $threshold = $slabRow['matched_bv_paise'];
+            $incentive = $slabRow['bonus_paise'];
             if ($slabIndex <= $title->maxGsbSlab && $weakerEffective >= $threshold) {
                 $matchedSlab = ['index' => $slabIndex, 'threshold' => $threshold, 'incentive' => $incentive];
                 break;
@@ -132,16 +118,20 @@ final class GsbCutoffService
         // Slab 1: lifetime accumulation (includes today's fresh + historical CF).
         // Both the accumulated weaker-side total AND the stronger side (effective) must
         // reach the 15,000 BV threshold — "15K/15K" requires both Genos sides to qualify.
+        $slab1 = $this->plan->gsbSlab(1);
         if ($matchedSlab === null
+            && $slab1 !== null
+            && $slab1['is_active']
+            && $slab1['bonus_paise'] !== null
             && $title->maxGsbSlab >= 1
-            && $weakerTotal >= self::SLABS[1][0]
-            && $strongerEffective >= self::SLABS[1][0]) {
-            $matchedSlab = ['index' => 1, 'threshold' => self::SLABS[1][0], 'incentive' => self::SLABS[1][1]];
+            && $weakerTotal >= $slab1['matched_bv_paise']
+            && $strongerEffective >= $slab1['matched_bv_paise']) {
+            $matchedSlab = ['index' => 1, 'threshold' => $slab1['matched_bv_paise'], 'incentive' => $slab1['bonus_paise']];
         }
 
         if ($matchedSlab === null) {
             // No match — update carry-forward: weaker accumulates for slab 1, power carries forward.
-            $newPowerCf = min($strongerEffective, self::POWER_CF_CAP_PAISE);
+            $newPowerCf = min($strongerEffective, $this->plan->gsbPowerCfCapPaise());
             $newSlab1Cf = $weakerTotal;  // accumulates until 15K matched
 
             $cfBeforePower = $cf->power_side_bv_paise;
@@ -170,13 +160,14 @@ final class GsbCutoffService
 
         // Slab matched — compute deductions.
         $gross = $matchedSlab['incentive'];
-        $adminCharge = (int) min(round($gross * 0.03), self::MAX_ADMIN_CHARGE_PAISE);
-        $tds = (int) round(($gross - $adminCharge) * 0.05);
-        $net = $gross - $adminCharge - $tds;
+        $deduction = $this->deductions->for(BonusType::Gsb, $gross);
+        $adminCharge = $deduction->adminChargePaise;
+        $tds = $deduction->tdsPaise;
+        $net = $deduction->netPaise;
 
         $newPowerCf = min(
             max(0, $strongerEffective - $matchedSlab['threshold']),
-            self::POWER_CF_CAP_PAISE,
+            $this->plan->gsbPowerCfCapPaise(),
         );
 
         $cfBeforePower = $cf->power_side_bv_paise;
@@ -256,17 +247,6 @@ final class GsbCutoffService
         return GsbCutoffResult::where('distributor_id', $distributorId)
             ->whereDate('cutoff_date', $date->toDateString())
             ->firstOrFail();
-    }
-
-    /** Reads the configurable bonus-eligibility BV threshold from admin settings. */
-    private function gsbMinBvPaise(): int
-    {
-        if ($this->cachedGsbMinBvPaise === null) {
-            $raw = DB::table('settings')->where('key', 'payout.gsb_min_bv_paise')->value('value');
-            $this->cachedGsbMinBvPaise = $raw !== null ? (int) $raw : 60_000;
-        }
-
-        return $this->cachedGsbMinBvPaise;
     }
 
     private function saveResult(?GsbCutoffResult $existing, array $data): GsbCutoffResult

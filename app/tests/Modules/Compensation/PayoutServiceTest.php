@@ -27,10 +27,10 @@ function makePayoutEligibleDistributor(): Distributor
     $dist = Distributor::factory()->create();
     BvLedgerEntry::create([
         'distributor_id' => $dist->id,
-        'order_id'       => 900_000 + $dist->id,  // unique per distributor
-        'bv_paise'       => 300_000,               // exactly 3,000 BV — Retailer threshold
-        'type'           => 'accrual',
-        'effective_at'   => now(),
+        'order_id' => 900_000 + $dist->id,  // unique per distributor
+        'bv_paise' => 300_000,               // exactly 3,000 BV — Retailer threshold
+        'type' => 'accrual',
+        'effective_at' => now(),
     ]);
 
     return $dist;
@@ -83,7 +83,7 @@ it('skips wallet below minimum payout threshold', function () {
     $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 40_000, 'gsb_credit'); // ₹400 — below ₹500 minimum
+    $walletSvc->credit($dist->id, 8_000, 'gsb_credit'); // ₹80 — below ₹100 minimum (KP)
 
     $svc = app(PayoutService::class);
     $batch = $svc->runBatch(Carbon::today());
@@ -92,7 +92,7 @@ it('skips wallet below minimum payout threshold', function () {
     expect($line->status)->toBe(PayoutLineItem::STATUS_BELOW_MINIMUM);
 
     // Wallet still has the balance (no debit for below-minimum).
-    expect($walletSvc->balancePaise($dist->id))->toBe(40_000);
+    expect($walletSvc->balancePaise($dist->id))->toBe(8_000);
 });
 
 it('is idempotent — running twice returns the same batch without double-debiting', function () {
@@ -174,10 +174,10 @@ it('marks web_only for distributor with personal BV below 3,000 BV Retailer thre
     $dist = Distributor::factory()->create();
     BvLedgerEntry::create([
         'distributor_id' => $dist->id,
-        'order_id'       => 800_000 + $dist->id,
-        'bv_paise'       => 299_900,   // 2,999 BV — one BV below the threshold
-        'type'           => 'accrual',
-        'effective_at'   => now(),
+        'order_id' => 800_000 + $dist->id,
+        'bv_paise' => 299_900,   // 2,999 BV — one BV below the threshold
+        'type' => 'accrual',
+        'effective_at' => now(),
     ]);
 
     $walletSvc = app(WalletService::class);

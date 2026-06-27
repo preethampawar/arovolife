@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use Illuminate\Support\Facades\DB;
@@ -22,18 +23,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class MentorshipBonusService
 {
-    /** Rate step: ₹30,000 cumulative GSB = 3,000,000 paise per rate decrement. */
-    private const STEP_PAISE = 3_000_000;
-
-    /** Max admin charge: ₹30,000 = 3,000,000 paise. */
-    private const MAX_ADMIN_CHARGE_PAISE = 3_000_000;
-
-    /** Cached value of payout.gsb_min_bv_paise to avoid N DB reads per batch. */
-    private ?int $cachedGsbMinBvPaise = null;
-
     public function __construct(
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
+        private readonly CompensationPlanSettingsService $plan,
+        private readonly BonusDeductionService $deductions,
     ) {}
 
     /**
@@ -58,7 +52,7 @@ final class MentorshipBonusService
         // Sponsor must have minimum personal BV to be eligible for any bonus.
         $sponsorBvPaise = $this->bvLedger->totalPersonalBvPaise((int) $sponsorId);
 
-        if ($sponsorBvPaise < $this->gsbMinBvPaise()) {
+        if ($sponsorBvPaise < $this->plan->gsbMinBvPaise()) {
             return null;
         }
 
@@ -79,14 +73,16 @@ final class MentorshipBonusService
 
         $newCumulative = $prevCumulative + $cutoffResult->gross_gsb_paise;
 
-        // Rate = 10% - (floor(prevCumulative / 30K step) × 1%), minimum 1%.
-        $stepsCompleted = (int) floor($prevCumulative / self::STEP_PAISE);
-        $rate = max(1, 10 - $stepsCompleted);
+        // Rate = start% − (floor(prevCumulative / step) × 1%), floored at the
+        // configured lifetime minimum. All three figures are admin-editable.
+        $stepsCompleted = (int) floor($prevCumulative / $this->plan->mbStepPaise());
+        $rate = max($this->plan->mbFloorRatePct(), $this->plan->mbStartRatePct() - $stepsCompleted);
 
         $mbGross = (int) round($cutoffResult->gross_gsb_paise * $rate / 100);
-        $adminCharge = (int) min(round($mbGross * 0.03), self::MAX_ADMIN_CHARGE_PAISE);
-        $tds = (int) round(($mbGross - $adminCharge) * 0.05);
-        $mbNet = $mbGross - $adminCharge - $tds;
+        $deduction = $this->deductions->for(BonusType::Mentorship, $mbGross);
+        $adminCharge = $deduction->adminChargePaise;
+        $tds = $deduction->tdsPaise;
+        $mbNet = $deduction->netPaise;
 
         return DB::transaction(function () use ($sponsorId, $sponseeId, $cutoffResult, $rate, $mbGross, $adminCharge, $tds, $mbNet, $newCumulative): MentorshipBonusResult {
             $result = MentorshipBonusResult::create([
@@ -113,16 +109,5 @@ final class MentorshipBonusService
 
             return $result;
         });
-    }
-
-    /** Reads the configurable bonus-eligibility BV threshold from admin settings. */
-    private function gsbMinBvPaise(): int
-    {
-        if ($this->cachedGsbMinBvPaise === null) {
-            $raw = DB::table('settings')->where('key', 'payout.gsb_min_bv_paise')->value('value');
-            $this->cachedGsbMinBvPaise = $raw !== null ? (int) $raw : 60_000;
-        }
-
-        return $this->cachedGsbMinBvPaise;
     }
 }

@@ -255,14 +255,14 @@ test.describe('Distributor: Wallet & Payouts', () => {
         expect(dateText?.trim()).toMatch(/\d/);
     });
 
-    test('minimum payout threshold of ₹500 is shown', async ({ distributorPage: page }) => {
+    test('minimum payout threshold of ₹100 is shown', async ({ distributorPage: page }) => {
         await page.goto('/income/wallet');
 
         // "Min. Payout" label
         await expect(page.locator('p.text-xs').filter({ hasText: 'Min. Payout' })).toBeVisible();
-        // ₹500 value is inside its stat card
+        // ₹100 value (KP-confirmed minimum) is inside its stat card
         const minCard = page.locator('div.bg-white').filter({ hasText: 'Min. Payout' }).first();
-        await expect(minCard.locator('p').filter({ hasText: '₹500' })).toBeVisible();
+        await expect(minCard.locator('p').filter({ hasText: '₹100' })).toBeVisible();
     });
 
     test('wallet ledger table has a gsb_credit row', async ({ distributorPage: page }) => {

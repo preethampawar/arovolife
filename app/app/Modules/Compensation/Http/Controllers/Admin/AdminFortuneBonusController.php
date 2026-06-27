@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -63,7 +64,7 @@ final class AdminFortuneBonusController extends Controller
             ->get()
             ->keyBy('distributor_id');
 
-        $levelBonusPaise = FortuneBonusParticipant::LEVEL_BONUS_PAISE;
+        $levelBonusPaise = app(CompensationPlanSettingsService::class)->fortuneLevelBonuses();
 
         return view('admin.compensation.fortune-bonus.show', compact(
             'rows', 'levelSummaries', 'date', 'resultsByDistributor', 'levelBonusPaise',

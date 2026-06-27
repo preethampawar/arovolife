@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -14,21 +15,20 @@ use Illuminate\Support\Facades\DB;
 /**
  * Fortune Bonus engine — monthly 3×9 forced matrix, FCFS placement.
  *
- * Admin charge: NOT applicable (Fortune Bonus is exempt per plan).
- * TDS: 5% on gross.
- * Ranks 6-9 are ineligible.
+ * Admin charge: applies per KP's 2026-06-26 amendment (was exempt before).
+ * TDS: on (gross − admin charge), consistent with GSB/MB.
+ * Ineligible ranks, level bonuses and eligibility tiers are all admin-editable
+ * via CompensationPlanSettingsService.
  *
- * Level bonus (paise): see FortuneBonusParticipant::LEVEL_BONUS_PAISE.
  * Position → level: floor(log(2*position - 1, 3)).
  */
 final class FortuneBonusService
 {
-    private const float TDS_RATE = 0.05;
-
-    /** Rank numbers ineligible for Fortune Bonus. */
-    private const array INELIGIBLE_RANKS = [6, 7, 8, 9];
-
-    public function __construct(private readonly WalletService $wallet) {}
+    public function __construct(
+        private readonly WalletService $wallet,
+        private readonly CompensationPlanSettingsService $plan,
+        private readonly BonusDeductionService $deductions,
+    ) {}
 
     /**
      * Scan all distributors with GSB activity in the month, check eligibility,
@@ -84,8 +84,9 @@ final class FortuneBonusService
             $tier = $this->determineTier($currentRank);
             $slabCount = $slabCounts[$distributorId] ?? 0;
             $personalBv = $personalBvMap[$distributorId] ?? 0;
-            $bvRequired = FortuneBonusParticipant::BV_REQUIRED_PAISE[$tier];
-            $slabsRequired = FortuneBonusParticipant::SLABS_REQUIRED[$tier];
+            $tierGates = $this->plan->fortuneTier($tier);
+            $bvRequired = $tierGates['bv_required_paise'];
+            $slabsRequired = $tierGates['slabs_required'];
 
             if ($personalBv < $bvRequired || $slabCount < $slabsRequired) {
                 continue;
@@ -158,7 +159,7 @@ final class FortuneBonusService
                     continue;
                 }
 
-                $gross = FortuneBonusParticipant::LEVEL_BONUS_PAISE[$participant->matrix_level] ?? 0;
+                $gross = $this->plan->fortuneLevelBonusPaise((int) $participant->matrix_level);
 
                 if ($gross === 0) {
                     FortuneBonusResult::updateOrCreate(
@@ -170,6 +171,7 @@ final class FortuneBonusService
                             'position' => $participant->position,
                             'matrix_level' => $participant->matrix_level,
                             'gross_paise' => 0,
+                            'admin_charge_paise' => 0,
                             'tds_paise' => 0,
                             'net_paise' => 0,
                             'status' => FortuneBonusResult::STATUS_SKIPPED,
@@ -180,8 +182,10 @@ final class FortuneBonusService
                     continue;
                 }
 
-                $tds = (int) round($gross * self::TDS_RATE);
-                $net = $gross - $tds;
+                $deduction = $this->deductions->for(BonusType::Fortune, $gross);
+                $adminCharge = $deduction->adminChargePaise;
+                $tds = $deduction->tdsPaise;
+                $net = $deduction->netPaise;
 
                 $result = FortuneBonusResult::updateOrCreate(
                     [
@@ -192,6 +196,7 @@ final class FortuneBonusService
                         'position' => $participant->position,
                         'matrix_level' => $participant->matrix_level,
                         'gross_paise' => $gross,
+                        'admin_charge_paise' => $adminCharge,
                         'tds_paise' => $tds,
                         'net_paise' => $net,
                         'status' => FortuneBonusResult::STATUS_PENDING,
@@ -303,7 +308,7 @@ final class FortuneBonusService
     {
         return RankQualification::where('month_start', $monthStart)
             ->where('status', RankQualification::STATUS_QUALIFIED)
-            ->whereIn('rank_number', self::INELIGIBLE_RANKS)
+            ->whereIn('rank_number', $this->plan->fortuneIneligibleRanks())
             ->distinct()
             ->pluck('distributor_id')
             ->map(fn ($id) => (int) $id)

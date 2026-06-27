@@ -14,18 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 final class PayoutService
 {
-    /** Max repurchase deduction: ₹10,000 = 1,000,000 paise. */
-    private const MAX_REPURCHASE_PAISE = 1_000_000;
-
-    /** Fallback minimum when the setting is absent. */
-    private const DEFAULT_MIN_PAYOUT_PAISE = 50_000;
-
-    /** Fallback when payout.neft_min_bv_paise is absent from settings (3,000 BV). */
-    private const DEFAULT_NEFT_MIN_PAISE = 300_000;
-
     public function __construct(
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
+        private readonly CompensationPlanSettingsService $plan,
     ) {}
 
     /**
@@ -39,7 +31,7 @@ final class PayoutService
      */
     public function runBatch(Carbon $batchDate, string $batchType = PayoutBatch::TYPE_GSB_WEEKLY): PayoutBatch
     {
-        $minPayoutPaise = $this->minPayoutPaise();
+        $minPayoutPaise = $this->plan->minPayoutPaise();
 
         // Idempotent: one batch per date.
         $batch = PayoutBatch::whereDate('batch_date', $batchDate->toDateString())->first()
@@ -82,7 +74,7 @@ final class PayoutService
             // Their wallet balance is recorded but NOT included in the NEFT batch.
             $personalBvPaise = $this->bvLedger->totalPersonalBvPaise((int) $distributorId);
 
-            if ($personalBvPaise < $this->neftMinBvPaise()) {
+            if ($personalBvPaise < $this->plan->neftMinBvPaise()) {
                 PayoutLineItem::create([
                     'payout_batch_id' => $batch->id,
                     'distributor_id' => $distributorId,
@@ -193,7 +185,8 @@ final class PayoutService
     }
 
     /**
-     * 10% of prior month's GSB + MB net credits, capped at ₹10,000.
+     * Configurable % of prior month's bonus credits, capped. KP-confirmed pool:
+     * GSB + Mentorship + Growth Booster + Fortune + Rank net credits.
      *
      * Only positive amount_paise entries are summed — reversal entries of the
      * same types carry negative values and must not reduce the deduction.
@@ -204,26 +197,15 @@ final class PayoutService
         $priorMonthEnd = $batchDate->copy()->subMonth()->endOfMonth();
 
         $earned = (int) WalletLedgerEntry::where('distributor_id', $distributorId)
-            ->whereIn('type', ['gsb_credit', 'mb_credit'])
+            ->whereIn('type', ['gsb_credit', 'mb_credit', 'gbb_credit', 'fortune_credit', 'rank_credit'])
             ->where('amount_paise', '>', 0)
             ->whereBetween('created_at', [$priorMonthStart, $priorMonthEnd])
             ->sum('amount_paise');
 
-        return max(0, min((int) round($earned * 0.10), self::MAX_REPURCHASE_PAISE));
-    }
-
-    private function minPayoutPaise(): int
-    {
-        $raw = DB::table('settings')->where('key', 'payout.min_threshold_paise')->value('value');
-
-        return $raw !== null ? (int) $raw : self::DEFAULT_MIN_PAYOUT_PAISE;
-    }
-
-    private function neftMinBvPaise(): int
-    {
-        $raw = DB::table('settings')->where('key', 'payout.neft_min_bv_paise')->value('value');
-
-        return $raw !== null ? (int) $raw : self::DEFAULT_NEFT_MIN_PAISE;
+        return max(0, min(
+            (int) round($earned * $this->plan->repurchaseRateBp() / 10_000),
+            $this->plan->repurchaseCapPaise(),
+        ));
     }
 
     private function bankLast4ForDistributor(int $distributorId): ?string

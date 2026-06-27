@@ -16,30 +16,21 @@ use App\Modules\Compensation\Services\DTOs\TitleResult;
  */
 final class PersonalBvTitleService
 {
-    /** [min_bv_paise => [title, gsb_slab]] in ascending order. */
-    private const LADDER = [
-        300_000 => ['title' => 'Retailer',             'slab' => 1],
-        500_000 => ['title' => 'Dealer',               'slab' => 2],
-        1_500_000 => ['title' => 'Wholesaler',           'slab' => 3],
-        5_000_000 => ['title' => 'Distributor',          'slab' => 4],
-        10_000_000 => ['title' => 'Regional Distributor', 'slab' => 5],
-        20_000_000 => ['title' => 'National Distributor', 'slab' => 6],
-        30_000_000 => ['title' => 'Global Distributor',   'slab' => 7],
-    ];
+    public function __construct(
+        private readonly CompensationPlanSettingsService $plan,
+    ) {}
 
     public function forBvPaise(int $bvPaise): TitleResult
     {
-        $matched = null;
-        $thresholds = array_keys(self::LADDER);
+        // Ascending [['threshold' => int, 'title' => string, 'slab' => int]],
+        // sourced from the admin-editable gsb_slabs table.
+        $ladder = $this->plan->titleLadder();
+        $thresholds = array_map(fn (array $e): int => $e['threshold'], $ladder);
 
-        foreach (array_reverse($thresholds) as $threshold) {
-            if ($bvPaise >= $threshold) {
-                $entry = self::LADDER[$threshold];
-                $matched = [
-                    'threshold' => $threshold,
-                    'title' => $entry['title'],
-                    'slab' => $entry['slab'],
-                ];
+        $matched = null;
+        foreach (array_reverse($ladder) as $entry) {
+            if ($bvPaise >= $entry['threshold']) {
+                $matched = $entry;
                 break;
             }
         }
@@ -48,7 +39,7 @@ final class PersonalBvTitleService
             return new TitleResult(
                 title: null,
                 maxGsbSlab: 0,
-                nextTitleBvPaise: $thresholds[0],
+                nextTitleBvPaise: $thresholds[0] ?? null,
             );
         }
 
