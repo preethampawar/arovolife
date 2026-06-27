@@ -24,6 +24,7 @@ app/auth.json
 app/database/database.sqlite
 app/database/*.sqlite-journal
 app/arovolife
+app/arovolife_test
 
 # --- root-level secrets ---
 .env
@@ -54,6 +55,11 @@ composer.phar
 # --- Claude Code local overrides ---
 .claude/local/
 .claude/*.local.*
+.claude/scheduled_tasks.lock
+
+# --- Test / browser-automation artifacts (throwaway) ---
+app/test-results/
+.playwright-mcp/
 
 # --- Backup scratch ---
 *.bak
