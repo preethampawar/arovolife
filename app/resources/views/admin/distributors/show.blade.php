@@ -267,7 +267,7 @@
         data-confirm-impact="The account is blocked and the distributor cannot sign in until it is unblocked. This is reversible."
         class="hidden mt-4 space-y-3 border-t border-gray-200 pt-4">
         @csrf
-        <label class="block text-sm text-gray-700">Reason for blocking <span class="text-red-700">*</span></label>
+        <label class="block text-sm text-gray-700">Reason for blocking <span class="text-red-700">*</span> <x-help-tip text="Recorded in the audit log with this action." /></label>
         <textarea name="reason" required rows="2" placeholder="Enter reason…"
             class="w-full max-w-lg rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"></textarea>
         <button type="submit" class="px-4 py-2 rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white text-sm font-medium transition-colors">
@@ -283,7 +283,7 @@
         class="hidden mt-4 space-y-3 border-t border-gray-200 pt-4">
         @csrf
         <p class="text-sm text-red-700 font-medium">⚠ This action is irreversible. The distributor's ADN will be permanently closed.</p>
-        <label class="block text-sm text-gray-700">Reason for termination <span class="text-red-700">*</span></label>
+        <label class="block text-sm text-gray-700">Reason for termination <span class="text-red-700">*</span> <x-help-tip text="Recorded in the audit log with this irreversible action." /></label>
         <textarea name="reason" required rows="2" placeholder="Enter reason (required for audit log)…"
             class="w-full max-w-lg rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"></textarea>
         <button type="submit" class="px-4 py-2 rounded-lg bg-red-800 hover:bg-red-700 text-white text-sm font-medium transition-colors">
@@ -371,14 +371,14 @@
         <form method="POST" action="{{ route('admin.distributors.set-password', $distributor->id) }}" class="space-y-4">
             @csrf
             <div>
-                <label for="new_password" class="block text-xs font-medium text-gray-700 mb-1">New password</label>
+                <label for="new_password" class="block text-xs font-medium text-gray-700 mb-1">New password <x-help-tip text="At least 8 characters. Setting it invalidates the current password and any pending reset link immediately." /></label>
                 <input id="new_password" name="new_password" type="password" required minlength="8" autocomplete="new-password"
                     placeholder="At least 8 characters"
                     class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('new_password') ? 'border-red-400' : 'border-gray-300' }}">
                 @error('new_password')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
-                <label for="new_password_confirmation" class="block text-xs font-medium text-gray-700 mb-1">Re-enter new password</label>
+                <label for="new_password_confirmation" class="block text-xs font-medium text-gray-700 mb-1">Re-enter new password <x-help-tip text="Repeat the new password exactly; it must match the password above to save." /></label>
                 <input id="new_password_confirmation" name="new_password_confirmation" type="password" required minlength="8" autocomplete="new-password"
                     placeholder="Repeat the new password"
                     class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('new_password_confirmation') ? 'border-red-400' : 'border-gray-300' }}">

@@ -11,7 +11,7 @@
 {{-- Filter --}}
 <form method="GET" class="flex gap-3 mb-6 items-end">
     <div>
-        <label class="block text-xs text-gray-500 mb-1">Status</label>
+        <label class="block text-xs text-gray-500 mb-1">Status <x-help-tip text="Filter the list by award status — pending, delivered or cancelled. Leave on All to show every milestone." /></label>
         <select name="status" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
             <option value="">All</option>
             <option value="pending" @selected(request('status') === 'pending')>Pending</option>

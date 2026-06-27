@@ -30,22 +30,22 @@
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Product details</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Name</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Name <x-help-tip text="The customer-facing product name shown on the shop and product page." /></span>
                 <input type="text" name="name" value="{{ old('name', $product->name) }}" required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">SKU</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">SKU <x-help-tip text="Unique internal stock code for this product. Used in inventory and orders." /></span>
                 <input type="text" name="sku" value="{{ old('sku', $product->sku) }}" required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Slug</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Slug <x-help-tip text="The product's URL segment on the shop. Use lowercase words joined by hyphens." /></span>
                 <input type="text" name="slug" value="{{ old('slug', $product->slug) }}" required placeholder="lowercase-with-hyphens"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Category</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Category <x-help-tip text="The shop category this product is listed under. Leave blank for none." /></span>
                 <select name="category_id" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="">— none —</option>
                     @foreach($categories as $cat)
@@ -54,22 +54,22 @@
                 </select>
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">HSN code</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">HSN code <x-help-tip text="The GST HSN classification code for this product. Used on tax invoices." /></span>
                 <input type="text" name="hsn_code" value="{{ old('hsn_code', $product->hsn_code) }}" required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Manufacturer</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Manufacturer <x-help-tip text="Name of the company that makes this product. Shown on the product page." /></span>
                 <input type="text" name="manufacturer" value="{{ old('manufacturer', $product->manufacturer) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Country of origin</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Country of origin <x-help-tip text="The country where this product is manufactured. Shown on the product page." /></span>
                 <input type="text" name="country_of_origin" value="{{ old('country_of_origin', $product->country_of_origin) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Veg / Non-veg</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Veg / Non-veg <x-help-tip text="Sets the FSSAI veg/non-veg mark for food items. Use Not applicable for non-food." /></span>
                 <select name="food_type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     @foreach(['' => 'Not applicable (non-food)', 'veg' => 'Vegetarian', 'non_veg' => 'Non-vegetarian'] as $val => $lbl)
                         <option value="{{ $val }}" @selected((string) old('food_type', $product->food_type) === $val)>{{ $lbl }}</option>
@@ -78,7 +78,7 @@
                 <span class="block text-[11px] text-gray-500 mt-1">FSSAI mark shown on the storefront for food items. Leave as “Not applicable” for personal-care / agri products.</span>
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Status</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Status <x-help-tip text="Draft hides the product; Active shows it on the shop; Archived removes it from sale." /></span>
                 <select name="status" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     @foreach(['draft' => 'Draft', 'active' => 'Active', 'archived' => 'Archived'] as $val => $lbl)
                         <option value="{{ $val }}" @selected(old('status', $product->status) === $val)>{{ $lbl }}</option>
@@ -86,12 +86,12 @@
                 </select>
             </label>
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Short description</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Short description <x-help-tip text="A one-line summary shown in product listings and previews (up to 500 characters)." /></span>
                 <input type="text" name="short_description" value="{{ old('short_description', $product->short_description) }}" maxlength="500"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Primary image URL</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Primary image URL <x-help-tip text="Optional hosted image URL shown when no gallery image is uploaded." /></span>
                 <input type="url" name="image_url" value="{{ old('image_url', $product->image_url) }}" maxlength="1000" placeholder="https://… (used when no gallery image is uploaded)"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <span class="block text-xs text-gray-500 mt-1">Optional. A hosted/CDN image URL shown when no gallery image is uploaded.</span>
@@ -112,7 +112,14 @@
                 'bv' => ['BV', $variant->bv_paise ?? 0],
             ] as $field => [$label, $val])
                 <label class="block">
-                    <span class="block text-xs text-gray-700 mb-1 font-medium">{{ $label }}</span>
+                    <span class="block text-xs text-gray-700 mb-1 font-medium">{{ $label }} <x-help-tip :text="[
+                        'cost_price' => 'Your internal purchase cost for this product. Not shown to customers.',
+                        'landing_price' => 'Landed cost including freight and duties. Not shown to customers.',
+                        'distributor_price' => 'The price charged to distributors when they buy this product.',
+                        'mrp' => 'Maximum retail price printed on the product. Used as the strike-through price.',
+                        'sale_price' => 'The actual selling price charged at checkout.',
+                        'bv' => 'Business Volume points attached to this product for the compensation engine.',
+                    ][$field] ?? ''" /></span>
                     <input type="number" step="0.01" min="0" name="{{ $field }}"
                         value="{{ old($field, $paise($val)) }}"
                         @if(in_array($field, ['mrp', 'sale_price'])) required @endif
@@ -120,25 +127,25 @@
                 </label>
             @endforeach
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">GST %</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">GST % <x-help-tip text="The GST rate applied to this product at checkout and on the tax invoice." /></span>
                 <input type="number" step="0.01" min="0" max="100" name="gst_rate" required
                     value="{{ old('gst_rate', $paise($variant->gst_rate_bp ?? 1800)) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Weight (g)</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Weight (g) <x-help-tip text="Shipping weight in grams. Used to calculate delivery charges." /></span>
                 <input type="number" step="1" min="0" name="weight_g" value="{{ old('weight_g', $isEdit ? $variant->weight_g : null) }}" placeholder="0"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Inventory</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Inventory <x-help-tip text="Track stock counts down on-hand per order; Don't track allows unlimited selling." /></span>
                 <select name="inventory_policy" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="track" @selected(old('inventory_policy', $variant->inventory_policy ?? 'track') === 'track')>Track stock</option>
                     <option value="no_track" @selected(old('inventory_policy', $variant->inventory_policy ?? 'track') === 'no_track')>Don't track</option>
                 </select>
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Stock on hand</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Stock on hand <x-help-tip text="Current quantity available to sell. Decreases as orders are placed." /></span>
                 <input type="number" step="1" min="0" name="on_hand" value="{{ $onHand }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
@@ -147,7 +154,7 @@
 
     {{-- ── Product attributes (rich, sortable) ────────────────────────── --}}
     <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
-        <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Product information</h2>
+        <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Product information <x-help-tip text="Add labelled sections (e.g. Ingredients, Storage) shown on the product page. Sort sets the order, lowest first." /></h2>
         <p class="text-xs text-gray-500">
             Descriptive sections shown on the product detail page — e.g. Ingredients,
             Nutritional information, Storage, Caution. Each value supports tables and
@@ -217,10 +224,10 @@
         @endif
         <input type="file" name="images[]" accept="image/jpeg,image/png" multiple
             class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
-        <p class="text-xs text-gray-500">JPG or PNG, up to 5 MB each. Stored on S3.</p>
+        <p class="text-xs text-gray-500">JPG or PNG, up to 5 MB each. Stored on S3. <x-help-tip text="Upload one or more gallery images shown on the product page. JPG or PNG, up to 5 MB each." /></p>
 
         <label class="block pt-2 border-t border-gray-100">
-            <span class="block text-xs text-gray-700 mb-1 font-medium">…or add image URLs</span>
+            <span class="block text-xs text-gray-700 mb-1 font-medium">…or add image URLs <x-help-tip text="Hosted image URLs, one per line, added to the gallery alongside any uploads." /></span>
             <textarea name="gallery_image_urls" rows="3" placeholder="One image URL per line — https://…"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">{{ is_array(old('gallery_image_urls')) ? implode("\n", old('gallery_image_urls')) : old('gallery_image_urls') }}</textarea>
             <span class="block text-xs text-gray-500 mt-1">Hosted/CDN image URLs, one per line. Added to the gallery alongside any uploads.</span>
@@ -229,7 +236,7 @@
 
     {{-- ── WYSIWYG description ─────────────────────────────────────────── --}}
     <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
-        <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Description</h2>
+        <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Description <x-help-tip text="The full rich-text product description shown on the product detail page." /></h2>
         <input id="descInput" type="hidden" name="description_html" value="{{ old('description_html', $product->description_html) }}">
         <trix-editor input="descInput" class="trix-content"></trix-editor>
     </div>

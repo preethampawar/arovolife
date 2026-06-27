@@ -21,21 +21,21 @@
         <p class="text-sm font-semibold text-gray-900">Upload a new document</p>
 
         <div>
-            <label for="title" class="block text-xs font-medium text-gray-700 mb-1">Title</label>
+            <label for="title" class="block text-xs font-medium text-gray-700 mb-1">Title <x-help-tip text="The document's name shown on the public Compliance Documents page." /></label>
             <input id="title" name="title" type="text" required maxlength="255" value="{{ old('title') }}"
                 placeholder="e.g. Certificate of Incorporation"
                 class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('title') ? 'border-red-400' : 'border-gray-300' }}">
         </div>
 
         <div>
-            <label for="description" class="block text-xs font-medium text-gray-700 mb-1">Description <span class="text-gray-400">(optional)</span></label>
+            <label for="description" class="block text-xs font-medium text-gray-700 mb-1">Description <span class="text-gray-400">(optional)</span> <x-help-tip text="A short note shown beneath the title to explain what the document is." /></label>
             <input id="description" name="description" type="text" maxlength="512" value="{{ old('description') }}"
                 placeholder="Short note shown beneath the title"
                 class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('description') ? 'border-red-400' : 'border-gray-300' }}">
         </div>
 
         <div>
-            <label for="document" class="block text-xs font-medium text-gray-700 mb-1">File</label>
+            <label for="document" class="block text-xs font-medium text-gray-700 mb-1">File <x-help-tip text="The file to upload: PDF, Word, Excel or image (JPG/PNG), up to 20 MB." /></label>
             <input id="document" name="document" type="file" required
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                 class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100">

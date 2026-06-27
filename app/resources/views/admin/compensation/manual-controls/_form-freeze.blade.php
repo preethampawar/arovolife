@@ -9,12 +9,12 @@
     @csrf
     <div class="grid grid-cols-2 gap-4 mb-4">
         <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Distributor ADN</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Distributor ADN <x-help-tip text="Arovolife Distributor Number of the distributor to freeze or unfreeze." /></label>
             <input type="text" name="adn" value="{{ $adn ?? '' }}" required placeholder="e.g. AV-00042"
                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">
         </div>
         <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Action</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Action <x-help-tip text="Freeze holds future GSB credits while still calculating them; Unfreeze resumes normal credits." /></label>
             <select name="freeze" required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">
                 <option value="freeze">Freeze GSB</option>
@@ -23,7 +23,7 @@
         </div>
     </div>
     <div class="mb-4">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Reason (required, min 10 chars)</label>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Reason (required, min 10 chars) <x-help-tip text="Why GSB is being frozen or unfrozen. Recorded in the audit log." /></label>
         <textarea name="reason" rows="2" required
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none"></textarea>
     </div>

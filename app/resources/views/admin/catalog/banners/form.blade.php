@@ -26,7 +26,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Placement</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Placement <x-help-tip text="Where this banner shows — the home page Shopping Mall or a specific category page." /></span>
                 <select name="category_id" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="">Shopping Mall (home page)</option>
                     @foreach(($categories ?? []) as $cat)
@@ -36,23 +36,23 @@
                 <span class="block text-xs text-gray-500 mt-1">Where this banner shows. Banners for the same category slide together on that category's page.</span>
             </label>
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Title (optional)</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Title (optional) <x-help-tip text="Optional heading text overlaid on the banner." /></span>
                 <input type="text" name="title" value="{{ old('title', $banner->title) }}" maxlength="150"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Caption (optional)</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Caption (optional) <x-help-tip text="Optional supporting text shown below the banner title." /></span>
                 <input type="text" name="caption" value="{{ old('caption', $banner->caption) }}" maxlength="255"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Link URL (optional — where the banner clicks through)</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Link URL (optional — where the banner clicks through) <x-help-tip text="The page a customer is taken to when they click the banner." /></span>
                 <input type="url" name="link_url" value="{{ old('link_url', $banner->link_url) }}" maxlength="500" placeholder="https://…"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
 
             <div class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Banner image</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Banner image <x-help-tip text="Upload the banner image. Recommended 1520×350 px, JPG or PNG up to 5 MB." /></span>
                 @if($banner->hasImage())
                     <img src="{{ $banner->url() }}" alt="" class="w-full max-w-md aspect-[1520/350] object-cover rounded-lg border border-gray-200 mb-2">
                 @endif
@@ -61,19 +61,19 @@
                 <span class="block text-xs text-gray-500 mt-1">Upload to S3. Leave empty to keep the current image or use the URL below.</span>
             </div>
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">…or image URL</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">…or image URL <x-help-tip text="A hosted image URL for the banner. Ignored if a file is uploaded above." /></span>
                 <input type="url" name="external_url" value="{{ old('external_url', $banner->external_url) }}" maxlength="500" placeholder="https://cdn…/banner.jpg"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <span class="block text-xs text-gray-500 mt-1">A hosted/CDN image URL. Ignored if a file is uploaded above.</span>
             </label>
 
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Sort order</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Sort order <x-help-tip text="Controls the order banners slide in the carousel. Lower numbers appear first." /></span>
                 <input type="number" step="1" min="0" name="sort" value="{{ old('sort', $banner->sort ?? 0) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Status</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Status <x-help-tip text="Active shows the banner on the storefront; Archived hides it." /></span>
                 <select name="status" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="active" @selected(old('status', $banner->status) === 'active')>Active</option>
                     <option value="archived" @selected(old('status', $banner->status) === 'archived')>Archived</option>

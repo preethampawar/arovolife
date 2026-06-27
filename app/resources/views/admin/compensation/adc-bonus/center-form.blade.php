@@ -27,13 +27,13 @@
         @endif
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Center name <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Center name <span class="text-red-500">*</span> <x-help-tip text="Name of the company-approved Arete Development Center." /></label>
             <input type="text" name="name" value="{{ old('name') }}" required maxlength="200"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Location <x-help-tip text="City or address of the center. Optional." /></label>
             <input type="text" name="location" value="{{ old('location') }}" maxlength="300"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
@@ -49,13 +49,13 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Approval date</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Approval date <x-help-tip text="Date the company approved this center. Optional." /></label>
             <input type="date" name="approved_at" value="{{ old('approved_at') }}"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes <x-help-tip text="Internal notes about this center. Optional." /></label>
             <textarea name="notes" rows="3"
                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">{{ old('notes') }}</textarea>
         </div>

@@ -347,7 +347,7 @@
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-2">ID photo</h3>
+        <h3 class="font-semibold text-gray-800 mb-2">ID photo <x-help-tip text="A JPG or PNG photo (200×200 to 4000×4000 px, max 5 MB). EXIF data is stripped and any previous photo is replaced." /></h3>
         <p class="text-xs text-gray-700 mb-4">
             JPG or PNG, between 200×200 and 4000×4000 pixels, max 5 MB. The image is EXIF-stripped on upload and the previous photo (if any) is deleted from storage.
         </p>

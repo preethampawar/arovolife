@@ -20,19 +20,19 @@
     <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Code</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Code <x-help-tip text="The code customers type at checkout to apply this coupon." /></span>
                 <input type="text" name="code" value="{{ old('code', $coupon->code) }}" required placeholder="WELCOME10"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Status</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Status <x-help-tip text="Active coupons can be used at checkout; archived coupons are kept on record but cannot be applied." /></span>
                 <select name="status" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="active" @selected(old('status', $coupon->status) === 'active')>Active</option>
                     <option value="archived" @selected(old('status', $coupon->status) === 'archived')>Archived</option>
                 </select>
             </label>
             <label class="block sm:col-span-2">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Description</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Description <x-help-tip text="An internal note describing this coupon; for admin reference only." /></span>
                 <input type="text" name="description" value="{{ old('description', $coupon->description) }}" maxlength="255"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
@@ -43,25 +43,25 @@
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Discount</h2>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Type</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Type <x-help-tip text="Choose whether the discount is a percentage of the cart or a fixed rupee amount." /></span>
                 <select name="type" id="couponType" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="percent" @selected($type === 'percent')>Percent (%)</option>
                     <option value="fixed" @selected($type === 'fixed')>Fixed (₹)</option>
                 </select>
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium"><span id="valueLabel">{{ $type === 'percent' ? 'Percent' : 'Amount (₹)' }}</span></span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium"><span id="valueLabel">{{ $type === 'percent' ? 'Percent' : 'Amount (₹)' }}</span> <x-help-tip text="The discount amount: a percentage off for percent type, or a rupee amount off for fixed type." /></span>
                 <input type="number" step="0.01" min="0" name="value" value="{{ $valuePrefill }}" required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block" id="maxDiscountField">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Max discount (₹)</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Max discount (₹) <x-help-tip text="The largest rupee discount this percentage coupon can give. Leave blank for no cap." /></span>
                 <input type="number" step="0.01" min="0" name="max_discount" value="{{ $maxPrefill }}" placeholder="no cap"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
         </div>
         <label class="block max-w-xs">
-            <span class="block text-xs text-gray-700 mb-1 font-medium">Minimum purchase (₹)</span>
+            <span class="block text-xs text-gray-700 mb-1 font-medium">Minimum purchase (₹) <x-help-tip text="The minimum cart value required before this coupon can be applied. Leave blank or 0 for no minimum." /></span>
             <input type="number" step="0.01" min="0" name="min_purchase" value="{{ $minPrefill }}" placeholder="0"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
         </label>
@@ -71,7 +71,7 @@
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Eligibility</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Applies to</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Applies to <x-help-tip text="Whether the discount applies to the whole cart, one category, or one specific product." /></span>
                 <select name="scope" id="couponScope" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="all" @selected($scope === 'all')>Whole cart</option>
                     <option value="category" @selected($scope === 'category')>A category</option>
@@ -79,7 +79,7 @@
                 </select>
             </label>
             <label class="block scope-target" data-scope="category">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Category</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Category <x-help-tip text="The product category this coupon is limited to when scope is set to a category." /></span>
                 <select name="scope_id" data-scope-select="category" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" disabled>
                     @foreach($categories as $cat)
                         <option value="{{ $cat->id }}" @selected($scope === 'category' && (int) old('scope_id', $coupon->scope_id) === $cat->id)>{{ $cat->name }}</option>
@@ -87,7 +87,7 @@
                 </select>
             </label>
             <label class="block scope-target" data-scope="product">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Product</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Product <x-help-tip text="The specific product this coupon is limited to when scope is set to a product." /></span>
                 <select name="scope_id" data-scope-select="product" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" disabled>
                     @foreach($products as $prod)
                         <option value="{{ $prod->id }}" @selected($scope === 'product' && (int) old('scope_id', $coupon->scope_id) === $prod->id)>{{ $prod->name }}</option>
@@ -101,22 +101,22 @@
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Window &amp; limits</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Starts at</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Starts at <x-help-tip text="The date and time the coupon becomes usable. Leave blank to allow use immediately." /></span>
                 <input type="datetime-local" name="starts_at" value="{{ old('starts_at', $coupon->starts_at?->format('Y-m-d\TH:i')) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Ends at</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Ends at <x-help-tip text="The date and time the coupon stops working. Leave blank for no expiry." /></span>
                 <input type="datetime-local" name="ends_at" value="{{ old('ends_at', $coupon->ends_at?->format('Y-m-d\TH:i')) }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Total usage limit</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Total usage limit <x-help-tip text="The maximum number of times this coupon can be redeemed across all customers. Leave blank for unlimited." /></span>
                 <input type="number" step="1" min="1" name="usage_limit" value="{{ old('usage_limit', $coupon->usage_limit) }}" placeholder="unlimited"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Per-customer limit</span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Per-customer limit <x-help-tip text="The maximum times a single customer can use this coupon. Set to 1 for a new-user-only coupon." /></span>
                 <input type="number" step="1" min="1" name="per_customer_limit" value="{{ old('per_customer_limit', $coupon->per_customer_limit) }}" placeholder="unlimited"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>

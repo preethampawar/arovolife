@@ -212,6 +212,10 @@
          is intercepted and confirmed here before submitting. --}}
     <x-confirm-modal />
 
+    {{-- Read-only-until-Edit behaviour + change diff for any form marked
+         data-editable. Must follow the confirm modal so the diff is rendered. --}}
+    <x-editable-section />
+
     @stack('scripts')
 </body>
 </html>

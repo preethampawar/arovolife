@@ -131,7 +131,7 @@
                                 <p class="text-[10px] text-gray-500 mt-1">Awaiting applicant re-upload.</p>
                             @else
                                 <details class="text-[11px]">
-                                    <summary class="cursor-pointer text-amber-700 hover:text-amber-800 font-medium select-none">Flag this document for re-upload</summary>
+                                    <summary class="cursor-pointer text-amber-700 hover:text-amber-800 font-medium select-none">Flag this document for re-upload <x-help-tip text="Your reason is emailed verbatim to the applicant with a signed link to re-upload only this document; the rest of the KYC submission is untouched." /></summary>
                                     <form method="POST"
                                           action="{{ route('admin.kyc.document.flag', [$distributor->id, $doc->id]) }}"
                                           class="mt-2 space-y-2"
@@ -204,7 +204,7 @@
      "fix and resubmit" cases. --}}
 <details class="mt-6 rounded-2xl border border-gray-300 bg-gray-50 p-6">
     <summary class="cursor-pointer text-sm font-semibold text-gray-800">
-        Terminate account permanently (irreversible) &nbsp;⤓
+        Terminate account permanently (irreversible) <x-help-tip text="The reason is recorded in the audit log and emailed to the applicant as a closure notice. This cannot be undone." /> &nbsp;⤓
     </summary>
     <form method="POST" action="{{ route('admin.kyc.terminate', $distributor->id) }}" class="mt-4 space-y-3"
         data-confirm="Terminate this account permanently?"

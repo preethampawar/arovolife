@@ -66,12 +66,12 @@
                     data-confirm-title="Confirm shipment"
                     data-confirm-impact="Impact: sets the order to SHIPPED, recognises revenue in the ledger, and emails the customer their shipping details. This is not easily reversible — make sure the courier and tracking number are correct first.">@csrf
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Courier / carrier</label>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Courier / carrier <x-help-tip text="The delivery company handling this shipment; shown to the customer in their shipping email." /></label>
                         <input name="ship_carrier" type="text" maxlength="120" placeholder="e.g. Delhivery, BlueDart"
                             class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Tracking number</label>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Tracking number <x-help-tip text="The courier's tracking number so the customer can follow the shipment." /></label>
                         <input name="ship_tracking_no" type="text" maxlength="120" placeholder="e.g. 1234567890"
                             class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>

@@ -36,6 +36,7 @@
                 <form method="POST" action="{{ route('admin.feature-flags.toggle', $key) }}" class="shrink-0"
                     data-confirm="{{ $flag['active'] ? 'Deactivate' : 'Activate' }} the &lsquo;{{ $flag['label'] }}&rsquo; flag?"
                     data-confirm-title="Confirm feature flag change"
+                    data-confirm-changes='[{"label":"State","from":"{{ $flag['active'] ? 'Active' : 'Inactive' }}","to":"{{ $flag['active'] ? 'Inactive' : 'Active' }}"}]'
                     data-confirm-impact="{{ $flag['active'] ? 'Disables' : 'Enables' }} this feature platform-wide for all users on arovolife. The change is audit-logged and reversible by toggling it back.">
                     @csrf
                     @if ($flag['active'])

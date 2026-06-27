@@ -118,7 +118,7 @@
                 data-confirm-impact="This records the physical condition of the returned goods and computes the refund amount. The order will move to 'refund_inspection'. You can approve or reject after this step.">
                 @csrf
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Physical condition <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Physical condition <span class="text-red-500">*</span> <x-help-tip text="The condition of the returned goods on inspection; this determines the refund amount under the T&C §8 buyback matrix." /></label>
                     <select name="condition" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                         <option value="">Select condition…</option>
                         <option value="saleable">Saleable (can be resold as new/like-new)</option>
@@ -127,7 +127,7 @@
                     </select>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Inspector notes (optional)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Inspector notes (optional) <x-help-tip text="Optional notes about the inspection; saved with the inspection record." /></label>
                     <textarea name="notes" rows="2" maxlength="1000" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                 </div>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium">Record inspection</button>

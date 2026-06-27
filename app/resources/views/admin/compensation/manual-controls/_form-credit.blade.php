@@ -9,7 +9,7 @@
     @csrf
     <div class="grid grid-cols-2 gap-4 mb-4">
         <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Distributor ADN</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Distributor ADN <x-help-tip text="Arovolife Distributor Number of the distributor whose wallet will be credited." /></label>
             <input type="text" name="adn" value="{{ $adn ?? '' }}" required placeholder="e.g. AV-00042"
                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">
         </div>
@@ -23,12 +23,12 @@
         </div>
     </div>
     <div class="mb-4">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Amount (Rs., min Rs. 1)</label>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Amount (Rs., min Rs. 1) <x-help-tip text="Amount in rupees to credit, matching the GSB that the referenced cut-off result should have paid." /></label>
         <input type="number" name="amount" step="0.01" min="1" required placeholder="e.g. 1000.00"
                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">
     </div>
     <div class="mb-4">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Reason (required, min 10 chars)</label>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Reason (required, min 10 chars) <x-help-tip text="Why this manual credit is needed. Recorded in the audit log." /></label>
         <textarea name="reason" rows="2" required
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none"></textarea>
     </div>

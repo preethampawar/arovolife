@@ -5,12 +5,12 @@
       data-confirm-impact="The payout batch will run for this distributor at the next scheduled time. Use only if the automated Tuesday batch skipped this distributor.">
     @csrf
     <div class="mb-4">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Distributor ADN</label>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Distributor ADN <x-help-tip text="Arovolife Distributor Number of the distributor to include in the next payout batch." /></label>
         <input type="text" name="adn" value="{{ $adn ?? '' }}" required placeholder="e.g. AV-00042"
                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">
     </div>
     <div class="mb-4">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Reason (required, min 10 chars)</label>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Reason (required, min 10 chars) <x-help-tip text="Why a payout is being forced for this distributor. Recorded in the audit log." /></label>
         <textarea name="reason" rows="2" required
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none"></textarea>
     </div>
