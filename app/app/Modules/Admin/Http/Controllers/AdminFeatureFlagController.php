@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\HibpPasswordCheck;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
@@ -42,6 +43,11 @@ final class AdminFeatureFlagController extends Controller
             ],
 
             // ── Phase 4 compensation features (default OFF — partner sign-off required) ──
+            'compensation.genos_sales_bonus' => [
+                'class' => GenosSalesBonusFeature::class,
+                'label' => 'Genos Sales Bonus (Phase 4)',
+                'description' => 'The foundational daily GSB engine. When OFF, the gsb:daily-cutoff and gsb:weekly-payout commands no-op — no GSB is earned or paid (and the Mentorship Bonus, computed alongside GSB, is skipped too). Enable after partners approve the plan.',
+            ],
             'compensation.mentorship_bonus' => [
                 'class' => MentorshipBonusFeature::class,
                 'label' => 'Mentorship Bonus (Phase 4)',

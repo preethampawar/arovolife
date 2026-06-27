@@ -8,9 +8,12 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pennant\Feature;
 
 final class GsbDailyCutoffCommand extends Command
 {
@@ -29,6 +32,12 @@ final class GsbDailyCutoffCommand extends Command
 
     public function handle(): int
     {
+        if (! Feature::for(null)->active(GenosSalesBonusFeature::class)) {
+            $this->info('Genos Sales Bonus is disabled (feature flag off) — nothing to run.');
+
+            return self::SUCCESS;
+        }
+
         if ($this->option('date') !== null) {
             $rawDate = (string) $this->option('date');
             if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
@@ -55,6 +64,10 @@ final class GsbDailyCutoffCommand extends Command
             $query->where('id', $singleId);
         }
 
+        // The Mentorship Bonus is computed alongside each GSB credit, so gate it
+        // on its own flag — GSB can run without MB, but not the reverse.
+        $mentorshipActive = Feature::for(null)->active(MentorshipBonusFeature::class);
+
         $distributors = $query->pluck('id');
         $total = $distributors->count();
         $credited = 0;
@@ -66,7 +79,9 @@ final class GsbDailyCutoffCommand extends Command
 
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {
                     $credited++;
-                    $this->mentorship->processForSponsee((int) $distributorId, $result);
+                    if ($mentorshipActive) {
+                        $this->mentorship->processForSponsee((int) $distributorId, $result);
+                    }
                 } elseif ($result->status === GsbCutoffResult::STATUS_FAILED) {
                     $failed++;
                     Log::error('gsb.cutoff.failed', ['distributor_id' => $distributorId, 'reason' => $result->failure_reason]);

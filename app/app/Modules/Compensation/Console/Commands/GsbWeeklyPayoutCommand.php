@@ -6,8 +6,10 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Services\PayoutService;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Laravel\Pennant\Feature;
 
 final class GsbWeeklyPayoutCommand extends Command
 {
@@ -23,6 +25,12 @@ final class GsbWeeklyPayoutCommand extends Command
 
     public function handle(): int
     {
+        if (! Feature::for(null)->active(GenosSalesBonusFeature::class)) {
+            $this->info('Genos Sales Bonus is disabled (feature flag off) — no payout batch to run.');
+
+            return self::SUCCESS;
+        }
+
         $date = $this->option('date')
             ? Carbon::parse((string) $this->option('date'))
             : Carbon::today();
