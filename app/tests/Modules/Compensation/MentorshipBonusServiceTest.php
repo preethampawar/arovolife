@@ -114,6 +114,63 @@ it('steps down MB rate after each 30K cumulative GSB milestone', function () {
     expect($mb->mb_paise)->toBe(7_372);
 });
 
+it('splits a single GSB income across rate brackets (KP Ravi example)', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+
+    // Sponsee at ₹0 cumulative earns ₹45,000 (4,500,000 paise) in one cut-off:
+    // 10% × ₹30,000 + 9% × ₹15,000 = ₹3,000 + ₹1,350 = ₹4,350 (435,000 paise).
+    $cutoffResult = GsbCutoffResult::create([
+        'distributor_id' => $sponsee->id,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => 7, 'gross_gsb_paise' => 4_500_000,
+        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 4_500_000,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'credited',
+    ]);
+
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, $cutoffResult);
+
+    expect($mb->mb_gross_paise)->toBe(435_000);   // per-slice split, not a flat 10%
+    expect($mb->mb_rate_pct)->toBe(10);           // blended effective rate ≈ 9.67% → 10
+});
+
+it('crosses the 1% floor boundary at ₹2,70,000 within one income', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+
+    // Prior cumulative ₹2,40,000 (24,000,000 paise → next rupee is in the 2% bracket).
+    MentorshipBonusResult::create([
+        'sponsor_id' => $sponsor->id, 'sponsee_id' => $sponsee->id,
+        'cutoff_date' => today()->subDay()->toDateString(),
+        'sponsee_gsb_paise' => 24_000_000, 'mb_rate_pct' => 3, 'mb_paise' => 0,
+        'sponsee_cumulative_gsb_paise' => 24_000_000, 'status' => 'credited',
+    ]);
+
+    // Earns ₹45,000: ₹30,000 in the 2% bracket (₹2,40,001–2,70,000) + ₹15,000 at the 1% floor.
+    $cutoffResult = GsbCutoffResult::create([
+        'distributor_id' => $sponsee->id,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => 7, 'gross_gsb_paise' => 4_500_000,
+        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 4_500_000,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'credited',
+    ]);
+
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, $cutoffResult);
+
+    // 2% × ₹30,000 = ₹600 ; 1% × ₹15,000 = ₹150 ; total ₹750 = 75,000 paise.
+    expect($mb->mb_gross_paise)->toBe(75_000);
+});
+
 it('floors MB rate at 1%', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();

@@ -13,9 +13,12 @@ use Illuminate\Support\Facades\DB;
 /**
  * Computes and credits the Mentorship Bonus for a sponsee's GSB cut-off result.
  *
- * Rate ladder: starts at 10%, drops 1% per ₹30,000 (3,000,000 paise) of
- * cumulative GSB earned by the sponsee, floors at 1% permanently.
- * Each sponsor-sponsee pair is tracked independently.
+ * Rate ladder (tax-slab style, per KP 2026-06-27): 10% on the first ₹30,000 of
+ * the sponsee's cumulative GSB, dropping 1% per further ₹30,000 (3,000,000
+ * paise) down to a 1% floor. A single GSB income is split across whatever
+ * brackets it spans — e.g. a sponsee at ₹0 earning ₹45,000 yields
+ * 10%×₹30,000 + 9%×₹15,000 = ₹4,350. Each sponsor-sponsee pair is tracked
+ * independently; all three figures (start, step, floor) are admin-editable.
  *
  * Deductions applied before wallet credit (same as GSB):
  *   - Admin charge: 3% of gross MB, capped at ₹30,000.
@@ -71,14 +74,15 @@ final class MentorshipBonusService
             ->where('sponsee_id', $sponseeId)
             ->max('sponsee_cumulative_gsb_paise') ?? 0;
 
-        $newCumulative = $prevCumulative + $cutoffResult->gross_gsb_paise;
+        $income = (int) $cutoffResult->gross_gsb_paise;
+        $newCumulative = $prevCumulative + $income;
 
-        // Rate = start% − (floor(prevCumulative / step) × 1%), floored at the
-        // configured lifetime minimum. All three figures are admin-editable.
-        $stepsCompleted = (int) floor($prevCumulative / $this->plan->mbStepPaise());
-        $rate = max($this->plan->mbFloorRatePct(), $this->plan->mbStartRatePct() - $stepsCompleted);
-
-        $mbGross = (int) round($cutoffResult->gross_gsb_paise * $rate / 100);
+        // Split this income across the cumulative-GSB rate brackets (tax-slab
+        // style). mb_rate_pct records the blended effective rate for display —
+        // it equals the single bracket rate when the income doesn't cross a
+        // ₹30,000 boundary (the common case).
+        $mbGross = $this->mentorshipGross($prevCumulative, $income);
+        $rate = $income > 0 ? (int) round($mbGross * 100 / $income) : 0;
         $deduction = $this->deductions->for(BonusType::Mentorship, $mbGross);
         $adminCharge = $deduction->adminChargePaise;
         $tds = $deduction->tdsPaise;
@@ -109,5 +113,52 @@ final class MentorshipBonusService
 
             return $result;
         });
+    }
+
+    /**
+     * Mentorship Bonus on a single GSB income, split across the sponsee's
+     * cumulative-GSB rate brackets (tax-slab style). Each step (default ₹30,000)
+     * of lifetime GSB lowers the rate 1% from the start rate to the floor.
+     *
+     * @param  int  $priorCumulativePaise  sponsee's cumulative GSB before this income
+     * @param  int  $incomePaise  this cut-off's gross GSB (paise)
+     * @return int MB gross in paise
+     */
+    private function mentorshipGross(int $priorCumulativePaise, int $incomePaise): int
+    {
+        if ($incomePaise <= 0) {
+            return 0;
+        }
+
+        $step = $this->plan->mbStepPaise();
+        $startRate = $this->plan->mbStartRatePct();
+        $floorRate = $this->plan->mbFloorRatePct();
+
+        // Defensive: a non-positive step would break bracketing — bill at start rate.
+        if ($step <= 0) {
+            return (int) round($incomePaise * $startRate / 100);
+        }
+
+        $gross = 0.0;
+        $pos = $priorCumulativePaise;
+        $remaining = $incomePaise;
+
+        while ($remaining > 0) {
+            $rate = max($floorRate, $startRate - intdiv($pos, $step));
+
+            // Once at the floor the rate never drops further — bill the rest at floor.
+            if ($rate <= $floorRate) {
+                $gross += $remaining * $floorRate / 100;
+                break;
+            }
+
+            $bracketEnd = (intdiv($pos, $step) + 1) * $step;
+            $slice = min($remaining, $bracketEnd - $pos);
+            $gross += $slice * $rate / 100;
+            $pos += $slice;
+            $remaining -= $slice;
+        }
+
+        return (int) round($gross);
     }
 }
