@@ -5,7 +5,13 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 
 # Arovolife Compensation Plan — reference
 
-**Source document:** "Arovolife Is Our New Life" dated 2026-06-19 (the partner's latest authoritative document).
+> ⚠️ **SUPERSEDED IN PART — read this first.** The numbers below are the 2026-06-19 doc. KP Naik issued a newer authoritative plan (*Arovolife Is Our New Life*, **26-06-2026, 3.30pm**) plus a Q&A (answered **27-06-2026**). On every conflict, the newer sources win, in this order:
+> 1. `docs/compensation/kp-clarifications-2026-06-26.md` (KP's Q&A — answers + open items)
+> 2. `~/.claude/.../memory/compensation_plan_kp_amendments_2026_06_26.md` (numeric params SSOT)
+>
+> Key deltas the 06-19 text below gets WRONG: GSB bonuses are **score × ₹360** (slab 1 = ₹1,800 … slab 7 = ₹60,120, score 167); admin charge **+ 5% TDS apply to all 7 bonuses** (incl. ADC + Lifetime Awards); repurchase pool = GSB+MB+GBB+Fortune+Rank; min payout **₹100**; repurchase date = Retailer-title anniversary; monthly repurchase BV is **graduated per rank** (R1 1,000 … R9 2,300; R7/R8 TBD); envelope %s restated (GSB 46 / MB 1.5 / Rank 20~21 / Fortune 6 / Lifetime 18.5 / ADC 3).
+
+**Source document (this file):** "Arovolife Is Our New Life" dated 2026-06-19.
 **Phase note:** No compensation is calculated in Phases 1–3. This skill exists so that the data model, events and audit trails are *forward-compatible* with the engines that arrive in Phases 4+.
 
 ---
