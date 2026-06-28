@@ -20,12 +20,15 @@ final class GsbSlabsSeeder extends Seeder
 
         $rows = [
             // slab, title, title_min_bv_paise, matched_bv_paise, score, bonus_paise, agp, cf_lifetime, active
+            // Personal-purchase title-BV thresholds use KP's 27-06-2026 Round-2
+            // table: Dealer 7,000 · Distributor 32,000 · Regional 68,000 ·
+            // National 1,44,000 BV (Retailer/Wholesaler/Global unchanged).
             [1, 'Retailer', 300_000, 1_500_000, 5, 180_000, 12, true, true],
-            [2, 'Dealer', 500_000, 3_600_000, 10, 360_000, 5, false, true],
+            [2, 'Dealer', 700_000, 3_600_000, 10, 360_000, 5, false, true],
             [3, 'Wholesaler', 1_500_000, 9_000_000, 20, 720_000, 2, false, true],
-            [4, 'Distributor', 5_000_000, 27_000_000, 38, 1_368_000, 0, false, true],
-            [5, 'Regional Distributor', 10_000_000, 81_000_000, 70, 2_520_000, 0, false, true],
-            [6, 'National Distributor', 20_000_000, 243_000_000, 117, 4_212_000, 0, false, true],
+            [4, 'Distributor', 3_200_000, 27_000_000, 38, 1_368_000, 0, false, true],
+            [5, 'Regional Distributor', 6_800_000, 81_000_000, 70, 2_520_000, 0, false, true],
+            [6, 'National Distributor', 14_400_000, 243_000_000, 117, 4_212_000, 0, false, true],
             // Slab 7: Global Distributor (30,00,000 BV title). KP's final
             // 26-06-2026 doc supplied score 167 → ₹60,120 (167 × ₹360 = 60,120),
             // making it a fully payable matching slab. agp 0 (1st–3rd slabs only).

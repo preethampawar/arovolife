@@ -23,12 +23,19 @@ it('returns Retailer at exactly 3000 BV', function () {
     $result = $svc->forBvPaise(300_000); // 3,000 BV
     expect($result->title)->toBe('Retailer');
     expect($result->maxGsbSlab)->toBe(1);
-    expect($result->nextTitleBvPaise)->toBe(500_000);
+    expect($result->nextTitleBvPaise)->toBe(700_000); // Dealer now starts at 7,000 BV (KP 2026-06-27)
 });
 
-it('returns Dealer at 5000 BV', function () {
+it('still returns Retailer at 5000 BV (below the new Dealer threshold)', function () {
     $svc = app(PersonalBvTitleService::class);
     $result = $svc->forBvPaise(500_000);
+    expect($result->title)->toBe('Retailer');
+    expect($result->maxGsbSlab)->toBe(1);
+});
+
+it('returns Dealer at 7000 BV', function () {
+    $svc = app(PersonalBvTitleService::class);
+    $result = $svc->forBvPaise(700_000);
     expect($result->title)->toBe('Dealer');
     expect($result->maxGsbSlab)->toBe(2);
 });

@@ -71,7 +71,7 @@ it('qualifies a distributor with sufficient monthly group BV and personal BV for
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    seedPersonalBv($dist->id, 600_000);
+    seedPersonalBv($dist->id, 700_000); // Dealer title (Rank-1 min) = 7,000 BV
     seedGroupBv($dist->id, '2026-06-10', 31_000_000, 31_000_000);
 
     $svc = app(RankQualificationService::class);
@@ -108,7 +108,7 @@ it('does not qualify for rank 1 when only one side meets the group BV threshold'
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    seedPersonalBv($dist->id, 600_000);
+    seedPersonalBv($dist->id, 700_000); // meets Dealer title; only the weak side should disqualify
     seedGroupBv($dist->id, '2026-06-10', 31_000_000, 10_000_000);
 
     $svc = app(RankQualificationService::class);
@@ -121,7 +121,7 @@ it('creates carry-forward records for M+1 and M+2 when rank 1 is achieved', func
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    seedPersonalBv($dist->id, 600_000);
+    seedPersonalBv($dist->id, 700_000); // Dealer title (Rank-1 min) = 7,000 BV
     seedGroupBv($dist->id, '2026-06-10', 31_000_000, 31_000_000);
 
     $svc = app(RankQualificationService::class);

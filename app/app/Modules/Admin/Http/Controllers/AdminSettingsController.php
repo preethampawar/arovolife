@@ -343,9 +343,9 @@ final class AdminSettingsController extends Controller
             'comp.admin_charge.applies_to_awards' => [
                 'group' => 'compensation_plan',
                 'label' => 'Admin charge: apply to Lifetime Awards & Rewards',
-                'description' => 'When ON, the admin charge is deducted from Lifetime Awards. KP-confirmed ON (2026-06-27). NOTE: the Lifetime Awards payout engine ships in a later phase — this toggle has no effect until then, and how the charge applies to non-cash rewards is still pending KP (see kp-clarifications Round-2 Q7).',
+                'description' => 'When ON, the admin charge is deducted from Lifetime Awards. Default OFF: KP confirmed (2026-06-27 Round-2 Q6) that non-cash awards (gifts/goods) carry NO admin charge or TDS — only awards released as cash/cheque are charged. The Lifetime Awards payout engine ships in a later phase; turn this ON only if a cash award component is paid.',
                 'type' => 'bool',
-                'default' => 'true',
+                'default' => 'false',
             ],
             'comp.tds.rate_bp' => [
                 'group' => 'compensation_plan',

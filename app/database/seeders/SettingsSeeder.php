@@ -57,14 +57,16 @@ final class SettingsSeeder extends Seeder
         $defaults = [
             'comp.admin_charge.rate_bp' => '300',          // 3%
             'comp.admin_charge.cap_paise' => '3000000',     // ₹30,000
-            // Admin-charge scope toggles — all 7 bonuses (KP 2026-06-27).
+            // Admin-charge scope toggles — ON for the 6 cash bonuses; OFF for
+            // non-cash Lifetime Awards (KP 2026-06-27 Round-2 Q6: only cash/
+            // cheque releases carry admin charge + TDS).
             'comp.admin_charge.applies_to_gsb' => 'true',
             'comp.admin_charge.applies_to_mb' => 'true',
             'comp.admin_charge.applies_to_rank' => 'true',
             'comp.admin_charge.applies_to_gbb' => 'true',
             'comp.admin_charge.applies_to_fortune' => 'true',
             'comp.admin_charge.applies_to_adc' => 'true',
-            'comp.admin_charge.applies_to_awards' => 'true',
+            'comp.admin_charge.applies_to_awards' => 'false',
             'comp.tds.rate_bp' => '500',                    // 5%
             'comp.gsb.power_cf_cap_paise' => '45000000',    // 4,50,000 BV
             'comp.gsb.score_rate_paise' => '36000',         // ₹360 per score point

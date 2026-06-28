@@ -72,32 +72,43 @@
 
 ---
 
-## Round 2 — OPEN follow-ups (to send KP)
+## Round 2 — ANSWERED by KP (2026-06-27)
+
+**Rank Bonus**
+- **A1 — Total is 20%, not 21%.** Corrected pool %s: **7 / 3.4 / 2.7 / 2.2 / 1.7 / 1.2 / 0.9 / 0.6 / 0.3 = 20%** (R2/R3/R4 changed). **APPLIED** to `rank_tiers`.
+- **A2 — Rank 1 personal title = Dealer = 7,000 BV.** If matched 3L/3L but personal < 7,000, the distributor tops up the gap via personal purchase that month to get the Dealer title + rank; up to 15,000 personal BV may also be added to the weaker leg for Rank-1 qualification. **APPLIED** (R1 personal-BV 7,000).
+- **A2 (cascade) — personal-title ladder** revised: Dealer **7,000**, Distributor **32,000**, Regional **68,000**, National **1,44,000** BV (Retailer/Wholesaler/Global unchanged). **APPLIED** to `gsb_slabs.title_min_bv_paise` + the rank personal-BV requirements that track them.
+
+**Fortune Bonus**
+- **A3 — "7 slabs" line:** Rank-1 must complete **any 7 GSB slabs** (one slab max per day, any order, no time limit) and be eligible for those 7 earnings. ⚠️ Conflicts with our seeded `fortune_tiers.slabs_required` of 4/6/8/10/12 — see Round-3 #1.
+- **A4 — Matrix is 3-wide × 9-deep.** Confirmed (matches our 10-level seed). Fill continues past level 9 each month but commission is paid only across levels 1–9; resets monthly. ✅ matches.
+- **A5 — Placement:** ONE company-wide monthly Fortune tree; members added first-come-first-served by the **time each first qualifies for GSB that month**; 3-wide breadth fill; monthly reset. (Build detail for Phase 6.)
+- **A6 / 11 — Big %s are provisional targets**, reconciled after testing; GSB stays **fixed ₹360/score**. ✅ matches build.
 
 **Repurchase**
-1. **R7 and R8 monthly repurchase BV are missing** (you gave R1 1,000 … R6 1,600 and R9 2,300, but not R7/R8). What are they?
-2. **Repurchase BV vs "clear the wallet to zero" — one action or two?** Is the wallet cleared *by* doing the required repurchase, or separately? What does "wallet to zero" require operationally?
-3. **Grace outcome:** if he repurchases within the 7 extra days, does he get back the GSB/Fortune/Growth Booster withheld during those days, or only future income resumes?
+- **R7 = 1,800, R8 = 2,000** (full ladder: R1 1,000 / R2 1,100 / R3 1,200 / R4 1,300 / R5 1,400 / R6 1,600 / R7 1,800 / R8 2,000 / R9 2,300; non-ranked 600).
+- **Wallet-to-zero + calendar month:** personal monthly cycle is anchored to the **Retailer-achievement date** (e.g. 5th→4th). Through the month the repurchase wallet (funded by eligible income) is spent on personal-need products; it must be **exactly zero** by the end date, with own-money top-up if eligible-income purchases fall short of the rank's required BV.
+- **Grace:** within the 7 extra days income is **calculated but held** (not released to bank); if still unmet after 7 days it is **permanently forfeited** for the lapsed period and resumes only from the day repurchase is finally completed.
 
 **Cancelled orders / BV reversal**
-4. *(ANSWERED)* If the leg can't absorb the reversal → it carries a **negative BV** until future BV covers it.
-5. Does the reversal apply up the **entire upline chain** (mirroring how BV was credited up), not just the first upline?
+- **No clawback** of paid bonus; reverse the **BV** from **future** accumulation on the **same leg**; negative-carry allowed; reversal mirrors the **whole upline chain** to the top company ID.
 
 **Caps & deductions**
-6. **₹50 lakh cap order:** if rank income alone can't bring the total under ₹50 lakh, in what order do we reduce GSB / Mentorship / Growth Booster / Fortune?
-7. **Admin + TDS on non-cash Lifetime Awards:** how is the cash collected on a physical reward (car/villa/gold)? From other cash income, paid separately, or reward value reduced?
+- **₹50L cap:** ADC + Lifetime Awards are **excluded**. The other four are naturally bounded (GSB max ≈ ₹18,03,600/mo = ₹60,120×30), so **Rank income is trimmed** to bring the total to ₹50L.
+- **Admin + TDS on non-cash awards:** apply **only to cash/cheque** releases; **non-cash gifts/goods carry no admin charge or TDS**. **APPLIED** — `applies_to_awards` default → **false**.
 
 **Lifetime Awards**
-8. Given **once per rank**, or again each time the rank is re-proven (PYP)? And is **18.5%** a hard company-wide budget cap or just a label?
+- Full per-rank reward catalog + budgets supplied (R1 ₹15k → R9 ₹2.25Cr; see Q9 in this doc). Release timing: **immediate R1–2, after 2× re-proof R3–5, after 3× R6–9, once per lifetime.** (18.5% hard-cap question still unanswered — Round-3 #2.)
 
 **Arete**
-9. Add the center-selection step to registration **now**? Can a distributor **change** their center later or is it locked at signup? Do already-registered distributors stay on the **default company center** until they choose?
+- Add the **center-selection step to registration now**; default = company center; **changeable later via OTP** (reuse `Shared\Otp\OtpService`); not locked. (Already-registered handling implied default — Round-3 #3.)
 
-**GSB (confirmation)**
-10. Confirm GSB pays a **fixed ₹360/score** (reviewed/adjusted periodically) — **not** a floating pool where the per-score value drops when more distributors qualify that day.
+---
 
-**Still open from earlier (Rank & Fortune)**
-11. (a) Rank Bonus total — **20% or 21%** (the nine ranks sum to 21%)? (b) what the Fortune "**7/10/13/16/19 slabs**" line means; (c) confirm the Fortune matrix is **3-wide, 9-deep**; (d) how people are **placed** in the monthly Fortune tree; (e) Rank 1 personal title — **Dealer (5,000 BV)** or the "15,000 BV" written.
+## Round 3 — OPEN (to send KP)
+1. **Fortune eligibility slabs per rank.** A3 says Rank 1 needs **7** GSB-slab achievements, implying the series **7/10/13/16/19** (ranks 1–5). Our build currently uses **4/6/8/10/12**. Confirm the definitive series.
+2. **Lifetime Awards 18.5%** — is it a **hard company-wide budget cap** on total reward cost, or just a label?
+3. **Arete for already-registered distributors** — do they stay on the **default company center** until they choose one via OTP? (Implied, not stated.)
 
 ---
 
@@ -108,11 +119,14 @@
 
 ---
 
-## Deviations to implement (tracked)
-1. **Admin charge + TDS now apply to all 7 bonuses** (incl. ADC + Lifetime Awards) — make the scope a per-bonus admin toggle; add admin charge to ADC. *(In progress — see plan.)*
-2. **Mentorship** → true per-slice bracket split + ₹2,70,001 floor boundary. *(In progress.)*
-3. **Per-rank graduated repurchase BV** + 7-day grace/suspension engine. *(Parked: R7/R8 + Q3.)*
-4. **₹50 lakh monthly aggregate cap** (cut rank first). *(Parked: Q6.)*
-5. **BV reversal:** no clawback; reverse future BV on same leg; negative-carry allowed. *(Parked: refund pipeline, Q5.)*
-6. **Lifetime Awards** catalog. *(Parked: Phase 5, Q8.)*
-7. **Arete** registration center-selection + manual PIN assignment. *(Parked: Q9.)*
+## Deviations tracker
+1. **Admin charge + TDS scope** — per-bonus admin toggle; ADC charged; **Lifetime Awards now exempt (non-cash)**. ✅ **DONE.**
+2. **Mentorship** → true per-slice bracket split + ₹2,70,001 floor boundary. ✅ **DONE.**
+3. **Rank pool %s → 20% total** (R2 3.4 / R3 2.7 / R4 2.2). ✅ **DONE** (seed + dev DB).
+4. **Personal-title ladder** Dealer 7k / Distributor 32k / Regional 68k / National 1.44L + matching rank personal-BV. ✅ **DONE** (seed + dev DB).
+5. **Per-rank graduated repurchase BV** (R1–R9 1,000…2,300) + 7-day grace/hold/forfeit engine + Retailer-anniversary anchor. *(Parked — repurchase engine, later phase. Fully specified now.)*
+6. **₹50L monthly aggregate cap** — exclude ADC + Awards; trim Rank. *(Parked — payout orchestration.)*
+7. **BV reversal:** no clawback; reverse future BV on same leg; negative-carry; whole upline chain. *(Parked — refund pipeline.)*
+8. **Lifetime Awards** catalog + release timing (2×/3× re-proof, once per lifetime). *(Parked — Phase 5.)*
+9. **Arete** registration center-selection (default company) + OTP change + manual PIN assignment. *(Parked — registration + Phase 7.)*
+10. **Fortune** single company-wide monthly tree, time-ordered placement, levels 1–9 commission. *(Parked — Phase 6; slabs-required pending Round-3 #1.)*

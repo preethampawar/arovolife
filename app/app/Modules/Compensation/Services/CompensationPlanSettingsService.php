@@ -27,15 +27,16 @@ final class CompensationPlanSettingsService
     private const SCALAR_DEFAULTS = [
         'comp.admin_charge.rate_bp' => 300,
         'comp.admin_charge.cap_paise' => 3_000_000,
-        // Admin charge applies to all seven bonuses (KP Q&A 2026-06-27). Each
-        // is an individually-toggleable scope flag.
+        // Admin charge scope flags. ON for the six cash bonuses; OFF for
+        // Lifetime Awards — KP confirmed (2026-06-27 Round-2 Q6) that non-cash
+        // awards carry no admin charge or TDS (only cash/cheque releases do).
         'comp.admin_charge.applies_to_gsb' => true,
         'comp.admin_charge.applies_to_mb' => true,
         'comp.admin_charge.applies_to_rank' => true,
         'comp.admin_charge.applies_to_gbb' => true,
         'comp.admin_charge.applies_to_fortune' => true,
         'comp.admin_charge.applies_to_adc' => true,
-        'comp.admin_charge.applies_to_awards' => true,
+        'comp.admin_charge.applies_to_awards' => false,
         'comp.tds.rate_bp' => 500,
         'comp.gsb.power_cf_cap_paise' => 45_000_000,
         'comp.gsb.score_rate_paise' => 36_000,

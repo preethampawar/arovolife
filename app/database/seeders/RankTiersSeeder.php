@@ -18,13 +18,17 @@ final class RankTiersSeeder extends Seeder
     {
         $now = now()->format('Y-m-d H:i:s.v');
 
+        // KP's 27-06-2026 Round-2 answers: pool %s now total 20% (R2 3.4, R3 2.7,
+        // R4 2.2 changed; rest unchanged). Personal-BV requirements track the
+        // revised personal-title ladder — R1 Dealer 7,000 (explicit), R3
+        // Distributor 32,000, R4 Regional 68,000, R5 National 1,44,000 BV.
         $rows = [
             // rank, name, pool_pct, pyp, personal_bv, group_bv, structural_per_side
-            [1, 'Silver Partner', 7.00, 1, 500_000, 30_000_000, null],
-            [2, 'Pearl Partner', 4.00, 1, 1_500_000, 50_000_000, null],
-            [3, 'Emerald Partner', 3.00, 2, 5_000_000, null, 2],
-            [4, 'Gold Partner', 2.30, 2, 10_000_000, null, 2],
-            [5, 'Diamond Partner', 1.70, 2, 20_000_000, null, 2],
+            [1, 'Silver Partner', 7.00, 1, 700_000, 30_000_000, null],
+            [2, 'Pearl Partner', 3.40, 1, 1_500_000, 50_000_000, null],
+            [3, 'Emerald Partner', 2.70, 2, 3_200_000, null, 2],
+            [4, 'Gold Partner', 2.20, 2, 6_800_000, null, 2],
+            [5, 'Diamond Partner', 1.70, 2, 14_400_000, null, 2],
             [6, 'Blue Diamond Partner', 1.20, 3, 30_000_000, null, 2],
             [7, 'Royal Diamond Partner', 0.90, 3, 30_000_000, null, 2],
             [8, 'Crown Diamond Partner', 0.60, 3, 30_000_000, null, 2],
