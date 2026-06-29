@@ -89,7 +89,7 @@ it('exposes the seeded GSB slab ladder', function () {
     expect($plan->rankPoolPct(1))->toBe(7.0);
     expect($plan->rankName(9))->toBe('Elite Diamond Partner');
     expect($plan->fortuneLevelBonusPaise(0))->toBe(339);
-    expect($plan->fortuneTier('rank_3')['slabs_required'])->toBe(8);
+    expect($plan->fortuneTier('rank_3')['slabs_required'])->toBe(13); // KP 2026-06-28: 7/10/13/16/19
 });
 
 // ── Engine reads config, not a constant ─────────────────────────────────────

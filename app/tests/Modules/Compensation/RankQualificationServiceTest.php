@@ -141,6 +141,28 @@ it('creates carry-forward records for M+1 and M+2 when rank 1 is achieved', func
     expect($months[1])->toBe('2026-08-01');
 });
 
+it('does NOT create carry-forward records for rank 2 (1+2 rule is Rank 1 only, KP 2026-06-28)', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    // Rank 2 (Pearl): Wholesaler title (15,000 BV personal) + 5L/5L group BV per side.
+    seedPersonalBv($dist->id, 1_500_000);
+    seedGroupBv($dist->id, '2026-06-10', 51_000_000, 51_000_000);
+
+    $svc = app(RankQualificationService::class);
+    $result = $svc->checkForMonth($month, occurrenceNumber: 1);
+
+    expect($result['rank_2_count'])->toBe(1);
+
+    $records = RankQualification::where('distributor_id', $dist->id)
+        ->where('rank_number', 2)
+        ->get();
+
+    // Only the qualifying month — no M+1 / M+2 carry-forwards for rank 2.
+    expect($records)->toHaveCount(1);
+    expect($records->where('is_carry_forward', true))->toHaveCount(0);
+});
+
 it('qualifies a distributor for rank 3 (Emerald) when they have 2+ Pearl qualifiers on each Genos side', function (): void {
     // Binary tree: candidate → leftQual1 ('L') → leftQual2 ('L')
     //                          candidate → rightQual1 ('R') → rightQual2 ('R')

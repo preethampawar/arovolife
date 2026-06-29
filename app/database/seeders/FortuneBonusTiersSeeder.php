@@ -18,15 +18,18 @@ final class FortuneBonusTiersSeeder extends Seeder
     {
         $now = now()->format('Y-m-d H:i:s.v');
 
+        // slabs_required for ranked tiers is KP's 2026-06-28 confirmed series
+        // 7 / 10 / 13 / 16 / 19 (Ranks 1–5) — the count of GSB slab-achievements
+        // a distributor must earn that month to enter the Fortune Bonus.
         $rows = [
             // tier, bv_required_paise, slabs_required
             ['new_joiner', 300_000, 1],
             ['non_ranked', 60_000, 1],
-            ['rank_1', 100_000, 4],
-            ['rank_2', 100_000, 6],
-            ['rank_3', 100_000, 8],
-            ['rank_4', 100_000, 10],
-            ['rank_5', 100_000, 12],
+            ['rank_1', 100_000, 7],
+            ['rank_2', 100_000, 10],
+            ['rank_3', 100_000, 13],
+            ['rank_4', 100_000, 16],
+            ['rank_5', 100_000, 19],
         ];
 
         $records = [];

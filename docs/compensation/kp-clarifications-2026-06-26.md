@@ -105,10 +105,21 @@
 
 ---
 
-## Round 3 — OPEN (to send KP)
-1. **Fortune eligibility slabs per rank.** A3 says Rank 1 needs **7** GSB-slab achievements, implying the series **7/10/13/16/19** (ranks 1–5). Our build currently uses **4/6/8/10/12**. Confirm the definitive series.
-2. **Lifetime Awards 18.5%** — is it a **hard company-wide budget cap** on total reward cost, or just a label?
-3. **Arete for already-registered distributors** — do they stay on the **default company center** until they choose one via OTP? (Implied, not stated.)
+## Round 3 — ANSWERED by KP (2026-06-28, doc "28 June 2026" section)
+
+8 follow-ups sent; all answered. Five confirmed our build; three are deviations.
+
+**Deviations to apply:**
+1. **Fortune eligibility slabs per rank = `7 / 10 / 13 / 16 / 19`** (Ranks 1–5), NOT 4/6/8/10/12. ✅ **DONE** (`fortune_bonus_tiers` seed + test + dev DB).
+2. **The "1+2 rule" is RANK 1 ONLY.** Rank 1 qualifier is paid the qualifying month + next 2 (if repurchase continues); Ranks 2–9 are paid only in a month they actually (re-)qualify. Our code carried it forward for Rank 1 **and** Rank 2 → Rank-2 carry-forward removed. ✅ **DONE** (`RankQualificationService` + regression test). (KP cites an external flow-chart "Arovolife our new life 29-06-2026" for deeper Rank 1/2 detail — not held here.)
+3. **Mentorship is NOT suspended on a missed repurchase.** KP corrected his 27-June "all earnings stop" answer: after the 7-day grace, GSB/Fortune/GBB stop but **Mentorship keeps paying** and Rank BV keeps aggregating; withheld income is released from the day repurchase completes. *(Spec only — suspension engine not built yet; the future engine must exempt Mentorship.)*
+
+**Confirmed (matched our build/assumptions — no change):**
+4. Cancelled-order BV reversal **never** removes an earned title/rank (sticky); only future BV is reduced.
+5. **18.5%** Lifetime Awards is **just a label**, no enforced cap (subject to change).
+6. Pre-step registrants **stay on the default company centre** until they pick one via OTP.
+7. Rank-2 weak-leg personal-BV top-up = **30,000** (Rank 1 = 15,000); applies **only to Ranks 1 & 2**.
+8. The headline %s (GSB 46 / MB 1.5 / GBB 5 / Rank 20 / Fortune 6 / Awards 18.5 / Arete 3) are **not** enforced as live caps — pay fixed amounts, reconcile later.
 
 ---
 
@@ -129,4 +140,6 @@
 7. **BV reversal:** no clawback; reverse future BV on same leg; negative-carry; whole upline chain. *(Parked — refund pipeline.)*
 8. **Lifetime Awards** catalog + release timing (2×/3× re-proof, once per lifetime). *(Parked — Phase 5.)*
 9. **Arete** registration center-selection (default company) + OTP change + manual PIN assignment. *(Parked — registration + Phase 7.)*
-10. **Fortune** single company-wide monthly tree, time-ordered placement, levels 1–9 commission. *(Parked — Phase 6; slabs-required pending Round-3 #1.)*
+10. **Fortune** single company-wide monthly tree, time-ordered placement, levels 1–9 commission. *(Parked — Phase 6.)* **Eligibility slabs `7/10/13/16/19` ✅ DONE** (seed + dev DB).
+11. **"1+2 rule" → Rank 1 only** (Rank-2 carry-forward removed). ✅ **DONE** (`RankQualificationService` + test).
+12. **Mentorship exempt from repurchase suspension** (GSB/Fortune/GBB stop, Mentorship continues, Rank BV aggregates). *(Spec recorded — enforced when the repurchase suspension engine is built.)*

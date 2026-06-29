@@ -15,8 +15,10 @@ use Illuminate\Support\Facades\DB;
  * Run up to 2 more times in the same month for PYP (ranks 3-9).
  *
  * Cascade order: ranks 1-2 from raw BV, ranks 3-9 from prior rank qualifiers.
- * The 1+2 rule: qualifying at rank 1 or 2 creates carry-forward records
- * for M+1 and M+2. A rank-2 qualification voids any pending rank-1 carry-forwards.
+ * The 1+2 rule (KP 2026-06-28): applies to RANK 1 ONLY — qualifying at rank 1
+ * creates carry-forward records for M+1 and M+2 (paid if repurchase continues).
+ * Ranks 2-9 are paid only in a month they actually (re-)qualify, with no
+ * carry-forward. A rank-2 qualification still voids any pending rank-1 carry.
  */
 final class RankQualificationService
 {
@@ -65,8 +67,9 @@ final class RankQualificationService
         $counts['rank_2_count'] = count($rank2Ids);
 
         if ($occurrenceNumber === 1) {
+            // 1+2 rule is Rank 1 only (KP 2026-06-28). Rank 2 has no carry-forward;
+            // reaching Rank 2 still cancels a pending Rank-1 carry.
             $this->createCarryForwards($rank1Ids, rank: 1, sourceMonth: $monthStart);
-            $this->createCarryForwards($rank2Ids, rank: 2, sourceMonth: $monthStart);
             $this->voidRank1CarryForwardsForRank2Qualifiers($rank2Ids, $monthStart);
         }
 
