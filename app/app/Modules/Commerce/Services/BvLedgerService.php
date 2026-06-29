@@ -153,17 +153,18 @@ final class BvLedgerService
     }
 
     /**
-     * Sum of a distributor's own (self-consumption) repurchase BV in a window,
-     * in paise — the measure of how much of their monthly repurchase obligation
-     * they have completed. Counts self-consumption accruals regardless of the
-     * self-purchase-earns-BV setting (repurchase is a purchase obligation, not a
-     * compensation question).
+     * Net self-consumption (repurchase) BV in a window, in paise — how much of
+     * the monthly repurchase obligation a distributor has completed. Counts
+     * self-consumption accruals regardless of the self-purchase-earns-BV setting
+     * (repurchase is a purchase obligation, not a compensation question), and
+     * NETS reversals so a cancelled self-purchase order does not count toward the
+     * obligation (same convention as {@see totalPersonalBvPaise()}).
      */
     public function selfPurchaseBvPaise(int $distributorId, ?Carbon $from = null, ?Carbon $to = null): int
     {
         return (int) BvLedgerEntry::query()
             ->forDistributor($distributorId)
-            ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
+            ->whereIn('type', [BvLedgerEntry::TYPE_ACCRUAL, BvLedgerEntry::TYPE_REVERSAL])
             ->dateRange($from, $to)
             ->whereExists(function ($q): void {
                 $q->selectRaw('1')

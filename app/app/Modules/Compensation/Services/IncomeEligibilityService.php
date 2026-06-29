@@ -7,7 +7,6 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
-use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
 
 /**
@@ -31,10 +30,6 @@ final class IncomeEligibilityService
     /** Suspended — do not credit (forfeited until repurchase is completed). */
     public const BLOCKED = 'blocked';
 
-    public function __construct(
-        private readonly RepurchaseCycleService $cycles,
-    ) {}
-
     /** Whether the repurchase engine is enabled. */
     public function engineActive(): bool
     {
@@ -48,18 +43,25 @@ final class IncomeEligibilityService
     }
 
     /**
-     * Repurchase-driven eligibility for $bonus as of $asOf. ELIGIBLE when the
-     * engine is off, the bonus is never suspended (Mentorship/Rank/ADC/Awards),
-     * the distributor is not yet a Retailer, or their cycle is active/completed.
-     * HOLD during grace; BLOCKED once suspended.
+     * Repurchase-driven eligibility for $bonus. This is a READ — it reflects the
+     * distributor's latest cycle status as maintained by the daily
+     * repurchase:evaluate command (the sole writer), so bonus runs never mutate
+     * cycle state or fire events. ELIGIBLE when the engine is off, the bonus is
+     * never suspended (Mentorship/Rank/ADC/Awards), the distributor has no cycle
+     * yet (pre-Retailer or not-yet-evaluated → fail-open), or their cycle is
+     * active/completed. HOLD during grace; BLOCKED once suspended.
      */
-    public function statusFor(int $distributorId, BonusType $bonus, Carbon $asOf): string
+    public function statusFor(int $distributorId, BonusType $bonus): string
     {
         if (! $this->engineActive() || ! $this->suspends($bonus)) {
             return self::ELIGIBLE;
         }
 
-        $cycle = $this->cycles->evaluate($distributorId, $asOf);
+        $cycle = RepurchaseCycle::query()
+            ->where('distributor_id', $distributorId)
+            ->orderByDesc('cycle_start_date')
+            ->first();
+
         if ($cycle === null) {
             return self::ELIGIBLE;
         }

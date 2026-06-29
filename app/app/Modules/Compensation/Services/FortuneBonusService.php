@@ -28,6 +28,7 @@ final class FortuneBonusService
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
         private readonly BonusDeductionService $deductions,
+        private readonly IncomeEligibilityService $eligibility,
     ) {}
 
     /**
@@ -67,6 +68,12 @@ final class FortuneBonusService
 
         foreach ($firstGsbDates as $distributorId => $firstGsbDate) {
             if (in_array($distributorId, $ineligibleRankIds, true)) {
+                continue;
+            }
+
+            // Repurchase engine: a held/suspended distributor is not enrolled in
+            // the Fortune tree this month (KP — GSB/Fortune/GBB suspend together).
+            if ($this->eligibility->statusFor((int) $distributorId, BonusType::Fortune) !== IncomeEligibilityService::ELIGIBLE) {
                 continue;
             }
 

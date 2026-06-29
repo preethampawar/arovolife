@@ -34,6 +34,7 @@ final class GrowthBoosterBonusService
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
         private readonly BonusDeductionService $deductions,
+        private readonly IncomeEligibilityService $eligibility,
     ) {}
 
     /**
@@ -78,6 +79,12 @@ final class GrowthBoosterBonusService
                 if ($agp === 0) {
                     $skippedNoAgp++;
 
+                    continue;
+                }
+
+                // Repurchase engine: a held/suspended distributor earns no GBB
+                // (KP — GSB/Fortune/GBB are suspended together; never MB/Rank).
+                if ($this->eligibility->statusFor((int) $distributorId, BonusType::GrowthBooster) !== IncomeEligibilityService::ELIGIBLE) {
                     continue;
                 }
 

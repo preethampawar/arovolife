@@ -125,6 +125,20 @@ it('reactivates a suspended distributor once they complete the repurchase', func
     Event::assertDispatched(IncomeReactivated::class);
 });
 
+it('handles a month-end anchor (Retailer on the 31st) without window errors', function (): void {
+    $dist = Distributor::factory()->create();
+    seedSelfPurchase($dist->id, 300_000, '2026-01-31'); // Retailer anchored on the 31st
+
+    // Feb has no 31st: the first cycle (Jan 31 → Feb 27) and the next must roll
+    // cleanly. Evaluate a few months out; no exception, valid window, suspended
+    // (no repurchase made).
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-04-15'));
+
+    expect($cycle)->not->toBeNull();
+    expect($cycle->due_date->greaterThan($cycle->cycle_start_date))->toBeTrue();
+    expect($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
+});
+
 it('reads the per-rank repurchase BV from config, not a constant', function (): void {
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 300_000, '2026-01-05');
@@ -164,6 +178,10 @@ function makeGsbReadyRetailer(string $date): Distributor
         'distributor_id' => $dist->id, 'date' => $date,
         'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000, // weaker 16,000 BV ≥ slab 1
     ]);
+
+    // The gate is read-only — the daily command (here, a direct evaluate) is the
+    // sole writer that establishes the cycle status the cut-off then reads.
+    svc()->evaluate($dist->id, Carbon::parse($date));
 
     return $dist;
 }

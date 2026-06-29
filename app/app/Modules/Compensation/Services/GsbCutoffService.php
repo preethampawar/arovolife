@@ -215,7 +215,7 @@ final class GsbCutoffService
         // (Mentorship is unaffected: a held/suspended sponsee simply generates
         // no credited GSB, while the distributor's own MB comes from their
         // sponsees and is never gated here.)
-        $eligibility = $this->eligibility->statusFor($distributorId, BonusType::Gsb, $date);
+        $eligibility = $this->eligibility->statusFor($distributorId, BonusType::Gsb);
         if ($eligibility !== IncomeEligibilityService::ELIGIBLE) {
             $cf->update([
                 'power_side_bv_paise' => $newPowerCf,

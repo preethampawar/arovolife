@@ -91,13 +91,17 @@ final class RepurchaseCycleService
             ->first()
             ?? $this->openCycle($distributorId, $anchor->copy()->startOfDay());
 
-        for ($i = 0; $i < self::MAX_ROLL; $i++) {
+        // Advance through elapsed-and-completed cycles until the open cycle
+        // covers $asOf or is held/suspended. The guard caps catch-up and, by
+        // failing the roll condition rather than opening a new row, guarantees
+        // the returned cycle is always one that was just refreshed.
+        $guard = 0;
+        while (true) {
             $this->refresh($cycle, $asOf);
 
-            // Roll to the next cycle only once this one is completed and its
-            // window has elapsed; a suspended cycle is never rolled past.
             if ($cycle->status === RepurchaseCycle::STATUS_COMPLETED
-                && $asOf->greaterThan($cycle->due_date)) {
+                && $asOf->greaterThan($cycle->due_date)
+                && ++$guard <= self::MAX_ROLL) {
                 $cycle = $this->openCycle($distributorId, $cycle->due_date->copy()->addDay());
 
                 continue;
@@ -108,7 +112,11 @@ final class RepurchaseCycleService
         return $cycle;
     }
 
-    /** Create + persist a fresh cycle starting on $start; emits the opened event. */
+    /**
+     * Create + persist a fresh cycle starting on $start; emits the opened event.
+     * The required BV is snapshotted from the distributor's rank at cycle-open;
+     * a rank change mid-cycle takes effect from the next cycle.
+     */
     private function openCycle(int $distributorId, Carbon $start): RepurchaseCycle
     {
         $start = $start->copy()->startOfDay();
@@ -133,15 +141,26 @@ final class RepurchaseCycleService
     /** Recompute one cycle's completion + status as of $asOf and persist it. */
     private function refresh(RepurchaseCycle $cycle, Carbon $asOf): void
     {
-        $completed = $this->bvLedger->selfPurchaseBvPaise(
+        $start = $cycle->cycle_start_date->copy()->startOfDay();
+        $asOfEod = $asOf->copy()->endOfDay();
+
+        // On-time / grace completion counts self-purchase BV only up to the
+        // grace end (so a later cycle's BV can never complete an earlier rolled
+        // cycle). A suspended cycle can still be completed late — that counts
+        // BV right up to $asOf.
+        $byGraceEnd = $this->bvLedger->selfPurchaseBvPaise(
             $cycle->distributor_id,
-            $cycle->cycle_start_date->copy()->startOfDay(),
-            $asOf->copy()->endOfDay(),
+            $start,
+            $asOfEod->copy()->min($cycle->grace_end_date->copy()->endOfDay()),
         );
-        $cycle->completed_bv_paise = $completed;
+        $now = $this->bvLedger->selfPurchaseBvPaise($cycle->distributor_id, $start, $asOfEod);
 
         $previous = $cycle->status;
-        $next = $this->resolveStatus($cycle, $asOf, $completed);
+        $next = $this->resolveStatus($cycle, $asOf, $byGraceEnd, $now);
+
+        $cycle->completed_bv_paise = $next === RepurchaseCycle::STATUS_COMPLETED
+            ? max($byGraceEnd, $now)
+            : $now;
 
         if ($next !== $previous) {
             if ($next === RepurchaseCycle::STATUS_COMPLETED && $cycle->completed_at === null) {
@@ -154,9 +173,11 @@ final class RepurchaseCycleService
         $cycle->save();
     }
 
-    private function resolveStatus(RepurchaseCycle $cycle, Carbon $asOf, int $completed): string
+    private function resolveStatus(RepurchaseCycle $cycle, Carbon $asOf, int $byGraceEnd, int $now): string
     {
-        if ($completed >= $cycle->required_bv_paise) {
+        $required = $cycle->required_bv_paise;
+
+        if ($byGraceEnd >= $required) {
             return RepurchaseCycle::STATUS_COMPLETED;
         }
         if ($asOf->lessThanOrEqualTo($cycle->due_date->copy()->endOfDay())) {
@@ -164,6 +185,9 @@ final class RepurchaseCycleService
         }
         if ($asOf->lessThanOrEqualTo($cycle->grace_end_date->copy()->endOfDay())) {
             return RepurchaseCycle::STATUS_GRACE;
+        }
+        if ($now >= $required) {
+            return RepurchaseCycle::STATUS_COMPLETED; // late completion → reactivation
         }
 
         return RepurchaseCycle::STATUS_SUSPENDED;
@@ -187,8 +211,9 @@ final class RepurchaseCycleService
 
     private function onCompleted(RepurchaseCycle $cycle, string $from): void
     {
-        $withinGrace = $from === RepurchaseCycle::STATUS_GRACE;
-        event(new RepurchaseCompleted($cycle->distributor_id, $cycle->id, $withinGrace));
+        // Pass the prior status so listeners can distinguish on-time (from
+        // active) vs within-grace vs forfeited-then-completed (from suspended).
+        event(new RepurchaseCompleted($cycle->distributor_id, $cycle->id, $from));
 
         if (in_array($from, [RepurchaseCycle::STATUS_GRACE, RepurchaseCycle::STATUS_SUSPENDED], true)) {
             event(new IncomeReactivated($cycle->distributor_id, $cycle->id));
