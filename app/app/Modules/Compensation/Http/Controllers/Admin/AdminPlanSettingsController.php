@@ -79,6 +79,7 @@ final class AdminPlanSettingsController extends Controller
             'personal_bv_required_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
             'group_bv_required_paise' => ['nullable', 'integer', 'min:0', 'max:1000000000000'],
             'structural_qualifiers_per_side' => ['nullable', 'integer', 'min:0', 'max:50'],
+            'carry_forward_months' => ['required', 'integer', 'min:0', 'max:24'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -89,6 +90,7 @@ final class AdminPlanSettingsController extends Controller
             'personal_bv_required_paise' => (int) $data['personal_bv_required_paise'],
             'group_bv_required_paise' => $data['group_bv_required_paise'] !== null ? (int) $data['group_bv_required_paise'] : null,
             'structural_qualifiers_per_side' => $data['structural_qualifiers_per_side'] !== null ? (int) $data['structural_qualifiers_per_side'] : null,
+            'carry_forward_months' => (int) $data['carry_forward_months'],
             'is_active' => $request->boolean('is_active'),
         ];
 

@@ -15,10 +15,11 @@ use Illuminate\Support\Facades\DB;
  * Run up to 2 more times in the same month for PYP (ranks 3-9).
  *
  * Cascade order: ranks 1-2 from raw BV, ranks 3-9 from prior rank qualifiers.
- * The 1+2 rule (KP 2026-06-28): applies to RANK 1 ONLY — qualifying at rank 1
- * creates carry-forward records for M+1 and M+2 (paid if repurchase continues).
- * Ranks 2-9 are paid only in a month they actually (re-)qualify, with no
- * carry-forward. A rank-2 qualification still voids any pending rank-1 carry.
+ * The "1+2 rule" carry-forward is admin-configurable per rank via
+ * rank_tiers.carry_forward_months (seeded Rank 1 = 2, Ranks 2-9 = 0 per KP
+ * 2026-06-28): a qualifier keeps being paid for that many months after the
+ * qualifying month while repurchase continues. A rank-2 qualification still
+ * voids any pending rank-1 carry.
  */
 final class RankQualificationService
 {
@@ -67,9 +68,12 @@ final class RankQualificationService
         $counts['rank_2_count'] = count($rank2Ids);
 
         if ($occurrenceNumber === 1) {
-            // 1+2 rule is Rank 1 only (KP 2026-06-28). Rank 2 has no carry-forward;
-            // reaching Rank 2 still cancels a pending Rank-1 carry.
-            $this->createCarryForwards($rank1Ids, rank: 1, sourceMonth: $monthStart);
+            // Carry-forward ("1+2 rule") months are admin-configurable per rank
+            // (rank_tiers.carry_forward_months). Seeded Rank 1 = 2, Ranks 2-9 = 0
+            // per KP 2026-06-28, so Rank 2 creates none; reaching Rank 2 still
+            // voids a pending Rank-1 carry.
+            $this->createCarryForwards($rank1Ids, rank: 1, months: $this->plan->rankCarryForwardMonths(1), sourceMonth: $monthStart);
+            $this->createCarryForwards($rank2Ids, rank: 2, months: $this->plan->rankCarryForwardMonths(2), sourceMonth: $monthStart);
             $this->voidRank1CarryForwardsForRank2Qualifiers($rank2Ids, $monthStart);
         }
 
@@ -282,20 +286,21 @@ final class RankQualificationService
     }
 
     /**
-     * Create carry-forward qualification records for M+1 and M+2.
+     * Create carry-forward qualification records for the next $months months
+     * (the "1+2 rule"; $months comes from rank_tiers.carry_forward_months).
      * Idempotent: skips if a record already exists for that month.
      *
      * @param  int[]  $distributorIds
      */
-    private function createCarryForwards(array $distributorIds, int $rank, string $sourceMonth): void
+    private function createCarryForwards(array $distributorIds, int $rank, int $months, string $sourceMonth): void
     {
-        if (empty($distributorIds)) {
+        if ($months < 1 || empty($distributorIds)) {
             return;
         }
 
         $source = Carbon::parse($sourceMonth);
 
-        foreach ([1, 2] as $offset) {
+        foreach (range(1, $months) as $offset) {
             $targetMonth = $source->copy()->addMonths($offset)->startOfMonth()->toDateString();
 
             foreach ($distributorIds as $distributorId) {

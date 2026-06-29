@@ -317,6 +317,7 @@ final class CompensationPlanSettingsService
                     'personal_bv_required_paise' => (int) $row->personal_bv_required_paise,
                     'group_bv_required_paise' => $row->group_bv_required_paise !== null ? (int) $row->group_bv_required_paise : null,
                     'structural_qualifiers_per_side' => $row->structural_qualifiers_per_side !== null ? (int) $row->structural_qualifiers_per_side : null,
+                    'carry_forward_months' => (int) ($row->carry_forward_months ?? 0),
                     'is_active' => (bool) $row->is_active,
                 ];
             }
@@ -348,6 +349,15 @@ final class CompensationPlanSettingsService
     public function rankStructuralQualifiersPerSide(int $rank): int
     {
         return (int) ($this->rankTiers()[$rank]['structural_qualifiers_per_side'] ?? 2);
+    }
+
+    /**
+     * Extra months a rank keeps paying a qualifier after the qualifying month
+     * (the "1+2 rule"). Admin-editable per rank; default 0 (no carry-forward).
+     */
+    public function rankCarryForwardMonths(int $rank): int
+    {
+        return (int) ($this->rankTiers()[$rank]['carry_forward_months'] ?? 0);
     }
 
     public function rankName(int $rank): string

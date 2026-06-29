@@ -137,6 +137,11 @@
                     <input type="number" name="structural_qualifiers_per_side" data-field-label="Qualifiers / side" value="{{ $row->structural_qualifiers_per_side }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                 </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Carry-forward months <x-help-tip text="The '1+2 rule': extra months this rank keeps paying a qualifier after the qualifying month, while repurchase continues. 0 = no carry-forward. Seeded as Rank 1 = 2, all others 0." /></label>
+                    <input type="number" name="carry_forward_months" data-field-label="Carry-forward months" value="{{ $row->carry_forward_months }}" required min="0" max="24"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                </div>
                 <label class="flex items-center gap-2 text-xs text-gray-600 mt-5">
                     <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
                     Active <x-help-tip text="When off, this rank is skipped by the Rank Bonus engine." />

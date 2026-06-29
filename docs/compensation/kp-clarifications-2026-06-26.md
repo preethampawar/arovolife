@@ -141,5 +141,5 @@
 8. **Lifetime Awards** catalog + release timing (2×/3× re-proof, once per lifetime). *(Parked — Phase 5.)*
 9. **Arete** registration center-selection (default company) + OTP change + manual PIN assignment. *(Parked — registration + Phase 7.)*
 10. **Fortune** single company-wide monthly tree, time-ordered placement, levels 1–9 commission. *(Parked — Phase 6.)* **Eligibility slabs `7/10/13/16/19` ✅ DONE** (seed + dev DB).
-11. **"1+2 rule" → Rank 1 only** (Rank-2 carry-forward removed). ✅ **DONE** (`RankQualificationService` + test).
+11. **"1+2 rule" → Rank 1 only**, made **admin-configurable** per rank via `rank_tiers.carry_forward_months` (seeded R1=2, rest 0; editable on `/admin/compensation/plan-settings`). ✅ **DONE** (migration + SSOT accessor + `RankQualificationService` + config-driven test).
 12. **Mentorship exempt from repurchase suspension** (GSB/Fortune/GBB stop, Mentorship continues, Rank BV aggregates). *(Spec recorded — enforced when the repurchase suspension engine is built.)*
