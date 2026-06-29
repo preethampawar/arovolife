@@ -148,6 +148,12 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                     <span class="text-[11px] text-gray-400">{{ $bv($row->repurchase_bv_paise) }}</span>
                 </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Lifetime award budget (paise) <x-help-tip text="Per-rank Lifetime Awards budget (non-cash). Stored in paise (₹ × 100). The itemised reward worths (Lifetime Awards → Reward catalog) reconcile to this. KP: R1 ₹15,000 … R9 ₹2.25Cr." /></label>
+                    <input type="number" name="lifetime_award_budget_paise" data-field-label="Lifetime award budget (paise)" value="{{ $row->lifetime_award_budget_paise }}" required min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                    <span class="text-[11px] text-gray-400">{{ $rupees($row->lifetime_award_budget_paise) }}</span>
+                </div>
                 <label class="flex items-center gap-2 text-xs text-gray-600 mt-5">
                     <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
                     Active <x-help-tip text="When off, this rank is skipped by the Rank Bonus engine." />

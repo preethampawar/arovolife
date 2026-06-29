@@ -70,6 +70,9 @@ final class CompensationPlanSettingsService
     /** @var array<int, array<string, mixed>>|null rank_tiers keyed by rank_number. */
     private ?array $rankTierCache = null;
 
+    /** @var array<int, list<array{item: string, worth_paise: int}>>|null lifetime award items keyed by rank. */
+    private ?array $lifetimeAwardCache = null;
+
     /** @var array<int, int>|null fortune level → bonus_paise. */
     private ?array $fortuneLevelCache = null;
 
@@ -191,6 +194,33 @@ final class CompensationPlanSettingsService
     public function rankRepurchaseBvPaise(int $rank): int
     {
         return (int) ($this->rankTiers()[$rank]['repurchase_bv_paise'] ?? 0);
+    }
+
+    /** Per-rank Lifetime Awards budget (paise). Admin-editable on rank_tiers. */
+    public function lifetimeAwardBudgetPaise(int $rank): int
+    {
+        return (int) ($this->rankTiers()[$rank]['lifetime_award_budget_paise'] ?? 0);
+    }
+
+    /**
+     * The itemised Lifetime Awards reward catalogue for a rank, ordered, from
+     * the admin-editable lifetime_award_rewards table.
+     *
+     * @return list<array{item: string, worth_paise: int}>
+     */
+    public function lifetimeAwardRewards(int $rank): array
+    {
+        if ($this->lifetimeAwardCache === null) {
+            $this->lifetimeAwardCache = [];
+            foreach (DB::table('lifetime_award_rewards')->orderBy('rank_number')->orderBy('sort_order')->get() as $row) {
+                $this->lifetimeAwardCache[(int) $row->rank_number][] = [
+                    'item' => (string) $row->item,
+                    'worth_paise' => (int) $row->worth_paise,
+                ];
+            }
+        }
+
+        return $this->lifetimeAwardCache[$rank] ?? [];
     }
 
     public function minPayoutPaise(): int
@@ -335,6 +365,7 @@ final class CompensationPlanSettingsService
                     'structural_qualifiers_per_side' => $row->structural_qualifiers_per_side !== null ? (int) $row->structural_qualifiers_per_side : null,
                     'carry_forward_months' => (int) ($row->carry_forward_months ?? 0),
                     'repurchase_bv_paise' => (int) ($row->repurchase_bv_paise ?? 0),
+                    'lifetime_award_budget_paise' => (int) ($row->lifetime_award_budget_paise ?? 0),
                     'is_active' => (bool) $row->is_active,
                 ];
             }

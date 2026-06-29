@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Compensation\Events\LifetimeAwardReleased;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
+use App\Modules\Compensation\Models\LifetimeAwardReward;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
@@ -31,9 +33,68 @@ final class AdminLifetimeAwardsController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $rankNames = app(CompensationPlanSettingsService::class)->rankNames();
+        $plan = app(CompensationPlanSettingsService::class);
+        $rankNames = $plan->rankNames();
 
-        return view('admin.lifetime-awards.index', compact('milestones', 'rankNames'));
+        // Per-rank reward catalogue (budget + itemised rewards) so the admin can
+        // see exactly what each milestone's rank earns.
+        $catalog = [];
+        foreach (range(1, 9) as $rank) {
+            $catalog[$rank] = [
+                'budget_paise' => $plan->lifetimeAwardBudgetPaise($rank),
+                'rewards' => $plan->lifetimeAwardRewards($rank),
+            ];
+        }
+
+        return view('admin.lifetime-awards.index', compact('milestones', 'rankNames', 'catalog'));
+    }
+
+    /** Read-only-until-Edit catalogue editor for the per-rank reward items. */
+    public function catalog(): View
+    {
+        abort_unless(Feature::for(null)->active(LifetimeAwardsFeature::class), 404);
+
+        $plan = app(CompensationPlanSettingsService::class);
+        $rewards = LifetimeAwardReward::orderBy('rank_number')->orderBy('sort_order')->get();
+        $rankNames = $plan->rankNames();
+        $budgets = [];
+        foreach (range(1, 9) as $rank) {
+            $budgets[$rank] = $plan->lifetimeAwardBudgetPaise($rank);
+        }
+
+        return view('admin.lifetime-awards.catalog', compact('rewards', 'rankNames', 'budgets'));
+    }
+
+    /** Update one reward item's text/worth. Audit-logged. */
+    public function updateReward(int $id, Request $request): RedirectResponse
+    {
+        abort_unless(Feature::for(null)->active(LifetimeAwardsFeature::class), 404);
+
+        $reward = LifetimeAwardReward::findOrFail($id);
+
+        $data = $request->validate([
+            'item' => ['required', 'string', 'max:255'],
+            'worth_paise' => ['required', 'integer', 'min:0', 'max:100000000000'],
+        ]);
+
+        $before = ['item' => $reward->item, 'worth_paise' => $reward->worth_paise];
+        $reward->update([
+            'item' => $data['item'],
+            'worth_paise' => (int) $data['worth_paise'],
+        ]);
+
+        AuditLog::create([
+            'actor_id' => Auth::id(),
+            'action' => 'admin.lifetime_award.reward_updated',
+            'subject_type' => 'lifetime_award_reward',
+            'subject_id' => $reward->id,
+            'details' => ['before' => $before, 'after' => ['item' => $reward->item, 'worth_paise' => $reward->worth_paise]],
+            'ip' => $request->ip(),
+        ]);
+
+        return redirect()
+            ->route('admin.lifetime-awards.catalog')
+            ->with('success', 'Reward item updated.');
     }
 
     public function markDelivered(int $id, Request $request): RedirectResponse
@@ -62,6 +123,13 @@ final class AdminLifetimeAwardsController extends Controller
             ],
             'ip' => $request->ip(),
         ]);
+
+        event(new LifetimeAwardReleased(
+            milestoneId: $milestone->id,
+            distributorId: $milestone->distributor_id,
+            rankNumber: $milestone->rank_number,
+            actorId: Auth::id(),
+        ));
 
         return redirect()
             ->route('admin.lifetime-awards.index')

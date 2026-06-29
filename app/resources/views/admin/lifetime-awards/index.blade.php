@@ -4,8 +4,13 @@
 
 @section('content')
 
-<div class="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
-    Lifetime awards are non-cash rewards issued the first time a distributor achieves a given rank. Mark them as delivered once the physical award has been dispatched.
+@php $rupees = fn ($paise) => '₹'.number_format(($paise ?? 0) / 100, 0); @endphp
+
+<div class="mb-6 flex items-start justify-between gap-4">
+    <div class="flex-1 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
+        Lifetime awards are non-cash rewards issued the first time a distributor achieves a given rank (after the rank's re-proof requirement). They carry no admin charge or TDS. Mark each as delivered once the physical award has been dispatched.
+    </div>
+    <a href="{{ route('admin.lifetime-awards.catalog') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Reward catalog →</a>
 </div>
 
 {{-- Filter --}}
@@ -55,7 +60,19 @@
                         </span>
                     </td>
                     <td class="px-4 py-2 text-gray-600">{{ \Illuminate\Support\Carbon::parse($milestone->triggered_month)->format('M Y') }}</td>
-                    <td class="px-4 py-2 text-gray-700">{{ $milestone->award_description }}</td>
+                    <td class="px-4 py-2 text-gray-700">
+                        @php $rc = $catalog[$milestone->rank_number] ?? ['budget_paise' => 0, 'rewards' => []]; @endphp
+                        <div class="font-semibold text-gray-800">{{ $rupees($rc['budget_paise']) }} budget</div>
+                        @if(!empty($rc['rewards']))
+                        <ul class="mt-1 space-y-0.5 text-[11px] text-gray-500 list-disc list-inside">
+                            @foreach($rc['rewards'] as $reward)
+                            <li>{{ $reward['item'] }} <span class="text-gray-400">— {{ $rupees($reward['worth_paise']) }}</span></li>
+                            @endforeach
+                        </ul>
+                        @else
+                        <span class="text-[11px] text-gray-400">{{ $milestone->award_description }}</span>
+                        @endif
+                    </td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$milestone->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ ucfirst($milestone->status) }}

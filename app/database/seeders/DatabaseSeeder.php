@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             RankTiersSeeder::class,
             FortuneBonusLevelsSeeder::class,
             FortuneBonusTiersSeeder::class,
+            LifetimeAwardRewardsSeeder::class,
         ]);
     }
 }
