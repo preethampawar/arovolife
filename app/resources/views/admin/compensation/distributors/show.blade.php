@@ -96,7 +96,7 @@
 
 {{-- Tabs --}}
 <div class="flex border-b border-gray-200 mb-5">
-    @foreach(['gsb' => 'GSB History', 'mb' => 'Mentorship Bonus', 'bv-log' => 'Daily BV Log', 'wallet' => 'Wallet Ledger', 'payouts' => 'Payout History', 'audit' => 'Audit Log'] as $key => $label)
+    @foreach(['gsb' => 'GSB History', 'mb' => 'Mentorship Bonus', 'bv-log' => 'Daily BV Log', 'wallet' => 'Wallet Ledger', 'repurchase' => 'Repurchase', 'payouts' => 'Payout History', 'audit' => 'Audit Log'] as $key => $label)
     <a href="{{ route('admin.compensation.distributors.show', [$distributor, 'tab' => $key]) }}"
        class="px-4 py-2 text-sm font-medium border-b-2 -mb-px
               {{ $tab === $key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
@@ -105,6 +105,6 @@
     @endforeach
 </div>
 
-@include('admin.compensation.distributors._tab-'.(in_array($tab, ['gsb','mb','bv-log','wallet','payouts','audit'], true) ? $tab : 'gsb'))
+@include('admin.compensation.distributors._tab-'.(in_array($tab, ['gsb','mb','bv-log','wallet','repurchase','payouts','audit'], true) ? $tab : 'gsb'))
 
 @endsection

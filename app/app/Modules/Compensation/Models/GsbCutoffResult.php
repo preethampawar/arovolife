@@ -45,6 +45,12 @@ final class GsbCutoffResult extends Model
 
     public const STATUS_REVERSED = 'reversed';
 
+    /** Repurchase missed, within grace — calculated but held (not credited). */
+    public const STATUS_REPURCHASE_HELD = 'repurchase_held';
+
+    /** Repurchase grace lapsed — calculated but suspended (not credited). */
+    public const STATUS_REPURCHASE_SUSPENDED = 'repurchase_suspended';
+
     protected $table = 'gsb_cutoff_results';
 
     protected $fillable = [

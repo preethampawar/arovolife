@@ -22,6 +22,7 @@ final class GsbCutoffService
         private readonly BvLedgerService $bvLedger,
         private readonly CompensationPlanSettingsService $plan,
         private readonly BonusDeductionService $deductions,
+        private readonly IncomeEligibilityService $eligibility,
     ) {}
 
     /**
@@ -204,6 +205,29 @@ final class GsbCutoffService
             return $this->saveResult($existing, [
                 ...$baseData,
                 'status' => GsbCutoffResult::STATUS_FROZEN,
+            ]);
+        }
+
+        // Repurchase engine (flag-gated): if the distributor missed their
+        // repurchase, calculate but do not credit — held during grace,
+        // suspended after. CF is advanced identically to the frozen path so the
+        // weaker side doesn't phantom-accumulate while income is withheld.
+        // (Mentorship is unaffected: a held/suspended sponsee simply generates
+        // no credited GSB, while the distributor's own MB comes from their
+        // sponsees and is never gated here.)
+        $eligibility = $this->eligibility->statusFor($distributorId, BonusType::Gsb, $date);
+        if ($eligibility !== IncomeEligibilityService::ELIGIBLE) {
+            $cf->update([
+                'power_side_bv_paise' => $newPowerCf,
+                'power_side' => $strongerSide,
+                'slab1_weaker_bv_paise' => 0,
+            ]);
+
+            return $this->saveResult($existing, [
+                ...$baseData,
+                'status' => $eligibility === IncomeEligibilityService::HOLD
+                    ? GsbCutoffResult::STATUS_REPURCHASE_HELD
+                    : GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
             ]);
         }
 

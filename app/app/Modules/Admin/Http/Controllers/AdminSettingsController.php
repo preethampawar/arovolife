@@ -465,6 +465,15 @@ final class AdminSettingsController extends Controller
                 'max' => 90,
                 'default' => '7',
             ],
+            'comp.repurchase.non_ranked_bv_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Repurchase BV — non-ranked (paise)',
+                'description' => 'Monthly repurchase BV a distributor with no rank must complete to stay income-eligible. 60000 = 600 BV. Per-rank values (R1 1,000 … R9 2,300) are edited on the Compensation → Plan settings page.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 1_000_000_000,
+                'default' => '60000',
+            ],
             'comp.fortune.exclude_rank_6' => [
                 'group' => 'compensation_plan',
                 'label' => 'Fortune Bonus: exclude Rank 6 (Blue Diamond)',

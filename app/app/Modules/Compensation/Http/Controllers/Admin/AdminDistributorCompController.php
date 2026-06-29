@@ -11,6 +11,7 @@ use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
@@ -33,7 +34,7 @@ final class AdminDistributorCompController extends Controller
     public function show(Distributor $distributor, Request $request): View
     {
         $request->validate([
-            'tab' => ['nullable', 'in:gsb,mb,bv-log,wallet,payouts,audit'],
+            'tab' => ['nullable', 'in:gsb,mb,bv-log,wallet,payouts,audit,repurchase'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'status' => ['nullable', 'in:no_match,calculated,credited,failed,frozen,below_600bv'],
@@ -88,6 +89,12 @@ final class AdminDistributorCompController extends Controller
             ],
             'audit' => [
                 'auditRows' => $this->fetchAuditRows($distributor->id),
+            ],
+            'repurchase' => [
+                // Read-only: the daily repurchase:evaluate command maintains these
+                // rows; the admin view never mutates state on a GET.
+                'rows' => RepurchaseCycle::where('distributor_id', $distributor->id)
+                    ->orderByDesc('cycle_start_date')->paginate(20)->withQueryString(),
             ],
             default => [],
         };

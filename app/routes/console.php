@@ -6,6 +6,7 @@ use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -13,6 +14,14 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Daily repurchase evaluation at 00:30 IST — refreshes each distributor's cycle
+// status before the day's GSB cut-off reads it. Flag-gated inside the command.
+Schedule::command(RepurchaseEvaluateCommand::class)
+    ->dailyAt('00:30')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
 
 // Daily GSB cut-off at 23:59 IST. withoutOverlapping prevents concurrent runs.
 Schedule::command(GsbDailyCutoffCommand::class)

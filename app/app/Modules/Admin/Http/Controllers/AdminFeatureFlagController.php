@@ -14,6 +14,7 @@ use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RegistrationKillswitch;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -52,6 +53,11 @@ final class AdminFeatureFlagController extends Controller
                 'class' => MentorshipBonusFeature::class,
                 'label' => 'Mentorship Bonus (Phase 4)',
                 'description' => 'Shows the Mentorship Bonus income tab and admin views for distributors. Enable after partners approve the 5% mentorship plan. Slabs step down from 10% → 1% per ₹30k of sponsee GSB.',
+            ],
+            'compensation.repurchase_engine' => [
+                'class' => RepurchaseEngineFeature::class,
+                'label' => 'Repurchase / income-eligibility engine (Phase 4)',
+                'description' => 'When ON, the daily GSB cut-off consults each distributor\'s monthly repurchase status: if they missed their repurchase due date the bonus is held (grace) or, after grace, suspended — GSB/Fortune/GBB only, never Mentorship or Rank. When OFF, repurchase status is ignored. Run repurchase:evaluate daily.',
             ],
             'compensation.growth_booster_bonus' => [
                 'class' => GrowthBoosterBonusFeature::class,

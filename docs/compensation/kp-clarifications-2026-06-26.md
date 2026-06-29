@@ -135,7 +135,7 @@
 2. **Mentorship** → true per-slice bracket split + ₹2,70,001 floor boundary. ✅ **DONE.**
 3. **Rank pool %s → 20% total** (R2 3.4 / R3 2.7 / R4 2.2). ✅ **DONE** (seed + dev DB).
 4. **Personal-title ladder** Dealer 7k / Distributor 32k / Regional 68k / National 1.44L + matching rank personal-BV. ✅ **DONE** (seed + dev DB).
-5. **Per-rank graduated repurchase BV** (R1–R9 1,000…2,300) + 7-day grace/hold/forfeit engine + Retailer-anniversary anchor. *(Parked — repurchase engine, later phase. Fully specified now.)*
+5. **Per-rank graduated repurchase BV** (R1–R9 1,000…2,300) + 7-day grace/hold/forfeit engine + Retailer-anniversary anchor. ✅ **BUILT** (flag `compensation.repurchase_engine`, default off): `repurchase_cycles` + `RepurchaseCycleService` + `IncomeEligibilityService`; GSB cut-off holds (grace) / suspends (after grace) — never MB/Rank; per-rank `rank_tiers.repurchase_bv_paise` + `comp.repurchase.non_ranked_bv_paise` admin-editable; daily `repurchase:evaluate`; events on every transition. **Two MVP assumptions to confirm with KP:** (a) one obligation cycle is open at a time (grace delays the next cycle's open rather than overlapping it); (b) income held during grace is *not* back-credited on a timely completion — eligibility resumes forward from completion (matches "released from that day"). The exact hold-then-re-credit behaviour can be added if KP wants the grace days paid retroactively.
 6. **₹50L monthly aggregate cap** — exclude ADC + Awards; trim Rank. *(Parked — payout orchestration.)*
 7. **BV reversal:** no clawback; reverse future BV on same leg; negative-carry; whole upline chain. *(Parked — refund pipeline.)*
 8. **Lifetime Awards** catalog + release timing (2×/3× re-proof, once per lifetime). *(Parked — Phase 5.)*

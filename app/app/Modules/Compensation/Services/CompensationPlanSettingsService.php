@@ -51,6 +51,7 @@ final class CompensationPlanSettingsService
         'comp.repurchase.rate_bp' => 1000,
         'comp.repurchase.cap_paise' => 1_000_000,
         'comp.repurchase.grace_days' => 7,
+        'comp.repurchase.non_ranked_bv_paise' => 60_000,
         'payout.min_threshold_paise' => 10_000,
         'payout.neft_min_bv_paise' => 300_000,
         // Fortune Bonus excludes ranks 6–9 by default (KP-confirmed).
@@ -175,6 +176,21 @@ final class CompensationPlanSettingsService
     public function repurchaseGraceDays(): int
     {
         return $this->scalarInt('comp.repurchase.grace_days');
+    }
+
+    /** Monthly repurchase BV (paise) for a distributor with no rank yet. */
+    public function nonRankedRepurchaseBvPaise(): int
+    {
+        return $this->scalarInt('comp.repurchase.non_ranked_bv_paise');
+    }
+
+    /**
+     * Monthly repurchase BV obligation (paise) for the given rank, from the
+     * admin-editable rank_tiers.repurchase_bv_paise column. 0 if unset.
+     */
+    public function rankRepurchaseBvPaise(int $rank): int
+    {
+        return (int) ($this->rankTiers()[$rank]['repurchase_bv_paise'] ?? 0);
     }
 
     public function minPayoutPaise(): int
@@ -318,6 +334,7 @@ final class CompensationPlanSettingsService
                     'group_bv_required_paise' => $row->group_bv_required_paise !== null ? (int) $row->group_bv_required_paise : null,
                     'structural_qualifiers_per_side' => $row->structural_qualifiers_per_side !== null ? (int) $row->structural_qualifiers_per_side : null,
                     'carry_forward_months' => (int) ($row->carry_forward_months ?? 0),
+                    'repurchase_bv_paise' => (int) ($row->repurchase_bv_paise ?? 0),
                     'is_active' => (bool) $row->is_active,
                 ];
             }

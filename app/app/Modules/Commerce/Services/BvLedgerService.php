@@ -123,6 +123,57 @@ final class BvLedgerService
         return new BvBreakdown($accrued, $reversed, $accrued + $reversed);
     }
 
+    /**
+     * The date a distributor's cumulative personal BV first reached the given
+     * threshold (e.g. the Retailer title's 3,000 BV) — the anchor for their
+     * repurchase calendar month. Returns null if never reached. Reversals net
+     * out, so a later-cancelled order can push the crossing date later.
+     */
+    public function retailerAchievedAt(int $distributorId, int $thresholdPaise): ?Carbon
+    {
+        if ($thresholdPaise <= 0) {
+            return null;
+        }
+
+        $running = 0;
+        $entries = BvLedgerEntry::query()
+            ->forDistributor($distributorId)
+            ->orderBy('effective_at')
+            ->orderBy('id')
+            ->get(['bv_paise', 'effective_at']);
+
+        foreach ($entries as $entry) {
+            $running += (int) $entry->bv_paise;
+            if ($running >= $thresholdPaise) {
+                return Carbon::parse($entry->effective_at);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Sum of a distributor's own (self-consumption) repurchase BV in a window,
+     * in paise — the measure of how much of their monthly repurchase obligation
+     * they have completed. Counts self-consumption accruals regardless of the
+     * self-purchase-earns-BV setting (repurchase is a purchase obligation, not a
+     * compensation question).
+     */
+    public function selfPurchaseBvPaise(int $distributorId, ?Carbon $from = null, ?Carbon $to = null): int
+    {
+        return (int) BvLedgerEntry::query()
+            ->forDistributor($distributorId)
+            ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
+            ->dateRange($from, $to)
+            ->whereExists(function ($q): void {
+                $q->selectRaw('1')
+                    ->from('orders')
+                    ->whereColumn('orders.id', 'bv_ledger_entries.order_id')
+                    ->where('orders.self_consumption', true);
+            })
+            ->sum('bv_paise');
+    }
+
     private function shouldAccrue(Order $order): bool
     {
         if ($order->attributed_distributor_id === null) {
