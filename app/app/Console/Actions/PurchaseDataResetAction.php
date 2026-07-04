@@ -127,7 +127,11 @@ final class PurchaseDataResetAction
         }
     }
 
-    private function resetDerivedColumns(): void
+    /**
+     * Public so PlatformResetAction (the full reset) can reuse it after
+     * wiping its superset of tables.
+     */
+    public function resetDerivedColumns(): void
     {
         $this->db->table('distributors')
             ->whereNotNull('gsb_frozen_at')

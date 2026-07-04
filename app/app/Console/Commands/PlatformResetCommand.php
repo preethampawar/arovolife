@@ -19,8 +19,11 @@ final class PlatformResetCommand extends Command
             $this->warn('THIS WILL WIPE THE DATABASE AND DELETE S3 KYC OBJECTS.');
             $this->line('Targets:');
             $this->line('  - All transactional tables (distributors, audit_log, kyc_documents, etc.)');
+            $this->line('  - All purchase-derived data (orders, BV, bonuses, wallets, payouts, returns)');
             $this->line('  - All users (admin will be re-created from seeder)');
             $this->line('  - S3 prefixes user_*/ in the configured s3 disk');
+            $this->line('Re-seeded afterwards: roles, admin, settings, content, ledger accounts, flags,');
+            $this->line('catalog, and the 31 company-blocked reserved distributors (tree levels 0-4).');
             $this->line('');
             if (! $this->confirm('Proceed with full platform reset?', false)) {
                 $this->info('Aborted.');

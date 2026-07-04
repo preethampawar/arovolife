@@ -13,18 +13,22 @@ use Database\Seeders\CommerceFeatureFlagSeeder;
 use Database\Seeders\ContentPageSeeder;
 use Database\Seeders\LedgerAccountSeeder;
 use Database\Seeders\ProductCatalogSeeder;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * One-shot full platform reset: wipes transactional data, scrubs S3 KYC
- * files, then re-seeds the canonical bootstrap state (roles, admin,
- * settings, content pages, ledger COA, feature flags, product catalog,
- * and the 31 company-blocked reserved distributors).
+ * One-shot full platform reset: wipes transactional data — including
+ * every purchase-derived table (orders, BV, bonuses, wallets, payouts;
+ * see PurchaseDataResetAction::WIPE_TABLES) — scrubs S3 KYC files, then
+ * re-seeds the canonical bootstrap state (roles, admin, settings,
+ * content pages, ledger COA, feature flags, product catalog, and the
+ * 31 company-blocked reserved distributors occupying tree levels 0-4).
  *
  * Idempotent — running twice yields the identical post-state because
  * every step either uses firstOrCreate/updateOrCreate semantics or fully
@@ -41,6 +45,18 @@ final class PlatformResetAction
      * @var list<string>
      */
     private const WIPE_TABLES = [
+        // Purchase-derived data (orders, BV, bonuses, wallets, payouts,
+        // returns) — the full Phase 2-6 list lives on the narrower action.
+        ...PurchaseDataResetAction::WIPE_TABLES,
+        // Commerce identities + their trail
+        'customer_addresses',
+        'customers',
+        'attribution_touches',
+        'notifications',
+        // Queue — pending jobs reference users/orders that no longer exist
+        'jobs',
+        'job_batches',
+        'failed_jobs',
         // Transactional / leaf rows
         'consents',
         'orientation_views',
@@ -65,7 +81,10 @@ final class PlatformResetAction
         'users',
     ];
 
-    public function __construct(private readonly DatabaseManager $db) {}
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly PurchaseDataResetAction $purchaseReset,
+    ) {}
 
     /**
      * @param  Closure(string): void|null  $progress  optional callback for CLI output
@@ -79,6 +98,9 @@ final class PlatformResetAction
 
         $log('Truncating transactional tables...');
         $this->wipeTables();
+
+        $log('Resetting derived counters (coupons.used_count, inventory reserved)...');
+        $this->purchaseReset->resetDerivedColumns();
 
         $log('Re-seeding platform metadata (roles, admin, settings, content, ledger, flags)...');
         $this->seedPlatformMetadata();
@@ -142,13 +164,17 @@ final class PlatformResetAction
 
     private function wipeTables(): void
     {
-        $this->db->connection()->statement('SET FOREIGN_KEY_CHECKS=0');
-        foreach (self::WIPE_TABLES as $table) {
-            if ($this->db->getSchemaBuilder()->hasTable($table)) {
-                $this->db->table($table)->truncate();
+        Schema::disableForeignKeyConstraints();
+
+        try {
+            foreach (self::WIPE_TABLES as $table) {
+                if ($this->db->getSchemaBuilder()->hasTable($table)) {
+                    $this->db->table($table)->truncate();
+                }
             }
+        } finally {
+            Schema::enableForeignKeyConstraints();
         }
-        $this->db->connection()->statement('SET FOREIGN_KEY_CHECKS=1');
     }
 
     private function seedPlatformMetadata(): void
@@ -157,6 +183,7 @@ final class PlatformResetAction
         // are safe to run after the wipe because their target rows no
         // longer exist, so they fall into the "create" branch.
         foreach ([
+            RolesAndPermissionsSeeder::class,
             AdminUserSeeder::class,
             SettingsSeeder::class,
             ContentPageSeeder::class,
@@ -184,12 +211,12 @@ final class PlatformResetAction
         // cannot be inserted with placeholder values without temporarily
         // disabling FK checks. We re-enable them at the end (and on the
         // unhappy path) so any post-action queries see normal enforcement.
-        $this->db->connection()->statement('SET FOREIGN_KEY_CHECKS=0');
+        Schema::disableForeignKeyConstraints();
 
         try {
             $this->insertReservedRows($adns, $now, $coolingOffEnd);
         } finally {
-            $this->db->connection()->statement('SET FOREIGN_KEY_CHECKS=1');
+            Schema::enableForeignKeyConstraints();
         }
     }
 
