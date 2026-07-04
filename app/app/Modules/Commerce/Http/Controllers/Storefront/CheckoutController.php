@@ -70,16 +70,23 @@ final class CheckoutController extends Controller
             }
         }
 
+        $buyerDistributor = $this->resolveBuyerDistributor($request);
+
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
             'shippingPaise' => $this->shipping->feePaise($cart->subtotalPaise()),
             'guestAllowed' => $guestAllowed,
             'onlineEnabled' => $this->onlineEnabled(),
-            'refAdn' => $request->cookie(AttributionService::COOKIE_NAME),
+            // A logged-in distributor's own purchase is always attributed to
+            // them (AttributionService::resolveForCheckout precedence), so a
+            // lingering ?ref cookie must not show a misleading banner.
+            'refAdn' => $buyerDistributor === null
+                ? $request->cookie(AttributionService::COOKIE_NAME)
+                : null,
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
-            'buyerDistributor' => $this->resolveBuyerDistributor($request),
+            'buyerDistributor' => $buyerDistributor,
         ]);
     }
 
