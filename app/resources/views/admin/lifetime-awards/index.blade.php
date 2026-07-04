@@ -84,7 +84,9 @@
                     <td class="px-4 py-2">
                         @if($milestone->status === 'pending')
                         <form method="POST" action="{{ route('admin.lifetime-awards.deliver', $milestone->id) }}"
-                              onsubmit="return confirm('Mark this lifetime award as delivered?')">
+                              data-confirm-title="Mark award as delivered"
+                              data-confirm="Mark this lifetime award as delivered?"
+                              data-confirm-impact="Impact: the milestone is recorded as fulfilled with today's date and leaves the pending-delivery queue.">
                             @csrf
                             <button type="submit"
                                     class="px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 text-[10px] font-medium">

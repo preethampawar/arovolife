@@ -4,10 +4,8 @@
 
 @section('content')
 
-@php($minPayout = number_format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0))
-
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Payouts run automatically every Tuesday covering all wallets with a balance of ₹{{ $minPayout }} or more. Each batch shows total gross, deductions (repurchase), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over to the next week. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls → Force Payout</a> only if the automated batch failed for a specific distributor.
+    Payouts run automatically every Tuesday covering all wallets with a balance of ₹{{ $minPayout }} or more. Each batch shows total gross, deductions (repurchase + admin charge + TDS), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over to the next week. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls → Force Payout</a> only if the automated batch failed for a specific distributor.
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -26,7 +24,7 @@
                         Total gross <x-help-tip text="Sum of all wallet balances included in the batch before deductions." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-500">
-                        Deductions <x-help-tip text="Repurchase wallet deduction: 10% of last month's GSB+MB+RB, capped ₹10,000 per distributor." />
+                        Deductions <x-help-tip text="Repurchase deduction (10% of last month's cash bonuses, capped ₹10,000) + admin charge (3%) + TDS (5%)." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-500">Net transferred</th>
                     <th class="px-4 py-2 text-center text-gray-500">Status</th>

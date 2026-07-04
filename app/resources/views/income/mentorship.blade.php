@@ -16,15 +16,15 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">MB Earned This Month</p>
-            <p class="text-2xl font-bold text-gray-900">₹—</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ number_format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">MB Earned Lifetime</p>
-            <p class="text-2xl font-bold text-gray-900">₹—</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ number_format(($mbLifetimePaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Active Sponsees Contributing</p>
-            <p class="text-2xl font-bold text-gray-900">—</p>
+            <p class="text-2xl font-bold text-gray-900">{{ $activeSponsees ?? 0 }}</p>
         </div>
     </div>
 
@@ -80,7 +80,7 @@
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">{{ $row->mb_rate_pct }}%</span>
                         </td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ number_format($row->mb_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ number_format($row->mb_gross_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ number_format($row->sponsee_cumulative_gsb_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
                             @php $step = 11 - (int) $row->mb_rate_pct; @endphp

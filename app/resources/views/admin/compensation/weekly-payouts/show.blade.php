@@ -15,10 +15,12 @@
         </a>
         {{-- Approve batch --}}
         @if($batch->status === 'pending')
-        <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}">
+        <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
+              data-confirm-title="Approve payout batch"
+              data-confirm="Approve this payout batch of ₹{{ number_format($batch->total_net_paise / 100, 2) }} to {{ $batch->distributor_count }} distributor(s)?"
+              data-confirm-impact="Impact: this confirms the NEFT transfers have been (or will be) sent and marks all pending line items as transferred. This cannot be undone from this screen.">
             @csrf
             <button type="submit"
-                    onclick="return confirm('Approve this payout batch? This confirms the NEFT transfers have been (or will be) sent and marks all pending line items as transferred.')"
                     class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
                 ✓ Approve batch
             </button>
@@ -58,7 +60,7 @@
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
-            Deductions <x-help-tip text="Repurchase wallet deductions across all line items." />
+            Deductions <x-help-tip text="Repurchase deduction + admin charge + TDS across all line items." />
         </p>
         <p class="mt-1 text-lg font-bold text-red-600">₹{{ number_format($batch->total_deductions_paise / 100, 2) }}</p>
     </div>

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PayoutService;
+use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,11 +17,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminWeeklyPayoutController extends Controller
 {
-    public function index(): View
+    public function index(CompensationPlanSettingsService $plan): View
     {
         $batches = PayoutBatch::orderByDesc('batch_date')->paginate(20);
+        // Computed here, not in the view: `::class` inside a @php(...) Blade
+        // directive fails to compile (unexpected token "class").
+        $minPayout = number_format($plan->minPayoutPaise() / 100, 0);
 
-        return view('admin.compensation.weekly-payouts.index', compact('batches'));
+        return view('admin.compensation.weekly-payouts.index', compact('batches', 'minPayout'));
     }
 
     public function show(PayoutBatch $batch): View
@@ -36,6 +42,20 @@ final class AdminWeeklyPayoutController extends Controller
 
         $payoutService->approve($batch, (int) $request->user()->id);
 
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'compensation.payout_batch.approved',
+            'subject_type' => 'payout_batch',
+            'subject_id' => $batch->id,
+            'details' => [
+                'batch_type' => $batch->batch_type,
+                'batch_date' => $batch->batch_date->toDateString(),
+                'distributor_count' => $batch->distributor_count,
+                'total_net_paise' => $batch->total_net_paise,
+            ],
+            'ip' => $request->ip(),
+        ]);
+
         return redirect()
             ->route('admin.compensation.weekly-payouts.show', $batch)
             ->with('success', 'Batch approved — all line items marked as transferred.');
@@ -46,8 +66,8 @@ final class AdminWeeklyPayoutController extends Controller
         $lines = $batch->lineItems()
             ->with('distributor.user')
             ->whereIn('status', [
-                \App\Modules\Compensation\Models\PayoutLineItem::STATUS_PENDING,
-                \App\Modules\Compensation\Models\PayoutLineItem::STATUS_TRANSFERRED,
+                PayoutLineItem::STATUS_PENDING,
+                PayoutLineItem::STATUS_TRANSFERRED,
             ])
             ->orderBy('id')
             ->get();

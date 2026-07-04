@@ -165,11 +165,21 @@ final class IncomeController extends Controller
 
                 return $row;
             });
+            $creditedBase = MentorshipBonusResult::where('sponsor_id', $distributor->id)
+                ->where('status', MentorshipBonusResult::STATUS_CREDITED);
+            $mbThisMonthPaise = (int) (clone $creditedBase)
+                ->whereBetween('cutoff_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
+                ->sum('mb_gross_paise');
+            $mbLifetimePaise = (int) (clone $creditedBase)->sum('mb_gross_paise');
+            $activeSponsees = (int) (clone $creditedBase)->distinct()->count('sponsee_id');
         } catch (QueryException) {
             $rows = collect();
+            $mbThisMonthPaise = 0;
+            $mbLifetimePaise = 0;
+            $activeSponsees = 0;
         }
 
-        return view('income.mentorship', compact('distributor', 'rows'));
+        return view('income.mentorship', compact('distributor', 'rows', 'mbThisMonthPaise', 'mbLifetimePaise', 'activeSponsees'));
     }
 
     public function growthBooster(Request $request): View

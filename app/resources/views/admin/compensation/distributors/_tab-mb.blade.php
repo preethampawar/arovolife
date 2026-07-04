@@ -24,7 +24,7 @@
                 <td class="px-3 py-2 font-mono">{{ $row->sponsee->adn ?? '—' }}</td>
                 <td class="px-3 py-2 text-right">₹{{ number_format($row->sponsee_gsb_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-center font-semibold">{{ $row->mb_rate_pct }}%</td>
-                <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ number_format($row->mb_paise / 100, 2) }}</td>
+                <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ number_format($row->mb_gross_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-right text-gray-500">₹{{ number_format($row->sponsee_cumulative_gsb_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
