@@ -21,7 +21,6 @@ final class GsbCutoffService
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
         private readonly CompensationPlanSettingsService $plan,
-        private readonly BonusDeductionService $deductions,
         private readonly IncomeEligibilityService $eligibility,
     ) {}
 
@@ -79,6 +78,39 @@ final class GsbCutoffService
             ['distributor_id' => $distributorId],
             ['power_side_bv_paise' => 0, 'power_side' => null, 'slab1_weaker_bv_paise' => 0],
         );
+
+        // Re-run of an already-processed date. The rolling CF store has already
+        // absorbed this date's outcome, so recomputing against it would compound
+        // today's BV into CF a second time (observed in the wild when a manual
+        // run followed the 00:10 scheduled run). Rewind the in-memory store to
+        // the before-state recorded on the existing row — the recompute below
+        // then lands on identical numbers, keeping "Retry is safe" true.
+        if ($existing !== null && $existing->advancedCarryForward()) {
+            // Out-of-order guard: if a later date was already processed, the
+            // store also contains THAT day's BV — rewinding to this row's
+            // before-state would silently erase it. Reprocessing history must
+            // go through the recalculate flow, oldest date first.
+            $laterRunExists = GsbCutoffResult::where('distributor_id', $distributorId)
+                ->whereDate('cutoff_date', '>', $date->toDateString())
+                ->exists();
+            if ($laterRunExists) {
+                throw new \RuntimeException(
+                    "Cannot re-run the {$date->toDateString()} cut-off for distributor {$distributorId}: "
+                    .'a later cut-off already advanced the carry-forward store. '
+                    .'Use Recalculate CF and reprocess dates oldest-first.'
+                );
+            }
+
+            $cf->power_side_bv_paise = $existing->power_cf_before_paise;
+            $cf->slab1_weaker_bv_paise = $existing->slab1_weaker_cf_before_paise;
+            // Legacy rows predate power_side_before; fall back to the store's
+            // current side (only wrong if the run flipped the power side).
+            $cf->power_side = $existing->power_side_before ?? $cf->power_side;
+        }
+
+        // Snapshot the pre-run side now that $cf holds the true before-state;
+        // saved on the result row so a future re-run can rewind side-accurately.
+        $powerSideBefore = $cf->power_side;
 
         // Add power CF to the side it belongs to.
         $leftEffective = $leftToday + ($cf->power_side === 'L' ? $cf->power_side_bv_paise : 0);
@@ -151,6 +183,7 @@ final class GsbCutoffService
                 'right_bv_paise' => $rightToday,
                 'weaker_bv_paise' => $weakerTotal,
                 'power_cf_before_paise' => $cfBeforePower,
+                'power_side_before' => $powerSideBefore,
                 'power_cf_after_paise' => $newPowerCf,
                 'power_side_after' => $strongerSide,
                 'slab1_weaker_cf_before_paise' => $cfBeforeSlab1,
@@ -159,12 +192,10 @@ final class GsbCutoffService
             ]);
         }
 
-        // Slab matched — compute deductions.
+        // Slab matched. Deductions (admin charge, TDS) are applied at payout time.
         $gross = $matchedSlab['incentive'];
-        $deduction = $this->deductions->for(BonusType::Gsb, $gross);
-        $adminCharge = $deduction->adminChargePaise;
-        $tds = $deduction->tdsPaise;
-        $net = $deduction->netPaise;
+        $adminCharge = 0;
+        $tds = 0;
 
         $newPowerCf = min(
             max(0, $strongerEffective - $matchedSlab['threshold']),
@@ -184,8 +215,9 @@ final class GsbCutoffService
             'gross_gsb_paise' => $gross,
             'admin_charge_paise' => $adminCharge,
             'tds_paise' => $tds,
-            'net_gsb_paise' => $net,
+            'net_gsb_paise' => $gross,
             'power_cf_before_paise' => $cfBeforePower,
+            'power_side_before' => $powerSideBefore,
             'power_cf_after_paise' => $newPowerCf,
             'power_side_after' => $strongerSide,
             'slab1_weaker_cf_before_paise' => $cfBeforeSlab1,
@@ -195,17 +227,22 @@ final class GsbCutoffService
         // Frozen distributors: calculate but do not credit wallet.
         // Advance CF identically to the no-match path so stale slab1 BV doesn't
         // phantom-accumulate during the freeze and double-credit on unfreeze.
+        // Transactional: if the result row fails to persist (e.g. a schema
+        // mismatch), the CF mutation must roll back with it or the matched BV
+        // is silently lost.
         if ($distributor->gsb_frozen_at !== null) {
-            $cf->update([
-                'power_side_bv_paise' => $newPowerCf,
-                'power_side' => $strongerSide,
-                'slab1_weaker_bv_paise' => 0,
-            ]);
+            return DB::transaction(function () use ($cf, $newPowerCf, $strongerSide, $existing, $baseData): GsbCutoffResult {
+                $cf->update([
+                    'power_side_bv_paise' => $newPowerCf,
+                    'power_side' => $strongerSide,
+                    'slab1_weaker_bv_paise' => 0,
+                ]);
 
-            return $this->saveResult($existing, [
-                ...$baseData,
-                'status' => GsbCutoffResult::STATUS_FROZEN,
-            ]);
+                return $this->saveResult($existing, [
+                    ...$baseData,
+                    'status' => GsbCutoffResult::STATUS_FROZEN,
+                ]);
+            });
         }
 
         // Repurchase engine (flag-gated): if the distributor missed their
@@ -217,25 +254,27 @@ final class GsbCutoffService
         // sponsees and is never gated here.)
         $eligibility = $this->eligibility->statusFor($distributorId, BonusType::Gsb);
         if ($eligibility !== IncomeEligibilityService::ELIGIBLE) {
-            $cf->update([
-                'power_side_bv_paise' => $newPowerCf,
-                'power_side' => $strongerSide,
-                'slab1_weaker_bv_paise' => 0,
-            ]);
+            return DB::transaction(function () use ($cf, $newPowerCf, $strongerSide, $existing, $baseData, $eligibility): GsbCutoffResult {
+                $cf->update([
+                    'power_side_bv_paise' => $newPowerCf,
+                    'power_side' => $strongerSide,
+                    'slab1_weaker_bv_paise' => 0,
+                ]);
 
-            return $this->saveResult($existing, [
-                ...$baseData,
-                'status' => $eligibility === IncomeEligibilityService::HOLD
-                    ? GsbCutoffResult::STATUS_REPURCHASE_HELD
-                    : GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
-            ]);
+                return $this->saveResult($existing, [
+                    ...$baseData,
+                    'status' => $eligibility === IncomeEligibilityService::HOLD
+                        ? GsbCutoffResult::STATUS_REPURCHASE_HELD
+                        : GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
+                ]);
+            });
         }
 
         // Credit wallet inside a transaction — CF update is atomic with the wallet credit.
         try {
             $savedResult = null;
 
-            DB::transaction(function () use ($distributorId, $net, $baseData, $existing, $cf, $strongerSide, $newPowerCf, &$savedResult): void {
+            DB::transaction(function () use ($distributorId, $gross, $baseData, $existing, $cf, $strongerSide, $newPowerCf, &$savedResult): void {
                 // Move carry-forward update inside the transaction so it rolls back if credit fails.
                 $cf->update([
                     'power_side_bv_paise' => $newPowerCf,
@@ -250,7 +289,7 @@ final class GsbCutoffService
 
                 $this->wallet->credit(
                     distributorId: $distributorId,
-                    amountPaise: $net,
+                    amountPaise: $gross,
                     type: 'gsb_credit',
                     referenceId: $savedResult->id,
                     referenceType: 'gsb_cutoff_result',
@@ -273,8 +312,25 @@ final class GsbCutoffService
             ->firstOrFail();
     }
 
+    /**
+     * Fields that must never survive from a previous run of the same date.
+     * A re-run that lands on NO_MATCH / BELOW_600BV would otherwise leave a
+     * stale slab + gross from an earlier FAILED/CALCULATED attempt, and
+     * reports keying off gross_gsb_paise would show phantom income.
+     */
+    private const VOLATILE_FIELD_RESETS = [
+        'slab' => null,
+        'gross_gsb_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_gsb_paise' => 0,
+        'failure_reason' => null,
+    ];
+
     private function saveResult(?GsbCutoffResult $existing, array $data): GsbCutoffResult
     {
+        $data = [...self::VOLATILE_FIELD_RESETS, ...$data];
+
         if ($existing !== null) {
             $existing->fill($data)->save();
 

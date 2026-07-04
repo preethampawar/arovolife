@@ -88,12 +88,10 @@ it('credits slab 1 when weaker side meets 15,000 BV threshold', function () {
     expect($result->slab)->toBe(1);
     expect($result->gross_gsb_paise)->toBe(180_000);   // slab 1 = ₹1,800 (KP, score 5 × ₹360)
 
-    // Admin charge = 3% × 180,000 = 5,400 paise
-    expect($result->admin_charge_paise)->toBe(5_400);
-
-    // TDS = 5% × (180,000 - 5,400) = 5% × 174,600 = 8,730 paise
-    expect($result->tds_paise)->toBe(8_730);
-    expect($result->net_gsb_paise)->toBe(165_870);  // 180,000 - 5,400 - 8,730
+    // Deductions are applied at payout time, not at credit time.
+    expect($result->admin_charge_paise)->toBe(0);
+    expect($result->tds_paise)->toBe(0);
+    expect($result->net_gsb_paise)->toBe(180_000);
 
     // Power CF = stronger (2,000,000) - threshold (1,500,000) = 500,000
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
@@ -169,9 +167,10 @@ it('marks status as frozen when distributor GSB is frozen', function () {
     expect($result->status)->toBe(GsbCutoffResult::STATUS_FROZEN);
     expect($result->slab)->toBe(3);
     expect($result->gross_gsb_paise)->toBe(720_000);     // slab 3 = ₹7,200 (KP, score 20 × ₹360)
-    expect($result->admin_charge_paise)->toBe(21_600);   // 3% × 720,000
-    expect($result->tds_paise)->toBe(34_920);             // 5% × (720,000 − 21,600) = 5% × 698,400
-    expect($result->net_gsb_paise)->toBe(663_480);        // 720,000 − 21,600 − 34,920
+    // Deductions applied at payout time, not credit time.
+    expect($result->admin_charge_paise)->toBe(0);
+    expect($result->tds_paise)->toBe(0);
+    expect($result->net_gsb_paise)->toBe(720_000);
     // Wallet should NOT have been credited
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(0);
 });
@@ -359,3 +358,78 @@ it('retries after failure and credits exactly once', function () {
     expect($credited->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
 });
+
+it('re-running a no_match day does not compound carry-forward (retry is idempotent)', function () {
+    $dist = makeDistributorWithBv(300_000);  // Retailer
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 1_000_000,  // 10,000 BV
+        'right_bv_paise' => 800_000,   // 8,000 BV weaker
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $first = $svc->runForDistributor($dist->id, Carbon::today());
+    $second = $svc->runForDistributor($dist->id, Carbon::today());
+
+    // Same result row, identical numbers — nothing compounded.
+    expect($second->id)->toBe($first->id);
+    expect($second->status)->toBe(GsbCutoffResult::STATUS_NO_MATCH);
+    expect($second->power_cf_before_paise)->toBe(0);
+    expect($second->slab1_weaker_cf_before_paise)->toBe(0);
+    expect($second->weaker_bv_paise)->toBe(800_000);
+
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->power_side_bv_paise)->toBe(1_000_000);
+    expect($cf->slab1_weaker_bv_paise)->toBe(800_000);
+    expect($cf->power_side)->toBe('L');
+});
+
+it('re-run rewinds from recorded before-state even with pre-existing carry-forward', function () {
+    $dist = makeDistributorWithBv(300_000);
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 500_000,   // 5,000 BV on R from an earlier day
+        'power_side' => 'R',
+        'slab1_weaker_bv_paise' => 200_000, // 2,000 BV accumulated
+    ]);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 900_000,  // 9,000 BV
+        'right_bv_paise' => 300_000, // 3,000 BV + 5,000 CF = 8,000 → weaker side R
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $first = $svc->runForDistributor($dist->id, Carbon::today());
+    expect($first->power_side_before)->toBe('R');
+
+    $second = $svc->runForDistributor($dist->id, Carbon::today());
+
+    expect($second->power_cf_before_paise)->toBe(500_000);
+    expect($second->slab1_weaker_cf_before_paise)->toBe(200_000);
+
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    // weaker total = 3,000 + 5,000 (CF on R) + 2,000 slab1 CF = 10,000 BV; power = L 9,000
+    expect($cf->power_side)->toBe('L');
+    expect($cf->power_side_bv_paise)->toBe(900_000);
+    expect($cf->slab1_weaker_bv_paise)->toBe(1_000_000);
+});
+
+it('refuses to re-run an old date after a later cut-off already advanced the store', function () {
+    $dist = makeDistributorWithBv(300_000);
+    foreach ([today()->subDay(), today()] as $day) {
+        GroupBvDaily::create([
+            'distributor_id' => $dist->id,
+            'date' => $day->toDateString(),
+            'left_bv_paise' => 1_000_000,
+            'right_bv_paise' => 800_000,
+        ]);
+    }
+
+    $svc = app(GsbCutoffService::class);
+    $svc->runForDistributor($dist->id, Carbon::yesterday());
+    $svc->runForDistributor($dist->id, Carbon::today());
+
+    $svc->runForDistributor($dist->id, Carbon::yesterday());
+})->throws(RuntimeException::class, 'later cut-off');

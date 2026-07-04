@@ -57,10 +57,27 @@ final class GsbCutoffResult extends Model
         'distributor_id', 'cutoff_date',
         'left_bv_paise', 'right_bv_paise', 'weaker_bv_paise',
         'slab', 'gross_gsb_paise', 'admin_charge_paise', 'tds_paise', 'net_gsb_paise',
-        'power_cf_before_paise', 'power_cf_after_paise', 'power_side_after',
+        'power_cf_before_paise', 'power_side_before', 'power_cf_after_paise', 'power_side_after',
         'slab1_weaker_cf_before_paise', 'slab1_weaker_cf_after_paise',
         'status', 'failure_reason',
     ];
+
+    /**
+     * True when the run that produced this row advanced the rolling
+     * gsb_carryforwards store (no_match, frozen, repurchase held/suspended,
+     * credited). below_600bv returns before touching the store and the failed
+     * path rolls its CF mutation back, so those never advanced it.
+     */
+    public function advancedCarryForward(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_NO_MATCH,
+            self::STATUS_FROZEN,
+            self::STATUS_REPURCHASE_HELD,
+            self::STATUS_REPURCHASE_SUSPENDED,
+            self::STATUS_CREDITED,
+        ], true);
+    }
 
     /** @return BelongsTo<Distributor, $this> */
     public function distributor(): BelongsTo

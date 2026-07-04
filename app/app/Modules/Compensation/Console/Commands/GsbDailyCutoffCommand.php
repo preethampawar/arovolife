@@ -72,6 +72,7 @@ final class GsbDailyCutoffCommand extends Command
         $total = $distributors->count();
         $credited = 0;
         $failed = 0;
+        $mbFailed = 0;
 
         foreach ($distributors as $distributorId) {
             try {
@@ -80,7 +81,20 @@ final class GsbDailyCutoffCommand extends Command
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {
                     $credited++;
                     if ($mentorshipActive) {
-                        $this->mentorship->processForSponsee((int) $distributorId, $result);
+                        // MB failures are logged and counted separately — the
+                        // distributor's own GSB credit already succeeded, so an
+                        // MB error must not be triaged as a GSB cut-off failure.
+                        try {
+                            $this->mentorship->processForSponsee((int) $distributorId, $result);
+                        } catch (\Throwable $e) {
+                            $mbFailed++;
+                            Log::error('mb.credit.exception', [
+                                'sponsee_id' => $distributorId,
+                                'cutoff_date' => $date->toDateString(),
+                                'error' => $e->getMessage(),
+                                'exception' => get_class($e),
+                            ]);
+                        }
                     }
                 } elseif ($result->status === GsbCutoffResult::STATUS_FAILED) {
                     $failed++;
@@ -98,8 +112,8 @@ final class GsbDailyCutoffCommand extends Command
             }
         }
 
-        $this->info("Done — total: {$total}, credited: {$credited}, failed: {$failed}");
+        $this->info("Done — total: {$total}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}");
 
-        return $failed > 0 ? self::FAILURE : self::SUCCESS;
+        return ($failed > 0 || $mbFailed > 0) ? self::FAILURE : self::SUCCESS;
     }
 }
