@@ -15,6 +15,7 @@ use App\Modules\Admin\Http\Controllers\AdminKycController;
 use App\Modules\Admin\Http\Controllers\AdminLifetimeAwardsController;
 use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
+use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminBannerController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
@@ -192,6 +193,10 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/distributors', [AdminDistributorController::class, 'index'])->name('distributors.index');
+
+    // Platform staff register (super-admin only) — the team running the
+    // platform, separate from the distributor register.
+    Route::get('/staff', [AdminStaffUserController::class, 'index'])->middleware('role:admin')->name('staff.index');
     Route::get('/distributors/export', [AdminDistributorController::class, 'export'])->name('distributors.export');
 
     // Admin-created distributor (paper-onboarding flow). MUST appear before

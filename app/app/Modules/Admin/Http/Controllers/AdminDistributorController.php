@@ -71,9 +71,12 @@ final class AdminDistributorController extends Controller
 
         $distributors = $query->orderByDesc('distributors.id')->paginate(20)->withQueryString();
 
+        // Count only users who ARE distributors — platform staff (admin, KYC
+        // reviewers, …) live on the Staff Users page, not in this register.
         $statusCounts = DB::table('users')
-            ->select('status', DB::raw('count(*) as cnt'))
-            ->groupBy('status')
+            ->join('distributors', 'distributors.user_id', '=', 'users.id')
+            ->select('users.status', DB::raw('count(*) as cnt'))
+            ->groupBy('users.status')
             ->pluck('cnt', 'status');
 
         return view('admin.distributors.index', compact('distributors', 'statusCounts'));

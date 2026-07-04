@@ -81,6 +81,13 @@ compensating controls still apply:
 
 If you believe an action needs a second pair of eyes, get one before acting.
 
+**Where to see the team:** Admin → **Staff users** (super-admin only) lists every
+account holding an admin role, with their roles, status and last login. Staff
+accounts are separate from distributors and never appear in the Distributor
+register (whose status counts include distributors only). Staff provisioning is
+currently done by the technical team; a create/invite flow ships with the
+multi-operator phase.
+
 ---
 
 ## Always

@@ -85,6 +85,10 @@
                 $navItems = [
                     ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => '⬡'],
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => '◉'],
+                    // Staff register is super-admin only (route enforces role:admin).
+                    ...(auth()->user()?->hasRole('admin')
+                        ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => '👥', 'prefix' => 'admin.staff']]
+                        : []),
                     ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => '⌬', 'prefix' => 'admin.tree'],
                     ['route' => 'admin.kyc.index',                'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc'],
                     ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => '⇄', 'prefix' => 'admin.line-changes'],
