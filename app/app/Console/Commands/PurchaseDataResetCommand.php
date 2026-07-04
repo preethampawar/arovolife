@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Console\Commands;
+
+use App\Console\Actions\PurchaseDataResetAction;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+
+final class PurchaseDataResetCommand extends Command
+{
+    protected $signature = 'platform:reset-purchases {--force : Skip the interactive confirmation prompt}';
+
+    protected $description = 'Wipe all purchase-derived data (orders, BV, GSB/MB + other bonus results, wallet ledger, payouts, returns) while keeping users, distributors, the Genos tree, KYC, settings, plan configuration and the product catalog.';
+
+    public function handle(PurchaseDataResetAction $action): int
+    {
+        if (! $this->option('force')) {
+            $this->warn('THIS WILL WIPE ALL PURCHASE-DERIVED DATA (orders, BV, bonuses, wallets, payouts).');
+            $this->line(sprintf('Database: %s', (string) DB::connection()->getDatabaseName()));
+            $this->line('Current row counts:');
+            foreach (PurchaseDataResetAction::WIPE_TABLES as $table) {
+                if (! DB::getSchemaBuilder()->hasTable($table)) {
+                    continue;
+                }
+                $count = DB::table($table)->count();
+                if ($count > 0) {
+                    $this->line(sprintf('  %s: %d', $table, $count));
+                }
+            }
+            $this->line('Preserved: users, distributors, Genos tree, KYC, consents, settings, plan config (slabs/tiers/levels/rewards), arete centers, catalog, coupons, customers, ledger accounts, audit log.');
+            $this->line('');
+            if (! $this->confirm('Proceed with purchase-data reset?', false)) {
+                $this->info('Aborted.');
+
+                return self::FAILURE;
+            }
+        }
+
+        $action->execute(function (string $message): void {
+            $this->line($message);
+        });
+
+        $this->info('platform:reset-purchases complete.');
+
+        return self::SUCCESS;
+    }
+}
