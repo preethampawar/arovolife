@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $reference_id
  * @property string|null $reference_type
  * @property string|null $memo
+ * @property int|null $swept_by_payout_batch_id
  * @property Carbon $created_at
  */
 final class WalletLedgerEntry extends Model
@@ -26,6 +27,7 @@ final class WalletLedgerEntry extends Model
     protected $fillable = [
         'distributor_id', 'type', 'amount_paise',
         'reference_id', 'reference_type', 'memo',
+        'swept_by_payout_batch_id',
     ];
 
     protected function casts(): array
@@ -33,6 +35,7 @@ final class WalletLedgerEntry extends Model
         return [
             'amount_paise' => 'integer',
             'reference_id' => 'integer',
+            'swept_by_payout_batch_id' => 'integer',
         ];
     }
 }

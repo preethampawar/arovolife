@@ -309,7 +309,10 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
             Route::get('/', [AdminWeeklyPayoutController::class, 'index'])->name('index');
             Route::get('/{batch}', [AdminWeeklyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
-            Route::post('/{batch}/approve', [AdminWeeklyPayoutController::class, 'approve'])->name('approve')->whereNumber('batch');
+            // Separation of duties: only finance may approve a payout batch
+            // (admin-compliance / admin-operations can view but not approve).
+            Route::post('/{batch}/approve', [AdminWeeklyPayoutController::class, 'approve'])
+                ->middleware('can:finance.record')->name('approve')->whereNumber('batch');
             Route::get('/{batch}/neft', [AdminWeeklyPayoutController::class, 'exportNeft'])->name('neft')->whereNumber('batch');
         });
 

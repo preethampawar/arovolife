@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $payout_batch_id
  * @property int $distributor_id
+ * @property int $gross_paise
+ * @property int $admin_charge_paise
+ * @property int $tds_paise
  * @property int $wallet_balance_paise
  * @property int $repurchase_deduction_paise
  * @property int $net_transferred_paise
@@ -33,10 +36,14 @@ final class PayoutLineItem extends Model
     /** Personal BV < 3,000 BV (Retailer): balance held in wallet, NEFT blocked. */
     public const STATUS_WEB_ONLY = 'web_only';
 
+    /** Income gates passed but no bank account on file — held in wallet, not debited or swept. */
+    public const STATUS_NO_BANK_ACCOUNT = 'no_bank_account';
+
     protected $table = 'payout_line_items';
 
     protected $fillable = [
         'payout_batch_id', 'distributor_id',
+        'gross_paise', 'admin_charge_paise', 'tds_paise',
         'wallet_balance_paise', 'repurchase_deduction_paise', 'net_transferred_paise',
         'bank_account_last4', 'utr_number', 'status', 'failure_reason',
     ];
@@ -44,6 +51,9 @@ final class PayoutLineItem extends Model
     protected function casts(): array
     {
         return [
+            'gross_paise' => 'integer',
+            'admin_charge_paise' => 'integer',
+            'tds_paise' => 'integer',
             'wallet_balance_paise' => 'integer',
             'repurchase_deduction_paise' => 'integer',
             'net_transferred_paise' => 'integer',

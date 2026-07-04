@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Computes and credits the Mentorship Bonus for a sponsee's GSB cut-off result.
@@ -20,9 +20,7 @@ use Illuminate\Support\Facades\DB;
  * 10%×₹30,000 + 9%×₹15,000 = ₹4,350. Each sponsor-sponsee pair is tracked
  * independently; all three figures (start, step, floor) are admin-editable.
  *
- * Deductions applied before wallet credit (same as GSB):
- *   - Admin charge: 3% of gross MB, capped at ₹30,000.
- *   - TDS: 5% of (gross − admin charge).
+ * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
  */
 final class MentorshipBonusService
 {
@@ -30,7 +28,6 @@ final class MentorshipBonusService
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
         private readonly CompensationPlanSettingsService $plan,
-        private readonly BonusDeductionService $deductions,
     ) {}
 
     /**
@@ -66,6 +63,20 @@ final class MentorshipBonusService
             ->first();
 
         if ($alreadyCredited !== null) {
+            // A re-run with a DIFFERENT sponsee gross (admin corrected the GSB
+            // cut-off after MB was credited) cannot be silently absorbed — the
+            // delta would compound into every later bracket via the cumulative
+            // tracker. Surface it for manual reconciliation.
+            if ((int) $alreadyCredited->sponsee_gsb_paise !== (int) $cutoffResult->gross_gsb_paise) {
+                Log::warning('mb.credit.gross_mismatch', [
+                    'sponsor_id' => $alreadyCredited->sponsor_id,
+                    'sponsee_id' => $sponseeId,
+                    'cutoff_date' => $cutoffResult->cutoff_date->toDateString(),
+                    'credited_sponsee_gsb_paise' => (int) $alreadyCredited->sponsee_gsb_paise,
+                    'current_sponsee_gsb_paise' => (int) $cutoffResult->gross_gsb_paise,
+                ]);
+            }
+
             return $alreadyCredited;
         }
 
@@ -83,12 +94,8 @@ final class MentorshipBonusService
         // ₹30,000 boundary (the common case).
         $mbGross = $this->mentorshipGross($prevCumulative, $income);
         $rate = $income > 0 ? (int) round($mbGross * 100 / $income) : 0;
-        $deduction = $this->deductions->for(BonusType::Mentorship, $mbGross);
-        $adminCharge = $deduction->adminChargePaise;
-        $tds = $deduction->tdsPaise;
-        $mbNet = $deduction->netPaise;
 
-        return DB::transaction(function () use ($sponsorId, $sponseeId, $cutoffResult, $rate, $mbGross, $adminCharge, $tds, $mbNet, $newCumulative): MentorshipBonusResult {
+        return DB::transaction(function () use ($sponsorId, $sponseeId, $cutoffResult, $rate, $mbGross, $newCumulative): MentorshipBonusResult {
             $result = MentorshipBonusResult::create([
                 'sponsor_id' => $sponsorId,
                 'sponsee_id' => $sponseeId,
@@ -96,16 +103,15 @@ final class MentorshipBonusService
                 'sponsee_gsb_paise' => $cutoffResult->gross_gsb_paise,
                 'mb_rate_pct' => $rate,
                 'mb_gross_paise' => $mbGross,
-                'mb_admin_charge_paise' => $adminCharge,
-                'mb_tds_paise' => $tds,
-                'mb_paise' => $mbNet,
+                'mb_admin_charge_paise' => 0,
+                'mb_tds_paise' => 0,
                 'sponsee_cumulative_gsb_paise' => $newCumulative,
                 'status' => MentorshipBonusResult::STATUS_CREDITED,
             ]);
 
             $this->wallet->credit(
                 distributorId: (int) $sponsorId,
-                amountPaise: $mbNet,
+                amountPaise: $mbGross,
                 type: 'mb_credit',
                 referenceId: $result->id,
                 referenceType: 'mentorship_bonus_result',

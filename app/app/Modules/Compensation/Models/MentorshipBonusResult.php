@@ -16,10 +16,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon $cutoff_date
  * @property int $sponsee_gsb_paise
  * @property int $mb_rate_pct
- * @property int $mb_gross_paise      Rate × sponsee GSB — before deductions.
- * @property int $mb_admin_charge_paise 3% of gross, capped at ₹30,000.
- * @property int $mb_tds_paise        5% of (gross − admin charge).
- * @property int $mb_paise            Net credited to sponsor wallet.
+ * @property int $mb_gross_paise
+ * @property int $mb_admin_charge_paise
+ * @property int $mb_tds_paise
  * @property int $sponsee_cumulative_gsb_paise
  * @property string $status
  * @property string|null $failure_reason
@@ -35,7 +34,7 @@ final class MentorshipBonusResult extends Model
     protected $fillable = [
         'sponsor_id', 'sponsee_id', 'cutoff_date',
         'sponsee_gsb_paise', 'mb_rate_pct',
-        'mb_gross_paise', 'mb_admin_charge_paise', 'mb_tds_paise', 'mb_paise',
+        'mb_gross_paise', 'mb_admin_charge_paise', 'mb_tds_paise',
         'sponsee_cumulative_gsb_paise', 'status', 'failure_reason',
     ];
 
@@ -48,7 +47,6 @@ final class MentorshipBonusResult extends Model
             'mb_gross_paise' => 'integer',
             'mb_admin_charge_paise' => 'integer',
             'mb_tds_paise' => 'integer',
-            'mb_paise' => 'integer',
             'sponsee_cumulative_gsb_paise' => 'integer',
         ];
     }

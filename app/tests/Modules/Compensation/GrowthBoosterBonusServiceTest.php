@@ -45,7 +45,7 @@ function seedCutoffResult(int $distributorId, string $date, int $slab): GsbCutof
  */
 function seedOrder(int $totalPaise, Carbon $createdAt): void
 {
-    Order::create([
+    $order = Order::create([
         'order_no' => 'ORD-'.rand(10000, 99999),
         'customer_id' => 1,
         'attributed_distributor_id' => null,
@@ -58,9 +58,13 @@ function seedOrder(int $totalPaise, Carbon $createdAt): void
         'total_paise' => $totalPaise,
         'self_consumption' => false,
         'idempotency_key' => Str::uuid()->toString(),
-        'created_at' => $createdAt,
-        'updated_at' => $createdAt,
     ]);
+
+    // created_at is not fillable, so mass-assignment drops it and Eloquent
+    // stamps "now". Force the intended month explicitly (turnover is scoped
+    // by created_at) with timestamps disabled so it is not re-stamped.
+    $order->timestamps = false;
+    $order->forceFill(['created_at' => $createdAt, 'updated_at' => $createdAt])->save();
 }
 
 it('returns zero results when no eligible distributors have AGP', function () {
@@ -156,13 +160,12 @@ it('deducts 3% admin charge and 5% TDS', function () {
     $svc = app(GrowthBoosterBonusService::class);
     $svc->runForMonth($month);
 
+    // Deductions are applied at payout time, not at credit time.
     $row = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
-    $expectedAdmin = (int) round($row->gbb_gross_paise * 0.03);
-    $expectedTds = (int) round(($row->gbb_gross_paise - $expectedAdmin) * 0.05);
 
-    expect($row->admin_charge_paise)->toBe($expectedAdmin);
-    expect($row->tds_paise)->toBe($expectedTds);
-    expect($row->gbb_net_paise)->toBe($row->gbb_gross_paise - $expectedAdmin - $expectedTds);
+    expect($row->admin_charge_paise)->toBe(0);
+    expect($row->tds_paise)->toBe(0);
+    expect($row->gbb_net_paise)->toBe($row->gbb_gross_paise);
 });
 
 it('credits wallet via gbb_credit type', function () {

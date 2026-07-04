@@ -52,6 +52,21 @@ class WalletService
     }
 
     /**
+     * Sum of positive unswept credits for a distributor filtered to specific entry types.
+     * Used by PayoutService to compute per-stream gross before sweeping.
+     *
+     * @param  string[]  $types
+     */
+    public function sumUnsweptByTypes(int $distributorId, array $types): int
+    {
+        return (int) WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->whereIn('type', $types)
+            ->whereNull('swept_by_payout_batch_id')
+            ->where('amount_paise', '>', 0)
+            ->sum('amount_paise');
+    }
+
+    /**
      * Running balance ledger with cumulative sum, ordered by created_at.
      * Capped at the most recent 500 entries to prevent unbounded memory use.
      */

@@ -9,6 +9,7 @@ use App\Console\Commands\ResetAdnsCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Identity\Models\User;
@@ -50,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
                 ResetAdnsCommand::class,
                 GsbDailyCutoffCommand::class,
                 GsbWeeklyPayoutCommand::class,
+                MonthlyPayoutCommand::class,
                 RepurchaseEvaluateCommand::class,
             ]);
         }

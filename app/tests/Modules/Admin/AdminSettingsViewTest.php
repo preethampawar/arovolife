@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -137,6 +138,30 @@ it('AS-05: compensation switches are read-only from this UI (POST returns 403)',
 
     $response->assertStatus(403);
     expect(DB::table('settings')->where('key', 'compensation.payout.enabled')->value('value'))->toBe('false');
+});
+
+it('AS-05b: the Round-5 payout caps render and are admin-editable end-to-end', function (): void {
+    $admin = asvSeedAdmin();
+    $this->actingAs($admin);
+
+    // These render from registry defaults even with no DB row present.
+    $response = $this->get('/admin/settings');
+    $response->assertStatus(200);
+    $response->assertSee('Admin charge cap — weekly batch (paise)');
+    $response->assertSee('Admin charge cap — monthly batch (paise)');
+    $response->assertSee('Monthly income cap (paise)');
+
+    // Editing one persists AND is read back by the engine's settings service —
+    // proving the registry ⇄ CompensationPlanSettingsService wiring is closed
+    // (the gap this change fixes). A fresh instance avoids the lazy scalar cache.
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/comp.admin_charge.weekly_cap_paise', ['value' => '2000000'])
+        ->assertRedirect(route('admin.settings'));
+
+    expect(DB::table('settings')->where('key', 'comp.admin_charge.weekly_cap_paise')->value('value'))->toBe('2000000');
+
+    $plan = new CompensationPlanSettingsService;
+    expect($plan->adminChargeWeeklyCapPaise())->toBe(2_000_000);
 });
 
 it('AS-06: unknown setting key returns 404', function (): void {

@@ -21,7 +21,7 @@ beforeEach(function (): void {
 
 function seedRankOrder(int $totalPaise, Carbon $createdAt): void
 {
-    Order::create([
+    $order = Order::create([
         'order_no' => 'ORD-'.rand(10000, 99999),
         'customer_id' => 1,
         'attributed_distributor_id' => null,
@@ -34,9 +34,13 @@ function seedRankOrder(int $totalPaise, Carbon $createdAt): void
         'total_paise' => $totalPaise,
         'self_consumption' => false,
         'idempotency_key' => Str::uuid()->toString(),
-        'created_at' => $createdAt,
-        'updated_at' => $createdAt,
     ]);
+
+    // created_at is not fillable, so mass-assignment drops it and Eloquent
+    // stamps "now". Force the intended month explicitly (the rank pool is
+    // scoped by created_at) with timestamps disabled so it is not re-stamped.
+    $order->timestamps = false;
+    $order->forceFill(['created_at' => $createdAt, 'updated_at' => $createdAt])->save();
 }
 
 function seedRankQualification(int $distributorId, int $rank, string $monthStart, int $occurrence = 1, bool $carryForward = false): void
@@ -96,19 +100,17 @@ it('applies admin charge as min(3% of gross, ₹30,000)', function (): void {
     $svc->runForMonth($month);
 
     $result = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
-    $expectedAdminCharge = min((int) floor($result->gross_paise * 0.03), 3_000_000);
 
-    expect($result->admin_charge_paise)->toBe($expectedAdminCharge);
-    expect($result->admin_charge_paise)->toBeLessThanOrEqual(3_000_000);
+    // Deductions are applied at payout time, not at credit time.
+    expect($result->admin_charge_paise)->toBe(0);
+    expect($result->net_paise)->toBe($result->gross_paise);
 });
 
-it('caps admin charge at ₹30,000 (3,000,000 paise) for very large gross amounts', function (): void {
+it('records zero admin charge and tds in the result (deductions are deferred to payout)', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
     $monthStart = '2026-06-01';
 
-    // Turnover = 10,000,000,000 paise → rank-1 pool = 700,000,000 paise.
-    // 3% of 700,000,000 = 21,000,000 → capped at 3,000,000.
     seedRankOrder(10_000_000_000, $month->copy()->addDays(5));
     seedRankQualification($dist->id, rank: 1, monthStart: $monthStart, occurrence: 1);
 
@@ -117,10 +119,11 @@ it('caps admin charge at ₹30,000 (3,000,000 paise) for very large gross amount
 
     $result = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
 
-    expect($result->admin_charge_paise)->toBe(3_000_000);
+    expect($result->admin_charge_paise)->toBe(0);
+    expect($result->tds_paise)->toBe(0);
 });
 
-it('applies 5% TDS on gross (not on gross minus admin charge)', function (): void {
+it('credits net_paise equal to gross_paise (deductions deferred to payout)', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
     $monthStart = '2026-06-01';
@@ -132,10 +135,9 @@ it('applies 5% TDS on gross (not on gross minus admin charge)', function (): voi
     $svc->runForMonth($month);
 
     $result = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
-    $expectedTds = (int) round($result->gross_paise * 0.05);
 
-    expect($result->tds_paise)->toBe($expectedTds);
-    expect($result->net_paise)->toBe($result->gross_paise - $result->admin_charge_paise - $result->tds_paise);
+    expect($result->tds_paise)->toBe(0);
+    expect($result->net_paise)->toBe($result->gross_paise);
 });
 
 it('credits wallet with rank_credit type', function (): void {

@@ -15,9 +15,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Fortune Bonus engine — monthly 3×9 forced matrix, FCFS placement.
  *
- * Admin charge: applies per KP's 2026-06-26 amendment (was exempt before).
- * TDS: on (gross − admin charge), consistent with GSB/MB.
- * Ineligible ranks, level bonuses and eligibility tiers are all admin-editable
+ * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
+ * Level bonuses, eligibility tiers, and ineligible ranks are all admin-editable
  * via CompensationPlanSettingsService.
  *
  * Position → level: floor(log(2*position - 1, 3)).
@@ -27,7 +26,6 @@ final class FortuneBonusService
     public function __construct(
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
-        private readonly BonusDeductionService $deductions,
         private readonly IncomeEligibilityService $eligibility,
     ) {}
 
@@ -189,11 +187,6 @@ final class FortuneBonusService
                     continue;
                 }
 
-                $deduction = $this->deductions->for(BonusType::Fortune, $gross);
-                $adminCharge = $deduction->adminChargePaise;
-                $tds = $deduction->tdsPaise;
-                $net = $deduction->netPaise;
-
                 $result = FortuneBonusResult::updateOrCreate(
                     [
                         'distributor_id' => $participant->distributor_id,
@@ -203,16 +196,16 @@ final class FortuneBonusService
                         'position' => $participant->position,
                         'matrix_level' => $participant->matrix_level,
                         'gross_paise' => $gross,
-                        'admin_charge_paise' => $adminCharge,
-                        'tds_paise' => $tds,
-                        'net_paise' => $net,
+                        'admin_charge_paise' => 0,
+                        'tds_paise' => 0,
+                        'net_paise' => $gross,
                         'status' => FortuneBonusResult::STATUS_PENDING,
                     ],
                 );
 
                 $this->wallet->credit(
                     distributorId: $participant->distributor_id,
-                    amountPaise: $net,
+                    amountPaise: $gross,
                     type: 'fortune_credit',
                     referenceId: $result->id,
                     referenceType: 'fortune_bonus_result',
@@ -224,7 +217,7 @@ final class FortuneBonusService
                     'credited_at' => now(),
                 ]);
 
-                $totalNet += $net;
+                $totalNet += $gross;
                 $credited++;
             }
         });

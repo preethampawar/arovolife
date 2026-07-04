@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Models\Order;
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankQualification;
@@ -17,9 +16,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Pool per rank = company_turnover * pool_pct[rank] / 100.
  * Per-distributor gross = floor(pool / qualifier_count).
- * Admin charge = min(floor(gross * rate), cap) — Rank uses floor (not round).
- * TDS = round(gross * tds_rate) — applied to gross, NOT to (gross - admin_charge).
- * Net = gross - admin_charge - tds.
+ * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
  *
  * All rates, caps and pool/PYP figures are read from
  * CompensationPlanSettingsService (admin-editable), not hardcoded.
@@ -29,7 +26,6 @@ final class RankBonusService
     public function __construct(
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
-        private readonly BonusDeductionService $deductions,
     ) {}
 
     /**
@@ -105,13 +101,6 @@ final class RankBonusService
                         continue;
                     }
 
-                    // Rank floors its admin charge and charges TDS on gross
-                    // (BonusType::Rank encodes both conventions).
-                    $deduction = $this->deductions->for(BonusType::Rank, $grossPerDistributor);
-                    $adminCharge = $deduction->adminChargePaise;
-                    $tds = $deduction->tdsPaise;
-                    $net = $deduction->netPaise;
-
                     $result = RankBonusResult::updateOrCreate(
                         [
                             'distributor_id' => $distributorId,
@@ -123,18 +112,18 @@ final class RankBonusService
                             'pool_paise' => $poolPaise,
                             'qualifier_count' => $qualifierCount,
                             'gross_paise' => $grossPerDistributor,
-                            'admin_charge_paise' => $adminCharge,
-                            'tds_paise' => $tds,
-                            'net_paise' => max(0, $net),
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_paise' => $grossPerDistributor,
                             'status' => RankBonusResult::STATUS_PENDING,
                         ],
                     );
 
-                    if ($net > 0) {
+                    if ($grossPerDistributor > 0) {
                         $rankName = $this->plan->rankName($rank);
                         $this->wallet->credit(
                             distributorId: $distributorId,
-                            amountPaise: $net,
+                            amountPaise: $grossPerDistributor,
                             type: 'rank_credit',
                             referenceId: $result->id,
                             referenceType: 'rank_bonus_result',
@@ -146,7 +135,7 @@ final class RankBonusService
                             'credited_at' => now(),
                         ]);
 
-                        $byRank[$rank]['net_total'] += $net;
+                        $byRank[$rank]['net_total'] += $grossPerDistributor;
                         $credited++;
                     }
 

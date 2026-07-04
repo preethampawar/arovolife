@@ -23,10 +23,42 @@ use Illuminate\Support\Facades\DB;
  */
 final class CompensationPlanSettingsService
 {
+    /**
+     * Wallet ledger entry types belonging to each payout admin-charge group.
+     * Each group has its own ₹25,000/cycle ceiling (KP 2026-06-30 Round-5).
+     * Group C (Awards) carries no admin charge by default (non-cash gifts).
+     * ADC is Group D — separate ceiling from the five cash bonuses.
+     */
+    public const GROUP_A_TYPES = ['gsb_credit', 'mb_credit'];
+
+    public const GROUP_B_TYPES = ['gbb_credit', 'rank_credit', 'fortune_credit'];
+
+    public const GROUP_C_TYPES = ['awards_credit'];
+
+    public const GROUP_D_TYPES = ['adc_credit'];
+
+    /**
+     * All five cash-bonus types that count toward the ₹50L monthly gross cap
+     * (KP 2026-06-29 Round-4): GSB + MB + GBB + Rank + Fortune.
+     * ADC and Awards are excluded from the cap.
+     */
+    public const MONTHLY_CAP_TYPES = ['gsb_credit', 'mb_credit', 'gbb_credit', 'rank_credit', 'fortune_credit'];
+
     /** Registry defaults — used when a key is absent from the settings table. */
     private const SCALAR_DEFAULTS = [
         'comp.admin_charge.rate_bp' => 300,
         'comp.admin_charge.cap_paise' => 3_000_000,
+        // Per-group admin-charge ceilings (KP 2026-06-30 Round-5).
+        // Group A = GSB+MB (weekly), Groups B/C/D = monthly streams.
+        // Each group has an independent ₹25,000/cycle ceiling.
+        'comp.admin_charge.weekly_cap_paise' => 2_500_000,
+        'comp.admin_charge.monthly_cap_paise' => 2_500_000,
+        // Combined monthly gross cap across the five cash bonuses (KP Round-4).
+        // ₹50,00,000 = 500,000,000 paise. Combined gross of the five cash
+        // bonuses (MONTHLY_CAP_TYPES) per calendar month; excess is forfeited
+        // at payout with an income_cap_forfeit ledger debit.
+        // ADC and Awards are excluded from this cap.
+        'comp.monthly_income_cap_paise' => 500_000_000,
         // Admin charge scope flags. ON for the six cash bonuses; OFF for
         // Lifetime Awards — KP confirmed (2026-06-27 Round-2 Q6) that non-cash
         // awards carry no admin charge or TDS (only cash/cheque releases do).
@@ -89,6 +121,24 @@ final class CompensationPlanSettingsService
     public function adminChargeCapPaise(): int
     {
         return $this->scalarInt('comp.admin_charge.cap_paise');
+    }
+
+    /** Per-cycle admin-charge ceiling for Group A (GSB + MB, weekly). */
+    public function adminChargeWeeklyCapPaise(): int
+    {
+        return $this->scalarInt('comp.admin_charge.weekly_cap_paise');
+    }
+
+    /** Per-cycle admin-charge ceiling for Group B/C/D (GBB/Rank/Fortune/Awards/ADC, monthly). */
+    public function adminChargeMonthlyCapPaise(): int
+    {
+        return $this->scalarInt('comp.admin_charge.monthly_cap_paise');
+    }
+
+    /** Combined monthly gross cap for the five cash bonuses (₹50L = 500_000_000 paise). */
+    public function monthlyIncomeCapPaise(): int
+    {
+        return $this->scalarInt('comp.monthly_income_cap_paise');
     }
 
     /**

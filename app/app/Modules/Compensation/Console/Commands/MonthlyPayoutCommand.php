@@ -11,12 +11,12 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
 
-final class GsbWeeklyPayoutCommand extends Command
+final class MonthlyPayoutCommand extends Command
 {
-    protected $signature = 'gsb:weekly-payout
-                            {--date= : Batch date override (YYYY-MM-DD, default: today)}';
+    protected $signature = 'payout:monthly-run
+                            {--month= : Month to pay (YYYY-MM, defaults to current month)}';
 
-    protected $description = 'Run the Tuesday weekly payout batch for all eligible wallets';
+    protected $description = 'Run the monthly payout batch (GBB, Rank, Fortune, Awards, ADC — Groups B/C/D)';
 
     public function __construct(private readonly PayoutService $payoutService)
     {
@@ -26,23 +26,19 @@ final class GsbWeeklyPayoutCommand extends Command
     public function handle(): int
     {
         if (! Feature::for(null)->active(GenosSalesBonusFeature::class)) {
-            $this->info('Genos Sales Bonus is disabled (feature flag off) — no payout batch to run.');
+            $this->info('Compensation feature flag is OFF — no monthly payout batch to run.');
 
             return self::SUCCESS;
         }
 
-        $date = $this->option('date')
-            ? Carbon::parse((string) $this->option('date'))
-            : Carbon::today();
+        $month = $this->option('month')
+            ? Carbon::parse((string) $this->option('month').'-01')
+            : Carbon::today()->startOfMonth();
 
-        $this->info("Weekly payout (Group A) — {$date->toDateString()}");
-        $batch = $this->payoutService->runWeeklyBatch($date);
+        $this->info("Monthly payout (Groups B/C/D) — {$month->format('F Y')}");
+        $batch = $this->payoutService->runMonthlyBatch($month);
         $this->info("Batch #{$batch->id} {$batch->status} — {$batch->distributor_count} distributors, net ₹".number_format($batch->total_net_paise / 100, 2));
 
-        // Batch moves to PENDING (awaiting admin approval) after a successful run —
-        // it only reaches COMPLETED after the admin calls approve(). Treat PENDING
-        // with a processed_at timestamp as a successful run to avoid false-positive
-        // cron alerts.
         return $batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null
             ? self::SUCCESS
             : self::FAILURE;

@@ -203,22 +203,18 @@ it('runForMonth credits correct wallet amount for a level-0 participant', functi
 
     expect($result['credited'])->toBe(1);
 
-    // KP 2026-06-26: Fortune Bonus now carries the 3% admin charge; TDS on (gross − admin).
-    $expectedAdmin = (int) round(339 * 0.03);                       // 10
-    $expectedTds = (int) round((339 - $expectedAdmin) * 0.05);      // 16
-    $expectedNet = 339 - $expectedAdmin - $expectedTds;            // 313
-
+    // Deductions are applied at payout time, not at credit time.
     $bonusResult = FortuneBonusResult::where('distributor_id', $dist->id)->first();
     expect($bonusResult)->not->toBeNull();
     expect($bonusResult->gross_paise)->toBe(339);
-    expect($bonusResult->admin_charge_paise)->toBe($expectedAdmin);
-    expect($bonusResult->tds_paise)->toBe($expectedTds);
-    expect($bonusResult->net_paise)->toBe($expectedNet);
+    expect($bonusResult->admin_charge_paise)->toBe(0);
+    expect($bonusResult->tds_paise)->toBe(0);
+    expect($bonusResult->net_paise)->toBe(339);
     expect($bonusResult->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
 
     $ledger = WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'fortune_credit')->first();
     expect($ledger)->not->toBeNull();
-    expect($ledger->amount_paise)->toBe($bonusResult->net_paise);
+    expect($ledger->amount_paise)->toBe(339);
 });
 
 it('runForMonth is idempotent — re-running does not double-credit', function (): void {

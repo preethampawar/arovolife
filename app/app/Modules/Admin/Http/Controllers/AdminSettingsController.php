@@ -287,14 +287,49 @@ final class AdminSettingsController extends Controller
                 'max' => 10000,
                 'default' => '300',
             ],
+            // Legacy per-event admin-charge cap. The live weekly/monthly payout
+            // batches use the per-cycle caps below (KP 2026-06-30 Round-5); this
+            // key now only feeds the deprecated per-event deduction helper, so
+            // editing it does NOT change what the batches deduct. Kept for
+            // backward compatibility.
             'comp.admin_charge.cap_paise' => [
                 'group' => 'compensation_plan',
-                'label' => 'Admin charge monthly cap (paise)',
-                'description' => 'Maximum admin charge per bonus event. 3000000 = ₹30,000.',
+                'label' => 'Admin charge cap — legacy per-event (paise)',
+                'description' => 'Legacy cap on the admin charge for a single bonus event. 3000000 = ₹30,000. Superseded by the weekly/monthly per-cycle caps below — the live payout batches no longer apply this. Retained for backward compatibility.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 1_000_000_000,
                 'default' => '3000000',
+            ],
+            'comp.admin_charge.weekly_cap_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge cap — weekly batch (paise)',
+                'description' => 'Maximum admin charge per distributor in each weekly payout batch (Group A: GSB + Mentorship). 2500000 = ₹25,000 (KP 2026-06-30 Round-5).',
+                'impact' => 'Raising this lets the weekly batch deduct more admin charge before capping. Takes effect from the next weekly payout run.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 1_000_000_000,
+                'default' => '2500000',
+            ],
+            'comp.admin_charge.monthly_cap_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Admin charge cap — monthly batch (paise)',
+                'description' => 'Maximum admin charge per distributor per bonus group in each monthly payout batch (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC — each group capped independently). 2500000 = ₹25,000 (KP 2026-06-30 Round-5).',
+                'impact' => 'Raising this lets each monthly bonus group deduct more admin charge before capping. Takes effect from the next monthly payout run.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 1_000_000_000,
+                'default' => '2500000',
+            ],
+            'comp.monthly_income_cap_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Monthly income cap (paise)',
+                'description' => 'Per-distributor ₹50 lakh/month income cap (KP Round-4). In the monthly payout batch, Rank-bonus income above this is trimmed to the cap. 500000000 = ₹50,00,000.',
+                'impact' => 'Lowering this trims high earners\' monthly rank income sooner. Takes effect from the next monthly payout run.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100_000_000_000,
+                'default' => '500000000',
             ],
             // Admin-charge scope — KP Q&A 2026-06-27: applies to all 7 bonuses.
             // Each toggle exempts one stream when turned OFF.

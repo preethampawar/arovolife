@@ -24,16 +24,14 @@ use Illuminate\Support\Facades\DB;
  * Phase 5 will gate this on "no rank held in prior month" once the rank
  * engine exists.
  *
- * Pool rate, AGP cap, admin charge and TDS are all admin-editable via
- * CompensationPlanSettingsService. KP's 2026-06-26 amendment brought GBB into
- * the admin-charge scope, so net = gross − admin charge − TDS.
+ * Pool rate and AGP cap are admin-editable via CompensationPlanSettingsService.
+ * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
  */
 final class GrowthBoosterBonusService
 {
     public function __construct(
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
-        private readonly BonusDeductionService $deductions,
         private readonly IncomeEligibilityService $eligibility,
     ) {}
 
@@ -99,10 +97,6 @@ final class GrowthBoosterBonusService
                 }
 
                 $gross = $pointValuePaise * $agp;
-                $deduction = $this->deductions->for(BonusType::GrowthBooster, $gross);
-                $adminCharge = $deduction->adminChargePaise;
-                $tds = $deduction->tdsPaise;
-                $net = $deduction->netPaise;
 
                 $result = GbbMonthlyResult::updateOrCreate(
                     ['distributor_id' => $distributorId, 'year_month' => $yearMonth],
@@ -112,17 +106,17 @@ final class GrowthBoosterBonusService
                         'pool_paise' => $poolPaise,
                         'total_pool_agp' => $totalAgp,
                         'gbb_gross_paise' => $gross,
-                        'admin_charge_paise' => $adminCharge,
-                        'tds_paise' => $tds,
-                        'gbb_net_paise' => $net,
+                        'admin_charge_paise' => 0,
+                        'tds_paise' => 0,
+                        'gbb_net_paise' => $gross,
                         'status' => GbbMonthlyResult::STATUS_PENDING,
                     ],
                 );
 
-                if ($net > 0) {
+                if ($gross > 0) {
                     $this->wallet->credit(
                         distributorId: $distributorId,
-                        amountPaise: $net,
+                        amountPaise: $gross,
                         type: 'gbb_credit',
                         referenceId: $result->id,
                         referenceType: 'gbb_monthly_result',
