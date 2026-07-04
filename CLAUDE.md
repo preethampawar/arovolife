@@ -159,3 +159,329 @@ Project skills in `.claude/skills/`:
 ## One-line reminder for every session
 
 > *Commissions only on product sales. Cooling-off sacred. One PAN = one ADN. No e-commerce. Never store raw Aadhaar.*
+
+
+---
+
+# Claude Code Operating Guidelines
+
+These guidelines define how Claude should work on this repository. They are intended to maximize engineering productivity while minimizing token usage, unnecessary context growth, browser usage, repository exploration, and subagent usage.
+
+## Primary Objective
+
+Always optimize for:
+
+- Correctness
+- Production-quality code
+- Maintainability
+- Performance
+- Minimal token usage
+- Minimal context growth
+- Reuse of existing architecture
+
+---
+
+## Development Workflow
+
+For most development tasks follow this workflow:
+
+Understand → Implement → Verify → Finish
+
+For straightforward tasks:
+
+- implement first
+- explain briefly afterwards
+
+Only produce detailed implementation plans when explicitly requested.
+
+Do not over-engineer.
+
+---
+
+## Repository Exploration
+
+Repository exploration is expensive.
+
+Before searching:
+
+- Determine whether the current context already contains enough information.
+- Read only files directly related to the task.
+- Avoid repeatedly searching the repository.
+- Avoid repeatedly opening the same files.
+- Avoid repository-wide grep unless explicitly requested.
+
+Reuse architectural knowledge already learned during the session instead of rediscovering it.
+
+---
+
+## File Reading
+
+Always read the minimum amount of code necessary.
+
+Prefer reading:
+
+- one controller
+- one service
+- one model
+- one React component
+- one API endpoint
+
+instead of entire folders.
+
+If a single method answers the question, read only that method.
+
+---
+
+## Code Editing
+
+Prefer focused edits.
+
+Modify only affected code.
+
+Avoid rewriting entire files.
+
+Avoid formatting-only changes.
+
+Avoid regenerating unchanged code.
+
+Preserve existing coding style and project conventions.
+
+---
+
+## React & Inertia Development
+
+Reuse existing:
+
+- Components
+- Layouts
+- Hooks
+- Form components
+- Shared utilities
+
+Avoid creating duplicate UI components.
+
+Follow existing React patterns before introducing new abstractions.
+
+---
+
+## Laravel Development
+
+Prefer existing project architecture.
+
+Reuse existing:
+
+- Services
+- Actions
+- Form Requests
+- Policies
+- Resources
+- Events
+- Jobs
+
+Avoid introducing new architectural patterns unless there is a strong technical reason.
+
+Respect existing project conventions.
+
+---
+
+## Browser Usage
+
+Browser operations consume significant context.
+
+Only invoke browser tools when I explicitly request:
+
+- browser debugging
+- Playwright testing
+- UI verification
+- rendering validation
+- frontend interaction debugging
+
+Do not use browser tools simply to inspect backend code or understand repository structure.
+
+Prefer source code, logs, tests, and reasoning.
+
+After browser work completes, recommend:
+
+> Browser output remains in session context. Consider running `/compact` before continuing backend development.
+
+---
+
+## Playwright Usage
+
+Playwright should only be used when:
+
+- explicitly requested
+- reproducing browser bugs
+- validating UI behaviour
+- running end-to-end workflows
+
+Do not launch Playwright automatically.
+
+---
+
+## Database
+
+Inspect only required tables.
+
+Avoid unrelated schema exploration.
+
+Avoid unnecessary migration inspection.
+
+---
+
+## Code Audits
+
+Repository-wide audits consume significant context.
+
+Only perform repository-wide audits when explicitly requested.
+
+When auditing:
+
+- limit scope
+- inspect only requested modules
+- summarize findings
+- avoid rereading unchanged code
+
+---
+
+## Tool Usage
+
+Use the least expensive approach capable of solving the task.
+
+Preferred order:
+
+1. Reasoning
+2. Filesystem
+3. Laravel Boost
+4. GitHub
+5. Git
+6. Browser tools
+7. Playwright
+
+Only invoke MCP servers when they provide clear value.
+
+Avoid unnecessary browser MCP usage.
+
+---
+
+## GitHub
+
+Use GitHub tools only when necessary.
+
+Do not inspect pull requests, commits, issues, or branches unless they are directly related to the requested task.
+
+---
+
+## Subagents
+
+Avoid spawning subagents.
+
+Use subagents only when:
+
+- independent work can execute in parallel
+- repository-wide work is explicitly requested
+
+Never automatically create brainstorming or planning agents.
+
+---
+
+## Context Management
+
+Actively minimize context growth.
+
+After:
+
+- browser sessions
+- Playwright execution
+- repository-wide exploration
+- repository audits
+- major feature completion
+
+recommend:
+
+> Run `/compact` before continuing.
+
+When switching to an unrelated feature, recommend:
+
+> Start a fresh Claude session for the next feature.
+
+Treat completed work as stable.
+
+Avoid carrying obsolete implementation details forward.
+
+Compress previous conclusions into concise summaries whenever possible.
+
+---
+
+## Communication
+
+Be concise.
+
+Do not repeat previous explanations.
+
+Do not restate requirements.
+
+Do not summarize unchanged code.
+
+Show only relevant code whenever practical.
+
+---
+
+## Decision Making
+
+When requirements are sufficiently clear:
+
+Make reasonable engineering decisions independently.
+
+When ambiguity blocks implementation:
+
+Ask one concise clarification instead of exploring the repository.
+
+---
+
+## Long Running Sessions
+
+Continuously optimize for session efficiency.
+
+Avoid unnecessary browser usage.
+
+Avoid unnecessary Playwright execution.
+
+Avoid unnecessary repository exploration.
+
+Avoid unnecessary tool invocations.
+
+Avoid unnecessary subagent creation.
+
+If the current task is complete and a new unrelated task begins, recommend starting a new Claude session instead of continuing indefinitely.
+
+---
+
+## Session Checkpoints
+
+After completing a significant feature or milestone:
+
+1. Summarize completed work in concise bullet points.
+2. Recommend running `/compact`.
+3. If the next task is unrelated, recommend starting a fresh Claude session.
+
+---
+
+## Default Behaviour
+
+Always behave like an experienced Laravel and React engineer.
+
+Optimize for:
+
+- production-quality code
+- minimal token usage
+- minimal context growth
+- minimal repository exploration
+- minimal browser usage
+- minimal Playwright usage
+- minimal MCP usage
+- minimal subagent usage
+- targeted implementation
+- maintainable architecture
+
+Prioritize solving the requested task over exploring unrelated parts of the repository.
