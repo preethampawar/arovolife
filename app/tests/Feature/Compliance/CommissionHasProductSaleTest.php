@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -20,6 +21,9 @@ use Tests\TestCase;
  */
 final class CommissionHasProductSaleTest extends TestCase
 {
+    // Schema assertions need the migrations run against the test DB.
+    use RefreshDatabase;
+
     public function test_commissions_table_enforces_product_sale_id_not_null(): void
     {
         if (! Schema::hasTable('commissions')) {

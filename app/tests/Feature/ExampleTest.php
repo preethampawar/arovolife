@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+    // The landing page's shared top-nav composer queries product_categories,
+    // so the schema must exist even though these are markup smoke tests.
+    use RefreshDatabase;
+
     /**
      * A basic test example.
      */

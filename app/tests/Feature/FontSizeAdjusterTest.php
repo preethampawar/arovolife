@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -18,6 +19,10 @@ use Tests\TestCase;
  */
 class FontSizeAdjusterTest extends TestCase
 {
+    // The landing page's shared top-nav composer queries product_categories,
+    // so the schema must exist even though these are markup smoke tests.
+    use RefreshDatabase;
+
     public function test_landing_page_renders_font_size_adjuster_buttons(): void
     {
         $response = $this->get('/');
