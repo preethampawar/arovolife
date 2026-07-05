@@ -32,16 +32,25 @@
             <p class="text-lg font-bold text-brand-700 mt-1">@bv($personalBvPaise)</p>
             <p class="text-xs text-purple-600 font-medium">{{ $title->title ?? 'No title yet' }}</p>
         </div>
+        @php
+            $gsbMinBvLabel = number_format($gsbMinBvPaise / 100, 0);
+        @endphp
         <div class="rounded-xl border border-gray-200 p-3">
             <p class="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
                 Left Group BV today
-                <x-help-tip text="Total BV from left Genos subtree today." />
+                <x-help-tip text="Total BV from left Genos subtree today. Raw accumulator — if the distributor's personal BV is below {{ $gsbMinBvLabel }} BV, the daily cut-off discards it (status BELOW_600BV) instead of crediting it." />
             </p>
-            <p class="text-lg font-bold text-green-700 mt-1">@bv($todayBv?->left_bv_paise ?? 0)</p>
+            <p class="text-lg font-bold {{ $genosBvEligible ? 'text-green-700' : 'text-gray-400 line-through' }} mt-1">@bv($todayBv?->left_bv_paise ?? 0)</p>
+            @unless ($genosBvEligible)
+                <span class="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-medium">Not credited — personal BV below {{ $gsbMinBvLabel }}</span>
+            @endunless
         </div>
         <div class="rounded-xl border border-gray-200 p-3">
             <p class="text-[10px] uppercase tracking-wider text-gray-500">Right Group BV today</p>
-            <p class="text-lg font-bold text-green-700 mt-1">@bv($todayBv?->right_bv_paise ?? 0)</p>
+            <p class="text-lg font-bold {{ $genosBvEligible ? 'text-green-700' : 'text-gray-400 line-through' }} mt-1">@bv($todayBv?->right_bv_paise ?? 0)</p>
+            @unless ($genosBvEligible)
+                <span class="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-medium">Not credited — personal BV below {{ $gsbMinBvLabel }}</span>
+            @endunless
         </div>
         <div class="rounded-xl border border-gray-200 p-3">
             <p class="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
@@ -96,7 +105,7 @@
 
 {{-- Tabs --}}
 <div class="flex border-b border-gray-200 mb-5">
-    @foreach(['gsb' => 'GSB History', 'mb' => 'Mentorship Bonus', 'bv-log' => 'Daily BV Log', 'wallet' => 'Wallet Ledger', 'repurchase' => 'Repurchase', 'payouts' => 'Payout History', 'audit' => 'Audit Log'] as $key => $label)
+    @foreach(['gsb' => 'GSB History', 'genos-ledger' => 'Genos BV Ledger', 'mb' => 'Mentorship Bonus', 'bv-log' => 'Daily BV Log', 'wallet' => 'Wallet Ledger', 'repurchase' => 'Repurchase', 'payouts' => 'Payout History', 'audit' => 'Audit Log'] as $key => $label)
     <a href="{{ route('admin.compensation.distributors.show', [$distributor, 'tab' => $key]) }}"
        class="px-4 py-2 text-sm font-medium border-b-2 -mb-px
               {{ $tab === $key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
@@ -105,6 +114,6 @@
     @endforeach
 </div>
 
-@include('admin.compensation.distributors._tab-'.(in_array($tab, ['gsb','mb','bv-log','wallet','repurchase','payouts','audit'], true) ? $tab : 'gsb'))
+@include('admin.compensation.distributors._tab-'.(in_array($tab, ['gsb','genos-ledger','mb','bv-log','wallet','repurchase','payouts','audit'], true) ? $tab : 'gsb'))
 
 @endsection

@@ -15,6 +15,7 @@ use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -50,10 +51,19 @@ final class IncomeController extends Controller
             $titleService = app(PersonalBvTitleService::class);
             $title = $titleService->forBvPaise($personalBvPaise);
 
+            // Plan rule: below the minimum lifetime personal BV (default 600),
+            // downline Genos BV is not credited to the distributor at all, so
+            // the dashboard must show 0 — not the raw accumulator, which the
+            // cut-off will discard with status BELOW_600BV.
+            $gsbMinBvPaise = app(CompensationPlanSettingsService::class)->gsbMinBvPaise();
+            $genosBvEligible = $personalBvPaise >= $gsbMinBvPaise;
+
             $today = Carbon::today('Asia/Kolkata')->toDateString();
-            $dailyBv = GroupBvDaily::where('distributor_id', $distributorId)
-                ->whereDate('date', $today)
-                ->first();
+            $dailyBv = $genosBvEligible
+                ? GroupBvDaily::where('distributor_id', $distributorId)
+                    ->whereDate('date', $today)
+                    ->first()
+                : null;
 
             $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
         } catch (QueryException) {
@@ -62,11 +72,13 @@ final class IncomeController extends Controller
             $title = null;
             $dailyBv = null;
             $cf = null;
+            $gsbMinBvPaise = null;
+            $genosBvEligible = true;
         }
 
         return view('income.dashboard', compact(
             'distributor', 'walletBalancePaise', 'personalBvPaise',
-            'title', 'dailyBv', 'cf',
+            'title', 'dailyBv', 'cf', 'genosBvEligible', 'gsbMinBvPaise',
         ));
     }
 
@@ -87,6 +99,36 @@ final class IncomeController extends Controller
         }
 
         return view('income.genos-bv', compact('distributor', 'rows'));
+    }
+
+    public function genosLedger(Request $request): View
+    {
+        $distributor = $request->user()?->distributor;
+        abort_unless($distributor !== null, 403);
+
+        $from = $request->filled('from') ? Carbon::parse((string) $request->input('from')) : null;
+        $to = $request->filled('to') ? Carbon::parse((string) $request->input('to')) : null;
+
+        try {
+            $personalBvPaise = app(BvLedgerService::class)->totalPersonalBvPaise($distributor->id);
+            $gsbMinBvPaise = app(CompensationPlanSettingsService::class)->gsbMinBvPaise();
+            $genosBvEligible = $personalBvPaise >= $gsbMinBvPaise;
+
+            // Same rule as the dashboard: below the minimum personal BV, group
+            // BV is never credited, so the ledger stays hidden — not a raw
+            // accumulator the cut-off will discard.
+            $days = $genosBvEligible
+                ? app(GenosBvLedgerService::class)
+                    ->paginateDays($distributor->id, $from, $to)
+                    ->withQueryString()
+                : collect();
+        } catch (QueryException) {
+            $genosBvEligible = true;
+            $gsbMinBvPaise = null;
+            $days = collect();
+        }
+
+        return view('income.genos-ledger', compact('distributor', 'days', 'genosBvEligible', 'gsbMinBvPaise'));
     }
 
     public function gsbHistory(Request $request): View

@@ -12,6 +12,8 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RepurchaseCycle;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
@@ -29,12 +31,14 @@ final class AdminDistributorCompController extends Controller
         private readonly BvLedgerService $bvLedger,
         private readonly PersonalBvTitleService $titleService,
         private readonly WalletService $wallet,
+        private readonly CompensationPlanSettingsService $plan,
+        private readonly GenosBvLedgerService $genosLedger,
     ) {}
 
     public function show(Distributor $distributor, Request $request): View
     {
         $request->validate([
-            'tab' => ['nullable', 'in:gsb,mb,bv-log,wallet,payouts,audit,repurchase'],
+            'tab' => ['nullable', 'in:gsb,genos-ledger,mb,bv-log,wallet,payouts,audit,repurchase'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'status' => ['nullable', 'in:no_match,calculated,credited,failed,frozen,below_600bv'],
@@ -49,6 +53,12 @@ final class AdminDistributorCompController extends Controller
         $title = $this->titleService->forBvPaise($personalBvPaise);
         $todayBv = GroupBvDaily::where('distributor_id', $distributor->id)
             ->where('date', today()->toDateString())->first();
+
+        // Below the minimum personal BV the cut-off discards group BV with
+        // status BELOW_600BV; the raw accumulator stays visible for debugging
+        // but the view flags it as not credited.
+        $gsbMinBvPaise = $this->plan->gsbMinBvPaise();
+        $genosBvEligible = $personalBvPaise >= $gsbMinBvPaise;
         $cf = GsbCarryforward::where('distributor_id', $distributor->id)->first();
         $walletBalance = $this->wallet->balancePaise($distributor->id);
 
@@ -64,6 +74,9 @@ final class AdminDistributorCompController extends Controller
                     ->when($to, fn ($b) => $b->where('cutoff_date', '<=', $to->toDateString()))
                     ->when($request->status, fn ($b) => $b->where('status', $request->status))
                     ->orderByDesc('cutoff_date')->paginate(30)->withQueryString(),
+            ],
+            'genos-ledger' => [
+                'days' => $this->genosLedger->paginateDays($distributor->id, $from, $to)->withQueryString(),
             ],
             'mb' => [
                 'rows' => MentorshipBonusResult::where('sponsor_id', $distributor->id)
@@ -104,6 +117,8 @@ final class AdminDistributorCompController extends Controller
             'personalBvPaise' => $personalBvPaise,
             'title' => $title,
             'todayBv' => $todayBv,
+            'genosBvEligible' => $genosBvEligible,
+            'gsbMinBvPaise' => $gsbMinBvPaise,
             'cf' => $cf,
             'walletBalance' => $walletBalance,
             'failedToday' => $failedToday,

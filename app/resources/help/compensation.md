@@ -10,6 +10,14 @@ The day closes at midnight IST; the cut-off job runs at 00:10 the next morning a
 - Matches against GSB slabs (constrained by their personal purchase title)
 - Credits the wallet with the **gross** GSB amount — admin charge and TDS are deducted later, at payout time (not at cut-off)
 
+### 600 BV eligibility gate
+Distributors whose lifetime personal BV is below the minimum (default 600 BV, admin-editable) are skipped at cut-off with status `below_600bv`: their day's group BV is discarded, never carried forward, and never retroactively counted. Group BV still *propagates* into the raw accumulator intraday, so on this page their Left/Right Group BV cards show the raw figures struck through with an amber **"Not credited — personal BV below 600"** pill; the distributor's own income dashboard shows 0 instead. This is why a distributor can appear to "have" group BV yet earn no GSB.
+
+### Genos BV Ledger tab
+The distributor compensation page has a **Genos BV Ledger** tab: a transaction-style view grouped by day. Each day lists every paid downline order that credited the distributor's Left or Right group BV (order link, buyer ADN, side, +BV — derived from the propagation log via the placement tree, not double-written), closed by that day's **cut-off settlement** row showing the status, any slab matched, and the carry-forward that survived (power side + slab-1 weaker). Use it to answer "where did this Left/Right BV come from and where did it go?".
+
+Distributors have the same ledger under **My Income → Genos Ledger**, with two differences (data minimisation): buyers appear as **ADN only** (no names, no order links), and the page is hidden entirely while the distributor is below the 600 BV personal minimum — same gate as their dashboard.
+
 ## Slab table
 Each slab's gross GSB = **slab score × ₹360** (KP-confirmed; the ₹360 score rate and every slab figure are admin-editable under Compensation → Plan settings). Values below reflect the live plan configuration.
 

@@ -6,6 +6,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 
@@ -53,6 +54,7 @@ it('redirects unauthenticated users from all income routes', function (): void {
     $routes = [
         route('income.dashboard'),
         route('income.genos-bv'),
+        route('income.genos-ledger'),
         route('income.gsb-history'),
         route('income.mentorship'),
         route('income.wallet'),
@@ -90,6 +92,121 @@ it('renders income dashboard for a distributor', function (): void {
     $this->get(route('income.dashboard'))
         ->assertOk()
         ->assertSee('My Income');
+});
+
+it('shows group BV as 0 on the dashboard when personal BV is below 600', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    // Downline BV has accumulated, but the distributor has no personal BV.
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => $distributorId,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 150_000, // 1,500 BV
+        'right_bv_paise' => 80_000, // 800 BV
+    ]);
+
+    $this->get(route('income.dashboard'))
+        ->assertOk()
+        ->assertSee('requires 600 BV of personal purchases')
+        ->assertDontSee('1,500')
+        ->assertDontSee('as of last page load');
+});
+
+it('shows accumulated group BV on the dashboard once personal BV reaches 600', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    disableTestForeignKeys();
+    try {
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => 999_999,
+            'bv_paise' => 60_000, // exactly 600 BV — the gate is >=
+            'type' => 'accrual',
+            'effective_at' => now()->format('Y-m-d H:i:s.v'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => $distributorId,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 150_000, // 1,500 BV
+        'right_bv_paise' => 80_000, // 800 BV
+    ]);
+
+    $this->get(route('income.dashboard'))
+        ->assertOk()
+        ->assertSee('1,500')
+        ->assertSee('as of last page load')
+        ->assertDontSee('requires 600 BV of personal purchases');
+});
+
+it('shows the genos ledger with buyer ADN only — never the buyer name', function (): void {
+    ['user' => $user, 'distributorId' => $rootId] = incomeDistributor();
+    ['user' => $buyerUser, 'distributorId' => $buyerId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('users')->where('id', $buyerUser->id)->update(['full_name' => 'Secret Buyer Name']);
+    DB::table('distributors')->where('id', $buyerId)
+        ->update(['placement_parent_id' => $rootId, 'placement_side' => 'L']);
+    DB::table('genealogy_closure')->insert([
+        ['ancestor_id' => $buyerId, 'descendant_id' => $buyerId, 'depth' => 0],
+        ['ancestor_id' => $rootId, 'descendant_id' => $buyerId, 'depth' => 1],
+    ]);
+
+    disableTestForeignKeys();
+    try {
+        // Root has 600 personal BV — eligible to see the ledger.
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $rootId,
+            'order_id' => 999_998,
+            'bv_paise' => 60_000,
+            'type' => 'accrual',
+            'effective_at' => now()->format('Y-m-d H:i:s.v'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => 2001,
+        'distributor_id' => $buyerId,
+        'bv_paise' => 50_000, // 500 BV on the left
+        'date' => today()->toDateString(),
+    ]);
+
+    $buyerAdn = DB::table('distributors')->where('id', $buyerId)->value('adn');
+
+    $this->get(route('income.genos-ledger'))
+        ->assertOk()
+        ->assertSee($buyerAdn)
+        ->assertSee('+500')
+        ->assertSee('Cut-off pending for this day.')
+        ->assertDontSee('Secret Buyer Name');
+});
+
+it('hides the genos ledger below 600 personal BV', function (): void {
+    ['user' => $user, 'distributorId' => $rootId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => 2002,
+        'distributor_id' => $rootId + 1, // any downline row; ledger must not render regardless
+        'bv_paise' => 50_000,
+        'date' => today()->toDateString(),
+    ]);
+
+    $this->get(route('income.genos-ledger'))
+        ->assertOk()
+        ->assertSee('Genos BV is not being counted yet.')
+        ->assertDontSee('Purchase BV');
 });
 
 it('renders genos bv page with empty state', function (): void {

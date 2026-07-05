@@ -9,6 +9,7 @@ use Laravel\Pennant\Feature;
 $tabs = [
     ['route' => 'income.dashboard',   'label' => 'Dashboard', 'visible' => true],
     ['route' => 'income.genos-bv',    'label' => 'Genos BV',  'visible' => true],
+    ['route' => 'income.genos-ledger', 'label' => 'Genos Ledger', 'visible' => true],
     ['route' => 'income.gsb-history', 'label' => 'GSB History', 'visible' => true],
     ['route' => 'income.mentorship',  'label' => 'Mentorship', 'visible' => Feature::for(null)->active(MentorshipBonusFeature::class)],
     ['route' => 'income.growth-booster', 'label' => 'Growth Booster', 'visible' => Feature::for(null)->active(GrowthBoosterBonusFeature::class)],

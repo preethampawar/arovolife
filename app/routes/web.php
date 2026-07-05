@@ -553,6 +553,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // My Income (Compensation — Phase 4)
     Route::get('/income', [IncomeController::class, 'dashboard'])->name('income.dashboard');
     Route::get('/income/genos-bv', [IncomeController::class, 'genosBv'])->name('income.genos-bv');
+    Route::get('/income/genos-ledger', [IncomeController::class, 'genosLedger'])->name('income.genos-ledger');
     Route::get('/income/gsb-history', [IncomeController::class, 'gsbHistory'])->name('income.gsb-history');
     Route::get('/income/gsb-history/export', [IncomeController::class, 'exportGsb'])->name('income.gsb-history.export');
     Route::get('/income/mentorship', [IncomeController::class, 'mentorship'])->name('income.mentorship');
