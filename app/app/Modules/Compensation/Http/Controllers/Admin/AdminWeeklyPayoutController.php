@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Number;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminWeeklyPayoutController extends Controller
@@ -22,7 +23,7 @@ final class AdminWeeklyPayoutController extends Controller
         $batches = PayoutBatch::orderByDesc('batch_date')->paginate(20);
         // Computed here, not in the view: `::class` inside a @php(...) Blade
         // directive fails to compile (unexpected token "class").
-        $minPayout = number_format($plan->minPayoutPaise() / 100, 0);
+        $minPayout = Number::format($plan->minPayoutPaise() / 100, 0);
 
         return view('admin.compensation.weekly-payouts.index', compact('batches', 'minPayout'));
     }
@@ -85,7 +86,7 @@ final class AdminWeeklyPayoutController extends Controller
                     $line->distributor->adn ?? '',
                     $line->distributor->user?->full_name ?? '',
                     $line->bank_account_last4 ?? '',
-                    number_format($line->net_transferred_paise / 100, 2),
+                    number_format($line->net_transferred_paise / 100, 2, '.', ''),
                     $line->utr_number ?? '',
                     $line->status,
                 ]);

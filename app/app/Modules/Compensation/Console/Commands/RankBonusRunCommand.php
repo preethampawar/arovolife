@@ -9,6 +9,7 @@ use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class RankBonusRunCommand extends Command
@@ -41,7 +42,7 @@ final class RankBonusRunCommand extends Command
 
         $result = $this->rankBonus->runForMonth($month);
 
-        $this->line('Company turnover: ₹'.number_format($result['turnover_paise'] / 100, 2));
+        $this->line('Company turnover: ₹'.Number::format($result['turnover_paise'] / 100, 2));
         $this->line('Distributors credited: '.$result['credited']);
         $this->newLine();
 
@@ -52,8 +53,8 @@ final class RankBonusRunCommand extends Command
                 $rank,
                 $rankName,
                 $data['qualifiers'],
-                '₹'.number_format($data['pool_paise'] / 100, 2),
-                '₹'.number_format($data['net_total'] / 100, 2),
+                '₹'.Number::format($data['pool_paise'] / 100, 2),
+                '₹'.Number::format($data['net_total'] / 100, 2),
             ];
         }
 

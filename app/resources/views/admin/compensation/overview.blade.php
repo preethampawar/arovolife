@@ -25,23 +25,23 @@
             Failed jobs
             <x-help-tip text="Jobs that errored during today's cut-off or payout run. Each links to the affected distributor." />
         </p>
-        <p class="mt-1 text-lg font-bold {{ $todayFailed > 0 ? 'text-red-600' : 'text-green-700' }}">{{ number_format($todayFailed) }}</p>
+        <p class="mt-1 text-lg font-bold {{ $todayFailed > 0 ? 'text-red-600' : 'text-green-700' }}">{{ \Illuminate\Support\Number::format($todayFailed) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             Pending payouts
-            <x-help-tip text="Total amount queued for the next Tuesday bank transfer. Does not include wallets below the ₹{{ number_format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum." />
+            <x-help-tip text="Total amount queued for the next Tuesday bank transfer. Does not include wallets below the ₹{{ \Illuminate\Support\Number::format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum." />
         </p>
-        <p class="mt-1 text-lg font-bold text-blue-700">₹{{ number_format($pendingPayoutPaise / 100, 2) }}</p>
+        <p class="mt-1 text-lg font-bold text-blue-700">₹{{ \Illuminate\Support\Number::format($pendingPayoutPaise / 100, 2) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             GSB this week
             <x-help-tip text="GSB credited to wallets (after admin charge + TDS) since last Tuesday 00:00. Reversals are shown separately — they do not reduce this figure." />
         </p>
-        <p class="mt-1 text-lg font-bold text-purple-700">₹{{ number_format($gsbThisWeekPaise / 100, 2) }}</p>
+        <p class="mt-1 text-lg font-bold text-purple-700">₹{{ \Illuminate\Support\Number::format($gsbThisWeekPaise / 100, 2) }}</p>
         @if($gsbReversalsThisWeekPaise > 0)
-            <p class="text-xs text-amber-600 font-medium mt-0.5">₹{{ number_format($gsbReversalsThisWeekPaise / 100, 2) }} reversed</p>
+            <p class="text-xs text-amber-600 font-medium mt-0.5">₹{{ \Illuminate\Support\Number::format($gsbReversalsThisWeekPaise / 100, 2) }} reversed</p>
         @endif
     </div>
 </div>
@@ -129,7 +129,7 @@
                     <td class="px-4 py-2 text-right">@bv($row->right_bv_paise)</td>
                     <td class="px-4 py-2 text-center">{{ $row->slab ?? '—' }}</td>
                     <td class="px-4 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">
-                        {{ $row->net_gsb_paise > 0 ? '₹'.number_format($row->net_gsb_paise / 100, 2) : '—' }}
+                        {{ $row->net_gsb_paise > 0 ? '₹'.\Illuminate\Support\Number::format($row->net_gsb_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-4 py-2 text-center">
                         @php $badges = ['credited' => 'bg-green-100 text-green-700', 'failed' => 'bg-red-100 text-red-700', 'no_match' => 'bg-gray-100 text-gray-600', 'frozen' => 'bg-blue-100 text-blue-700', 'below_600bv' => 'bg-amber-100 text-amber-700']; @endphp

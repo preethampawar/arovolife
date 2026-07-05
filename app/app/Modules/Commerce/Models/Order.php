@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Number;
 
 /**
  * @property string $order_no
@@ -110,7 +111,7 @@ final class Order extends Model
 
     public function displayTotal(): string
     {
-        return '₹'.number_format($this->total_paise / 100, 2);
+        return '₹'.Number::format($this->total_paise / 100, 2);
     }
 
     /**

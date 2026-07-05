@@ -7,6 +7,7 @@ namespace App\Modules\Identity\Services;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Number;
 
 /**
  * The ID-card stats panel rendered in three places:
@@ -75,7 +76,7 @@ final class DistributorIdCardStats
 
         $paise = $this->bvLedger->totalPersonalBvPaise($distributor->id);
 
-        return $paise > 0 ? number_format($paise / 100, 0).' BV' : null;
+        return $paise > 0 ? Number::format($paise / 100, 0).' BV' : null;
     }
 
     /**

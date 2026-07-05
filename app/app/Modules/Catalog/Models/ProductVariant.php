@@ -7,6 +7,7 @@ namespace App\Modules\Catalog\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Number;
 
 /**
  * @property string $inventory_policy
@@ -50,12 +51,12 @@ final class ProductVariant extends Model
 
     public function displayPrice(): string
     {
-        return '₹'.number_format($this->sale_price_paise / 100, 2);
+        return '₹'.Number::format($this->sale_price_paise / 100, 2);
     }
 
     public function displayMrp(): string
     {
-        return '₹'.number_format($this->mrp_paise / 100, 2);
+        return '₹'.Number::format($this->mrp_paise / 100, 2);
     }
 
     /**
@@ -70,7 +71,7 @@ final class ProductVariant extends Model
 
     public function displayDistributorPrice(): string
     {
-        return '₹'.number_format($this->distributor_price_paise / 100, 2);
+        return '₹'.Number::format($this->distributor_price_paise / 100, 2);
     }
 
     public function hasDiscount(): bool

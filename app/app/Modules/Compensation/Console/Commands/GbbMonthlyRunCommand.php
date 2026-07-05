@@ -8,6 +8,7 @@ use App\Modules\Compensation\Services\GrowthBoosterBonusService;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class GbbMonthlyRunCommand extends Command
@@ -41,8 +42,8 @@ final class GbbMonthlyRunCommand extends Command
         $this->table(
             ['Metric', 'Value'],
             [
-                ['Pool', '₹'.number_format($result['pool_paise'] / 100, 2)],
-                ['Total AGP', number_format($result['total_agp'])],
+                ['Pool', '₹'.Number::format($result['pool_paise'] / 100, 2)],
+                ['Total AGP', Number::format($result['total_agp'])],
                 ['Distributors credited', $result['credited']],
                 ['Skipped (no AGP)', $result['skipped_no_agp']],
             ],

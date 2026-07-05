@@ -41,12 +41,12 @@
             <div class="flex-1">
                 <a href="{{ route('shop.product', $item->variant->product->slug) }}" class="font-semibold text-gray-900 hover:text-brand-600">{{ $item->variant->product->name }}</a>
                 <p class="text-xs text-gray-500 mt-0.5 font-mono">SKU {{ $item->variant->variant_sku }}</p>
-                <p class="text-sm font-semibold text-gray-900 mt-1">₹{{ number_format($item->unit_price_paise / 100, 2) }}</p>
+                <p class="text-sm font-semibold text-gray-900 mt-1">₹{{ \Illuminate\Support\Number::format($item->unit_price_paise / 100, 2) }}</p>
                 {{-- Per-product BV under the price — distributor-only, a factual
                      point value, never an earnings figure (hard rule #3). --}}
                 @auth
                     @if(auth()->user()->distributor && $item->bv_paise > 0)
-                    <p class="text-xs font-semibold text-brand-700 mt-0.5" title="Business Volume — points used in the compensation plan">{{ number_format($item->bv_paise / 100, 0) }} BV</p>
+                    <p class="text-xs font-semibold text-brand-700 mt-0.5" title="Business Volume — points used in the compensation plan">{{ \Illuminate\Support\Number::format($item->bv_paise / 100, 0) }} BV</p>
                     @endif
                 @endauth
             </div>
@@ -100,22 +100,22 @@
                  (DSR Rule 5(1)(d) / hard rule #3). --}}
             <div class="flex justify-between text-sm mb-4 pb-4 border-b border-gray-200 text-brand-700">
                 <span class="font-semibold">Total BV</span>
-                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ number_format($bvTotal / 100, 0) }} BV</span>
+                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ \Illuminate\Support\Number::format($bvTotal / 100, 0) }} BV</span>
             </div>
             @endif
         @endauth
         <div class="space-y-2 text-sm mb-4 pb-4 border-b border-gray-200">
-            <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ number_format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ number_format($cart->gstPaise() / 100, 2) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ \Illuminate\Support\Number::format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ \Illuminate\Support\Number::format($cart->gstPaise() / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">Shipping</span>
-                @if($shippingPaise > 0)<span class="font-medium">₹{{ number_format($shippingPaise / 100, 2) }}</span>
+                @if($shippingPaise > 0)<span class="font-medium">₹{{ \Illuminate\Support\Number::format($shippingPaise / 100, 2) }}</span>
                 @else<span class="font-medium text-green-700">Free</span>@endif
             </div>
             @if($shippingPaise > 0 && $amountToFreeShippingPaise > 0)
-            <p class="text-xs text-gray-500">Add ₹{{ number_format($amountToFreeShippingPaise / 100, 2) }} more to get free shipping.</p>
+            <p class="text-xs text-gray-500">Add ₹{{ \Illuminate\Support\Number::format($amountToFreeShippingPaise / 100, 2) }} more to get free shipping.</p>
             @endif
             @if($couponDiscount > 0)
-            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ number_format($couponDiscount / 100, 2) }}</span></div>
+            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ \Illuminate\Support\Number::format($couponDiscount / 100, 2) }}</span></div>
             @endif
         </div>
 
@@ -139,7 +139,7 @@
 
         <div class="flex justify-between mb-5">
             <span class="font-semibold text-gray-900">Total</span>
-            <span class="font-bold text-lg text-gray-900">₹{{ number_format($finalTotal / 100, 2) }}</span>
+            <span class="font-bold text-lg text-gray-900">₹{{ \Illuminate\Support\Number::format($finalTotal / 100, 2) }}</span>
         </div>
         <a href="{{ route('shop.checkout') }}"
            class="block text-center w-full py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm transition-colors">

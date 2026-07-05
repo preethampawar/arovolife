@@ -23,10 +23,10 @@
                     <strong class="text-gray-900">{{ $item->product_name_snapshot }}</strong>
                     × {{ $item->qty }}
                     @if($showBv && $item->lineBvPaise() > 0)
-                    <span class="ml-1 text-xs text-brand-700" title="Business Volume for this line">({{ number_format($item->lineBvPaise() / 100, 0) }} BV)</span>
+                    <span class="ml-1 text-xs text-brand-700" title="Business Volume for this line">({{ \Illuminate\Support\Number::format($item->lineBvPaise() / 100, 0) }} BV)</span>
                     @endif
                 </span>
-                <span class="font-medium">₹{{ number_format($item->line_total_paise / 100, 2) }}</span>
+                <span class="font-medium">₹{{ \Illuminate\Support\Number::format($item->line_total_paise / 100, 2) }}</span>
             </div>
             @endforeach
         </div>
@@ -35,16 +35,16 @@
             {{-- BV at the TOP of the totals, mirroring the cart's Order Summary. --}}
             <div class="flex justify-between text-brand-700 pb-2 mb-2 border-b border-gray-100">
                 <span class="font-semibold">Total BV</span>
-                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ number_format($order->bvTotalPaise() / 100, 0) }} BV</span>
+                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ \Illuminate\Support\Number::format($order->bvTotalPaise() / 100, 0) }} BV</span>
             </div>
             @endif
-            <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span>₹{{ number_format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
-            <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ number_format($order->gst_paise / 100, 2) }}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span>₹{{ \Illuminate\Support\Number::format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ \Illuminate\Support\Number::format($order->gst_paise / 100, 2) }}</span></div>
             @if($order->discount_paise > 0)
-            <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ number_format($order->discount_paise / 100, 2) }}</span></div>
+            <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \Illuminate\Support\Number::format($order->discount_paise / 100, 2) }}</span></div>
             @endif
             <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span>
-                @if($order->shipping_paise > 0)<span>₹{{ number_format($order->shipping_paise / 100, 2) }}</span>
+                @if($order->shipping_paise > 0)<span>₹{{ \Illuminate\Support\Number::format($order->shipping_paise / 100, 2) }}</span>
                 @else<span class="text-green-700">Free</span>@endif
             </div>
             <div class="flex justify-between font-semibold pt-2 border-t border-gray-100 mt-2">

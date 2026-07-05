@@ -7,8 +7,8 @@
 @include('partials._toast-container')
 
 @php
-    $bv = fn ($paise) => $paise === null ? '—' : number_format($paise / 100, 0).' BV';
-    $rupees = fn ($paise) => $paise === null ? '—' : '₹'.number_format($paise / 100, 2);
+    $bv = fn ($paise) => $paise === null ? '—' : \Illuminate\Support\Number::format($paise / 100, 0).' BV';
+    $rupees = fn ($paise) => $paise === null ? '—' : '₹'.\Illuminate\Support\Number::format($paise / 100, 2);
 @endphp
 
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
@@ -29,7 +29,7 @@
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-1">GSB slabs</h2>
     <p class="text-xs text-gray-500 mb-3">
-        Bonus follows the score × rate model — currently <strong>₹{{ number_format($scoreRatePaise / 100, 2) }}</strong>
+        Bonus follows the score × rate model — currently <strong>₹{{ \Illuminate\Support\Number::format($scoreRatePaise / 100, 2) }}</strong>
         per score point, so the bonus is computed from the score on save. A blank score leaves the bonus unset
         (e.g. slab 7 until its figures are confirmed).
     </p>
@@ -68,7 +68,7 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab. The bonus is score × the per-point rate, so it recomputes on save. Leave blank to leave the bonus unset." /></label>
                     <input type="number" name="score" data-field-label="Score" data-score-input value="{{ $row->score }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.number_format(($row->score * $scoreRatePaise) / 100, 0) : '—' }}</span>
+                    <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.\Illuminate\Support\Number::format(($row->score * $scoreRatePaise) / 100, 0) : '—' }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">AGP / occurrence <x-help-tip text="Arovolife Growth Points awarded each time this slab is earned (feeds the monthly Growth Booster pool)." /></label>

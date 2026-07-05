@@ -173,13 +173,13 @@ final class IncomeController extends Controller
             foreach ($rows as $row) {
                 fputcsv($out, [
                     $row->cutoff_date->toDateString(),
-                    number_format($row->left_bv_paise / 100, 0),
-                    number_format($row->right_bv_paise / 100, 0),
+                    number_format($row->left_bv_paise / 100, 0, '.', ''),
+                    number_format($row->right_bv_paise / 100, 0, '.', ''),
                     $row->slab,
-                    number_format($row->gross_gsb_paise / 100, 2),
-                    number_format($row->admin_charge_paise / 100, 2),
-                    number_format($row->tds_paise / 100, 2),
-                    number_format($row->net_gsb_paise / 100, 2),
+                    number_format($row->gross_gsb_paise / 100, 2, '.', ''),
+                    number_format($row->admin_charge_paise / 100, 2, '.', ''),
+                    number_format($row->tds_paise / 100, 2, '.', ''),
+                    number_format($row->net_gsb_paise / 100, 2, '.', ''),
                     $row->status,
                 ]);
             }
@@ -394,8 +394,8 @@ final class IncomeController extends Controller
                 fputcsv($out, [
                     $entry->created_at?->toDateString(),
                     $entry->type,
-                    number_format($entry->amount_paise / 100, 2),
-                    number_format($balance / 100, 2),
+                    number_format($entry->amount_paise / 100, 2, '.', ''),
+                    number_format($balance / 100, 2, '.', ''),
                 ]);
             }
             fclose($out);

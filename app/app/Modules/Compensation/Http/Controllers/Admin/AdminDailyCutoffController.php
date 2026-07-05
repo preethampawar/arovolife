@@ -75,10 +75,10 @@ final class AdminDailyCutoffController extends Controller
                 .(int) ($r->left_bv_paise / 100).','
                 .(int) ($r->right_bv_paise / 100).','
                 .'"'.($r->slab ?? '').'",'
-                .number_format($r->gross_gsb_paise / 100, 2).','
-                .number_format($r->admin_charge_paise / 100, 2).','
-                .number_format($r->tds_paise / 100, 2).','
-                .number_format($r->net_gsb_paise / 100, 2).','
+                .number_format($r->gross_gsb_paise / 100, 2, '.', '').','
+                .number_format($r->admin_charge_paise / 100, 2, '.', '').','
+                .number_format($r->tds_paise / 100, 2, '.', '').','
+                .number_format($r->net_gsb_paise / 100, 2, '.', '').','
                 .'"'.$r->status.'"'."\n";
         }
 

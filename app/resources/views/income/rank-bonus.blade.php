@@ -17,13 +17,13 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Net Rank Bonus earned (page)</p>
             <p class="text-2xl font-bold text-gray-900">
-                {{ $rows->isEmpty() ? '—' : '₹'.number_format($totalNet / 100, 0) }}
+                {{ $rows->isEmpty() ? '—' : '₹'.\Illuminate\Support\Number::format($totalNet / 100, 0) }}
             </p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Months credited</p>
             <p class="text-2xl font-bold text-gray-900">
-                {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? number_format($rows->total()) : count($rows) }}
+                {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \Illuminate\Support\Number::format($rows->total()) : count($rows) }}
             </p>
         </div>
     </div>
@@ -82,10 +82,10 @@
                                 {{ $rankNames[$row->rank_number] ?? 'Rank '.$row->rank_number }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ number_format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ number_format($row->admin_charge_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ number_format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ number_format($row->net_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">₹{{ \Illuminate\Support\Number::format($row->gross_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->admin_charge_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->net_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($row->status) }}

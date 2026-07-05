@@ -8,6 +8,7 @@ use App\Modules\Compensation\Services\FortuneBonusService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class FortuneBonusRunCommand extends Command
@@ -40,7 +41,7 @@ final class FortuneBonusRunCommand extends Command
 
         $this->line('Credited: '.$result['credited']);
         $this->line('Skipped (level 9, no bonus): '.$result['skipped_no_bonus']);
-        $this->line('Total net credited: ₹'.number_format($result['total_net_paise'] / 100, 2));
+        $this->line('Total net credited: ₹'.Number::format($result['total_net_paise'] / 100, 2));
 
         return self::SUCCESS;
     }

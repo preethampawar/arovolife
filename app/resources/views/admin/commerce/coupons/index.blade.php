@@ -33,7 +33,7 @@
                     <td class="px-4 py-3 text-gray-700">
                         {{ $coupon->displayValue() }}
                         @if($coupon->type === 'percent' && $coupon->max_discount_paise)
-                            <span class="text-xs text-gray-400">(max ₹{{ number_format($coupon->max_discount_paise / 100, 0) }})</span>
+                            <span class="text-xs text-gray-400">(max ₹{{ \Illuminate\Support\Number::format($coupon->max_discount_paise / 100, 0) }})</span>
                         @endif
                     </td>
                     <td class="px-4 py-3 text-gray-700 capitalize">{{ $coupon->scope }}</td>

@@ -43,10 +43,10 @@
                 @endphp
                 <tr>
                     <td class="px-4 py-2 font-medium">{{ $b->batch_date->format('d M Y') }} (Tue)</td>
-                    <td class="px-4 py-2 text-right">{{ number_format($b->distributor_count) }}</td>
-                    <td class="px-4 py-2 text-right">₹{{ number_format($b->total_gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right text-gray-500">₹{{ number_format($b->total_deductions_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ number_format($b->total_net_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right">{{ \Illuminate\Support\Number::format($b->distributor_count) }}</td>
+                    <td class="px-4 py-2 text-right">₹{{ \Illuminate\Support\Number::format($b->total_gross_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right text-gray-500">₹{{ \Illuminate\Support\Number::format($b->total_deductions_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($b->total_net_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $bc[$b->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ ucfirst($b->status) }}

@@ -69,23 +69,23 @@
                     @endphp
                     <tr class="bg-indigo-50 font-semibold text-xs text-indigo-700">
                         <td colspan="4" class="px-4 py-2">Month total</td>
-                        <td class="px-4 py-2 text-right">₹{{ number_format($monthGross / 100, 0) }}</td>
+                        <td class="px-4 py-2 text-right">₹{{ \Illuminate\Support\Number::format($monthGross / 100, 0) }}</td>
                         <td colspan="2"></td>
-                        <td class="px-4 py-2 text-right">₹{{ number_format($monthNet / 100, 0) }}</td>
+                        <td class="px-4 py-2 text-right">₹{{ \Illuminate\Support\Number::format($monthNet / 100, 0) }}</td>
                         <td></td>
                     </tr>
                     @php $monthGross = 0; $monthNet = 0; } $currentMonth = $rowMonth; $monthGross += $row->gross_gsb_paise; $monthNet += $row->net_gsb_paise; @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-700">{{ $row->cutoff_date->format('d M Y') }}</td>
-                        <td class="px-4 py-3 text-right font-mono">{{ number_format($row->left_bv_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono">{{ number_format($row->right_bv_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ \Illuminate\Support\Number::format($row->left_bv_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ \Illuminate\Support\Number::format($row->right_bv_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Slab {{ $row->slab }}</span>
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ number_format($row->gross_gsb_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-red-600">-₹{{ number_format($row->admin_charge_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-red-600">-₹{{ number_format($row->tds_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ number_format($row->net_gsb_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">₹{{ \Illuminate\Support\Number::format($row->gross_gsb_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-red-600">-₹{{ \Illuminate\Support\Number::format($row->admin_charge_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-red-600">-₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->net_gsb_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
                             @if($row->status === 'credited')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Credited</span>
@@ -100,9 +100,9 @@
                     @if($rows->isNotEmpty())
                     <tr class="bg-indigo-50 font-semibold text-xs text-indigo-700">
                         <td colspan="4" class="px-4 py-2">Month total</td>
-                        <td class="px-4 py-2 text-right">₹{{ number_format($monthGross / 100, 0) }}</td>
+                        <td class="px-4 py-2 text-right">₹{{ \Illuminate\Support\Number::format($monthGross / 100, 0) }}</td>
                         <td colspan="2"></td>
-                        <td class="px-4 py-2 text-right">₹{{ number_format($monthNet / 100, 0) }}</td>
+                        <td class="px-4 py-2 text-right">₹{{ \Illuminate\Support\Number::format($monthNet / 100, 0) }}</td>
                         <td></td>
                     </tr>
                     @endif

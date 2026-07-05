@@ -33,7 +33,7 @@
             <p class="text-xs text-purple-600 font-medium">{{ $title->title ?? 'No title yet' }}</p>
         </div>
         @php
-            $gsbMinBvLabel = number_format($gsbMinBvPaise / 100, 0);
+            $gsbMinBvLabel = \Illuminate\Support\Number::format($gsbMinBvPaise / 100, 0);
         @endphp
         <div class="rounded-xl border border-gray-200 p-3">
             <p class="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
@@ -57,7 +57,7 @@
                 Wallet balance
                 <x-help-tip text="Net GSB and MB credits not yet paid out." />
             </p>
-            <p class="text-lg font-bold text-blue-700 mt-1">₹{{ number_format($walletBalance / 100, 2) }}</p>
+            <p class="text-lg font-bold text-blue-700 mt-1">₹{{ \Illuminate\Support\Number::format($walletBalance / 100, 2) }}</p>
         </div>
     </div>
 

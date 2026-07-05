@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Number;
 
 final class AdminManualControlsController extends Controller
 {
@@ -163,7 +164,7 @@ final class AdminManualControlsController extends Controller
         });
 
         return redirect()->route('admin.compensation.distributors.show', $distributor)
-            ->with('status', '₹'.number_format($amountReversed / 100, 2).' GSB reversed for '.$distributor->adn.'.');
+            ->with('status', '₹'.Number::format($amountReversed / 100, 2).' GSB reversed for '.$distributor->adn.'.');
     }
 
     public function recalcCarryForward(Request $request): RedirectResponse
@@ -244,7 +245,7 @@ final class AdminManualControlsController extends Controller
         });
 
         return redirect()->route('admin.compensation.distributors.show', $distributor)
-            ->with('status', '₹'.number_format($amountPaise / 100, 2).' manual credit added for '.$distributor->adn.'.');
+            ->with('status', '₹'.Number::format($amountPaise / 100, 2).' manual credit added for '.$distributor->adn.'.');
     }
 
     public function forcePayout(Request $request): RedirectResponse

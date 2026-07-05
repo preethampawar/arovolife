@@ -15,7 +15,7 @@
     @if(! $genosBvEligible)
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-500 font-medium">Genos BV is not being counted yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Group BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? number_format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
+            <p class="text-sm text-gray-400 mt-1">Group BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? \Illuminate\Support\Number::format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
         </div>
     @else
 
@@ -69,10 +69,10 @@
                         <td class="px-4 py-2.5 text-gray-500">Purchase BV</td>
                         <td class="px-4 py-2.5 font-mono text-gray-700">{{ $credit->buyer_adn }}</td>
                         <td class="px-4 py-2.5 text-right font-mono font-medium {{ $credit->side === 'L' ? 'text-green-700' : 'text-gray-300' }}">
-                            {{ $credit->side === 'L' ? '+'.number_format($credit->bv_paise / 100, 0) : '—' }}
+                            {{ $credit->side === 'L' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
                         </td>
                         <td class="px-4 py-2.5 text-right font-mono font-medium {{ $credit->side === 'R' ? 'text-green-700' : 'text-gray-300' }}">
-                            {{ $credit->side === 'R' ? '+'.number_format($credit->bv_paise / 100, 0) : '—' }}
+                            {{ $credit->side === 'R' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
                         </td>
                     </tr>
                     @empty
@@ -100,8 +100,8 @@
                             @endif
                         </td>
                         <td colspan="2" class="px-4 py-2.5 text-right text-indigo-900 text-xs">
-                            carried forward: <span class="font-mono font-medium">power {{ $c->power_side_after ? '('.$c->power_side_after.') ' : '' }}{{ number_format($c->power_cf_after_paise / 100, 0) }}</span>
-                            · <span class="font-mono font-medium">slab-1 weaker {{ number_format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
+                            carried forward: <span class="font-mono font-medium">power {{ $c->power_side_after ? '('.$c->power_side_after.') ' : '' }}{{ \Illuminate\Support\Number::format($c->power_cf_after_paise / 100, 0) }}</span>
+                            · <span class="font-mono font-medium">slab-1 weaker {{ \Illuminate\Support\Number::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
                         </td>
                     </tr>
                     @else

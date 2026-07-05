@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Number;
 
 /**
  * A compliance document uploaded by an admin and published for public
@@ -64,10 +65,10 @@ final class ComplianceDocument extends Model
     {
         $bytes = $this->size_bytes;
         if ($bytes >= 1_048_576) {
-            return number_format($bytes / 1_048_576, 1).' MB';
+            return Number::format($bytes / 1_048_576, 1).' MB';
         }
         if ($bytes >= 1024) {
-            return number_format($bytes / 1024, 0).' KB';
+            return Number::format($bytes / 1024, 0).' KB';
         }
 
         return $bytes.' B';

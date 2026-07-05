@@ -12,17 +12,17 @@
     <div class="grid grid-cols-3 gap-4 mb-8">
         <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
             <p class="text-xs text-gray-500 mb-1">Accrued</p>
-            <p class="text-xl font-bold text-green-700">{{ number_format($breakdown->accruedPaise / 100, 0) }}</p>
+            <p class="text-xl font-bold text-green-700">{{ \Illuminate\Support\Number::format($breakdown->accruedPaise / 100, 0) }}</p>
             <p class="text-xs text-gray-400">BV</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
             <p class="text-xs text-gray-500 mb-1">Reversed</p>
-            <p class="text-xl font-bold text-red-600">{{ number_format(abs($breakdown->reversedPaise) / 100, 0) }}</p>
+            <p class="text-xl font-bold text-red-600">{{ \Illuminate\Support\Number::format(abs($breakdown->reversedPaise) / 100, 0) }}</p>
             <p class="text-xs text-gray-400">BV</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
             <p class="text-xs text-gray-500 mb-1">Net BV</p>
-            <p class="text-xl font-bold text-brand-700">{{ number_format($breakdown->netPaise / 100, 0) }}</p>
+            <p class="text-xl font-bold text-brand-700">{{ \Illuminate\Support\Number::format($breakdown->netPaise / 100, 0) }}</p>
             <p class="text-xs text-gray-400">BV</p>
         </div>
     </div>
@@ -80,10 +80,10 @@
                             </div>
                         </td>
                         <td class="px-4 py-3 text-right font-semibold {{ $isReversal ? 'text-red-600' : 'text-green-700' }}">
-                            {{ $isReversal ? '−' : '+' }}{{ number_format(abs($entry->bv_paise) / 100, 0) }}
+                            {{ $isReversal ? '−' : '+' }}{{ \Illuminate\Support\Number::format(abs($entry->bv_paise) / 100, 0) }}
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-brand-700">
-                            {{ number_format($running / 100, 0) }}
+                            {{ \Illuminate\Support\Number::format($running / 100, 0) }}
                         </td>
                     </tr>
                     @endforeach
@@ -113,7 +113,7 @@
                         @endif
                     </div>
                     <span class="text-lg font-bold {{ $isReversal ? 'text-red-600' : 'text-green-700' }}">
-                        {{ $isReversal ? '−' : '+' }}{{ number_format(abs($entry->bv_paise) / 100, 0) }} BV
+                        {{ $isReversal ? '−' : '+' }}{{ \Illuminate\Support\Number::format(abs($entry->bv_paise) / 100, 0) }} BV
                     </span>
                 </div>
                 <div class="flex justify-between text-xs text-gray-500">
@@ -128,7 +128,7 @@
                 </div>
                 <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs">
                     <span class="text-gray-400">Running total</span>
-                    <span class="font-semibold text-brand-700">{{ number_format($running / 100, 0) }} BV</span>
+                    <span class="font-semibold text-brand-700">{{ \Illuminate\Support\Number::format($running / 100, 0) }} BV</span>
                 </div>
             </div>
             @endforeach

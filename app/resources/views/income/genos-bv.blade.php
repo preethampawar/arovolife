@@ -29,21 +29,21 @@
 
         @if(! $slabProgress->genosBvEligible)
             <div class="mx-5 mb-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-                Genos BV is not being counted yet. Group BV starts counting toward these slabs after your lifetime personal purchases reach {{ number_format($slabProgress->gsbMinBvPaise / 100, 0) }} BV.
+                Genos BV is not being counted yet. Group BV starts counting toward these slabs after your lifetime personal purchases reach {{ \Illuminate\Support\Number::format($slabProgress->gsbMinBvPaise / 100, 0) }} BV.
             </div>
         @else
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-5">
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
                     <p class="text-xs text-gray-500 flex items-center gap-1">Left group BV today <x-help-tip text="Today's Left group BV plus any carry-forward sitting on your Left side. This is the figure tonight's 23:59 cut-off will use." /></p>
-                    <p class="text-xl font-bold font-mono text-gray-900">{{ number_format($slabProgress->leftEffectivePaise / 100, 0) }}</p>
+                    <p class="text-xl font-bold font-mono text-gray-900">{{ \Illuminate\Support\Number::format($slabProgress->leftEffectivePaise / 100, 0) }}</p>
                 </div>
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
                     <p class="text-xs text-gray-500 flex items-center gap-1">Right group BV today <x-help-tip text="Today's Right group BV plus any carry-forward sitting on your Right side. This is the figure tonight's 23:59 cut-off will use." /></p>
-                    <p class="text-xl font-bold font-mono text-gray-900">{{ number_format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
+                    <p class="text-xl font-bold font-mono text-gray-900">{{ \Illuminate\Support\Number::format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
                 </div>
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
                     <p class="text-xs text-gray-500 flex items-center gap-1">Matched BV so far <x-help-tip text="The lower of your Left and Right group BV. The slabs below are matched against this figure at the 23:59 cut-off." /></p>
-                    <p class="text-xl font-bold font-mono text-gray-900">{{ number_format(min($slabProgress->leftEffectivePaise, $slabProgress->rightEffectivePaise) / 100, 0) }}</p>
+                    <p class="text-xl font-bold font-mono text-gray-900">{{ \Illuminate\Support\Number::format(min($slabProgress->leftEffectivePaise, $slabProgress->rightEffectivePaise) / 100, 0) }}</p>
                 </div>
             </div>
         @endif
@@ -69,15 +69,15 @@
                     @foreach($slabProgress->rows as $row)
                     <tr class="{{ $row->earnedCount > 0 ? 'bg-green-50/60' : ($row->isNext ? 'bg-amber-50/70' : '') }}">
                         <td class="px-5 py-3 font-semibold {{ $row->earnedCount > 0 ? 'text-green-800' : ($row->isNext ? 'text-amber-800' : 'text-gray-700') }}">Slab {{ $row->slab }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-700">{{ number_format($row->matchedBvPaise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-700">{{ \Illuminate\Support\Number::format($row->matchedBvPaise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-gray-600">
                             {{ $row->titleRequired }}
                             @if($row->lockedByTitle)
-                                <span class="block text-xs text-gray-400">unlocks at {{ number_format($row->titleMinBvPaise / 100, 0) }} BV of personal purchases</span>
+                                <span class="block text-xs text-gray-400">unlocks at {{ \Illuminate\Support\Number::format($row->titleMinBvPaise / 100, 0) }} BV of personal purchases</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono {{ $row->isNext ? 'font-medium text-amber-800' : 'text-gray-600' }}">
-                            {{ $slabProgress->genosBvEligible ? number_format($row->progressPaise / 100, 0) : '—' }}
+                            {{ $slabProgress->genosBvEligible ? \Illuminate\Support\Number::format($row->progressPaise / 100, 0) : '—' }}
                         </td>
                         <td class="px-5 py-3">
                             @if($row->earnedCount > 0)
@@ -85,7 +85,7 @@
                             @elseif($row->isNext)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Next target</span>
                                 @if($slabProgress->genosBvEligible)
-                                    <span class="block mt-1 text-xs text-amber-700">{{ number_format($row->remainingPaise / 100, 0) }} BV more to match</span>
+                                    <span class="block mt-1 text-xs text-amber-700">{{ \Illuminate\Support\Number::format($row->remainingPaise / 100, 0) }} BV more to match</span>
                                 @endif
                             @else
                                 <span class="text-gray-300">—</span>
@@ -151,8 +151,8 @@
                     @foreach($rows as $row)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-700">{{ $row->cutoff_date->format('d M Y') }}</td>
-                        <td class="px-4 py-3 text-right font-mono">{{ number_format($row->left_bv_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono">{{ number_format($row->right_bv_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ \Illuminate\Support\Number::format($row->left_bv_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ \Illuminate\Support\Number::format($row->right_bv_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center text-gray-500">{{ $row->left_bv_paise <= $row->right_bv_paise ? 'Left' : 'Right' }}</td>
                         <td class="px-4 py-3 text-center">
                             @if($row->slab)
@@ -161,8 +161,8 @@
                                 <span class="text-gray-400 text-xs">—</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-700">{{ number_format($row->power_cf_after_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-700">{{ number_format($row->slab1_weaker_cf_after_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-700">{{ \Illuminate\Support\Number::format($row->power_cf_after_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-700">{{ \Illuminate\Support\Number::format($row->slab1_weaker_cf_after_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
                             @if($row->slab)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">GSB earned</span>

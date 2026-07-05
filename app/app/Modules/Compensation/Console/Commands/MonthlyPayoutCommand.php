@@ -9,6 +9,7 @@ use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class MonthlyPayoutCommand extends Command
@@ -37,7 +38,7 @@ final class MonthlyPayoutCommand extends Command
 
         $this->info("Monthly payout (Groups B/C/D) — {$month->format('F Y')}");
         $batch = $this->payoutService->runMonthlyBatch($month);
-        $this->info("Batch #{$batch->id} {$batch->status} — {$batch->distributor_count} distributors, net ₹".number_format($batch->total_net_paise / 100, 2));
+        $this->info("Batch #{$batch->id} {$batch->status} — {$batch->distributor_count} distributors, net ₹".Number::format($batch->total_net_paise / 100, 2));
 
         return $batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null
             ? self::SUCCESS

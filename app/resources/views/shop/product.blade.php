@@ -128,7 +128,7 @@
                  Hidden from anonymous/customer visitors to avoid implying income
                  from a purchase (DSR Rule 5(1)(d) / hard rule #3). --}}
             <span class="text-sm font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2.5 py-1 rounded" title="Business Volume — points used in the compensation plan">
-                {{ number_format($variant->bv_paise / 100, 0) }} BV
+                {{ \Illuminate\Support\Number::format($variant->bv_paise / 100, 0) }} BV
             </span>
             @endif
         </div>

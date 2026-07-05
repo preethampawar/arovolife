@@ -9,6 +9,7 @@ use App\Modules\Commerce\Models\Coupon;
 use App\Modules\Commerce\Models\CouponRedemption;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Services\DTOs\CouponResult;
+use Illuminate\Support\Number;
 
 /**
  * Validates promo codes against a cart and computes the rupee discount.
@@ -55,7 +56,7 @@ final class CouponService
 
         $subtotal = $cart->subtotalPaise();
         if ($subtotal < $coupon->min_purchase_paise) {
-            $needed = number_format(($coupon->min_purchase_paise - $subtotal) / 100, 2);
+            $needed = Number::format(($coupon->min_purchase_paise - $subtotal) / 100, 2);
 
             return CouponResult::fail("Add ₹{$needed} more to use this code.");
         }

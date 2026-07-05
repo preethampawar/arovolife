@@ -4,7 +4,7 @@
 
 @section('content')
 
-@php $rupees = fn ($paise) => '₹'.number_format(($paise ?? 0) / 100, 0); @endphp
+@php $rupees = fn ($paise) => '₹'.\Illuminate\Support\Number::format(($paise ?? 0) / 100, 0); @endphp
 
 <div class="mb-6 flex items-start justify-between gap-4">
     <div class="flex-1 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">

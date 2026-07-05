@@ -17,7 +17,7 @@
         @if($batch->status === 'pending')
         <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
               data-confirm-title="Approve payout batch"
-              data-confirm="Approve this payout batch of ₹{{ number_format($batch->total_net_paise / 100, 2) }} to {{ $batch->distributor_count }} distributor(s)?"
+              data-confirm="Approve this payout batch of ₹{{ \Illuminate\Support\Number::format($batch->total_net_paise / 100, 2) }} to {{ $batch->distributor_count }} distributor(s)?"
               data-confirm-impact="Impact: this confirms the NEFT transfers have been (or will be) sent and marks all pending line items as transferred. This cannot be undone from this screen.">
             @csrf
             <button type="submit"
@@ -50,23 +50,23 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Distributors</p>
-        <p class="mt-1 text-lg font-bold text-gray-900">{{ number_format($batch->distributor_count) }}</p>
+        <p class="mt-1 text-lg font-bold text-gray-900">{{ \Illuminate\Support\Number::format($batch->distributor_count) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             Total gross <x-help-tip text="Sum of wallet balances before repurchase deduction." />
         </p>
-        <p class="mt-1 text-lg font-bold text-gray-900">₹{{ number_format($batch->total_gross_paise / 100, 2) }}</p>
+        <p class="mt-1 text-lg font-bold text-gray-900">₹{{ \Illuminate\Support\Number::format($batch->total_gross_paise / 100, 2) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             Deductions <x-help-tip text="Repurchase deduction + admin charge + TDS across all line items." />
         </p>
-        <p class="mt-1 text-lg font-bold text-red-600">₹{{ number_format($batch->total_deductions_paise / 100, 2) }}</p>
+        <p class="mt-1 text-lg font-bold text-red-600">₹{{ \Illuminate\Support\Number::format($batch->total_deductions_paise / 100, 2) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Net to transfer</p>
-        <p class="mt-1 text-lg font-bold text-green-700">₹{{ number_format($batch->total_net_paise / 100, 2) }}</p>
+        <p class="mt-1 text-lg font-bold text-green-700">₹{{ \Illuminate\Support\Number::format($batch->total_net_paise / 100, 2) }}</p>
     </div>
 </div>
 
@@ -127,12 +127,12 @@
                     <td class="px-3 py-2 text-gray-700 truncate max-w-[140px]">
                         {{ $line->distributor->user?->full_name ?? '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right">₹{{ number_format($line->wallet_balance_paise / 100, 2) }}</td>
+                    <td class="px-3 py-2 text-right">₹{{ \Illuminate\Support\Number::format($line->wallet_balance_paise / 100, 2) }}</td>
                     <td class="px-3 py-2 text-right text-gray-500">
-                        {{ $line->repurchase_deduction_paise > 0 ? '₹'.number_format($line->repurchase_deduction_paise / 100, 2) : '—' }}
+                        {{ $line->repurchase_deduction_paise > 0 ? '₹'.\Illuminate\Support\Number::format($line->repurchase_deduction_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-3 py-2 text-right font-semibold {{ $line->net_transferred_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">
-                        ₹{{ number_format($line->net_transferred_paise / 100, 2) }}
+                        ₹{{ \Illuminate\Support\Number::format($line->net_transferred_paise / 100, 2) }}
                     </td>
                     <td class="px-3 py-2 font-mono text-gray-500">{{ $line->bank_account_last4 ?? '—' }}</td>
                     <td class="px-3 py-2 font-mono text-gray-500">{{ $line->utr_number ?? '—' }}</td>

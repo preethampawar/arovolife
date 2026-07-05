@@ -7,7 +7,7 @@
 @include('partials._toast-container')
 
 @php
-    $rupees = fn ($paise) => '₹'.number_format(($paise ?? 0) / 100, 0);
+    $rupees = fn ($paise) => '₹'.\Illuminate\Support\Number::format(($paise ?? 0) / 100, 0);
     $byRank = $rewards->groupBy('rank_number');
 @endphp
 

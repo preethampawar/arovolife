@@ -79,7 +79,7 @@
                 <td class="px-4 py-3 text-gray-500 text-xs">{{ $rtn->created_at->format('d M Y H:i') }}</td>
                 <td class="px-4 py-3 text-right font-semibold">
                     @if($rtn->buybackDecision)
-                    ₹{{ number_format($rtn->buybackDecision->net_refund_paise / 100, 2) }}
+                    ₹{{ \Illuminate\Support\Number::format($rtn->buybackDecision->net_refund_paise / 100, 2) }}
                     @else
                     <span class="text-gray-400">—</span>
                     @endif

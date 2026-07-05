@@ -32,9 +32,9 @@
                 @foreach($months as $m)
                 <tr>
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->year_month)->format('F Y') }}</td>
-                    <td class="px-4 py-2 text-right">{{ number_format($m->distributor_count) }}</td>
-                    <td class="px-4 py-2 text-right">{{ number_format($m->total_agp) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ number_format($m->total_net_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right">{{ \Illuminate\Support\Number::format($m->distributor_count) }}</td>
+                    <td class="px-4 py-2 text-right">{{ \Illuminate\Support\Number::format($m->total_agp) }}</td>
+                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($m->total_net_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right text-gray-500">{{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}</td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.gbb.show', \Illuminate\Support\Carbon::parse($m->year_month)->format('Y-m')) }}"

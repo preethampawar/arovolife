@@ -16,6 +16,7 @@ use App\Modules\Identity\Models\User;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Number;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -35,6 +36,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->assertS3IsConfigured();
+
+        // All human-facing numbers (BV, ₹) use Indian digit grouping
+        // (24,30,000 not 2,430,000) — every display surface must format via
+        // Number::format / the @bv directive, never raw number_format().
+        // CSV exports are the exception: they stay ungrouped for spreadsheets.
+        Number::useLocale('en_IN');
 
         Event::listen(OrderStatusChanged::class, PropagateGroupBvOnOrderPaid::class);
 

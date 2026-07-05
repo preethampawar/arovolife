@@ -64,7 +64,7 @@
         @auth
             @if(auth()->user()->distributor && $variant->bv_paise > 0)
             <div class="mt-2">
-                <span class="inline-block text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded" title="Business Volume — points used in the compensation plan">{{ number_format($variant->bv_paise / 100, 0) }} BV</span>
+                <span class="inline-block text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded" title="Business Volume — points used in the compensation plan">{{ \Illuminate\Support\Number::format($variant->bv_paise / 100, 0) }} BV</span>
             </div>
             @endif
         @endauth

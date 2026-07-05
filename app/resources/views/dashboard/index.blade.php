@@ -314,25 +314,25 @@
             <button type="button" data-team-roster="total"
                 class="text-left rounded-xl border border-brand-200 bg-brand-50/60 p-4 hover:bg-brand-50 hover:border-brand-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total team</p>
-                <p class="text-3xl font-bold text-brand-700 leading-none">{{ number_format($teamStats['total_team']) }}</p>
+                <p class="text-3xl font-bold text-brand-700 leading-none">{{ \Illuminate\Support\Number::format($teamStats['total_team']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">members in your Genos downline</p>
             </button>
             <button type="button" data-team-roster="direct"
                 class="text-left rounded-xl border border-leaf-200 bg-leaf-50/60 p-4 hover:bg-leaf-50 hover:border-leaf-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-leaf-500">
                 <p class="text-[11px] text-leaf-700 uppercase tracking-wider font-semibold mb-1">Direct referrals</p>
-                <p class="text-3xl font-bold text-leaf-700 leading-none">{{ number_format($teamStats['direct_referrals']) }}</p>
+                <p class="text-3xl font-bold text-leaf-700 leading-none">{{ \Illuminate\Support\Number::format($teamStats['direct_referrals']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">people you personally invited</p>
             </button>
             <button type="button" data-team-roster="left"
                 class="text-left rounded-xl border border-sky-200 bg-sky-50/60 p-4 hover:bg-sky-50 hover:border-sky-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500">
                 <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
-                <p class="text-3xl font-bold text-sky-700 leading-none">{{ number_format($teamStats['left_team']) }}</p>
+                <p class="text-3xl font-bold text-sky-700 leading-none">{{ \Illuminate\Support\Number::format($teamStats['left_team']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">members under your left group</p>
             </button>
             <button type="button" data-team-roster="right"
                 class="text-left rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 hover:bg-indigo-50 hover:border-indigo-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <p class="text-[11px] text-indigo-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
-                <p class="text-3xl font-bold text-indigo-700 leading-none">{{ number_format($teamStats['right_team']) }}</p>
+                <p class="text-3xl font-bold text-indigo-700 leading-none">{{ \Illuminate\Support\Number::format($teamStats['right_team']) }}</p>
                 <p class="text-[11px] text-gray-700 mt-1.5">members under your right group</p>
             </button>
         </div>
@@ -355,7 +355,7 @@
                             <span class="w-2 h-2 rounded-full {{ $s['dot'] }}"></span>
                             {{ $s['label'] }}
                         </span>
-                        <span class="text-lg font-bold leading-none">{{ number_format($s['count']) }}</span>
+                        <span class="text-lg font-bold leading-none">{{ \Illuminate\Support\Number::format($s['count']) }}</span>
                     </div>
                 @endforeach
             </div>
@@ -365,15 +365,15 @@
         <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
                 <span class="text-xs text-gray-800 font-medium">Registered this week</span>
-                <span class="text-base font-bold text-gray-900">{{ number_format($teamStats['joined_this_week']) }}</span>
+                <span class="text-base font-bold text-gray-900">{{ \Illuminate\Support\Number::format($teamStats['joined_this_week']) }}</span>
             </div>
             <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
                 <span class="text-xs text-gray-800 font-medium">Registered this month</span>
-                <span class="text-base font-bold text-gray-900">{{ number_format($teamStats['joined_this_month']) }}</span>
+                <span class="text-base font-bold text-gray-900">{{ \Illuminate\Support\Number::format($teamStats['joined_this_month']) }}</span>
             </div>
             <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
                 <span class="text-xs text-gray-800 font-medium">Cooling-off active</span>
-                <span class="text-base font-bold text-gray-900">{{ number_format($teamStats['cooling_off']) }}</span>
+                <span class="text-base font-bold text-gray-900">{{ \Illuminate\Support\Number::format($teamStats['cooling_off']) }}</span>
             </div>
         </div>
     </div>

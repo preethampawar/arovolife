@@ -34,9 +34,9 @@
                     <td class="px-4 py-3 font-medium text-gray-900">{{ $product->name }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $product->sku }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $product->productCategory?->name ?? '—' }}</td>
-                    <td class="px-4 py-3 text-right text-gray-700">{{ $v ? '₹'.number_format($v->mrp_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-3 text-right text-gray-900 font-medium">{{ $v ? '₹'.number_format($v->sale_price_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-3 text-right text-gray-700">{{ $v ? number_format($v->bv_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-3 text-right text-gray-700">{{ $v ? '₹'.\Illuminate\Support\Number::format($v->mrp_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-3 text-right text-gray-900 font-medium">{{ $v ? '₹'.\Illuminate\Support\Number::format($v->sale_price_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-3 text-right text-gray-700">{{ $v ? \Illuminate\Support\Number::format($v->bv_paise / 100, 2) : '—' }}</td>
                     <td class="px-4 py-3">
                         @php
                             $cls = match ($product->status) {

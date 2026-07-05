@@ -9,6 +9,7 @@ use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class GsbWeeklyPayoutCommand extends Command
@@ -37,7 +38,7 @@ final class GsbWeeklyPayoutCommand extends Command
 
         $this->info("Weekly payout (Group A) — {$date->toDateString()}");
         $batch = $this->payoutService->runWeeklyBatch($date);
-        $this->info("Batch #{$batch->id} {$batch->status} — {$batch->distributor_count} distributors, net ₹".number_format($batch->total_net_paise / 100, 2));
+        $this->info("Batch #{$batch->id} {$batch->status} — {$batch->distributor_count} distributors, net ₹".Number::format($batch->total_net_paise / 100, 2));
 
         // Batch moves to PENDING (awaiting admin approval) after a successful run —
         // it only reaches COMPLETED after the admin calls approve(). Treat PENDING

@@ -1,5 +1,5 @@
 @php
-    $bv = fn ($paise) => number_format(($paise ?? 0) / 100, 0).' BV';
+    $bv = fn ($paise) => \Illuminate\Support\Number::format(($paise ?? 0) / 100, 0).' BV';
     $statusClass = [
         'completed' => 'bg-green-100 text-green-700',
         'active' => 'bg-blue-100 text-blue-700',

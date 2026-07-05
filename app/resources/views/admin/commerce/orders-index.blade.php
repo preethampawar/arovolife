@@ -49,7 +49,7 @@
                     </td>
                     <td class="px-4 py-3 font-semibold">{{ $o->displayTotal() }}</td>
                     <td class="px-4 py-3 text-right text-brand-700 whitespace-nowrap" title="Total Business Volume for this order">
-                        {{ number_format($o->bvTotalPaise() / 100, 0) }} BV
+                        {{ \Illuminate\Support\Number::format($o->bvTotalPaise() / 100, 0) }} BV
                     </td>
                     <td class="px-4 py-3">@include('partials.order-status-badge', ['status' => $o->status])</td>
                     <td class="px-4 py-3 text-xs text-gray-500">

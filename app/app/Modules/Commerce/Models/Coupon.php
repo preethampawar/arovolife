@@ -6,6 +6,7 @@ namespace App\Modules\Commerce\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Number;
 
 final class Coupon extends Model
 {
@@ -85,6 +86,6 @@ final class Coupon extends Model
     {
         return $this->type === self::TYPE_PERCENT
             ? $this->value.'% off'
-            : '₹'.number_format($this->value / 100, 2).' off';
+            : '₹'.Number::format($this->value / 100, 2).' off';
     }
 }

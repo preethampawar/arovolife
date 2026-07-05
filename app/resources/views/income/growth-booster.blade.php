@@ -16,15 +16,15 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">GBB Earned (page)</p>
-            <p class="text-2xl font-bold text-gray-900">₹{{ $rows->isEmpty() ? '—' : number_format($totalNet / 100, 0) }}</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ $rows->isEmpty() ? '—' : \Illuminate\Support\Number::format($totalNet / 100, 0) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Total AGP (page)</p>
-            <p class="text-2xl font-bold text-gray-900">{{ $rows->isEmpty() ? '—' : number_format($totalAgp) }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ $rows->isEmpty() ? '—' : \Illuminate\Support\Number::format($totalAgp) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Months credited</p>
-            <p class="text-2xl font-bold text-gray-900">{{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? number_format($rows->total()) : count($rows) }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \Illuminate\Support\Number::format($rows->total()) : count($rows) }}</p>
         </div>
     </div>
 
@@ -87,11 +87,11 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
-                            ₹{{ number_format($pointValuePaise / 100, 4) }}
+                            ₹{{ \Illuminate\Support\Number::format($pointValuePaise / 100, 4) }}
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ number_format($row->gbb_gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ number_format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ number_format($row->gbb_net_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">₹{{ \Illuminate\Support\Number::format($row->gbb_gross_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->gbb_net_paise / 100, 2) }}</td>
                     </tr>
                     @endforeach
                 </tbody>

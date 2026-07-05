@@ -9,23 +9,23 @@
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">Company Turnover</p>
-        <p class="text-lg font-bold text-gray-900">₹{{ number_format($summary->company_turnover_paise / 100, 0) }}</p>
+        <p class="text-lg font-bold text-gray-900">₹{{ \Illuminate\Support\Number::format($summary->company_turnover_paise / 100, 0) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">
             GBB Pool (5%) <x-help-tip text="5% of company monthly turnover allocated to the Growth Booster Bonus pool." />
         </p>
-        <p class="text-lg font-bold text-indigo-700">₹{{ number_format($summary->pool_paise / 100, 0) }}</p>
+        <p class="text-lg font-bold text-indigo-700">₹{{ \Illuminate\Support\Number::format($summary->pool_paise / 100, 0) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">
             Total AGP <x-help-tip text="Sum of all AGP earned across eligible distributors. Point value = Pool ÷ Total AGP." />
         </p>
-        <p class="text-lg font-bold text-gray-900">{{ number_format($summary->total_pool_agp) }}</p>
+        <p class="text-lg font-bold text-gray-900">{{ \Illuminate\Support\Number::format($summary->total_pool_agp) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">Net Credited</p>
-        <p class="text-lg font-bold text-green-700">₹{{ number_format($summary->total_net_paise / 100, 0) }}</p>
+        <p class="text-lg font-bold text-green-700">₹{{ \Illuminate\Support\Number::format($summary->total_net_paise / 100, 0) }}</p>
     </div>
 </div>
 
@@ -33,8 +33,8 @@
 $pointValuePaise = $summary->total_pool_agp > 0 ? (int) ($summary->pool_paise / $summary->total_pool_agp) : 0;
 @endphp
 <div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
-    Point value for this month: <strong>₹{{ number_format($pointValuePaise / 100, 4) }} per AGP</strong>
-    (Pool ₹{{ number_format($summary->pool_paise / 100, 2) }} ÷ {{ number_format($summary->total_pool_agp) }} AGP)
+    Point value for this month: <strong>₹{{ \Illuminate\Support\Number::format($pointValuePaise / 100, 4) }} per AGP</strong>
+    (Pool ₹{{ \Illuminate\Support\Number::format($summary->pool_paise / 100, 2) }} ÷ {{ \Illuminate\Support\Number::format($summary->total_pool_agp) }} AGP)
     · {{ $summary->distributor_count }} distributors credited
 </div>
 @endif
@@ -72,9 +72,9 @@ $pointValuePaise = $summary->total_pool_agp > 0 ? (int) ($summary->pool_paise / 
                             {{ $row->agp_earned }} AGP
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-right">₹{{ number_format($row->gbb_gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right text-gray-500">₹{{ number_format($row->tds_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ number_format($row->gbb_net_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right">₹{{ \Illuminate\Support\Number::format($row->gbb_gross_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right text-gray-500">₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->gbb_net_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-center">
                         @php
                         $sc = [
