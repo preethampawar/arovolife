@@ -218,6 +218,91 @@ it('renders genos bv page with empty state', function (): void {
         ->assertSee('Genos BV');
 });
 
+it('shows the slab ladder with the next target and remaining matched BV', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    disableTestForeignKeys();
+    try {
+        // 600 personal BV — eligible for group BV counting, but below the
+        // 3,000 BV Retailer title, so every slab is still title-locked.
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => 999_997,
+            'bv_paise' => 60_000,
+            'type' => 'accrual',
+            'effective_at' => now()->format('Y-m-d H:i:s.v'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => $distributorId,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 1_250_000, // 12,500 BV
+        'right_bv_paise' => 300_000,  // 3,000 BV — matched side
+    ]);
+
+    $this->get(route('income.genos-bv'))
+        ->assertOk()
+        ->assertSee('Slab ladder')
+        ->assertSee('12,500')
+        ->assertSee('Next target')
+        ->assertSee('12,000 BV more to match') // slab 1: 15,000 − 3,000 matched
+        ->assertSee('unlocks at 3,000 BV of personal purchases');
+});
+
+it('highlights earned slabs on the ladder', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('gsb_cutoff_results')->insert([
+        'distributor_id' => $distributorId,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 2_000_000,
+        'right_bv_paise' => 1_500_000,
+        'weaker_bv_paise' => 1_500_000,
+        'slab' => 1,
+        'gross_gsb_paise' => 180_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_gsb_paise' => 180_000,
+        'power_cf_before_paise' => 0,
+        'power_cf_after_paise' => 500_000,
+        'power_side_after' => 'L',
+        'slab1_weaker_cf_before_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'credited',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.genos-bv'))
+        ->assertOk()
+        ->assertSee('Highest slab earned: Slab 1')
+        ->assertSee('Earned ×1');
+});
+
+it('shows the ladder gate note instead of group BV below 600 personal BV', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => $distributorId,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 1_250_000, // 12,500 BV — must not be shown
+        'right_bv_paise' => 300_000,
+    ]);
+
+    $this->get(route('income.genos-bv'))
+        ->assertOk()
+        ->assertSee('Genos BV is not being counted yet.')
+        ->assertDontSee('12,500');
+});
+
 it('renders gsb history page with empty state', function (): void {
     ['user' => $user] = incomeDistributor();
     $this->actingAs($user);

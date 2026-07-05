@@ -96,7 +96,7 @@ final class CompensationPlanSettingsService
     /** @var array<string, string>|null Lazily-loaded settings key→value map. */
     private ?array $scalarCache = null;
 
-    /** @var array<int, array<string, mixed>>|null gsb_slabs keyed by slab. */
+    /** @var array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>|null gsb_slabs keyed by slab. */
     private ?array $gsbSlabCache = null;
 
     /** @var array<int, array<string, mixed>>|null rank_tiers keyed by rank_number. */
@@ -324,7 +324,7 @@ final class CompensationPlanSettingsService
      * All GSB slabs keyed by slab number (inactive rows included so callers can
      * decide to skip them).
      *
-     * @return array<int, array<string, mixed>>
+     * @return array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>
      */
     public function gsbSlabs(): array
     {
@@ -348,7 +348,7 @@ final class CompensationPlanSettingsService
         return $this->gsbSlabCache;
     }
 
-    /** @return array<string, mixed>|null */
+    /** @return array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}|null */
     public function gsbSlab(int $slab): ?array
     {
         return $this->gsbSlabs()[$slab] ?? null;

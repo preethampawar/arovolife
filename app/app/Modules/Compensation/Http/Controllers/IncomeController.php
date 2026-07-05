@@ -16,6 +16,7 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
+use App\Modules\Compensation\Services\GsbSlabProgressService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -88,6 +89,8 @@ final class IncomeController extends Controller
         abort_unless($distributor !== null, 403);
 
         try {
+            $slabProgress = app(GsbSlabProgressService::class)->forDistributor($distributor->id);
+
             $rows = GsbCutoffResult::where('distributor_id', $distributor->id)
                 ->when($request->filled('from'), fn ($q) => $q->where('cutoff_date', '>=', $request->input('from')))
                 ->when($request->filled('to'), fn ($q) => $q->where('cutoff_date', '<=', $request->input('to')))
@@ -95,10 +98,11 @@ final class IncomeController extends Controller
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
         } catch (QueryException) {
+            $slabProgress = null;
             $rows = collect();
         }
 
-        return view('income.genos-bv', compact('distributor', 'rows'));
+        return view('income.genos-bv', compact('distributor', 'rows', 'slabProgress'));
     }
 
     public function genosLedger(Request $request): View

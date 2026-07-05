@@ -18,18 +18,23 @@ The distributor compensation page has a **Genos BV Ledger** tab: a transaction-s
 
 Distributors have the same ledger under **My Income → Genos Ledger**, with two differences (data minimisation): buyers appear as **ADN only** (no names, no order links), and the page is hidden entirely while the distributor is below the 600 BV personal minimum — same gate as their dashboard.
 
+### Distributor slab ladder (My Income → Genos BV)
+The distributor's Genos BV tab opens with a **slab ladder**: all active GSB slabs with their matched-BV threshold and title requirement, a green **Earned ×N** count per slab (credited cut-offs only), and an amber **Next target** row showing how much more matched BV is needed — mirroring exactly what tonight's cut-off will measure (slab 1 includes the lifetime weaker carry-forward; slabs 2–7 count the day's fresh BV plus power CF on its side). Compliance note: the ladder deliberately shows **no rupee amounts** on unearned slabs — progress is expressed in BV only, so nothing on the page projects future income. Below the 600 BV personal minimum the ladder shows the plan thresholds but no group-BV figures.
+
 ## Slab table
 Each slab's gross GSB = **slab score × ₹360** (KP-confirmed; the ₹360 score rate and every slab figure are admin-editable under Compensation → Plan settings). Values below reflect the live plan configuration.
 
 | Slab | Matched BV (each side) | Score | Gross GSB | Title required |
 |------|----------------------|-------|-----------|----------------|
-| 1 | 15,000 BV | 5 | ₹1,800 | Retailer (3K lifetime) |
-| 2 | 36,000 BV | 10 | ₹3,600 | Dealer (5K lifetime) |
-| 3 | 90,000 BV | 20 | ₹7,200 | Wholesaler (15K lifetime) |
-| 4 | 2,70,000 BV | 38 | ₹13,680 | Distributor (50K lifetime) |
-| 5 | 8,10,000 BV | 70 | ₹25,200 | Regional Distributor (1L) |
-| 6 | 24,30,000 BV | 117 | ₹42,120 | National Distributor (2L) |
-| 7 | 72,90,000 BV | 167 | ₹60,120 | Global Distributor (3L) |
+| 1 | 15,000 BV | 5 | ₹1,800 | Retailer (3,000 lifetime) |
+| 2 | 36,000 BV | 10 | ₹3,600 | Dealer (7,000 lifetime) |
+| 3 | 90,000 BV | 20 | ₹7,200 | Wholesaler (15,000 lifetime) |
+| 4 | 2,70,000 BV | 38 | ₹13,680 | Distributor (32,000 lifetime) |
+| 5 | 8,10,000 BV | 70 | ₹25,200 | Regional Distributor (68,000) |
+| 6 | 24,30,000 BV | 117 | ₹42,120 | National Distributor (1,44,000) |
+| 7 | 72,90,000 BV | 167 | ₹60,120 | Global Distributor (3,00,000) |
+
+The title column is the distributor's **lifetime personal purchase BV** requirement (KP's confirmed 27-06-2026 table, stored in the admin-editable `gsb_slabs` rows). The cut-off pays the **lower** of the matched-BV slab and the title slab: a Retailer whose Genos matches Slab-3-level volume is still paid Slab 1 only, and the weaker-side BV above 15,000 is consumed, not banked. Between 600 and 2,999 personal BV, group BV accumulates as carry-forward but **no slab pays at all** — Slab 1 itself requires the Retailer title.
 
 ## Carry-forward
 - **Power side** (stronger leg): carries forward capped at 4,50,000 BV
