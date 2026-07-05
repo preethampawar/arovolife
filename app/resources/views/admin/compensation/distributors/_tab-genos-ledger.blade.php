@@ -1,6 +1,18 @@
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    Transaction view of this distributor's Genos BV: every paid downline order that credited their Left or Right group (derived from the propagation log), closed by that day's cut-off settlement — matched BV is consumed, the weaker side resets, and the carry-forward shown is what survived into the next day. Settlement figures come from the stored cut-off result, never recomputed.
+    Transaction view of this distributor's Genos BV: every paid downline order that credited their Left or Right group (snapshotted at credit time), cancelled-order reversals, closed by that day's cut-off settlement — matched BV is consumed, the weaker side resets, and the carry-forward shown is what survived into the next day. Settlement figures come from the stored cut-off result, never recomputed.
 </div>
+
+@php
+    $debtParts = [];
+    if (($openDebts['L'] ?? 0) > 0) { $debtParts[] = 'Left '.\App\Modules\Commerce\Support\Bv::format($openDebts['L']); }
+    if (($openDebts['R'] ?? 0) > 0) { $debtParts[] = 'Right '.\App\Modules\Commerce\Support\Bv::format($openDebts['R']); }
+@endphp
+@if($debtParts !== [])
+<div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+    <span class="font-semibold">Open cancelled-order adjustment:</span>
+    {{ implode(' · ', $debtParts) }} — deducted from the next propagated purchases on that side before new group BV is credited (KP Q8: no clawback, negative-carry on the same leg).
+</div>
+@endif
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">
@@ -37,9 +49,19 @@
                     {{ \Illuminate\Support\Carbon::parse($day->date)->format('d M Y') }}
                 </td>
             </tr>
-            @forelse($day->credits as $credit)
+            @if(count($day->credits) === 0 && count($day->reversals) === 0)
             <tr>
-                <td class="px-3 py-2 text-gray-500">Order BV credit</td>
+                <td colspan="5" class="px-3 py-2 text-gray-400 italic">No group BV credited this day.</td>
+            </tr>
+            @endif
+            @foreach($day->credits as $credit)
+            <tr>
+                <td class="px-3 py-2 text-gray-500">
+                    Order BV credit
+                    @if($credit->debt_consumed_paise > 0)
+                    <span class="block text-[10px] text-gray-400">after @bv($credit->debt_consumed_paise) consumed by a cancelled-order adjustment</span>
+                    @endif
+                </td>
                 <td class="px-3 py-2">
                     <a href="{{ route('admin.commerce.orders.show', $credit->order_id) }}" class="text-brand-600 hover:underline font-mono">#{{ $credit->order_id }}</a>
                 </td>
@@ -56,11 +78,32 @@
                     {{ $credit->side === 'R' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
                 </td>
             </tr>
-            @empty
-            <tr>
-                <td colspan="5" class="px-3 py-2 text-gray-400 italic">No group BV credited this day.</td>
+            @endforeach
+            @foreach($day->reversals as $reversal)
+            <tr class="bg-red-50/40">
+                <td class="px-3 py-2 text-red-700">
+                    Order BV reversal
+                    @if($reversal->debt_paise > 0)
+                    <span class="block text-[10px] text-red-500">@bv($reversal->debt_paise) carried as {{ $reversal->side === 'L' ? 'Left' : 'Right' }}-side adjustment against future BV</span>
+                    @endif
+                </td>
+                <td class="px-3 py-2">
+                    <a href="{{ route('admin.commerce.orders.show', $reversal->order_id) }}" class="text-brand-600 hover:underline font-mono">#{{ $reversal->order_id }}</a>
+                </td>
+                <td class="px-3 py-2">
+                    <span class="font-mono">{{ $reversal->buyer_adn }}</span>
+                    @if($reversal->buyer_name)
+                    <span class="text-gray-400">— {{ $reversal->buyer_name }}</span>
+                    @endif
+                </td>
+                <td class="px-3 py-2 text-right font-medium {{ $reversal->side === 'L' ? 'text-red-700' : 'text-gray-300' }}">
+                    {{ $reversal->side === 'L' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                </td>
+                <td class="px-3 py-2 text-right font-medium {{ $reversal->side === 'R' ? 'text-red-700' : 'text-gray-300' }}">
+                    {{ $reversal->side === 'R' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                </td>
             </tr>
-            @endforelse
+            @endforeach
             @if($day->cutoff)
             @php
                 $c = $day->cutoff;

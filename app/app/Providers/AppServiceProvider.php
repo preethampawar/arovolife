@@ -12,7 +12,9 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
+use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Identity\Models\User;
+use App\Modules\Returns\Events\OrderRefundApproved;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -44,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
         Number::useLocale('en_IN');
 
         Event::listen(OrderStatusChanged::class, PropagateGroupBvOnOrderPaid::class);
+        Event::listen(OrderStatusChanged::class, ReverseGroupBvOnOrderReversal::class);
+        Event::listen(OrderRefundApproved::class, ReverseGroupBvOnOrderReversal::class);
 
         // Super-admin: the `admin` role bypasses every permission check (R-17
         // separation of duties). The specialised roles (admin-operations /

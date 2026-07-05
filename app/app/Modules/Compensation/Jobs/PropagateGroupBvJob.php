@@ -43,6 +43,9 @@ final class PropagateGroupBvJob implements ShouldQueue
         // marker OUTSIDE the transaction (the old cache-based guard) could
         // double-count BV when the worker died between commit and marker.
         try {
+            // attempts=3: an InnoDB deadlock (concurrent reversal locking the
+            // same ancestor rows) rolls the whole transaction back — marker
+            // included — so the replay is a clean, double-count-free re-run.
             DB::transaction(function () use ($accumulator): void {
                 DB::table('bv_propagation_log')->insert([
                     'order_id' => $this->orderId,
@@ -51,8 +54,8 @@ final class PropagateGroupBvJob implements ShouldQueue
                     'date' => $this->date,
                 ]);
 
-                $accumulator->propagate($this->distributorId, $this->bvPaise, Carbon::parse($this->date));
-            });
+                $accumulator->propagate($this->distributorId, $this->bvPaise, Carbon::parse($this->date), $this->orderId);
+            }, attempts: 3);
         } catch (QueryException $e) {
             // Unique violation on the marker's order_id: already propagated —
             // nothing to do. Any other integrity error must still surface.

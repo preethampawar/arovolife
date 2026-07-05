@@ -126,13 +126,17 @@ final class IncomeController extends Controller
                     ->paginateDays($distributor->id, $from, $to)
                     ->withQueryString()
                 : collect();
+            $openDebts = $genosBvEligible
+                ? app(GenosBvLedgerService::class)->openDebts($distributor->id)
+                : ['L' => 0, 'R' => 0];
         } catch (QueryException) {
             $genosBvEligible = true;
             $gsbMinBvPaise = null;
             $days = collect();
+            $openDebts = ['L' => 0, 'R' => 0];
         }
 
-        return view('income.genos-ledger', compact('distributor', 'days', 'genosBvEligible', 'gsbMinBvPaise'));
+        return view('income.genos-ledger', compact('distributor', 'days', 'genosBvEligible', 'gsbMinBvPaise', 'openDebts'));
     }
 
     public function gsbHistory(Request $request): View

@@ -6,7 +6,6 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\DTOs\GenosLedgerDay;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
@@ -14,15 +13,15 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Transaction-style Genos BV ledger for one distributor: every per-order
- * credit into their left/right group BV accumulator, day by day, closed by
- * that day's cut-off settlement (the debit side).
+ * credit into their left/right group BV accumulator, any cancelled-order
+ * reversals, day by day, closed by that day's cut-off settlement.
  *
- * Credits are DERIVED — not double-written. bv_propagation_log holds one row
- * per propagated paid order (buyer + BV); joining it through the closure table
- * against this distributor's direct children reproduces exactly the side
- * attribution GroupBvAccumulatorService used when it accumulated the BV.
- * The settlement figures come verbatim from gsb_cutoff_results — never
- * recomputed here.
+ * Credits come from group_bv_credits — the per-ancestor snapshot written by
+ * GroupBvAccumulatorService in the same transaction as the accumulation, so
+ * the ledger shows exactly what was credited (after any reversal-debt
+ * consumption) even if the tree changes later. Reversals come from
+ * group_bv_reversals. The settlement figures come verbatim from
+ * gsb_cutoff_results — never recomputed here.
  */
 final class GenosBvLedgerService
 {
@@ -37,10 +36,17 @@ final class GenosBvLedgerService
         ?Carbon $to = null,
         int $perPage = 10,
     ): LengthAwarePaginator {
-        $creditDates = $this->creditsBase($distributorId)
-            ->when($from, fn ($b) => $b->where('bpl.date', '>=', $from->toDateString()))
-            ->when($to, fn ($b) => $b->where('bpl.date', '<=', $to->toDateString()))
-            ->select('bpl.date');
+        $creditDates = DB::table('group_bv_credits')
+            ->where('ancestor_id', $distributorId)
+            ->when($from, fn ($b) => $b->where('date', '>=', $from->toDateString()))
+            ->when($to, fn ($b) => $b->where('date', '<=', $to->toDateString()))
+            ->select('date');
+
+        $reversalDates = DB::table('group_bv_reversals')
+            ->where('ancestor_id', $distributorId)
+            ->when($from, fn ($b) => $b->where('date', '>=', $from->toDateString()))
+            ->when($to, fn ($b) => $b->where('date', '<=', $to->toDateString()))
+            ->select('date');
 
         $cutoffDates = DB::table('gsb_cutoff_results')
             ->where('distributor_id', $distributorId)
@@ -48,9 +54,9 @@ final class GenosBvLedgerService
             ->when($to, fn ($b) => $b->where('cutoff_date', '<=', $to->toDateString()))
             ->select('cutoff_date as date');
 
-        // UNION (not UNION ALL) dedupes dates appearing in both sources.
+        // UNION (not UNION ALL) dedupes dates appearing in more than one source.
         $days = DB::query()
-            ->fromSub($creditDates->union($cutoffDates), 'ledger_dates')
+            ->fromSub($creditDates->union($reversalDates)->union($cutoffDates), 'ledger_dates')
             ->orderByDesc('date')
             ->paginate($perPage);
 
@@ -58,21 +64,46 @@ final class GenosBvLedgerService
             fn ($d) => Carbon::parse((string) $d)->toDateString(),
         );
 
-        $credits = $this->creditsBase($distributorId)
+        $credits = DB::table('group_bv_credits as gbc')
+            ->join('bv_propagation_log as bpl', 'bpl.order_id', '=', 'gbc.order_id')
             ->join('distributors as buyer', 'buyer.id', '=', 'bpl.distributor_id')
             ->leftJoin('users as buyer_user', 'buyer_user.id', '=', 'buyer.user_id')
-            ->whereIn('bpl.date', $dates->all())
+            ->where('gbc.ancestor_id', $distributorId)
+            ->whereIn('gbc.date', $dates->all())
             ->select(
-                'bpl.date',
-                'bpl.order_id',
-                'bpl.bv_paise',
-                'bpl.created_at',
-                'dc.placement_side as side',
+                'gbc.date',
+                'gbc.order_id',
+                'gbc.bv_paise',
+                'gbc.debt_consumed_paise',
+                'gbc.created_at',
+                'gbc.side',
                 'buyer.adn as buyer_adn',
                 'buyer_user.full_name as buyer_name',
             )
-            ->orderByDesc('bpl.created_at')
-            ->orderByDesc('bpl.order_id')
+            ->orderByDesc('gbc.created_at')
+            ->orderByDesc('gbc.order_id')
+            ->get()
+            ->groupBy(fn ($row) => Carbon::parse((string) $row->date)->toDateString());
+
+        $reversals = DB::table('group_bv_reversals as gbr')
+            ->join('bv_propagation_log as bpl', 'bpl.order_id', '=', 'gbr.order_id')
+            ->join('distributors as buyer', 'buyer.id', '=', 'bpl.distributor_id')
+            ->leftJoin('users as buyer_user', 'buyer_user.id', '=', 'buyer.user_id')
+            ->where('gbr.ancestor_id', $distributorId)
+            ->whereIn('gbr.date', $dates->all())
+            ->select(
+                'gbr.date',
+                'gbr.order_id',
+                'gbr.bv_paise',
+                'gbr.absorbed_paise',
+                'gbr.debt_paise',
+                'gbr.created_at',
+                'gbr.side',
+                'buyer.adn as buyer_adn',
+                'buyer_user.full_name as buyer_name',
+            )
+            ->orderByDesc('gbr.created_at')
+            ->orderByDesc('gbr.order_id')
             ->get()
             ->groupBy(fn ($row) => Carbon::parse((string) $row->date)->toDateString());
 
@@ -84,6 +115,7 @@ final class GenosBvLedgerService
         $dayGroups = $dates->map(fn (string $date) => new GenosLedgerDay(
             date: $date,
             credits: $credits->get($date)?->values()->all() ?? [],
+            reversals: $reversals->get($date)?->values()->all() ?? [],
             cutoff: $cutoffs->get($date),
         ))->values();
 
@@ -99,19 +131,22 @@ final class GenosBvLedgerService
     }
 
     /**
-     * Base join reproducing GroupBvAccumulatorService's side attribution:
-     * a propagated order credits this distributor when its buyer sits in the
-     * subtree of one of the distributor's direct placement children; that
-     * child's placement_side is the side credited.
+     * Outstanding cancelled-order reversal debt per side (paise) — BV that
+     * will be deducted from this distributor's upcoming group BV on that
+     * side before anything new is credited.
+     *
+     * @return array{L: int, R: int}
      */
-    private function creditsBase(int $distributorId): Builder
+    public function openDebts(int $distributorId): array
     {
-        return DB::table('bv_propagation_log as bpl')
-            ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'bpl.distributor_id')
-            ->join('distributors as dc', function ($join) use ($distributorId) {
-                $join->on('dc.id', '=', 'gc.ancestor_id')
-                    ->where('dc.placement_parent_id', '=', $distributorId);
-            })
-            ->whereIn('dc.placement_side', ['L', 'R']);
+        $rows = DB::table('group_bv_debts')
+            ->where('distributor_id', $distributorId)
+            ->where('bv_paise', '>', 0)
+            ->pluck('bv_paise', 'side');
+
+        return [
+            'L' => (int) ($rows['L'] ?? 0),
+            'R' => (int) ($rows['R'] ?? 0),
+        ];
     }
 }

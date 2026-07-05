@@ -111,6 +111,10 @@ it('shows the genos BV ledger with side-attributed credits and the cut-off settl
         ['order_id' => 1001, 'distributor_id' => $grandBuyer, 'bv_paise' => 50_000, 'date' => today()->toDateString()],
         ['order_id' => 1002, 'distributor_id' => $rightChild, 'bv_paise' => 30_000, 'date' => today()->toDateString()],
     ]);
+    DB::table('group_bv_credits')->insert([
+        ['order_id' => 1001, 'ancestor_id' => $root, 'side' => 'L', 'bv_paise' => 50_000, 'date' => today()->toDateString()],
+        ['order_id' => 1002, 'ancestor_id' => $root, 'side' => 'R', 'bv_paise' => 30_000, 'date' => today()->toDateString()],
+    ]);
 
     DB::table('gsb_cutoff_results')->insert([
         'distributor_id' => $root,

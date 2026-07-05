@@ -19,6 +19,19 @@
         </div>
     @else
 
+    @php
+        $debtParts = [];
+        if (($openDebts['L'] ?? 0) > 0) { $debtParts[] = 'Left group '.\Illuminate\Support\Number::format($openDebts['L'] / 100, 0).' BV'; }
+        if (($openDebts['R'] ?? 0) > 0) { $debtParts[] = 'Right group '.\Illuminate\Support\Number::format($openDebts['R'] / 100, 0).' BV'; }
+    @endphp
+    @if($debtParts !== [])
+    {{-- Outstanding cancelled-order adjustment --}}
+    <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 mb-6">
+        <span class="font-semibold">Adjustment pending from cancelled orders:</span>
+        {{ implode(' · ', $debtParts) }} — this BV will be deducted from the next purchases made in that group before new group BV is added.
+    </div>
+    @endif
+
     {{-- Filter form --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
@@ -64,9 +77,19 @@
                             {{ \Illuminate\Support\Carbon::parse($day->date)->format('d M Y') }}
                         </td>
                     </tr>
-                    @forelse($day->credits as $credit)
+                    @if(count($day->credits) === 0 && count($day->reversals) === 0)
+                    <tr>
+                        <td colspan="4" class="px-4 py-2.5 text-gray-400 italic">No group BV added this day.</td>
+                    </tr>
+                    @endif
+                    @foreach($day->credits as $credit)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-2.5 text-gray-500">Purchase BV</td>
+                        <td class="px-4 py-2.5 text-gray-500">
+                            Purchase BV
+                            @if($credit->debt_consumed_paise > 0)
+                            <span class="block text-xs text-gray-400">after {{ \Illuminate\Support\Number::format($credit->debt_consumed_paise / 100, 0) }} BV adjusted for a cancelled order</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-2.5 font-mono text-gray-700">{{ $credit->buyer_adn }}</td>
                         <td class="px-4 py-2.5 text-right font-mono font-medium {{ $credit->side === 'L' ? 'text-green-700' : 'text-gray-300' }}">
                             {{ $credit->side === 'L' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
@@ -75,11 +98,24 @@
                             {{ $credit->side === 'R' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
                         </td>
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="4" class="px-4 py-2.5 text-gray-400 italic">No group BV added this day.</td>
+                    @endforeach
+                    @foreach($day->reversals as $reversal)
+                    <tr class="bg-red-50/40">
+                        <td class="px-4 py-2.5 text-red-700">
+                            Order cancelled — BV reversed
+                            @if($reversal->debt_paise > 0)
+                            <span class="block text-xs text-red-500">{{ \Illuminate\Support\Number::format($reversal->debt_paise / 100, 0) }} BV will be deducted from future {{ $reversal->side === 'L' ? 'Left' : 'Right' }} group BV before new BV is added</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-2.5 font-mono text-gray-700">{{ $reversal->buyer_adn }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono font-medium {{ $reversal->side === 'L' ? 'text-red-700' : 'text-gray-300' }}">
+                            {{ $reversal->side === 'L' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                        </td>
+                        <td class="px-4 py-2.5 text-right font-mono font-medium {{ $reversal->side === 'R' ? 'text-red-700' : 'text-gray-300' }}">
+                            {{ $reversal->side === 'R' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                        </td>
                     </tr>
-                    @endforelse
+                    @endforeach
                     @if($day->cutoff)
                     @php
                         $c = $day->cutoff;

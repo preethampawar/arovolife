@@ -181,6 +181,13 @@ it('shows the genos ledger with buyer ADN only — never the buyer name', functi
         'bv_paise' => 50_000, // 500 BV on the left
         'date' => today()->toDateString(),
     ]);
+    DB::table('group_bv_credits')->insert([
+        'order_id' => 2001,
+        'ancestor_id' => $rootId,
+        'side' => 'L',
+        'bv_paise' => 50_000,
+        'date' => today()->toDateString(),
+    ]);
 
     $buyerAdn = DB::table('distributors')->where('id', $buyerId)->value('adn');
 

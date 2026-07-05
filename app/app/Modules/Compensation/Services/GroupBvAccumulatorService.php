@@ -12,10 +12,17 @@ use Illuminate\Support\Facades\DB;
  * Propagates one distributor's BV purchase to all their ancestors' group_bv_daily
  * accumulators. For each ancestor A, determines which side (L/R) this distributor
  * falls on by checking which of A's direct children is an ancestor of this distributor.
+ *
+ * Cancelled-order reversal support (KP Q8):
+ * - Each ancestor credit is snapshotted into group_bv_credits (same transaction)
+ *   so a later reversal debits exactly who was originally credited.
+ * - Before crediting, any outstanding reversal debt on that ancestor's SAME
+ *   side is consumed first — cancelled BV is deducted from subsequent
+ *   purchases in that group ({@see GroupBvReversalService}).
  */
 final class GroupBvAccumulatorService
 {
-    public function propagate(int $distributorId, int $bvPaise, Carbon $date): void
+    public function propagate(int $distributorId, int $bvPaise, Carbon $date, ?int $orderId = null): void
     {
         // For each ancestor A of D (at any depth), find the direct child of A on
         // the path to D. That child's placement_side relative to A = the side D is on.
@@ -45,13 +52,66 @@ final class GroupBvAccumulatorService
         // ancestors are processed from scratch with no double-counting.
         // Inner upsertAccumulator() calls use DB::transaction() too; on MySQL those
         // become savepoints within this outer transaction automatically.
-        DB::transaction(function () use ($pairs, $bvPaise, $dateStr): void {
+        DB::transaction(function () use ($pairs, $bvPaise, $dateStr, $orderId): void {
             foreach ($pairs as $pair) {
-                $leftAdd = $pair->side === 'L' ? $bvPaise : 0;
-                $rightAdd = $pair->side === 'R' ? $bvPaise : 0;
-                $this->upsertAccumulator($pair->ancestor_id, $dateStr, $leftAdd, $rightAdd);
+                $ancestorId = (int) $pair->ancestor_id;
+
+                // Outstanding reversal debt on this side eats the BV first;
+                // only the remainder reaches the accumulator (KP Q8: cancelled
+                // BV is deducted from subsequent purchases on the same leg).
+                $consumed = $this->consumeDebt($ancestorId, $pair->side, $bvPaise);
+                $credit = $bvPaise - $consumed;
+
+                if ($credit > 0) {
+                    $leftAdd = $pair->side === 'L' ? $credit : 0;
+                    $rightAdd = $pair->side === 'R' ? $credit : 0;
+                    $this->upsertAccumulator($ancestorId, $dateStr, $leftAdd, $rightAdd);
+                }
+
+                // Snapshot who was credited (and how much debt this order paid
+                // down) so a reversal targets the original recipients only.
+                if ($orderId !== null) {
+                    DB::table('group_bv_credits')->insert([
+                        'order_id' => $orderId,
+                        'ancestor_id' => $ancestorId,
+                        'side' => $pair->side,
+                        'bv_paise' => $credit,
+                        'debt_consumed_paise' => $consumed,
+                        'date' => $dateStr,
+                    ]);
+                }
             }
         });
+    }
+
+    /**
+     * Consume outstanding reversal debt for (distributor, side), up to the
+     * incoming BV. Locks the debt row so concurrent propagations serialise;
+     * returns the amount consumed (0 when no debt is open).
+     */
+    private function consumeDebt(int $distributorId, string $side, int $bvPaise): int
+    {
+        $debt = DB::table('group_bv_debts')
+            ->where('distributor_id', $distributorId)
+            ->where('side', $side)
+            ->where('bv_paise', '>', 0)
+            ->lockForUpdate()
+            ->first();
+
+        if ($debt === null) {
+            return 0;
+        }
+
+        $consumed = min($bvPaise, (int) $debt->bv_paise);
+
+        DB::table('group_bv_debts')
+            ->where('id', $debt->id)
+            ->update([
+                'bv_paise' => (int) $debt->bv_paise - $consumed,
+                'updated_at' => Carbon::now(),
+            ]);
+
+        return $consumed;
     }
 
     /**

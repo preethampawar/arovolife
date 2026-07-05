@@ -77,6 +77,7 @@ final class AdminDistributorCompController extends Controller
             ],
             'genos-ledger' => [
                 'days' => $this->genosLedger->paginateDays($distributor->id, $from, $to)->withQueryString(),
+                'openDebts' => $this->genosLedger->openDebts($distributor->id),
             ],
             'mb' => [
                 'rows' => MentorshipBonusResult::where('sponsor_id', $distributor->id)

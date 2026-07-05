@@ -37,6 +37,9 @@ final class PurchaseDataResetAction
      */
     public const WIPE_TABLES = [
         // Compensation — engine results, ledgers, payouts
+        'group_bv_credits',
+        'group_bv_reversals',
+        'group_bv_debts',
         'bv_propagation_log',
         'payout_line_items',
         'payout_batches',

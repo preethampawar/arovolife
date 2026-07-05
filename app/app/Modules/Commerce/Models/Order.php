@@ -22,6 +22,7 @@ use Illuminate\Support\Number;
  * @property int $total_paise
  * @property int $shipping_paise
  * @property int $customer_id
+ * @property int|null $attributed_distributor_id
  * @property string|null $ship_carrier
  * @property string|null $ship_tracking_no
  */
