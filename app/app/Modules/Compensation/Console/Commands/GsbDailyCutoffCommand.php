@@ -70,19 +70,26 @@ final class GsbDailyCutoffCommand extends Command
         // on its own flag — GSB can run without MB, but not the reverse.
         $mentorshipActive = Feature::for(null)->active(MentorshipBonusFeature::class);
 
-        $distributors = $query->pluck('id');
+        $distributors = $query->get(['id', 'gsb_frozen_at']);
         $total = $distributors->count();
         $credited = 0;
         $failed = 0;
         $mbFailed = 0;
 
-        foreach ($distributors as $distributorId) {
+        // Batch-load per-distributor data before the loop: personal BV totals,
+        // repurchase cycles, and frozen status — replaces ~3 N+1 queries with
+        // 2–3 bulk queries regardless of distributor count.
+        $this->cutoff->warmBatch($distributors);
+
+        foreach ($distributors as $distributor) {
+            $distributorId = (int) $distributor->id;
+
             try {
                 // Inject today's personal order BV into the distributor's weaker
                 // Genos leg before the cut-off reads group_bv_daily. Idempotent.
-                $this->topup->applyForDistributor((int) $distributorId, $date);
+                $this->topup->applyForDistributor($distributorId, $date);
 
-                $result = $this->cutoff->runForDistributor((int) $distributorId, $date);
+                $result = $this->cutoff->runForDistributor($distributorId, $date);
 
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {
                     $credited++;
@@ -91,7 +98,7 @@ final class GsbDailyCutoffCommand extends Command
                         // distributor's own GSB credit already succeeded, so an
                         // MB error must not be triaged as a GSB cut-off failure.
                         try {
-                            $this->mentorship->processForSponsee((int) $distributorId, $result);
+                            $this->mentorship->processForSponsee($distributorId, $result);
                         } catch (\Throwable $e) {
                             $mbFailed++;
                             Log::error('mb.credit.exception', [

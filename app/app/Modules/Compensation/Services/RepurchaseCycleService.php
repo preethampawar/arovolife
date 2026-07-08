@@ -80,16 +80,22 @@ final class RepurchaseCycleService
      */
     public function evaluate(int $distributorId, Carbon $asOf): ?RepurchaseCycle
     {
-        $anchor = $this->repurchaseAnchor($distributorId);
-        if ($anchor === null || $anchor->greaterThan($asOf)) {
-            return null;
-        }
-
+        // Check for an existing cycle first — a cycle already existing proves
+        // the distributor passed the 600-BV anchor, so skip the expensive
+        // firstReachedBvPaiseAt() scan (N+1 on bv_ledger_entries) on every run
+        // after the first cycle is opened.
         $cycle = RepurchaseCycle::query()
             ->where('distributor_id', $distributorId)
             ->orderByDesc('cycle_start_date')
-            ->first()
-            ?? $this->openCycle($distributorId, $anchor->copy()->startOfDay());
+            ->first();
+
+        if ($cycle === null) {
+            $anchor = $this->repurchaseAnchor($distributorId);
+            if ($anchor === null || $anchor->greaterThan($asOf)) {
+                return null;
+            }
+            $cycle = $this->openCycle($distributorId, $anchor->copy()->startOfDay());
+        }
 
         // Advance through elapsed-and-completed cycles until the open cycle
         // covers $asOf or is held/suspended. The guard caps catch-up and, by

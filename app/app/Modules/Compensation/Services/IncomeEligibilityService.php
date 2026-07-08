@@ -30,6 +30,32 @@ final class IncomeEligibilityService
     /** Suspended — do not credit (forfeited until repurchase is completed). */
     public const BLOCKED = 'blocked';
 
+    /** @var array<int,?RepurchaseCycle> Latest cycle per distributor (null = no cycle yet). */
+    private array $cycleCache = [];
+
+    /**
+     * Batch-load the latest repurchase cycle for each distributor so
+     * subsequent {@see statusFor()} calls skip the per-distributor query.
+     *
+     * @param  int[]  $distributorIds
+     */
+    public function warmCycleCache(array $distributorIds): void
+    {
+        if ($distributorIds === []) {
+            return;
+        }
+
+        $byCycle = RepurchaseCycle::query()
+            ->whereIn('distributor_id', $distributorIds)
+            ->orderByDesc('cycle_start_date')
+            ->get()
+            ->groupBy('distributor_id');
+
+        foreach ($distributorIds as $id) {
+            $this->cycleCache[$id] = $byCycle->get($id)?->first();
+        }
+    }
+
     /** Whether the repurchase engine is enabled. */
     public function engineActive(): bool
     {
@@ -57,10 +83,12 @@ final class IncomeEligibilityService
             return self::ELIGIBLE;
         }
 
-        $cycle = RepurchaseCycle::query()
-            ->where('distributor_id', $distributorId)
-            ->orderByDesc('cycle_start_date')
-            ->first();
+        $cycle = array_key_exists($distributorId, $this->cycleCache)
+            ? $this->cycleCache[$distributorId]
+            : RepurchaseCycle::query()
+                ->where('distributor_id', $distributorId)
+                ->orderByDesc('cycle_start_date')
+                ->first();
 
         if ($cycle === null) {
             return self::ELIGIBLE;

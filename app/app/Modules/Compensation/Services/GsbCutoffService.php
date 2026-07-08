@@ -11,11 +11,15 @@ use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 final class GsbCutoffService
 {
+    /** @var array<int,bool> Batch-loaded frozen status keyed by distributor_id. */
+    private array $frozenCache = [];
+
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
         private readonly WalletService $wallet,
@@ -23,6 +27,29 @@ final class GsbCutoffService
         private readonly CompensationPlanSettingsService $plan,
         private readonly IncomeEligibilityService $eligibility,
     ) {}
+
+    /**
+     * Pre-load per-distributor data so the per-distributor loop fires bulk
+     * queries instead of N individual ones. Call this once before the loop in
+     * {@see GsbDailyCutoffCommand}. Safe to skip — each dependency falls back to
+     * a live query when its cache entry is absent.
+     *
+     * @param  Collection<int,Distributor>  $distributors
+     */
+    public function warmBatch(Collection $distributors): void
+    {
+        $ids = $distributors->map(fn (Distributor $d) => (int) $d->id)->all();
+
+        foreach ($distributors as $distributor) {
+            $this->frozenCache[(int) $distributor->id] = $distributor->gsb_frozen_at !== null;
+        }
+
+        $this->bvLedger->warmPersonalBvCache($ids);
+
+        if ($this->eligibility->engineActive()) {
+            $this->eligibility->warmCycleCache($ids);
+        }
+    }
 
     /**
      * Run (or re-run) the 23:59 cut-off for one distributor on one date.
@@ -39,7 +66,11 @@ final class GsbCutoffService
             return $existing;
         }
 
-        $distributor = Distributor::findOrFail($distributorId);
+        // Resolve frozen status from batch cache; fall back to a live query for
+        // single-distributor admin retry runs that skip warmBatch().
+        $isFrozen = array_key_exists($distributorId, $this->frozenCache)
+            ? $this->frozenCache[$distributorId]
+            : Distributor::where('id', $distributorId)->value('gsb_frozen_at') !== null;
 
         // Eligibility gate: configurable minimum personal BV (default 600 BV).
         $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
@@ -238,7 +269,7 @@ final class GsbCutoffService
         // Transactional: if the result row fails to persist (e.g. a schema
         // mismatch), the CF mutation must roll back with it or the matched BV
         // is silently lost.
-        if ($distributor->gsb_frozen_at !== null) {
+        if ($isFrozen) {
             return DB::transaction(function () use ($cf, $newPowerCf, $strongerSide, $existing, $baseData): GsbCutoffResult {
                 $cf->update([
                     'power_side_bv_paise' => $newPowerCf,

@@ -102,9 +102,39 @@ final class BvLedgerService
         ]);
     }
 
+    /** @var array<int,int> Pre-loaded per-distributor totals keyed by distributor_id. */
+    private array $personalBvCache = [];
+
+    /**
+     * Batch-load personal BV totals for a set of distributors in one query so
+     * subsequent {@see totalPersonalBvPaise()} calls return from the cache.
+     *
+     * @param  int[]  $distributorIds
+     */
+    public function warmPersonalBvCache(array $distributorIds): void
+    {
+        if ($distributorIds === []) {
+            return;
+        }
+
+        $rows = BvLedgerEntry::query()
+            ->whereIn('distributor_id', $distributorIds)
+            ->selectRaw('distributor_id, SUM(bv_paise) as total')
+            ->groupBy('distributor_id')
+            ->pluck('total', 'distributor_id');
+
+        foreach ($distributorIds as $id) {
+            $this->personalBvCache[$id] = (int) ($rows[$id] ?? 0);
+        }
+    }
+
     /** A distributor's total accumulated personal BV (in paise). */
     public function totalPersonalBvPaise(int $distributorId): int
     {
+        if (array_key_exists($distributorId, $this->personalBvCache)) {
+            return $this->personalBvCache[$distributorId];
+        }
+
         return (int) BvLedgerEntry::query()->forDistributor($distributorId)->sum('bv_paise');
     }
 
