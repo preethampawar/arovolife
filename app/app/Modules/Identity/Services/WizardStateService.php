@@ -22,7 +22,8 @@ final class WizardStateService
         7 => 'bank',
         8 => 'personal',
         9 => 'documents',
-        10 => 'complete',
+        10 => 'arete',
+        11 => 'complete',
     ];
 
     public function __construct(private readonly Session $session) {}
@@ -158,7 +159,6 @@ final class WizardStateService
         $this->session->forget(self::INTENT_KEY);
     }
 
-
     /**
      * Map a wizard step number to its named route.
      * Used after draft restoration so we know where to redirect.
@@ -173,6 +173,7 @@ final class WizardStateService
             $step === 7 => 'register.bank',
             $step === 8 => 'register.personal',
             $step === 9 => 'register.documents',
+            $step === 10 => 'register.arete',
             default => 'register.complete',
         };
     }

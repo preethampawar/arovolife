@@ -50,6 +50,7 @@ final class ProductionSeeder extends Seeder
             $this->seedContentPages();
             $this->seedLedgerAccounts();
             $this->seedProductCatalog();
+            $this->call(AreteCenterSeeder::class);
         });
 
         $this->command->info('Production seeder finished. Existing rows were preserved.');

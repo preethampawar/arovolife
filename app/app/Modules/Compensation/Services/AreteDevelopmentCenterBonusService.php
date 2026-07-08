@@ -53,6 +53,11 @@ final class AreteDevelopmentCenterBonusService
                     continue;
                 }
 
+                // Company-default centre has no assigned distributor yet — skip payout.
+                if ($center->assigned_distributor_id === null) {
+                    continue;
+                }
+
                 // Find active members for this month.
                 $memberIds = DB::table('arete_center_members')
                     ->where('center_id', $center->id)

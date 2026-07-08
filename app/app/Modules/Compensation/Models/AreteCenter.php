@@ -13,10 +13,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $name
  * @property string|null $location
- * @property int $assigned_distributor_id
+ * @property int|null $assigned_distributor_id
  * @property string $status
  * @property string|null $approved_at
  * @property string|null $notes
+ * @property bool $is_company_default
  */
 final class AreteCenter extends Model
 {
@@ -31,7 +32,15 @@ final class AreteCenter extends Model
         'status',
         'approved_at',
         'notes',
+        'is_company_default',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_company_default' => 'bool',
+        ];
+    }
 
     /** @return BelongsTo<Distributor, $this> */
     public function assignedDistributor(): BelongsTo

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Controllers\Registration;
 
+use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotsExhaustedError;
 use App\Modules\Genealogy\Services\PlacementEngine;
@@ -747,9 +749,7 @@ final class RegistrationWizardController extends Controller
             'spouse_documents' => [],
         ]);
 
-        // After Documents → Complete (the old placement step has been
-        // folded into step 1, so it's no longer in the post-Documents chain).
-        return redirect()->route('register.complete');
+        return redirect()->route('register.arete');
     }
 
     /**
@@ -825,6 +825,30 @@ final class RegistrationWizardController extends Controller
     }
 
     // ── Step 10: Complete ─────────────────────────────────────────────────
+
+    public function showArete(): View
+    {
+        $centers = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)->get();
+        $defaultCenter = $centers->firstWhere('is_company_default', true);
+        $savedData = $this->wizard->getStepData(10);
+        $selectedId = isset($savedData['center_id']) ? (int) $savedData['center_id'] : $defaultCenter?->id;
+
+        return view('registration.step10-arete', compact('centers', 'defaultCenter', 'selectedId'));
+    }
+
+    public function handleArete(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'center_id' => ['required', 'integer', 'exists:arete_centers,id'],
+        ]);
+
+        $center = AreteCenter::findOrFail((int) $request->integer('center_id'));
+        abort_unless($center->status === AreteCenter::STATUS_ACTIVE, 422, 'That Arete centre is not currently available.');
+
+        $this->wizard->saveStepData(10, ['center_id' => $center->id]);
+
+        return redirect()->route('register.complete');
+    }
 
     public function showComplete(): View
     {
@@ -978,6 +1002,18 @@ final class RegistrationWizardController extends Controller
             // placement and trigger an admin finalise on their behalf,
             // or guide the customer to resume with a fresh placement.
             return redirect('/contact-us?reason=placement_taken');
+        }
+
+        // Enrol the new distributor in their chosen Arete centre (or company default).
+        $centerId = (int) ($state['data']['arete']['center_id'] ?? 0);
+        if ($centerId === 0) {
+            $centerId = (int) (AreteCenter::where('is_company_default', true)->value('id') ?? 0);
+        }
+        if ($centerId > 0) {
+            AreteCenterMember::firstOrCreate(
+                ['distributor_id' => $result->distributorId],
+                ['center_id' => $centerId, 'effective_from' => now()->toDateString()],
+            );
         }
 
         Auth::loginUsingId($result->userId);

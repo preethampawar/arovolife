@@ -105,7 +105,123 @@
             <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-sm transition-colors">Save changes</button>
         </div>
     </form>
+
+    {{-- ── Arete Development Centre ─────────────────────────────────────────── --}}
+    @if($distributor)
+    <div class="mt-6 bg-white rounded-2xl border border-gray-200 p-6">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Arete Development Centre <x-help-tip text="The Arete centre you are connected to for local support, training and events. You can change this with OTP verification." /></p>
+                @if($areteCenter)
+                    <p class="text-sm font-semibold text-gray-900">{{ $areteCenter->name }}</p>
+                    @if($areteCenter->location)
+                        <p class="text-xs text-gray-500 mt-0.5">{{ $areteCenter->location }}</p>
+                    @endif
+                @else
+                    <p class="text-sm text-gray-500">Not assigned yet</p>
+                @endif
+            </div>
+            @if($availableCenters->count() > 1)
+            <button type="button" onclick="document.getElementById('areteCentreModal').classList.remove('hidden')"
+                    class="shrink-0 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                Change centre
+            </button>
+            @endif
+        </div>
+    </div>
+    @endif
 </div>
+
+{{-- ── Arete centre change modal ───────────────────────────────────────────── --}}
+@if($distributor && $availableCenters->count() > 1)
+<div id="areteCentreModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+    role="dialog" aria-modal="true" aria-label="Change Arete centre">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200">
+            <p class="text-base font-bold text-gray-900">Change Arete Development Centre</p>
+            <p class="text-sm text-gray-600 mt-1">Select a new centre. A 6-digit code will be sent to your registered email to confirm the change.</p>
+        </div>
+        <form method="POST" action="{{ route('profile.arete.initiate') }}" class="px-6 py-5 space-y-3">
+            @csrf
+            @error('center_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+            <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                @foreach($availableCenters as $center)
+                <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:border-brand-300 transition-colors
+                    {{ $areteCenter?->id === $center->id ? 'border-brand-400 bg-brand-50' : 'border-gray-200' }}">
+                    <input type="radio" name="center_id" value="{{ $center->id }}" class="mt-0.5 accent-brand-500"
+                           {{ $areteCenter?->id === $center->id ? 'checked' : '' }}>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">{{ $center->name }}
+                            @if($center->is_company_default)
+                                <span class="ml-1 text-[10px] font-medium text-brand-600">(default)</span>
+                            @endif
+                        </p>
+                        @if($center->location)
+                            <p class="text-xs text-gray-500">{{ $center->location }}</p>
+                        @endif
+                    </div>
+                </label>
+                @endforeach
+            </div>
+            <div class="flex items-center justify-between gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('areteCentreModal').classList.add('hidden')"
+                        class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                <button type="submit" class="px-5 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Send verification code</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
+{{-- ── Arete centre OTP confirmation modal ────────────────────────────────
+     Shown after "Send verification code" to confirm the centre change. --}}
+@if(session('arete_otp'))
+@php $areteOtpCtx = session('arete_otp'); @endphp
+<div id="areteCentreOtpModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+    role="dialog" aria-modal="true" aria-label="Confirm Arete centre change">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200">
+            <p class="text-base font-bold text-gray-900">Verify your Arete centre change</p>
+            <p class="text-sm text-gray-600 mt-1">We've emailed a 6-digit code to <strong>{{ $areteOtpCtx['email_masked'] ?? 'your email' }}</strong>. Enter it to confirm the centre change.</p>
+        </div>
+        <form method="POST" action="{{ route('profile.arete.confirm') }}" class="px-6 py-5 space-y-4">
+            @csrf
+            @error('arete_otp')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+            <div>
+                <label for="arete_otp_code" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">6-digit code</label>
+                <input type="text" id="arete_otp_code" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required autofocus
+                       class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-center text-lg font-mono tracking-[0.4em] focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                       placeholder="••••••">
+            </div>
+            <div class="flex items-center justify-between gap-3">
+                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Confirm change</button>
+            </div>
+        </form>
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm">
+            <form method="POST" action="{{ route('profile.arete.resend') }}">
+                @csrf
+                <button type="submit" id="areteOtpResendBtn" class="text-brand-700 hover:text-brand-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed">Resend code</button>
+            </form>
+            <a href="{{ route('profile.show') }}" class="text-gray-500 hover:text-gray-700">Cancel</a>
+        </div>
+    </div>
+</div>
+<script>
+    (function () {
+        var btn = document.getElementById('areteOtpResendBtn');
+        if (!btn) return;
+        var label = btn.textContent;
+        var secs = 30;
+        btn.disabled = true;
+        (function tick() {
+            if (secs <= 0) { btn.disabled = false; btn.textContent = label; return; }
+            btn.textContent = 'Resend code in ' + secs + 's';
+            secs--;
+            setTimeout(tick, 1000);
+        })();
+    })();
+</script>
+@endif
 
 {{-- ── OTP confirmation modal ─────────────────────────────────────────────
      Shown after saving when the mobile/email changed: the change is held until

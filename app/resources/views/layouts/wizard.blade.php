@@ -24,7 +24,8 @@
             7  => ['label' => 'Bank (optional)',     'route' => 'register.bank'],
             8  => ['label' => 'Personal',            'route' => 'register.personal'],
             9  => ['label' => 'Documents',           'route' => 'register.documents'],
-            10 => ['label' => 'Complete',            'route' => 'register.complete'],
+            10 => ['label' => 'Arete Centre',        'route' => 'register.arete'],
+            11 => ['label' => 'Complete',            'route' => 'register.complete'],
         ];
         $current = $currentStep ?? 1;
     @endphp

@@ -177,10 +177,15 @@ Route::middleware([])->group(function (): void {
     Route::post('/register/documents', [RegistrationWizardController::class, 'handleDocuments'])
         ->middleware('wizard.progress:9');
 
-    Route::get('/register/complete', [RegistrationWizardController::class, 'showComplete'])
-        ->middleware('wizard.progress:10')->name('register.complete');
-    Route::post('/register/complete', [RegistrationWizardController::class, 'handleComplete'])
+    Route::get('/register/arete-centre', [RegistrationWizardController::class, 'showArete'])
+        ->middleware('wizard.progress:10')->name('register.arete');
+    Route::post('/register/arete-centre', [RegistrationWizardController::class, 'handleArete'])
         ->middleware('wizard.progress:10');
+
+    Route::get('/register/complete', [RegistrationWizardController::class, 'showComplete'])
+        ->middleware('wizard.progress:11')->name('register.complete');
+    Route::post('/register/complete', [RegistrationWizardController::class, 'handleComplete'])
+        ->middleware('wizard.progress:11');
 });
 
 // ── Admin Console ────────────────────────────────────────────────────────────
@@ -627,6 +632,10 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // OTP confirmation for a mobile/email change.
     Route::post('/profile/contact-otp', [ProfileController::class, 'confirmOtp'])->middleware('throttle:10,10')->name('profile.otp.confirm');
     Route::post('/profile/contact-otp/resend', [ProfileController::class, 'resendOtp'])->middleware('throttle:6,10')->name('profile.otp.resend');
+    // Arete centre change (OTP-gated, POST to initiate, POST to confirm).
+    Route::post('/profile/arete-centre', [ProfileController::class, 'initiateAreteCentreChange'])->middleware('throttle:6,10')->name('profile.arete.initiate');
+    Route::post('/profile/arete-centre/confirm', [ProfileController::class, 'confirmAreteCentreOtp'])->middleware('throttle:10,10')->name('profile.arete.confirm');
+    Route::post('/profile/arete-centre/resend', [ProfileController::class, 'resendAreteCentreOtp'])->middleware('throttle:6,10')->name('profile.arete.resend');
     Route::get('/profile/password', [ProfileController::class, 'showPasswordForm'])->name('profile.password.show');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 

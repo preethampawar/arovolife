@@ -18,7 +18,7 @@ function rriSetWizardAtComplete(User $user): void
     test()->actingAs($user);
     test()->withSession([
         'registration_wizard' => [
-            'step' => 10,
+            'step' => 11,
             'user_id' => $user->id,
             'sponsor_id' => 1,
             'data' => [

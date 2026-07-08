@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Controllers;
 
+use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
@@ -14,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -41,16 +44,33 @@ final class ProfileController extends Controller
     /** OTP scope for a self-service mobile/email change. */
     private const OTP_PURPOSE = 'profile_contact_change';
 
+    /** OTP scope for an Arete centre change. */
+    private const ARETE_OTP_PURPOSE = 'arete_centre_change';
+
     public function show(): View
     {
         $user = Auth::user();
+        $distributor = $user?->distributor;
+
+        $areteCenter = $distributor
+            ? AreteCenterMember::where('distributor_id', $distributor->id)
+                ->whereNull('effective_to')
+                ->with('center')
+                ->latest()
+                ->first()
+                ?->center
+            : null;
+
+        $availableCenters = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)->get();
 
         return view('profile.show', [
             'user' => $user,
             // The distributor record backs the read-only identity block
             // (ADN + masked PAN/Aadhaar/bank). Null for a non-distributor
             // (e.g. an admin) — the view hides that block.
-            'distributor' => $user?->distributor,
+            'distributor' => $distributor,
+            'areteCenter' => $areteCenter,
+            'availableCenters' => $availableCenters,
         ]);
     }
 
@@ -246,6 +266,118 @@ final class ProfileController extends Controller
         $head = mb_substr($local, 0, 1);
 
         return $head.str_repeat('•', max(1, mb_strlen($local) - 1)).'@'.$domain;
+    }
+
+    /** Initiate an Arete centre change: validate selection, issue OTP, redirect to confirmation modal. */
+    public function initiateAreteCentreChange(Request $request, OtpService $otp): RedirectResponse
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        abort_if($user === null, 401);
+        abort_if($user->distributor === null, 403);
+
+        $data = $request->validate([
+            'center_id' => ['required', 'integer', 'exists:arete_centers,id'],
+        ]);
+        $center = AreteCenter::where('id', $data['center_id'])
+            ->where('status', AreteCenter::STATUS_ACTIVE)
+            ->firstOrFail();
+
+        $code = $otp->issue(
+            self::ARETE_OTP_PURPOSE,
+            (string) $user->id,
+            ['center_id' => $center->id, 'center_name' => $center->name],
+        );
+        Notification::route('mail', $user->email)->notify(
+            new OtpCodeNotification($code, 'change your Arete Development Centre'),
+        );
+
+        $this->audit($user, 'profile.arete_centre_otp_sent', [
+            'new_center_id' => $center->id,
+            'new_center_name' => $center->name,
+        ], $request);
+
+        return redirect()->route('profile.show')
+            ->with('arete_otp', ['email_masked' => $this->maskEmail((string) $user->email)]);
+    }
+
+    /** Confirm the Arete centre OTP and apply the change. */
+    public function confirmAreteCentreOtp(Request $request, OtpService $otp): RedirectResponse
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        abort_if($user === null, 401);
+        abort_if($user->distributor === null, 403);
+
+        $request->validate([
+            'otp' => ['required', 'string', 'regex:/^\d{6}$/'],
+        ], [
+            'otp.regex' => 'Enter the 6-digit code we emailed you.',
+        ]);
+
+        $result = $otp->verify(self::ARETE_OTP_PURPOSE, (string) $user->id, $request->string('otp')->toString());
+
+        if (! $result->ok) {
+            $redirect = redirect()->route('profile.show')->withErrors(['arete_otp' => $result->message()]);
+            $pending = $otp->peek(self::ARETE_OTP_PURPOSE, (string) $user->id);
+            if ($pending !== null) {
+                $redirect->with('arete_otp', ['email_masked' => $this->maskEmail((string) $user->email)]);
+            }
+
+            return $redirect;
+        }
+
+        $centerId = (int) $result->payload['center_id'];
+        $distributorId = $user->distributor->id;
+
+        DB::transaction(function () use ($distributorId, $centerId): void {
+            AreteCenterMember::where('distributor_id', $distributorId)
+                ->whereNull('effective_to')
+                ->where('center_id', '!=', $centerId)
+                ->update(['effective_to' => now()->toDateString()]);
+
+            AreteCenterMember::updateOrCreate(
+                ['distributor_id' => $distributorId, 'center_id' => $centerId],
+                ['effective_from' => now()->toDateString(), 'effective_to' => null],
+            );
+        });
+
+        $this->audit($user, 'profile.arete_centre_changed', [
+            'new_center_id' => $centerId,
+            'new_center_name' => $result->payload['center_name'] ?? null,
+        ], $request);
+
+        return redirect()->route('profile.show')->with('status', 'Your Arete Development Centre has been updated.');
+    }
+
+    /** Resend the OTP for a pending Arete centre change. */
+    public function resendAreteCentreOtp(Request $request, OtpService $otp): RedirectResponse
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        abort_if($user === null, 401);
+
+        $pending = $otp->peek(self::ARETE_OTP_PURPOSE, (string) $user->id);
+        if ($pending === null) {
+            return redirect()->route('profile.show');
+        }
+
+        $rlKey = 'arete-otp-resend:'.$user->id;
+        if (RateLimiter::tooManyAttempts($rlKey, maxAttempts: 3)) {
+            return redirect()->route('profile.show')
+                ->withErrors(['arete_otp' => 'Too many code requests. Please wait a few minutes and try again.'])
+                ->with('arete_otp', ['email_masked' => $this->maskEmail((string) $user->email)]);
+        }
+        RateLimiter::hit($rlKey, decaySeconds: 600);
+
+        $code = $otp->issue(self::ARETE_OTP_PURPOSE, (string) $user->id, $pending);
+        Notification::route('mail', $user->email)->notify(
+            new OtpCodeNotification($code, 'change your Arete Development Centre'),
+        );
+
+        return redirect()->route('profile.show')
+            ->with('status', 'A new code has been sent.')
+            ->with('arete_otp', ['email_masked' => $this->maskEmail((string) $user->email)]);
     }
 
     public function showPasswordForm(): View
