@@ -51,6 +51,46 @@ it('returns below_600bv status when personal BV is under 600 BV', function () {
     expect($result->net_gsb_paise)->toBe(0);
 });
 
+it('earns slab 1 from 600 BV personal (below the 3,000 BV Retailer title)', function () {
+    // Partner rule (5 Jul 2026): from 600 personal BV a distributor earns the
+    // 1st GSB slab only — even before the Retailer (3,000 BV) title. Regression
+    // for the live "1,450 BV account not generating income" complaint.
+    $dist = makeDistributorWithBv(145_000);  // 1,450 BV — above 600, below Retailer
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 2_000_000,   // 20,000 BV
+        'right_bv_paise' => 1_600_000,  // 16,000 BV weaker — ≥ 15K slab-1 threshold
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $result = $svc->runForDistributor($dist->id, Carbon::today());
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
+    expect($result->slab)->toBe(1);
+    expect($result->gross_gsb_paise)->toBe(180_000);  // slab 1 = ₹1,800
+});
+
+it('caps a sub-Retailer distributor to slab 1 even when group BV qualifies for a higher slab', function () {
+    // Partner rule (5 Jul 2026): between 600 and 2,999 BV, group volume that would
+    // reach slabs 2–7 is still treated as slab 1 only (title cap keeps 2–7 locked).
+    $dist = makeDistributorWithBv(200_000);  // 2,000 BV — below Retailer
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 5_000_000,   // 50,000 BV
+        'right_bv_paise' => 4_000_000,  // 40,000 BV weaker — past slab-2 (36K) threshold
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $result = $svc->runForDistributor($dist->id, Carbon::today());
+
+    // Slab 2 (36K match) is reachable by group BV but must NOT fire — title caps it.
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
+    expect($result->slab)->toBe(1);
+    expect($result->gross_gsb_paise)->toBe(180_000);  // slab 1 only
+});
+
 it('returns no_match when group BV does not reach any slab', function () {
     $dist = makeDistributorWithBv(300_000);  // Retailer (3,000 BV)
     GroupBvDaily::create([

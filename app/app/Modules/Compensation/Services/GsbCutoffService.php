@@ -151,12 +151,20 @@ final class GsbCutoffService
         // Slab 1: lifetime accumulation (includes today's fresh + historical CF).
         // Both the accumulated weaker-side total AND the stronger side (effective) must
         // reach the 15,000 BV threshold — "15K/15K" requires both Genos sides to qualify.
+        // Slab 1 earning is unlocked from the GSB minimum (600 BV), NOT the
+        // Retailer title (3,000 BV). A 600–2,999 BV distributor earns slab 1 only
+        // (slabs 2–7 above still gate on $title->maxGsbSlab, which is 0 below
+        // Retailer). The resulting income is held in the web account until the
+        // Retailer title unlocks bank release — see PayoutService::neftMinBvPaise.
+        // Reaching this line already guarantees personalBvPaise >= gsbMinBvPaise
+        // (the below-600 path returns early above), so this gate is explicit for
+        // safety rather than newly restrictive.
         $slab1 = $this->plan->gsbSlab(1);
         if ($matchedSlab === null
             && $slab1 !== null
             && $slab1['is_active']
             && $slab1['bonus_paise'] !== null
-            && $title->maxGsbSlab >= 1
+            && $personalBvPaise >= $this->plan->gsbMinBvPaise()
             && $weakerTotal >= $slab1['matched_bv_paise']
             && $strongerEffective >= $slab1['matched_bv_paise']) {
             $matchedSlab = ['index' => 1, 'threshold' => $slab1['matched_bv_paise'], 'incentive' => $slab1['bonus_paise']];
