@@ -8,6 +8,7 @@ use App\Modules\Compensation\Events\LifetimeAwardReleased;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\LifetimeAwardReward;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Illuminate\Contracts\View\View;
@@ -105,10 +106,48 @@ final class AdminLifetimeAwardsController extends Controller
 
         abort_if($milestone->status === LifetimeAwardMilestone::STATUS_DELIVERED, 409);
 
+        abort_unless($milestone->isReleasable(), 422, 'Award is not yet releasable — re-qualification threshold not met.');
+
+        $data = $request->validate([
+            'disbursement_type' => ['required', 'in:goods,cash'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $plan = app(CompensationPlanSettingsService::class);
+        $grossPaise = $plan->lifetimeAwardBudgetPaise($milestone->rank_number);
+
+        $adminChargePaise = 0;
+        $tdsPaise = 0;
+        $netPaise = $grossPaise;
+
+        if ($data['disbursement_type'] === LifetimeAwardMilestone::DISBURSEMENT_CASH && $grossPaise > 0) {
+            // Group C admin charge: 3% or monthly cap (₹25,000), whichever is lower.
+            $rateBp = $plan->adminChargeRateBp();
+            $capPaise = $plan->adminChargeMonthlyCapPaise();
+            $adminChargePaise = (int) min((int) round($grossPaise * $rateBp / 10000), $capPaise);
+            $afterAdmin = $grossPaise - $adminChargePaise;
+            $tdsPaise = (int) round($afterAdmin * 500 / 10000); // 5% TDS
+            $netPaise = $afterAdmin - $tdsPaise;
+
+            app(WalletService::class)->credit(
+                distributorId: $milestone->distributor_id,
+                amountPaise: $netPaise,
+                type: 'lifetime_award_cash',
+                referenceId: $milestone->id,
+                referenceType: 'lifetime_award_milestone',
+                memo: 'Lifetime Award Cash — Rank '.$milestone->rank_number,
+            );
+        }
+
         $milestone->update([
             'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
+            'disbursement_type' => $data['disbursement_type'],
+            'gross_paise' => $grossPaise ?: null,
+            'admin_charge_paise' => $adminChargePaise,
+            'tds_paise' => $tdsPaise,
+            'net_paise' => $netPaise ?: null,
             'delivered_at' => now(),
-            'notes' => $request->input('notes'),
+            'notes' => $data['notes'],
         ]);
 
         AuditLog::create([
@@ -119,7 +158,11 @@ final class AdminLifetimeAwardsController extends Controller
             'details' => [
                 'distributor_id' => $milestone->distributor_id,
                 'rank_number' => $milestone->rank_number,
-                'award_description' => $milestone->award_description,
+                'disbursement_type' => $data['disbursement_type'],
+                'gross_paise' => $grossPaise,
+                'admin_charge_paise' => $adminChargePaise,
+                'tds_paise' => $tdsPaise,
+                'net_paise' => $netPaise,
             ],
             'ip' => $request->ip(),
         ]);

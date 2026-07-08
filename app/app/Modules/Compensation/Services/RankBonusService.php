@@ -152,31 +152,41 @@ final class RankBonusService
     }
 
     /**
-     * Create a LifetimeAwardMilestone if this is the first time the distributor
-     * has qualified for this rank. Silently ignores duplicate constraint violations.
+     * Create or update a LifetimeAwardMilestone on each rank qualification.
+     *
+     * First qualification: creates the milestone with qualification_count = 1.
+     * Subsequent qualifications while still pending: increments qualification_count
+     * so the release-threshold gate (D4) can be evaluated.
+     * Already delivered/cancelled milestones are left untouched.
      */
     private function maybeCreateLifetimeAward(
         int $distributorId,
         int $rank,
         string $monthStart,
     ): void {
-        $alreadyExists = LifetimeAwardMilestone::where('distributor_id', $distributorId)
+        $existing = LifetimeAwardMilestone::where('distributor_id', $distributorId)
             ->where('rank_number', $rank)
-            ->exists();
+            ->first();
 
-        if ($alreadyExists) {
+        if ($existing === null) {
+            $rankName = $this->plan->rankName($rank);
+
+            LifetimeAwardMilestone::create([
+                'distributor_id' => $distributorId,
+                'rank_number' => $rank,
+                'triggered_month' => $monthStart,
+                'qualification_count' => 1,
+                'award_description' => $rankName.' — non-cash reward per plan',
+                'status' => LifetimeAwardMilestone::STATUS_PENDING,
+            ]);
+
             return;
         }
 
-        $rankName = $this->plan->rankName($rank);
-
-        LifetimeAwardMilestone::create([
-            'distributor_id' => $distributorId,
-            'rank_number' => $rank,
-            'triggered_month' => $monthStart,
-            'award_description' => $rankName.' — non-cash reward per plan',
-            'status' => LifetimeAwardMilestone::STATUS_PENDING,
-        ]);
+        // Increment count for pending milestones so the release threshold is tracked.
+        if ($existing->status === LifetimeAwardMilestone::STATUS_PENDING) {
+            $existing->increment('qualification_count');
+        }
     }
 
     private function companyTurnoverPaise(Carbon $monthStart, Carbon $monthEnd): int
