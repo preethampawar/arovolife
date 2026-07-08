@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Jobs;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compensation\Services\GroupBvReversalService;
+use App\Modules\Compensation\Services\GsbPersonalBvTopupService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -32,7 +33,7 @@ final class ReverseGroupBvJob implements ShouldQueue
         private readonly ?int $actorUserId = null,
     ) {}
 
-    public function handle(GroupBvReversalService $reversal): void
+    public function handle(GroupBvReversalService $reversal, GsbPersonalBvTopupService $topup): void
     {
         $order = Order::find($this->orderId);
         if ($order === null) {
@@ -40,6 +41,7 @@ final class ReverseGroupBvJob implements ShouldQueue
         }
 
         $reversal->reverseForOrder($order, $this->actorUserId);
+        $topup->reverseForOrder($this->orderId);
     }
 
     /**

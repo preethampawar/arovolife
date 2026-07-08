@@ -25,5 +25,9 @@ final readonly class GsbSlabProgress
         public ?string $title,
         public int $titleMaxSlab,
         public ?int $highestEarnedSlab,
+        /** Personal BV already credited to the weaker leg as a topup today (paise). */
+        public int $personalBvTopupPaise = 0,
+        /** Which side the topup was applied to ('L', 'R', or null if none). */
+        public ?string $topupSide = null,
     ) {}
 }

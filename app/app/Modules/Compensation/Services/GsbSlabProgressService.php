@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compensation\Services\DTOs\GsbSlabProgress;
 use App\Modules\Compensation\Services\DTOs\GsbSlabRow;
 use Illuminate\Support\Carbon;
@@ -44,10 +46,13 @@ final class GsbSlabProgressService
         $leftEffective = 0;
         $rightEffective = 0;
         $slab1Cf = 0;
+        $personalBvTopupPaise = 0;
+        $topupSide = null;
 
         if ($eligible) {
+            $today = Carbon::today('Asia/Kolkata')->toDateString();
             $daily = GroupBvDaily::where('distributor_id', $distributorId)
-                ->whereDate('date', Carbon::today('Asia/Kolkata')->toDateString())
+                ->whereDate('date', $today)
                 ->first();
             $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
 
@@ -56,6 +61,38 @@ final class GsbSlabProgressService
             $rightEffective = ($daily->right_bv_paise ?? 0)
                 + ($cf !== null && $cf->power_side === 'R' ? $cf->power_side_bv_paise : 0);
             $slab1Cf = $cf->slab1_weaker_bv_paise ?? 0;
+
+            // Preview the personal-BV weaker-leg topup the cut-off will apply.
+            // For accruals NOT yet topped up, determine the weaker side from the
+            // current accumulator (matching GsbPersonalBvTopupService::applyForDistributor).
+            $alreadyToppedup = GsbPersonalBvTopup::where('distributor_id', $distributorId)
+                ->whereDate('date', $today)
+                ->sum('bv_paise');
+            $personalBvTopupPaise = (int) $alreadyToppedup;
+
+            // If topups exist for today, expose the side they were applied to.
+            $appliedTopup = GsbPersonalBvTopup::where('distributor_id', $distributorId)
+                ->whereDate('date', $today)
+                ->whereNull('reversed_at')
+                ->first(['side', 'bv_paise']);
+
+            if ($appliedTopup !== null) {
+                $topupSide = $appliedTopup->side;
+            } else {
+                // Topup not yet applied — preview which side would receive it.
+                $pendingBv = (int) BvLedgerEntry::where('distributor_id', $distributorId)
+                    ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
+                    ->whereDate('effective_at', $today)
+                    ->sum('bv_paise');
+
+                if ($pendingBv > 0) {
+                    // Weaker side before any topup (mirrors service logic).
+                    $rawLeft = $daily->left_bv_paise ?? 0;
+                    $rawRight = $daily->right_bv_paise ?? 0;
+                    $topupSide = $rawLeft <= $rawRight ? 'L' : 'R';
+                    $personalBvTopupPaise = $pendingBv;
+                }
+            }
         }
 
         $weakerEffective = min($leftEffective, $rightEffective);
@@ -113,6 +150,8 @@ final class GsbSlabProgressService
             title: $title->title,
             titleMaxSlab: $title->maxGsbSlab,
             highestEarnedSlab: $highestEarnedSlab,
+            personalBvTopupPaise: $personalBvTopupPaise,
+            topupSide: $topupSide,
         );
     }
 }

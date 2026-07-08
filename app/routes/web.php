@@ -32,6 +32,7 @@ use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
@@ -314,6 +315,11 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
             Route::get('/', [AdminDailyCutoffController::class, 'index'])->name('index');
             Route::get('/export', [AdminDailyCutoffController::class, 'export'])->name('export');
             Route::get('/{date}', [AdminDailyCutoffController::class, 'show'])->name('show')->where('date', '\d{4}-\d{2}-\d{2}');
+        });
+
+        Route::prefix('personal-bv-topups')->name('personal-bv-topups.')->group(function (): void {
+            Route::get('/', [AdminGsbPersonalBvTopupController::class, 'index'])->name('index');
+            Route::get('/export', [AdminGsbPersonalBvTopupController::class, 'export'])->name('export');
         });
 
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
