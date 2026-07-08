@@ -125,11 +125,13 @@ final class BvLedgerService
 
     /**
      * The date a distributor's cumulative personal BV first reached the given
-     * threshold (e.g. the Retailer title's 3,000 BV) — the anchor for their
-     * repurchase calendar month. Returns null if never reached. Reversals net
-     * out, so a later-cancelled order can push the crossing date later.
+     * threshold (paise) — used as the anchor for their repurchase calendar
+     * month, which per the 5 Jul 2026 rule keys off the 600-BV first-purchase
+     * point (not the 3,000-BV Retailer title). Returns null if never reached.
+     * Reversals net out, so a later-cancelled order can push the crossing date
+     * later.
      */
-    public function retailerAchievedAt(int $distributorId, int $thresholdPaise): ?Carbon
+    public function firstReachedBvPaiseAt(int $distributorId, int $thresholdPaise): ?Carbon
     {
         if ($thresholdPaise <= 0) {
             return null;

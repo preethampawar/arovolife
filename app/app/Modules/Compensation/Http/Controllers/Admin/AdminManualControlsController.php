@@ -56,6 +56,16 @@ final class AdminManualControlsController extends Controller
         $ip = $request->ip();
 
         $result = DB::transaction(function () use ($distributor, $date, $reason, $ip) {
+            // Lock any existing cut-off row for this distributor+date for the
+            // whole retry so it can't race the reactivation listener
+            // (ReleaseHeldGsbOnReactivation locks the same row): whichever runs
+            // first flips the status, the other then sees it and skips — no
+            // double credit of a REPURCHASE_HELD row being released concurrently.
+            GsbCutoffResult::where('distributor_id', $distributor->id)
+                ->where('cutoff_date', $date->toDateString())
+                ->lockForUpdate()
+                ->get();
+
             $before = GsbCutoffResult::where('distributor_id', $distributor->id)
                 ->where('cutoff_date', $date->toDateString())
                 ->where('status', GsbCutoffResult::STATUS_FAILED)

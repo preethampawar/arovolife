@@ -11,7 +11,9 @@ use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
+use App\Modules\Compensation\Listeners\ReleaseHeldGsbOnReactivation;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Identity\Models\User;
 use App\Modules\Returns\Events\OrderRefundApproved;
@@ -48,6 +50,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(OrderStatusChanged::class, PropagateGroupBvOnOrderPaid::class);
         Event::listen(OrderStatusChanged::class, ReverseGroupBvOnOrderReversal::class);
         Event::listen(OrderRefundApproved::class, ReverseGroupBvOnOrderReversal::class);
+
+        // Release GSB income held during a repurchase grace window once the
+        // distributor completes their repurchase (KP 2026-06-28). Suspended
+        // (post-grace) income stays forfeited — see the listener.
+        Event::listen(IncomeReactivated::class, ReleaseHeldGsbOnReactivation::class);
 
         // Super-admin: the `admin` role bypasses every permission check (R-17
         // separation of duties). The specialised roles (admin-operations /

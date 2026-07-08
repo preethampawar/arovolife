@@ -17,8 +17,9 @@ use Illuminate\Support\Carbon;
 /**
  * Manages each distributor's monthly repurchase obligation (KP 2026-06-27/28).
  *
- * Cycles are anchored to the distributor's Retailer-achievement day-of-month
- * (e.g. the 5th → cycle 5th..4th). A distributor must complete their rank's
+ * Cycles are anchored to the day-of-month the distributor first reached 600 BV
+ * personal purchase (5 Jul 2026 rule; e.g. the 5th → cycle 5th..4th). A
+ * distributor must complete their rank's
  * `repurchase_bv_paise` of self-purchase BV before the cycle's due date; missing
  * it opens a `grace_days` window (income calculated-but-held), after which their
  * GSB/Fortune/GBB are suspended — Mentorship and Rank BV are never suspended.
@@ -63,14 +64,13 @@ final class RepurchaseCycleService
     }
 
     /**
-     * The distributor's Retailer-achievement date = their repurchase anchor.
-     * Null until they reach the Retailer title (no obligation before that).
+     * The distributor's repurchase anchor = the date they first reached the
+     * 600-BV personal-purchase minimum (5 Jul 2026 rule; previously the 3,000-BV
+     * Retailer title). Null until they reach 600 BV (no obligation before that).
      */
-    public function retailerAnchor(int $distributorId): ?Carbon
+    public function repurchaseAnchor(int $distributorId): ?Carbon
     {
-        $threshold = (int) ($this->plan->gsbSlab(1)['title_min_bv_paise'] ?? 0);
-
-        return $this->bvLedger->retailerAchievedAt($distributorId, $threshold);
+        return $this->bvLedger->firstReachedBvPaiseAt($distributorId, $this->plan->gsbMinBvPaise());
     }
 
     /**
@@ -80,7 +80,7 @@ final class RepurchaseCycleService
      */
     public function evaluate(int $distributorId, Carbon $asOf): ?RepurchaseCycle
     {
-        $anchor = $this->retailerAnchor($distributorId);
+        $anchor = $this->repurchaseAnchor($distributorId);
         if ($anchor === null || $anchor->greaterThan($asOf)) {
             return null;
         }
