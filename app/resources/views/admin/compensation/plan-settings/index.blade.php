@@ -133,6 +133,12 @@
                     <span class="text-[11px] text-gray-400">{{ $bv($row->group_bv_required_paise) }}</span>
                 </div>
                 <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Weaker-leg top-up (paise, ranks 1–2) <x-help-tip text="Cap on this month's personal BV that may supplement the weaker Genos leg toward the ranks 1–2 match (KP 2026-06-28: Rank 1 = 15,000 BV, Rank 2 = 30,000 BV). 0 for ranks 3+." /></label>
+                    <input type="number" name="weaker_leg_topup_bv_paise" data-field-label="Weaker-leg top-up (paise)" value="{{ $row->weaker_leg_topup_bv_paise }}" required min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                    <span class="text-[11px] text-gray-400">{{ $bv($row->weaker_leg_topup_bv_paise) }}</span>
+                </div>
+                <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Qualifiers / side (ranks 3+) <x-help-tip text="Number of lower-rank qualifiers required on each Genos side for ranks 3 and above." /></label>
                     <input type="number" name="structural_qualifiers_per_side" data-field-label="Qualifiers / side" value="{{ $row->structural_qualifiers_per_side }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">

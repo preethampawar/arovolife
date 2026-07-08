@@ -118,6 +118,58 @@ it('does not qualify for rank 1 when only one side meets the group BV threshold'
     expect($result['rank_1_count'])->toBe(0);
 });
 
+/** Seed a personal-purchase BV accrual dated inside a specific month (for the
+ *  weaker-leg top-up, which counts only that month's personal BV). */
+function seedPersonalBvOn(int $distributorId, int $bvPaise, string $date): void
+{
+    static $fakeOrderId = 960000;
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'order_id' => $fakeOrderId++,
+        'bv_paise' => $bvPaise,
+        'type' => 'accrual',
+        'effective_at' => $date.' 10:00:00',
+        'created_at' => $date.' 10:00:00',
+        'updated_at' => $date.' 10:00:00',
+    ]);
+}
+
+it('qualifies for rank 1 when the weaker leg is topped up by this-month personal BV', function (): void {
+    // KP 2026-06-28: up to 15,000 BV of this month's personal purchases may
+    // supplement the weaker Genos leg toward the rank-1 3L/3L match.
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    // 7,000 BV personal purchase in June → meets Dealer title AND feeds the top-up.
+    seedPersonalBvOn($dist->id, 700_000, '2026-06-15');
+    // Right (weaker) leg is 5,000 BV short of the 3L (30,000,000 paise) match.
+    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 29_500_000);
+
+    $result = app(RankQualificationService::class)->checkForMonth($month);
+
+    expect($result['rank_1_count'])->toBe(1); // 29,500,000 + 700,000 top-up ≥ 30,000,000
+
+    $record = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
+    expect($record)->not->toBeNull();
+    // The recorded group BV stays the RAW figure — the top-up only aids qualification.
+    expect((int) $record->right_genos_bv_paise)->toBe(29_500_000);
+});
+
+it('caps the rank-1 weaker-leg top-up at 15,000 BV', function (): void {
+    // A shortfall larger than the 15,000 BV (1,500,000 paise) cap cannot be
+    // fully covered even with abundant personal BV → no qualification.
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedPersonalBvOn($dist->id, 5_000_000, '2026-06-15'); // 50,000 BV this month (well above cap)
+    // Right leg 20,000 BV short — more than the 15,000 BV top-up cap can bridge.
+    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 28_000_000);
+
+    $result = app(RankQualificationService::class)->checkForMonth($month);
+
+    expect($result['rank_1_count'])->toBe(0); // 28,000,000 + 1,500,000 cap = 29,500,000 < 30,000,000
+});
+
 it('creates carry-forward records for M+1 and M+2 when rank 1 is achieved', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');

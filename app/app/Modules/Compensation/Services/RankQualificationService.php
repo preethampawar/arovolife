@@ -48,6 +48,8 @@ final class RankQualificationService
         );
 
         $personalBvMap = $this->buildPersonalBvMap();
+        // This-month personal purchase BV feeds the Ranks 1 & 2 weaker-leg top-up.
+        $monthlyPersonalBvMap = $this->buildMonthlyPersonalBvMap($monthStart, $monthEnd);
 
         $rank1Ids = $this->checkRanks1And2(
             rank: 1,
@@ -55,6 +57,7 @@ final class RankQualificationService
             monthEnd: $monthEnd,
             occurrenceNumber: $occurrenceNumber,
             personalBvMap: $personalBvMap,
+            monthlyPersonalBvMap: $monthlyPersonalBvMap,
         );
         $counts['rank_1_count'] = count($rank1Ids);
 
@@ -64,6 +67,7 @@ final class RankQualificationService
             monthEnd: $monthEnd,
             occurrenceNumber: $occurrenceNumber,
             personalBvMap: $personalBvMap,
+            monthlyPersonalBvMap: $monthlyPersonalBvMap,
         );
         $counts['rank_2_count'] = count($rank2Ids);
 
@@ -142,9 +146,38 @@ final class RankQualificationService
     }
 
     /**
+     * Build this-month personal BV map: distributor_id => sum(bv_paise) for
+     * type='accrual' entries with effective_at inside the calendar month. Feeds
+     * the Ranks 1 & 2 weaker-leg top-up (the top-up uses personal purchases made
+     * "during that month", per KP's 2026-06-28 example).
+     *
+     * @return array<int, int>
+     */
+    private function buildMonthlyPersonalBvMap(string $monthStart, string $monthEnd): array
+    {
+        $rows = DB::table('bv_ledger_entries')
+            ->where('type', 'accrual')
+            ->whereBetween('effective_at', [
+                Carbon::parse($monthStart)->startOfDay(),
+                Carbon::parse($monthEnd)->endOfDay(),
+            ])
+            ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
+            ->groupBy('distributor_id')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[(int) $row->distributor_id] = (int) $row->total_bv;
+        }
+
+        return $map;
+    }
+
+    /**
      * Check ranks 1 and 2 (monthly group BV + personal BV title).
      *
-     * @param  array<int, int>  $personalBvMap
+     * @param  array<int, int>  $personalBvMap  lifetime personal BV (title gate)
+     * @param  array<int, int>  $monthlyPersonalBvMap  this-month personal BV (weaker-leg top-up)
      * @return int[] distributor IDs that newly qualified
      */
     private function checkRanks1And2(
@@ -153,11 +186,14 @@ final class RankQualificationService
         string $monthEnd,
         int $occurrenceNumber,
         array $personalBvMap,
+        array $monthlyPersonalBvMap,
     ): array {
         $personalBvRequired = $this->plan->rankPersonalBvRequired($rank);
         // Ranks 1-2 always have a group-BV gate; fall back to an impossible
         // threshold if it is ever unset so nobody qualifies by accident.
         $groupBvRequired = $this->plan->rankGroupBvRequired($rank) ?? PHP_INT_MAX;
+        // Weaker-leg top-up cap (paise): R1 15,000 BV, R2 30,000 BV, else 0.
+        $topupCap = $this->plan->rankWeakerLegTopupBvPaise($rank);
 
         $groupBvRows = DB::table('group_bv_daily')
             ->whereBetween('date', [$monthStart, $monthEnd])
@@ -180,7 +216,16 @@ final class RankQualificationService
             if ($personalBv < $personalBvRequired) {
                 continue;
             }
-            if ($leftBv < $groupBvRequired || $rightBv < $groupBvRequired) {
+
+            // Weaker-leg personal-BV top-up (KP 2026-06-28, Ranks 1 & 2 only):
+            // up to $topupCap of this month's personal purchase BV supplements
+            // the weaker leg toward the match. The recorded left/right BV below
+            // stays the raw group BV — this only aids the qualification test.
+            $topup = min($monthlyPersonalBvMap[$distributorId] ?? 0, $topupCap);
+            $effectiveLeft = $leftBv + ($leftBv <= $rightBv ? $topup : 0);
+            $effectiveRight = $rightBv + ($leftBv <= $rightBv ? 0 : $topup);
+
+            if ($effectiveLeft < $groupBvRequired || $effectiveRight < $groupBvRequired) {
                 continue;
             }
 

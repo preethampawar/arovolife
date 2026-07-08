@@ -26,7 +26,8 @@ it('falls back to the registry default when a scalar setting is absent', functio
 
     expect($plan->tdsRateBp())->toBe(500);                 // 5%
     expect($plan->adminChargeRateBp())->toBe(300);          // 3%
-    expect($plan->adminChargeCapPaise())->toBe(3_000_000);  // ₹30,000
+    expect($plan->adminChargeWeeklyCapPaise())->toBe(2_500_000);  // ₹25,000 (KP Round-5)
+    expect($plan->adminChargeMonthlyCapPaise())->toBe(2_500_000); // ₹25,000 (KP Round-5)
     expect($plan->minPayoutPaise())->toBe(10_000);          // ₹100 (KP)
     expect($plan->gsbScoreRatePaise())->toBe(36_000);       // ₹360/point
 });
@@ -56,15 +57,6 @@ it('excludes Fortune ranks 6–9 by default and respects an override', function 
 });
 
 // ── Deduction helpers (basis-point math) ────────────────────────────────────
-
-it('computes admin charge with the configured rate and cap', function () {
-    $plan = app(CompensationPlanSettingsService::class);
-
-    // 3% of 1,000,000 = 30,000 (below the ₹30,000 cap).
-    expect($plan->adminCharge(1_000_000))->toBe(30_000);
-    // 3% of 200,000,000 = 6,000,000 → capped at 3,000,000.
-    expect($plan->adminCharge(200_000_000))->toBe(3_000_000);
-});
 
 it('computes TDS as a basis-point share of the supplied base', function () {
     $plan = app(CompensationPlanSettingsService::class);

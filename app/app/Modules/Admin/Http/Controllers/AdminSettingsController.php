@@ -287,20 +287,6 @@ final class AdminSettingsController extends Controller
                 'max' => 10000,
                 'default' => '300',
             ],
-            // Legacy per-event admin-charge cap. The live weekly/monthly payout
-            // batches use the per-cycle caps below (KP 2026-06-30 Round-5); this
-            // key now only feeds the deprecated per-event deduction helper, so
-            // editing it does NOT change what the batches deduct. Kept for
-            // backward compatibility.
-            'comp.admin_charge.cap_paise' => [
-                'group' => 'compensation_plan',
-                'label' => 'Admin charge cap — legacy per-event (paise)',
-                'description' => 'Legacy cap on the admin charge for a single bonus event. 3000000 = ₹30,000. Superseded by the weekly/monthly per-cycle caps below — the live payout batches no longer apply this. Retained for backward compatibility.',
-                'type' => 'int',
-                'min' => 0,
-                'max' => 1_000_000_000,
-                'default' => '3000000',
-            ],
             'comp.admin_charge.weekly_cap_paise' => [
                 'group' => 'compensation_plan',
                 'label' => 'Admin charge cap — weekly batch (paise)',

@@ -29,17 +29,20 @@ final class RankTiersSeeder extends Seeder
         // lifetime_award_budget_paise = per-rank Lifetime Awards budget (KP:
         // R1 ₹15,000 … R9 ₹2.25Cr); reconciles to the itemised reward worths in
         // LifetimeAwardRewardsSeeder.
+        // weaker_leg_topup_bv_paise = capped personal-BV that may supplement the
+        // weaker Genos leg toward the rank's group-BV match (KP 2026-06-28):
+        // Ranks 1 & 2 only — R1 15,000 BV, R2 30,000 BV; Ranks 3-9 = 0.
         $rows = [
-            // rank, name, pool_pct, pyp, personal_bv, group_bv, structural_per_side, carry_forward_months, repurchase_bv_paise, lifetime_award_budget_paise
-            [1, 'Silver Partner', 7.00, 1, 700_000, 30_000_000, null, 2, 100_000, 1_500_000],
-            [2, 'Pearl Partner', 3.40, 1, 1_500_000, 50_000_000, null, 0, 110_000, 3_000_000],
-            [3, 'Emerald Partner', 2.70, 2, 3_200_000, null, 2, 0, 120_000, 9_000_000],
-            [4, 'Gold Partner', 2.20, 2, 6_800_000, null, 2, 0, 130_000, 36_500_000],
-            [5, 'Diamond Partner', 1.70, 2, 14_400_000, null, 2, 0, 140_000, 100_000_000],
-            [6, 'Blue Diamond Partner', 1.20, 3, 30_000_000, null, 2, 0, 160_000, 300_000_000],
-            [7, 'Royal Diamond Partner', 0.90, 3, 30_000_000, null, 2, 0, 180_000, 900_000_000],
-            [8, 'Crown Diamond Partner', 0.60, 3, 30_000_000, null, 2, 0, 200_000, 1_400_000_000],
-            [9, 'Elite Diamond Partner', 0.30, 3, 30_000_000, null, 2, 0, 230_000, 2_250_000_000],
+            // rank, name, pool_pct, pyp, personal_bv, group_bv, weaker_leg_topup_bv, structural_per_side, carry_forward_months, repurchase_bv_paise, lifetime_award_budget_paise
+            [1, 'Silver Partner', 7.00, 1, 700_000, 30_000_000, 1_500_000, null, 2, 100_000, 1_500_000],
+            [2, 'Pearl Partner', 3.40, 1, 1_500_000, 50_000_000, 3_000_000, null, 0, 110_000, 3_000_000],
+            [3, 'Emerald Partner', 2.70, 2, 3_200_000, null, 0, 2, 0, 120_000, 9_000_000],
+            [4, 'Gold Partner', 2.20, 2, 6_800_000, null, 0, 2, 0, 130_000, 36_500_000],
+            [5, 'Diamond Partner', 1.70, 2, 14_400_000, null, 0, 2, 0, 140_000, 100_000_000],
+            [6, 'Blue Diamond Partner', 1.20, 3, 30_000_000, null, 0, 2, 0, 160_000, 300_000_000],
+            [7, 'Royal Diamond Partner', 0.90, 3, 30_000_000, null, 0, 2, 0, 180_000, 900_000_000],
+            [8, 'Crown Diamond Partner', 0.60, 3, 30_000_000, null, 0, 2, 0, 200_000, 1_400_000_000],
+            [9, 'Elite Diamond Partner', 0.30, 3, 30_000_000, null, 0, 2, 0, 230_000, 2_250_000_000],
         ];
 
         $records = array_map(fn (array $r): array => [
@@ -49,10 +52,11 @@ final class RankTiersSeeder extends Seeder
             'pyp_required' => $r[3],
             'personal_bv_required_paise' => $r[4],
             'group_bv_required_paise' => $r[5],
-            'structural_qualifiers_per_side' => $r[6],
-            'carry_forward_months' => $r[7],
-            'repurchase_bv_paise' => $r[8],
-            'lifetime_award_budget_paise' => $r[9],
+            'weaker_leg_topup_bv_paise' => $r[6],
+            'structural_qualifiers_per_side' => $r[7],
+            'carry_forward_months' => $r[8],
+            'repurchase_bv_paise' => $r[9],
+            'lifetime_award_budget_paise' => $r[10],
             'is_active' => true,
             'created_at' => $now,
             'updated_at' => $now,
@@ -61,7 +65,7 @@ final class RankTiersSeeder extends Seeder
         DB::table('rank_tiers')->upsert(
             $records,
             ['rank_number'],
-            ['rank_name', 'pool_pct', 'pyp_required', 'personal_bv_required_paise', 'group_bv_required_paise', 'structural_qualifiers_per_side', 'carry_forward_months', 'repurchase_bv_paise', 'lifetime_award_budget_paise', 'is_active', 'updated_at'],
+            ['rank_name', 'pool_pct', 'pyp_required', 'personal_bv_required_paise', 'group_bv_required_paise', 'weaker_leg_topup_bv_paise', 'structural_qualifiers_per_side', 'carry_forward_months', 'repurchase_bv_paise', 'lifetime_award_budget_paise', 'is_active', 'updated_at'],
         );
     }
 }

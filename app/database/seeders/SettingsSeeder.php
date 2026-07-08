@@ -56,7 +56,6 @@ final class SettingsSeeder extends Seeder
     {
         $defaults = [
             'comp.admin_charge.rate_bp' => '300',          // 3%
-            'comp.admin_charge.cap_paise' => '3000000',     // ₹30,000
             // Admin-charge scope toggles — ON for the 6 cash bonuses; OFF for
             // non-cash Lifetime Awards (KP 2026-06-27 Round-2 Q6: only cash/
             // cheque releases carry admin charge + TDS).

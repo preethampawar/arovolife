@@ -47,7 +47,6 @@ final class CompensationPlanSettingsService
     /** Registry defaults — used when a key is absent from the settings table. */
     private const SCALAR_DEFAULTS = [
         'comp.admin_charge.rate_bp' => 300,
-        'comp.admin_charge.cap_paise' => 3_000_000,
         // Per-group admin-charge ceilings (KP 2026-06-30 Round-5).
         // Group A = GSB+MB (weekly), Groups B/C/D = monthly streams.
         // Each group has an independent ₹25,000/cycle ceiling.
@@ -116,11 +115,6 @@ final class CompensationPlanSettingsService
     public function adminChargeRateBp(): int
     {
         return $this->scalarInt('comp.admin_charge.rate_bp');
-    }
-
-    public function adminChargeCapPaise(): int
-    {
-        return $this->scalarInt('comp.admin_charge.cap_paise');
     }
 
     /** Per-cycle admin-charge ceiling for Group A (GSB + MB, weekly). */
@@ -303,15 +297,6 @@ final class CompensationPlanSettingsService
 
     // ── Deduction helpers (shared so every engine computes identically) ──────
 
-    /** Admin charge = min(round(gross × rate), cap). */
-    public function adminCharge(int $grossPaise): int
-    {
-        return (int) min(
-            round($grossPaise * $this->adminChargeRateBp() / 10_000),
-            $this->adminChargeCapPaise(),
-        );
-    }
-
     /** TDS = round(base × tds_rate). Caller decides the base (gross vs net). */
     public function tds(int $basePaise): int
     {
@@ -412,6 +397,7 @@ final class CompensationPlanSettingsService
                     'pyp_required' => (int) $row->pyp_required,
                     'personal_bv_required_paise' => (int) $row->personal_bv_required_paise,
                     'group_bv_required_paise' => $row->group_bv_required_paise !== null ? (int) $row->group_bv_required_paise : null,
+                    'weaker_leg_topup_bv_paise' => (int) ($row->weaker_leg_topup_bv_paise ?? 0),
                     'structural_qualifiers_per_side' => $row->structural_qualifiers_per_side !== null ? (int) $row->structural_qualifiers_per_side : null,
                     'carry_forward_months' => (int) ($row->carry_forward_months ?? 0),
                     'repurchase_bv_paise' => (int) ($row->repurchase_bv_paise ?? 0),
@@ -442,6 +428,16 @@ final class CompensationPlanSettingsService
     public function rankGroupBvRequired(int $rank): ?int
     {
         return $this->rankTiers()[$rank]['group_bv_required_paise'] ?? null;
+    }
+
+    /**
+     * Cap (paise) on the personal BV that may supplement the weaker Genos leg
+     * toward this rank's group-BV match (KP 2026-06-28: R1 15,000 BV, R2 30,000
+     * BV; Ranks 3-9 = 0). Admin-editable on rank_tiers.
+     */
+    public function rankWeakerLegTopupBvPaise(int $rank): int
+    {
+        return (int) ($this->rankTiers()[$rank]['weaker_leg_topup_bv_paise'] ?? 0);
     }
 
     public function rankStructuralQualifiersPerSide(int $rank): int
