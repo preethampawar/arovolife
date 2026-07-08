@@ -10,7 +10,7 @@
 @endphp
 
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    Monthly repurchase obligation, anchored to the distributor's Retailer-achievement day.
+    Monthly repurchase obligation, anchored to the day the distributor first reached 600 personal BV.
     Missing it holds income during the grace window, then suspends GSB / Fortune / Growth Booster
     (never Mentorship or Rank). Maintained by the daily <code class="font-mono">repurchase:evaluate</code>
     command; only active when the Repurchase engine feature flag is on.

@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your Genos Sales Bonus (GSB) is calculated at 23:59 every day based on the BV your Genos groups generated. The gross amount is reduced by a 3% admin charge (max ₹30,000), 5% TDS (Tax Deducted at Source), and a repurchase deduction before reaching your wallet. Each row below is one daily cut-off result.
+        Your Genos Sales Bonus (GSB) is calculated at 23:59 every day based on the BV your Genos groups generated. The gross amount is reduced by a 3% admin charge (max ₹25,000 per weekly batch), 5% TDS (Tax Deducted at Source), and a repurchase deduction before reaching your wallet. Each row below is one daily cut-off result.
     </div>
 
     {{-- Filter + CSV --}}
@@ -49,7 +49,7 @@
                             <span class="flex items-center justify-end gap-1">Gross GSB <x-help-tip text="The Genos Sales Bonus before any deductions." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Admin 3% <x-help-tip text="3% of gross GSB or ₹30,000 — whichever is lower." /></span>
+                            <span class="flex items-center justify-end gap-1">Admin 3% <x-help-tip text="3% of gross GSB or ₹25,000 per weekly batch — whichever is lower." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">TDS 5% <x-help-tip text="Tax Deducted at Source at 5% of gross minus admin charge." /></span>

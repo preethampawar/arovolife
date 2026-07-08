@@ -31,7 +31,7 @@
                     <th class="px-4 py-2 text-left text-gray-500">Rank</th>
                     <th class="px-4 py-2 text-right text-gray-500">Gross</th>
                     <th class="px-4 py-2 text-right text-gray-500">
-                        Admin <x-help-tip text="min(3% of gross, ₹30,000)" />
+                        Admin <x-help-tip text="min(3% of gross, ₹25,000 per monthly batch)" />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-500">TDS (5%)</th>
                     <th class="px-4 py-2 text-right text-gray-500">Net</th>

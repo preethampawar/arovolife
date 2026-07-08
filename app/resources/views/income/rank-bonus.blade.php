@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Rank Bonus is your share of a monthly pool set aside for your qualifying rank. Each rank has its own pool (a fixed % of company turnover). Your share is pool ÷ number of qualifiers. Admin charge (min of 3%, max ₹30,000) and 5% TDS are deducted. Credited on the 8th of the following month.
+        The Rank Bonus is your share of a monthly pool set aside for your qualifying rank. Each rank has its own pool (a fixed % of company turnover). Your share is pool ÷ number of qualifiers. Admin charge (min of 3%, max ₹25,000 per monthly batch) and 5% TDS are deducted. Credited on the 8th of the following month.
     </div>
 
     {{-- Summary cards --}}
@@ -59,7 +59,7 @@
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Gross</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">
-                                Admin <x-help-tip text="min(3% of gross, ₹30,000)" />
+                                Admin <x-help-tip text="min(3% of gross, ₹25,000 per monthly batch)" />
                             </span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">TDS (5%)</th>

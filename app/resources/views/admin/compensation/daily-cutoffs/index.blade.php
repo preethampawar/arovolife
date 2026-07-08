@@ -52,7 +52,7 @@
                         Gross GSB <x-help-tip text="Before admin charge and TDS." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500">
-                        Admin 3% <x-help-tip text="3% of gross or ₹30,000 max." />
+                        Admin 3% <x-help-tip text="3% of gross or ₹25,000 per weekly batch — whichever is lower." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500">
                         TDS 5% <x-help-tip text="5% of (gross − admin charge)." />
