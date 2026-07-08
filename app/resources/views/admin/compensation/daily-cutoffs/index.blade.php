@@ -39,6 +39,9 @@
                 <tr>
                     <th class="px-3 py-2 text-left text-gray-500">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-500">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-500">
+                        Title <x-help-tip text="Personal purchase title based on lifetime BV. The GSB slab is capped at the title's max slab — e.g. a distributor without the Retailer title (3,000 BV) is capped at Slab 1." />
+                    </th>
                     <th class="px-3 py-2 text-right text-gray-500">
                         Left BV <x-help-tip text="Left Genos group BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
@@ -86,6 +89,9 @@
                     </td>
                     <td class="px-3 py-2 text-gray-700 truncate max-w-[120px]">
                         {{ $row->distributor->user?->full_name ?? '—' }}
+                    </td>
+                    <td class="px-3 py-2 text-gray-600 text-[11px]">
+                        {{ $titleMap[$row->distributor_id] ?? '—' }}
                     </td>
                     <td class="px-3 py-2 text-right">@bv($row->left_bv_paise)</td>
                     <td class="px-3 py-2 text-right">@bv($row->right_bv_paise)</td>

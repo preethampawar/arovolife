@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Services\PersonalBvTitleService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -14,6 +16,10 @@ use Illuminate\Support\Carbon;
 final class AdminDailyCutoffController extends Controller
 {
     private const PER_PAGE = 50;
+
+    public function __construct(
+        private readonly PersonalBvTitleService $titleService,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -33,11 +39,29 @@ final class AdminDailyCutoffController extends Controller
             ->when($q, fn ($b) => $b->whereHas('distributor', fn ($d) => $d->where('adn', 'like', "%{$q}%")))
             ->orderByRaw("FIELD(status, 'failed', 'credited', 'no_match', 'below_600bv', 'frozen', 'calculated')");
 
+        $rows = $query->paginate(self::PER_PAGE)->withQueryString();
+
+        $distributorIds = $rows->pluck('distributor_id')->all();
+        $personalBvMap = BvLedgerEntry::query()
+            ->whereIn('distributor_id', $distributorIds)
+            ->selectRaw('distributor_id, SUM(bv_paise) as total')
+            ->groupBy('distributor_id')
+            ->pluck('total', 'distributor_id')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+
+        $titleMap = collect($distributorIds)->mapWithKeys(function (int $id) use ($personalBvMap): array {
+            $title = $this->titleService->forBvPaise($personalBvMap[$id] ?? 0)->title;
+
+            return [$id => $title];
+        })->all();
+
         return view('admin.compensation.daily-cutoffs.index', [
-            'rows' => $query->paginate(self::PER_PAGE)->withQueryString(),
+            'rows' => $rows,
             'date' => $date,
             'status' => $status,
             'q' => $q,
+            'titleMap' => $titleMap,
         ]);
     }
 
