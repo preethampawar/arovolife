@@ -6,6 +6,7 @@ namespace App\Modules\Identity\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 
@@ -25,8 +26,10 @@ use Illuminate\Support\Number;
  * wire the placeholder fields (rank engine, BV ledger, payouts) every
  * surface picks up the new values automatically.
  *
- * Five fields are Phase-2+ placeholders that resolve to `null` for now.
- * Grep for `PHASE_LATER_PLACEHOLDER` to find every wire-up site.
+ * Three fields are Phase-4+ placeholders that resolve to `null` for now
+ * (highest_rank, current_rank, total_withdrawal_income); personal_sales_position
+ * and total_personal_bv are wired to the BV ledger. Grep for
+ * `PHASE_LATER_PLACEHOLDER` to find every remaining wire-up site.
  */
 final class DistributorIdCardStats
 {
@@ -80,6 +83,38 @@ final class DistributorIdCardStats
     }
 
     /**
+     * The distributor's 1-based standing among all distributors ranked by
+     * lifetime personal purchase BV (net of reversals — the same basis as
+     * {@see BvLedgerService::totalPersonalBvPaise()}), highest first. Shown only
+     * to the authenticated owner (hard rule #3 — own data only), and only once
+     * they have any personal BV (returns null → "—" before their first sale).
+     * Ties share a position (standard competition ranking).
+     */
+    private function personalSalesPosition(Distributor $distributor): ?string
+    {
+        if (auth()->id() !== $distributor->user_id) {
+            return null;
+        }
+
+        $myBvPaise = $this->bvLedger->totalPersonalBvPaise($distributor->id);
+        if ($myBvPaise <= 0) {
+            return null;
+        }
+
+        // Number of distributors whose net personal BV is strictly higher than
+        // mine; my position is that count + 1.
+        $higherCount = DB::query()->fromSub(
+            DB::table('bv_ledger_entries')
+                ->select('distributor_id')
+                ->groupBy('distributor_id')
+                ->havingRaw('SUM(bv_paise) > ?', [$myBvPaise]),
+            'ranked',
+        )->count();
+
+        return '#'.Number::format($higherCount + 1);
+    }
+
+    /**
      * Full 15-field stats — the dashboard's "Your ADN" panel and the
      * tree's Details popup. Adds team counts and the remaining
      * dashboard-only fields on top of {@see self::compact()}.
@@ -94,7 +129,7 @@ final class DistributorIdCardStats
         return array_merge($compact, [
             'registration_date' => $distributor->effective_date,
             'franchise' => 'Arovolife Private Limited',
-            'personal_sales_position' => null, // PHASE_LATER_PLACEHOLDER (Phase 2 — sales ledger)
+            'personal_sales_position' => $this->personalSalesPosition($distributor),
             'left_team' => $teamCounts['left_team'],
             'right_team' => $teamCounts['right_team'],
             'total_team' => $teamCounts['total_team'],
