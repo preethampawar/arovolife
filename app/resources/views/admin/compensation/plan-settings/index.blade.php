@@ -9,9 +9,10 @@
 @php
     $bv = fn ($paise) => $paise === null ? '—' : \Illuminate\Support\Number::format($paise / 100, 0).' BV';
     $rupees = fn ($paise) => $paise === null ? '—' : '₹'.\Illuminate\Support\Number::format($paise / 100, 2);
+    $activeTab = in_array(request('tab'), ['gsb', 'ranks', 'fortune'], true) ? request('tab') : 'gsb';
 @endphp
 
-<div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+<div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     Edit the live compensation-plan ladders below. Each row is locked by default — press <strong>Edit</strong> to change it,
     then <strong>Save</strong> to review and confirm the change. All BV and money fields are stored in <strong>paise</strong>
     (BV × 100, ₹ × 100). Every change is audit-logged and takes effect on the next engine run.
@@ -25,7 +26,19 @@
     </div>
 @endif
 
+{{-- Tabs --}}
+<div class="flex border-b border-gray-200 mb-6">
+    @foreach(['gsb' => 'GSB Slabs', 'ranks' => 'Rank Tiers', 'fortune' => 'Fortune Bonus'] as $key => $label)
+    <a href="{{ route('admin.compensation.plan-settings.index', ['tab' => $key]) }}"
+       class="px-4 py-2 text-sm font-medium border-b-2 -mb-px
+              {{ $activeTab === $key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+        {{ $label }}
+    </a>
+    @endforeach
+</div>
+
 {{-- ── GSB slabs ─────────────────────────────────────────────────────────── --}}
+@if($activeTab === 'gsb')
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-1">GSB slabs</h2>
     <p class="text-xs text-gray-500 mb-3">
@@ -91,8 +104,10 @@
         @endforeach
     </div>
 </section>
+@endif
 
 {{-- ── Rank tiers ────────────────────────────────────────────────────────── --}}
+@if($activeTab === 'ranks')
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-3">Rank tiers</h2>
     <div class="space-y-3">
@@ -172,8 +187,10 @@
         @endforeach
     </div>
 </section>
+@endif
 
 {{-- ── Fortune Bonus levels ──────────────────────────────────────────────── --}}
+@if($activeTab === 'fortune')
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-3">Fortune Bonus — matrix levels</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -230,6 +247,7 @@
         @endforeach
     </div>
 </section>
+@endif
 
 @push('scripts')
 <script>
