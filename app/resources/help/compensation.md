@@ -50,6 +50,8 @@ When an order is cancelled (pre-shipment) or its refund is approved (cooling-off
 ## Weekly payout (Group A: GSB + Mentorship)
 Runs every Tuesday. Minimum payout ₹100. Deductions applied here (not at cut-off): repurchase (10% of prior month GSB + MB + GBB + Fortune + Rank, max ₹10,000 — a monthly figure collected once, spread across the month's weekly batches until fully recovered), then admin charge (3%, capped ₹25,000/cycle), then TDS (5% of the payable).
 
+Distributors whose **KYC is not yet verified** (account not `active`) get a `kyc_pending` line ("Awaiting KYC" in the wallet): they still earn and see all income, but nothing is debited, swept, or transferred to the bank until their KYC is approved — the first batch after approval pays it out. (Same rule in the monthly batch.)
+
 Distributors with **no bank account on file** get a `no_bank_account` line: nothing is debited or swept, the balance stays in the wallet, and the first batch after they add bank details pays it out. (Same rule in the monthly batch.)
 
 ## Monthly payout (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC)

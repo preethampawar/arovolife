@@ -433,3 +433,51 @@ it('monthly income cap is shared across all five cash bonuses and across batches
     expect($forfeit->amount_paise)->toBe(-200_000);
     expect($wallet->balancePaise($dist->id))->toBe(0);
 });
+
+// ── KYC gate (partner 2026-07-08: hold payouts until KYC verified) ───────────
+
+it('holds the weekly payout as kyc_pending when the distributor KYC is not verified', function () {
+    $dist = makePayoutEligibleDistributor();       // active + bank on file by factory
+    $dist->user->update(['status' => 'pending']);  // KYC not yet approved
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000
+
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->firstOrFail();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_KYC_PENDING);
+    expect($line->net_transferred_paise)->toBe(0);
+    // Balance is HELD — never debited or swept, so the next batch after KYC pays it.
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(100_000);
+});
+
+it('holds the monthly payout as kyc_pending when the distributor KYC is not verified', function () {
+    $dist = makePayoutEligibleDistributor();
+    $dist->user->update(['status' => 'pending']);
+    app(WalletService::class)->credit($dist->id, 500_000, 'rank_credit'); // ₹5,000 monthly stream
+
+    app(PayoutService::class)->runMonthlyBatch(Carbon::today());
+
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->firstOrFail();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_KYC_PENDING);
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(500_000);
+});
+
+it('pays the held balance once KYC is verified on a later batch', function () {
+    $dist = makePayoutEligibleDistributor();
+    $dist->user->update(['status' => 'pending']);
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit');
+
+    // First batch while unverified → held.
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+    expect(PayoutLineItem::where('distributor_id', $dist->id)->first()->status)
+        ->toBe(PayoutLineItem::STATUS_KYC_PENDING);
+
+    // KYC approved → user active. Next batch pays it out (nothing was swept).
+    $dist->user->update(['status' => 'active']);
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today()->addWeek());
+
+    $paid = PayoutLineItem::where('distributor_id', $dist->id)
+        ->where('status', PayoutLineItem::STATUS_PENDING)->first();
+    expect($paid)->not->toBeNull();
+    expect($paid->gross_paise)->toBe(100_000);
+});

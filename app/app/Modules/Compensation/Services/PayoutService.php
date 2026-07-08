@@ -9,6 +9,7 @@ use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Identity\Http\Middleware\RequireKycApproval;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Support\Carbon;
@@ -92,6 +93,31 @@ final class PayoutService
                         'tds_paise' => 0,
                         'net_transferred_paise' => 0,
                         'status' => PayoutLineItem::STATUS_WEB_ONLY,
+                    ]);
+                }
+
+                continue;
+            }
+
+            // KYC gate: income accrues and stays fully visible to every
+            // distributor, but the bank release is held until their KYC is
+            // verified (users.status === 'active' — the same definition
+            // RequireKycApproval uses). Partner instruction 2026-07-08: "the
+            // distributor should see everything but payouts should not happen
+            // unless their KYC is verified."
+            if (! $this->isKycVerified($distributorId)) {
+                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
+                if ($grossForDisplay > 0) {
+                    PayoutLineItem::create([
+                        'payout_batch_id' => $batch->id,
+                        'distributor_id' => $distributorId,
+                        'wallet_balance_paise' => $grossForDisplay,
+                        'gross_paise' => $grossForDisplay,
+                        'repurchase_deduction_paise' => 0,
+                        'admin_charge_paise' => 0,
+                        'tds_paise' => 0,
+                        'net_transferred_paise' => 0,
+                        'status' => PayoutLineItem::STATUS_KYC_PENDING,
                     ]);
                 }
 
@@ -317,6 +343,28 @@ final class PayoutService
                         'tds_paise' => 0,
                         'net_transferred_paise' => 0,
                         'status' => PayoutLineItem::STATUS_WEB_ONLY,
+                    ]);
+                }
+
+                continue;
+            }
+
+            // KYC gate — same rule as the weekly batch: income accrues and is
+            // visible, but the bank release is held until KYC is verified
+            // (users.status === 'active'). Partner instruction 2026-07-08.
+            if (! $this->isKycVerified($distributorId)) {
+                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
+                if ($grossForDisplay > 0) {
+                    PayoutLineItem::create([
+                        'payout_batch_id' => $batch->id,
+                        'distributor_id' => $distributorId,
+                        'wallet_balance_paise' => $grossForDisplay,
+                        'gross_paise' => $grossForDisplay,
+                        'repurchase_deduction_paise' => 0,
+                        'admin_charge_paise' => 0,
+                        'tds_paise' => 0,
+                        'net_transferred_paise' => 0,
+                        'status' => PayoutLineItem::STATUS_KYC_PENDING,
                     ]);
                 }
 
@@ -609,6 +657,20 @@ final class PayoutService
         $raw = DB::table('distributors')->where('id', $distributorId)->value('bank_account_enc');
 
         return $raw !== null && $raw !== '';
+    }
+
+    /**
+     * KYC is "verified" when the distributor's user account is active — the
+     * same definition {@see RequireKycApproval}
+     * uses ('active' carries the "Verified" pill). Until then the bank release
+     * is held (STATUS_KYC_PENDING); income still accrues and stays visible.
+     */
+    private function isKycVerified(int $distributorId): bool
+    {
+        return DB::table('distributors')
+            ->join('users', 'users.id', '=', 'distributors.user_id')
+            ->where('distributors.id', $distributorId)
+            ->value('users.status') === 'active';
     }
 
     private function bankLast4ForDistributor(int $distributorId): ?string

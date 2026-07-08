@@ -39,6 +39,9 @@ final class PayoutLineItem extends Model
     /** Income gates passed but no bank account on file — held in wallet, not debited or swept. */
     public const STATUS_NO_BANK_ACCOUNT = 'no_bank_account';
 
+    /** KYC not yet verified (user.status !== 'active') — balance held in wallet, NEFT blocked until KYC approval. */
+    public const STATUS_KYC_PENDING = 'kyc_pending';
+
     protected $table = 'payout_line_items';
 
     protected $fillable = [
