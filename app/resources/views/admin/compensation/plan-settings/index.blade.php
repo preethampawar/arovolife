@@ -228,21 +228,27 @@
               data-confirm="Update Fortune tier {{ $row->tier }}?"
               data-confirm-title="Confirm: Fortune tier {{ $row->tier }}"
               data-confirm-impact="Changes Fortune Bonus enrolment gates for this tier. Audit-logged; takes effect on the next monthly run."
-              class="rounded-xl border border-gray-200 bg-white p-4 flex items-end gap-3">
+              class="rounded-xl border border-gray-200 bg-white p-4">
             @csrf
-            <span class="text-sm font-semibold text-gray-700 pb-2 w-28">{{ $row->tier }}</span>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-600 mb-1">BV required (paise) <x-help-tip text="Monthly repurchase BV (paise) the distributor must complete to enter the Fortune Bonus at this tier." /></label>
-                <input type="number" name="bv_required_paise" data-field-label="BV required (paise)" value="{{ $row->bv_required_paise }}" required min="0"
-                       class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                <span class="text-[11px] text-gray-400">{{ $bv($row->bv_required_paise) }}</span>
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-semibold text-gray-700">{{ ucwords(str_replace('_', ' ', $row->tier)) }}</span>
             </div>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-600 mb-1">GSB slabs required <x-help-tip text="Number of GSB slabs the distributor must earn in the month to be eligible at this tier." /></label>
-                <input type="number" name="slabs_required" data-field-label="GSB slabs required" value="{{ $row->slabs_required }}" required min="0"
-                       class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">BV required (paise) <x-help-tip text="Monthly repurchase BV (paise) the distributor must complete to enter the Fortune Bonus at this tier." /></label>
+                    <input type="number" name="bv_required_paise" data-field-label="BV required (paise)" value="{{ $row->bv_required_paise }}" required min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                    <span class="text-[11px] text-gray-400">{{ $bv($row->bv_required_paise) }}</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">GSB slabs required <x-help-tip text="Number of GSB slabs the distributor must earn in the month to be eligible at this tier." /></label>
+                    <input type="number" name="slabs_required" data-field-label="GSB slabs required" value="{{ $row->slabs_required }}" required min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                </div>
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                </div>
             </div>
-            <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
         </form>
         @endforeach
     </div>
