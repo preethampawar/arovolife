@@ -75,16 +75,16 @@ final class AdminGbbCalculationController extends Controller
                 : '0.00';
             $csv .= implode(',', [
                 $i + 1,
-                '"'.$row->adn.'"',
-                '"'.($row->full_name ?? '').'"',
-                '"'.$title.'"',
+                $this->csvStr($row->adn),
+                $this->csvStr($row->full_name ?? ''),
+                $this->csvStr($title),
                 Carbon::parse($row->year_month)->format('Y-m'),
                 $row->agp_earned,
                 $agpValuePerPoint,
                 number_format($row->gbb_gross_paise / 100, 2, '.', ''),
                 number_format($row->tds_paise / 100, 2, '.', ''),
                 number_format($row->gbb_net_paise / 100, 2, '.', ''),
-                '"'.$row->status.'"',
+                $this->csvStr($row->status),
             ])."\n";
         }
 
@@ -126,6 +126,16 @@ final class AdminGbbCalculationController extends Controller
             )
             ->orderByDesc('gmr.year_month')
             ->orderByDesc('gmr.id');
+    }
+
+    private function csvStr(string $value): string
+    {
+        $value = str_replace('"', '""', $value);
+        if (preg_match('/^[=+\-@]/', $value)) {
+            $value = "\t".$value;
+        }
+
+        return '"'.$value.'"';
     }
 
     /**

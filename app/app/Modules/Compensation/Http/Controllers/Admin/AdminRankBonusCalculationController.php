@@ -78,15 +78,15 @@ final class AdminRankBonusCalculationController extends Controller
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $csv .= implode(',', [
                 $i + 1,
-                '"'.$row->adn.'"',
-                '"'.($row->full_name ?? '').'"',
-                '"'.$title.'"',
+                $this->csvStr($row->adn),
+                $this->csvStr($row->full_name ?? ''),
+                $this->csvStr($title),
                 Carbon::parse($row->month_start)->format('Y-m'),
                 $row->rank_number,
                 number_format($row->gross_paise / 100, 2, '.', ''),
                 number_format($row->tds_paise / 100, 2, '.', ''),
                 number_format($row->net_paise / 100, 2, '.', ''),
-                '"'.$row->status.'"',
+                $this->csvStr($row->status),
             ])."\n";
         }
 
@@ -123,6 +123,16 @@ final class AdminRankBonusCalculationController extends Controller
             ->orderByDesc('rbr.month_start')
             ->orderBy('rbr.rank_number')
             ->orderByDesc('rbr.id');
+    }
+
+    private function csvStr(string $value): string
+    {
+        $value = str_replace('"', '""', $value);
+        if (preg_match('/^[=+\-@]/', $value)) {
+            $value = "\t".$value;
+        }
+
+        return '"'.$value.'"';
     }
 
     /**

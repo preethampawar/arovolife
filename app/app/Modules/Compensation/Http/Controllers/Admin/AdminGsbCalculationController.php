@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -51,7 +52,59 @@ final class AdminGsbCalculationController extends Controller
         ]);
     }
 
+    public function export(Request $request): Response
+    {
+        $request->validate([
+            'q' => ['nullable', 'string', 'max:64'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:credited,calculated,repurchase_held,repurchase_suspended,reversed'],
+        ]);
+
+        $q = trim((string) ($request->query('q') ?? ''));
+        $from = $request->query('from') ? Carbon::parse((string) $request->query('from')) : null;
+        $to = $request->query('to') ? Carbon::parse((string) $request->query('to')) : null;
+        $status = $request->query('status');
+
+        $rows = $this->buildQuery($q, $from, $to, $status)->get();
+
+        $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
+        $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
+
+        $csv = "SNo,ADN,Name,Title,Date,Slab,Left BV,Right BV,Weaker BV,Gross GSB (Rs),TDS (Rs),Net GSB (Rs),Status\n";
+        foreach ($rows as $i => $row) {
+            $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
+            $csv .= implode(',', [
+                $i + 1,
+                $this->csvStr($row->adn),
+                $this->csvStr($row->full_name ?? ''),
+                $this->csvStr($title),
+                Carbon::parse($row->cutoff_date)->toDateString(),
+                $row->slab,
+                number_format($row->left_bv_paise / 100, 0, '.', ''),
+                number_format($row->right_bv_paise / 100, 0, '.', ''),
+                number_format($row->weaker_bv_paise / 100, 0, '.', ''),
+                number_format($row->gross_gsb_paise / 100, 2, '.', ''),
+                number_format($row->tds_paise / 100, 2, '.', ''),
+                number_format($row->net_gsb_paise / 100, 2, '.', ''),
+                $this->csvStr($row->status),
+            ])."\n";
+        }
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="gsb-calculation-'.now()->toDateString().'.csv"',
+        ]);
+    }
+
     private function queryRows(string $q, ?Carbon $from, ?Carbon $to, ?string $status): LengthAwarePaginator
+    {
+        return $this->buildQuery($q, $from, $to, $status)
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
+    }
+
+    private function buildQuery(string $q, ?Carbon $from, ?Carbon $to, ?string $status): Builder
     {
         return DB::table('gsb_cutoff_results as gcr')
             ->join('distributors as d', 'd.id', '=', 'gcr.distributor_id')
@@ -80,71 +133,17 @@ final class AdminGsbCalculationController extends Controller
                 'u.full_name',
             )
             ->orderByDesc('gcr.cutoff_date')
-            ->orderByDesc('gcr.id')
-            ->paginate(self::PER_PAGE)
-            ->withQueryString();
+            ->orderByDesc('gcr.id');
     }
 
-    public function export(Request $request): Response
+    private function csvStr(string $value): string
     {
-        $request->validate([
-            'q' => ['nullable', 'string', 'max:64'],
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:credited,calculated,repurchase_held,repurchase_suspended,reversed'],
-        ]);
-
-        $q = trim((string) ($request->query('q') ?? ''));
-        $from = $request->query('from') ? Carbon::parse((string) $request->query('from')) : null;
-        $to = $request->query('to') ? Carbon::parse((string) $request->query('to')) : null;
-        $status = $request->query('status');
-
-        $rows = DB::table('gsb_cutoff_results as gcr')
-            ->join('distributors as d', 'd.id', '=', 'gcr.distributor_id')
-            ->leftJoin('users as u', 'u.id', '=', 'd.user_id')
-            ->whereNotNull('gcr.slab')
-            ->when($q, fn ($b) => $b->where(fn ($sub) => $sub
-                ->where('d.adn', 'like', "%{$q}%")
-                ->orWhere('u.full_name', 'like', "%{$q}%")
-            ))
-            ->when($from, fn ($b) => $b->where('gcr.cutoff_date', '>=', $from->toDateString()))
-            ->when($to, fn ($b) => $b->where('gcr.cutoff_date', '<=', $to->toDateString()))
-            ->when($status, fn ($b) => $b->where('gcr.status', $status))
-            ->select('gcr.distributor_id', 'gcr.cutoff_date', 'gcr.slab',
-                'gcr.left_bv_paise', 'gcr.right_bv_paise', 'gcr.weaker_bv_paise',
-                'gcr.gross_gsb_paise', 'gcr.tds_paise', 'gcr.net_gsb_paise', 'gcr.status',
-                'd.adn', 'u.full_name')
-            ->orderByDesc('gcr.cutoff_date')
-            ->orderByDesc('gcr.id')
-            ->get();
-
-        $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
-        $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
-
-        $csv = "SNo,ADN,Name,Title,Date,Slab,Left BV,Right BV,Weaker BV,Gross GSB (Rs),TDS (Rs),Net GSB (Rs),Status\n";
-        foreach ($rows as $i => $row) {
-            $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-            $csv .= implode(',', [
-                $i + 1,
-                '"'.$row->adn.'"',
-                '"'.($row->full_name ?? '').'"',
-                '"'.$title.'"',
-                Carbon::parse($row->cutoff_date)->toDateString(),
-                $row->slab,
-                number_format($row->left_bv_paise / 100, 0, '.', ''),
-                number_format($row->right_bv_paise / 100, 0, '.', ''),
-                number_format($row->weaker_bv_paise / 100, 0, '.', ''),
-                number_format($row->gross_gsb_paise / 100, 2, '.', ''),
-                number_format($row->tds_paise / 100, 2, '.', ''),
-                number_format($row->net_gsb_paise / 100, 2, '.', ''),
-                '"'.$row->status.'"',
-            ])."\n";
+        $value = str_replace('"', '""', $value);
+        if (preg_match('/^[=+\-@]/', $value)) {
+            $value = "\t".$value;
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gsb-calculation-'.now()->toDateString().'.csv"',
-        ]);
+        return '"'.$value.'"';
     }
 
     /**

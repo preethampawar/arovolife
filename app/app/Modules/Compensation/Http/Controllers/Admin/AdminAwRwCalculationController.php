@@ -81,15 +81,15 @@ final class AdminAwRwCalculationController extends Controller
                 : '—';
             $csv .= implode(',', [
                 $i + 1,
-                '"'.$row->adn.'"',
-                '"'.($row->full_name ?? '').'"',
-                '"'.$title.'"',
-                '"'.($row->rank_name ?? 'Rank '.$row->rank_number).'"',
+                $this->csvStr($row->adn),
+                $this->csvStr($row->full_name ?? ''),
+                $this->csvStr($title),
+                $this->csvStr($row->rank_name ?? 'Rank '.$row->rank_number),
                 Carbon::parse($row->triggered_month)->format('Y-m'),
                 $row->disbursement_type ?? '—',
-                '"'.($row->award_description ?? '—').'"',
+                $this->csvStr($row->award_description ?? '—'),
                 $cashReward,
-                '"'.$row->status.'"',
+                $this->csvStr($row->status),
             ])."\n";
         }
 
@@ -129,6 +129,16 @@ final class AdminAwRwCalculationController extends Controller
             ->orderByDesc('lam.triggered_month')
             ->orderBy('lam.rank_number')
             ->orderByDesc('lam.id');
+    }
+
+    private function csvStr(string $value): string
+    {
+        $value = str_replace('"', '""', $value);
+        if (preg_match('/^[=+\-@]/', $value)) {
+            $value = "\t".$value;
+        }
+
+        return '"'.$value.'"';
     }
 
     /**

@@ -82,18 +82,18 @@ final class AdminAdcCalculationController extends Controller
                 : '0.00';
             $csv .= implode(',', [
                 $i + 1,
-                '"'.$row->adn.'"',
-                '"'.($row->full_name ?? '').'"',
-                '"'.$title.'"',
-                '"'.($row->rank_name ?? '—').'"',
+                $this->csvStr($row->adn),
+                $this->csvStr($row->full_name ?? ''),
+                $this->csvStr($title),
+                $this->csvStr($row->rank_name ?? '—'),
                 Carbon::parse($row->month_start)->format('Y-m'),
                 $turnoverBv,
                 $ratePct,
                 number_format($row->gross_paise / 100, 2, '.', ''),
                 number_format($row->tds_paise / 100, 2, '.', ''),
                 number_format($row->net_paise / 100, 2, '.', ''),
-                '"'.$row->status.'"',
-                '"'.($row->center_location ?? '').'"',
+                $this->csvStr($row->status),
+                $this->csvStr($row->center_location ?? ''),
             ])."\n";
         }
 
@@ -142,6 +142,16 @@ final class AdminAdcCalculationController extends Controller
             ->orderByDesc('abr.month_start')
             ->orderByDesc('abr.total_member_bv_paise')
             ->orderByDesc('abr.id');
+    }
+
+    private function csvStr(string $value): string
+    {
+        $value = str_replace('"', '""', $value);
+        if (preg_match('/^[=+\-@]/', $value)) {
+            $value = "\t".$value;
+        }
+
+        return '"'.$value.'"';
     }
 
     /**

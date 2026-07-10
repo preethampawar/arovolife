@@ -77,18 +77,18 @@ final class AdminMsbCalculationController extends Controller
             $title = $this->titleService->forBvPaise($personalBvMap[$row->sponsor_id] ?? 0)->title ?? '';
             $csv .= implode(',', [
                 $i + 1,
-                '"'.$row->sponsor_adn.'"',
-                '"'.($row->sponsor_name ?? '').'"',
-                '"'.$title.'"',
+                $this->csvStr($row->sponsor_adn),
+                $this->csvStr($row->sponsor_name ?? ''),
+                $this->csvStr($title),
                 Carbon::parse($row->cutoff_date)->toDateString(),
-                '"'.$row->sponsee_adn.'"',
-                '"'.($row->sponsee_name ?? '').'"',
+                $this->csvStr($row->sponsee_adn),
+                $this->csvStr($row->sponsee_name ?? ''),
                 number_format($row->sponsee_gsb_paise / 100, 2, '.', ''),
                 $row->mb_rate_pct.'%',
                 number_format($row->mb_gross_paise / 100, 2, '.', ''),
                 number_format($row->mb_tds_paise / 100, 2, '.', ''),
                 number_format($row->mb_paise / 100, 2, '.', ''),
-                '"'.$row->status.'"',
+                $this->csvStr($row->status),
             ])."\n";
         }
 
@@ -137,6 +137,16 @@ final class AdminMsbCalculationController extends Controller
             )
             ->orderByDesc('mbr.cutoff_date')
             ->orderByDesc('mbr.id');
+    }
+
+    private function csvStr(string $value): string
+    {
+        $value = str_replace('"', '""', $value);
+        if (preg_match('/^[=+\-@]/', $value)) {
+            $value = "\t".$value;
+        }
+
+        return '"'.$value.'"';
     }
 
     /**
