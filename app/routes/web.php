@@ -42,6 +42,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupContr
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
@@ -349,6 +350,9 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
 
         Route::get('gbb-calculation', [AdminGbbCalculationController::class, 'index'])->name('gbb-calculation.index');
         Route::get('gbb-calculation/export', [AdminGbbCalculationController::class, 'export'])->name('gbb-calculation.export');
+
+        Route::get('rb-calculation', [AdminRankBonusCalculationController::class, 'index'])->name('rb-calculation.index');
+        Route::get('rb-calculation/export', [AdminRankBonusCalculationController::class, 'export'])->name('rb-calculation.export');
 
         Route::prefix('gbb')->name('gbb.')->group(function (): void {
             Route::get('/', [AdminGbbController::class, 'index'])->name('index');
