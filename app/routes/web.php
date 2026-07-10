@@ -36,6 +36,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompControll
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGenosTransactionsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
@@ -336,6 +337,8 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
 
         Route::get('genos-transactions', [AdminGenosTransactionsController::class, 'index'])->name('genos-transactions.index');
+
+        Route::get('gsb-calculation', [AdminGsbCalculationController::class, 'index'])->name('gsb-calculation.index');
 
         Route::prefix('gbb')->name('gbb.')->group(function (): void {
             Route::get('/', [AdminGbbController::class, 'index'])->name('index');
