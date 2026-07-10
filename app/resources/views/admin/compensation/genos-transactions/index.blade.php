@@ -37,6 +37,10 @@
     <a href="{{ route('admin.compensation.genos-transactions.index', ['tab' => $tab]) }}"
        class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
     @endif
+    <a href="{{ route('admin.compensation.genos-transactions.export', array_filter(['tab' => $tab, 'q' => $q, 'from' => $from, 'to' => $to])) }}"
+       class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
+        ↓ Download CSV
+    </a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

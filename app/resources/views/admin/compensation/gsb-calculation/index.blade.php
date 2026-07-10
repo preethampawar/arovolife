@@ -31,6 +31,10 @@
     <a href="{{ route('admin.compensation.gsb-calculation.index') }}"
        class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
     @endif
+    <a href="{{ route('admin.compensation.gsb-calculation.export', array_filter(['q' => $q, 'from' => $from, 'to' => $to, 'status' => $status])) }}"
+       class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
+        ↓ Download CSV
+    </a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

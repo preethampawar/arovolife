@@ -337,8 +337,10 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
 
         Route::get('genos-transactions', [AdminGenosTransactionsController::class, 'index'])->name('genos-transactions.index');
+        Route::get('genos-transactions/export', [AdminGenosTransactionsController::class, 'export'])->name('genos-transactions.export');
 
         Route::get('gsb-calculation', [AdminGsbCalculationController::class, 'index'])->name('gsb-calculation.index');
+        Route::get('gsb-calculation/export', [AdminGsbCalculationController::class, 'export'])->name('gsb-calculation.export');
 
         Route::prefix('gbb')->name('gbb.')->group(function (): void {
             Route::get('/', [AdminGbbController::class, 'index'])->name('index');
