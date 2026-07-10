@@ -32,10 +32,11 @@ use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
-use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminGenosTransactionsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
@@ -333,6 +334,8 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
         });
 
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
+
+        Route::get('genos-transactions', [AdminGenosTransactionsController::class, 'index'])->name('genos-transactions.index');
 
         Route::prefix('gbb')->name('gbb.')->group(function (): void {
             Route::get('/', [AdminGbbController::class, 'index'])->name('index');

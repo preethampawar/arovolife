@@ -21,8 +21,13 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" placeholder="From">
     <input type="date" name="to" value="{{ $to ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" placeholder="To">
+    <select name="type" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
+        <option value="">All entries</option>
+        <option value="credits" {{ ($entryType ?? null) === 'credits' ? 'selected' : '' }}>Credits only</option>
+        <option value="reversals" {{ ($entryType ?? null) === 'reversals' ? 'selected' : '' }}>Reversals only</option>
+    </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
-    @if($from || $to)
+    @if($from || $to || ($entryType ?? null))
     <a href="{{ route('admin.compensation.distributors.show', [$distributor, 'tab' => 'genos-ledger']) }}"
        class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
     @endif
@@ -49,11 +54,17 @@
                     {{ \Illuminate\Support\Carbon::parse($day->date)->format('d M Y') }}
                 </td>
             </tr>
-            @if(count($day->credits) === 0 && count($day->reversals) === 0)
+            @php
+                $showCredits  = ($entryType ?? null) !== 'reversals';
+                $showReversals = ($entryType ?? null) !== 'credits';
+                $visibleCount = ($showCredits ? count($day->credits) : 0) + ($showReversals ? count($day->reversals) : 0);
+            @endphp
+            @if($visibleCount === 0)
             <tr>
-                <td colspan="5" class="px-3 py-2 text-gray-400 italic">No group BV credited this day.</td>
+                <td colspan="5" class="px-3 py-2 text-gray-400 italic">No {{ ($entryType ?? null) === 'credits' ? 'credit' : (($entryType ?? null) === 'reversals' ? 'reversal' : 'group BV') }} entries this day.</td>
             </tr>
             @endif
+            @if($showCredits)
             @foreach($day->credits as $credit)
             <tr>
                 <td class="px-3 py-2 text-gray-500">
@@ -79,6 +90,8 @@
                 </td>
             </tr>
             @endforeach
+            @endif
+            @if($showReversals)
             @foreach($day->reversals as $reversal)
             <tr class="bg-red-50/40">
                 <td class="px-3 py-2 text-red-700">
@@ -104,6 +117,7 @@
                 </td>
             </tr>
             @endforeach
+            @endif
             @if($day->cutoff)
             @php
                 $c = $day->cutoff;

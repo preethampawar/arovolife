@@ -42,6 +42,7 @@ final class AdminDistributorCompController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'status' => ['nullable', 'in:no_match,calculated,credited,failed,frozen,below_600bv'],
+            'type' => ['nullable', 'in:credits,reversals'],
         ]);
 
         $tab = $request->query('tab', 'gsb');
@@ -76,8 +77,9 @@ final class AdminDistributorCompController extends Controller
                     ->orderByDesc('cutoff_date')->paginate(30)->withQueryString(),
             ],
             'genos-ledger' => [
-                'days' => $this->genosLedger->paginateDays($distributor->id, $from, $to)->withQueryString(),
+                'days' => $this->genosLedger->paginateDays($distributor->id, $from, $to, type: $request->query('type') ?: null)->withQueryString(),
                 'openDebts' => $this->genosLedger->openDebts($distributor->id),
+                'entryType' => $request->query('type') ?: null,
             ],
             'mb' => [
                 'rows' => MentorshipBonusResult::where('sponsor_id', $distributor->id)

@@ -25,9 +25,16 @@ use Illuminate\Support\Facades\DB;
  */
 final class GenosBvLedgerService
 {
+    /** Only show credit rows. */
+    public const TYPE_CREDITS = 'credits';
+
+    /** Only show reversal rows. */
+    public const TYPE_REVERSALS = 'reversals';
+
     /**
      * Paginate the ledger by day (newest first).
      *
+     * @param  self::TYPE_CREDITS|self::TYPE_REVERSALS|null  $type  null = show all entry types
      * @return LengthAwarePaginator<int, GenosLedgerDay>
      */
     public function paginateDays(
@@ -35,6 +42,7 @@ final class GenosBvLedgerService
         ?Carbon $from = null,
         ?Carbon $to = null,
         int $perPage = 10,
+        ?string $type = null,
     ): LengthAwarePaginator {
         $creditDates = DB::table('group_bv_credits')
             ->where('ancestor_id', $distributorId)
@@ -54,9 +62,17 @@ final class GenosBvLedgerService
             ->when($to, fn ($b) => $b->where('cutoff_date', '<=', $to->toDateString()))
             ->select('cutoff_date as date');
 
+        // Build the date union based on the requested entry type. Cutoff rows
+        // are always included as contextual anchors regardless of filter.
+        $dateUnion = match ($type) {
+            self::TYPE_CREDITS => $creditDates->union($cutoffDates),
+            self::TYPE_REVERSALS => $reversalDates->union($cutoffDates),
+            default => $creditDates->union($reversalDates)->union($cutoffDates),
+        };
+
         // UNION (not UNION ALL) dedupes dates appearing in more than one source.
         $days = DB::query()
-            ->fromSub($creditDates->union($reversalDates)->union($cutoffDates), 'ledger_dates')
+            ->fromSub($dateUnion, 'ledger_dates')
             ->orderByDesc('date')
             ->paginate($perPage);
 
