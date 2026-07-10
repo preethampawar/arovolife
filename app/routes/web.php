@@ -34,11 +34,13 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGenosTransactionsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
@@ -341,6 +343,12 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
 
         Route::get('gsb-calculation', [AdminGsbCalculationController::class, 'index'])->name('gsb-calculation.index');
         Route::get('gsb-calculation/export', [AdminGsbCalculationController::class, 'export'])->name('gsb-calculation.export');
+
+        Route::get('msb-calculation', [AdminMsbCalculationController::class, 'index'])->name('msb-calculation.index');
+        Route::get('msb-calculation/export', [AdminMsbCalculationController::class, 'export'])->name('msb-calculation.export');
+
+        Route::get('gbb-calculation', [AdminGbbCalculationController::class, 'index'])->name('gbb-calculation.index');
+        Route::get('gbb-calculation/export', [AdminGbbCalculationController::class, 'export'])->name('gbb-calculation.export');
 
         Route::prefix('gbb')->name('gbb.')->group(function (): void {
             Route::get('/', [AdminGbbController::class, 'index'])->name('index');
