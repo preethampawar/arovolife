@@ -30,9 +30,11 @@ use App\Modules\Commerce\Http\Controllers\Storefront\MyBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminAwRwCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
@@ -353,6 +355,12 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
 
         Route::get('rb-calculation', [AdminRankBonusCalculationController::class, 'index'])->name('rb-calculation.index');
         Route::get('rb-calculation/export', [AdminRankBonusCalculationController::class, 'export'])->name('rb-calculation.export');
+
+        Route::get('fb-calculation', [AdminFortuneBonusCalculationController::class, 'index'])->name('fb-calculation.index');
+        Route::get('fb-calculation/export', [AdminFortuneBonusCalculationController::class, 'export'])->name('fb-calculation.export');
+
+        Route::get('aw-rw-calculation', [AdminAwRwCalculationController::class, 'index'])->name('aw-rw-calculation.index');
+        Route::get('aw-rw-calculation/export', [AdminAwRwCalculationController::class, 'export'])->name('aw-rw-calculation.export');
 
         Route::prefix('gbb')->name('gbb.')->group(function (): void {
             Route::get('/', [AdminGbbController::class, 'index'])->name('index');
