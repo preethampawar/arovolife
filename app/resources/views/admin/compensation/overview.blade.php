@@ -103,6 +103,9 @@
     <a href="{{ route('admin.compensation.rb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Rank Bonus Calculation →</a>
     <a href="{{ route('admin.compensation.fb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Fortune Bonus Calculation →</a>
     <a href="{{ route('admin.compensation.aw-rw-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Awards & Rewards →</a>
+    @if(Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class))
+    <a href="{{ route('admin.compensation.adc-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">ADC Calculation →</a>
+    @endif
     <a href="{{ route('admin.compensation.personal-bv-topups.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Personal BV Topups →</a>
     <a href="{{ route('admin.compensation.manual-controls.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Manual Controls →</a>
     <a href="{{ route('admin.compensation.plan-settings.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Plan Settings →</a>

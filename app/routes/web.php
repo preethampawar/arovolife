@@ -30,6 +30,7 @@ use App\Modules\Commerce\Http\Controllers\Storefront\MyBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAwRwCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
@@ -361,6 +362,9 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
 
         Route::get('aw-rw-calculation', [AdminAwRwCalculationController::class, 'index'])->name('aw-rw-calculation.index');
         Route::get('aw-rw-calculation/export', [AdminAwRwCalculationController::class, 'export'])->name('aw-rw-calculation.export');
+
+        Route::get('adc-calculation', [AdminAdcCalculationController::class, 'index'])->name('adc-calculation.index');
+        Route::get('adc-calculation/export', [AdminAdcCalculationController::class, 'export'])->name('adc-calculation.export');
 
         Route::prefix('gbb')->name('gbb.')->group(function (): void {
             Route::get('/', [AdminGbbController::class, 'index'])->name('index');
