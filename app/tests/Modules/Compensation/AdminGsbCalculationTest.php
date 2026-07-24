@@ -108,6 +108,19 @@ it('filters by ADN search', function () {
         ->assertDontSee('ADNBBB');
 });
 
+it('filters by slab number', function () {
+    $a = reportDistributor('ADNAAA', 'Alice');
+    $b = reportDistributor('ADNBBB', 'Bob');
+    makeCutoff($a, 1, 8, 200_000, today()->toDateString());
+    makeCutoff($b, 2, 16, 400_000, today()->toDateString());
+
+    $this->actingAs(reportAdmin())
+        ->get(route('admin.compensation.gsb-calculation.index', ['slab' => 2]))
+        ->assertOk()
+        ->assertSee('ADNBBB')
+        ->assertDontSee('ADNAAA');
+});
+
 it('filters by date range', function () {
     $a = reportDistributor('ADNAAA', 'Alice');
     makeCutoff($a, 1, 8, 200_000, today()->subDays(10)->toDateString());

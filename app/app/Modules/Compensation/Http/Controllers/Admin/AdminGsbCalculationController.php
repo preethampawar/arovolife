@@ -30,15 +30,15 @@ final class AdminGsbCalculationController extends Controller
 
     public function index(Request $request): View
     {
-        [$q, $from, $to, $status] = $this->filters($request);
+        [$q, $from, $to, $status, $slab] = $this->filters($request);
 
-        $rows = $this->buildQuery($q, $from, $to, $status)
+        $rows = $this->buildQuery($q, $from, $to, $status, $slab)
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         $distributorIds = collect($rows->items())->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
-        $totals = $this->totals($q, $from, $to, $status);
+        $totals = $this->totals($q, $from, $to, $status, $slab);
 
         return view('admin.compensation.gsb-calculation.index', [
             'rows' => $rows,
@@ -46,6 +46,7 @@ final class AdminGsbCalculationController extends Controller
             'from' => $request->query('from'),
             'to' => $request->query('to'),
             'status' => $status,
+            'slab' => $slab,
             'titleService' => $this->titleService,
             'personalBvMap' => $personalBvMap,
             'totalScore' => $totals['score'],
@@ -55,13 +56,13 @@ final class AdminGsbCalculationController extends Controller
 
     public function export(Request $request): Response
     {
-        [$q, $from, $to, $status] = $this->filters($request);
+        [$q, $from, $to, $status, $slab] = $this->filters($request);
 
-        $rows = $this->buildQuery($q, $from, $to, $status)->get();
+        $rows = $this->buildQuery($q, $from, $to, $status, $slab)->get();
 
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
-        $totals = $this->totals($q, $from, $to, $status);
+        $totals = $this->totals($q, $from, $to, $status, $slab);
 
         $csv = "SNo,ADN,Name,Title,Date,Slab,Score,Income (Rs),Status\n";
         foreach ($rows as $i => $row) {
@@ -95,7 +96,7 @@ final class AdminGsbCalculationController extends Controller
     }
 
     /**
-     * @return array{0: string, 1: ?Carbon, 2: ?Carbon, 3: ?string}
+     * @return array{0: string, 1: ?Carbon, 2: ?Carbon, 3: ?string, 4: ?int}
      */
     private function filters(Request $request): array
     {
@@ -104,6 +105,7 @@ final class AdminGsbCalculationController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'status' => ['nullable', 'in:credited,calculated,repurchase_held,repurchase_suspended,reversed'],
+            'slab' => ['nullable', 'integer', 'min:1', 'max:7'],
         ]);
 
         return [
@@ -111,12 +113,13 @@ final class AdminGsbCalculationController extends Controller
             $request->query('from') ? Carbon::parse((string) $request->query('from')) : null,
             $request->query('to') ? Carbon::parse((string) $request->query('to')) : null,
             $request->query('status'),
+            $request->query('slab') !== null && $request->query('slab') !== '' ? (int) $request->query('slab') : null,
         ];
     }
 
-    private function buildQuery(string $q, ?Carbon $from, ?Carbon $to, ?string $status): Builder
+    private function buildQuery(string $q, ?Carbon $from, ?Carbon $to, ?string $status, ?int $slab): Builder
     {
-        return $this->filtered($q, $from, $to, $status)
+        return $this->filtered($q, $from, $to, $status, $slab)
             ->select(
                 'gcr.id',
                 'gcr.distributor_id',
@@ -142,9 +145,9 @@ final class AdminGsbCalculationController extends Controller
      *
      * @return array{score: int, income_paise: int}
      */
-    private function totals(string $q, ?Carbon $from, ?Carbon $to, ?string $status): array
+    private function totals(string $q, ?Carbon $from, ?Carbon $to, ?string $status, ?int $slab): array
     {
-        $row = (array) $this->filtered($q, $from, $to, $status)
+        $row = (array) $this->filtered($q, $from, $to, $status, $slab)
             ->selectRaw('COALESCE(SUM(COALESCE(gcr.score, gs.score)), 0) as total_score')
             ->selectRaw('COALESCE(SUM(gcr.gross_gsb_paise), 0) as total_income_paise')
             ->first();
@@ -159,7 +162,7 @@ final class AdminGsbCalculationController extends Controller
      * Shared filtered base query (joins + where clauses, no select/order) so the
      * paginated rows and the grand totals apply exactly the same filters.
      */
-    private function filtered(string $q, ?Carbon $from, ?Carbon $to, ?string $status): Builder
+    private function filtered(string $q, ?Carbon $from, ?Carbon $to, ?string $status, ?int $slab): Builder
     {
         return DB::table('gsb_cutoff_results as gcr')
             ->join('distributors as d', 'd.id', '=', 'gcr.distributor_id')
@@ -172,7 +175,8 @@ final class AdminGsbCalculationController extends Controller
             ))
             ->when($from, fn ($b) => $b->where('gcr.cutoff_date', '>=', $from->toDateString()))
             ->when($to, fn ($b) => $b->where('gcr.cutoff_date', '<=', $to->toDateString()))
-            ->when($status, fn ($b) => $b->where('gcr.status', $status));
+            ->when($status, fn ($b) => $b->where('gcr.status', $status))
+            ->when($slab, fn ($b) => $b->where('gcr.slab', $slab));
     }
 
     private function csvStr(string $value): string

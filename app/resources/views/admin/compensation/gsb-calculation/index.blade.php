@@ -18,6 +18,12 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <input type="date" name="to" value="{{ $to ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
+    <select name="slab" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
+        <option value="">All slabs</option>
+        @foreach(range(1, 7) as $s)
+        <option value="{{ $s }}" {{ (string) $slab === (string) $s ? 'selected' : '' }}>Slab {{ $s }}</option>
+        @endforeach
+    </select>
     <select name="status" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
         <option value="">All statuses</option>
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
@@ -27,11 +33,11 @@
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
     </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
-    @if($q || $from || $to || $status)
+    @if($q || $from || $to || $status || $slab)
     <a href="{{ route('admin.compensation.gsb-calculation.index') }}"
        class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
     @endif
-    <a href="{{ route('admin.compensation.gsb-calculation.export', array_filter(['q' => $q, 'from' => $from, 'to' => $to, 'status' => $status])) }}"
+    <a href="{{ route('admin.compensation.gsb-calculation.export', array_filter(['q' => $q, 'from' => $from, 'to' => $to, 'status' => $status, 'slab' => $slab])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
         ↓ Download CSV
     </a>
