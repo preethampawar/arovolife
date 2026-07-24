@@ -42,9 +42,9 @@
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-1">GSB slabs</h2>
     <p class="text-xs text-gray-500 mb-3">
-        Bonus follows the score × rate model — currently <strong>₹{{ \Illuminate\Support\Number::format($scoreRatePaise / 100, 2) }}</strong>
-        per score point, so the bonus is computed from the score on save. A blank score leaves the bonus unset
-        (e.g. slab 7 until its figures are confirmed).
+        Bonus follows the <strong>score × score value</strong> model — each slab carries its own configurable
+        score value (₹ per score point), so the bonus is computed from the score on save. A blank score leaves
+        the bonus unset (e.g. any future TBD slab).
     </p>
     <div class="space-y-3">
         @foreach($slabs as $row)
@@ -78,10 +78,16 @@
                     <span class="text-[11px] text-gray-400">{{ $bv($row->matched_bv_paise) }}</span>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab. The bonus is score × the per-point rate, so it recomputes on save. Leave blank to leave the bonus unset." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab. The bonus is score × this slab's score value, so it recomputes on save. Leave blank to leave the bonus unset." /></label>
                     <input type="number" name="score" data-field-label="Score" data-score-input value="{{ $row->score }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.\Illuminate\Support\Number::format(($row->score * $scoreRatePaise) / 100, 0) : '—' }}</span>
+                    <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.\Illuminate\Support\Number::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Rupee value of one score point for this slab (KP 2026-07-21, default ₹250). The bonus is score × this value." /></label>
+                    <input type="number" name="score_value_paise" data-field-label="Score value (paise)" data-score-value-input value="{{ $row->score_value_paise }}" required min="1"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                    <span class="text-[11px] text-gray-400">₹{{ \Illuminate\Support\Number::format($row->score_value_paise / 100, 2) }} / score</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">AGP / occurrence <x-help-tip text="Arovolife Growth Points awarded each time this slab is earned (feeds the monthly Growth Booster pool)." /></label>
@@ -257,19 +263,24 @@
 
 @push('scripts')
 <script>
-    // Live-recompute the GSB slab bonus preview (score × per-point rate) as the
-    // admin edits the score, mirroring the server-side computation on save.
+    // Live-recompute the GSB slab bonus preview (score × this slab's score value)
+    // as the admin edits either field, mirroring the server-side computation on save.
     (function () {
-        var ratePaise = {{ $scoreRatePaise }};
-        document.querySelectorAll('[data-score-input]').forEach(function (input) {
-            var preview = input.parentNode.querySelector('[data-score-preview]');
-            if (!preview) { return; }
-            input.addEventListener('input', function () {
-                var v = input.value.trim();
-                if (v === '' || isNaN(Number(v))) { preview.textContent = '→ —'; return; }
-                var rupees = Number(v) * ratePaise / 100;
+        document.querySelectorAll('[data-score-input]').forEach(function (scoreInput) {
+            var form = scoreInput.closest('form');
+            if (!form) { return; }
+            var preview = form.querySelector('[data-score-preview]');
+            var valueInput = form.querySelector('[data-score-value-input]');
+            if (!preview || !valueInput) { return; }
+            var recompute = function () {
+                var s = scoreInput.value.trim();
+                var vp = valueInput.value.trim();
+                if (s === '' || isNaN(Number(s)) || vp === '' || isNaN(Number(vp))) { preview.textContent = '→ —'; return; }
+                var rupees = Number(s) * Number(vp) / 100;
                 preview.textContent = '→ ₹' + rupees.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            });
+            };
+            scoreInput.addEventListener('input', recompute);
+            valueInput.addEventListener('input', recompute);
         });
     })();
 </script>

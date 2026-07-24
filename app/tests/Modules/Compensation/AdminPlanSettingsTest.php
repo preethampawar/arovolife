@@ -36,11 +36,26 @@ function planAdmin(string $role): User
 }
 
 it('renders the plan-settings page for an admin with the four editors', function () {
-    $this->actingAs(planAdmin('admin'))
+    $res = $this->actingAs(planAdmin('admin'))
         ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk();
+
+    // Tabs for every editor are always present (only the active tab's section
+    // body renders — the page defaults to the GSB tab).
+    $res->assertSee('GSB Slabs')
+        ->assertSee('Rank Tiers')
+        ->assertSee('Fortune Bonus')
+        ->assertSee('GSB slabs')          // active GSB section heading
+        ->assertSee('Score value (₹)');   // per-slab score value field (KP 2026-07-21)
+
+    // The rank/fortune tab sections render when their tab is selected.
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index', ['tab' => 'ranks']))
         ->assertOk()
-        ->assertSee('GSB slabs')
-        ->assertSee('Rank tiers')
+        ->assertSee('Rank tiers');
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index', ['tab' => 'fortune']))
+        ->assertOk()
         ->assertSee('Fortune Bonus — matrix levels')
         ->assertSee('Fortune Bonus — eligibility tiers');
 });
@@ -54,17 +69,19 @@ it('persists a GSB slab edit, writes an audit log, and dispatches the domain eve
             'title' => 'Dealer',
             'title_min_bv_paise' => 500_000,
             'matched_bv_paise' => 3_600_000,
-            'score' => 12,                 // 12 × ₹360 = ₹4,320
+            'score' => 12,                 // 12 × ₹250 = ₹3,000
+            'score_value_paise' => 25_000, // ₹250 per score point
             'agp_per_occurrence' => 5,
             'carry_forward_lifetime' => 0,
             'is_active' => 1,
         ])
         ->assertRedirect(route('admin.compensation.plan-settings.index'));
 
-    // Bonus recomputed from score × rate (₹360 → 36,000 paise).
+    // Bonus recomputed from score × per-slab score value (₹250 → 25,000 paise).
     $row = DB::table('gsb_slabs')->where('slab', 2)->first();
     expect((int) $row->score)->toBe(12);
-    expect((int) $row->bonus_paise)->toBe(12 * 36_000);
+    expect((int) $row->score_value_paise)->toBe(25_000);
+    expect((int) $row->bonus_paise)->toBe(12 * 25_000);
 
     expect(AuditLog::where('action', 'compensation.plan.gsb_slab.updated')->exists())->toBeTrue();
     Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'gsb_slab' && $e->key === '2');

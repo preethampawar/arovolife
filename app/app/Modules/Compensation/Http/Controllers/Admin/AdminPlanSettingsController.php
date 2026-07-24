@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Events\CompensationPlanChanged;
-use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -24,18 +23,17 @@ use Illuminate\Support\Facades\DB;
  */
 final class AdminPlanSettingsController extends Controller
 {
-    public function index(CompensationPlanSettingsService $plan): View
+    public function index(): View
     {
         return view('admin.compensation.plan-settings.index', [
             'slabs' => DB::table('gsb_slabs')->orderBy('slab')->get(),
             'rankTiers' => DB::table('rank_tiers')->orderBy('rank_number')->get(),
             'fortuneLevels' => DB::table('fortune_bonus_levels')->orderBy('level')->get(),
             'fortuneTiers' => DB::table('fortune_bonus_tiers')->orderBy('sort_order')->get(),
-            'scoreRatePaise' => $plan->gsbScoreRatePaise(),
         ]);
     }
 
-    public function updateGsbSlab(Request $request, int $slab, CompensationPlanSettingsService $plan): RedirectResponse
+    public function updateGsbSlab(Request $request, int $slab): RedirectResponse
     {
         abort_unless(DB::table('gsb_slabs')->where('slab', $slab)->exists(), 404);
 
@@ -44,21 +42,25 @@ final class AdminPlanSettingsController extends Controller
             'title_min_bv_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
             'matched_bv_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
             'score' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'score_value_paise' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'agp_per_occurrence' => ['required', 'integer', 'min:0', 'max:100000'],
             'carry_forward_lifetime' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        // Bonus follows the score × rate model (KP). Null score ⇒ null bonus,
-        // which disables a slab's matching payout (kept for any future TBD slab).
+        // Bonus follows the score × per-slab score-value model (KP 2026-07-21).
+        // Null score ⇒ null bonus, which disables a slab's matching payout
+        // (kept for any future TBD slab).
         $score = $data['score'] !== null ? (int) $data['score'] : null;
-        $bonusPaise = $score !== null ? $score * $plan->gsbScoreRatePaise() : null;
+        $scoreValuePaise = (int) $data['score_value_paise'];
+        $bonusPaise = $score !== null ? $score * $scoreValuePaise : null;
 
         $new = [
             'title' => $data['title'] !== '' ? $data['title'] : null,
             'title_min_bv_paise' => (int) $data['title_min_bv_paise'],
             'matched_bv_paise' => (int) $data['matched_bv_paise'],
             'score' => $score,
+            'score_value_paise' => $scoreValuePaise,
             'bonus_paise' => $bonusPaise,
             'agp_per_occurrence' => (int) $data['agp_per_occurrence'],
             'carry_forward_lifetime' => $request->boolean('carry_forward_lifetime'),

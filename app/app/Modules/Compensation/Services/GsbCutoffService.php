@@ -26,6 +26,7 @@ final class GsbCutoffService
         private readonly BvLedgerService $bvLedger,
         private readonly CompensationPlanSettingsService $plan,
         private readonly IncomeEligibilityService $eligibility,
+        private readonly GsbPersonalBvTopupService $topup,
     ) {}
 
     /**
@@ -147,6 +148,33 @@ final class GsbCutoffService
         $leftEffective = $leftToday + ($cf->power_side === 'L' ? $cf->power_side_bv_paise : 0);
         $rightEffective = $rightToday + ($cf->power_side === 'R' ? $cf->power_side_bv_paise : 0);
 
+        // Conditional personal-BV weaker-leg top-up (KP 2026-07-21). Accumulated
+        // personal purchase BV is credited to the weaker leg ONLY on a cut-off
+        // where a leg's effective BV (incl. CF) has already touched the smallest
+        // slab threshold — otherwise it stays pending for a future day. On a tie
+        // the Left leg is the stronger/power side, so the weaker (top-up) side is
+        // Right. Idempotent: a re-run finds nothing pending (orders already topped
+        // up) and lands on identical numbers.
+        $minSlabMatched = $this->plan->gsbMinSlabMatchedBvPaise();
+        if ($minSlabMatched > 0 && max($leftEffective, $rightEffective) >= $minSlabMatched) {
+            $topupWeakerSide = $leftEffective < $rightEffective ? 'L' : 'R';
+            $creditedTopup = $this->topup->applyPendingForDistributor($distributorId, $date, $topupWeakerSide);
+
+            if ($creditedTopup > 0) {
+                // The top-up incremented today's weaker-side accumulator by exactly
+                // $creditedTopup — mirror it locally so matching sees the new BV.
+                if ($topupWeakerSide === 'L') {
+                    $leftToday += $creditedTopup;
+                    $leftEffective += $creditedTopup;
+                } else {
+                    $rightToday += $creditedTopup;
+                    $rightEffective += $creditedTopup;
+                }
+            }
+        }
+
+        // Stronger/weaker determination. Tie ⇒ Left is the stronger/power side
+        // (KP 2026-07-21 tie-break): its excess carries forward, Right settles to 0.
         if ($leftEffective >= $rightEffective) {
             $strongerSide = 'L';
             $strongerEffective = $leftEffective;
@@ -174,7 +202,7 @@ final class GsbCutoffService
             $threshold = $slabRow['matched_bv_paise'];
             $incentive = $slabRow['bonus_paise'];
             if ($slabIndex <= $title->maxGsbSlab && $weakerEffective >= $threshold) {
-                $matchedSlab = ['index' => $slabIndex, 'threshold' => $threshold, 'incentive' => $incentive];
+                $matchedSlab = ['index' => $slabIndex, 'threshold' => $threshold, 'incentive' => $incentive, 'score' => $slabRow['score']];
                 break;
             }
         }
@@ -198,7 +226,7 @@ final class GsbCutoffService
             && $personalBvPaise >= $this->plan->gsbMinBvPaise()
             && $weakerTotal >= $slab1['matched_bv_paise']
             && $strongerEffective >= $slab1['matched_bv_paise']) {
-            $matchedSlab = ['index' => 1, 'threshold' => $slab1['matched_bv_paise'], 'incentive' => $slab1['bonus_paise']];
+            $matchedSlab = ['index' => 1, 'threshold' => $slab1['matched_bv_paise'], 'incentive' => $slab1['bonus_paise'], 'score' => $slab1['score']];
         }
 
         if ($matchedSlab === null) {
@@ -251,6 +279,7 @@ final class GsbCutoffService
             'right_bv_paise' => $rightToday,
             'weaker_bv_paise' => $weakerTotal,
             'slab' => $matchedSlab['index'],
+            'score' => $matchedSlab['score'],
             'gross_gsb_paise' => $gross,
             'admin_charge_paise' => $adminCharge,
             'tds_paise' => $tds,
@@ -359,6 +388,7 @@ final class GsbCutoffService
      */
     private const VOLATILE_FIELD_RESETS = [
         'slab' => null,
+        'score' => null,
         'gross_gsb_paise' => 0,
         'admin_charge_paise' => 0,
         'tds_paise' => 0,

@@ -10,11 +10,20 @@ use App\Modules\Compensation\Services\GsbPersonalBvTopupService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // Permissive go-live so cross-day pending accruals are in-window. The
+    // conditional weaker side is now decided by the caller (GsbCutoffService);
+    // these tests exercise the apply/window/reversal mechanics with an explicit
+    // side, and cover the go-live boundary and cross-day accumulation directly.
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.gsb.topup_golive_date'],
+        ['value' => '2000-01-01'],
+    );
 });
 
 // ---------------------------------------------------------------------------
@@ -51,15 +60,18 @@ function setGroupBvTopup(int $distributorId, int $left, int $right, ?string $dat
 }
 
 // ---------------------------------------------------------------------------
-// applyForDistributor
+// applyPendingForDistributor
 // ---------------------------------------------------------------------------
 
-it('credits personal BV to the weaker (right) side', function (): void {
+it('credits pending personal BV to the caller-chosen (right) weaker side', function (): void {
     $dist = makeDistributorForTopupTest();
     accrueTopup($dist->id, 100_000);                   // 1,000 BV
-    setGroupBvTopup($dist->id, 500_000, 200_000);      // right is weaker
+    setGroupBvTopup($dist->id, 500_000, 200_000);
 
-    app(GsbPersonalBvTopupService::class)->applyForDistributor($dist->id, Carbon::today());
+    $credited = app(GsbPersonalBvTopupService::class)
+        ->applyPendingForDistributor($dist->id, Carbon::today(), 'R');
+
+    expect($credited)->toBe(100_000);
 
     $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
     expect($daily->right_bv_paise)->toBe(300_000)
@@ -69,12 +81,12 @@ it('credits personal BV to the weaker (right) side', function (): void {
     expect(GsbPersonalBvTopup::first()->side)->toBe('R');
 });
 
-it('credits personal BV to the weaker (left) side when right is stronger', function (): void {
+it('credits pending personal BV to the caller-chosen (left) weaker side', function (): void {
     $dist = makeDistributorForTopupTest();
     accrueTopup($dist->id, 50_000);
-    setGroupBvTopup($dist->id, 100_000, 400_000);      // left is weaker
+    setGroupBvTopup($dist->id, 100_000, 400_000);
 
-    app(GsbPersonalBvTopupService::class)->applyForDistributor($dist->id, Carbon::today());
+    app(GsbPersonalBvTopupService::class)->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
 
     $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
     expect($daily->left_bv_paise)->toBe(150_000)
@@ -83,12 +95,11 @@ it('credits personal BV to the weaker (left) side when right is stronger', funct
     expect(GsbPersonalBvTopup::first()->side)->toBe('L');
 });
 
-it('creates group_bv_daily row when none exists for today', function (): void {
+it('creates group_bv_daily row when none exists for the cutoff date', function (): void {
     $dist = makeDistributorForTopupTest();
     accrueTopup($dist->id, 60_000);
-    // No GroupBvDaily row → left treated as weaker (0 <= 0)
 
-    app(GsbPersonalBvTopupService::class)->applyForDistributor($dist->id, Carbon::today());
+    app(GsbPersonalBvTopupService::class)->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
 
     $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
     expect($daily)->not->toBeNull()
@@ -99,24 +110,27 @@ it('creates group_bv_daily row when none exists for today', function (): void {
 it('is idempotent — running twice does not double-credit', function (): void {
     $dist = makeDistributorForTopupTest();
     accrueTopup($dist->id, 100_000);
-    setGroupBvTopup($dist->id, 300_000, 100_000);      // right is weaker
+    setGroupBvTopup($dist->id, 300_000, 100_000);
 
     $svc = app(GsbPersonalBvTopupService::class);
-    $svc->applyForDistributor($dist->id, Carbon::today());
-    $svc->applyForDistributor($dist->id, Carbon::today());
+    expect($svc->applyPendingForDistributor($dist->id, Carbon::today(), 'R'))->toBe(100_000);
+    expect($svc->applyPendingForDistributor($dist->id, Carbon::today(), 'R'))->toBe(0);
 
     $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
     expect($daily->right_bv_paise)->toBe(200_000);   // 100k + 100k only once
     expect(GsbPersonalBvTopup::count())->toBe(1);
 });
 
-it('applies multiple same-day orders to the same weaker side', function (): void {
+it('applies multiple pending orders to the same weaker side', function (): void {
     $dist = makeDistributorForTopupTest();
     accrueTopup($dist->id, 50_000);
     accrueTopup($dist->id, 30_000);
-    setGroupBvTopup($dist->id, 0, 100_000);            // left is weaker
+    setGroupBvTopup($dist->id, 0, 100_000);
 
-    app(GsbPersonalBvTopupService::class)->applyForDistributor($dist->id, Carbon::today());
+    $credited = app(GsbPersonalBvTopupService::class)
+        ->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
+
+    expect($credited)->toBe(80_000);
 
     $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
     expect($daily->left_bv_paise)->toBe(80_000)
@@ -126,16 +140,52 @@ it('applies multiple same-day orders to the same weaker side', function (): void
     expect(GsbPersonalBvTopup::pluck('side')->unique()->values()->all())->toBe(['L']);
 });
 
-it('ignores accruals from other dates', function (): void {
+it('accumulates uncredited accruals from prior days into the pending pool', function (): void {
+    // New rule (KP 2026-07-21): personal BV is NOT day-scoped — an accrual left
+    // uncredited yesterday is still pending today and credited on the triggering day.
     $dist = makeDistributorForTopupTest();
-    accrueTopup($dist->id, 50_000, Carbon::yesterday()->toDateString());
-    setGroupBvTopup($dist->id, 0, 0);
+    accrueTopup($dist->id, 40_000, Carbon::yesterday()->toDateString());
+    accrueTopup($dist->id, 60_000, today()->toDateString());
 
-    app(GsbPersonalBvTopupService::class)->applyForDistributor($dist->id, Carbon::today());
+    $credited = app(GsbPersonalBvTopupService::class)
+        ->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
 
+    expect($credited)->toBe(100_000);   // both days' BV
+    expect(GsbPersonalBvTopup::count())->toBe(2);
+});
+
+it('excludes accruals dated before the go-live date', function (): void {
+    $dist = makeDistributorForTopupTest();
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.gsb.topup_golive_date'],
+        ['value' => today()->toDateString()],
+    );
+    accrueTopup($dist->id, 50_000, today()->subDay()->toDateString());   // pre-go-live
+
+    $credited = app(GsbPersonalBvTopupService::class)
+        ->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
+
+    expect($credited)->toBe(0);
     expect(GsbPersonalBvTopup::count())->toBe(0);
-    $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
-    expect($daily->left_bv_paise)->toBe(0);
+});
+
+it('excludes an order that has been reversed', function (): void {
+    $dist = makeDistributorForTopupTest();
+    $orderId = accrueTopup($dist->id, 70_000);
+    // Cancellation writes a reversal ledger entry for the same order.
+    BvLedgerEntry::create([
+        'distributor_id' => $dist->id,
+        'order_id' => $orderId,
+        'bv_paise' => -70_000,
+        'type' => BvLedgerEntry::TYPE_REVERSAL,
+        'effective_at' => now(),
+    ]);
+
+    $credited = app(GsbPersonalBvTopupService::class)
+        ->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
+
+    expect($credited)->toBe(0);
+    expect(GsbPersonalBvTopup::count())->toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -145,10 +195,10 @@ it('ignores accruals from other dates', function (): void {
 it('reverses an unsettled topup directly from the original date accumulator', function (): void {
     $dist = makeDistributorForTopupTest();
     $orderId = accrueTopup($dist->id, 80_000);
-    setGroupBvTopup($dist->id, 0, 200_000);            // left is weaker → topup goes to L
+    setGroupBvTopup($dist->id, 0, 200_000);
 
     $svc = app(GsbPersonalBvTopupService::class);
-    $svc->applyForDistributor($dist->id, Carbon::today());
+    $svc->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
 
     expect(GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->value('left_bv_paise'))
         ->toBe(80_000);
@@ -167,10 +217,10 @@ it('deducts from today when the original cutoff date is settled (credited)', fun
     $today = Carbon::today()->toDateString();
 
     $orderId = accrueTopup($dist->id, 50_000, $yesterday);
-    setGroupBvTopup($dist->id, 0, 300_000, $yesterday);    // left weaker → side='L'
+    setGroupBvTopup($dist->id, 0, 300_000, $yesterday);
 
     $svc = app(GsbPersonalBvTopupService::class);
-    $svc->applyForDistributor($dist->id, Carbon::yesterday());
+    $svc->applyPendingForDistributor($dist->id, Carbon::yesterday(), 'L');
 
     GsbCutoffResult::create([
         'distributor_id' => $dist->id,
@@ -208,7 +258,7 @@ it('is idempotent on reversal — calling twice does not double-debit', function
     setGroupBvTopup($dist->id, 0, 200_000);
 
     $svc = app(GsbPersonalBvTopupService::class);
-    $svc->applyForDistributor($dist->id, Carbon::today());
+    $svc->applyPendingForDistributor($dist->id, Carbon::today(), 'L');
     $svc->reverseForOrder($orderId);
     $svc->reverseForOrder($orderId);   // no-op
 

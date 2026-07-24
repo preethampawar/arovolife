@@ -6,7 +6,6 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\GsbCutoffService;
-use App\Modules\Compensation\Services\GsbPersonalBvTopupService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -27,7 +26,6 @@ final class GsbDailyCutoffCommand extends Command
     public function __construct(
         private readonly GsbCutoffService $cutoff,
         private readonly MentorshipBonusService $mentorship,
-        private readonly GsbPersonalBvTopupService $topup,
     ) {
         parent::__construct();
     }
@@ -85,10 +83,8 @@ final class GsbDailyCutoffCommand extends Command
             $distributorId = (int) $distributor->id;
 
             try {
-                // Inject today's personal order BV into the distributor's weaker
-                // Genos leg before the cut-off reads group_bv_daily. Idempotent.
-                $this->topup->applyForDistributor($distributorId, $date);
-
+                // The conditional personal-BV weaker-leg top-up is now applied
+                // inside runForDistributor (only when a leg touches a slab).
                 $result = $this->cutoff->runForDistributor($distributorId, $date);
 
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {

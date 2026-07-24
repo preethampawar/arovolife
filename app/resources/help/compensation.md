@@ -22,23 +22,27 @@ Distributors have the same ledger under **My Income → Genos Ledger**, with two
 The distributor's Genos BV tab opens with a **slab ladder**: all active GSB slabs with their matched-BV threshold and title requirement, a green **Earned ×N** count per slab (credited cut-offs only), and an amber **Next target** row showing how much more matched BV is needed — mirroring exactly what tonight's cut-off will measure (slab 1 includes the lifetime weaker carry-forward; slabs 2–7 count the day's fresh BV plus power CF on its side). Compliance note: the ladder deliberately shows **no rupee amounts** on unearned slabs — progress is expressed in BV only, so nothing on the page projects future income. Below the 600 BV personal minimum the ladder shows the plan thresholds but no group-BV figures.
 
 ## Slab table
-Each slab's gross GSB = **slab score × ₹360** (KP-confirmed; the ₹360 score rate and every slab figure are admin-editable under Compensation → Plan settings). Values below reflect the live plan configuration.
+Each slab's gross GSB = **slab score × the slab's score value** (KP 2026-07-21; every slab's score, matched BV and **per-slab score value** are admin-editable under Compensation → Plan settings). The default score value is ₹250/point for all slabs; each can be set independently. Values below reflect the default configuration.
 
-| Slab | Matched BV (each side) | Score | Gross GSB | Title required |
-|------|----------------------|-------|-----------|----------------|
-| 1 | 15,000 BV | 5 | ₹1,800 | Retailer (3,000 lifetime) |
-| 2 | 36,000 BV | 10 | ₹3,600 | Dealer (7,000 lifetime) |
-| 3 | 90,000 BV | 20 | ₹7,200 | Wholesaler (15,000 lifetime) |
-| 4 | 2,70,000 BV | 38 | ₹13,680 | Distributor (32,000 lifetime) |
-| 5 | 8,10,000 BV | 70 | ₹25,200 | Regional Distributor (68,000) |
-| 6 | 24,30,000 BV | 117 | ₹42,120 | National Distributor (1,44,000) |
-| 7 | 72,90,000 BV | 167 | ₹60,120 | Global Distributor (3,00,000) |
+| Slab | Matched BV (each side) | Score | Score value | Gross GSB | Title required |
+|------|----------------------|-------|-------------|-----------|----------------|
+| 1 | 15,000 BV | 8 | ₹250 | ₹2,000 | Retailer (3,000 lifetime) |
+| 2 | 36,000 BV | 16 | ₹250 | ₹4,000 | Dealer (7,000 lifetime) |
+| 3 | 1,00,000 BV | 32 | ₹250 | ₹8,000 | Wholesaler (15,000 lifetime) |
+| 4 | 3,00,000 BV | 60 | ₹250 | ₹15,000 | Distributor (32,000 lifetime) |
+| 5 | 9,00,000 BV | 112 | ₹250 | ₹28,000 | Regional Distributor (68,000) |
+| 6 | 27,00,000 BV | 184 | ₹250 | ₹46,000 | National Distributor (1,44,000) |
+| 7 | 81,00,000 BV | 280 | ₹250 | ₹70,000 | Global Distributor (3,00,000) |
 
 The title column is the distributor's **lifetime personal purchase BV** requirement (KP's confirmed 27-06-2026 table, stored in the admin-editable `gsb_slabs` rows). The cut-off pays the **lower** of the matched-BV slab and the title slab: a Retailer whose Genos matches Slab-3-level volume is still paid Slab 1 only, and the weaker-side BV above 15,000 is consumed, not banked. Between 600 and 2,999 personal BV, group BV accumulates as carry-forward but **no slab pays at all** — Slab 1 itself requires the Retailer title.
 
 ## Carry-forward
 - **Power side** (stronger leg): carries forward capped at 4,50,000 BV
 - **Slab-1 weaker side**: accumulates indefinitely toward the 15K first match
+- **Equal sides tie-break** (KP 2026-07-21): when the two legs are exactly equal at cut-off, the **Left** leg is treated as the stronger/power side — its excess carries forward and the Right leg settles to zero.
+
+## Personal-BV weaker-leg top-up (conditional, KP 2026-07-21)
+A distributor's own purchase BV helps them reach a slab by being added to their weaker Genos leg — but only when it can matter. Their personal purchase BV **accumulates** (pending) and is credited to the weaker leg **only on a cut-off where either leg's effective BV, including carry-forward, has reached a slab's matching value** (the smallest is 15,000 BV). If neither leg reaches it that day, the personal BV stays pending and is tried again the next day. Once credited it is consumed for that match; fresh purchases start a new pending balance. The distributor's real lifetime personal BV (titles, repurchase, bank-release checks) is never altered by this — the top-up only nudges the day's Genos match.
 
 ## Cancelled / refunded orders — group BV reversal
 When an order is cancelled (pre-shipment) or its refund is approved (cooling-off or buyback), its group BV is automatically reversed from **exactly the upline distributors it was originally credited to** (a per-ancestor snapshot taken at credit time), on the **same side** — all the way up to the company root. Per KP's confirmed rules (Q8, 27-06-2026):

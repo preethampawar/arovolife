@@ -9,7 +9,9 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 > 1. `docs/compensation/kp-clarifications-2026-06-26.md` (KP's Q&A — answers + open items)
 > 2. `~/.claude/.../memory/compensation_plan_kp_amendments_2026_06_26.md` (numeric params SSOT)
 >
-> Key deltas the 06-19 text below gets WRONG: GSB bonuses are **score × ₹360** (slab 1 = ₹1,800 … slab 7 = ₹60,120, score 167); admin charge **+ 5% TDS apply to all 7 bonuses** (incl. ADC + Lifetime Awards); repurchase pool = GSB+MB+GBB+Fortune+Rank; min payout **₹100**; repurchase date = Retailer-title anniversary; monthly repurchase BV is **graduated per rank** (R1 1,000 … R9 2,300; R7/R8 TBD); envelope %s restated (GSB 46 / MB 1.5 / Rank 20~21 / Fortune 6 / Lifetime 18.5 / ADC 3).
+> Key deltas the 06-19 text below gets WRONG: admin charge **+ 5% TDS apply to all 7 bonuses** (incl. ADC + Lifetime Awards); repurchase pool = GSB+MB+GBB+Fortune+Rank; min payout **₹100**; repurchase date = Retailer-title anniversary; monthly repurchase BV is **graduated per rank** (R1 1,000 … R9 2,300; R7/R8 TBD); envelope %s restated (GSB 46 / MB 1.5 / Rank 20~21 / Fortune 6 / Lifetime 18.5 / ADC 3).
+>
+> ⚠️ **GSB SUPERSEDED by KP's 2026-07-21 "New Engine"** (memory `gsb_new_engine_2026_07_21.md`, shipped 2026-07-25). GSB bonus = matched slab's `score` × that slab's **per-slab configurable score value** (default ₹250/point) — NOT the old global ₹360 rate. New scores **8/16/32/60/112/184/280**; both-sides thresholds **15K/36K/1L/3L/9L/27L/81L**; bonuses **₹2,000 / ₹4,000 / ₹8,000 / ₹15,000 / ₹28,000 / ₹46,000 / ₹70,000**. Personal-BV title thresholds unchanged. **Conditional personal-BV top-up**: personal purchase BV accumulates and is credited to the weaker leg only on a cut-off where a leg's effective BV (incl. CF) has touched a slab threshold (real personal BV never mutated). **Equal-sides tie-break**: Left is the power side (its excess carries forward, Right → 0). The sheet's "45% of daily turnover ÷ total score" example is a future company P/L metric only — not implemented. The slab table below shows even older 06-19 numbers — use the New Engine values.
 
 **Source document (this file):** "Arovolife Is Our New Life" dated 2026-06-19.
 **Phase note:** No compensation is calculated in Phases 1–3. This skill exists so that the data model, events and audit trails are *forward-compatible* with the engines that arrive in Phases 4+.
@@ -87,17 +89,19 @@ Every day at 23:59, the system:
 
 The 1st slab has **no daily cutoff and no time limit**. It accumulates lifetime until the 15K match is hit, then pays and resets the weaker side to zero. All other slabs (2nd–7th) use the daily 23:59 cutoff.
 
-### GSB slab table
+### GSB slab table (KP 2026-07-21 "New Engine" — current)
 
-| Left / Right matched BV | Personal purchase title required | Score | Bonus |
-|---|---|---|---|
-| 15,000 / 15,000 | Retailer (3,000 BV) | 4 | ₹1,000 |
-| 30,000 / 30,000 | Dealer (5,000 BV) | 12 | ₹3,000 |
-| 90,000 / 90,000 | Wholesaler (15,000 BV) | 24 | ₹6,000 |
-| 2,70,000 / 2,70,000 | Distributor (50,000 BV) | 48 | ₹12,000 |
-| 8,00,000 / 8,00,000 | Regional Distributor (1,00,000 BV) | 96 | ₹24,000 |
-| 24,00,000 / 24,00,000 | National Distributor (2,00,000 BV) | 160 | ₹40,000 |
-| 72,00,000 / 72,00,000 | Global Distributor (3,00,000 BV) | 240 | ₹60,000 |
+Bonus = score × per-slab score value (default ₹250). Personal-purchase title thresholds are KP's 27-06-2026 table.
+
+| Left / Right matched BV | Personal purchase title required | Score | Score value | Bonus |
+|---|---|---|---|---|
+| 15,000 / 15,000 | Retailer (3,000 BV) | 8 | ₹250 | ₹2,000 |
+| 36,000 / 36,000 | Dealer (7,000 BV) | 16 | ₹250 | ₹4,000 |
+| 1,00,000 / 1,00,000 | Wholesaler (15,000 BV) | 32 | ₹250 | ₹8,000 |
+| 3,00,000 / 3,00,000 | Distributor (32,000 BV) | 60 | ₹250 | ₹15,000 |
+| 9,00,000 / 9,00,000 | Regional Distributor (68,000 BV) | 112 | ₹250 | ₹28,000 |
+| 27,00,000 / 27,00,000 | National Distributor (1,44,000 BV) | 184 | ₹250 | ₹46,000 |
+| 81,00,000 / 81,00,000 | Global Distributor (3,00,000 BV) | 280 | ₹250 | ₹70,000 |
 
 ### Personal BV added to Rank 1 / Rank 2 weaker leg (only for rank qualification)
 

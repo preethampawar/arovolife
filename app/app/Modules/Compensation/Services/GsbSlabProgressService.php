@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
@@ -34,6 +33,7 @@ final class GsbSlabProgressService
         private readonly CompensationPlanSettingsService $plan,
         private readonly BvLedgerService $bvLedger,
         private readonly PersonalBvTitleService $titleService,
+        private readonly GsbPersonalBvTopupService $topup,
     ) {}
 
     public function forDistributor(int $distributorId): GsbSlabProgress
@@ -62,35 +62,34 @@ final class GsbSlabProgressService
                 + ($cf !== null && $cf->power_side === 'R' ? $cf->power_side_bv_paise : 0);
             $slab1Cf = $cf->slab1_weaker_bv_paise ?? 0;
 
-            // Preview the personal-BV weaker-leg topup the cut-off will apply.
-            // For accruals NOT yet topped up, determine the weaker side from the
-            // current accumulator (matching GsbPersonalBvTopupService::applyForDistributor).
-            $alreadyToppedup = GsbPersonalBvTopup::where('distributor_id', $distributorId)
-                ->whereDate('date', $today)
-                ->sum('bv_paise');
-            $personalBvTopupPaise = (int) $alreadyToppedup;
-
-            // If topups exist for today, expose the side they were applied to.
-            $appliedTopup = GsbPersonalBvTopup::where('distributor_id', $distributorId)
+            // Preview the conditional personal-BV weaker-leg topup (KP 2026-07-21).
+            // Topups already applied today are in the accumulator; expose them.
+            $appliedTopups = GsbPersonalBvTopup::where('distributor_id', $distributorId)
                 ->whereDate('date', $today)
                 ->whereNull('reversed_at')
-                ->first(['side', 'bv_paise']);
+                ->get(['side', 'bv_paise']);
 
-            if ($appliedTopup !== null) {
-                $topupSide = $appliedTopup->side;
+            if ($appliedTopups->isNotEmpty()) {
+                $personalBvTopupPaise = (int) $appliedTopups->sum('bv_paise');
+                $topupSide = $appliedTopups->first()->side;
             } else {
-                // Topup not yet applied — preview which side would receive it.
-                $pendingBv = (int) BvLedgerEntry::where('distributor_id', $distributorId)
-                    ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
-                    ->whereDate('effective_at', $today)
-                    ->sum('bv_paise');
-
-                if ($pendingBv > 0) {
-                    // Weaker side before any topup (mirrors service logic).
-                    $rawLeft = $daily->left_bv_paise ?? 0;
-                    $rawRight = $daily->right_bv_paise ?? 0;
-                    $topupSide = $rawLeft <= $rawRight ? 'L' : 'R';
-                    $personalBvTopupPaise = $pendingBv;
+                // Not yet applied. The cut-off will credit the full pending pool to
+                // the weaker leg ONLY if a leg has touched the smallest slab (incl.
+                // CF). Preview only when that trigger is met; tie ⇒ weaker = Right.
+                $minSlabMatched = $this->plan->gsbMinSlabMatchedBvPaise();
+                if ($minSlabMatched > 0 && max($leftEffective, $rightEffective) >= $minSlabMatched) {
+                    $pendingBv = $this->topup->pendingBvPaise($distributorId, Carbon::parse($today));
+                    if ($pendingBv > 0) {
+                        $topupSide = $leftEffective < $rightEffective ? 'L' : 'R';
+                        $personalBvTopupPaise = $pendingBv;
+                        // Reflect the imminent credit in the effective weaker side so
+                        // the ladder progress/next-target mirror tonight's measurement.
+                        if ($topupSide === 'L') {
+                            $leftEffective += $pendingBv;
+                        } else {
+                            $rightEffective += $pendingBv;
+                        }
+                    }
                 }
             }
         }

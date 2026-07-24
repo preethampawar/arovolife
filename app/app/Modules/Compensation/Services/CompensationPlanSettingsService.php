@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Enums\BonusType;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -70,8 +71,16 @@ final class CompensationPlanSettingsService
         'comp.admin_charge.applies_to_awards' => false,
         'comp.tds.rate_bp' => 500,
         'comp.gsb.power_cf_cap_paise' => 45_000_000,
+        // DEPRECATED (KP 2026-07-21): the single global score rate is superseded
+        // by per-slab gsb_slabs.score_value_paise. Kept only for back-compat with
+        // any legacy reader; the GSB engine and admin editor no longer use it.
         'comp.gsb.score_rate_paise' => 36_000,
         'comp.gsb.min_bv_paise' => 60_000,
+        // Personal-BV top-up go-live (KP 2026-07-21). Accruals dated before this
+        // are excluded from the conditional top-up pending pool — the old engine
+        // already credited them daily. Permissive default so tests/fresh envs put
+        // no lower bound; production pins it to the deploy date via GsbSlabsSeeder.
+        'comp.gsb.topup_golive_date' => '1970-01-01',
         'comp.mb.step_paise' => 3_000_000,
         'comp.mb.start_rate_pct' => 10,
         'comp.mb.floor_rate_pct' => 1,
@@ -95,7 +104,7 @@ final class CompensationPlanSettingsService
     /** @var array<string, string>|null Lazily-loaded settings key→value map. */
     private ?array $scalarCache = null;
 
-    /** @var array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>|null gsb_slabs keyed by slab. */
+    /** @var array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>|null gsb_slabs keyed by slab. */
     private ?array $gsbSlabCache = null;
 
     /** @var array<int, array<string, mixed>>|null rank_tiers keyed by rank_number. */
@@ -155,9 +164,42 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.gsb.power_cf_cap_paise');
     }
 
+    /**
+     * @deprecated KP 2026-07-21 — the GSB bonus is now score × per-slab
+     * gsb_slabs.score_value_paise. Retained only for backward compatibility.
+     */
     public function gsbScoreRatePaise(): int
     {
         return $this->scalarInt('comp.gsb.score_rate_paise');
+    }
+
+    /**
+     * The personal-BV top-up go-live date. Personal-BV accruals dated before it
+     * never enter the conditional weaker-leg top-up pending pool (the old engine
+     * credited them daily before cut-over).
+     */
+    public function gsbTopupGoliveDate(): Carbon
+    {
+        return Carbon::parse($this->scalar('comp.gsb.topup_golive_date')
+            ?? self::SCALAR_DEFAULTS['comp.gsb.topup_golive_date'])->startOfDay();
+    }
+
+    /**
+     * Smallest matched-BV threshold across active, payable slabs — the point at
+     * which a Genos leg "touches a slab" and unlocks the conditional personal-BV
+     * top-up (KP 2026-07-21). Returns 0 if no slab qualifies (top-up unreachable).
+     */
+    public function gsbMinSlabMatchedBvPaise(): int
+    {
+        $min = null;
+        foreach ($this->gsbSlabs() as $slab) {
+            if (! $slab['is_active'] || $slab['bonus_paise'] === null) {
+                continue;
+            }
+            $min = $min === null ? $slab['matched_bv_paise'] : min($min, $slab['matched_bv_paise']);
+        }
+
+        return $min ?? 0;
     }
 
     /**
@@ -309,7 +351,7 @@ final class CompensationPlanSettingsService
      * All GSB slabs keyed by slab number (inactive rows included so callers can
      * decide to skip them).
      *
-     * @return array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>
+     * @return array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>
      */
     public function gsbSlabs(): array
     {
@@ -322,6 +364,7 @@ final class CompensationPlanSettingsService
                     'title_min_bv_paise' => (int) $row->title_min_bv_paise,
                     'matched_bv_paise' => (int) $row->matched_bv_paise,
                     'score' => $row->score !== null ? (int) $row->score : null,
+                    'score_value_paise' => (int) $row->score_value_paise,
                     'bonus_paise' => $row->bonus_paise !== null ? (int) $row->bonus_paise : null,
                     'agp_per_occurrence' => (int) $row->agp_per_occurrence,
                     'carry_forward_lifetime' => (bool) $row->carry_forward_lifetime,
@@ -333,7 +376,7 @@ final class CompensationPlanSettingsService
         return $this->gsbSlabCache;
     }
 
-    /** @return array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}|null */
+    /** @return array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}|null */
     public function gsbSlab(int $slab): ?array
     {
         return $this->gsbSlabs()[$slab] ?? null;

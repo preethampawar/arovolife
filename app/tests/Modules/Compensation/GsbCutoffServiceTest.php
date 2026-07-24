@@ -6,17 +6,28 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // Legacy matching/CF tests set group BV directly and use the personal-BV
+    // accrual only for the title/gate — push the top-up go-live into the future
+    // so that accrual is never treated as a pending weaker-leg top-up. The
+    // conditional top-up itself is covered by dedicated tests below (which set an
+    // early go-live) and by GsbPersonalBvTopupServiceTest.
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.gsb.topup_golive_date'],
+        ['value' => today()->addYears(10)->toDateString()],
+    );
 });
 
 function makeDistributorWithBv(int $bvPaise): Distributor
@@ -68,7 +79,7 @@ it('earns slab 1 from 600 BV personal (below the 3,000 BV Retailer title)', func
 
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($result->slab)->toBe(1);
-    expect($result->gross_gsb_paise)->toBe(180_000);  // slab 1 = ₹1,800
+    expect($result->gross_gsb_paise)->toBe(200_000);  // slab 1 = ₹1,800
 });
 
 it('caps a sub-Retailer distributor to slab 1 even when group BV qualifies for a higher slab', function () {
@@ -88,7 +99,7 @@ it('caps a sub-Retailer distributor to slab 1 even when group BV qualifies for a
     // Slab 2 (36K match) is reachable by group BV but must NOT fire — title caps it.
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($result->slab)->toBe(1);
-    expect($result->gross_gsb_paise)->toBe(180_000);  // slab 1 only
+    expect($result->gross_gsb_paise)->toBe(200_000);  // slab 1 only
 });
 
 it('returns no_match when group BV does not reach any slab', function () {
@@ -126,12 +137,12 @@ it('credits slab 1 when weaker side meets 15,000 BV threshold', function () {
 
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($result->slab)->toBe(1);
-    expect($result->gross_gsb_paise)->toBe(180_000);   // slab 1 = ₹1,800 (KP, score 5 × ₹360)
+    expect($result->gross_gsb_paise)->toBe(200_000);   // slab 1 = ₹1,800 (KP, score 5 × ₹360)
 
     // Deductions are applied at payout time, not at credit time.
     expect($result->admin_charge_paise)->toBe(0);
     expect($result->tds_paise)->toBe(0);
-    expect($result->net_gsb_paise)->toBe(180_000);
+    expect($result->net_gsb_paise)->toBe(200_000);
 
     // Power CF = stronger (2,000,000) - threshold (1,500,000) = 500,000
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
@@ -178,7 +189,7 @@ it('caps power CF at 45,000,000 paise (450,000 BV)', function () {
         'distributor_id' => $dist->id,
         'date' => today()->toDateString(),
         'left_bv_paise' => 800_000_000,  // 8M BV stronger
-        'right_bv_paise' => 81_000_000,  // 810K BV weaker — matches slab 5 (KP threshold)
+        'right_bv_paise' => 90_000_000,  // 900K BV weaker — matches slab 5 (KP 2026-07-21 threshold)
     ]);
 
     $svc = app(GsbCutoffService::class);
@@ -187,7 +198,7 @@ it('caps power CF at 45,000,000 paise (450,000 BV)', function () {
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($result->slab)->toBe(5);
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
-    // Without cap: 800M - 80M = 720M paise. Capped at 45M.
+    // Without cap: 800M - 90M = 710M paise. Capped at 45M.
     expect($cf->power_side_bv_paise)->toBe(45_000_000);
 });
 
@@ -206,11 +217,11 @@ it('marks status as frozen when distributor GSB is frozen', function () {
 
     expect($result->status)->toBe(GsbCutoffResult::STATUS_FROZEN);
     expect($result->slab)->toBe(3);
-    expect($result->gross_gsb_paise)->toBe(720_000);     // slab 3 = ₹7,200 (KP, score 20 × ₹360)
+    expect($result->gross_gsb_paise)->toBe(800_000);     // slab 3 = ₹7,200 (KP, score 20 × ₹360)
     // Deductions applied at payout time, not credit time.
     expect($result->admin_charge_paise)->toBe(0);
     expect($result->tds_paise)->toBe(0);
-    expect($result->net_gsb_paise)->toBe(720_000);
+    expect($result->net_gsb_paise)->toBe(800_000);
     // Wallet should NOT have been credited
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(0);
 });
@@ -304,7 +315,7 @@ it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
     // Must match slab 1 (not slab 2) because slabs 2–7 use fresh BV only.
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($result->slab)->toBe(1);
-    expect($result->gross_gsb_paise)->toBe(180_000);  // slab 1 = ₹1,800 (KP)
+    expect($result->gross_gsb_paise)->toBe(200_000);  // slab 1 = ₹1,800 (KP)
 });
 
 it('slab1 does NOT match when stronger side is below 15K threshold even if weaker total exceeds it', function () {
@@ -473,3 +484,114 @@ it('refuses to re-run an old date after a later cut-off already advanced the sto
 
     $svc->runForDistributor($dist->id, Carbon::yesterday());
 })->throws(RuntimeException::class, 'later cut-off');
+
+// ---------------------------------------------------------------------------
+// Conditional personal-BV top-up + tie-break + score snapshot (KP 2026-07-21)
+// ---------------------------------------------------------------------------
+
+function enableTopupGolive(): void
+{
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.gsb.topup_golive_date'],
+        ['value' => '2000-01-01'],
+    );
+}
+
+it('does not top up when neither leg touches a slab — personal BV stays pending', function () {
+    enableTopupGolive();
+    $dist = makeDistributorWithBv(300_000);   // 3,000 BV (also the pending accrual)
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 1_000_000,   // 10,000 BV
+        'right_bv_paise' => 800_000,    // 8,000 BV — max leg 10K < 15K, no trigger
+    ]);
+
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::today());
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_NO_MATCH);
+    // No top-up applied — accumulator untouched, no topup row.
+    expect(GsbPersonalBvTopup::count())->toBe(0);
+    $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
+    expect($daily->left_bv_paise)->toBe(1_000_000)
+        ->and($daily->right_bv_paise)->toBe(800_000);
+    // Real personal BV ledger is never mutated.
+    expect((int) BvLedgerEntry::where('distributor_id', $dist->id)->where('type', 'accrual')->sum('bv_paise'))
+        ->toBe(300_000);
+});
+
+it('credits pending personal BV to the weaker leg once a leg (via CF) touches a slab, enabling a match', function () {
+    enableTopupGolive();
+    $dist = makeDistributorWithBv(300_000);   // 3,000 BV pending
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 1_600_000,   // 16,000 BV power CF on R (≥ 15K → triggers)
+        'power_side' => 'R',
+        'slab1_weaker_bv_paise' => 0,
+    ]);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 1_300_000,   // 13,000 BV (weaker leg)
+        'right_bv_paise' => 0,          // effective R = 0 + 1,600K CF = 1,600K
+    ]);
+
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::today());
+
+    // Top-up of 300K to the weaker (left) leg lifts it 1,300K → 1,600K, matching slab 1.
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
+    expect($result->slab)->toBe(1);
+    expect($result->score)->toBe(8);              // score snapshot
+    expect($result->gross_gsb_paise)->toBe(200_000);
+
+    $topup = GsbPersonalBvTopup::where('distributor_id', $dist->id)->first();
+    expect($topup->side)->toBe('L');
+    expect($topup->bv_paise)->toBe(300_000);
+
+    $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
+    expect($daily->left_bv_paise)->toBe(1_600_000);
+
+    // Real personal BV ledger untouched (integrity).
+    expect((int) BvLedgerEntry::where('distributor_id', $dist->id)->where('type', 'accrual')->sum('bv_paise'))
+        ->toBe(300_000);
+});
+
+it('applies the equal-sides tie-break: Left is the power side, Right settles to zero', function () {
+    // File beforeEach pushes go-live to the future, so no top-up interferes here.
+    $dist = makeDistributorWithBv(300_000);   // Retailer
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 1_600_000,   // 16,000 BV
+        'right_bv_paise' => 1_600_000,  // 16,000 BV — exactly equal
+    ]);
+
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::today());
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
+    expect($result->slab)->toBe(1);
+    expect($result->score)->toBe(8);
+
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    // Tie ⇒ Left stronger: power CF = 1,600K − 1,500K = 100K on 'L'; Right consumed.
+    expect($cf->power_side)->toBe('L');
+    expect($cf->power_side_bv_paise)->toBe(100_000);
+    expect($cf->slab1_weaker_bv_paise)->toBe(0);
+});
+
+it('keeps the score snapshot on the result even after the slab score is later edited', function () {
+    $dist = makeDistributorWithBv(300_000);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 2_000_000,
+        'right_bv_paise' => 1_600_000,
+    ]);
+
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::today());
+    expect($result->score)->toBe(8);
+
+    // Admin later changes slab 1's score — the historical row must not change.
+    DB::table('gsb_slabs')->where('slab', 1)->update(['score' => 99]);
+    expect($result->fresh()->score)->toBe(8);
+});

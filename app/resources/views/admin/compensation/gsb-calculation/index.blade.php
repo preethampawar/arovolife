@@ -52,10 +52,10 @@
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Date</th>
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Slab</th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">
-                        Score (Weaker BV)
-                        <x-help-tip text="The weaker-leg BV at cutoff time that determined which slab was matched." />
+                        Score
+                        <x-help-tip text="The matched slab's score (snapshotted at cut-off). Income = score × the slab's score value." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Income (Net GSB)</th>
+                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
                 </tr>
             </thead>
@@ -100,20 +100,15 @@
                         </span>
                     </td>
                     <td class="px-3 py-2 text-right font-semibold text-gray-800">
-                        @bv($row->weaker_bv_paise)
+                        {{ (int) $row->score }}
                         <span class="block text-[10px] text-gray-400 font-normal">
-                            L: @bv($row->left_bv_paise) · R: @bv($row->right_bv_paise)
+                            weaker @bv($row->weaker_bv_paise)
                         </span>
                     </td>
                     <td class="px-3 py-2 text-right">
                         <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
-                            ₹{{ \Illuminate\Support\Number::format($row->net_gsb_paise / 100, 2) }}
+                            ₹{{ \Illuminate\Support\Number::format($row->gross_gsb_paise / 100, 2) }}
                         </span>
-                        @if($row->tds_paise > 0)
-                        <span class="block text-[10px] text-gray-400 font-normal">
-                            gross ₹{{ \Illuminate\Support\Number::format($row->gross_gsb_paise / 100, 2) }} · TDS ₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}
-                        </span>
-                        @endif
                     </td>
                     <td class="px-3 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusBadges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
@@ -123,6 +118,14 @@
                 </tr>
                 @endforeach
             </tbody>
+            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                <tr class="font-semibold text-gray-800">
+                    <td class="px-3 py-2 text-right" colspan="6">Grand total (all filtered rows)</td>
+                    <td class="px-3 py-2 text-right">{{ \Illuminate\Support\Number::format($totalScore) }}</td>
+                    <td class="px-3 py-2 text-right text-green-700">₹{{ \Illuminate\Support\Number::format($totalIncomePaise / 100, 2) }}</td>
+                    <td class="px-3 py-2"></td>
+                </tr>
+            </tfoot>
         </table>
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>

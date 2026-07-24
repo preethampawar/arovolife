@@ -269,7 +269,7 @@ it('releases grace-held GSB on repurchase completion but keeps suspended GSB for
     expect($held->fresh()->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($suspended->fresh()->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
     // Wallet holds exactly the one released slab-1 amount (₹1,800), not both.
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(180_000);
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(200_000);
 });
 
 it('release listener is idempotent — a second reactivation does not double-credit', function (): void {
@@ -289,5 +289,5 @@ it('release listener is idempotent — a second reactivation does not double-cre
     event(new IncomeReactivated($dist->id, 1));
     event(new IncomeReactivated($dist->id, 1));
 
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(180_000); // credited once only
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(200_000); // credited once only
 });

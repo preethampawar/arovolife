@@ -72,11 +72,12 @@ it('exposes the seeded GSB slab ladder', function () {
 
     $slab1 = $plan->gsbSlab(1);
     expect($slab1['matched_bv_paise'])->toBe(1_500_000);
-    expect($slab1['bonus_paise'])->toBe(180_000);
+    expect($slab1['bonus_paise'])->toBe(200_000);         // KP 2026-07-21: score 8 × ₹250
+    expect($slab1['score_value_paise'])->toBe(25_000);
     expect($slab1['carry_forward_lifetime'])->toBeTrue();
 
-    // Slab 7 (Global Distributor) is a fully payable slab: score 167 → ₹60,120.
-    expect($plan->gsbSlab(7)['bonus_paise'])->toBe(6_012_000);
+    // Slab 7 (Global Distributor) is a fully payable slab: score 280 × ₹250 → ₹70,000.
+    expect($plan->gsbSlab(7)['bonus_paise'])->toBe(7_000_000);
 
     expect($plan->rankPoolPct(1))->toBe(7.0);
     expect($plan->rankName(9))->toBe('Elite Diamond Partner');

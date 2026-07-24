@@ -8,18 +8,26 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compliance\Models\AuditLog;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Applies each distributor's own day-of personal order BV to their weaker
- * Genos leg before the nightly GSB cut-off, and reverses that credit if the
+ * Applies a distributor's own accumulated personal-purchase BV to their weaker
+ * Genos leg during the nightly GSB cut-off, and reverses that credit if the
  * originating order is later cancelled (within the cooling-off period).
  *
- * Design rules (plan: purring-exploring-wand, 2026-07-08):
- * - Weaker side is determined ONCE using the full day's sum — never re-derived
- *   per order (prevents the side flipping mid-apply).
+ * Conditional top-up (KP 2026-07-21): personal BV is NOT credited every day.
+ * It accumulates (pending) and is credited only when GsbCutoffService decides a
+ * leg has touched a slab threshold — the service calls
+ * {@see applyPendingForDistributor()} with the weaker side it has already
+ * determined (CF-aware, with the equal-sides tie-break). The distributor's real
+ * lifetime personal BV (bv_ledger_entries) is never mutated here — "pending" is
+ * derived as accruals in the go-live window not yet recorded in this ledger.
+ *
+ * Design rules (retained from 2026-07-08):
+ * - Weaker side is fixed by the caller for the whole apply — never flips per order.
  * - Every write to group_bv_daily is guarded by SELECT FOR UPDATE so concurrent
  *   propagation jobs don't race with the topup.
  * - Idempotent via UNIQUE(order_id) on gsb_personal_bv_topups — a retry never
@@ -30,48 +38,47 @@ use Illuminate\Support\Facades\DB;
  */
 final class GsbPersonalBvTopupService
 {
+    public function __construct(
+        private readonly CompensationPlanSettingsService $plan,
+    ) {}
+
     /**
-     * Apply today's personal BV orders as a weaker-leg topup for the given
-     * distributor before their GSB cut-off runs.
-     *
-     * Called by GsbDailyCutoffCommand immediately before GsbCutoffService for
-     * each distributor.
+     * Total pending (uncredited) personal-purchase BV for a distributor as of the
+     * given cut-off date — accruals in the go-live window that have neither been
+     * topped up nor reversed. Read-only; used by the cut-off trigger preview and
+     * the distributor slab-progress UI.
      */
-    public function applyForDistributor(int $distributorId, Carbon $date): void
+    public function pendingBvPaise(int $distributorId, Carbon $cutoffDate): int
     {
-        $dateStr = $date->toDateString();
+        return (int) $this->pendingAccruals($distributorId, $cutoffDate)->sum('bv_paise');
+    }
 
-        // Collect today's accruals not yet topped up.
-        $alreadyApplied = GsbPersonalBvTopup::where('distributor_id', $distributorId)
-            ->whereDate('date', $dateStr)
-            ->pluck('order_id')
-            ->all();
-
-        $accruals = BvLedgerEntry::where('distributor_id', $distributorId)
-            ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
-            ->whereDate('effective_at', $dateStr)
-            ->when($alreadyApplied !== [], fn ($q) => $q->whereNotIn('order_id', $alreadyApplied))
-            ->get(['order_id', 'bv_paise']);
+    /**
+     * Credit all pending personal-purchase BV to the given weaker leg for this
+     * cut-off date. Returns the paise credited (0 if nothing was pending).
+     *
+     * Called by GsbCutoffService only when a leg has touched a slab threshold.
+     */
+    public function applyPendingForDistributor(int $distributorId, Carbon $cutoffDate, string $weakerSide): int
+    {
+        $accruals = $this->pendingAccruals($distributorId, $cutoffDate);
 
         if ($accruals->isEmpty()) {
-            return;
+            return 0;
         }
 
-        DB::transaction(function () use ($distributorId, $dateStr, $accruals): void {
-            // Lock the accumulator row (or note absence) to determine weaker side
-            // and prevent races with concurrent BV propagation.
+        $dateStr = $cutoffDate->toDateString();
+        $sideColumn = $weakerSide === 'L' ? 'left_bv_paise' : 'right_bv_paise';
+        $creditedPaise = 0;
+
+        DB::transaction(function () use ($distributorId, $dateStr, $accruals, $weakerSide, $sideColumn, &$creditedPaise): void {
+            // Lock the accumulator row (or note absence) to prevent races with
+            // concurrent BV propagation.
             $daily = DB::table('group_bv_daily')
                 ->where('distributor_id', $distributorId)
                 ->whereDate('date', $dateStr)
                 ->lockForUpdate()
                 ->first();
-
-            $leftBv = (int) ($daily->left_bv_paise ?? 0);
-            $rightBv = (int) ($daily->right_bv_paise ?? 0);
-
-            // Weaker side determined once for the full day's sum.
-            $weakerSide = $leftBv <= $rightBv ? 'L' : 'R';
-            $sideColumn = $weakerSide === 'L' ? 'left_bv_paise' : 'right_bv_paise';
 
             foreach ($accruals as $accrual) {
                 $bvPaise = (int) $accrual->bv_paise;
@@ -105,7 +112,7 @@ final class GsbPersonalBvTopupService
                         ->whereDate('date', $dateStr)
                         ->increment($sideColumn, $bvPaise);
                 } else {
-                    // No group BV yet for today — create the row.
+                    // No group BV yet for this date — create the row.
                     try {
                         DB::table('group_bv_daily')->insert([
                             'distributor_id' => $distributorId,
@@ -129,8 +136,46 @@ final class GsbPersonalBvTopupService
                         $daily = (object) ['left_bv_paise' => 0, 'right_bv_paise' => 0];
                     }
                 }
+
+                $creditedPaise += $bvPaise;
             }
         });
+
+        return $creditedPaise;
+    }
+
+    /**
+     * The distributor's uncredited personal-purchase accruals as of a cut-off
+     * date: type=accrual, effective_at within [go-live, end of cut-off date],
+     * whose order has neither been topped up already (UNIQUE order_id) nor
+     * reversed by a cancellation. One accrual row per personal order.
+     *
+     * @return Collection<int, BvLedgerEntry>
+     */
+    private function pendingAccruals(int $distributorId, Carbon $cutoffDate): Collection
+    {
+        $goLive = $this->plan->gsbTopupGoliveDate();
+        $endOfDay = $cutoffDate->copy()->endOfDay();
+
+        $toppedOrderIds = GsbPersonalBvTopup::where('distributor_id', $distributorId)
+            ->pluck('order_id')
+            ->all();
+
+        // Orders reversed (cancelled/refunded) never enter the pending pool —
+        // their BV is void even if they were never topped up.
+        $reversedOrderIds = BvLedgerEntry::where('distributor_id', $distributorId)
+            ->where('type', BvLedgerEntry::TYPE_REVERSAL)
+            ->pluck('order_id')
+            ->all();
+
+        $excluded = array_values(array_unique([...$toppedOrderIds, ...$reversedOrderIds]));
+
+        return BvLedgerEntry::where('distributor_id', $distributorId)
+            ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
+            ->where('effective_at', '>=', $goLive)
+            ->where('effective_at', '<=', $endOfDay)
+            ->when($excluded !== [], fn ($q) => $q->whereNotIn('order_id', $excluded))
+            ->get(['order_id', 'bv_paise']);
     }
 
     /**
