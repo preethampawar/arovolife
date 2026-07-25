@@ -595,3 +595,43 @@ it('keeps the score snapshot on the result even after the slab score is later ed
     DB::table('gsb_slabs')->where('slab', 1)->update(['score' => 99]);
     expect($result->fresh()->score)->toBe(8);
 });
+
+it('treats an admin-reversed cut-off as terminal — re-run is a no-op with no new credit and untouched CF', function () {
+    $dist = makeDistributorWithBv(300_000); // Retailer title
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 2_000_000,
+        'right_bv_paise' => 1_600_000,
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $result = $svc->runForDistributor($dist->id, Carbon::today());
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
+
+    // Admin reversal: wallet debited, row flipped in place, CF deliberately kept.
+    app(WalletService::class)->debit(
+        distributorId: $dist->id,
+        amountPaise: $result->net_gsb_paise,
+        type: 'reversal',
+        referenceId: $result->id,
+        referenceType: 'gsb_cutoff_result',
+    );
+    $result->update(['status' => GsbCutoffResult::STATUS_REVERSED]);
+
+    $cfBefore = GsbCarryforward::where('distributor_id', $dist->id)->first()->only([
+        'power_side_bv_paise', 'power_side', 'slab1_weaker_bv_paise',
+    ]);
+    $walletRows = WalletLedgerEntry::where('distributor_id', $dist->id)->count();
+
+    // Re-run (e.g. via admin Retry): must return the reversed row untouched.
+    $rerun = $svc->runForDistributor($dist->id, Carbon::today());
+
+    expect($rerun->id)->toBe($result->id);
+    expect($rerun->status)->toBe(GsbCutoffResult::STATUS_REVERSED);
+    expect(GsbCutoffResult::where('distributor_id', $dist->id)->count())->toBe(1);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe($walletRows);
+    expect(GsbCarryforward::where('distributor_id', $dist->id)->first()->only([
+        'power_side_bv_paise', 'power_side', 'slab1_weaker_bv_paise',
+    ]))->toBe($cfBefore);
+});

@@ -67,6 +67,16 @@ final class GsbCutoffService
             return $existing;
         }
 
+        // An admin-reversed row is a terminal decision: the wallet was debited
+        // back but the carry-forward store deliberately kept this date's advance
+        // (no clawback). Re-running would skip the CF rewind (the row still IS
+        // the advance) and, via the retry-deletes-failed-rows path, could credit
+        // the date a second time against an inflated CF baseline. Treat it like
+        // a credited row: idempotent no-op.
+        if ($existing !== null && $existing->status === GsbCutoffResult::STATUS_REVERSED) {
+            return $existing;
+        }
+
         // Resolve frozen status from batch cache; fall back to a live query for
         // single-distributor admin retry runs that skip warmBatch().
         $isFrozen = array_key_exists($distributorId, $this->frozenCache)

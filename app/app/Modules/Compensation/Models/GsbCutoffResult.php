@@ -66,8 +66,10 @@ final class GsbCutoffResult extends Model
     /**
      * True when the run that produced this row advanced the rolling
      * gsb_carryforwards store (no_match, frozen, repurchase held/suspended,
-     * credited). below_600bv returns before touching the store and the failed
-     * path rolls its CF mutation back, so those never advanced it.
+     * credited — and reversed, which was credited when it ran; the admin
+     * reversal only debits the wallet, never rewinds CF). below_600bv returns
+     * before touching the store and the failed path rolls its CF mutation
+     * back, so those never advanced it.
      */
     public function advancedCarryForward(): bool
     {
@@ -77,6 +79,7 @@ final class GsbCutoffResult extends Model
             self::STATUS_REPURCHASE_HELD,
             self::STATUS_REPURCHASE_SUSPENDED,
             self::STATUS_CREDITED,
+            self::STATUS_REVERSED,
         ], true);
     }
 
