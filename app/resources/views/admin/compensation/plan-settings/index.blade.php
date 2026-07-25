@@ -44,7 +44,9 @@
     <p class="text-xs text-gray-500 mb-3">
         Bonus follows the <strong>score × score value</strong> model — each slab carries its own configurable
         score value (₹ per score point), so the bonus is computed from the score on save. A blank score leaves
-        the bonus unset (e.g. any future TBD slab).
+        the bonus unset (e.g. any future TBD slab). Each slab also carries its <strong>Mentorship Bonus</strong>
+        settings: the MSB score (points credited to the direct sponsor when a sponsee's cut-off matches this slab)
+        and the MSB score value (₹ per point).
     </p>
     <div class="space-y-3">
         @foreach($slabs as $row)
@@ -88,6 +90,18 @@
                     <input type="number" name="score_value_paise" data-field-label="Score value (paise)" data-score-value-input value="{{ $row->score_value_paise }}" required min="1"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                     <span class="text-[11px] text-gray-400">₹{{ \Illuminate\Support\Number::format($row->score_value_paise / 100, 2) }} / score</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB score <x-help-tip text="Mentorship Bonus points credited to the direct sponsor each time a sponsee's cut-off matches this slab. The sponsor's MB income is MSB score × MSB score value." /></label>
+                    <input type="number" name="msb_score" data-field-label="MSB score" data-msb-score-input value="{{ $row->msb_score }}" required min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                    <span class="text-[11px] text-gray-400" data-msb-preview>→ ₹{{ \Illuminate\Support\Number::format(($row->msb_score * $row->msb_score_value_paise) / 100, 0) }}</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB score value (₹) <x-help-tip text="Rupee value of one Mentorship Bonus point for this slab (KP 2026-07-25, default ₹250). Enter the value in paise (₹ × 100)." /></label>
+                    <input type="number" name="msb_score_value_paise" data-field-label="MSB score value (paise)" data-msb-score-value-input value="{{ $row->msb_score_value_paise }}" required min="1"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                    <span class="text-[11px] text-gray-400">₹{{ \Illuminate\Support\Number::format($row->msb_score_value_paise / 100, 2) }} / point</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">AGP / occurrence <x-help-tip text="Arovolife Growth Points awarded each time this slab is earned (feeds the monthly Growth Booster pool)." /></label>
@@ -271,6 +285,24 @@
             if (!form) { return; }
             var preview = form.querySelector('[data-score-preview]');
             var valueInput = form.querySelector('[data-score-value-input]');
+            if (!preview || !valueInput) { return; }
+            var recompute = function () {
+                var s = scoreInput.value.trim();
+                var vp = valueInput.value.trim();
+                if (s === '' || isNaN(Number(s)) || vp === '' || isNaN(Number(vp))) { preview.textContent = '→ —'; return; }
+                var rupees = Number(s) * Number(vp) / 100;
+                preview.textContent = '→ ₹' + rupees.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+            };
+            scoreInput.addEventListener('input', recompute);
+            valueInput.addEventListener('input', recompute);
+        });
+
+        // Same live preview for the per-slab Mentorship Bonus (MSB score × MSB score value).
+        document.querySelectorAll('[data-msb-score-input]').forEach(function (scoreInput) {
+            var form = scoreInput.closest('form');
+            if (!form) { return; }
+            var preview = form.querySelector('[data-msb-preview]');
+            var valueInput = form.querySelector('[data-msb-score-value-input]');
             if (!preview || !valueInput) { return; }
             var recompute = function () {
                 var s = scoreInput.value.trim();

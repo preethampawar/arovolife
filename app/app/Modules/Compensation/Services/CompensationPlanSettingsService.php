@@ -81,6 +81,8 @@ final class CompensationPlanSettingsService
         // already credited them daily. Permissive default so tests/fresh envs put
         // no lower bound; production pins it to the deploy date via GsbSlabsSeeder.
         'comp.gsb.topup_golive_date' => '1970-01-01',
+        // Deprecated (KP 2026-07-25): the MB rate ladder was replaced by per-slab
+        // msb_score × msb_score_value_paise on gsb_slabs. Kept for back-compat.
         'comp.mb.step_paise' => 3_000_000,
         'comp.mb.start_rate_pct' => 10,
         'comp.mb.floor_rate_pct' => 1,
@@ -104,7 +106,7 @@ final class CompensationPlanSettingsService
     /** @var array<string, string>|null Lazily-loaded settings key→value map. */
     private ?array $scalarCache = null;
 
-    /** @var array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>|null gsb_slabs keyed by slab. */
+    /** @var array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, msb_score: int, msb_score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>|null gsb_slabs keyed by slab. */
     private ?array $gsbSlabCache = null;
 
     /** @var array<int, array<string, mixed>>|null rank_tiers keyed by rank_number. */
@@ -217,16 +219,19 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.gsb.min_bv_paise');
     }
 
+    /** @deprecated MB rate ladder replaced by per-slab msb_score × msb_score_value_paise (KP 2026-07-25). */
     public function mbStepPaise(): int
     {
         return $this->scalarInt('comp.mb.step_paise');
     }
 
+    /** @deprecated MB rate ladder replaced by per-slab msb_score × msb_score_value_paise (KP 2026-07-25). */
     public function mbStartRatePct(): int
     {
         return $this->scalarInt('comp.mb.start_rate_pct');
     }
 
+    /** @deprecated MB rate ladder replaced by per-slab msb_score × msb_score_value_paise (KP 2026-07-25). */
     public function mbFloorRatePct(): int
     {
         return $this->scalarInt('comp.mb.floor_rate_pct');
@@ -351,7 +356,7 @@ final class CompensationPlanSettingsService
      * All GSB slabs keyed by slab number (inactive rows included so callers can
      * decide to skip them).
      *
-     * @return array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>
+     * @return array<int, array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, msb_score: int, msb_score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}>
      */
     public function gsbSlabs(): array
     {
@@ -365,6 +370,8 @@ final class CompensationPlanSettingsService
                     'matched_bv_paise' => (int) $row->matched_bv_paise,
                     'score' => $row->score !== null ? (int) $row->score : null,
                     'score_value_paise' => (int) $row->score_value_paise,
+                    'msb_score' => (int) $row->msb_score,
+                    'msb_score_value_paise' => (int) $row->msb_score_value_paise,
                     'bonus_paise' => $row->bonus_paise !== null ? (int) $row->bonus_paise : null,
                     'agp_per_occurrence' => (int) $row->agp_per_occurrence,
                     'carry_forward_lifetime' => (bool) $row->carry_forward_lifetime,
@@ -376,7 +383,7 @@ final class CompensationPlanSettingsService
         return $this->gsbSlabCache;
     }
 
-    /** @return array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}|null */
+    /** @return array{slab: int, title: string, title_min_bv_paise: int, matched_bv_paise: int, score: int|null, score_value_paise: int, msb_score: int, msb_score_value_paise: int, bonus_paise: int|null, agp_per_occurrence: int, carry_forward_lifetime: bool, is_active: bool}|null */
     public function gsbSlab(int $slab): ?array
     {
         return $this->gsbSlabs()[$slab] ?? null;

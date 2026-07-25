@@ -991,12 +991,6 @@ parameters:
 			path: app/Modules/Compensation/Services/GsbCutoffService.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Modules/Compensation/Services/MentorshipBonusService.php
-
-		-
 			message: '#^Method App\\Modules\\Compensation\\Services\\WalletService\:\:ledgerWithRunningBalance\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1

@@ -71,6 +71,8 @@ it('persists a GSB slab edit, writes an audit log, and dispatches the domain eve
             'matched_bv_paise' => 3_600_000,
             'score' => 12,                 // 12 × ₹250 = ₹3,000
             'score_value_paise' => 25_000, // ₹250 per score point
+            'msb_score' => 20,             // Mentorship points for this slab
+            'msb_score_value_paise' => 30_000, // ₹300 per MSB point
             'agp_per_occurrence' => 5,
             'carry_forward_lifetime' => 0,
             'is_active' => 1,
@@ -82,6 +84,8 @@ it('persists a GSB slab edit, writes an audit log, and dispatches the domain eve
     expect((int) $row->score)->toBe(12);
     expect((int) $row->score_value_paise)->toBe(25_000);
     expect((int) $row->bonus_paise)->toBe(12 * 25_000);
+    expect((int) $row->msb_score)->toBe(20);
+    expect((int) $row->msb_score_value_paise)->toBe(30_000);
 
     expect(AuditLog::where('action', 'compensation.plan.gsb_slab.updated')->exists())->toBeTrue();
     Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'gsb_slab' && $e->key === '2');

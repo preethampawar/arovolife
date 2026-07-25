@@ -24,7 +24,7 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 |---|---|---|---|
 | Retail Margin | 10–30% | Per sale | Phase 2 |
 | Genos Sales Bonus (GSB) | 40% | Daily cut-off 23:59; weekly Tuesday payout | Phase 4 |
-| Mentorship Bonus | 5% (slab 10%→1%) | With GSB | Phase 4 |
+| Mentorship Bonus | 3% (per-slab points × ₹250, KP 2026-07-25) | With GSB | Phase 4 |
 | Growth Booster Bonus | 5% of monthly turnover | Monthly | Phase 4 |
 | Rank Bonus | 21% (see pool table) | Monthly 8th | Phase 5 |
 | Fortune Bonus | 3×9 matrix, participation-based | Monthly reset | Phase 6 |
@@ -118,29 +118,26 @@ Bonus = score × per-slab score value (default ₹250). Personal-purchase title 
 
 ---
 
-## 2nd Benefit: Mentorship Bonus — 5%
+## 2nd Benefit: Mentorship Bonus — 3% (points engine, KP 2026-07-25)
 
-Paid on top of GSB. A sponsor earns a % of each **directly sponsored** distributor's GSB income.
+> ⚠️ **The 10%→1% cumulative-GSB rate ladder is SUPERSEDED** (KP sheet 2026-07-25, implemented same day). Do not reintroduce it.
 
-### Slab (per directly sponsored person)
+When a **directly sponsored** sponsee's daily cut-off credits GSB slab N, the sponsor's MSB score account is credited that slab's **MSB points**; the wallet credit is **points × the slab's MSB score value** (default ₹250/point, per-slab admin-configurable in `gsb_slabs.msb_score` / `msb_score_value_paise`, edited on the Plan-settings GSB-slab forms).
 
-The % starts at 10% for the first ₹30,000 of that person's cumulative GSB received, then steps down 1% per additional ₹30,000, stabilising at 1% for life:
+| Sponsee's slab | MSB points to sponsor | Income @ ₹250 |
+|---|---|---|
+| 1 | 21 | ₹5,250 |
+| 2 | 18 | ₹4,500 |
+| 3 | 15 | ₹3,750 |
+| 4 | 12 | ₹3,000 |
+| 5 | 9 | ₹2,250 |
+| 6 | 6 | ₹1,500 |
+| 7 | 3 | ₹750 |
 
-| Cumulative GSB from that sponsee | Mentorship % |
-|---|---|
-| 1st ₹30,000 | 10% |
-| 2nd ₹30,000 | 9% |
-| 3rd ₹30,000 | 8% |
-| 4th ₹30,000 | 7% |
-| 5th ₹30,000 | 6% |
-| 6th ₹30,000 | 5% |
-| 7th ₹30,000 | 4% |
-| 8th ₹30,000 | 3% |
-| 9th ₹30,000 | 2% |
-| 10th ₹30,000 onwards | **1% (lifetime)** |
-
-**Applies only to direct sponsees' GSB.** Does not apply to any other benefit type.
-Tracked per sponsor–sponsee pair individually (not aggregate).
+- Points + point value are **snapshotted** on each `mentorship_bonus_results` row (`slab`, `msb_points`, `msb_point_value_paise`) — admin edits never change history. Legacy ladder rows have null snapshots.
+- Sponsor 600 BV personal-minimum gate unchanged; deductions (admin charge/TDS) still at payout; credit is immediate/daily with the GSB cut-off, gated by `MentorshipBonusFeature`.
+- **Applies only to direct sponsees' GSB slab achievements.** Does not apply to any other benefit type. No cumulative per-pair tracking anymore.
+- Admin **MSB Calculation Report** (`/admin/compensation/msb-calculation`): sponsor/sponsee, points, value, income; search, date-range + slab filters, grand totals (points + income), CSV.
 
 ---
 

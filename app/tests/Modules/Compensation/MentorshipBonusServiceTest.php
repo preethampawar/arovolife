@@ -38,166 +38,123 @@ function giveSponsorMinBv(Distributor $sponsor): void
     ]);
 }
 
-it('credits sponsor with 10% of sponsee GSB when sponsee cumulative < 30K GSB', function () {
+/** A credited GSB cut-off for $sponsee matching $slab. */
+function makeCreditedCutoff(Distributor $sponsee, int $slab, int $grossGsbPaise = 100_000, string $status = 'credited'): GsbCutoffResult
+{
+    return GsbCutoffResult::create([
+        'distributor_id' => $sponsee->id,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => $slab, 'gross_gsb_paise' => $grossGsbPaise,
+        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => $grossGsbPaise,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => $status,
+    ]);
+}
+
+it('credits the sponsor with slab points × point value (slab 1 → 21 × ₹250 = ₹5,250)', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
-    $cutoffResult = GsbCutoffResult::create([
-        'distributor_id' => $sponsee->id,
-        'cutoff_date' => today()->toDateString(),
-        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
-        'slab' => 1, 'gross_gsb_paise' => 100_000,
-        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 100_000,
-        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
-        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
-        'status' => 'credited',
-    ]);
-
-    $svc = app(MentorshipBonusService::class);
-    $mb = $svc->processForSponsee($sponsee->id, $cutoffResult);
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
 
     expect($mb)->not->toBeNull();
-    expect($mb->mb_rate_pct)->toBe(10);
-    // MB gross = 10% of 100,000 = 10,000
-    expect($mb->mb_gross_paise)->toBe(10_000);
+    expect($mb->slab)->toBe(1);
+    expect($mb->msb_points)->toBe(21);
+    expect($mb->msb_point_value_paise)->toBe(25_000);
+    expect($mb->mb_gross_paise)->toBe(525_000);   // 21 × 25,000 paise = ₹5,250
+    // Ladder fields retired — points engine writes null.
+    expect($mb->mb_rate_pct)->toBeNull();
+    expect($mb->sponsee_cumulative_gsb_paise)->toBeNull();
     // Deductions are deferred to payout time.
     expect($mb->mb_admin_charge_paise)->toBe(0);
     expect($mb->mb_tds_paise)->toBe(0);
     expect($mb->status)->toBe('credited');
 
     // Sponsor wallet credited with gross.
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(10_000);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
 });
 
-it('steps down MB rate after each 30K cumulative GSB milestone', function () {
+it('pays each slab its own points (slab 3 → 15 × ₹250 = ₹3,750; slab 7 → 3 × ₹250 = ₹750)', function () {
     $sponsor = Distributor::factory()->create();
-    $sponsee = Distributor::factory()->create();
-    makeSponsorship($sponsor, $sponsee);
+    $sponseeA = Distributor::factory()->create();
+    $sponseeB = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponseeA);
+    makeSponsorship($sponsor, $sponseeB);
     giveSponsorMinBv($sponsor);
-
-    // Sponsee has already earned 60K cumulative GSB → rate should be 8% (10 - 2 steps)
-    MentorshipBonusResult::create([
-        'sponsor_id' => $sponsor->id, 'sponsee_id' => $sponsee->id,
-        'cutoff_date' => today()->subDays(2)->toDateString(),
-        'sponsee_gsb_paise' => 3_000_000, 'mb_rate_pct' => 10, 'mb_paise' => 300_000,
-        'sponsee_cumulative_gsb_paise' => 3_000_000, 'status' => 'credited',
-    ]);
-    MentorshipBonusResult::create([
-        'sponsor_id' => $sponsor->id, 'sponsee_id' => $sponsee->id,
-        'cutoff_date' => today()->subDay()->toDateString(),
-        'sponsee_gsb_paise' => 3_000_000, 'mb_rate_pct' => 9, 'mb_paise' => 270_000,
-        'sponsee_cumulative_gsb_paise' => 6_000_000, 'status' => 'credited',
-    ]);
-
-    $cutoffResult = GsbCutoffResult::create([
-        'distributor_id' => $sponsee->id,
-        'cutoff_date' => today()->toDateString(),
-        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
-        'slab' => 1, 'gross_gsb_paise' => 100_000,
-        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 100_000,
-        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
-        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
-        'status' => 'credited',
-    ]);
 
     $svc = app(MentorshipBonusService::class);
-    $mb = $svc->processForSponsee($sponsee->id, $cutoffResult);
+    $mbA = $svc->processForSponsee($sponseeA->id, makeCreditedCutoff($sponseeA, 3));
+    $mbB = $svc->processForSponsee($sponseeB->id, makeCreditedCutoff($sponseeB, 7));
 
-    expect($mb->mb_rate_pct)->toBe(8);  // 10 - 2 steps (60K = 2 × 30K milestones)
-    // MB gross = 8% of 100,000 = 8,000; deductions deferred to payout.
-    expect($mb->mb_gross_paise)->toBe(8_000);
+    expect($mbA->msb_points)->toBe(15);
+    expect($mbA->mb_gross_paise)->toBe(375_000);
+    expect($mbB->msb_points)->toBe(3);
+    expect($mbB->mb_gross_paise)->toBe(75_000);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(450_000);
 });
 
-it('splits a single GSB income across rate brackets (KP Ravi example)', function () {
+it('uses the per-slab point value configured at credit time', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
-    // Sponsee at ₹0 cumulative earns ₹45,000 (4,500,000 paise) in one cut-off:
-    // 10% × ₹30,000 + 9% × ₹15,000 = ₹3,000 + ₹1,350 = ₹4,350 (435,000 paise).
-    $cutoffResult = GsbCutoffResult::create([
-        'distributor_id' => $sponsee->id,
-        'cutoff_date' => today()->toDateString(),
-        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
-        'slab' => 7, 'gross_gsb_paise' => 4_500_000,
-        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 4_500_000,
-        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
-        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
-        'status' => 'credited',
-    ]);
+    // Admin sets slab 2's MSB point value to ₹100 (10,000 paise).
+    DB::table('gsb_slabs')->where('slab', 2)->update(['msb_score_value_paise' => 10_000]);
 
-    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, $cutoffResult);
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 2));
 
-    expect($mb->mb_gross_paise)->toBe(435_000);   // per-slice split, not a flat 10%
-    expect($mb->mb_rate_pct)->toBe(10);           // blended effective rate ≈ 9.67% → 10
+    expect($mb->msb_points)->toBe(18);
+    expect($mb->msb_point_value_paise)->toBe(10_000);
+    expect($mb->mb_gross_paise)->toBe(180_000);   // 18 × ₹100 = ₹1,800
 });
 
-it('crosses the 1% floor boundary at ₹2,70,000 within one income', function () {
+it('keeps historical rows unchanged when admin later edits the slab points or value', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
-    // Prior cumulative ₹2,40,000 (24,000,000 paise → next rupee is in the 2% bracket).
-    MentorshipBonusResult::create([
-        'sponsor_id' => $sponsor->id, 'sponsee_id' => $sponsee->id,
-        'cutoff_date' => today()->subDay()->toDateString(),
-        'sponsee_gsb_paise' => 24_000_000, 'mb_rate_pct' => 3, 'mb_paise' => 0,
-        'sponsee_cumulative_gsb_paise' => 24_000_000, 'status' => 'credited',
-    ]);
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
+    expect($mb->mb_gross_paise)->toBe(525_000);
 
-    // Earns ₹45,000: ₹30,000 in the 2% bracket (₹2,40,001–2,70,000) + ₹15,000 at the 1% floor.
-    $cutoffResult = GsbCutoffResult::create([
-        'distributor_id' => $sponsee->id,
-        'cutoff_date' => today()->toDateString(),
-        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
-        'slab' => 7, 'gross_gsb_paise' => 4_500_000,
-        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 4_500_000,
-        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
-        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
-        'status' => 'credited',
-    ]);
+    DB::table('gsb_slabs')->where('slab', 1)->update(['msb_score' => 99, 'msb_score_value_paise' => 1]);
 
-    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, $cutoffResult);
-
-    // 2% × ₹30,000 = ₹600 ; 1% × ₹15,000 = ₹150 ; total ₹750 = 75,000 paise.
-    expect($mb->mb_gross_paise)->toBe(75_000);
+    $fresh = MentorshipBonusResult::findOrFail($mb->id);
+    expect($fresh->msb_points)->toBe(21);
+    expect($fresh->msb_point_value_paise)->toBe(25_000);
+    expect($fresh->mb_gross_paise)->toBe(525_000);
 });
 
-it('floors MB rate at 1%', function () {
+it('returns null when the slab carries zero MSB points', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
-    // Sponsee cumulative = 270K GSB (9 × 30K milestones → rate = max(10-9, 1) = 1%)
-    MentorshipBonusResult::create([
-        'sponsor_id' => $sponsor->id, 'sponsee_id' => $sponsee->id,
-        'cutoff_date' => today()->subDay()->toDateString(),
-        'sponsee_gsb_paise' => 27_000_000, 'mb_rate_pct' => 1, 'mb_paise' => 270_000,
-        'sponsee_cumulative_gsb_paise' => 27_000_000, 'status' => 'credited',
-    ]);
+    DB::table('gsb_slabs')->where('slab', 1)->update(['msb_score' => 0]);
 
-    $cutoffResult = GsbCutoffResult::create([
-        'distributor_id' => $sponsee->id,
-        'cutoff_date' => today()->toDateString(),
-        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
-        'slab' => 1, 'gross_gsb_paise' => 100_000,
-        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 100_000,
-        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
-        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
-        'status' => 'credited',
-    ]);
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
 
-    $svc = app(MentorshipBonusService::class);
-    $mb = $svc->processForSponsee($sponsee->id, $cutoffResult);
+    expect($mb)->toBeNull();
+    expect(MentorshipBonusResult::count())->toBe(0);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(0);
+});
 
-    expect($mb->mb_rate_pct)->toBe(1);
-    // MB gross = 1% of 100,000 = 1,000; deductions deferred to payout.
-    expect($mb->mb_gross_paise)->toBe(1_000);
+it('returns null for a non-credited cut-off', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1, 100_000, 'repurchase_held'));
+
+    expect($mb)->toBeNull();
+    expect(MentorshipBonusResult::count())->toBe(0);
 });
 
 it('is idempotent — calling twice for the same cutoff does not double-credit', function () {
@@ -206,25 +163,16 @@ it('is idempotent — calling twice for the same cutoff does not double-credit',
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
-    $cutoffResult = GsbCutoffResult::create([
-        'distributor_id' => $sponsee->id,
-        'cutoff_date' => today()->toDateString(),
-        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
-        'slab' => 1, 'gross_gsb_paise' => 100_000,
-        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 100_000,
-        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
-        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
-        'status' => 'credited',
-    ]);
+    $cutoffResult = makeCreditedCutoff($sponsee, 1);
 
     $svc = app(MentorshipBonusService::class);
     $svc->processForSponsee($sponsee->id, $cutoffResult);
-    $svc->processForSponsee($sponsee->id, $cutoffResult);  // second call — should be a no-op
+    $second = $svc->processForSponsee($sponsee->id, $cutoffResult);  // second call — returns the existing row
 
+    expect($second)->not->toBeNull();
     expect(MentorshipBonusResult::count())->toBe(1);
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(1);
-    // Gross MB credited (deductions deferred to payout): 10% of 100K = 10,000
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(10_000);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
 });
 
 it('blocks MB credit when sponsor personal BV is below the minimum threshold', function () {
@@ -241,21 +189,24 @@ it('blocks MB credit when sponsor personal BV is below the minimum threshold', f
         'effective_at' => now(),
     ]);
 
-    $cutoffResult = GsbCutoffResult::create([
-        'distributor_id' => $sponsee->id,
-        'cutoff_date' => today()->toDateString(),
-        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
-        'slab' => 1, 'gross_gsb_paise' => 100_000,
-        'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 100_000,
-        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
-        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
-        'status' => 'credited',
-    ]);
-
-    $svc = app(MentorshipBonusService::class);
-    $mb = $svc->processForSponsee($sponsee->id, $cutoffResult);
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
 
     expect($mb)->toBeNull();
     expect(MentorshipBonusResult::count())->toBe(0);
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(0);
+});
+
+it('never mutates the sponsee GSB row or the sponsor personal BV ledger', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+
+    $bvBefore = (int) BvLedgerEntry::where('distributor_id', $sponsor->id)->sum('bv_paise');
+    $cutoffResult = makeCreditedCutoff($sponsee, 1);
+
+    app(MentorshipBonusService::class)->processForSponsee($sponsee->id, $cutoffResult);
+
+    expect((int) BvLedgerEntry::where('distributor_id', $sponsor->id)->sum('bv_paise'))->toBe($bvBefore);
+    expect((int) $cutoffResult->fresh()->gross_gsb_paise)->toBe(100_000);
 });

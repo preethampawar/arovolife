@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        You earn a Mentorship Bonus on the Genos Sales Bonus (GSB) earned by each distributor you directly sponsored. The rate starts at 10% of their GSB and steps down by 1% for every ₹30,000 of cumulative GSB they earn, stabilising at 1% for life. This bonus applies only to directly sponsored distributors' GSB — not to any other income type.
+        You earn Mentorship Bonus points when a distributor you directly sponsored achieves a Genos Sales Bonus (GSB) slab. Each slab carries a fixed number of MSB points, and your bonus is those points × the slab's point value. This bonus applies only to directly sponsored distributors' GSB slab achievements — not to any other income type.
     </div>
 
     {{-- Summary cards --}}
@@ -57,17 +57,16 @@
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center gap-1">Sponsee ADN <x-help-tip text="Your directly sponsored distributor's ADN, partially masked for privacy." /></span>
                         </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Their GSB <x-help-tip text="Net GSB earned by this sponsee for the cut-off date." /></span>
-                        </th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-center gap-1">MB % <x-help-tip text="Starts at 10%. Steps down 1% per ₹30,000 cumulative GSB they earn, stabilising at 1% for life." /></span>
+                            <span class="flex items-center justify-center gap-1">Their slab <x-help-tip text="The GSB slab this sponsee achieved on the cut-off date." /></span>
+                        </th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center justify-end gap-1">MSB points <x-help-tip text="Points you earned for this slab achievement. Your bonus is points × the point value." /></span>
+                        </th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center justify-end gap-1">Point value <x-help-tip text="Rupee value of one MSB point at the time it was credited." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">MB earned</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Their cumulative GSB <x-help-tip text="Total GSB earned by this sponsee since joining. Determines your current MB % rate for them." /></span>
-                        </th>
-                        <th class="text-center px-4 py-3 font-semibold text-gray-600">Slab step</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -76,19 +75,20 @@
                         <td class="px-4 py-3 font-mono text-gray-700">
                             {{ $row->sponsee_adn }}
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ \Illuminate\Support\Number::format($row->sponsee_gsb_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">{{ $row->mb_rate_pct }}%</span>
+                            @if($row->slab !== null)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Slab {{ $row->slab }}</span>
+                            @else
+                            <span class="text-gray-400">—</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold">
+                            @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-400 font-normal">—</span>@endif
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-600">
+                            @if($row->msb_point_value_paise !== null)₹{{ \Illuminate\Support\Number::format($row->msb_point_value_paise / 100, 0) }}@else<span class="text-gray-400">—</span>@endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->mb_gross_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \Illuminate\Support\Number::format($row->sponsee_cumulative_gsb_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-center">
-                            @php $step = 11 - (int) $row->mb_rate_pct; @endphp
-                            <span class="text-xs text-gray-500">Step {{ $step }} / 10</span>
-                            <div class="w-20 mx-auto mt-1 bg-gray-100 rounded-full h-1.5">
-                                <div class="bg-purple-500 h-1.5 rounded-full" style="width: {{ ($step / 10) * 100 }}%"></div>
-                            </div>
-                        </td>
                     </tr>
                     @endforeach
                 </tbody>

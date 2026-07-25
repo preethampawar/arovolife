@@ -43,6 +43,8 @@ final class AdminPlanSettingsController extends Controller
             'matched_bv_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
             'score' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'score_value_paise' => ['required', 'integer', 'min:1', 'max:1000000000'],
+            'msb_score' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'msb_score_value_paise' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'agp_per_occurrence' => ['required', 'integer', 'min:0', 'max:100000'],
             'carry_forward_lifetime' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
@@ -61,6 +63,10 @@ final class AdminPlanSettingsController extends Controller
             'matched_bv_paise' => (int) $data['matched_bv_paise'],
             'score' => $score,
             'score_value_paise' => $scoreValuePaise,
+            // MSB income (msb_score × msb_score_value_paise) is computed at
+            // credit time from these two fields — never stored on the slab.
+            'msb_score' => (int) $data['msb_score'],
+            'msb_score_value_paise' => (int) $data['msb_score_value_paise'],
             'bonus_paise' => $bonusPaise,
             'agp_per_occurrence' => (int) $data['agp_per_occurrence'],
             'carry_forward_lifetime' => $request->boolean('carry_forward_lifetime'),
