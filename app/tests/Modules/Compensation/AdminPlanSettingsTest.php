@@ -91,6 +91,41 @@ it('persists a GSB slab edit, writes an audit log, and dispatches the domain eve
     Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'gsb_slab' && $e->key === '2');
 });
 
+it('hides the score inputs for pro-rated slabs 3–7 and shows the pool note', function () {
+    $res = $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk();
+
+    // Slabs 3–7 render read-only score displays instead of inputs (KP 2026-07-29).
+    $res->assertSee('Variable (pool)');
+    expect(substr_count($res->getContent(), 'name="score_value_paise"'))->toBe(2); // slabs 1–2 only
+});
+
+it('ignores score and score value on a crafted POST for a pro-rated slab', function () {
+    $before = DB::table('gsb_slabs')->where('slab', 3)->first();
+
+    $this->actingAs(planAdmin('admin-finance'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.gsb-slab.update', 3), [
+            'title' => 'Wholesaler',
+            'title_min_bv_paise' => (int) $before->title_min_bv_paise,
+            'matched_bv_paise' => (int) $before->matched_bv_paise,
+            'score' => 999,                 // must be ignored server-side
+            'score_value_paise' => 99_999,  // must be ignored server-side
+            'msb_score' => (int) $before->msb_score,
+            'msb_score_value_paise' => (int) $before->msb_score_value_paise,
+            'agp_per_occurrence' => (int) $before->agp_per_occurrence,
+            'carry_forward_lifetime' => 0,
+            'is_active' => 1,
+        ])
+        ->assertRedirect(route('admin.compensation.plan-settings.index'));
+
+    $after = DB::table('gsb_slabs')->where('slab', 3)->first();
+    expect((int) $after->score)->toBe((int) $before->score);
+    expect((int) $after->score_value_paise)->toBe((int) $before->score_value_paise);
+    expect((int) $after->bonus_paise)->toBe((int) $before->bonus_paise); // nominal ceiling preserved
+});
+
 it('forbids a non-finance admin from editing the plan', function () {
     $this->actingAs(planAdmin('admin-compliance'))
         ->withoutMiddleware(PreventRequestForgery::class)

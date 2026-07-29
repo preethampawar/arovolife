@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Events\CompensationPlanChanged;
+use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -35,26 +36,44 @@ final class AdminPlanSettingsController extends Controller
 
     public function updateGsbSlab(Request $request, int $slab): RedirectResponse
     {
-        abort_unless(DB::table('gsb_slabs')->where('slab', $slab)->exists(), 404);
+        $row = DB::table('gsb_slabs')->where('slab', $slab)->first();
+        abort_unless($row !== null, 404);
 
-        $data = $request->validate([
+        // Slabs 3–7 are priced daily from the 45% pool (KP 2026-07-29): their
+        // score and score value are not admin-editable. Enforced server-side —
+        // a crafted POST must not change them — by dropping the fields from
+        // validation and reusing the stored values below.
+        $variableSlab = GsbDailyPoolService::isVariableSlab($slab);
+
+        $rules = [
             'title' => ['nullable', 'string', 'max:100'],
             'title_min_bv_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
             'matched_bv_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
-            'score' => ['nullable', 'integer', 'min:0', 'max:1000000'],
-            'score_value_paise' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'msb_score' => ['required', 'integer', 'min:0', 'max:1000000'],
             'msb_score_value_paise' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'agp_per_occurrence' => ['required', 'integer', 'min:0', 'max:100000'],
             'carry_forward_lifetime' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ];
+        if (! $variableSlab) {
+            $rules['score'] = ['nullable', 'integer', 'min:0', 'max:1000000'];
+            $rules['score_value_paise'] = ['required', 'integer', 'min:1', 'max:1000000000'];
+        }
+
+        $data = $request->validate($rules);
 
         // Bonus follows the score × per-slab score-value model (KP 2026-07-21).
         // Null score ⇒ null bonus, which disables a slab's matching payout
-        // (kept for any future TBD slab).
-        $score = $data['score'] !== null ? (int) $data['score'] : null;
-        $scoreValuePaise = (int) $data['score_value_paise'];
+        // (kept for any future TBD slab). For variable slabs bonus_paise stays
+        // a nominal ceiling (score × fixed value) — the engine's slab loop
+        // requires it non-null, and price() overrides the actual gross daily.
+        if ($variableSlab) {
+            $score = $row->score !== null ? (int) $row->score : null;
+            $scoreValuePaise = (int) $row->score_value_paise;
+        } else {
+            $score = $data['score'] !== null ? (int) $data['score'] : null;
+            $scoreValuePaise = (int) $data['score_value_paise'];
+        }
         $bonusPaise = $score !== null ? $score * $scoreValuePaise : null;
 
         $new = [

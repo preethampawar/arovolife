@@ -76,6 +76,12 @@ final class CompensationPlanSettingsService
         // any legacy reader; the GSB engine and admin editor no longer use it.
         'comp.gsb.score_rate_paise' => 36_000,
         'comp.gsb.min_bv_paise' => 60_000,
+        // Daily GSB pool for the pro-rated slabs 3–7 (KP 2026-07-29): share of
+        // the day's company-wide BV (bv_ledger_entries signed sum) that funds
+        // GSB. Slabs 1–2 are paid fixed out of it first; the remainder is
+        // divided by the day's total slab 3–7 scores (capped at the per-slab
+        // score value). 4500 bp = 45%.
+        'comp.gsb.pool_rate_bp' => 4500,
         // Personal-BV top-up go-live (KP 2026-07-21). Accruals dated before this
         // are excluded from the conditional top-up pending pool — the old engine
         // already credited them daily. Permissive default so tests/fresh envs put
@@ -235,6 +241,15 @@ final class CompensationPlanSettingsService
     public function mbFloorRatePct(): int
     {
         return $this->scalarInt('comp.mb.floor_rate_pct');
+    }
+
+    /**
+     * Share of the day's company-wide BV that funds the daily GSB pool for the
+     * pro-rated slabs 3–7 (KP 2026-07-29). Basis points: 4500 = 45%.
+     */
+    public function gsbPoolRateBp(): int
+    {
+        return $this->scalarInt('comp.gsb.pool_rate_bp');
     }
 
     public function gbbPoolRateBp(): int

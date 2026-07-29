@@ -91,7 +91,7 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-3">
                 <p class="text-sm font-semibold text-gray-700">Slab-1 Weaker Carry-forward</p>
-                <x-help-tip text="For the first slab only (15,000 BV match), your weaker side BV carries forward indefinitely — there is no time limit. It accumulates day by day until 15,000 BV is matched and your first ₹1,000 Genos Sales Bonus is earned." />
+                <x-help-tip text="For the first slab only (15,000 BV match), your weaker side BV carries forward indefinitely — there is no time limit. It accumulates day by day until 15,000 BV is matched on both sides, which is when Slab 1 (₹2,000) pays." />
             </div>
             <p class="text-xl font-bold text-gray-900 mb-2">{{ \Illuminate\Support\Number::format($slab1CfBv, 0) }} BV <span class="text-sm font-normal text-gray-400">/ 15,000 BV target</span></p>
             <div class="w-full bg-gray-100 rounded-full h-2">

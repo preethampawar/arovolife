@@ -1,0 +1,164 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Compensation\Services;
+
+use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compliance\Models\AuditLog;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Freezes the per-day economics of the GSB pro-rated pool (KP 2026-07-29).
+ *
+ * Pool = comp.gsb.pool_rate_bp (default 45%) of the day's company-wide BV.
+ * Company BV is DEFINED as the signed sum of bv_ledger_entries (accruals minus
+ * reversals) whose effective_at falls on the cut-off date — the same instant
+ * BV enters the Genos legs (accrual is stamped at paid-time, and
+ * PropagateGroupBvJob keys group_bv_daily on the paid date). A refund therefore
+ * reduces the refund day's pool, while leg debt is consumed forward by
+ * GroupBvReversalService — a deliberate, auditable definition rather than an
+ * identity with leg BV.
+ *
+ * Slabs 1–2 are paid fixed out of the pool first. The remainder ÷ the day's
+ * total slab 3–7 scores, floored to whole rupees and capped at the fixed
+ * per-slab score value, is the variable score value for every slab 3–7
+ * achiever. Zero slab 3–7 achievers freeze the cap itself (KP decision: a
+ * later admin retry that lands on slab 3–7 pays full value — the pool had
+ * room, nobody used it). The value is never negative and never above the cap;
+ * ₹0 is possible on a starved day.
+ *
+ * The row is written once per date and NEVER recomputed (frozen economics):
+ * re-runs and single-distributor retries price against the stored
+ * variable_score_value_paise. leftover_paise may be negative on a starved day
+ * because slabs 1–2 are always paid in full (KP-approved 45% overshoot).
+ */
+final class GsbDailyPoolService
+{
+    public function __construct(
+        private readonly CompensationPlanSettingsService $plan,
+    ) {}
+
+    /** First GSB slab priced from the daily pool; slabs below it are fixed. */
+    public const FIRST_VARIABLE_SLAB = 3;
+
+    public static function isVariableSlab(int $slab): bool
+    {
+        return $slab >= self::FIRST_VARIABLE_SLAB;
+    }
+
+    /**
+     * Company-wide BV generated on the given date: signed sum of
+     * bv_ledger_entries (accruals +, reversals −) by effective_at day.
+     */
+    public function companyBvPaiseForDate(Carbon $date): int
+    {
+        return (int) DB::table('bv_ledger_entries')
+            ->where('effective_at', '>=', $date->copy()->startOfDay())
+            ->where('effective_at', '<=', $date->copy()->endOfDay())
+            ->sum('bv_paise');
+    }
+
+    /** The frozen pool snapshot for a date, or null for pre-feature dates. */
+    public function poolForDate(Carbon $date): ?GsbDailyPool
+    {
+        return GsbDailyPool::whereDate('cutoff_date', $date->toDateString())->first();
+    }
+
+    /**
+     * Freeze the day's pool economics. Idempotent: an existing row is returned
+     * unchanged — the day's economics never move once written, no matter how
+     * often the cut-off is re-run.
+     *
+     * @param  int  $fixedPayoutPaise  Σ score × fixed score value over the day's matched slab 1–2 computations
+     * @param  int  $variableTotalScore  Σ score over the day's matched slab 3–7 computations
+     */
+    public function freezePoolForDate(Carbon $date, int $fixedPayoutPaise, int $variableTotalScore): GsbDailyPool
+    {
+        $existing = $this->poolForDate($date);
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $companyBvPaise = $this->companyBvPaiseForDate($date);
+        $rateBp = $this->plan->gsbPoolRateBp();
+        $poolPaise = intdiv($companyBvPaise * $rateBp, 10_000);
+        $capPaise = $this->variableScoreValueCapPaise();
+
+        $remainderPaise = max(0, $poolPaise - $fixedPayoutPaise);
+
+        if ($variableTotalScore === 0) {
+            $valuePaise = $capPaise;
+        } else {
+            // Floor to whole rupees (KP: 220.79 → ₹220): truncate the per-score
+            // paise value to a multiple of 100.
+            $valuePaise = min($capPaise, intdiv(intdiv($remainderPaise, $variableTotalScore), 100) * 100);
+        }
+
+        $variablePayoutPaise = $valuePaise * $variableTotalScore;
+
+        $pool = GsbDailyPool::create([
+            'cutoff_date' => $date->toDateString(),
+            'company_bv_paise' => $companyBvPaise,
+            'pool_rate_bp' => $rateBp,
+            'pool_paise' => $poolPaise,
+            'fixed_payout_paise' => $fixedPayoutPaise,
+            'variable_total_score' => $variableTotalScore,
+            'variable_score_value_cap_paise' => $capPaise,
+            'variable_score_value_paise' => $valuePaise,
+            'variable_payout_paise' => $variablePayoutPaise,
+            'leftover_paise' => $poolPaise - $fixedPayoutPaise - $variablePayoutPaise,
+        ]);
+
+        $details = [
+            'cutoff_date' => $date->toDateString(),
+            'company_bv_paise' => $companyBvPaise,
+            'pool_rate_bp' => $rateBp,
+            'pool_paise' => $poolPaise,
+            'fixed_payout_paise' => $fixedPayoutPaise,
+            'variable_total_score' => $variableTotalScore,
+            'variable_score_value_paise' => $valuePaise,
+            'leftover_paise' => $pool->leftover_paise,
+        ];
+
+        Log::info('gsb.pool.frozen', $details);
+
+        // The freeze determines every slab 3–7 payout for the day — a
+        // retention-guaranteed audit_log row, not just a log line (R-33).
+        AuditLog::create([
+            'action' => 'gsb.pool.frozen',
+            'subject_type' => 'gsb_daily_pool',
+            'subject_id' => $pool->id,
+            'details' => $details,
+        ]);
+
+        return $pool;
+    }
+
+    /**
+     * Ceiling for the variable score value: the smallest fixed score value
+     * across active, payable slabs 3–7 (all ₹250 by default). Pro-rating can
+     * only ever reduce a slab 3–7 payout, never raise it above the fixed value.
+     */
+    private function variableScoreValueCapPaise(): int
+    {
+        $cap = null;
+        foreach ($this->plan->gsbSlabs() as $slab) {
+            if (! self::isVariableSlab($slab['slab']) || ! $slab['is_active'] || $slab['bonus_paise'] === null) {
+                continue;
+            }
+            $cap = $cap === null ? $slab['score_value_paise'] : min($cap, $slab['score_value_paise']);
+        }
+
+        if ($cap === null) {
+            // No active payable slab 3–7 ⇒ a ₹0 cap freezes ₹0 pricing for the
+            // whole day. Legitimate only if the slabs were deliberately
+            // deactivated — surface it loudly either way.
+            Log::warning('gsb.pool.zero_cap', ['reason' => 'no active payable slab >= 3 in gsb_slabs']);
+        }
+
+        return $cap ?? 0;
+    }
+}

@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\GsbCutoffService;
+use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -26,6 +29,7 @@ final class GsbDailyCutoffCommand extends Command
     public function __construct(
         private readonly GsbCutoffService $cutoff,
         private readonly MentorshipBonusService $mentorship,
+        private readonly GsbDailyPoolService $poolService,
     ) {
         parent::__construct();
     }
@@ -79,13 +83,64 @@ final class GsbDailyCutoffCommand extends Command
         // 2–3 bulk queries regardless of distributor count.
         $this->cutoff->warmBatch($distributors);
 
+        $poolPricingActive = Feature::for(null)->active(GsbDailyPoolPricingFeature::class);
+
+        // Pass 1 — pure computation for every distributor (no writes). A
+        // compute failure excludes that distributor from the day's pool
+        // aggregates; their later retry prices against the frozen pool value
+        // (same snapshot-not-recompute tolerance as the rest of the engine).
+        /** @var array<int, GsbCutoffComputation> $computations */
+        $computations = [];
         foreach ($distributors as $distributor) {
             $distributorId = (int) $distributor->id;
 
             try {
-                // The conditional personal-BV weaker-leg top-up is now applied
-                // inside runForDistributor (only when a leg touches a slab).
-                $result = $this->cutoff->runForDistributor($distributorId, $date);
+                $computations[$distributorId] = $this->cutoff->computeForDistributor($distributorId, $date);
+            } catch (\Throwable $e) {
+                $failed++;
+                Log::error('gsb.cutoff.exception', [
+                    'distributor_id' => $distributorId,
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+            }
+        }
+
+        // Freeze the day's pool economics BEFORE any credit, so a crash
+        // mid-settle re-runs against identical numbers. Fixed payout counts
+        // every matched slab 1–2 computation (frozen/held rows record — and may
+        // later release — the same gross, so they must be funded). Only the
+        // full nightly run freezes; single-distributor retries reuse the
+        // existing snapshot (or fall back to legacy pricing when none exists).
+        $pool = null;
+        if ($poolPricingActive) {
+            if ($singleId === null) {
+                $fixedPayoutPaise = 0;
+                $variableTotalScore = 0;
+                foreach ($computations as $computation) {
+                    if (! $computation->isMatched() || $computation->slabIndex === null) {
+                        continue;
+                    }
+                    if (GsbDailyPoolService::isVariableSlab($computation->slabIndex)) {
+                        $variableTotalScore += $computation->slabScore ?? 0;
+                    } else {
+                        $fixedPayoutPaise += $computation->fixedSlabGrossPaise();
+                    }
+                }
+
+                $pool = $this->poolService->freezePoolForDate($date, $fixedPayoutPaise, $variableTotalScore);
+            } else {
+                $pool = $this->poolService->poolForDate($date);
+            }
+        }
+
+        // Pass 2 — price against the frozen pool, then settle (all writes).
+        foreach ($computations as $distributorId => $computation) {
+            try {
+                $this->cutoff->price($computation, $pool, $poolPricingActive);
+                $result = $this->cutoff->settle($computation);
 
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {
                     $credited++;

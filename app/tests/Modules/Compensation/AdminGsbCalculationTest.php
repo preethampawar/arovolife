@@ -156,7 +156,7 @@ it('exports a CSV with a grand-total row', function () {
 
     $res->assertOk();
     $csv = $res->getContent();
-    expect($csv)->toContain('SNo,ADN,Name,Title,Date,Slab,Score,Income (Rs),Status');
+    expect($csv)->toContain('SNo,ADN,Name,Title,Date,Slab,Score,Score Value (Rs),Income (Rs),Status');
     expect($csv)->toContain('"TOTAL"');
     expect($csv)->toContain('2000.00');   // income total
 });

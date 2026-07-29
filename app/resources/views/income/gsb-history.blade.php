@@ -43,7 +43,7 @@
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Left BV matched</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Right BV matched</th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-center gap-1">Slab <x-help-tip text="Slab 1: 15K BV = ₹1,000. Slab 2: 30K = ₹3,000. Slab 3: 90K = ₹6,000. Slab 4: 2.7L = ₹12,000. Slab 5: 8L = ₹24,000. Slab 6: 24L = ₹40,000. Slab 7: 72L = ₹60,000." /></span>
+                            <span class="flex items-center justify-center gap-1">Slab <x-help-tip text="Slab 1: 15K/15K BV = ₹2,000. Slab 2: 36K = ₹4,000. Slabs 3–7 (1L / 3L / 9L / 27L / 81L) share the day's GSB pool and pay up to ₹8,000 / ₹15,000 / ₹28,000 / ₹46,000 / ₹70,000, subject to your title — the exact amount depends on that day's company-wide sales and can be ₹0 on a low-sales day; matched BV is consumed either way." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">Gross GSB <x-help-tip text="The Genos Sales Bonus before any deductions." /></span>

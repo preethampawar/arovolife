@@ -371,8 +371,13 @@ it('weekly batch: holds payout as no_bank_account when no bank details are on fi
     $walletSvc = app(WalletService::class);
     $walletSvc->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000
 
+    // Pin both batches inside one calendar month: run this near month-end and
+    // "+1 week" lands in the next month, where the ₹1,000 becomes prior-month
+    // income and the 10% repurchase deduction breaks the balance assertion.
+    $batchDate = Carbon::today()->startOfMonth()->addDays(7);
+
     $svc = app(PayoutService::class);
-    $svc->runWeeklyBatch(Carbon::today());
+    $svc->runWeeklyBatch($batchDate);
 
     $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
     expect($line->status)->toBe(PayoutLineItem::STATUS_NO_BANK_ACCOUNT);
@@ -385,7 +390,7 @@ it('weekly batch: holds payout as no_bank_account when no bank details are on fi
 
     // The first batch after bank details arrive pays it out.
     $dist->update(['bank_account_enc' => 'stub']);
-    $next = $svc->runWeeklyBatch(Carbon::today()->addWeek());
+    $next = $svc->runWeeklyBatch($batchDate->copy()->addWeek());
     $paid = PayoutLineItem::where('payout_batch_id', $next->id)->where('distributor_id', $dist->id)->first();
     expect($paid->status)->toBe(PayoutLineItem::STATUS_PENDING);
     expect($walletSvc->balancePaise($dist->id))->toBe(0);

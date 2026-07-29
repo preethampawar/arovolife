@@ -22,17 +22,29 @@ Distributors have the same ledger under **My Income → Genos Ledger**, with two
 The distributor's Genos BV tab opens with a **slab ladder**: all active GSB slabs with their matched-BV threshold and title requirement, a green **Earned ×N** count per slab (credited cut-offs only), and an amber **Next target** row showing how much more matched BV is needed — mirroring exactly what tonight's cut-off will measure (slab 1 includes the lifetime weaker carry-forward; slabs 2–7 count the day's fresh BV plus power CF on its side). Compliance note: the ladder deliberately shows **no rupee amounts** on unearned slabs — progress is expressed in BV only, so nothing on the page projects future income. Below the 600 BV personal minimum the ladder shows the plan thresholds but no group-BV figures.
 
 ## Slab table
-Each slab's gross GSB = **slab score × the slab's score value** (KP 2026-07-21; every slab's score, matched BV and **per-slab score value** are admin-editable under Compensation → Plan settings). The default score value is ₹250/point for all slabs; each can be set independently. Values below reflect the default configuration.
+Each slab's gross GSB = **slab score × a score value** (KP 2026-07-29 daily-pool model). Slabs 1–2 use their **fixed** score value (default ₹250/point, admin-editable under Compensation → Plan settings) and are always paid in full. Slabs 3–7 use the day's **pro-rated pool score value** — computed at each cut-off, never above the fixed ₹250 cap (their score/score-value fields are read-only in Plan settings). Values below reflect the default configuration; slab 3–7 amounts are **maximums**, not guarantees.
 
 | Slab | Matched BV (each side) | Score | Score value | Gross GSB | Title required |
 |------|----------------------|-------|-------------|-----------|----------------|
-| 1 | 15,000 BV | 8 | ₹250 | ₹2,000 | Retailer (3,000 lifetime) |
-| 2 | 36,000 BV | 16 | ₹250 | ₹4,000 | Dealer (7,000 lifetime) |
-| 3 | 1,00,000 BV | 32 | ₹250 | ₹8,000 | Wholesaler (15,000 lifetime) |
-| 4 | 3,00,000 BV | 60 | ₹250 | ₹15,000 | Distributor (32,000 lifetime) |
-| 5 | 9,00,000 BV | 112 | ₹250 | ₹28,000 | Regional Distributor (68,000) |
-| 6 | 27,00,000 BV | 184 | ₹250 | ₹46,000 | National Distributor (1,44,000) |
-| 7 | 81,00,000 BV | 280 | ₹250 | ₹70,000 | Global Distributor (3,00,000) |
+| 1 | 15,000 BV | 8 | ₹250 fixed | ₹2,000 | Retailer (3,000 lifetime) |
+| 2 | 36,000 BV | 16 | ₹250 fixed | ₹4,000 | Dealer (7,000 lifetime) |
+| 3 | 1,00,000 BV | 32 | pool (≤ ₹250) | up to ₹8,000 | Wholesaler (15,000 lifetime) |
+| 4 | 3,00,000 BV | 60 | pool (≤ ₹250) | up to ₹15,000 | Distributor (32,000 lifetime) |
+| 5 | 9,00,000 BV | 112 | pool (≤ ₹250) | up to ₹28,000 | Regional Distributor (68,000) |
+| 6 | 27,00,000 BV | 184 | pool (≤ ₹250) | up to ₹46,000 | National Distributor (1,44,000) |
+| 7 | 81,00,000 BV | 280 | pool (≤ ₹250) | up to ₹70,000 | Global Distributor (3,00,000) |
+
+### Daily GSB pool (slabs 3–7, KP 2026-07-29)
+Every cut-off freezes the day's pool economics **before any credit**:
+
+1. **Pool** = the *GSB daily pool rate* (Settings → Compensation plan, default **45%**) of the day's company-wide BV (signed sum of the BV ledger: accruals − reversals).
+2. **Fixed payout** = every matched slab 1–2 gross that day (score × fixed value) — paid in full even on a day when this alone exceeds the pool (KP-approved; the report then shows a negative leftover).
+3. **Variable score value** = `min(₹250 cap, floor-to-whole-rupee((pool − fixed payout) ÷ total slab 3–7 scores that day))`. Never negative; ₹0 possible on a starved day. On a day with zero slab 3–7 achievers the cap itself is frozen, so a later admin retry pays full value.
+4. Each slab 3–7 achiever's gross = **their score × the day's variable value**, and the value used is snapshotted on the result row (`score_value_paise`) — admin plan edits and later re-runs never change history. Single-distributor retries always reuse the frozen day value.
+
+Worked example (KP): 10L BV day → pool ₹4,50,000; 14× slab 1 + 11× slab 2 = ₹72,000 fixed; remaining ₹3,78,000 ÷ 1,712 scores (8/6/4/2/1 achievers on slabs 3–7) = 220.79 → **₹220/score**; variable payout ₹3,76,640; leftover ₹1,360 stays with the company.
+
+The per-day economics are visible under **Compensation → GSB Input & Output / Day**: each day's total BV, pool, fixed section (slabs 1–2), variable section (slabs 3–7 with the variance vs the ₹250 cap), section totals, grand total and leftover, searchable by day number / week number / date range with CSV export. The whole model ships behind the **GSB daily pool pricing** feature flag — flag off = every slab pays its fixed value, no pool rows are written.
 
 The title column is the distributor's **lifetime personal purchase BV** requirement (KP's confirmed 27-06-2026 table, stored in the admin-editable `gsb_slabs` rows). The cut-off pays the **lower** of the matched-BV slab and the title slab: a Retailer whose Genos matches Slab-3-level volume is still paid Slab 1 only, and the weaker-side BV above 15,000 is consumed, not banked. Between 600 and 2,999 personal BV, group BV accumulates as carry-forward but **no slab pays at all** — Slab 1 itself requires the Retailer title.
 

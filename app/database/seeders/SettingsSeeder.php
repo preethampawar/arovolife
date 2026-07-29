@@ -68,6 +68,7 @@ final class SettingsSeeder extends Seeder
             'comp.admin_charge.applies_to_awards' => 'false',
             'comp.tds.rate_bp' => '500',                    // 5%
             'comp.gsb.power_cf_cap_paise' => '45000000',    // 4,50,000 BV
+            'comp.gsb.pool_rate_bp' => '4500',              // 45% daily GSB pool (slabs 3–7 pro-rated)
             'comp.gsb.score_rate_paise' => '36000',         // ₹360 per score point
             'comp.mb.step_paise' => '3000000',              // ₹30,000 per MB step
             'comp.mb.start_rate_pct' => '10',

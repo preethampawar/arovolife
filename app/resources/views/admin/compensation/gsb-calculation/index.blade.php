@@ -59,7 +59,11 @@
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Slab</th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">
                         Score
-                        <x-help-tip text="The matched slab's score (snapshotted at cut-off). Income = score × the slab's score value." />
+                        <x-help-tip text="The matched slab's score (snapshotted at cut-off). Income = score × the score value." />
+                    </th>
+                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                        Score value
+                        <x-help-tip text="Rupees per score point used for this row (snapshotted at cut-off). Slabs 1–2 are fixed; slabs 3–7 use the day's pro-rated pool value." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
@@ -111,6 +115,9 @@
                             weaker @bv($row->weaker_bv_paise)
                         </span>
                     </td>
+                    <td class="px-3 py-2 text-right text-gray-700">
+                        {{ $row->score_value_paise !== null ? '₹'.\Illuminate\Support\Number::format($row->score_value_paise / 100, 2) : '—' }}
+                    </td>
                     <td class="px-3 py-2 text-right">
                         <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
                             ₹{{ \Illuminate\Support\Number::format($row->gross_gsb_paise / 100, 2) }}
@@ -128,6 +135,7 @@
                 <tr class="font-semibold text-gray-800">
                     <td class="px-3 py-2 text-right" colspan="6">Grand total (all filtered rows)</td>
                     <td class="px-3 py-2 text-right">{{ \Illuminate\Support\Number::format($totalScore) }}</td>
+                    <td class="px-3 py-2"></td>
                     <td class="px-3 py-2 text-right text-green-700">₹{{ \Illuminate\Support\Number::format($totalIncomePaise / 100, 2) }}</td>
                     <td class="px-3 py-2"></td>
                 </tr>

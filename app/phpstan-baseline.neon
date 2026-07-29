@@ -37,6 +37,12 @@ parameters:
 			path: app/Modules/Admin/Http/Controllers/AdminKycController.php
 
 		-
+			message: '#^Parameter \$actorId of class App\\Modules\\Compensation\\Events\\LifetimeAwardReleased constructor expects int\|null, int\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Admin/Http/Controllers/AdminLifetimeAwardsController.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -517,12 +523,6 @@ parameters:
 			path: app/Modules/Commerce/Models/CustomerAddress.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Models/Order.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
 			identifier: property.notFound
 			count: 1
@@ -587,12 +587,6 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Commerce/Models/OrderItem.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Commerce/Services/BvLedgerService.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
@@ -817,6 +811,36 @@ parameters:
 			path: app/Modules/Compensation/Http/Controllers/Admin/AdminDistributorCompController.php
 
 		-
+			message: '#^Parameter \$type of method App\\Modules\\Compensation\\Services\\GenosBvLedgerService\:\:paginateDays\(\) expects ''credits''\|''reversals''\|null, non\-empty\-array\|non\-falsy\-string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminDistributorCompController.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Http\\Controllers\\Admin\\AdminGbbCalculationController\:\:queryRows\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminGbbCalculationController.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Http\\Controllers\\Admin\\AdminGenosTransactionsController\:\:queryCredits\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminGenosTransactionsController.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Http\\Controllers\\Admin\\AdminGenosTransactionsController\:\:queryReversals\(\) return type with generic class Illuminate\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminGenosTransactionsController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Http/Controllers/Admin/AdminGsbPersonalBvTopupController.php
+
+		-
 			message: '#^Parameter \$actorId of class App\\Modules\\Compensation\\Events\\CompensationPlanChanged constructor expects int\|null, int\|string\|null given\.$#'
 			identifier: argument.type
 			count: 1
@@ -881,12 +905,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Compensation/Listeners/PropagateGroupBvOnOrderPaid.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$paid_at\.$#'
@@ -989,6 +1007,30 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Modules/Compensation/Services/GsbCutoffService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:\$cnt\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Services/PayoutService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:\$deductions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Services/PayoutService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:\$gross\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Services/PayoutService.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:\$net\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Modules/Compensation/Services/PayoutService.php
 
 		-
 			message: '#^Method App\\Modules\\Compensation\\Services\\WalletService\:\:ledgerWithRunningBalance\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
@@ -1633,6 +1675,24 @@ parameters:
 			path: tests/Feature/Compliance/RegistrationHasZeroOrdersTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Console/PlatformResetTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Console/PurchaseDataResetTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Console/PurchaseDataResetTest.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$description_html\.$#'
 			identifier: property.notFound
 			count: 3
@@ -1899,20 +1959,32 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 9
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 4
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 7
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminStaffUsersTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Admin/AdminStaffUsersTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$image_url\.$#'
@@ -2359,12 +2431,6 @@ parameters:
 			path: tests/Modules/Commerce/SharedCartTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$attributed_distributor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/SharedCartTest.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2403,7 +2469,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 3
+			count: 2
 			path: tests/Modules/Commerce/SharedCartTest.php
 
 		-
@@ -2446,6 +2512,54 @@ parameters:
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 4
+			path: tests/Modules/Compensation/AdminDistributorCompTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminDistributorCompTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Compensation/AdminGsbInputOutputTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminGsbInputOutputTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Modules/Compensation/AdminMsbCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminMsbCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 8
 			path: tests/Modules/Compensation/AdminPlanSettingsTest.php
 
 		-
@@ -2455,8 +2569,30 @@ parameters:
 			path: tests/Modules/Compensation/AdminPlanSettingsTest.php
 
 		-
+			message: '''
+				#^Call to deprecated method gsbScoreRatePaise\(\) of class App\\Modules\\Compensation\\Services\\CompensationPlanSettingsService\:
+				KP 2026\-07\-21 — the GSB bonus is now score × per\-slab
+				gsb_slabs\.score_value_paise\. Retained only for backward compatibility\.$#
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: tests/Modules/Compensation/CompensationPlanSettingsServiceTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\GsbCutoffResult\:\:\$power_side_before\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
+
+		-
 			message: '#^If condition is always true\.$#'
 			identifier: if.alwaysTrue
+			count: 1
+			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
 
@@ -2469,13 +2605,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 17
 			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 15
+			count: 22
 			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
@@ -2615,6 +2751,12 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Identity/DistributorDetailsEndpointTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Identity/DistributorIdCardStatsTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'

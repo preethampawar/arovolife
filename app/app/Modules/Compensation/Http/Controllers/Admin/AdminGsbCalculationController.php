@@ -64,7 +64,7 @@ final class AdminGsbCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
         $totals = $this->totals($q, $from, $to, $status, $slab);
 
-        $csv = "SNo,ADN,Name,Title,Date,Slab,Score,Income (Rs),Status\n";
+        $csv = "SNo,ADN,Name,Title,Date,Slab,Score,Score Value (Rs),Income (Rs),Status\n";
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $csv .= implode(',', [
@@ -75,6 +75,7 @@ final class AdminGsbCalculationController extends Controller
                 Carbon::parse($row->cutoff_date)->toDateString(),
                 $row->slab,
                 (int) $row->score,
+                $row->score_value_paise !== null ? number_format($row->score_value_paise / 100, 2, '.', '') : '',
                 number_format($row->gross_gsb_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
             ])."\n";
@@ -85,6 +86,7 @@ final class AdminGsbCalculationController extends Controller
             $this->csvStr('TOTAL'),
             '', '', '', '', '',
             $totals['score'],
+            '',
             number_format($totals['income_paise'] / 100, 2, '.', ''),
             '',
         ])."\n";
@@ -126,6 +128,7 @@ final class AdminGsbCalculationController extends Controller
                 'gcr.cutoff_date',
                 'gcr.slab',
                 DB::raw('COALESCE(gcr.score, gs.score) as score'),
+                DB::raw('COALESCE(gcr.score_value_paise, gs.score_value_paise) as score_value_paise'),
                 'gcr.weaker_bv_paise',
                 'gcr.left_bv_paise',
                 'gcr.right_bv_paise',

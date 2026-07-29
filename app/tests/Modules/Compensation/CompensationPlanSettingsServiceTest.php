@@ -30,6 +30,16 @@ it('falls back to the registry default when a scalar setting is absent', functio
     expect($plan->adminChargeMonthlyCapPaise())->toBe(2_500_000); // ₹25,000 (KP Round-5)
     expect($plan->minPayoutPaise())->toBe(10_000);          // ₹100 (KP)
     expect($plan->gsbScoreRatePaise())->toBe(36_000);       // ₹360/point
+    expect($plan->gsbPoolRateBp())->toBe(4500);             // 45% daily GSB pool (KP 2026-07-29)
+});
+
+it('reads an overridden GSB pool rate from the database', function () {
+    DB::table('settings')->insert([
+        'key' => 'comp.gsb.pool_rate_bp', 'value' => '4000', 'version' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    expect(app(CompensationPlanSettingsService::class)->gsbPoolRateBp())->toBe(4000); // 40%
 });
 
 it('reads an overridden scalar setting from the database', function () {

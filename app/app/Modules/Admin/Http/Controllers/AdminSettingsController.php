@@ -387,6 +387,16 @@ final class AdminSettingsController extends Controller
                 'max' => 100_000_000,
                 'default' => '36000',
             ],
+            'comp.gsb.pool_rate_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'GSB daily pool rate (basis points)',
+                'description' => 'Share of the day\'s company-wide BV funding the GSB pool. Slabs 1–2 are paid fixed from it first; the remainder sets the pro-rated slab 3–7 score value (capped at the fixed score value). 4500 = 45%.',
+                'impact' => 'Changes the daily variable score value for GSB slabs 3–7. Takes effect from the next daily cut-off.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '4500',
+            ],
             'comp.gsb.power_cf_cap_paise' => [
                 'group' => 'compensation_plan',
                 'label' => 'GSB power-side carry-forward cap (BV paise)',

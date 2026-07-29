@@ -42,11 +42,13 @@
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-1">GSB slabs</h2>
     <p class="text-xs text-gray-500 mb-3">
-        Bonus follows the <strong>score × score value</strong> model — each slab carries its own configurable
-        score value (₹ per score point), so the bonus is computed from the score on save. A blank score leaves
-        the bonus unset (e.g. any future TBD slab). Each slab also carries its <strong>Mentorship Bonus</strong>
-        settings: the MSB score (points credited to the direct sponsor when a sponsee's cut-off matches this slab)
-        and the MSB score value (₹ per point).
+        Bonus follows the <strong>score × score value</strong> model. Slabs 1–2 carry a fixed, editable score
+        value (₹ per score point) and always pay in full. Slabs 3–7 are <strong>pro-rated daily</strong> from the
+        GSB pool (<a href="{{ route('admin.settings') }}#compensation_plan" class="underline">GSB daily pool rate</a>,
+        default 45% of the day's company BV): their score and score value are shown read-only here, and the day's
+        variable score value — never above the fixed value — is computed at each cut-off. Each slab also carries its
+        <strong>Mentorship Bonus</strong> settings: the MSB score (points credited to the direct sponsor when a
+        sponsee's cut-off matches this slab) and the MSB score value (₹ per point) — MSB stays fixed for all slabs.
     </p>
     <div class="space-y-3">
         @foreach($slabs as $row)
@@ -59,7 +61,7 @@
             @csrf
             <div class="flex items-center justify-between mb-3">
                 <span class="text-sm font-semibold text-gray-700">Slab {{ $row->slab }}</span>
-                <span class="text-xs text-gray-400">current bonus: {{ $rupees($row->bonus_paise) }}</span>
+                <span class="text-xs text-gray-400">{{ $row->slab < 3 ? 'current bonus: '.$rupees($row->bonus_paise) : 'max bonus: '.$rupees($row->bonus_paise).' (pro-rated daily)' }}</span>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
@@ -79,6 +81,7 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                     <span class="text-[11px] text-gray-400">{{ $bv($row->matched_bv_paise) }}</span>
                 </div>
+                @if($row->slab < 3)
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab. The bonus is score × this slab's score value, so it recomputes on save. Leave blank to leave the bonus unset." /></label>
                     <input type="number" name="score" data-field-label="Score" data-score-input value="{{ $row->score }}" min="0"
@@ -86,11 +89,23 @@
                     <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.\Illuminate\Support\Number::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Rupee value of one score point for this slab (KP 2026-07-21, default ₹250). The bonus is score × this value." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Rupee value of one score point for this slab (KP 2026-07-21, default ₹250). The bonus is score × this value. Slabs 1–2 are fixed — always paid in full." /></label>
                     <input type="number" name="score_value_paise" data-field-label="Score value (paise)" data-score-value-input value="{{ $row->score_value_paise }}" required min="1"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                     <span class="text-[11px] text-gray-400">₹{{ \Illuminate\Support\Number::format($row->score_value_paise / 100, 2) }} / score</span>
                 </div>
+                @else
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab (fixed by the plan). Not editable: slabs 3–7 are priced daily from the GSB pool." /></label>
+                    <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">{{ $row->score ?? '—' }}</div>
+                    <span class="text-[11px] text-gray-400">→ up to {{ $row->score !== null ? '₹'.\Illuminate\Support\Number::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Variable — computed at each daily cut-off from the GSB pool (45% of the day's company BV), capped at this fixed value. See the GSB Input & Output report for each day's value." /></label>
+                    <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">Variable (pool)</div>
+                    <span class="text-[11px] text-gray-400">up to ₹{{ \Illuminate\Support\Number::format($row->score_value_paise / 100, 2) }} / score</span>
+                </div>
+                @endif
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">MSB score <x-help-tip text="Mentorship Bonus points credited to the direct sponsor each time a sponsee's cut-off matches this slab. The sponsor's MB income is MSB score × MSB score value." /></label>
                     <input type="number" name="msb_score" data-field-label="MSB score" data-msb-score-input value="{{ $row->msb_score }}" required min="0"

@@ -54,14 +54,43 @@ final class GsbPersonalBvTopupService
     }
 
     /**
+     * Read-only view of the pending top-up as of a cut-off date: the exact
+     * order ids and total BV that applyPendingForDistributor() would credit.
+     * Used by the pure compute pass of GsbCutoffService — settle() then
+     * applies exactly these orders via $onlyOrderIds, so an order paid between
+     * the two passes never desyncs the settled BV from the computed slab.
+     *
+     * @return array{order_ids: list<int>, bv_paise: int}
+     */
+    public function pendingPlanForDistributor(int $distributorId, Carbon $cutoffDate): array
+    {
+        $accruals = $this->pendingAccruals($distributorId, $cutoffDate);
+
+        return [
+            'order_ids' => array_values($accruals->map(fn (BvLedgerEntry $a) => (int) $a->order_id)->all()),
+            'bv_paise' => (int) $accruals->sum('bv_paise'),
+        ];
+    }
+
+    /**
      * Credit all pending personal-purchase BV to the given weaker leg for this
      * cut-off date. Returns the paise credited (0 if nothing was pending).
      *
      * Called by GsbCutoffService only when a leg has touched a slab threshold.
+     * When $onlyOrderIds is given, only those pending orders are applied — the
+     * cut-off's settle pass uses this to replay its computed plan verbatim.
+     *
+     * @param  list<int>|null  $onlyOrderIds
      */
-    public function applyPendingForDistributor(int $distributorId, Carbon $cutoffDate, string $weakerSide): int
+    public function applyPendingForDistributor(int $distributorId, Carbon $cutoffDate, string $weakerSide, ?array $onlyOrderIds = null): int
     {
         $accruals = $this->pendingAccruals($distributorId, $cutoffDate);
+
+        if ($onlyOrderIds !== null) {
+            $accruals = $accruals->filter(
+                fn (BvLedgerEntry $a) => in_array((int) $a->order_id, $onlyOrderIds, true)
+            )->values();
+        }
 
         if ($accruals->isEmpty()) {
             return 0;
