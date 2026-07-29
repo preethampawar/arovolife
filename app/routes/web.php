@@ -259,17 +259,16 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::get('/help/{slug}', [AdminHelpController::class, 'show'])
         ->where('slug', '[a-z0-9-]+')->name('help.show');
 
-    // Feature flags — runtime engine killswitches (T-5.4). Developer-only:
-    // these decide whether whole compensation engines run, so they sit with
-    // the role that owns platform configuration. Every toggle writes an
-    // audit_log entry.
-    Route::middleware('role:developer')->group(function (): void {
-        Route::get('/feature-flags', [AdminFeatureFlagController::class, 'index'])
-            ->name('feature-flags.index');
-        Route::post('/feature-flags/{key}', [AdminFeatureFlagController::class, 'toggle'])
-            ->where('key', '[a-z0-9_.-]+')
-            ->name('feature-flags.toggle');
-    });
+    // Feature flags — runtime killswitches (T-5.4). Per-flag ownership is
+    // enforced in the controller: incident controls (the registration
+    // killswitch) stay reachable by the whole console so a live compliance
+    // incident never waits on one person, while engine configuration is
+    // developer-only. Every toggle writes an audit_log entry.
+    Route::get('/feature-flags', [AdminFeatureFlagController::class, 'index'])
+        ->name('feature-flags.index');
+    Route::post('/feature-flags/{key}', [AdminFeatureFlagController::class, 'toggle'])
+        ->where('key', '[a-z0-9_.-]+')
+        ->name('feature-flags.toggle');
 
     // Contact inquiries — admin inbox for the public /contact-us form
     Route::get('/contact-inquiries', [AdminContactController::class, 'index'])->name('contact-inquiries.index');

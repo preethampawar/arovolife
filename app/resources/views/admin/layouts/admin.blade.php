@@ -103,10 +103,7 @@
                     ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => '📄', 'prefix' => 'admin.content'],
                     ['route' => 'admin.compliance-documents.index','label' => 'Compliance Docs', 'icon' => '🛡', 'prefix' => 'admin.compliance-documents'],
                     ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => '⚙'],
-                    // Feature flags are developer-only (route enforces role:developer).
-                    ...(auth()->user()?->hasRole('developer')
-                        ? [['route' => 'admin.feature-flags.index', 'label' => 'Feature flags', 'icon' => '⚑', 'prefix' => 'admin.feature-flags']]
-                        : []),
+                    ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => '⚑', 'prefix' => 'admin.feature-flags'],
                     ['route' => 'admin.audit-log',                'label' => 'Audit Log',      'icon' => '☰'],
                     ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => '❔', 'prefix' => 'admin.help'],
                 ];

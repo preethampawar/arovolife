@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Admin\Services\StaffAccountService;
+use App\Modules\Identity\Http\Rules\NotPwned;
+use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -80,7 +82,10 @@ final class AdminStaffUserController extends Controller
             'full_name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'phone_e164' => ['required', 'string', 'regex:/^\+91[6-9]\d{9}$/', Rule::unique('users', 'phone_e164')],
-            'password' => ['required', 'string', 'min:12', 'max:255', 'confirmed'],
+            // Staff hold the highest privileges on the platform, so their
+            // passwords get at least the strength + breach checks a
+            // distributor's does, on a longer minimum.
+            'password' => ['required', 'string', 'min:12', 'max:255', 'confirmed', new StrongPassword, new NotPwned],
             // Rule::in against the VISIBLE list — a crafted POST naming a
             // hidden role is rejected as an invalid value, exactly as a
             // typo'd role would be.

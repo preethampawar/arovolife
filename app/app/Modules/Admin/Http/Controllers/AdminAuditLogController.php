@@ -18,6 +18,8 @@ final class AdminAuditLogController extends Controller
             ->leftJoin('users', 'audit_log.actor_id', '=', 'users.id')
             ->select('audit_log.*', 'users.email as actor_email');
 
+        $presenter->hidePrivilegedSubjects($query, $request->user());
+
         if ($action = $request->query('action')) {
             $query->where('audit_log.action', 'like', "%{$action}%");
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compliance\Services;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -33,6 +34,59 @@ final class AuditLogPresenter
     private array $userLabels = [];
 
     /**
+     * User IDs holding the platform-configuration role.
+     *
+     * @return list<int>
+     */
+    public function privilegedUserIds(): array
+    {
+        return array_values(array_map(
+            static fn ($id): int => (int) $id,
+            DB::table('model_has_roles')
+                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                ->where('roles.name', 'developer')
+                ->pluck('model_has_roles.model_id')
+                ->all(),
+        ));
+    }
+
+    /**
+     * Hide audit rows ABOUT a platform-configuration account from other
+     * viewers. Masking only the actor is not enough: a `staff.user.created`
+     * row carries the granted roles in its details payload and resolves its
+     * subject to the account's name, which would disclose both the account
+     * and the role.
+     *
+     * Query-level (not a post-filter) so pagination counts stay honest.
+     *
+     * @param  Builder  $query
+     */
+    public function hidePrivilegedSubjects(object $query, ?object $viewer): void
+    {
+        if ($this->viewerIsPrivileged($viewer)) {
+            return;
+        }
+
+        $ids = $this->privilegedUserIds();
+        if ($ids === []) {
+            return;
+        }
+
+        $query->where(function ($q) use ($ids): void {
+            $q->where('audit_log.subject_type', '!=', 'user')
+                ->orWhereNull('audit_log.subject_type')
+                ->orWhereNotIn('audit_log.subject_id', $ids);
+        });
+    }
+
+    private function viewerIsPrivileged(?object $viewer): bool
+    {
+        return $viewer !== null
+            && method_exists($viewer, 'hasRole')
+            && $viewer->hasRole('developer');
+    }
+
+    /**
      * Blank the actor on rows performed by a platform-configuration account
      * unless the viewer holds that role themselves — those rows then read
      * exactly like a genuinely actorless system row.
@@ -46,7 +100,7 @@ final class AuditLogPresenter
      */
     public function maskPrivilegedActors(iterable $rows, ?object $viewer): void
     {
-        if ($viewer !== null && method_exists($viewer, 'hasRole') && $viewer->hasRole('developer')) {
+        if ($this->viewerIsPrivileged($viewer)) {
             return;
         }
 
@@ -61,13 +115,10 @@ final class AuditLogPresenter
             return;
         }
 
-        $privileged = DB::table('model_has_roles')
-            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-            ->where('roles.name', 'developer')
-            ->whereIn('model_has_roles.model_id', array_values(array_unique($actorIds)))
-            ->pluck('model_has_roles.model_id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
+        $privileged = array_values(array_intersect(
+            $this->privilegedUserIds(),
+            array_unique($actorIds),
+        ));
 
         if ($privileged === []) {
             return;

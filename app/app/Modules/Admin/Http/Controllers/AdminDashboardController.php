@@ -47,9 +47,13 @@ final class AdminDashboardController extends Controller
                 ->whereDate('created_at', today())->count(),
         ];
 
-        $recentAudit = DB::table('audit_log')
+        $recentAuditQuery = DB::table('audit_log')
             ->leftJoin('users', 'audit_log.actor_id', '=', 'users.id')
-            ->select('audit_log.*', 'users.email as actor_email')
+            ->select('audit_log.*', 'users.email as actor_email');
+
+        $presenter->hidePrivilegedSubjects($recentAuditQuery, $request->user());
+
+        $recentAudit = $recentAuditQuery
             ->orderByDesc('audit_log.created_at')
             ->limit(10)
             ->get();

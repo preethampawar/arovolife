@@ -116,19 +116,47 @@ it('FF-ADMIN-06: non-admin cannot reach the feature flags page', function (): vo
     expect($response->status())->not->toBe(200);
 });
 
-it('FF-ADMIN-07: a business admin cannot view or toggle flags', function (): void {
-    // Engine killswitches sit with platform configuration, not business
-    // operations — the Gate::before super-staff bypass must NOT open this
-    // door, which is why the route uses a `role:` gate rather than `can:`.
+it('FF-ADMIN-07: a business admin sees and can pull the registration killswitch', function (): void {
+    // Incident controls must not depend on one person being available: any
+    // console role can halt registrations during a compliance incident.
     $this->actingAs(adminFlagSeedStaff('admin'));
 
-    $this->get('/admin/feature-flags')->assertStatus(403);
+    $this->get('/admin/feature-flags')
+        ->assertStatus(200)
+        ->assertSee('registration.killswitch');
 
     $this->withoutMiddleware(PreventRequestForgery::class)
         ->post('/admin/feature-flags/registration.killswitch', ['action' => 'deactivate'])
-        ->assertStatus(403);
+        ->assertRedirect();
 
-    expect(Feature::for(null)->active(RegistrationKillswitch::class))->toBeTrue();
+    expect(Feature::for(null)->active(RegistrationKillswitch::class))->toBeFalse();
+    expect(AuditLog::where('action', 'feature_flag.toggled')->count())->toBe(1);
+});
+
+it('FF-ADMIN-07b: compliance staff can also pull the killswitch', function (): void {
+    $this->actingAs(adminFlagSeedStaff('admin-compliance'));
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/feature-flags/registration.killswitch', ['action' => 'deactivate'])
+        ->assertRedirect();
+
+    expect(Feature::for(null)->active(RegistrationKillswitch::class))->toBeFalse();
+});
+
+it('FF-ADMIN-07c: engine flags stay with platform configuration', function (): void {
+    // Compensation engines decide what distributors are paid, so they are not
+    // toggleable from the business console — 404, matching an unknown key, so
+    // probing cannot confirm the flag exists.
+    $this->actingAs(adminFlagSeedStaff('admin'));
+
+    $this->get('/admin/feature-flags')
+        ->assertStatus(200)
+        ->assertDontSee('compensation.genos_sales_bonus');
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/feature-flags/compensation.genos_sales_bonus', ['action' => 'activate'])
+        ->assertStatus(404);
+
     expect(AuditLog::where('action', 'feature_flag.toggled')->count())->toBe(0);
 });
 

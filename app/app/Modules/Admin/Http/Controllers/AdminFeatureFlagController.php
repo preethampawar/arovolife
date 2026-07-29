@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -25,10 +26,19 @@ use Laravel\Pennant\Feature;
 final class AdminFeatureFlagController extends Controller
 {
     /**
-     * Single registry of admin-toggleable feature flags. Adding a new flag
-     * means: (1) create the resolver class, (2) add a row here.
+     * Single registry of toggleable feature flags. Adding a new flag means:
+     * (1) create the resolver class, (2) add a row here.
      *
-     * @return array<string, array{class: class-string, label: string, description: string}>
+     * `owner` decides who may see and toggle the flag:
+     *  - 'incident'  — operational/compliance controls that must be reachable
+     *                  during a live incident: the whole admin family plus
+     *                  compliance. A killswitch only one absent person can
+     *                  pull is not a killswitch.
+     *  - 'developer' — engine and security configuration.
+     * Flags a viewer does not own are filtered out server-side and 404 on the
+     * toggle endpoint.
+     *
+     * @return array<string, array{class: class-string, label: string, description: string, owner: string}>
      */
     private function registry(): array
     {
@@ -36,12 +46,14 @@ final class AdminFeatureFlagController extends Controller
             'registration.killswitch' => [
                 'class' => RegistrationKillswitch::class,
                 'label' => 'Registration killswitch',
-                'description' => 'When OFF, the public /register and /join entry points return a "temporarily closed" page. In-progress wizards continue.',
+                'description' => 'When OFF, the public /register and /join entry points return a "temporarily closed" page. In-progress wizards continue. Use this to halt new registrations immediately during a compliance or security incident.',
+                'owner' => 'incident',
             ],
             'password.hibp_check' => [
                 'class' => HibpPasswordCheck::class,
                 'label' => 'HIBP password breach check',
                 'description' => 'Extra layer of password security. When ON, every new/changed password is checked against the Have-I-Been-Pwned breach database via k-anonymity API (api.pwnedpasswords.com). When OFF, the breach check is skipped — only the zxcvbn entropy gate runs. Keep ON in production; safe to turn OFF on offline staging boxes or for demo seeding.',
+                'owner' => 'developer',
             ],
 
             // ── Phase 4 compensation features (default OFF — partner sign-off required) ──
@@ -49,26 +61,31 @@ final class AdminFeatureFlagController extends Controller
                 'class' => GenosSalesBonusFeature::class,
                 'label' => 'Genos Sales Bonus (Phase 4)',
                 'description' => 'The foundational daily GSB engine. When OFF, the gsb:daily-cutoff and gsb:weekly-payout commands no-op — no GSB is earned or paid (and the Mentorship Bonus, computed alongside GSB, is skipped too). Enable after partners approve the plan.',
+                'owner' => 'developer',
             ],
             'compensation.gsb_daily_pool_pricing' => [
                 'class' => GsbDailyPoolPricingFeature::class,
                 'label' => 'GSB daily pool pricing — slabs 3–7 (KP 2026-07-29)',
                 'description' => '⚠ COMPLIANCE GATE (risk register R-33). When ON, GSB slabs 3–7 are no longer paid a fixed ₹ amount: each day their score value is pro-rated from the 45% company-BV pool (slabs 1–2 stay fixed and always pay in full). This changes what distributors are paid, so it must NOT be enabled in any environment paying real distributors until the DSA §6.2 thirty-day written notice has run its course AND the formula is published at /p/compensation. When OFF, the engine is byte-identical to the fixed-bonus behaviour.',
+                'owner' => 'developer',
             ],
             'compensation.mentorship_bonus' => [
                 'class' => MentorshipBonusFeature::class,
                 'label' => 'Mentorship Bonus (Phase 4)',
                 'description' => 'Shows the Mentorship Bonus income tab and admin views for distributors. Enable after partners approve the 5% mentorship plan. Slabs step down from 10% → 1% per ₹30k of sponsee GSB.',
+                'owner' => 'developer',
             ],
             'compensation.repurchase_engine' => [
                 'class' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase / income-eligibility engine (Phase 4)',
                 'description' => 'When ON, the daily GSB cut-off consults each distributor\'s monthly repurchase status: if they missed their repurchase due date the bonus is held (grace) or, after grace, suspended — GSB/Fortune/GBB only, never Mentorship or Rank. When OFF, repurchase status is ignored. Run repurchase:evaluate daily.',
+                'owner' => 'developer',
             ],
             'compensation.growth_booster_bonus' => [
                 'class' => GrowthBoosterBonusFeature::class,
                 'label' => 'Growth Booster Bonus (Phase 4)',
                 'description' => 'Enables the monthly GBB pool (5% of turnover) distributed via AGP points. Shows the Growth Booster tab in income views and admin GBB dashboard. Also gates the gbb:monthly-run artisan command.',
+                'owner' => 'developer',
             ],
 
             // ── Phase 5 compensation features (default OFF) ──
@@ -76,11 +93,13 @@ final class AdminFeatureFlagController extends Controller
                 'class' => RankBonusFeature::class,
                 'label' => 'Rank Bonus (Phase 5)',
                 'description' => 'Enables the 21% rank bonus pool split across 9 ranks (Silver → Elite Diamond). Paid monthly on the 8th. Requires rank qualification engine and 1+2 rule tracking.',
+                'owner' => 'developer',
             ],
             'compensation.lifetime_awards' => [
                 'class' => LifetimeAwardsFeature::class,
                 'label' => 'Lifetime Awards & Rewards (Phase 5)',
                 'description' => 'Non-cash rewards triggered on rank achievement (32% of turnover, non-cash). Tracks award delivery workflow for cars, insurance, trips. Requires perquisite tax verification before release.',
+                'owner' => 'developer',
             ],
 
             // ── Phase 6 compensation features (default OFF) ──
@@ -88,6 +107,7 @@ final class AdminFeatureFlagController extends Controller
                 'class' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus (Phase 6)',
                 'description' => 'Enables the 3×9 monthly matrix bonus (replaces Auto Pool). Participation-based, first-come-first-served placement. Monthly reset. Capped at Rank 5.',
+                'owner' => 'developer',
             ],
 
             // ── Phase 7 compensation features (default OFF) ──
@@ -95,14 +115,35 @@ final class AdminFeatureFlagController extends Controller
                 'class' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center Bonus (Phase 7)',
                 'description' => 'Enables 3% BV-based bonus for official Arete Development Centers, capped at ₹1 lakh/month per center. Paid on the 8th. Requires center assignment and approved center records.',
+                'owner' => 'developer',
             ],
         ];
     }
 
-    public function index(): View
+    /**
+     * May this viewer see and toggle a flag with the given owner?
+     * Incident controls are reachable by the whole console; everything else
+     * belongs to platform configuration.
+     */
+    private function canUse(?User $viewer, string $owner): bool
     {
+        if ($viewer === null) {
+            return false;
+        }
+
+        return $owner === 'incident' || $viewer->hasRole('developer');
+    }
+
+    public function index(Request $request): View
+    {
+        $viewer = $request->user();
+
         $flags = [];
         foreach ($this->registry() as $key => $meta) {
+            if (! $this->canUse($viewer, $meta['owner'])) {
+                continue;
+            }
+
             $flags[$key] = $meta + [
                 // Read against the global (null) scope so admins see the same
                 // state that unauthenticated registration visitors see, not
@@ -118,6 +159,9 @@ final class AdminFeatureFlagController extends Controller
     {
         $registry = $this->registry();
         abort_unless(isset($registry[$key]), 404);
+        // A flag this viewer doesn't own is a 404, matching the response an
+        // unknown key gets — probing can't confirm it exists.
+        abort_unless($this->canUse($request->user(), $registry[$key]['owner']), 404);
 
         $class = $registry[$key]['class'];
         // Read against global scope (null) — without this, Pennant defaults to

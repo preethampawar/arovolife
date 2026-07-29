@@ -104,7 +104,9 @@ it('DEV-06: the settings page shows an admin no developer-owned key', function (
     $res = $this->actingAs(devStaff('admin'))->get('/admin/settings')->assertOk();
 
     $res->assertSee('commerce.shipping.fee_rupees');
-    foreach (['comp.tds.rate_bp', 'payout.min_threshold_paise', 'placement.spillover.enabled'] as $hidden) {
+    // Deduction/threshold keys stay visible read-only (compliance can verify
+    // them); everything else the admin doesn't own is absent entirely.
+    foreach (['placement.spillover.enabled', 'comp.gsb.pool_rate_bp', 'payments.gateway.stub.enabled'] as $hidden) {
         $res->assertDontSee($hidden);
     }
     // The raw engineer table would dump every row including the hidden ones.
@@ -180,6 +182,28 @@ it('DEV-10: the audit log shows a developer action as a system row', function ()
     $res = $this->actingAs(devStaff('admin'))->get('/admin/audit-log')->assertOk();
     $res->assertDontSee('quiet-dev@arovolife.test');
     $res->assertSee('system');
+});
+
+it('DEV-10b: staff audit rows about a developer account are hidden, not just actor-masked', function () {
+    // Regression (compliance review 2026-07-29): masking actor_email alone
+    // leaked the role anyway — a staff.user.created row carries the granted
+    // roles in its details payload and resolves its subject to the account's
+    // name, disclosing both the account and that the role exists.
+    $this->artisan('staff:create', ['email' => 'leaky-dev@arovolife.test', '--role' => 'developer'])
+        ->expectsQuestion('Full name', 'Leaky Developer Name')
+        ->expectsQuestion('Mobile number (E.164)', '+919876500099')
+        ->expectsQuestion('Password (min 12 characters)', 'kQ4-plumBridge82Vex')
+        ->expectsQuestion('Confirm password', 'kQ4-plumBridge82Vex')
+        ->assertSuccessful();
+
+    expect(AuditLog::where('action', 'staff.user.created')->exists())->toBeTrue();
+
+    $res = $this->actingAs(devStaff('admin'))->get('/admin/audit-log')->assertOk();
+
+    $res->assertDontSee('leaky-dev@arovolife.test');
+    $res->assertDontSee('Leaky Developer Name');
+    $res->assertDontSee('developer');
+    $res->assertDontSee('staff.user.created');
 });
 
 it('DEV-11: an admin cannot impersonate a developer, and the refusal is generic', function () {

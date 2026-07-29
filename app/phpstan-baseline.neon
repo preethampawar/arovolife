@@ -1887,19 +1887,19 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 10
 			path: tests/Modules/Admin/AdminFeatureFlagTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 5
 			path: tests/Modules/Admin/AdminFeatureFlagTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
-			count: 5
+			count: 7
 			path: tests/Modules/Admin/AdminFeatureFlagTest.php
 
 		-
@@ -1959,7 +1959,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 11
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
@@ -1971,7 +1971,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 8
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
@@ -2037,7 +2037,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 12
+			count: 13
+			path: tests/Modules/Admin/DeveloperRoleTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 1
 			path: tests/Modules/Admin/DeveloperRoleTest.php
 
 		-

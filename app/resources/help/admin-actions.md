@@ -96,9 +96,25 @@ surface and are managed by the technical team:
 
 Everything you need to run the business — orders, returns, KYC, line changes,
 distributor status, payout batch approval, manual compensation corrections,
-storefront and shipping settings — remains in your hands. If a plan value needs
-to change, raise it with the technical team: those changes usually require
-30 days' written notice to distributors under DSA §6.2 before they take effect.
+storefront and shipping settings — remains in your hands.
+
+**Incident controls stay with you.** The **registration killswitch**
+(Admin → Feature flags) is available to every console role, including
+compliance. If you need to stop new registrations immediately — a compliance
+concern, a fraud pattern, a security incident — switch it off yourself. Do not
+wait for the technical team. In-progress wizards continue; only new entries are
+blocked.
+
+**Values you can see but not change.** The statutory cooling-off period, the
+TDS and admin-charge rates, and the payout thresholds are shown read-only on
+the Settings page so you can verify them during a review. If one is wrong,
+raise it — do not assume it is intentional.
+
+**Changing a plan value requires notice.** Any change that reduces what
+distributors earn requires **30 days' written notice** to all active
+Distributors under DSA §6.2 before it takes effect. This is mandatory, not a
+courtesy. Raise the request with the technical team and expect the notice
+period to run first.
 
 ### Managing the team
 

@@ -153,13 +153,28 @@ it('AS-05c: a business admin sees only the settings it owns', function (): void 
 
     $response = $this->get('/admin/settings')->assertStatus(200);
 
-    // Owned: commerce + registration.
+    // Owned: commerce + registration — editable.
     $response->assertSee('Storefront checkout');
-    // Not owned — and not merely disabled: absent from the response entirely,
-    // so the page gives no hint that another role manages them.
-    $response->assertDontSee('Cooling-off period (days)');
+
+    // Statutory / deduction values stay VISIBLE for compliance verification
+    // even though they are not editable here.
+    $response->assertSee('Cooling-off period (days)');
+    $response->assertSee('Shown for reference');
+
+    // Everything else the admin does not own is absent entirely.
     $response->assertDontSee('Admin charge cap — weekly batch (paise)');
     $response->assertDontSee('Show advanced settings (engineer view)');
+});
+
+it('AS-05d: an admin cannot write the statutory values it can see', function (): void {
+    $this->actingAs(asvSeedAdmin('admin'));
+    asvSeedSetting('commerce.cooling_off.days', '30');
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/commerce.cooling_off.days', ['value' => '45'])
+        ->assertNotFound();
+
+    expect(DB::table('settings')->where('key', 'commerce.cooling_off.days')->value('value'))->toBe('30');
 });
 
 it('AS-05b: the Round-5 payout caps render and are admin-editable end-to-end', function (): void {

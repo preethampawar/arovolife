@@ -114,9 +114,13 @@ final class AdminDistributorController extends Controller
             ->orderBy('document_type')
             ->get();
 
-        $auditLogs = DB::table('audit_log')
+        $auditLogsQuery = DB::table('audit_log')
             ->leftJoin('users', 'audit_log.actor_id', '=', 'users.id')
-            ->select('audit_log.*', 'users.email as actor_email')
+            ->select('audit_log.*', 'users.email as actor_email');
+
+        $presenter->hidePrivilegedSubjects($auditLogsQuery, $request->user());
+
+        $auditLogs = $auditLogsQuery
             ->where(function ($q) use ($id, $distributor) {
                 $q->where(function ($q2) use ($id) {
                     $q2->where('audit_log.subject_type', 'distributor')

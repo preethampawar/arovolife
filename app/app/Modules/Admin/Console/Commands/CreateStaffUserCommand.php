@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Console\Commands;
 
 use App\Modules\Admin\Services\StaffAccountService;
+use App\Modules\Identity\Http\Rules\NotPwned;
+use App\Modules\Identity\Http\Rules\StrongPassword;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -31,9 +33,11 @@ use function Laravel\Prompts\text;
  */
 final class CreateStaffUserCommand extends Command
 {
+    // --role has no default on purpose: a bare `staff:create x@y.com` must
+    // never silently mint the most privileged account in the system.
     protected $signature = 'staff:create
         {email : Sign-in email for the staff account}
-        {--role=developer : Role to assign (repeatable)}';
+        {--role=* : Role to assign (repeatable, required)}';
 
     protected $description = 'Create a platform staff account with an interactively-entered password';
 
@@ -49,6 +53,13 @@ final class CreateStaffUserCommand extends Command
 
         /** @var list<string> $roles */
         $roles = array_values(array_filter((array) $this->option('role')));
+
+        if ($roles === []) {
+            $this->error('At least one --role is required.');
+            $this->line('Available: '.implode(', ', StaffAccountService::ASSIGNABLE_ROLES));
+
+            return self::FAILURE;
+        }
 
         foreach ($roles as $role) {
             if (! in_array($role, StaffAccountService::ASSIGNABLE_ROLES, true)) {
@@ -77,7 +88,20 @@ final class CreateStaffUserCommand extends Command
         $plain = password(
             label: 'Password (min 12 characters)',
             required: true,
-            validate: fn (string $value) => mb_strlen($value) < 12 ? 'Use at least 12 characters.' : null,
+            // Same strength + breach checks the UI applies — staff hold the
+            // highest privileges on the platform.
+            validate: function (string $value): ?string {
+                if (mb_strlen($value) < 12) {
+                    return 'Use at least 12 characters.';
+                }
+
+                $errors = validator(
+                    ['password' => $value],
+                    ['password' => [new StrongPassword, new NotPwned]],
+                )->errors();
+
+                return $errors->isEmpty() ? null : (string) $errors->first('password');
+            },
         );
 
         $confirm = password(label: 'Confirm password', required: true);

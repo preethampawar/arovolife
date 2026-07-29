@@ -606,7 +606,25 @@ final class AdminSettingsController extends Controller
         return self::GROUP_OWNERS[$meta['group']] ?? 'developer';
     }
 
-    /** May the given user read/write settings owned by $owner? */
+    /**
+     * Keys a business admin must be able to SEE even though they cannot edit
+     * them: the statutory cooling-off term and the deduction/threshold values
+     * that determine what reaches a distributor's bank account. Compliance
+     * review depends on being able to verify these are set correctly —
+     * visibility is the control here, not write access.
+     *
+     * @var list<string>
+     */
+    private const ADMIN_READABLE_KEYS = [
+        'commerce.cooling_off.days',
+        'comp.tds.rate_bp',
+        'comp.admin_charge.rate_bp',
+        'payout.min_threshold_paise',
+        'payout.neft_min_bv_paise',
+        'payout.gsb_min_bv_paise',
+    ];
+
+    /** May the given user WRITE settings owned by $owner? */
     private static function userOwns(?User $user, string $owner): bool
     {
         if ($user === null) {
@@ -614,6 +632,13 @@ final class AdminSettingsController extends Controller
         }
 
         return $owner === 'admin' || $user->hasRole('developer');
+    }
+
+    /** May the given user SEE this key at all (editable or read-only)? */
+    private static function userCanRead(?User $user, string $key): bool
+    {
+        return self::userOwns($user, self::ownerForKey($key))
+            || in_array($key, self::ADMIN_READABLE_KEYS, true);
     }
 
     /**
@@ -680,12 +705,13 @@ final class AdminSettingsController extends Controller
         $viewer = $request->user();
         $rows = DB::table('settings')->orderBy('key')->get()->keyBy('key');
 
-        // Stealth: drop developer-owned keys server-side for non-developers so
-        // the response body carries no trace of them (key names, labels or
-        // "managed elsewhere" hints would all reveal the higher role).
+        // Drop keys this viewer may not see, server-side, so the response body
+        // carries no trace of them. Keys on the admin-readable list survive
+        // and render read-only below — statutory and deduction values must
+        // stay verifiable by whoever reviews compliance.
         $registry = array_filter(
             self::registry(),
-            fn (string $key): bool => self::userOwns($viewer, self::ownerForKey($key)),
+            fn (string $key): bool => self::userCanRead($viewer, $key),
             ARRAY_FILTER_USE_KEY,
         );
 
@@ -703,6 +729,15 @@ final class AdminSettingsController extends Controller
         foreach ($registry as $key => $meta) {
             $row = $rows[$key] ?? null;
             $rawValue = $row->value ?? ($meta['default'] ?? '');
+
+            // Visible-but-not-mine renders through the existing read-only
+            // path, with a reason that states the fact without naming who
+            // does own it.
+            if (! self::userOwns($viewer, self::ownerForKey($key))) {
+                $meta['read_only'] = true;
+                $meta['read_only_reason'] = 'Shown for reference. This value is not editable from this console; changes are made by the platform team and appear in the audit log.';
+            }
+
             $grouped[$meta['group']]['items'][] = [
                 'key' => $key,
                 'meta' => $meta,

@@ -48,26 +48,14 @@ final class StaffAccountService
             $existing = User::query()->where('email', $email)->first();
 
             if ($existing !== null) {
-                // A staff login and a distributor account must never share a
-                // user row: the login channel policy, the admin redirect and
-                // the genealogy all key off this distinction.
-                if ($existing->distributor()->exists()) {
-                    throw new RuntimeException('That email belongs to a distributor account and cannot be made staff.');
-                }
-
-                $existing->forceFill([
-                    'full_name' => $fullName,
-                    'phone_e164' => $phoneE164,
-                    'password_hash' => Hash::make($plainPassword),
-                    'password_set_at' => now(),
-                    'status' => 'active',
-                    'email_verified_at' => $existing->email_verified_at ?? now(),
-                ])->save();
-
-                $existing->syncRoles($roles);
-                $this->audit('staff.user.created', $existing, ['roles' => $roles, 'existing_user' => true], $actorId);
-
-                return $existing;
+                // Refuse outright rather than "create-or-overwrite". Silently
+                // resetting an existing account's password and forcing it back
+                // to active is an account-takeover / un-freeze path, and
+                // auditing it as a creation would misdescribe it. Password
+                // resets and reactivation have their own explicit flows.
+                throw new RuntimeException(
+                    'An account already exists for that email. Use the staff page to change its roles or status, or the password-reset flow to set a new password.'
+                );
             }
 
             $user = User::create([

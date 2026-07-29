@@ -9,6 +9,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -21,6 +22,11 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     $this->seed(RolesAndPermissionsSeeder::class);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    // Staff passwords run the same breach check as distributors'. Fake the
+    // HIBP range endpoint so the suite never depends on the network; an empty
+    // body means "not found in any breach".
+    Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
 });
 
 function staffActor(string $role = 'admin'): User
@@ -188,20 +194,20 @@ it('STAFF-09: the console command provisions an account without touching config'
     $this->artisan('staff:create', ['email' => 'console-dev@arovolife.test', '--role' => 'developer'])
         ->expectsQuestion('Full name', 'Console Developer')
         ->expectsQuestion('Mobile number (E.164)', '+919876500001')
-        ->expectsQuestion('Password (min 12 characters)', 'ConsolePassword123')
-        ->expectsQuestion('Confirm password', 'ConsolePassword123')
+        ->expectsQuestion('Password (min 12 characters)', 'tR7$vq-Mint9wLarch')
+        ->expectsQuestion('Confirm password', 'tR7$vq-Mint9wLarch')
         ->assertSuccessful();
 
     $user = User::where('email', 'console-dev@arovolife.test')->firstOrFail();
 
     expect($user->hasRole('developer'))->toBeTrue()
         ->and($user->status)->toBe('active')
-        ->and(Hash::check('ConsolePassword123', $user->password_hash))->toBeTrue();
+        ->and(Hash::check('tR7$vq-Mint9wLarch', $user->password_hash))->toBeTrue();
 
     // The secret must exist only as the hash on the user row.
-    expect(DB::table('settings')->where('value', 'like', '%ConsolePassword123%')->exists())->toBeFalse();
+    expect(DB::table('settings')->where('value', 'like', '%tR7$vq-Mint9wLarch%')->exists())->toBeFalse();
     expect(json_encode(AuditLog::where('action', 'staff.user.created')->first()->details))
-        ->not->toContain('ConsolePassword123');
+        ->not->toContain('tR7$vq-Mint9wLarch');
 });
 
 it('STAFF-10: the console command refuses an unknown role', function () {
