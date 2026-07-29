@@ -92,6 +92,25 @@ it('WPM-03: active wizard session + correct step → passthrough', function (): 
     $response->assertStatus(200);
 });
 
+it('WPM-05: skipping ahead redirects to the furthest-completed step, not the target itself', function (): void {
+    // Regression: when the Arete step (10) was inserted (3d20da7) the
+    // middleware kept a stale local step→route map still pointing 10 at
+    // register.complete — a user at step 10 requesting /register/complete
+    // (wizard.progress:11) was redirected to /register/complete itself, an
+    // infinite redirect loop. The middleware now resolves the redirect via
+    // the canonical WizardStateService::stepRoute() map.
+    $this->withSession([
+        'registration_wizard' => [
+            'step' => 10,
+            'sponsor_id' => 1,
+            'data' => [],
+        ],
+    ]);
+
+    $response = $this->get('/register/complete');
+    $response->assertRedirect(route('register.arete'));
+});
+
 it('WPM-04: garbage av_draft cookie (no matching draft) → middleware ignores it + bounces to /join', function (): void {
     // Defensive: a tampered or stale cookie value mustn't promote the
     // visitor into a stranger's session. Like WPM-02, the destination is

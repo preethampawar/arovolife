@@ -63,7 +63,9 @@ it('KYC-UP-01: step 7 accepts all required docs (+ optional cheque) and persists
         'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
     ]);
 
-    $response->assertRedirect('/register/complete');
+    // Documents (step 9) advances to the Arete centre step (10), not
+    // straight to Complete — the Arete step was inserted in 3d20da7.
+    $response->assertRedirect('/register/arete-centre');
 
     $wizard = app(WizardStateService::class);
     $docs = $wizard->getStepData(9)['documents'] ?? null;
@@ -139,7 +141,7 @@ it('KYC-UP-04: step 7 accepts the required docs without the optional cheque', fu
         'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
     ]);
 
-    $response->assertRedirect('/register/complete');
+    $response->assertRedirect('/register/arete-centre');
     $response->assertSessionHasNoErrors();
 
     $wizard = app(WizardStateService::class);

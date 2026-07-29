@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Modules\Genealogy\Services\Exceptions\PlacementSlotFullError;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\RegistrationService;
-use App\Modules\Identity\Services\WizardStateService;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -30,7 +29,8 @@ function prmSetWizardAtComplete(User $user): void
     test()->actingAs($user);
     test()->withSession([
         'registration_wizard' => [
-            'step' => 10,
+            // Complete moved from step 10 to 11 when the Arete step landed.
+            'step' => 11,
             'user_id' => $user->id,
             'sponsor_id' => 1,
             'data' => [
