@@ -17,7 +17,7 @@ final class CouponRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->hasRole('admin');
+        return $this->user() !== null && $this->user()->isSuperStaff();
     }
 
     protected function prepareForValidation(): void

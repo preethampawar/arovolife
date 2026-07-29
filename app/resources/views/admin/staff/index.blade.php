@@ -4,13 +4,18 @@
 
 @section('content')
 
-<p class="text-sm text-gray-700 mb-6 max-w-3xl">
-    Platform team members — every account holding at least one admin role (super admin,
-    operations, finance, compliance, and future roles such as KYC reviewers or order
-    managers). Staff accounts are not distributors and never appear in the Distributor
-    register. Staff provisioning is currently done by the technical team; a create/invite
-    flow ships with the multi-operator phase.
-</p>
+<div class="flex items-start justify-between gap-4 mb-6">
+    <p class="text-sm text-gray-700 max-w-3xl">
+        Platform team members — every account holding at least one admin role (super admin,
+        operations, finance, compliance, and future roles such as KYC reviewers or order
+        managers). Staff accounts are not distributors and never appear in the Distributor
+        register. Every change made here is recorded in the audit log.
+    </p>
+    <a href="{{ route('admin.staff.create') }}"
+       class="shrink-0 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+        + Add staff user
+    </a>
+</div>
 
 {{-- Role filter pills --}}
 <div class="flex items-center gap-3 mb-6 flex-wrap">
@@ -59,6 +64,7 @@
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Roles</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Last Login</th>
+                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">Manage</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-800">
@@ -93,10 +99,18 @@
                     <td class="px-4 py-3 text-gray-700 text-xs">
                         {{ $u->last_login_at?->format('d M Y, h:i A') ?? 'Never' }}
                     </td>
+                    <td class="px-4 py-3 text-right">
+                        @if($u->id === $currentUserId)
+                            <span class="text-xs text-gray-500">You</span>
+                        @else
+                            <a href="{{ route('admin.staff.edit', $u->id) }}"
+                               class="text-xs font-medium text-brand-600 hover:text-brand-700">Manage</a>
+                        @endif
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="px-4 py-8 text-center text-gray-600">No staff users found.</td>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-600">No staff users found.</td>
                 </tr>
                 @endforelse
             </tbody>

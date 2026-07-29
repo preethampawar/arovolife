@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Services\AuditLogPresenter;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 final class AdminDashboardController extends Controller
 {
-    public function index(AuditLogPresenter $presenter): View
+    public function index(Request $request, AuditLogPresenter $presenter): View
     {
         // Each stat below is JOINed against distributors where the
         // dashboard tile claims to be about distributors. A previous
@@ -56,6 +57,7 @@ final class AdminDashboardController extends Controller
         // Pre-warm name/ADN lookups for every referenced distributor / user
         // in one batch (one SELECT each), then attach the rendered
         // {title, subtitle} pair to each row so the Blade is dumb.
+        $presenter->maskPrivilegedActors($recentAudit, $request->user());
         $presenter->warmCaches($recentAudit);
         foreach ($recentAudit as $row) {
             $rendered = $presenter->present($row);

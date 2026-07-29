@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -32,8 +33,12 @@ final class AdminSettingsController extends Controller
      * advanced engineer view so they're discoverable, but the friendly UI
      * surfaces them as informational rows only.
      *
+     * The optional 'owner' field overrides the group's default owner for a
+     * single key — see ownerForKey().
+     *
      * @return array<string, array{
      *   group: string,
+     *   owner?: string,
      *   label: string,
      *   description: string,
      *   impact?: string,
@@ -553,6 +558,65 @@ final class AdminSettingsController extends Controller
     }
 
     /**
+     * Which role owns each settings GROUP by default.
+     *
+     * `admin` owns the day-to-day business levers; `developer` owns anything
+     * that changes what the platform pays, who earns a sale, a statutory term,
+     * or how the system itself behaves. Developer-owned keys are not rendered
+     * at all for non-developer viewers (the stealth rule — an admin must not
+     * learn that a higher role exists), and writes are refused server-side.
+     *
+     * @var array<string, string>
+     */
+    private const GROUP_OWNERS = [
+        'registration' => 'admin',
+        'commerce' => 'admin',
+        'placement' => 'developer',
+        'attribution' => 'developer',
+        'cooling_off' => 'developer',
+        'self_purchase' => 'developer',
+        'compensation' => 'developer',
+        'compensation_plan' => 'developer',
+        'payments' => 'developer',
+        'payout' => 'developer',
+        'notifications' => 'developer',
+        'advanced' => 'developer',
+    ];
+
+    /**
+     * Role that may read and write the given setting key.
+     *
+     * Ownership is per KEY: a registry entry may carry its own `owner` field,
+     * which wins over its group's default. Moving a single setting between
+     * admin and developer is therefore a one-line registry edit — no group
+     * reshuffle, no migration. Unknown keys default to the stricter role.
+     */
+    public static function ownerForKey(string $key): string
+    {
+        $meta = self::registry()[$key] ?? null;
+
+        if ($meta === null) {
+            return 'developer';
+        }
+
+        if (isset($meta['owner']) && is_string($meta['owner'])) {
+            return $meta['owner'];
+        }
+
+        return self::GROUP_OWNERS[$meta['group']] ?? 'developer';
+    }
+
+    /** May the given user read/write settings owned by $owner? */
+    private static function userOwns(?User $user, string $owner): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        return $owner === 'admin' || $user->hasRole('developer');
+    }
+
+    /**
      * Friendly labels for the section grouping.
      *
      * @return array<string, array{label: string, description: string}>
@@ -611,10 +675,19 @@ final class AdminSettingsController extends Controller
         ];
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $viewer = $request->user();
         $rows = DB::table('settings')->orderBy('key')->get()->keyBy('key');
-        $registry = self::registry();
+
+        // Stealth: drop developer-owned keys server-side for non-developers so
+        // the response body carries no trace of them (key names, labels or
+        // "managed elsewhere" hints would all reveal the higher role).
+        $registry = array_filter(
+            self::registry(),
+            fn (string $key): bool => self::userOwns($viewer, self::ownerForKey($key)),
+            ARRAY_FILTER_USE_KEY,
+        );
 
         // Build a grouped view-model. Each group only renders if it has at
         // least one matching setting, so removing a key from the registry
@@ -642,7 +715,9 @@ final class AdminSettingsController extends Controller
         $grouped = array_filter($grouped, fn (array $g): bool => $g['items'] !== []);
 
         return view('admin.settings.index', [
-            'settings' => $rows,           // for the legacy advanced/engineer view
+            // The legacy engineer table dumps every raw settings row, so it is
+            // developer-only — it would otherwise leak the hidden keys.
+            'settings' => $viewer?->hasRole('developer') ? $rows : collect(),
             'grouped' => $grouped,         // for the friendly view
             'registry' => $registry,
         ]);
@@ -658,6 +733,11 @@ final class AdminSettingsController extends Controller
     {
         $registry = self::registry();
         abort_unless(isset($registry[$key]), 404);
+
+        // Stealth + authorization: a developer-owned key is a 404 for anyone
+        // else — the same response an unknown key gets, so probing the
+        // endpoint can't confirm that the key (or the role) exists.
+        abort_unless(self::userOwns($request->user(), self::ownerForKey($key)), 404);
 
         $meta = $registry[$key];
 

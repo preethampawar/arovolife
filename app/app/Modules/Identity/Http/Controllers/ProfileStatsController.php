@@ -26,7 +26,7 @@ final class ProfileStatsController extends Controller
         $user = Auth::user();
 
         // Admins have no distributor row; there is no profile to download.
-        if ($user !== null && $user->hasRole('admin')) {
+        if ($user !== null && $user->isSuperStaff()) {
             return redirect()->route('admin.dashboard');
         }
 

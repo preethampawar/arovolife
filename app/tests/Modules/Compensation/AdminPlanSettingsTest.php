@@ -63,7 +63,7 @@ it('renders the plan-settings page for an admin with the four editors', function
 it('persists a GSB slab edit, writes an audit log, and dispatches the domain event', function () {
     Event::fake([CompensationPlanChanged::class]);
 
-    $this->actingAs(planAdmin('admin-finance'))
+    $this->actingAs(planAdmin('developer'))
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.gsb-slab.update', 2), [
             'title' => 'Dealer',
@@ -92,7 +92,7 @@ it('persists a GSB slab edit, writes an audit log, and dispatches the domain eve
 });
 
 it('hides the score inputs for pro-rated slabs 3–7 and shows the pool note', function () {
-    $res = $this->actingAs(planAdmin('admin'))
+    $res = $this->actingAs(planAdmin('developer'))
         ->get(route('admin.compensation.plan-settings.index'))
         ->assertOk();
 
@@ -104,7 +104,7 @@ it('hides the score inputs for pro-rated slabs 3–7 and shows the pool note', f
 it('ignores score and score value on a crafted POST for a pro-rated slab', function () {
     $before = DB::table('gsb_slabs')->where('slab', 3)->first();
 
-    $this->actingAs(planAdmin('admin-finance'))
+    $this->actingAs(planAdmin('developer'))
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.gsb-slab.update', 3), [
             'title' => 'Wholesaler',
@@ -126,18 +126,36 @@ it('ignores score and score value on a crafted POST for a pro-rated slab', funct
     expect((int) $after->bonus_paise)->toBe((int) $before->bonus_paise); // nominal ceiling preserved
 });
 
-it('forbids a non-finance admin from editing the plan', function () {
-    $this->actingAs(planAdmin('admin-compliance'))
+it('forbids every business admin role from editing the plan', function (string $role) {
+    // Editing the plan changes what distributors are paid, so it belongs to
+    // platform configuration — including the full `admin` super-role, whose
+    // Gate::before bypass deliberately cannot open a `role:` gate.
+    $this->actingAs(planAdmin($role))
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.fortune-level.update', 0), [
             'bonus_paise' => 999,
             'is_active' => 1,
         ])
         ->assertForbidden();
+})->with(['admin', 'admin-compliance', 'admin-finance', 'admin-operations']);
+
+it('lets an admin view the plan for monitoring but renders no editable form', function () {
+    $res = $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk()
+        ->assertSee('GSB slabs');
+
+    // Values are visible (monitoring) but every field sits inside a disabled
+    // fieldset and no Save control is rendered on any plan form.
+    expect($res->getContent())->toContain('<fieldset class="contents" disabled')
+        ->and($res->getContent())->not->toContain('hover:bg-brand-700">Save<');
+
+    // Editing instructions must not be shown to someone who cannot edit.
+    $res->assertDontSee('press <strong>Edit</strong>', false);
 });
 
 it('updates a comp.* scalar via the generic settings endpoint', function () {
-    $this->actingAs(planAdmin('admin'))
+    $this->actingAs(planAdmin('developer'))
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.settings.update', 'comp.tds.rate_bp'), ['value' => '600'])
         ->assertRedirect();

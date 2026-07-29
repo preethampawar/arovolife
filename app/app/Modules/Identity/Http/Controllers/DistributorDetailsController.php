@@ -34,7 +34,7 @@ final class DistributorDetailsController extends Controller
         abort_if($authUser === null, 401);
         $authDistributor = $authUser->distributor;
 
-        $isAdmin = $authUser->hasRole('admin');
+        $isAdmin = $authUser->isSuperStaff();
         $isSelf = $authDistributor !== null && (int) $authDistributor->id === (int) $distributor->id;
         $isDescendant = false;
         if (! $isAdmin && ! $isSelf && $authDistributor !== null) {

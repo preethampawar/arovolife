@@ -21,7 +21,7 @@ final class TaxStatementsController extends Controller
     {
         $user = Auth::user();
 
-        if ($user !== null && $user->hasRole('admin')) {
+        if ($user !== null && $user->isSuperStaff()) {
             return redirect()->route('admin.dashboard');
         }
 

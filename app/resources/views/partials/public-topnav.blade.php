@@ -23,7 +23,7 @@
         @else
             @php
                 $user = auth()->user();
-                $isAdmin = $user->hasRole('admin');
+                $isAdmin = $user->isSuperStaff();
                 $name = $user->full_name ?: explode('@', (string) $user->email)[0];
                 $initials = collect(preg_split('/\s+/', trim((string) $name)))
                     ->filter()->take(2)->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->implode('');
@@ -136,7 +136,7 @@
             {{-- Admins jump to their console; distributors jump to their
                  dashboard ("My Dashboard"). Guests keep the About Us link
                  since they have no dashboard to jump to. --}}
-            @if(auth()->user()->hasRole('admin'))
+            @if(auth()->user()->isSuperStaff())
                 <a href="{{ route('admin.dashboard') }}" class="hover:text-brand-50 transition-colors">Admin Console</a>
             @else
                 <a href="{{ route('dashboard') }}" class="hover:text-brand-50 transition-colors">My Dashboard</a>
@@ -361,12 +361,12 @@
                 <a href="{{ route('contact.show') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">Become a Direct Seller</a>
             @else
                 <p class="px-2 pt-2 pb-1 text-xs text-brand-200 font-semibold uppercase tracking-wider">Signed in as {{ auth()->user()->full_name ?: auth()->user()->email }}</p>
-                @if(auth()->user()->hasRole('admin'))
+                @if(auth()->user()->isSuperStaff())
                     <a href="{{ route('admin.dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">Admin Console</a>
                 @else
                     <a href="{{ route('dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Dashboard</a>
                 @endif
-                @if(! auth()->user()->hasRole('admin') && auth()->user()->distributor)
+                @if(! auth()->user()->isSuperStaff() && auth()->user()->distributor)
                 <a href="{{ route('orders.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Orders &amp; Sales</a>
                 <a href="{{ route('income.dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Income</a>
                 <a href="{{ route('bv-ledger.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My BV Ledger</a>

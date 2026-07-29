@@ -81,12 +81,42 @@ compensating controls still apply:
 
 If you believe an action needs a second pair of eyes, get one before acting.
 
-**Where to see the team:** Admin → **Staff users** (super-admin only) lists every
-account holding an admin role, with their roles, status and last login. Staff
-accounts are separate from distributors and never appear in the Distributor
-register (whose status counts include distributors only). Staff provisioning is
-currently done by the technical team; a create/invite flow ships with the
-multi-operator phase.
+### Platform configuration is separate from business operations
+
+Some settings decide **what the platform pays and how it computes**, rather than
+how the business runs day to day. Those sit outside the admin console's editable
+surface and are managed by the technical team:
+
+- the compensation-plan ladders (GSB slabs, rank tiers, Fortune tables) —
+  visible on Compensation → Plan settings for **monitoring**, but not editable there;
+- plan rates, caps and periods (admin charge, TDS, payout thresholds), the
+  cooling-off window, placement/spillover behaviour, referral attribution,
+  self-purchase rules, payment gateways and notification switches;
+- the engine kill-switches.
+
+Everything you need to run the business — orders, returns, KYC, line changes,
+distributor status, payout batch approval, manual compensation corrections,
+storefront and shipping settings — remains in your hands. If a plan value needs
+to change, raise it with the technical team: those changes usually require
+30 days' written notice to distributors under DSA §6.2 before they take effect.
+
+### Managing the team
+
+Admin → **Staff users** lists every back-office account with its roles, status
+and last login. Staff accounts are separate from distributors and never appear
+in the Distributor register (whose status counts include distributors only).
+
+From that page you can:
+
+- **Add a staff user** — name, email, mobile and a starting password. Staff sign
+  in with their **email address** (distributors sign in with their ADN). Share
+  the password over a secure channel and ask them to change it.
+- **Manage** an existing member — replace their roles, or deactivate their login
+  (which blocks sign-in without deleting anything; the audit trail stays intact).
+
+You cannot change your own roles or status — that safeguard stops anyone locking
+themselves out. Every create, role change and status change is audit-logged with
+the before/after values.
 
 ---
 

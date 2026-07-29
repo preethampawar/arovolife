@@ -74,9 +74,11 @@ final class LoginController extends Controller
         // counter from a copy-paste mistake — but it sits AFTER the
         // candidate lookup so we return the same generic error.
         if ($candidate !== null) {
-            $isAdminAccount = $candidate->hasRole('admin');
-            $wrongChannel = ($isEmailInput && ! $isAdminAccount)
-                || (! $isEmailInput && $isAdminAccount);
+            // Every staff account signs in by email — including the scoped
+            // roles, which have no ADN to type.
+            $isStaffAccount = $candidate->isStaff();
+            $wrongChannel = ($isEmailInput && ! $isStaffAccount)
+                || (! $isEmailInput && $isStaffAccount);
 
             if ($wrongChannel) {
                 // Same generic error as a bad password — never disclose that
@@ -131,12 +133,13 @@ final class LoginController extends Controller
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
+
                 return back()->withErrors([
                     'login' => 'This account has been closed. Please contact support if you believe this is an error.',
                 ]);
             }
 
-            if ($user->hasRole('admin')) {
+            if ($user->isStaff()) {
                 return redirect()->intended(route('admin.dashboard'));
             }
 

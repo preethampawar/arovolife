@@ -32,7 +32,7 @@ final class AdminImpersonationController extends Controller
     public function start(Request $request, int $userId): RedirectResponse
     {
         $admin = Auth::user();
-        if ($admin === null || ! $admin->hasRole('admin')) {
+        if ($admin === null || ! $admin->isSuperStaff()) {
             abort(403);
         }
 
@@ -41,11 +41,12 @@ final class AdminImpersonationController extends Controller
             return back()->withErrors(['impersonate' => 'User not found.']);
         }
 
-        // Refuse to impersonate another admin — the admin role already has
+        // Refuse to impersonate other back-office staff — they already hold
         // the privileges needed; impersonating sideways adds no value and
-        // muddies the audit log.
-        if ($target->hasRole('admin')) {
-            return back()->withErrors(['impersonate' => 'Cannot impersonate another admin.']);
+        // muddies the audit log. The message is deliberately generic: naming
+        // the target's role would reveal which staff roles exist.
+        if ($target->isSuperStaff()) {
+            return back()->withErrors(['impersonate' => 'This account cannot be impersonated.']);
         }
 
         $request->session()->put(self::SESSION_KEY, (int) $admin->id);

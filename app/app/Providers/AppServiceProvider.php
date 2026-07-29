@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
+use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
@@ -56,17 +57,20 @@ class AppServiceProvider extends ServiceProvider
         // (post-grace) income stays forfeited — see the listener.
         Event::listen(IncomeReactivated::class, ReleaseHeldGsbOnReactivation::class);
 
-        // Super-admin: the `admin` role bypasses every permission check (R-17
-        // separation of duties). The specialised roles (admin-operations /
-        // admin-finance / admin-compliance) carry only their scoped
+        // Super staff: `developer` and `admin` bypass every permission check
+        // (R-17 separation of duties). The specialised roles (admin-operations
+        // / admin-finance / admin-compliance) carry only their scoped
         // permissions, so e.g. admin-finance can't freeze and admin-compliance
-        // can't record payments — while a full `admin` keeps doing everything.
-        Gate::before(fn (User $user) => $user->hasRole('admin') ? true : null);
+        // can't record payments — while super staff keep doing everything.
+        // Developer-exclusive surfaces are gated by `role:developer`
+        // middleware, which this bypass does NOT affect.
+        Gate::before(fn (User $user) => $user->isSuperStaff() ? true : null);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
                 DeployCommand::class,
                 ResetAdnsCommand::class,
+                CreateStaffUserCommand::class,
                 GsbDailyCutoffCommand::class,
                 GsbWeeklyPayoutCommand::class,
                 MonthlyPayoutCommand::class,

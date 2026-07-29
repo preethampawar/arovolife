@@ -36,6 +36,8 @@ final class AdminAuditLogController extends Controller
 
         $logs = $query->orderByDesc('audit_log.created_at')->paginate(50)->withQueryString();
 
+        $presenter->maskPrivilegedActors($logs->items(), $request->user());
+
         // Pre-warm name/ADN lookups for every referenced distributor + user
         // in one batch (one SELECT each), then attach the rendered
         // {title, subtitle} pair to each paginator row so the Blade stays

@@ -9,6 +9,7 @@ use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use App\Modules\Shared\Features\HibpPasswordCheck;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
@@ -48,6 +49,11 @@ final class AdminFeatureFlagController extends Controller
                 'class' => GenosSalesBonusFeature::class,
                 'label' => 'Genos Sales Bonus (Phase 4)',
                 'description' => 'The foundational daily GSB engine. When OFF, the gsb:daily-cutoff and gsb:weekly-payout commands no-op — no GSB is earned or paid (and the Mentorship Bonus, computed alongside GSB, is skipped too). Enable after partners approve the plan.',
+            ],
+            'compensation.gsb_daily_pool_pricing' => [
+                'class' => GsbDailyPoolPricingFeature::class,
+                'label' => 'GSB daily pool pricing — slabs 3–7 (KP 2026-07-29)',
+                'description' => '⚠ COMPLIANCE GATE (risk register R-33). When ON, GSB slabs 3–7 are no longer paid a fixed ₹ amount: each day their score value is pro-rated from the 45% company-BV pool (slabs 1–2 stay fixed and always pay in full). This changes what distributors are paid, so it must NOT be enabled in any environment paying real distributors until the DSA §6.2 thirty-day written notice has run its course AND the formula is published at /p/compensation. When OFF, the engine is byte-identical to the fixed-bonus behaviour.',
             ],
             'compensation.mentorship_bonus' => [
                 'class' => MentorshipBonusFeature::class,

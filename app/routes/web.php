@@ -200,18 +200,27 @@ Route::middleware([])->group(function (): void {
 
 // ── Admin Console ────────────────────────────────────────────────────────────
 
-// The admin area admits the whole admin family (R-17). `admin` is the
-// super-admin (Gate::before); the scoped roles can browse the console but each
-// sensitive action is additionally gated by a `can:` permission so e.g.
+// The admin area admits the whole admin family (R-17). `developer` and `admin`
+// are super staff (Gate::before); the scoped roles can browse the console but
+// each sensitive action is additionally gated by a `can:` permission so e.g.
 // admin-finance can't freeze and admin-compliance can't record payments.
-Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-compliance'])->prefix('admin')->name('admin.')->group(function (): void {
+// Platform-configuration routes carry an extra `role:developer` — a gate the
+// Gate::before bypass cannot open, so `admin` is genuinely excluded there.
+Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|admin-compliance'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/distributors', [AdminDistributorController::class, 'index'])->name('distributors.index');
 
-    // Platform staff register (super-admin only) — the team running the
-    // platform, separate from the distributor register.
-    Route::get('/staff', [AdminStaffUserController::class, 'index'])->middleware('role:admin')->name('staff.index');
+    // Platform staff register + management (super staff only) — the team
+    // running the platform, separate from the distributor register.
+    Route::middleware('role:developer|admin')->group(function (): void {
+        Route::get('/staff', [AdminStaffUserController::class, 'index'])->name('staff.index');
+        Route::get('/staff/create', [AdminStaffUserController::class, 'create'])->name('staff.create');
+        Route::post('/staff', [AdminStaffUserController::class, 'store'])->name('staff.store');
+        Route::get('/staff/{id}/edit', [AdminStaffUserController::class, 'edit'])->whereNumber('id')->name('staff.edit');
+        Route::post('/staff/{id}/roles', [AdminStaffUserController::class, 'updateRoles'])->whereNumber('id')->name('staff.roles');
+        Route::post('/staff/{id}/status', [AdminStaffUserController::class, 'updateStatus'])->whereNumber('id')->name('staff.status');
+    });
     Route::get('/distributors/export', [AdminDistributorController::class, 'export'])->name('distributors.export');
 
     // Admin-created distributor (paper-onboarding flow). MUST appear before
@@ -250,13 +259,17 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
     Route::get('/help/{slug}', [AdminHelpController::class, 'show'])
         ->where('slug', '[a-z0-9-]+')->name('help.show');
 
-    // Feature flags — admin-toggleable runtime switches (T-5.4). Includes the
-    // registration killswitch; every toggle writes an audit_log entry.
-    Route::get('/feature-flags', [AdminFeatureFlagController::class, 'index'])
-        ->name('feature-flags.index');
-    Route::post('/feature-flags/{key}', [AdminFeatureFlagController::class, 'toggle'])
-        ->where('key', '[a-z0-9_.-]+')
-        ->name('feature-flags.toggle');
+    // Feature flags — runtime engine killswitches (T-5.4). Developer-only:
+    // these decide whether whole compensation engines run, so they sit with
+    // the role that owns platform configuration. Every toggle writes an
+    // audit_log entry.
+    Route::middleware('role:developer')->group(function (): void {
+        Route::get('/feature-flags', [AdminFeatureFlagController::class, 'index'])
+            ->name('feature-flags.index');
+        Route::post('/feature-flags/{key}', [AdminFeatureFlagController::class, 'toggle'])
+            ->where('key', '[a-z0-9_.-]+')
+            ->name('feature-flags.toggle');
+    });
 
     // Contact inquiries — admin inbox for the public /contact-us form
     Route::get('/contact-inquiries', [AdminContactController::class, 'index'])->name('contact-inquiries.index');
@@ -308,16 +321,22 @@ Route::middleware(['auth', 'role:admin|admin-operations|admin-finance|admin-comp
     Route::prefix('compensation')->name('compensation.')->group(function (): void {
         Route::get('/', CompensationOverviewController::class)->name('overview');
 
+        // Viewing the plan is monitoring (whole admin family); EDITING it
+        // changes what the platform pays, so the write paths are
+        // developer-only — a `role:` gate the Gate::before bypass can't open.
         Route::prefix('plan-settings')->name('plan-settings.')->group(function (): void {
             Route::get('/', [AdminPlanSettingsController::class, 'index'])->name('index');
-            Route::post('/gsb-slab/{slab}', [AdminPlanSettingsController::class, 'updateGsbSlab'])
-                ->middleware('can:finance.record')->name('gsb-slab.update')->whereNumber('slab');
-            Route::post('/rank-tier/{rank}', [AdminPlanSettingsController::class, 'updateRankTier'])
-                ->middleware('can:finance.record')->name('rank-tier.update')->whereNumber('rank');
-            Route::post('/fortune-level/{level}', [AdminPlanSettingsController::class, 'updateFortuneLevel'])
-                ->middleware('can:finance.record')->name('fortune-level.update')->whereNumber('level');
-            Route::post('/fortune-tier/{tier}', [AdminPlanSettingsController::class, 'updateFortuneTier'])
-                ->middleware('can:finance.record')->name('fortune-tier.update');
+
+            Route::middleware('role:developer')->group(function (): void {
+                Route::post('/gsb-slab/{slab}', [AdminPlanSettingsController::class, 'updateGsbSlab'])
+                    ->name('gsb-slab.update')->whereNumber('slab');
+                Route::post('/rank-tier/{rank}', [AdminPlanSettingsController::class, 'updateRankTier'])
+                    ->name('rank-tier.update')->whereNumber('rank');
+                Route::post('/fortune-level/{level}', [AdminPlanSettingsController::class, 'updateFortuneLevel'])
+                    ->name('fortune-level.update')->whereNumber('level');
+                Route::post('/fortune-tier/{tier}', [AdminPlanSettingsController::class, 'updateFortuneTier'])
+                    ->name('fortune-tier.update');
+            });
         });
 
         Route::prefix('daily-cutoffs')->name('daily-cutoffs.')->group(function (): void {

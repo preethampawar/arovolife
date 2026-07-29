@@ -40,7 +40,7 @@ final class DashboardController extends Controller
         // Admin accounts have no distributor row, so the dashboard would
         // otherwise render the "Registration not yet complete" prompt at
         // them. They have their own console — send them there instead.
-        if ($user !== null && $user->hasRole('admin')) {
+        if ($user !== null && $user->isSuperStaff()) {
             return redirect()->route('admin.dashboard');
         }
 

@@ -33,6 +33,54 @@ final class AuditLogPresenter
     private array $userLabels = [];
 
     /**
+     * Blank the actor on rows performed by a platform-configuration account
+     * unless the viewer holds that role themselves — those rows then read
+     * exactly like a genuinely actorless system row.
+     *
+     * The audit_log table is NOT touched: actor_id is retained in full for
+     * compliance and forensics. This only changes what the console renders,
+     * and it must run BEFORE present() so the rendered subtitle can't leak
+     * the address either.
+     *
+     * @param  iterable<object>  $rows
+     */
+    public function maskPrivilegedActors(iterable $rows, ?object $viewer): void
+    {
+        if ($viewer !== null && method_exists($viewer, 'hasRole') && $viewer->hasRole('developer')) {
+            return;
+        }
+
+        $actorIds = [];
+        foreach ($rows as $row) {
+            if (($row->actor_id ?? null) !== null) {
+                $actorIds[] = (int) $row->actor_id;
+            }
+        }
+
+        if ($actorIds === []) {
+            return;
+        }
+
+        $privileged = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('roles.name', 'developer')
+            ->whereIn('model_has_roles.model_id', array_values(array_unique($actorIds)))
+            ->pluck('model_has_roles.model_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($privileged === []) {
+            return;
+        }
+
+        foreach ($rows as $row) {
+            if (($row->actor_id ?? null) !== null && in_array((int) $row->actor_id, $privileged, true)) {
+                $row->actor_email = null; // @phpstan-ignore property.notFound (stdClass query row)
+            }
+        }
+    }
+
+    /**
      * Pre-warm the lookup caches from a batch of audit rows.
      *
      * @param  iterable<object>  $rows  audit_log rows with at least `subject_type`, `subject_id`, `details` (JSON or array) and `actor_email`

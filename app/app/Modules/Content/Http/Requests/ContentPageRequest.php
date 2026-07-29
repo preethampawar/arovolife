@@ -12,7 +12,7 @@ final class ContentPageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->hasRole('admin');
+        return $this->user() !== null && $this->user()->isSuperStaff();
     }
 
     public function rules(): array

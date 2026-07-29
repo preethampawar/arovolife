@@ -35,6 +35,26 @@ final class User extends Authenticatable
 {
     use HasFactory, HasRoles, Notifiable;
 
+    /**
+     * Roles with full back-office console access (super staff). `developer`
+     * supersets `admin` and is deliberately stealth: it must never be listed,
+     * named, or otherwise revealed to a non-developer viewer anywhere in the
+     * UI — always filter role lists through visibleRoleNames().
+     */
+    public const SUPER_STAFF_ROLES = ['developer', 'admin'];
+
+    /**
+     * Every back-office role. Note that `distributor` is a role too, so
+     * "has any role" is NOT a test for staff — membership of this list is.
+     */
+    public const STAFF_ROLES = [
+        'developer',
+        'admin',
+        'admin-operations',
+        'admin-finance',
+        'admin-compliance',
+    ];
+
     protected $table = 'users';
 
     protected $fillable = [
@@ -255,6 +275,44 @@ final class User extends Authenticatable
     public function getAuthPasswordName(): string
     {
         return 'password_hash';
+    }
+
+    /** Full back-office console access: developer or admin. */
+    public function isSuperStaff(): bool
+    {
+        return $this->hasAnyRole(self::SUPER_STAFF_ROLES);
+    }
+
+    /**
+     * Any back-office account, including the scoped roles
+     * (admin-operations / admin-finance / admin-compliance).
+     *
+     * Staff sign in with their email address and land on the admin console;
+     * distributors sign in with their ADN. Scoped staff have no ADN at all,
+     * so this — not isSuperStaff() — is the correct test for the login
+     * channel and the post-login destination.
+     */
+    public function isStaff(): bool
+    {
+        return $this->hasAnyRole(self::STAFF_ROLES);
+    }
+
+    /**
+     * Role names the given viewer may see anywhere in the UI (staff lists,
+     * role filters, role-assign dropdowns). The stealth `developer` role is
+     * visible only to developers themselves.
+     *
+     * @return list<string>
+     */
+    public static function visibleRoleNames(?User $viewer): array
+    {
+        $names = self::STAFF_ROLES;
+
+        if ($viewer === null || ! $viewer->hasRole('developer')) {
+            $names = array_filter($names, fn (string $name): bool => $name !== 'developer');
+        }
+
+        return array_values($names);
     }
 
     public function distributor(): HasOne

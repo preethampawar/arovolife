@@ -10,6 +10,7 @@ use App\Modules\Admin\Events\DistributorReactivated;
 use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Services\AuditLogPresenter;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Csv;
 use Illuminate\Http\RedirectResponse;
@@ -82,7 +83,7 @@ final class AdminDistributorController extends Controller
         return view('admin.distributors.index', compact('distributors', 'statusCounts'));
     }
 
-    public function show(int $id): View
+    public function show(Request $request, int $id, AuditLogPresenter $presenter): View
     {
         $distributor = DB::table('distributors')
             ->join('users', 'distributors.user_id', '=', 'users.id')
@@ -128,6 +129,8 @@ final class AdminDistributorController extends Controller
             ->orderByDesc('audit_log.created_at')
             ->limit(20)
             ->get();
+
+        $presenter->maskPrivilegedActors($auditLogs, $request->user());
 
         $downlineCount = DB::table('genealogy_closure')
             ->where('ancestor_id', $id)

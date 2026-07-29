@@ -13,11 +13,16 @@
 @endphp
 
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+    @if($canEdit)
     Edit the live compensation-plan ladders below. Each row is locked by default — press <strong>Edit</strong> to change it,
     then <strong>Save</strong> to review and confirm the change. All BV and money fields are stored in <strong>paise</strong>
     (BV × 100, ₹ × 100). Every change is audit-logged and takes effect on the next engine run.
     Rates, caps and periods (admin charge, TDS, repurchase %, grace days, etc.) are edited under
     <a href="{{ route('admin.settings') }}#compensation_plan" class="underline font-medium">Settings → Compensation plan</a>.
+    @else
+    The live compensation-plan ladders currently in force. All BV and money fields are shown in <strong>paise</strong>
+    (BV × 100, ₹ × 100). Use the Compensation reports to see what each ladder actually paid.
+    @endif
 </div>
 
 @if($errors->any())
@@ -59,6 +64,11 @@
               data-confirm-impact="Changes the live compensation plan for all distributors. Audit-logged; takes effect on the next daily GSB cut-off."
               class="rounded-xl border border-gray-200 bg-white p-4">
             @csrf
+            {{-- Plan values are shown to every console role for monitoring;
+                 editing is reserved for platform configuration. A disabled
+                 fieldset makes the whole block non-editable and unsubmittable
+                 in one place, without touching each input. --}}
+            <fieldset class="contents" @disabled(! $canEdit)>
             <div class="flex items-center justify-between mb-3">
                 <span class="text-sm font-semibold text-gray-700">Slab {{ $row->slab }}</span>
                 <span class="text-xs text-gray-400">{{ $row->slab < 3 ? 'current bonus: '.$rupees($row->bonus_paise) : 'max bonus: '.$rupees($row->bonus_paise).' (pro-rated daily)' }}</span>
@@ -132,9 +142,12 @@
                     Active <x-help-tip text="When off, this slab is skipped by the GSB engine." />
                 </label>
                 <div class="flex items-end gap-2">
+                    @if($canEdit)
                     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    @endif
                 </div>
             </div>
+            </fieldset>
         </form>
         @endforeach
     </div>
@@ -154,6 +167,11 @@
               data-confirm-impact="Changes rank qualification and pool % for all distributors. Audit-logged; takes effect on the next monthly run."
               class="rounded-xl border border-gray-200 bg-white p-4">
             @csrf
+            {{-- Plan values are shown to every console role for monitoring;
+                 editing is reserved for platform configuration. A disabled
+                 fieldset makes the whole block non-editable and unsubmittable
+                 in one place, without touching each input. --}}
+            <fieldset class="contents" @disabled(! $canEdit)>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Rank {{ $row->rank_number }} name <x-help-tip text="Display name for this rank." /></label>
@@ -215,9 +233,12 @@
                     Active <x-help-tip text="When off, this rank is skipped by the Rank Bonus engine." />
                 </label>
                 <div class="flex items-end gap-2">
+                    @if($canEdit)
                     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    @endif
                 </div>
             </div>
+            </fieldset>
         </form>
         @endforeach
     </div>
@@ -237,6 +258,11 @@
               data-confirm-impact="Changes the Fortune Bonus payout for this matrix level. Audit-logged; takes effect on the next monthly run."
               class="rounded-xl border border-gray-200 bg-white p-4 flex items-end gap-3">
             @csrf
+            {{-- Plan values are shown to every console role for monitoring;
+                 editing is reserved for platform configuration. A disabled
+                 fieldset makes the whole block non-editable and unsubmittable
+                 in one place, without touching each input. --}}
+            <fieldset class="contents" @disabled(! $canEdit)>
             <div class="flex-1">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Level {{ $row->level }} bonus (paise) <x-help-tip text="Per-member Fortune Bonus (paise) paid at this matrix level." /></label>
                 <input type="number" name="bonus_paise" data-field-label="Level {{ $row->level }} bonus (paise)" value="{{ $row->bonus_paise }}" required min="0"
@@ -247,7 +273,10 @@
                 <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
                 Active <x-help-tip text="When off, this matrix level pays nothing." />
             </label>
+            @if($canEdit)
             <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+            @endif
+            </fieldset>
         </form>
         @endforeach
     </div>
@@ -265,6 +294,11 @@
               data-confirm-impact="Changes Fortune Bonus enrolment gates for this tier. Audit-logged; takes effect on the next monthly run."
               class="rounded-xl border border-gray-200 bg-white p-4">
             @csrf
+            {{-- Plan values are shown to every console role for monitoring;
+                 editing is reserved for platform configuration. A disabled
+                 fieldset makes the whole block non-editable and unsubmittable
+                 in one place, without touching each input. --}}
+            <fieldset class="contents" @disabled(! $canEdit)>
             <div class="flex items-center justify-between mb-3">
                 <span class="text-sm font-semibold text-gray-700">{{ ucwords(str_replace('_', ' ', $row->tier)) }}</span>
             </div>
@@ -281,9 +315,12 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                 </div>
                 <div class="flex items-end gap-2">
+                    @if($canEdit)
                     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    @endif
                 </div>
             </div>
+            </fieldset>
         </form>
         @endforeach
     </div>

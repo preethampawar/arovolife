@@ -12,25 +12,30 @@ use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-function adminFlagSeedAdmin(): User
+/**
+ * Feature flags decide whether whole compensation engines run, so the page is
+ * gated to the platform-configuration role — a business `admin` is refused
+ * (see FF-ADMIN-07).
+ */
+function adminFlagSeedStaff(string $role = 'developer'): User
 {
-    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-    $admin = User::create([
-        'full_name' => 'Admin Test',
-        'email' => 'admin-flag-'.uniqid().'@example.com',
+    Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+    $staff = User::create([
+        'full_name' => 'Flag Test Staff',
+        'email' => 'staff-flag-'.uniqid().'@example.com',
         'phone_e164' => '+9180000'.rand(10000, 99999),
         'password_hash' => bcrypt('Adm1n!Pass#2026Test'),
         'password_set_at' => now(),
         'status' => 'active',
         'email_verified_at' => now(),
     ]);
-    $admin->assignRole('admin');
+    $staff->assignRole($role);
 
-    return $admin;
+    return $staff;
 }
 
 it('FF-ADMIN-01: index page lists the registration killswitch', function (): void {
-    $admin = adminFlagSeedAdmin();
+    $admin = adminFlagSeedStaff();
     $this->actingAs($admin);
 
     $response = $this->get('/admin/feature-flags');
@@ -41,7 +46,7 @@ it('FF-ADMIN-01: index page lists the registration killswitch', function (): voi
 });
 
 it('FF-ADMIN-02: admin can deactivate the flag and an audit row is written', function (): void {
-    $admin = adminFlagSeedAdmin();
+    $admin = adminFlagSeedStaff();
     $this->actingAs($admin);
     // Read against the global (null) scope — the toggle endpoint writes there
     // intentionally so the flag affects unauthenticated visitors too. Reading
@@ -64,7 +69,7 @@ it('FF-ADMIN-02: admin can deactivate the flag and an audit row is written', fun
 });
 
 it('FF-ADMIN-03: admin can re-activate a deactivated flag', function (): void {
-    $admin = adminFlagSeedAdmin();
+    $admin = adminFlagSeedStaff();
     $this->actingAs($admin);
     Feature::for(null)->deactivate(RegistrationKillswitch::class);
 
@@ -76,7 +81,7 @@ it('FF-ADMIN-03: admin can re-activate a deactivated flag', function (): void {
 });
 
 it('FF-ADMIN-04: unknown flag key returns 404', function (): void {
-    $admin = adminFlagSeedAdmin();
+    $admin = adminFlagSeedStaff();
     $this->actingAs($admin);
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
@@ -86,7 +91,7 @@ it('FF-ADMIN-04: unknown flag key returns 404', function (): void {
 });
 
 it('FF-ADMIN-05: invalid action value returns 422', function (): void {
-    $admin = adminFlagSeedAdmin();
+    $admin = adminFlagSeedStaff();
     $this->actingAs($admin);
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
@@ -109,4 +114,31 @@ it('FF-ADMIN-06: non-admin cannot reach the feature flags page', function (): vo
     $response = $this->get('/admin/feature-flags');
 
     expect($response->status())->not->toBe(200);
+});
+
+it('FF-ADMIN-07: a business admin cannot view or toggle flags', function (): void {
+    // Engine killswitches sit with platform configuration, not business
+    // operations — the Gate::before super-staff bypass must NOT open this
+    // door, which is why the route uses a `role:` gate rather than `can:`.
+    $this->actingAs(adminFlagSeedStaff('admin'));
+
+    $this->get('/admin/feature-flags')->assertStatus(403);
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/feature-flags/registration.killswitch', ['action' => 'deactivate'])
+        ->assertStatus(403);
+
+    expect(Feature::for(null)->active(RegistrationKillswitch::class))->toBeTrue();
+    expect(AuditLog::where('action', 'feature_flag.toggled')->count())->toBe(0);
+});
+
+it('FF-ADMIN-08: the GSB daily-pool flag is registered with its compliance gate', function (): void {
+    $this->actingAs(adminFlagSeedStaff());
+
+    $response = $this->get('/admin/feature-flags');
+
+    $response->assertStatus(200);
+    $response->assertSee('compensation.gsb_daily_pool_pricing');
+    // R-33: the page must carry the do-not-enable-yet warning.
+    $response->assertSee('DSA §6.2', false);
 });

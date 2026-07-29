@@ -199,7 +199,9 @@
 
     {{-- Advanced / engineer view — closed by default. Lets engineers see the
          raw key/value/version table when needed without cluttering the
-         operator-facing view above. --}}
+         operator-facing view above. The controller only supplies rows to
+         viewers who own every key, so the whole block stays hidden otherwise. --}}
+    @if($settings->isNotEmpty())
     <details class="bg-white rounded-2xl border border-gray-200 p-6">
         <summary class="font-semibold text-gray-800 cursor-pointer select-none">
             Show advanced settings (engineer view)
@@ -229,6 +231,7 @@
             </table>
         </div>
     </details>
+    @endif
 </div>
 
 @push('scripts')

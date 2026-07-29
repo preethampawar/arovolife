@@ -22,7 +22,7 @@ final class DirectSellerApplicationController extends Controller
         $user = Auth::user();
 
         // Admins have no distributor row; route them to their console.
-        if ($user !== null && $user->hasRole('admin')) {
+        if ($user !== null && $user->isSuperStaff()) {
             return redirect()->route('admin.dashboard');
         }
 

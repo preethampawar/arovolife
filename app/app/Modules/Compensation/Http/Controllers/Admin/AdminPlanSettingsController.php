@@ -24,9 +24,14 @@ use Illuminate\Support\Facades\DB;
  */
 final class AdminPlanSettingsController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         return view('admin.compensation.plan-settings.index', [
+            // Viewing the plan is monitoring (whole admin family); editing it
+            // changes what the platform pays, so the forms render only for the
+            // role that owns platform configuration. The write routes carry
+            // the same gate — this just keeps the UI honest.
+            'canEdit' => $request->user()?->hasRole('developer') ?? false,
             'slabs' => DB::table('gsb_slabs')->orderBy('slab')->get(),
             'rankTiers' => DB::table('rank_tiers')->orderBy('rank_number')->get(),
             'fortuneLevels' => DB::table('fortune_bonus_levels')->orderBy('level')->get(),

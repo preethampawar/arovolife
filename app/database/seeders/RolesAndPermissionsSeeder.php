@@ -13,9 +13,13 @@ use Spatie\Permission\PermissionRegistrar;
  * Admin separation of duties (R-17). Strictly additive (firstOrCreate +
  * givePermissionTo) — safe to run on a long-lived environment.
  *
- * - `admin` is the super-admin (bypasses every permission via Gate::before in
- *   AppServiceProvider). It is granted every permission here too, so the model
- *   still works if that bypass is ever removed.
+ * - `admin` is the business super-admin (bypasses every permission via
+ *   Gate::before in AppServiceProvider). It is granted every permission here
+ *   too, so the model still works if that bypass is ever removed.
+ * - `developer` supersets admin: same Gate::before bypass plus surfaces gated
+ *   by `role:developer` middleware (feature flags, plan-settings edits,
+ *   developer-owned settings keys). The role is deliberately never surfaced
+ *   to non-developer viewers anywhere in the UI.
  * - The three scoped roles carry ONLY their own permission, enforcing
  *   "admin-finance can't freeze, admin-compliance can't record payments".
  */
@@ -37,6 +41,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         $guard = 'web';
 
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);
+        $developer = Role::firstOrCreate(['name' => 'developer', 'guard_name' => $guard]);
 
         foreach (self::SCOPED as $permissionName => $roleName) {
             $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => $guard]);
@@ -44,6 +49,7 @@ final class RolesAndPermissionsSeeder extends Seeder
 
             $role->givePermissionTo($permission);
             $admin->givePermissionTo($permission);
+            $developer->givePermissionTo($permission);
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

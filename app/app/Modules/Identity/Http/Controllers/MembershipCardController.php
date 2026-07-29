@@ -25,7 +25,7 @@ final class MembershipCardController extends Controller
         $user = Auth::user();
 
         // Admins have no distributor row; they have no membership card.
-        if ($user !== null && $user->hasRole('admin')) {
+        if ($user !== null && $user->isSuperStaff()) {
             return redirect()->route('admin.dashboard');
         }
 

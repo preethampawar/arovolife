@@ -18,9 +18,16 @@ uses(RefreshDatabase::class);
  * inputs (toggles, number fields, JSON textareas) and a per-setting save
  * endpoint. These tests pin that contract.
  */
-function asvSeedAdmin(): User
+/**
+ * Settings keys carry a per-key owner. `admin` owns the business levers
+ * (registration, commerce); everything that changes what the platform pays,
+ * a statutory term, or how the system behaves is owned by the
+ * platform-configuration role and is invisible to anyone else — hence most of
+ * these tests act as `developer` to exercise the full page.
+ */
+function asvSeedAdmin(string $role = 'developer'): User
 {
-    Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
     $admin = User::create([
         'full_name' => 'Settings Admin',
         'email' => 'asv-admin-'.uniqid().'@example.com',
@@ -30,7 +37,7 @@ function asvSeedAdmin(): User
         'status' => 'active',
         'email_verified_at' => now(),
     ]);
-    $admin->assignRole('admin');
+    $admin->assignRole($role);
 
     return $admin;
 }
@@ -138,6 +145,21 @@ it('AS-05: compensation switches are read-only from this UI (POST returns 403)',
 
     $response->assertStatus(403);
     expect(DB::table('settings')->where('key', 'compensation.payout.enabled')->value('value'))->toBe('false');
+});
+
+it('AS-05c: a business admin sees only the settings it owns', function (): void {
+    $this->actingAs(asvSeedAdmin('admin'));
+    asvSeedSetting('commerce.checkout.enabled', 'true');
+
+    $response = $this->get('/admin/settings')->assertStatus(200);
+
+    // Owned: commerce + registration.
+    $response->assertSee('Storefront checkout');
+    // Not owned — and not merely disabled: absent from the response entirely,
+    // so the page gives no hint that another role manages them.
+    $response->assertDontSee('Cooling-off period (days)');
+    $response->assertDontSee('Admin charge cap — weekly batch (paise)');
+    $response->assertDontSee('Show advanced settings (engineer view)');
 });
 
 it('AS-05b: the Round-5 payout caps render and are admin-editable end-to-end', function (): void {
