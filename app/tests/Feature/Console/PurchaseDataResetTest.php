@@ -62,6 +62,12 @@ it('wipes purchase-derived tables but preserves distributors, plan config and se
         }
     }
 
+    // The frozen daily pool economics must go too — they are immutable and the
+    // freeze is idempotent, so a surviving row would price every later re-run
+    // of that date against the pre-reset company BV.
+    expect(PurchaseDataResetAction::WIPE_TABLES)->toContain('gsb_daily_pools')
+        ->and(PurchaseDataResetAction::WIPE_TABLES)->toContain('msb_daily_pools');
+
     // Preserved: the distributor row itself, plan configuration, settings.
     expect(Distributor::query()->whereKey($dist->id)->exists())->toBeTrue()
         ->and(DB::table('gsb_slabs')->count())->toBe($slabCount)

@@ -47,6 +47,11 @@ final class PurchaseDataResetAction
         'mentorship_bonus_results',
         'gsb_cutoff_results',
         'gsb_carryforward',
+        // The frozen daily pool economics must go too: the freeze is idempotent
+        // and the rows are immutable, so a surviving row would price every
+        // re-run of that date against the pre-reset company BV forever.
+        'gsb_daily_pools',
+        'msb_daily_pools',
         'group_bv_daily',
         'gbb_monthly_results',
         'rank_bonus_results',
