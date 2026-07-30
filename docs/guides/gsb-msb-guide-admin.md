@@ -24,10 +24,13 @@
    distributor's personal-purchase title allows it — **credits GSB to the wallet**
    and records the result (`gsb_cutoff_results`). The weaker side resets; the
    stronger side carries forward up to the configured cap.
-3. **Mentorship Bonus runs inside the same daily cut-off**: whenever a directly
-   sponsored distributor is credited GSB, the sponsor is credited the configured
-   percentage of it (10% stepping down to 1% per cumulative band, tracked per
-   sponsor–sponsee pair) into the wallet (`mentorship_bonus_results`).
+3. **Mentorship Bonus runs inside the same daily cut-off, in a third pass**:
+   whenever a directly sponsored distributor is credited GSB, the sponsor
+   *accrues* that slab's MSB points (21/18/15/12/9/6/3 for slabs 1–7). Once
+   every distributor has settled, the day's MSB pool (3% of the day's company
+   BV) is frozen and divided by the day's total points — floored to whole
+   rupees — and each sponsor is credited points × that value into the wallet
+   (`mentorship_bonus_results`, `msb_daily_pools`).
 4. **Weekly payout** (Tuesday 09:00 IST): all wallets at or above the minimum
    (₹100) are bundled into a payout batch with deductions (repurchase wallet,
    admin charge, TDS). Finance reviews, approves, and exports the NEFT file.
@@ -41,7 +44,7 @@ never a mutable balance.
 
 | Command | Schedule | What it does |
 |---|---|---|
-| `gsb:daily-cutoff` | daily **00:10** (for the previous day) | GSB slab match + credit, carry-forward update, **Mentorship Bonus** |
+| `gsb:daily-cutoff` | daily **00:10** (for the previous day) | GSB slab match + credit, carry-forward update, then the **Mentorship Bonus** pool freeze + credits |
 | `repurchase:evaluate` | daily **00:30** | Recomputes each distributor's repurchase/income-eligibility status |
 | `gsb:weekly-payout` | **Tuesday 09:00** | Builds the weekly payout batch from wallet balances |
 | `gbb:monthly-run` | 2nd, 08:00 | Growth Booster Bonus for the previous month |
@@ -78,8 +81,9 @@ commands manually (Section 4).
    ```
 5. **Verify results** in Admin → Compensation → Daily Cut-offs → pick the date:
    every distributor's left BV, right BV, matched slab, GSB credited, carry-forward.
-   Check S's wallet gained the GSB amount, and S's **sponsor** gained the
-   Mentorship % of it.
+   Check S's wallet gained the GSB amount, and S's **sponsor** gained their MSB
+   points × the day's point value — Compensation → **MSB Input & Output / Day**
+   shows the day's BV, 3% pool, total points and the value they were priced at.
 6. **Run the weekly payout** (or wait for Tuesday):
    ```bash
    php artisan gsb:weekly-payout

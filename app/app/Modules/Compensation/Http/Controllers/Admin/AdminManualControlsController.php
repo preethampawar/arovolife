@@ -6,22 +6,27 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\GsbCutoffService;
+use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Number;
+use Laravel\Pennant\Feature;
 
 final class AdminManualControlsController extends Controller
 {
     public function __construct(
         private readonly GsbCutoffService $cutoff,
         private readonly WalletService $wallet,
+        private readonly MentorshipBonusService $mentorship,
     ) {}
 
     public function index(Request $request): View
@@ -75,6 +80,37 @@ final class AdminManualControlsController extends Controller
 
             $result = $this->cutoff->runForDistributor($distributor->id, $date);
 
+            // The Mentorship Bonus rides on the sponsee's credit and is not
+            // part of runForDistributor(), so a retry has to drive it too —
+            // otherwise the sponsor is silently skipped for that day. It prices
+            // against the day's already-frozen MSB pool; MB errors must not
+            // roll back a GSB credit that already succeeded.
+            $msbOutcome = ['status' => 'not_applicable'];
+            if ($result->status === GsbCutoffResult::STATUS_CREDITED
+                && Feature::for(null)->active(MentorshipBonusFeature::class)) {
+                try {
+                    $mb = $this->mentorship->processForSponsee($distributor->id, $result);
+                    $msbOutcome = $mb === null
+                        ? ['status' => 'skipped']   // no sponsor, gate failed, or no frozen pool
+                        : [
+                            'status' => 'credited',
+                            'result_id' => $mb->id,
+                            'sponsor_id' => $mb->sponsor_id,
+                            'msb_points' => $mb->msb_points,
+                            'point_value_paise' => $mb->msb_point_value_paise,
+                            'gross_paise' => $mb->mb_gross_paise,
+                        ];
+                } catch (\Throwable $e) {
+                    $msbOutcome = ['status' => 'failed', 'error' => $e->getMessage()];
+                    Log::error('mb.credit.exception', [
+                        'sponsee_id' => $distributor->id,
+                        'cutoff_date' => $date->toDateString(),
+                        'error' => $e->getMessage(),
+                        'exception' => get_class($e),
+                    ]);
+                }
+            }
+
             AuditLog::create([
                 'actor_id' => auth()->id(),
                 'action' => 'compensation.cutoff.manual_retry',
@@ -85,6 +121,9 @@ final class AdminManualControlsController extends Controller
                     'date' => $date->toDateString(),
                     'result_status' => $result->status,
                     'net_gsb_paise' => $result->net_gsb_paise,
+                    // A retry now drives the Mentorship Bonus too, so the audit
+                    // row must say whether the sponsor was paid, skipped or errored.
+                    'mentorship_bonus' => $msbOutcome,
                     'reason' => $reason,
                 ],
                 'ip' => $ip,

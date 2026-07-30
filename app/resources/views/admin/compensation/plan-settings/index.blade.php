@@ -31,6 +31,55 @@
     </div>
 @endif
 
+{{-- How the two daily engines price themselves. Explanatory only — no control
+     lives here, so it renders identically for every console role. --}}
+<details class="mb-6 rounded-xl border border-gray-200 bg-white p-4" open>
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How GSB and MSB are calculated</summary>
+
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Genos Sales Bonus — 45% of the day's BV</h3>
+            <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+                <li>The day's <strong>pool</strong> is the GSB daily pool rate (45%) of the day's company-wide BV.</li>
+                <li><strong>Slabs 1–2</strong> are paid first at their fixed score value (₹ per score point) and always pay in full.</li>
+                <li>What remains is divided by the total scores of everyone who matched <strong>slabs 3–7</strong> that day, floored to whole rupees and <strong>capped</strong> at the fixed score value.</li>
+                <li>Each slab 3–7 earner is paid <strong>their score × that one value</strong>.</li>
+            </ol>
+        </div>
+
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Mentorship Bonus — 3% of the day's BV</h3>
+            <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+                <li>The day's <strong>pool</strong> is the MSB daily pool rate (3%) of the same company-wide BV.</li>
+                <li>Each time a <strong>directly sponsored</strong> distributor's cut-off matches a slab, their sponsor accrues that slab's <strong>MSB score</strong> points.</li>
+                <li><strong>Point value = pool ÷ the day's total MSB points</strong>, floored to whole rupees. There is no cap and no configured value.</li>
+                <li>Each sponsor is paid <strong>their points × that one value</strong>, so the day's MSB spend is the 3% envelope.</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+        <p class="font-semibold mb-1">Worked example — a 1,00,000 BV day</p>
+        <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
+        <p>
+            MSB pool = 3% = <strong>₹3,000</strong>. Two sponsors accrue 21 points each (their sponsees matched slab 1)
+            and one accrues 18 points (slab 2) — <strong>60 points</strong> in total.
+            Point value = 3,000 ÷ 60 = <strong>₹50</strong>.
+            The two slab-1 sponsors earn 21 × 50 = ₹1,050 each, the slab-2 sponsor earns 18 × 50 = ₹900 —
+            <strong>₹3,000</strong> in total, exactly the pool.
+        </p>
+    </div>
+
+    <p class="mt-3 text-[11px] text-gray-500">
+        Both pool rates are set under
+        <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
+        Each day's arithmetic is frozen before anything is credited and is visible on the
+        <a href="{{ route('admin.compensation.gsb-input-output.index') }}" class="underline">GSB</a> and
+        <a href="{{ route('admin.compensation.msb-input-output.index') }}" class="underline">MSB</a>
+        Input &amp; Output reports.
+    </p>
+</details>
+
 {{-- Tabs --}}
 <div class="flex border-b border-gray-200 mb-6">
     @foreach(['gsb' => 'GSB Slabs', 'ranks' => 'Rank Tiers', 'fortune' => 'Fortune Bonus'] as $key => $label)
@@ -52,8 +101,9 @@
         GSB pool (<a href="{{ route('admin.settings') }}#compensation_plan" class="underline">GSB daily pool rate</a>,
         default 45% of the day's company BV): their score and score value are shown read-only here, and the day's
         variable score value — never above the fixed value — is computed at each cut-off. Each slab also carries its
-        <strong>Mentorship Bonus</strong> settings: the MSB score (points credited to the direct sponsor when a
-        sponsee's cut-off matches this slab) and the MSB score value (₹ per point) — MSB stays fixed for all slabs.
+        <strong>MSB score</strong>: the Mentorship Bonus points credited to the direct sponsor when a sponsee's
+        cut-off matches this slab. Those points have no configured rupee value — they are priced daily from the
+        MSB pool (see the panel above).
     </p>
     <div class="space-y-3">
         @foreach($slabs as $row)
@@ -120,13 +170,12 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">MSB score <x-help-tip text="Mentorship Bonus points credited to the direct sponsor each time a sponsee's cut-off matches this slab. The sponsor's MB income is MSB score × MSB score value." /></label>
                     <input type="number" name="msb_score" data-field-label="MSB score" data-msb-score-input value="{{ $row->msb_score }}" required min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400" data-msb-preview>→ ₹{{ \Illuminate\Support\Number::format(($row->msb_score * $row->msb_score_value_paise) / 100, 0) }}</span>
+                    <span class="text-[11px] text-gray-400" data-msb-preview>→ {{ $row->msb_score }} points × the day's value</span>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB score value (₹) <x-help-tip text="Rupee value of one Mentorship Bonus point for this slab (KP 2026-07-25, default ₹250). Enter the value in paise (₹ × 100)." /></label>
-                    <input type="number" name="msb_score_value_paise" data-field-label="MSB score value (paise)" data-msb-score-value-input value="{{ $row->msb_score_value_paise }}" required min="1"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">₹{{ \Illuminate\Support\Number::format($row->msb_score_value_paise / 100, 2) }} / point</span>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB point value (₹) <x-help-tip text="Variable — computed at each daily cut-off as the MSB pool (3% of the day's company BV) ÷ the day's total MSB score points, floored to whole rupees. See the MSB Input & Output report for each day's value." /></label>
+                    <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">Variable (pool)</div>
+                    <span class="text-[11px] text-gray-400">3% pool ÷ the day's points</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">AGP / occurrence <x-help-tip text="Arovolife Growth Points awarded each time this slab is earned (feeds the monthly Growth Booster pool)." /></label>
@@ -349,22 +398,20 @@
             valueInput.addEventListener('input', recompute);
         });
 
-        // Same live preview for the per-slab Mentorship Bonus (MSB score × MSB score value).
+        // Mentorship Bonus points carry no configured rupee value any more —
+        // they are priced daily from the pool — so the preview only echoes the
+        // points being entered.
         document.querySelectorAll('[data-msb-score-input]').forEach(function (scoreInput) {
             var form = scoreInput.closest('form');
             if (!form) { return; }
             var preview = form.querySelector('[data-msb-preview]');
-            var valueInput = form.querySelector('[data-msb-score-value-input]');
-            if (!preview || !valueInput) { return; }
-            var recompute = function () {
+            if (!preview) { return; }
+            scoreInput.addEventListener('input', function () {
                 var s = scoreInput.value.trim();
-                var vp = valueInput.value.trim();
-                if (s === '' || isNaN(Number(s)) || vp === '' || isNaN(Number(vp))) { preview.textContent = '→ —'; return; }
-                var rupees = Number(s) * Number(vp) / 100;
-                preview.textContent = '→ ₹' + rupees.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            };
-            scoreInput.addEventListener('input', recompute);
-            valueInput.addEventListener('input', recompute);
+                preview.textContent = (s === '' || isNaN(Number(s)))
+                    ? '→ —'
+                    : '→ ' + s + " points × the day's value";
+            });
         });
     })();
 </script>

@@ -1,5 +1,5 @@
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    Mentorship Bonus earned by this distributor as a sponsor. When a directly sponsored sponsee's cut-off matches a GSB slab, the sponsor earns that slab's MSB points; the credit is points × the slab's point value (per-slab configurable). Legacy rows from the old 10%→1% rate ladder show — in the points columns.
+    Mentorship Bonus earned by this distributor as a sponsor. When a directly sponsored sponsee's cut-off matches a GSB slab, the sponsor earns that slab's MSB points; the credit is points × the day's point value (the 3% MSB pool ÷ the day's total points). Legacy rows from the old 10%→1% rate ladder show — in the points columns.
 </div>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
@@ -12,7 +12,7 @@
                 <th class="px-3 py-2 text-left text-gray-500">Sponsee ADN <x-help-tip text="The downline distributor whose GSB slab achievement triggered this Mentorship Bonus." /></th>
                 <th class="px-3 py-2 text-center text-gray-500">Slab <x-help-tip text="The GSB slab the sponsee matched on this date." /></th>
                 <th class="px-3 py-2 text-right text-gray-500">MSB points <x-help-tip text="Points credited to this sponsor for the sponsee's slab (snapshotted at credit time)." /></th>
-                <th class="px-3 py-2 text-right text-gray-500">Point value <x-help-tip text="Rupee value of one MSB point at credit time (per-slab configurable, default ₹250)." /></th>
+                <th class="px-3 py-2 text-right text-gray-500">Point value <x-help-tip text="Rupee value of one MSB point on the day it was credited: the day's 3% MSB pool ÷ the day's total MSB points, floored to whole rupees." /></th>
                 <th class="px-3 py-2 text-right text-gray-500">MB credited <x-help-tip text="MB amount credited to this distributor's wallet (points × value)." /></th>
                 <th class="px-3 py-2 text-center text-gray-500">Status</th>
             </tr>

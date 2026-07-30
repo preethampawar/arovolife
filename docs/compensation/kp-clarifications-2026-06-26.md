@@ -4,6 +4,16 @@
 **Round-1 questions sent:** 2026-06-26 · **KP's answers received:** 2026-06-27 (Google Doc Q&A)
 **Status:** Round 1 fully answered. Round 2 + 3 open gaps below.
 
+> ⚠️ **Partly superseded — this file is kept verbatim as the record of what KP
+> answered on 2026-06-27; it is not edited when the plan later changes.** The
+> Mentorship Bonus answers below describe the retired 10%→1% rate ladder. MSB
+> was replaced by a points model (2026-07-25) and then by the **daily 3% pool
+> engine (KP 2026-07-30)** — the day's pool ÷ the day's total MSB points. GSB
+> was likewise superseded by the 2026-07-21 "New Engine" and the 2026-07-29
+> pool pricing. For the current rules see
+> `.claude/skills/arovolife-compensation-plan/SKILL.md` and
+> `app/resources/help/compensation.md`.
+
 ---
 
 ## Round 1 — ANSWERED by KP (2026-06-27)

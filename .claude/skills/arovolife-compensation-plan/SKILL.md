@@ -9,6 +9,8 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 > 1. `docs/compensation/kp-clarifications-2026-06-26.md` (KP's Q&A — answers + open items)
 > 2. `~/.claude/.../memory/compensation_plan_kp_amendments_2026_06_26.md` (numeric params SSOT)
 >
+> ⚠️ **MSB SUPERSEDED by KP's 2026-07-30 daily-pool engine** — see the "2nd Benefit" section below. MSB points are no longer multiplied by a configured value; the day's 3% pool is divided by the day's total MSB points.
+>
 > Key deltas the 06-19 text below gets WRONG: admin charge **+ 5% TDS apply to all 7 bonuses** (incl. ADC + Lifetime Awards); repurchase pool = GSB+MB+GBB+Fortune+Rank; min payout **₹100**; repurchase date = Retailer-title anniversary; monthly repurchase BV is **graduated per rank** (R1 1,000 … R9 2,300; R7/R8 TBD); envelope %s restated (GSB 46 / MB 1.5 / Rank 20~21 / Fortune 6 / Lifetime 18.5 / ADC 3).
 >
 > ⚠️ **GSB SUPERSEDED by KP's 2026-07-21 "New Engine"** (memory `gsb_new_engine_2026_07_21.md`, shipped 2026-07-25). GSB bonus = matched slab's `score` × that slab's **per-slab configurable score value** (default ₹250/point) — NOT the old global ₹360 rate. New scores **8/16/32/60/112/184/280**; both-sides thresholds **15K/36K/1L/3L/9L/27L/81L**; bonuses **₹2,000 / ₹4,000 / ₹8,000 / ₹15,000 / ₹28,000 / ₹46,000 / ₹70,000**. Personal-BV title thresholds unchanged. **Conditional personal-BV top-up**: personal purchase BV accumulates and is credited to the weaker leg only on a cut-off where a leg's effective BV (incl. CF) has touched a slab threshold (real personal BV never mutated). **Equal-sides tie-break**: Left is the power side (its excess carries forward, Right → 0). The sheet's "45% of daily turnover ÷ total score" example is a future company P/L metric only — not implemented. The slab table below shows even older 06-19 numbers — use the New Engine values.
@@ -24,7 +26,7 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 |---|---|---|---|
 | Retail Margin | 10–30% | Per sale | Phase 2 |
 | Genos Sales Bonus (GSB) | 40% | Daily cut-off 23:59; weekly Tuesday payout | Phase 4 |
-| Mentorship Bonus | 3% (per-slab points × ₹250, KP 2026-07-25) | With GSB | Phase 4 |
+| Mentorship Bonus | 3% daily pool ÷ the day's MSB points (KP 2026-07-30) | With GSB | Phase 4 |
 | Growth Booster Bonus | 5% of monthly turnover | Monthly | Phase 4 |
 | Rank Bonus | 21% (see pool table) | Monthly 8th | Phase 5 |
 | Fortune Bonus | 3×9 matrix, participation-based | Monthly reset | Phase 6 |
@@ -118,26 +120,38 @@ Bonus = score × per-slab score value (default ₹250). Personal-purchase title 
 
 ---
 
-## 2nd Benefit: Mentorship Bonus — 3% (points engine, KP 2026-07-25)
+## 2nd Benefit: Mentorship Bonus — 3% daily pool (KP 2026-07-30)
 
-> ⚠️ **The 10%→1% cumulative-GSB rate ladder is SUPERSEDED** (KP sheet 2026-07-25, implemented same day). Do not reintroduce it.
+> ⚠️ **Both earlier models are SUPERSEDED**: the 10%→1% cumulative-GSB rate ladder (retired 2026-07-25) and the fixed ₹250-per-point value (retired 2026-07-30). Do not reintroduce either. There is **no configured MSB point value** — `gsb_slabs.msb_score_value_paise` no longer exists.
 
-When a **directly sponsored** sponsee's daily cut-off credits GSB slab N, the sponsor's MSB score account is credited that slab's **MSB points**; the wallet credit is **points × the slab's MSB score value** (default ₹250/point, per-slab admin-configurable in `gsb_slabs.msb_score` / `msb_score_value_paise`, edited on the Plan-settings GSB-slab forms).
+When a **directly sponsored** sponsee's daily cut-off credits GSB slab N, the sponsor accrues that slab's **MSB points** (`gsb_slabs.msb_score`, editable on the Plan-settings GSB-slab forms). The rupee value of a point is computed per day:
 
-| Sponsee's slab | MSB points to sponsor | Income @ ₹250 |
-|---|---|---|
-| 1 | 21 | ₹5,250 |
-| 2 | 18 | ₹4,500 |
-| 3 | 15 | ₹3,750 |
-| 4 | 12 | ₹3,000 |
-| 5 | 9 | ₹2,250 |
-| 6 | 6 | ₹1,500 |
-| 7 | 3 | ₹750 |
+```
+MSB pool        = comp.msb.pool_rate_bp (default 300 bp = 3%) × the day's company BV
+point value     = floor_to_whole_rupee(pool ÷ the day's total MSB points)
+sponsor income  = their points × point value
+```
 
-- Points + point value are **snapshotted** on each `mentorship_bonus_results` row (`slab`, `msb_points`, `msb_point_value_paise`) — admin edits never change history. Legacy ladder rows have null snapshots.
-- Sponsor 600 BV personal-minimum gate unchanged; deductions (admin charge/TDS) still at payout; credit is immediate/daily with the GSB cut-off, gated by `MentorshipBonusFeature`.
-- **Applies only to direct sponsees' GSB slab achievements.** Does not apply to any other benefit type. No cumulative per-pair tracking anymore.
-- Admin **MSB Calculation Report** (`/admin/compensation/msb-calculation`): sponsor/sponsee, points, value, income; search, date-range + slab filters, grand totals (points + income), CSV.
+| Sponsee's slab | MSB points to sponsor |
+|---|---|
+| 1 | 21 |
+| 2 | 18 |
+| 3 | 15 |
+| 4 | 12 |
+| 5 | 9 |
+| 6 | 6 |
+| 7 | 3 |
+
+**KP's worked examples.** A 1,00,000 BV day → ₹3,000 pool. Two slab-1 sponsors (21+21) + one slab-2 sponsor (18) = 60 points → **₹50/point** → ₹1,050 + ₹1,050 + ₹900 = ₹3,000. Five earners at 21+18+15+12+9 = 75 points → **₹40/point** → 840+720+600+480+360 = ₹3,000.
+
+- Company BV is the same signed `bv_ledger_entries` sum the GSB pool uses; both pool and value are clamped at 0 (a refund-heavy day can be negative).
+- **Third pass in the cut-off**: everyone settles → `msb_daily_pools` row frozen (immutable, audit-logged `msb.pool.frozen`) → credits. Single-distributor retries never freeze; they price against the stored value.
+- Only sponsors who will actually be paid enter the denominator — the 600 BV personal-minimum gate excludes a sponsor before they can dilute the pool.
+- Points + the day's value are **snapshotted** per `mentorship_bonus_results` row (`slab`, `msb_points`, `msb_point_value_paise`); legacy ladder rows have null snapshots.
+- A zero-point day freezes a ₹0 value (pool unspent); a retry on such a day writes a ₹0 row with no wallet entry. Deliberately the opposite of the GSB pool's zero-achiever rule — **KP sign-off pending** (risk register R-35).
+- Deductions (admin charge/TDS) still at payout; gated by `MentorshipBonusFeature`.
+- **Applies only to direct sponsees' GSB slab achievements.** No cumulative per-pair tracking.
+- Admin reports: **MSB Calculation** (`/admin/compensation/msb-calculation`) per credit, and **MSB Input & Output Per Day** (`/admin/compensation/msb-input-output`) per day — BV, pool, each earner's points, point value, income, totals, day/week/date search, CSV.
 
 ---
 

@@ -18,10 +18,11 @@ use Illuminate\Support\Facades\DB;
  *  - per-slab score value replaces the single global ₹360 score rate.
  * Personal-purchase title-BV thresholds are unchanged (KP 27-06-2026 Round-2).
  *
- * 2026-07-25 MSB sheet: per-slab Mentorship Bonus points 21/18/15/12/9/6/3
- * (credited to the direct sponsor when a sponsee's cut-off matches the slab),
- * each worth msb_score_value_paise (default ₹250 = 25,000 paise, per-slab
- * configurable). Replaces the 10%→1% cumulative-GSB rate ladder.
+ * 2026-07-25 MSB sheet: per-slab Mentorship Bonus points 21/18/15/12/9/6/3,
+ * credited to the direct sponsor when a sponsee's cut-off matches the slab.
+ * Since KP's 2026-07-30 revision the points have no configured rupee value:
+ * they are priced daily at the MSB pool ÷ the day's total points
+ * (MsbDailyPoolService), so only msb_score lives on the slab.
  */
 final class GsbSlabsSeeder extends Seeder
 {
@@ -30,14 +31,14 @@ final class GsbSlabsSeeder extends Seeder
         $now = now()->format('Y-m-d H:i:s.v');
 
         $rows = [
-            // slab, title, title_min_bv_paise, matched_bv_paise, score, score_value_paise, bonus_paise, agp, cf_lifetime, active, msb_score, msb_score_value_paise
-            [1, 'Retailer', 300_000, 1_500_000, 8, 25_000, 200_000, 12, true, true, 21, 25_000],
-            [2, 'Dealer', 700_000, 3_600_000, 16, 25_000, 400_000, 5, false, true, 18, 25_000],
-            [3, 'Wholesaler', 1_500_000, 10_000_000, 32, 25_000, 800_000, 2, false, true, 15, 25_000],
-            [4, 'Distributor', 3_200_000, 30_000_000, 60, 25_000, 1_500_000, 0, false, true, 12, 25_000],
-            [5, 'Regional Distributor', 6_800_000, 90_000_000, 112, 25_000, 2_800_000, 0, false, true, 9, 25_000],
-            [6, 'National Distributor', 14_400_000, 270_000_000, 184, 25_000, 4_600_000, 0, false, true, 6, 25_000],
-            [7, 'Global Distributor', 30_000_000, 810_000_000, 280, 25_000, 7_000_000, 0, false, true, 3, 25_000],
+            // slab, title, title_min_bv_paise, matched_bv_paise, score, score_value_paise, bonus_paise, agp, cf_lifetime, active, msb_score
+            [1, 'Retailer', 300_000, 1_500_000, 8, 25_000, 200_000, 12, true, true, 21],
+            [2, 'Dealer', 700_000, 3_600_000, 16, 25_000, 400_000, 5, false, true, 18],
+            [3, 'Wholesaler', 1_500_000, 10_000_000, 32, 25_000, 800_000, 2, false, true, 15],
+            [4, 'Distributor', 3_200_000, 30_000_000, 60, 25_000, 1_500_000, 0, false, true, 12],
+            [5, 'Regional Distributor', 6_800_000, 90_000_000, 112, 25_000, 2_800_000, 0, false, true, 9],
+            [6, 'National Distributor', 14_400_000, 270_000_000, 184, 25_000, 4_600_000, 0, false, true, 6],
+            [7, 'Global Distributor', 30_000_000, 810_000_000, 280, 25_000, 7_000_000, 0, false, true, 3],
         ];
 
         $records = array_map(fn (array $r): array => [
@@ -52,7 +53,6 @@ final class GsbSlabsSeeder extends Seeder
             'carry_forward_lifetime' => $r[8],
             'is_active' => $r[9],
             'msb_score' => $r[10],
-            'msb_score_value_paise' => $r[11],
             'created_at' => $now,
             'updated_at' => $now,
         ], $rows);
@@ -60,7 +60,7 @@ final class GsbSlabsSeeder extends Seeder
         DB::table('gsb_slabs')->upsert(
             $records,
             ['slab'],
-            ['title', 'title_min_bv_paise', 'matched_bv_paise', 'score', 'score_value_paise', 'bonus_paise', 'agp_per_occurrence', 'carry_forward_lifetime', 'is_active', 'msb_score', 'msb_score_value_paise', 'updated_at'],
+            ['title', 'title_min_bv_paise', 'matched_bv_paise', 'score', 'score_value_paise', 'bonus_paise', 'agp_per_occurrence', 'carry_forward_lifetime', 'is_active', 'msb_score', 'updated_at'],
         );
 
         // Pin the personal-BV top-up go-live date to the deploy date, once.

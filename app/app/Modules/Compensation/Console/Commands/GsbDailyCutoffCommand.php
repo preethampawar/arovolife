@@ -6,9 +6,11 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
+use App\Modules\Compensation\Services\DTOs\MsbAccrual;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
+use App\Modules\Compensation\Services\MsbDailyPoolService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -30,6 +32,7 @@ final class GsbDailyCutoffCommand extends Command
         private readonly GsbCutoffService $cutoff,
         private readonly MentorshipBonusService $mentorship,
         private readonly GsbDailyPoolService $poolService,
+        private readonly MsbDailyPoolService $msbPoolService,
     ) {
         parent::__construct();
     }
@@ -137,6 +140,10 @@ final class GsbDailyCutoffCommand extends Command
         }
 
         // Pass 2 — price against the frozen pool, then settle (all writes).
+        // MSB accruals are collected here and credited in pass 3 below.
+        /** @var list<MsbAccrual> $accruals */
+        $accruals = [];
+        $msbTotalPoints = 0;
         foreach ($computations as $distributorId => $computation) {
             try {
                 $this->cutoff->price($computation, $pool, $poolPricingActive);
@@ -148,8 +155,15 @@ final class GsbDailyCutoffCommand extends Command
                         // MB failures are logged and counted separately — the
                         // distributor's own GSB credit already succeeded, so an
                         // MB error must not be triaged as a GSB cut-off failure.
+                        // Only ACCRUE here: the MSB point value is the day's
+                        // pool ÷ the day's total points, so nothing can be
+                        // priced until every distributor has settled.
                         try {
-                            $this->mentorship->processForSponsee($distributorId, $result);
+                            $accrual = $this->mentorship->accrueForSponsee($distributorId, $result);
+                            if ($accrual !== null) {
+                                $accruals[] = $accrual;
+                                $msbTotalPoints += $accrual->points;
+                            }
                         } catch (\Throwable $e) {
                             $mbFailed++;
                             Log::error('mb.credit.exception', [
@@ -176,7 +190,34 @@ final class GsbDailyCutoffCommand extends Command
             }
         }
 
-        $this->info("Done — total: {$total}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}");
+        // Pass 3 — the day's MSB denominator is only known now, so freeze the
+        // pool and credit every accrual at the one point value it yields.
+        // Single-distributor retries never freeze: one sponsor's points are not
+        // the day's denominator, so they price against the existing snapshot.
+        $msbPointValuePaise = 0;
+        if ($mentorshipActive) {
+            $msbPool = $singleId === null
+                ? $this->msbPoolService->freezePoolForDate($date, $msbTotalPoints)
+                : $this->msbPoolService->poolForDate($date);
+            $msbPointValuePaise = (int) ($msbPool->point_value_paise ?? 0);
+
+            foreach ($accruals as $accrual) {
+                try {
+                    $this->mentorship->creditAccrual($accrual, $msbPool);
+                } catch (\Throwable $e) {
+                    $mbFailed++;
+                    Log::error('mb.credit.exception', [
+                        'sponsee_id' => $accrual->sponseeId,
+                        'cutoff_date' => $date->toDateString(),
+                        'error' => $e->getMessage(),
+                        'exception' => get_class($e),
+                    ]);
+                }
+            }
+        }
+
+        $msbValue = number_format($msbPointValuePaise / 100, 2);
+        $this->info("Done — total: {$total}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
 
         return ($failed > 0 || $mbFailed > 0) ? self::FAILURE : self::SUCCESS;
     }

@@ -6,7 +6,7 @@
 
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global daily Mentorship Bonus (MSB) calculation table — one row per sponsor–sponsee pair per cutoff date.
-    When a sponsee's cut-off matches a GSB slab, the direct sponsor earns that slab's MSB points; income = points × the slab's MSB score value.
+    When a sponsee's cut-off matches a GSB slab, the direct sponsor earns that slab's MSB points; income = points × the day's point value (the 3% MSB pool ÷ the day's total points — see <a href="{{ route('admin.compensation.msb-input-output.index') }}" class="underline">MSB Input &amp; Output / Day</a>).
     Search by sponsor or sponsee ADN/name, filter by date range, slab and status.
 </div>
 
@@ -62,7 +62,7 @@
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">
                         Value
-                        <x-help-tip text="Rupee value of one MSB point at credit time (per-slab configurable, default ₹250)." />
+                        <x-help-tip text="Rupee value of one MSB point on the day it was credited: the day's 3% MSB pool ÷ the day's total MSB points, floored to whole rupees. Snapshotted per credit, so it never changes afterwards." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">Received Income</th>
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
@@ -77,7 +77,7 @@
                 <tr class="hover:bg-gray-50">
                     <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
-                        <a href="{{ route('admin.compensation.distributors.show', [$row->sponsor_id, 'tab' => 'msb']) }}"
+                        <a href="{{ route('admin.compensation.distributors.show', [$row->sponsor_id, 'tab' => 'mb']) }}"
                            class="text-brand-600 hover:underline">
                             {{ $row->sponsor_adn }}
                         </a>

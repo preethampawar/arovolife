@@ -85,9 +85,11 @@ it('exposes the seeded GSB slab ladder', function () {
     expect($slab1['bonus_paise'])->toBe(200_000);         // KP 2026-07-21: score 8 × ₹250
     expect($slab1['score_value_paise'])->toBe(25_000);
     expect($slab1['carry_forward_lifetime'])->toBeTrue();
-    // Mentorship points engine (KP 2026-07-25): slab 1 → 21 points × ₹250 default.
+    // Mentorship points engine: slab 1 → 21 points. The points carry no
+    // configured rupee value since KP 2026-07-30 — they are priced daily from
+    // the MSB pool (MsbDailyPoolService).
     expect($slab1['msb_score'])->toBe(21);
-    expect($slab1['msb_score_value_paise'])->toBe(25_000);
+    expect($slab1)->not->toHaveKey('msb_score_value_paise');
 
     // Slab 7 (Global Distributor) is a fully payable slab: score 280 × ₹250 → ₹70,000.
     expect($plan->gsbSlab(7)['bonus_paise'])->toBe(7_000_000);

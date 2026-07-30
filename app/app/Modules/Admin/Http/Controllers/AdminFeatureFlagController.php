@@ -72,7 +72,7 @@ final class AdminFeatureFlagController extends Controller
             'compensation.mentorship_bonus' => [
                 'class' => MentorshipBonusFeature::class,
                 'label' => 'Mentorship Bonus (Phase 4)',
-                'description' => 'Shows the Mentorship Bonus income tab and admin views for distributors. Enable after partners approve the 5% mentorship plan. Slabs step down from 10% → 1% per ₹30k of sponsee GSB.',
+                'description' => 'Shows the Mentorship Bonus income tab and admin views for distributors, and lets the daily cut-off accrue and credit MSB. When a directly sponsored sponsee matches a GSB slab, the sponsor earns that slab\'s MSB points; each day\'s point value is the MSB pool (default 3% of the day\'s company BV) divided by the day\'s total points, floored to whole rupees. Enable after partners approve the mentorship plan.',
                 'owner' => 'developer',
             ],
             'compensation.repurchase_engine' => [

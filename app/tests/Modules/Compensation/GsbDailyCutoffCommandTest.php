@@ -7,6 +7,7 @@ use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
+use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -76,6 +77,56 @@ it('runs both GSB and the Mentorship Bonus when both features are on', function 
 
     expect(GsbCutoffResult::where('distributor_id', $sponsee->id)->where('status', GsbCutoffResult::STATUS_CREDITED)->exists())->toBeTrue();
     expect(MentorshipBonusResult::where('sponsor_id', $sponsor->id)->exists())->toBeTrue();
+});
+
+it('freezes one MSB pool for the day and prices every sponsor from it', function (): void {
+    // Two sponsors, each with a sponsee matching slab 1 → 21 points apiece.
+    [$sponsorA] = seedGsbCreditingPair();
+    $sponsorB = Distributor::factory()->create(['status' => 'active', 'adn' => '100000003']);
+    $sponseeB = Distributor::factory()->create(['status' => 'active', 'adn' => '100000004']);
+    BvLedgerEntry::create(['distributor_id' => $sponseeB->id, 'order_id' => 999_003, 'bv_paise' => 300_000, 'type' => 'accrual', 'effective_at' => now()]);
+    BvLedgerEntry::create(['distributor_id' => $sponsorB->id, 'order_id' => 999_004, 'bv_paise' => 60_000, 'type' => 'accrual', 'effective_at' => now()]);
+    GroupBvDaily::create(['distributor_id' => $sponseeB->id, 'date' => today()->toDateString(), 'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000]);
+    DB::table('sponsorship')->insert(['sponsor_id' => $sponsorB->id, 'distributor_id' => $sponseeB->id, 'created_at' => now()]);
+
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+
+    $pool = MsbDailyPool::whereDate('cutoff_date', today()->toDateString())->first();
+    expect($pool)->not->toBeNull();
+    expect($pool->total_points)->toBe(42);   // 21 + 21
+
+    // The day's company BV is the seeded personal BV; both sponsors are priced
+    // from the one frozen value, and the payout never exceeds the pool.
+    $rows = MentorshipBonusResult::whereIn('sponsor_id', [$sponsorA->id, $sponsorB->id])->get();
+    expect($rows)->toHaveCount(2);
+    foreach ($rows as $row) {
+        expect($row->msb_points)->toBe(21);
+        expect($row->msb_point_value_paise)->toBe($pool->point_value_paise);
+        expect($row->mb_gross_paise)->toBe(21 * $pool->point_value_paise);
+    }
+    expect((int) $rows->sum('mb_gross_paise'))->toBe($pool->payout_paise);
+    expect($pool->payout_paise)->toBeLessThanOrEqual($pool->pool_paise);
+});
+
+it('does not re-price or double-pay MSB when the day is re-run', function (): void {
+    [$sponsor] = seedGsbCreditingPair();
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    $first = MentorshipBonusResult::where('sponsor_id', $sponsor->id)->firstOrFail();
+
+    // A second full run over the same day — cut-offs are already settled.
+    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+
+    expect(MsbDailyPool::count())->toBe(1);
+    expect(MentorshipBonusResult::where('sponsor_id', $sponsor->id)->count())->toBe(1);
+    $again = MentorshipBonusResult::findOrFail($first->id);
+    expect($again->mb_gross_paise)->toBe($first->mb_gross_paise);
+    expect($again->msb_point_value_paise)->toBe($first->msb_point_value_paise);
 });
 
 // ── Daily pool pricing for slabs 3–7 (KP 2026-07-29) ────────────────────────

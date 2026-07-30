@@ -72,7 +72,6 @@ it('persists a GSB slab edit, writes an audit log, and dispatches the domain eve
             'score' => 12,                 // 12 × ₹250 = ₹3,000
             'score_value_paise' => 25_000, // ₹250 per score point
             'msb_score' => 20,             // Mentorship points for this slab
-            'msb_score_value_paise' => 30_000, // ₹300 per MSB point
             'agp_per_occurrence' => 5,
             'carry_forward_lifetime' => 0,
             'is_active' => 1,
@@ -85,7 +84,6 @@ it('persists a GSB slab edit, writes an audit log, and dispatches the domain eve
     expect((int) $row->score_value_paise)->toBe(25_000);
     expect((int) $row->bonus_paise)->toBe(12 * 25_000);
     expect((int) $row->msb_score)->toBe(20);
-    expect((int) $row->msb_score_value_paise)->toBe(30_000);
 
     expect(AuditLog::where('action', 'compensation.plan.gsb_slab.updated')->exists())->toBeTrue();
     Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'gsb_slab' && $e->key === '2');
@@ -101,6 +99,43 @@ it('hides the score inputs for pro-rated slabs 3–7 and shows the pool note', f
     expect(substr_count($res->getContent(), 'name="score_value_paise"'))->toBe(2); // slabs 1–2 only
 });
 
+it('no longer offers an MSB score value field and explains how both pools price', function () {
+    $res = $this->actingAs(planAdmin('developer'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk();
+
+    // The per-slab MSB value was removed with KP's 2026-07-30 pool engine.
+    $res->assertDontSee('name="msb_score_value_paise"', false);
+    $res->assertSee('name="msb_score"', false);
+
+    // …and the page explains what replaced it.
+    $res->assertSee('How GSB and MSB are calculated');
+    $res->assertSee("the day's total MSB points", false);
+});
+
+it('rejects a crafted POST that tries to reinstate the MSB score value', function () {
+    $before = DB::table('gsb_slabs')->where('slab', 1)->first();
+
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.gsb-slab.update', 1), [
+            'title' => (string) $before->title,
+            'title_min_bv_paise' => (int) $before->title_min_bv_paise,
+            'matched_bv_paise' => (int) $before->matched_bv_paise,
+            'score' => (int) $before->score,
+            'score_value_paise' => (int) $before->score_value_paise,
+            'msb_score' => (int) $before->msb_score,
+            'msb_score_value_paise' => 99_999,  // column is gone — must not be written
+            'agp_per_occurrence' => (int) $before->agp_per_occurrence,
+            'carry_forward_lifetime' => 1,
+            'is_active' => 1,
+        ])
+        ->assertRedirect(route('admin.compensation.plan-settings.index'));
+
+    $columns = (array) DB::table('gsb_slabs')->where('slab', 1)->first();
+    expect($columns)->not->toHaveKey('msb_score_value_paise');
+});
+
 it('ignores score and score value on a crafted POST for a pro-rated slab', function () {
     $before = DB::table('gsb_slabs')->where('slab', 3)->first();
 
@@ -113,7 +148,6 @@ it('ignores score and score value on a crafted POST for a pro-rated slab', funct
             'score' => 999,                 // must be ignored server-side
             'score_value_paise' => 99_999,  // must be ignored server-side
             'msb_score' => (int) $before->msb_score,
-            'msb_score_value_paise' => (int) $before->msb_score_value_paise,
             'agp_per_occurrence' => (int) $before->agp_per_occurrence,
             'carry_forward_lifetime' => 0,
             'is_active' => 1,

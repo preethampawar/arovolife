@@ -45,6 +45,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbInputOutputControlle
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbCalculationController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbInputOutputController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
@@ -372,6 +373,9 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
 
         Route::get('msb-calculation', [AdminMsbCalculationController::class, 'index'])->name('msb-calculation.index');
         Route::get('msb-calculation/export', [AdminMsbCalculationController::class, 'export'])->name('msb-calculation.export');
+
+        Route::get('msb-input-output', [AdminMsbInputOutputController::class, 'index'])->name('msb-input-output.index');
+        Route::get('msb-input-output/export', [AdminMsbInputOutputController::class, 'export'])->name('msb-input-output.export');
 
         Route::get('gbb-calculation', [AdminGbbCalculationController::class, 'index'])->name('gbb-calculation.index');
         Route::get('gbb-calculation/export', [AdminGbbCalculationController::class, 'export'])->name('gbb-calculation.export');

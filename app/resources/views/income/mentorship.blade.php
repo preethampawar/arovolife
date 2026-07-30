@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        You earn Mentorship Bonus points when a distributor you directly sponsored achieves a Genos Sales Bonus (GSB) slab. Each slab carries a fixed number of MSB points, and your bonus is those points × the slab's point value. This bonus applies only to directly sponsored distributors' GSB slab achievements — not to any other income type.
+        You earn Mentorship Bonus points when a distributor you directly sponsored achieves a Genos Sales Bonus (GSB) slab. Each slab carries a fixed number of MSB points, and your bonus is those points × that day's point value — the day's Mentorship Bonus pool shared out across everyone's points. The value therefore depends on that day's company-wide sales and on how many points were earned, and it can be ₹0 on a low-sales day; the points are recorded either way. This bonus applies only to directly sponsored distributors' GSB slab achievements — not to any other income type.
     </div>
 
     {{-- Summary cards --}}
@@ -64,7 +64,7 @@
                             <span class="flex items-center justify-end gap-1">MSB points <x-help-tip text="Points you earned for this slab achievement. Your bonus is points × the point value." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Point value <x-help-tip text="Rupee value of one MSB point at the time it was credited." /></span>
+                            <span class="flex items-center justify-end gap-1">Point value <x-help-tip text="Rupee value of one MSB point on the day it was credited: that day's Mentorship Bonus pool divided by everyone's MSB points for the day. It changes daily, depends on that day's company-wide sales, and can be ₹0 on a low-sales day." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">MB earned</th>
                     </tr>

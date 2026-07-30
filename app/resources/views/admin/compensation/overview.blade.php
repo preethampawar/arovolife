@@ -100,6 +100,7 @@
     <a href="{{ route('admin.compensation.gsb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">GSB Calculation →</a>
     <a href="{{ route('admin.compensation.gsb-input-output.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">GSB Input & Output / Day →</a>
     <a href="{{ route('admin.compensation.msb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">MSB Calculation →</a>
+    <a href="{{ route('admin.compensation.msb-input-output.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">MSB Input &amp; Output / Day →</a>
     <a href="{{ route('admin.compensation.gbb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">GBB Calculation →</a>
     <a href="{{ route('admin.compensation.rb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Rank Bonus Calculation →</a>
     <a href="{{ route('admin.compensation.fb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Fortune Bonus Calculation →</a>

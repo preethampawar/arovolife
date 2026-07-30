@@ -36,12 +36,22 @@ are not transferred to your bank.
 
 ## 3. How the Mentorship Bonus works
 
-When a distributor **you directly sponsored** earns GSB, you receive a
-percentage of that GSB as Mentorship Bonus, credited to your wallet in the same
-nightly run. The percentage starts high for the first earnings band from that
-person and steps down over time to a lifetime rate — tracked separately for
-each person you sponsored. It applies only to your direct sponsees' GSB,
-nothing else.
+When a distributor **you directly sponsored** earns a GSB slab, you earn that
+slab's **Mentorship Bonus points** — 21 points for slab 1, then 18, 15, 12, 9, 6
+and 3 for slabs 2 to 7. It applies only to your direct sponsees' GSB slab
+achievements, nothing else.
+
+Points are turned into rupees at the end of the same nightly run. A fixed share
+of the day's company-wide BV — **3%**, shown on the plan page — forms that day's
+Mentorship Bonus pool, and the pool is divided by everyone's MSB points for the
+day to give a single **point value**; your bonus is your points × that value.
+
+Two things follow. The value differs from day to day, because it depends on that
+day's company-wide sales and on how many points everyone earned. And on a
+low-sales day it **can be ₹0** — your points are still recorded, but they are
+worth nothing that day. The value used for each of your credits is shown next to
+it in My Income → **Mentorship**. You must hold the 600 BV personal minimum to
+earn.
 
 ## 4. Getting paid
 

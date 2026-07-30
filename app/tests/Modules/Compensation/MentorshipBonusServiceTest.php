@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
+use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Identity\Models\Distributor;
@@ -53,11 +54,33 @@ function makeCreditedCutoff(Distributor $sponsee, int $slab, int $grossGsbPaise 
     ]);
 }
 
-it('credits the sponsor with slab points × point value (slab 1 → 21 × ₹250 = ₹5,250)', function () {
+/**
+ * Freeze today's MSB pool at a chosen point value. The single-distributor path
+ * never freezes a pool itself, so every credit test needs the day's economics
+ * to exist first — exactly as the nightly run leaves them.
+ */
+function freezeMsbPoolAt(int $pointValuePaise, int $totalPoints = 60): MsbDailyPool
+{
+    $payout = $pointValuePaise * $totalPoints;
+
+    return MsbDailyPool::create([
+        'cutoff_date' => today()->toDateString(),
+        'company_bv_paise' => $payout === 0 ? 0 : intdiv($payout * 10_000, 300),
+        'pool_rate_bp' => 300,
+        'pool_paise' => $payout,
+        'total_points' => $totalPoints,
+        'point_value_paise' => $pointValuePaise,
+        'payout_paise' => $payout,
+        'leftover_paise' => 0,
+    ]);
+}
+
+it('credits the sponsor with slab points × the day\'s pooled point value (slab 1 → 21 × ₹250 = ₹5,250)', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
+    freezeMsbPoolAt(25_000);
 
     $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
 
@@ -78,13 +101,14 @@ it('credits the sponsor with slab points × point value (slab 1 → 21 × ₹250
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
 });
 
-it('pays each slab its own points (slab 3 → 15 × ₹250 = ₹3,750; slab 7 → 3 × ₹250 = ₹750)', function () {
+it('pays each slab its own points at one shared value (slab 3 → 15 pts; slab 7 → 3 pts, both @ ₹250)', function () {
     $sponsor = Distributor::factory()->create();
     $sponseeA = Distributor::factory()->create();
     $sponseeB = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponseeA);
     makeSponsorship($sponsor, $sponseeB);
     giveSponsorMinBv($sponsor);
+    freezeMsbPoolAt(25_000);
 
     $svc = app(MentorshipBonusService::class);
     $mbA = $svc->processForSponsee($sponseeA->id, makeCreditedCutoff($sponseeA, 3));
@@ -97,14 +121,14 @@ it('pays each slab its own points (slab 3 → 15 × ₹250 = ₹3,750; slab 7 �
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(450_000);
 });
 
-it('uses the per-slab point value configured at credit time', function () {
+it('prices every credit at the day\'s frozen pool value, whatever the slab', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
-    // Admin sets slab 2's MSB point value to ₹100 (10,000 paise).
-    DB::table('gsb_slabs')->where('slab', 2)->update(['msb_score_value_paise' => 10_000]);
+    // A busier day resolves to ₹100/point.
+    freezeMsbPoolAt(10_000);
 
     $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 2));
 
@@ -113,16 +137,50 @@ it('uses the per-slab point value configured at credit time', function () {
     expect($mb->mb_gross_paise)->toBe(180_000);   // 18 × ₹100 = ₹1,800
 });
 
-it('keeps historical rows unchanged when admin later edits the slab points or value', function () {
+it('returns null without crediting when the day has no frozen pool', function () {
     $sponsor = Distributor::factory()->create();
     $sponsee = Distributor::factory()->create();
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
+    // No freezeMsbPoolAt() — e.g. a date whose nightly ran before MSB was on.
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
+
+    expect($mb)->toBeNull();
+    expect(MentorshipBonusResult::count())->toBe(0);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(0);
+});
+
+it('writes a ₹0 row with no wallet entry when the day priced at zero', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+
+    // A day nobody accrued on: the pool went unspent and froze at ₹0.
+    freezeMsbPoolAt(0, 0);
+
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
+
+    expect($mb)->not->toBeNull();
+    expect($mb->msb_points)->toBe(21);
+    expect($mb->msb_point_value_paise)->toBe(0);
+    expect($mb->mb_gross_paise)->toBe(0);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(0);
+});
+
+it('keeps historical rows unchanged when admin later edits the slab points or the pool rate', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+    freezeMsbPoolAt(25_000);
+
     $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
     expect($mb->mb_gross_paise)->toBe(525_000);
 
-    DB::table('gsb_slabs')->where('slab', 1)->update(['msb_score' => 99, 'msb_score_value_paise' => 1]);
+    DB::table('gsb_slabs')->where('slab', 1)->update(['msb_score' => 99]);
+    DB::table('settings')->updateOrInsert(['key' => 'comp.msb.pool_rate_bp'], ['value' => '1']);
 
     $fresh = MentorshipBonusResult::findOrFail($mb->id);
     expect($fresh->msb_points)->toBe(21);
@@ -137,6 +195,7 @@ it('returns null when the slab carries zero MSB points', function () {
     giveSponsorMinBv($sponsor);
 
     DB::table('gsb_slabs')->where('slab', 1)->update(['msb_score' => 0]);
+    freezeMsbPoolAt(25_000);
 
     $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
 
@@ -163,6 +222,7 @@ it('is idempotent — calling twice for the same cutoff does not double-credit',
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
+    freezeMsbPoolAt(25_000);
     $cutoffResult = makeCreditedCutoff($sponsee, 1);
 
     $svc = app(MentorshipBonusService::class);
@@ -202,6 +262,7 @@ it('never mutates the sponsee GSB row or the sponsor personal BV ledger', functi
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
+    freezeMsbPoolAt(25_000);
     $bvBefore = (int) BvLedgerEntry::where('distributor_id', $sponsor->id)->sum('bv_paise');
     $cutoffResult = makeCreditedCutoff($sponsee, 1);
 
