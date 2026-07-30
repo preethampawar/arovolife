@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Seeds the four public content pages: ethics, terms, grievance, privacy.
+ * Seeds the five public content pages: ethics, terms, grievance, compensation, privacy.
  *
  * Source of truth for each page is a Markdown file under
  * `database/seeders/content/<slug>.md`. The seeder reads each file, strips
@@ -51,6 +51,11 @@ final class ContentPageSeeder extends Seeder
             'slug' => 'grievance',
             'title' => 'Grievance Redressal',
             'meta_description' => 'How to file a complaint with arovolife, the SLA we commit to, and the escalation matrix up to the Central Consumer Protection Authority and the Data Protection Board of India.',
+        ],
+        [
+            'slug' => 'compensation',
+            'title' => 'Compensation Plan Disclosure',
+            'meta_description' => 'How arovolife bonuses are calculated — Business Volume, the Genos Sales Bonus slabs and pooled score value, the Mentorship Bonus point value, eligibility gates, deductions and caps. Published under §6.2 of the Direct Seller Agreement.',
         ],
         [
             'slug' => 'privacy',

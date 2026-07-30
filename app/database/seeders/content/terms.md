@@ -137,7 +137,7 @@ You earn commissions, bonuses, pool credits, ranks, or any other monetary or in-
 
 ### 6.2 Plan Disclosure
 
-The current compensation plan — including BV per SKU, rank thresholds, payout slabs, caps and the formula used to compute pool shares — is published at `/p/compensation` (to be created in Phase 4) and is updated only with 30 days' written notice to all active Distributors. The Company-wide settings that drive the engine (e.g. Placement Strategy, daily order cap, payout cadence) are visible in your dashboard's "Compliance & Plan" section.
+The current compensation plan — including BV per SKU, rank thresholds, payout slabs, caps and the formula used to compute pool shares — is published at [`/p/compensation`](/p/compensation) and is updated only with 30 days' written notice to all active Distributors. The Company-wide settings that drive the engine (e.g. Placement Strategy, daily order cap, payout cadence) are visible in your dashboard's "Compliance & Plan" section.
 
 ### 6.3 No Income Projections
 

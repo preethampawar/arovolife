@@ -8,6 +8,8 @@ declare(strict_types=1);
  * CP-001..004 each of /p/ethics, /p/terms, /p/grievance, /p/privacy returns 200
  *                     when the seeder has run, and the rendered HTML contains
  *                     the statutory phrases required for that page.
+ * CP-008          /p/compensation publishes the plan formulas and the
+ *                 no-income-projection statement required by DSR 5(1)(d).
  * CP-005          unknown slug under /p/{slug} returns 404.
  * CP-006          a page in draft status under a valid slug returns 404
  *                 (we only publish `published` rows).
@@ -112,7 +114,7 @@ it('returns 404 for a draft content page even when the slug exists', function ()
 
 it('is idempotent — re-seeding does not duplicate rows and refreshes the body content', function (): void {
     $before = ContentPage::query()->count();
-    expect($before)->toBe(4);
+    expect($before)->toBe(5);
 
     $page = ContentPage::query()->where('slug', 'terms')->firstOrFail();
     $page->update(['body' => '<p>stale draft</p>']);
@@ -120,7 +122,7 @@ it('is idempotent — re-seeding does not duplicate rows and refreshes the body 
     $this->seed(ContentPageSeeder::class);
 
     $after = ContentPage::query()->count();
-    expect($after)->toBe(4);
+    expect($after)->toBe(5);
 
     $page->refresh();
     expect($page->body)
@@ -129,7 +131,7 @@ it('is idempotent — re-seeding does not duplicate rows and refreshes the body 
 });
 
 it('never exposes the engineer-only legal-review draft banner to end users', function (): void {
-    foreach (['ethics', 'terms', 'grievance', 'privacy'] as $slug) {
+    foreach (['ethics', 'terms', 'grievance', 'compensation', 'privacy'] as $slug) {
         $body = (string) $this->get('/p/'.$slug)->getContent();
         // The "DRAFT — LEGAL REVIEW REQUIRED" HTML comment lives in the
         // markdown source files for the benefit of counsel and engineers,
@@ -137,4 +139,31 @@ it('never exposes the engineer-only legal-review draft banner to end users', fun
         expect($body)->not->toContain('LEGAL REVIEW REQUIRED');
         expect($body)->not->toContain('DRAFT —');
     }
+});
+
+it('publishes the compensation plan formulas and the no-projection statement', function (): void {
+    $body = (string) $this->get('/p/compensation')->assertOk()->getContent();
+
+    expect($body)
+        // DSR 2021 Rule 5(1)(c) — the sale linkage, stated up front.
+        ->toContain('No commission without a product sale')
+        // DSR 2021 Rule 5(1)(d) / Hard Rule 3 — the disclaimer must survive rendering.
+        ->toContain('Nothing here is an income projection')
+        ->toContain('may be zero')
+        // §6.2 requires the pool formulas themselves to be published, not just described.
+        ->toContain('the total of all slab 3–7 scores earned that day')
+        ->toContain('the total MSB points earned by everyone that day')
+        // The ₹250 ceiling and the zero-point-day rule are payout rules, not trivia.
+        ->toContain('₹250 per point for every slab')
+        ->toContain('no MSB is payable for a day on which nobody qualified');
+});
+
+it('flags that the pooled methods are not yet in force until the §6.2 date is set', function (): void {
+    $body = (string) $this->get('/p/compensation')->getContent();
+
+    // Guard against the page going live claiming an effective date it does not
+    // have. Once the notice is issued the placeholder is replaced with a real
+    // date and this test is updated to assert that date instead.
+    expect($body)->toContain('EFFECTIVE DATE — TO BE INSERTED');
+    expect($body)->toContain('not yet operative');
 });
