@@ -63,6 +63,39 @@ php artisan gsb:weekly-payout
 php artisan gsb:weekly-payout --date=2026-07-01
 ```
 
+**⚠️ Month-end batch dates.** The repurchase deduction is a percentage of the
+**prior** month's bonus credits, so the batch date decides which window is
+summed. A batch dated on a day that does not exist one month earlier used to
+overflow into the current month and deduct repurchase against the very credits
+being paid out — a silent under-payment, no error. Fixed 2026-07-31 (`41ce71d`,
+`PayoutService::repurchaseDeductionPaise()`), with a regression test pinned to a
+month-end. The dates that exercise this path:
+
+| Day of month | Overflows in | Why |
+|---|---|---|
+| 31st | Mar, May, Jul, Oct, Dec | The preceding month has 30 or fewer days. Jan 31 and Aug 31 are safe — Dec and Jul both have 31. |
+| 30th | Mar only | February is the only month shorter than 30 days. |
+| 29th | Mar, non-leap years only | Safe in leap years (2028, 2032, …). |
+
+The scheduler runs `weeklyOn(2)`, so this only lands when a **Tuesday** falls on
+one of those dates. Verified clean on dev and staging as of 2026-07-31 (no batch
+ever ran on an affected date; total repurchase deducted across all line items was
+₹0). Re-run the check against production before go-live, and after any batch
+dated one of the above:
+
+```sql
+SELECT b.batch_date, COUNT(li.id) AS line_count,
+       COALESCE(SUM(li.repurchase_deduction_paise), 0) AS repurchase_paise
+FROM payout_batches b
+LEFT JOIN payout_line_items li ON li.payout_batch_id = b.id
+WHERE DAY(b.batch_date) > DAY(LAST_DAY(DATE_SUB(DATE_FORMAT(b.batch_date, '%Y-%m-01'), INTERVAL 1 MONTH)))
+GROUP BY b.id, b.batch_date;
+```
+
+Zero rows means no batch ever ran on an affected date. Any row returned predates
+the fix and needs a finance decision on remediation — the fix is forward-only and
+does not correct historical line items.
+
 **Admin UI:** `admin/compensation/weekly-payouts` — approve pending batches, download NEFT file.
 
 ---
@@ -88,6 +121,12 @@ php artisan payout:monthly-run
 # Backfill a prior month
 php artisan payout:monthly-run --month=2026-06
 ```
+
+**Note.** The GBB, Rank, Fortune and ADC commands derived their target month the
+same overflow-prone way and were fixed in the same commit. They are scheduled on
+the 2nd/8th/9th so the scheduler never hit it, but a **manual** run on an
+affected date (see the table under `gsb:weekly-payout`) would have processed the
+wrong month. Always pass `--month=` explicitly when running these by hand.
 
 **Admin UI:** `admin/compensation/gbb`, `rank-bonus`, `fortune-bonus`, `adc-bonus` — view per-engine results.
 
