@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ final class AdminDailyCutoffController extends Controller
 
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
+        private readonly CompensationPlanSettingsService $plan,
     ) {}
 
     public function index(Request $request): View
@@ -62,6 +64,7 @@ final class AdminDailyCutoffController extends Controller
             'status' => $status,
             'q' => $q,
             'titleMap' => $titleMap,
+            'slabThresholdTip' => $this->plan->gsbSlabThresholdSummary(),
         ]);
     }
 
@@ -75,7 +78,11 @@ final class AdminDailyCutoffController extends Controller
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
-        return view('admin.compensation.daily-cutoffs.show', compact('rows', 'parsed'));
+        return view('admin.compensation.daily-cutoffs.show', [
+            'rows' => $rows,
+            'parsed' => $parsed,
+            'slabThresholdTip' => $this->plan->gsbSlabThresholdSummary(),
+        ]);
     }
 
     public function export(Request $request): Response

@@ -101,6 +101,24 @@ it('exposes the seeded GSB slab ladder', function () {
     expect($plan->fortuneTier('rank_3')['slabs_required'])->toBe(13); // KP 2026-06-28: 7/10/13/16/19
 });
 
+it('builds the slab tooltip from the live ladder, not from written-out numbers', function () {
+    seedCompensationPlanTables();
+    $plan = app(CompensationPlanSettingsService::class);
+
+    // KP 2026-07-21 "New Engine" thresholds. The admin daily cut-off screens
+    // quoted the retired 30K/90K/2.7L/8L/24L/72L ladder until this became derived.
+    expect($plan->gsbSlabThresholdSummary())
+        ->toBe('Slab 1=15K, 2=36K, 3=1L, 4=3L, 5=9L, 6=27L, 7=81L BV matched on the weaker side.');
+
+    // An admin plan edit moves the tooltip with it; a deactivated slab drops out.
+    // A fresh instance because the ladder is cached for the life of a request.
+    DB::table('gsb_slabs')->where('slab', 2)->update(['matched_bv_paise' => 4_000_000]);
+    DB::table('gsb_slabs')->where('slab', 7)->update(['is_active' => false]);
+
+    expect((new CompensationPlanSettingsService)->gsbSlabThresholdSummary())
+        ->toBe('Slab 1=15K, 2=40K, 3=1L, 4=3L, 5=9L, 6=27L BV matched on the weaker side.');
+});
+
 // ── Engine reads config, not a constant ─────────────────────────────────────
 
 it('GSB credit reflects an edited slab bonus, proving config is read not hardcoded', function () {

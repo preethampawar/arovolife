@@ -167,7 +167,7 @@
                 </div>
                 @endif
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB score <x-help-tip text="Mentorship Bonus points credited to the direct sponsor each time a sponsee's cut-off matches this slab. The sponsor's MB income is MSB score × MSB score value." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB score <x-help-tip text="Mentorship Bonus points credited to the direct sponsor each time a sponsee's cut-off matches this slab. The sponsor's MB income is MSB score × the day's point value (the MSB pool ÷ the day's total points) — there is no configured per-slab value." /></label>
                     <input type="number" name="msb_score" data-field-label="MSB score" data-msb-score-input value="{{ $row->msb_score }}" required min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                     <span class="text-[11px] text-gray-400" data-msb-preview>→ {{ $row->msb_score }} points × the day's value</span>

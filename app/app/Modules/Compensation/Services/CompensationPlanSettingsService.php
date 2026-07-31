@@ -395,6 +395,43 @@ final class CompensationPlanSettingsService
     }
 
     /**
+     * One-line summary of the active matched-BV ladder for admin help tooltips,
+     * e.g. "Slab 1=15K, 2=36K, 3=1L, … BV matched on the weaker side."
+     *
+     * Derived from gsb_slabs rather than written out, so an admin plan edit can
+     * never leave a tooltip quoting a retired threshold — which is exactly what
+     * the 2026-07-21 "New Engine" revision did to the daily cut-off screens.
+     */
+    public function gsbSlabThresholdSummary(): string
+    {
+        $parts = [];
+        foreach ($this->gsbSlabs() as $slab) {
+            if (! $slab['is_active']) {
+                continue;
+            }
+            $parts[] = $slab['slab'].'='.self::compactBv(intdiv($slab['matched_bv_paise'], 100));
+        }
+
+        if ($parts === []) {
+            return 'No GSB slab is currently active.';
+        }
+
+        return 'Slab '.implode(', ', $parts).' BV matched on the weaker side.';
+    }
+
+    /** Indian short form for a BV figure: 15000 → "15K", 100000 → "1L", 8100000 → "81L". */
+    private static function compactBv(int $bv): string
+    {
+        [$divisor, $suffix] = match (true) {
+            $bv >= 100_000 => [100_000, 'L'],
+            $bv >= 1_000 => [1_000, 'K'],
+            default => [1, ''],
+        };
+
+        return rtrim(rtrim(number_format($bv / $divisor, 2, '.', ''), '0'), '.').$suffix;
+    }
+
+    /**
      * The personal-BV → title ladder, ascending by threshold, shaped for
      * PersonalBvTitleService. Only active slabs participate in title resolution.
      *

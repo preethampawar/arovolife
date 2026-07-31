@@ -384,9 +384,9 @@ final class AdminSettingsController extends Controller
             ],
             'comp.gsb.score_rate_paise' => [
                 'group' => 'compensation_plan',
-                'label' => 'GSB score rate (paise per point)',
-                'description' => 'Each GSB slab bonus = slab score × this rate. 36000 = ₹360 per score point (KP-confirmed).',
-                'impact' => 'Directly scales every GSB slab payout. Takes effect from the next daily cut-off.',
+                'label' => 'GSB score rate (paise per point) — retired',
+                'description' => 'Retired by KP 2026-07-21. The single global score rate was replaced by a per-slab score value, edited under Compensation → Plan settings. Nothing reads this key any more.',
+                'impact' => 'None. Changing it does not affect any payout.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 100_000_000,
