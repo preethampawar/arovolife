@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Illuminate\Database\QueryException;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -70,16 +70,25 @@ it('MSBM-02: resuming after a partial run still records the deletion', function 
 });
 
 it('MSBM-03: a settings deletion is never committed without its audit row', function (): void {
-    $migration = dropMsbScoreValueMigration();
-    $migration->down();
+    // Seed the settings by hand rather than via down(): its ALTER would
+    // implicitly commit the surrounding test transaction on MySQL, leaving
+    // nothing for the rollback under test to roll back.
+    foreach (RETIRED_LADDER as $key => $value) {
+        DB::table('settings')->insert(['key' => $key, 'value' => $value]);
+    }
 
-    // audit_log is append-only — an insert naming updated_at is what broke the
-    // staging deploy. Make the table reject any write and the settings must
-    // survive, because the delete and the audit row share one transaction.
-    Schema::table('audit_log', function ($table): void {
-        $table->string('forces_failure')->nullable(false);
+    // Blow up on the audit insert the way the bad column list did on staging.
+    // A listener rather than a broken schema: DDL implicitly commits on MySQL,
+    // which would both defeat the test and leak the change out of it.
+    DB::listen(static function (QueryExecuted $query): void {
+        if (str_contains($query->sql, 'insert into') && str_contains($query->sql, 'audit_log')) {
+            throw new RuntimeException('audit insert failed');
+        }
     });
 
-    expect(static fn () => $migration->up())->toThrow(QueryException::class);
+    expect(static fn () => dropMsbScoreValueMigration()->up())->toThrow(RuntimeException::class);
+
+    // The settings survive because the delete shares the audit row's transaction.
     expect(DB::table('settings')->whereIn('key', array_keys(RETIRED_LADDER))->count())->toBe(3);
+    expect(DB::table('audit_log')->where('action', 'settings.migration_delete')->count())->toBe(0);
 });
