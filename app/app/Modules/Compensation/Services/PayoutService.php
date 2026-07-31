@@ -620,8 +620,12 @@ final class PayoutService
      */
     private function repurchaseDeductionPaise(int $distributorId, Carbon $batchDate): int
     {
-        $priorMonthStart = $batchDate->copy()->subMonth()->startOfMonth();
-        $priorMonthEnd = $batchDate->copy()->subMonth()->endOfMonth();
+        // startOfMonth() BEFORE subMonth(), never after: PHP's relative-month
+        // arithmetic overflows, so 31 Jul − 1 month is 31 Jun → 1 Jul, and the
+        // "prior month" window would land back on the current month and deduct
+        // repurchase against this very batch's credits. Day 1 can never overflow.
+        $priorMonthStart = $batchDate->copy()->startOfMonth()->subMonth();
+        $priorMonthEnd = $priorMonthStart->copy()->endOfMonth();
 
         $earned = (int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->whereIn('type', ['gsb_credit', 'mb_credit', 'gbb_credit', 'fortune_credit', 'rank_credit'])

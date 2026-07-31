@@ -33,7 +33,7 @@ final class AdcBonusRunCommand extends Command
 
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
-            : Carbon::today()->subMonth()->startOfMonth();
+            : Carbon::today()->startOfMonth()->subMonth();
 
         $this->info("ADC Bonus — {$month->format('F Y')}");
 

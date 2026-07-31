@@ -33,7 +33,7 @@ final class FortuneBonusRunCommand extends Command
 
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
-            : Carbon::today()->subMonth()->startOfMonth();
+            : Carbon::today()->startOfMonth()->subMonth();
 
         $this->info("Fortune Bonus payout — {$month->format('F Y')}");
 

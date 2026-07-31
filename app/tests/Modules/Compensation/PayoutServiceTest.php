@@ -157,6 +157,30 @@ it('applies repurchase deduction from prior month gsb and mb credits', function 
     Carbon::setTestNow(null);
 });
 
+it('does not deduct repurchase against its own credits when the batch runs on a month-end', function () {
+    // Regression: repurchaseDeductionPaise() built the prior-month window with
+    // subMonth()->startOfMonth(). On the 31st that overflows (31 Jun → 1 Jul),
+    // so the window landed back on the CURRENT month and charged 10% repurchase
+    // on the very credits being paid out. The weekly batch runs weeklyOn(2), so
+    // any Tuesday falling on a 31st hit this in production.
+    $monthEnd = Carbon::create(2026, 7, 31, 12, 0, 0);
+    Carbon::setTestNow($monthEnd);
+
+    $dist = makePayoutEligibleDistributor();
+    $walletSvc = app(WalletService::class);
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000, this month
+
+    app(PayoutService::class)->runWeeklyBatch($monthEnd);
+
+    // No prior-month (June) earnings exist, so there is nothing to deduct.
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->repurchase_deduction_paise)->toBe(0);
+    expect($line->net_transferred_paise)->toBe(92_150);
+    expect($walletSvc->balancePaise($dist->id))->toBe(0);
+
+    Carbon::setTestNow(null);
+});
+
 it('skips distributors with zero wallet balance', function () {
     $dist = makePayoutEligibleDistributor();
 
