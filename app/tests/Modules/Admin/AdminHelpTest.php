@@ -37,6 +37,7 @@ it('AH-01: an admin sees the help index listing every reference', function (): v
         ->assertSee('Compliance Do')           // "Compliance Do's & Don'ts" (apostrophe is HTML-encoded)
         ->assertSee('KYC Review Guide')
         ->assertSee('Separation of Duties')
+        ->assertSee('Password Recovery')
         ->assertSee('Cooling-off')
         ->assertSee('Status Reference');
 });
@@ -53,6 +54,7 @@ it('AH-06: every registered reference doc renders as HTML', function (string $sl
     'compliance' => ['compliance-dos-and-donts', 'income projections'],
     'kyc' => ['kyc-review-guide', 'Aadhaar'],
     'admin-actions' => ['admin-actions', 'irreversible'],
+    'staff-access-recovery' => ['staff-access-recovery', 'Forgot password'],
     'cooling-off' => ['cooling-off', '30 days'],
     'status' => ['status-reference', 'Blocked'],
 ]);
@@ -67,6 +69,17 @@ it('AH-02: an admin can read the rendered status-reference doc (markdown → HTM
     $response->assertSee('<table>', false);          // GFM table rendered to HTML
     $response->assertSee('Blocked');                 // the frozen→Blocked label
     $response->assertSee('markdown-doc', false);     // styled container
+});
+
+it('AH-07: the access-recovery doc never names the hidden developer role', function (): void {
+    // The stealth role must not surface in any admin-visible surface. The
+    // shell-level recovery steps live in docs/runbooks/, not in this page.
+    $this->actingAs(helpAdmin())
+        ->get(route('admin.help.show', 'staff-access-recovery'))
+        ->assertOk()
+        ->assertDontSee('developer', false)
+        ->assertDontSee('tinker')
+        ->assertDontSee('password_hash');
 });
 
 it('AH-03: an unknown reference slug 404s', function (): void {

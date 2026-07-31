@@ -46,6 +46,11 @@ final class AdminHelpController extends Controller
             'description' => 'What each account action does (Block / Unblock / Terminate / Deactivate), what is reversible, and who should do it.',
             'file' => 'admin-actions.md',
         ],
+        'staff-access-recovery' => [
+            'title' => 'Staff Access & Password Recovery',
+            'description' => "What to do when you can't sign in — the self-service reset, why a password can never be looked up for you, and how to reset a distributor's password.",
+            'file' => 'staff-access-recovery.md',
+        ],
         'cooling-off' => [
             'title' => 'Cooling-off & Cancellation',
             'description' => 'The statutory 30-day cancellation window, the one-click refund flow, reminders, and edge cases.',
