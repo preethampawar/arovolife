@@ -98,7 +98,7 @@ it('credits the sponsor with slab points × the day\'s pooled point value (slab 
     expect($mb->status)->toBe('credited');
 
     // Sponsor wallet credited with gross.
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
+    expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
 });
 
 it('pays each slab its own points at one shared value (slab 3 → 15 pts; slab 7 → 3 pts, both @ ₹250)', function () {
@@ -118,7 +118,7 @@ it('pays each slab its own points at one shared value (slab 3 → 15 pts; slab 7
     expect($mbA->mb_gross_paise)->toBe(375_000);
     expect($mbB->msb_points)->toBe(3);
     expect($mbB->mb_gross_paise)->toBe(75_000);
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(450_000);
+    expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(450_000);
 });
 
 it('prices every credit at the day\'s frozen pool value, whatever the slab', function () {
@@ -232,7 +232,7 @@ it('is idempotent — calling twice for the same cutoff does not double-credit',
     expect($second)->not->toBeNull();
     expect(MentorshipBonusResult::count())->toBe(1);
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(1);
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
+    expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
 });
 
 it('blocks MB credit when sponsor personal BV is below the minimum threshold', function () {

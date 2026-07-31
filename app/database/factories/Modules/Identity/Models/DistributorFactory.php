@@ -25,7 +25,10 @@ class DistributorFactory extends Factory
         return [
             'user_id' => $user->id,
             'adn' => 'ADN'.random_int(10000, 99999),
-            'pan_hash' => hash('sha256', fake()->numerify('#####################')),
+            // Raw 32 bytes, not the 64-char hex digest: distributors.pan_hash is
+            // BINARY(32) and every production writer passes $binary = true. Hex
+            // silently fits on sqlite and errors 1406 on MySQL.
+            'pan_hash' => hash('sha256', fake()->numerify('#####################'), true),
             'pan_last4' => '0000',
             'bank_account_enc' => 'stub',
             'bank_ifsc' => 'SBIN0000000',
