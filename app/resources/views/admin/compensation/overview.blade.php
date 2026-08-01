@@ -69,50 +69,6 @@
 </div>
 @endif
 
-{{-- Quick links --}}
-@php
-    use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
-    use App\Modules\Shared\Features\FortuneBonusFeature;
-    use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
-    use App\Modules\Shared\Features\LifetimeAwardsFeature;
-    use App\Modules\Shared\Features\RankBonusFeature;
-    use Laravel\Pennant\Feature;
-@endphp
-<div class="flex flex-wrap gap-2 mb-6">
-    <a href="{{ route('admin.compensation.weekly-payouts.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Weekly Payouts →</a>
-    @if(Feature::for(null)->active(GrowthBoosterBonusFeature::class))
-    <a href="{{ route('admin.compensation.gbb.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Growth Booster Bonus →</a>
-    @endif
-    @if(Feature::for(null)->active(RankBonusFeature::class))
-    <a href="{{ route('admin.compensation.rank-bonus.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Rank Bonus →</a>
-    @endif
-    @if(Feature::for(null)->active(LifetimeAwardsFeature::class))
-    <a href="{{ route('admin.lifetime-awards.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Lifetime Awards →</a>
-    @endif
-    @if(Feature::for(null)->active(FortuneBonusFeature::class))
-    <a href="{{ route('admin.compensation.fortune-bonus.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Fortune Bonus →</a>
-    @endif
-    @if(Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class))
-    <a href="{{ route('admin.compensation.adc-bonus.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">ADC Bonus →</a>
-    @endif
-    <a href="{{ route('admin.compensation.carry-forwards.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Carry-forwards →</a>
-    <a href="{{ route('admin.compensation.genos-transactions.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Genos BV Transactions →</a>
-    <a href="{{ route('admin.compensation.gsb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">GSB Calculation →</a>
-    <a href="{{ route('admin.compensation.gsb-input-output.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">GSB Input & Output / Day →</a>
-    <a href="{{ route('admin.compensation.msb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">MSB Calculation →</a>
-    <a href="{{ route('admin.compensation.msb-input-output.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">MSB Input &amp; Output / Day →</a>
-    <a href="{{ route('admin.compensation.gbb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">GBB Calculation →</a>
-    <a href="{{ route('admin.compensation.rb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Rank Bonus Calculation →</a>
-    <a href="{{ route('admin.compensation.fb-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Fortune Bonus Calculation →</a>
-    <a href="{{ route('admin.compensation.aw-rw-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Awards & Rewards →</a>
-    @if(Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class))
-    <a href="{{ route('admin.compensation.adc-calculation.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">ADC Calculation →</a>
-    @endif
-    <a href="{{ route('admin.compensation.personal-bv-topups.index') }}" class="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50">Personal BV Topups →</a>
-    <a href="{{ route('admin.compensation.manual-controls.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Manual Controls →</a>
-    <a href="{{ route('admin.compensation.plan-settings.index') }}" class="px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-xs text-indigo-700 hover:bg-indigo-100">Plan Settings →</a>
-</div>
-
 {{-- Today's cut-off table --}}
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">

@@ -151,7 +151,11 @@
          lg:ml-60 reserves space for the fixed sidebar on desktop; mobile
          has ml-0 because the sidebar is a slide-over drawer there. --}}
     <div class="ml-0 lg:ml-60 flex-1 min-h-screen flex flex-col min-w-0 max-w-full">
-        <header class="bg-slate-800 border-b border-slate-900 pl-16 pr-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-20 gap-3">
+        {{-- Header + (on compensation pages) the compensation sub-nav travel
+             together as one sticky block, so the sub-nav never has to guess
+             the header's height as a top offset. --}}
+        <div class="sticky top-0 z-20">
+        <header class="bg-slate-800 border-b border-slate-900 pl-16 pr-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sunrise-500 text-white shrink-0">Admin</span>
                 <h1 class="text-sm sm:text-base font-semibold text-white tracking-tight truncate">@yield('heading', 'Admin Console')</h1>
@@ -162,6 +166,12 @@
                 <a href="{{ route('dashboard') }}" class="text-white hover:text-sunrise-300 transition-colors">← Distributor view</a>
             </div>
         </header>
+
+        @includeWhen(
+            request()->routeIs('admin.compensation.*') || request()->routeIs('admin.lifetime-awards.*'),
+            'admin.compensation._nav'
+        )
+        </div>
 
         <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-w-0 max-w-full">
             @if(session('status'))
