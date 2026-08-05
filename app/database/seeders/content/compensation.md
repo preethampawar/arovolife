@@ -142,7 +142,7 @@ The following are applied to bonuses before payment:
 |---|---|---|---|
 | Administrative charge | 3% | ₹25,000 per payout period | GSB, MSB, Rank Bonus, Growth Booster, Fortune and Arete Development Centre bonuses |
 | Tax Deducted at Source | 5% | — | All monetary bonuses, as required by the Income-tax Act 1961 |
-| Repurchase wallet | 10% of the prior period's GSB + MSB + Rank Bonus | ₹10,000 | Credited to your repurchase wallet for use against future product purchases |
+| Repurchase wallet | 10% of the prior period's GSB + MSB + Growth Booster + Rank Bonus + Fortune | ₹10,000 | Credited to your repurchase wallet for use against future product purchases |
 
 Non-cash awards are not subject to the administrative charge. Applicable tax on non-cash awards is dealt with separately at the time of release. TDS rates are those in force on the date of payment.
 

@@ -14,6 +14,8 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 > Key deltas the 06-19 text below gets WRONG: admin charge **+ 5% TDS apply to all 7 bonuses** (incl. ADC + Lifetime Awards); repurchase pool = GSB+MB+GBB+Fortune+Rank; min payout **₹100**; repurchase date = Retailer-title anniversary; monthly repurchase BV is **graduated per rank** (R1 1,000 … R9 2,300; R7/R8 TBD); envelope %s restated (GSB 46 / MB 1.5 / Rank 20~21 / Fortune 6 / Lifetime 18.5 / ADC 3).
 >
 > ⚠️ **GSB SUPERSEDED by KP's 2026-07-21 "New Engine"** (memory `gsb_new_engine_2026_07_21.md`, shipped 2026-07-25). GSB bonus = matched slab's `score` × that slab's **per-slab configurable score value** (default ₹250/point) — NOT the old global ₹360 rate. New scores **8/16/32/60/112/184/280**; both-sides thresholds **15K/36K/1L/3L/9L/27L/81L**; bonuses **₹2,000 / ₹4,000 / ₹8,000 / ₹15,000 / ₹28,000 / ₹46,000 / ₹70,000**. Personal-BV title thresholds unchanged. **Conditional personal-BV top-up**: personal purchase BV accumulates and is credited to the weaker leg only on a cut-off where a leg's effective BV (incl. CF) has touched a slab threshold (real personal BV never mutated). **Equal-sides tie-break**: Left is the power side (its excess carries forward, Right → 0). The sheet's "45% of daily turnover ÷ total score" example is a future company P/L metric only — not implemented. The slab table below shows even older 06-19 numbers — use the New Engine values.
+>
+> ⚠️ **GBB + RANK BONUS SUPERSEDED by the Product Owner's 2026-08-05 confirmations** — see the "3rd Benefit" and "4th Benefit" sections below. **GBB:** the monthly pool is 5% of the month's company **BV** (the signed BV-ledger sum), **not** turnover / order sales value; only distributors who held **no rank in the previous month** are eligible (a first-time rank achiever in the current month stays eligible); the month's pool economics are **frozen** in a `gbb_monthly_pools` row before any credit and never recomputed, so re-runs and retries price against the same snapshot; the point value is `floor-to-whole-rupee(pool ÷ the total AGP of all eligible distributors)` and the flooring remainder stays unspent. **Rank Bonus:** each rank's `pool %` is a share of the **20% Rank-Bonus envelope of company BV**, not of turnover directly — 10,00,000 BV in a month → envelope ₹2,00,000 → Rank 1's 7% share = ₹14,000. GBB stays behind its feature flag, OFF, until the plan change is published with the DSA §6.2 notice period (see R-36 in `docs/compliance/risk-register.md`).
 
 **Source document (this file):** "Arovolife Is Our New Life" dated 2026-06-19.
 **Phase note:** No compensation is calculated in Phases 1–3. This skill exists so that the data model, events and audit trails are *forward-compatible* with the engines that arrive in Phases 4+.
@@ -163,8 +165,8 @@ A monthly bonus for distributors who are not yet ranked (or achieving rank for t
 
 AGP is awarded per GSB slab earned in the month:
 - 1st GSB slab (15K match) earned: **12 AGP**
-- 2nd GSB slab (30K match) earned: **5 AGP**
-- 3rd GSB slab (90K match) earned: **2 AGP**
+- 2nd GSB slab (36,000 match) earned: **5 AGP**
+- 3rd GSB slab (1,00,000 match) earned: **2 AGP**
 - 4th–7th slabs: no AGP
 
 Distributors can earn these slabs multiple times in a month; each occurrence adds AGP.
@@ -178,15 +180,21 @@ Distributors can earn these slabs multiple times in a month; each occurrence add
 
 ### Payout calculation
 
-- 5% of company's total monthly turnover is the Growth Booster Bonus pool.
-- Point value = pool ÷ total AGP earned by all eligible distributors.
-- Each distributor receives: point value × their total AGP.
+> ⚠️ **SUPERSEDED by the Product Owner's 2026-08-05 confirmations** — the pool base is the month's company **BV**, not turnover. Do not reintroduce a turnover base.
+
+- The Growth Booster Bonus pool = **5% of the month's company BV** (the signed BV-ledger sum, the same base the GSB and MSB pools use) — *not* order sales value (PO confirmed 2026-08-05).
+- Point value = `floor-to-whole-rupee(pool ÷ the total AGP of all eligible distributors)`. The flooring remainder stays unspent.
+- Each distributor receives: their total AGP × that one point value.
+- The month's pool economics are **frozen** in a `gbb_monthly_pools` row before any credit and never recomputed, so re-runs and single-distributor retries price against the same snapshot (`gbb.pool.frozen` audit row).
+- **Repurchase interaction:** GBB calculated during a distributor's repurchase grace window is *held* (`repurchase_held`) and released when they complete the repurchase — held distributors still count in the pool denominator; once the grace window lapses it is *forfeited* (`repurchase_suspended`) and those distributors are excluded from the denominator.
 
 ---
 
 ## 4th Benefit: Rank Bonus — 21% pool (across 9 ranks)
 
-Company total turnover pool split across 9 ranks, paid monthly on 8th:
+> ⚠️ **SUPERSEDED by the Product Owner's 2026-08-05 confirmation** — each rank's `Pool %` below is a share of the **20% Rank-Bonus envelope of the month's company BV**, not a percentage of turnover. Worked example: 10,00,000 BV → envelope ₹2,00,000 → Rank 1's 7% share = ₹14,000.
+
+Pool split across 9 ranks, paid monthly on 8th:
 
 | Rank | Name | Personal title required | Qualification criteria | Pool % | Months (1+2 rule) |
 |---|---|---|---|---|---|

@@ -89,9 +89,30 @@ Distributors whose **KYC is not yet verified** (account not `active`) get a `kyc
 
 Distributors with **no bank account on file** get a `no_bank_account` line: nothing is debited or swept, the balance stays in the wallet, and the first batch after they add bank details pays it out. (Same rule in the monthly batch.)
 
+## Growth Booster Bonus (GBB) — monthly AGP pool (KP 2026-08-05)
+
+A monthly bonus for early-stage distributors, funded from a share of the month's company BV and divided by the AGP everyone earned.
+
+### Who is eligible
+Only distributors who held **no rank in the previous month**. Someone reaching a rank for the **first time in the current month is still eligible**; someone who held any rank last month is not. The gate is evaluated per month, so eligibility can return if a distributor holds no rank in a later prior month.
+
+### AGP (arovolife Growth Points)
+AGP accrue per **GSB slab match** during the month — **12 AGP** for a slab-1 match, **5** for slab 2, **2** for slab 3, none for slabs 4–7. Multiple matches in the same month each add AGP. A distributor's AGP is capped at **120 per month**; anything above the cap is not counted and is not carried to the next month.
+
+### Monthly pool & point value
+1. **Pool** = the *GBB monthly pool rate* (Settings → Compensation plan, default **5%**) of the month's company-wide **BV** — the same signed BV-ledger sum the GSB and MSB pools use, **not** order sales value (KP 2026-08-05).
+2. **Point value** = `floor-to-whole-rupee(pool ÷ the total AGP of all eligible distributors that month)`. Everyone is paid at the same value; income = **their AGP × that value**. The flooring remainder stays unspent with the company.
+3. The month's economics are frozen in a `gbb_monthly_pools` row **before any credit** and never recomputed, so re-runs and single-distributor retries price against the same snapshot (`gbb.pool.frozen` audit entry) — the same auditable, tamper-evident design as the GSB and MSB daily pools.
+
+### Repurchase interaction
+- **Held** (`repurchase_held`) — a distributor inside their repurchase grace window has their GBB **calculated but not credited**; it is released automatically when they complete their repurchase. Held distributors **still count in the pool denominator**, because they may yet be paid.
+- **Forfeited** (`repurchase_suspended`) — once the grace window lapses the month's GBB is forfeited and can never be paid, so those distributors are **excluded from the denominator** (their AGP does not dilute anyone else's point value).
+
+GBB sits behind its own feature flag and is **OFF**; nothing is credited until the plan change is published with the §6.2 notice period. The per-month arithmetic (BV, pool, eligible distributors, total AGP, point value, income, leftover, held/suspended rows) is visible in the admin **GBB calculation report**.
+
 ## Rank Bonus — points model & AO-GO (KP 2026-08-05)
 
-Each rank's pool is its `pool %` of monthly company turnover (rank tiers sum to the 20% RB envelope; R5 = 1.7%). Credited by the monthly run on the 8th.
+Each rank's pool is its `pool %` **of the 20% Rank-Bonus envelope of the month's company BV** — the percentage is a share of the envelope, not of turnover directly. Worked example: a month with 10,00,000 BV gives an envelope of 20% = ₹2,00,000, so Rank 1's 7% share is ₹14,000. (Tier percentages: R1 7% … R5 1.7% … R9 0.3%.) Credited by the monthly run on the 8th.
 
 - **Rank 1 (Silver) — points-based.** Every achiever earns **10 RAP** (Rank Achievement Points) and every AO-GO grantee **5 points**. Point value = Rank-1 pool ÷ the month's total points, floored to the whole rupee (remainder unspent). Income = own points × point value. The RAP figure is per-rank config (`rap_points` on the rank tier); a blank `rap_points` means equal split.
 - **Ranks 2–9 — equal split** among that rank's achievers (`rap_points` blank).
