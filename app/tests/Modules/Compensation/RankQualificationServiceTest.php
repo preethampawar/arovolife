@@ -170,7 +170,7 @@ it('caps the rank-1 weaker-leg top-up at 15,000 BV', function (): void {
     expect($result['rank_1_count'])->toBe(0); // 28,000,000 + 1,500,000 cap = 29,500,000 < 30,000,000
 });
 
-it('creates carry-forward records for M+1 and M+2 when rank 1 is achieved', function (): void {
+it('does not create carry-forward records by default (1+2 rule retired for AO-GO, KP 2026-08-05)', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
@@ -184,23 +184,18 @@ it('creates carry-forward records for M+1 and M+2 when rank 1 is achieved', func
         ->where('rank_number', 1)
         ->get();
 
-    expect($records)->toHaveCount(3);
-
-    $carryForwards = $records->where('is_carry_forward', true);
-    expect($carryForwards)->toHaveCount(2);
-
-    $months = $carryForwards->pluck('month_start')->sort()->values();
-    expect($months[0])->toBe('2026-07-01');
-    expect($months[1])->toBe('2026-08-01');
+    // Only the qualifying month — carry_forward_months is seeded 0 everywhere.
+    expect($records)->toHaveCount(1);
+    expect($records->where('is_carry_forward', true))->toHaveCount(0);
 });
 
 it('does NOT create carry-forward records for rank 2 (1+2 rule is Rank 1 only, KP 2026-06-28)', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    // Rank 2 (Pearl): Wholesaler title (15,000 BV personal) + 5L/5L group BV per side.
+    // Rank 2 (Pearl): Wholesaler title (15,000 BV personal) + 8L/8L group BV per side.
     seedPersonalBv($dist->id, 1_500_000);
-    seedGroupBv($dist->id, '2026-06-10', 51_000_000, 51_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 81_000_000, 81_000_000);
 
     $svc = app(RankQualificationService::class);
     $result = $svc->checkForMonth($month, occurrenceNumber: 1);
@@ -233,7 +228,14 @@ it('reads carry-forward months from rank_tiers config (admin-configurable, not h
     expect($records->where('is_carry_forward', true))->toHaveCount(1);
 });
 
-it('qualifies a distributor for rank 3 (Emerald) when they have 2+ Pearl qualifiers on each Genos side', function (): void {
+/**
+ * Build the rank-3 structural tree: candidate with 2 Pearl-grade qualifiers on
+ * each Genos side (each with 8L/8L group BV + Wholesaler personal BV).
+ *
+ * @return array{candidate: Distributor}
+ */
+function seedEmeraldStructure(): array
+{
     // Binary tree: candidate → leftQual1 ('L') → leftQual2 ('L')
     //                          candidate → rightQual1 ('R') → rightQual2 ('R')
     // Each slot (parent+side) is unique, so leftQual2 must be under leftQual1.
@@ -243,15 +245,13 @@ it('qualifies a distributor for rank 3 (Emerald) when they have 2+ Pearl qualifi
     $rightQual1 = Distributor::factory()->create();
     $rightQual2 = Distributor::factory()->create();
 
-    $month = Carbon::parse('2026-06-01');
-
-    // Candidate personal BV >= 5,000,000 (rank-3 threshold).
+    // Candidate personal BV >= 3,200,000 (rank-3 threshold).
     seedPersonalBv($candidate->id, 6_000_000);
 
-    // All 4 Pearl qualifiers: personal BV >= 1,500,000 + group BV >= 50M per side.
+    // All 4 Pearl qualifiers: personal BV >= 1,500,000 + group BV >= 80M per side.
     foreach ([$leftQual1, $leftQual2, $rightQual1, $rightQual2] as $dist) {
         seedPersonalBv($dist->id, 2_000_000);
-        seedGroupBv($dist->id, '2026-06-10', 51_000_000, 51_000_000);
+        seedGroupBv($dist->id, '2026-06-10', 81_000_000, 81_000_000);
     }
 
     // Direct children of candidate.
@@ -270,11 +270,22 @@ it('qualifies a distributor for rank 3 (Emerald) when they have 2+ Pearl qualifi
         'ancestor_id' => $candidate->id, 'descendant_id' => $rightQual2->id, 'depth' => 2,
     ]);
 
+    return ['candidate' => $candidate];
+}
+
+it('qualifies a distributor for rank 3 (Emerald) with 2+ Pearls per side and their own Pearl Q-Period', function (): void {
+    ['candidate' => $candidate] = seedEmeraldStructure();
+    $month = Carbon::parse('2026-06-01');
+
+    // Q-Period gate (KP 2026-08-05): the candidate must personally have
+    // achieved Rank 2 once — give them the 8L/8L match this month.
+    seedGroupBv($candidate->id, '2026-06-10', 81_000_000, 81_000_000);
+
     $svc = app(RankQualificationService::class);
     $result = $svc->checkForMonth($month);
 
-    // All 4 qualify for rank 2 → candidate's L and R sides each have 2 rank-2 quals.
-    expect($result['rank_2_count'])->toBe(4);
+    // 4 downline Pearls + the candidate → candidate's own R2 counts this month.
+    expect($result['rank_2_count'])->toBe(5);
     expect($result['rank_3_count'])->toBeGreaterThanOrEqual(1);
 
     $emeraldRecord = RankQualification::where('distributor_id', $candidate->id)
@@ -283,4 +294,109 @@ it('qualifies a distributor for rank 3 (Emerald) when they have 2+ Pearl qualifi
 
     expect($emeraldRecord)->not->toBeNull();
     expect($emeraldRecord->status)->toBe(RankQualification::STATUS_QUALIFIED);
+});
+
+it('blocks rank 3 when the candidate never achieved rank 2 themselves (own Q-Period gate)', function (): void {
+    ['candidate' => $candidate] = seedEmeraldStructure();
+    $month = Carbon::parse('2026-06-01');
+
+    // 2 Pearls per side but no own Rank-2 achievement, ever.
+    $result = app(RankQualificationService::class)->checkForMonth($month);
+
+    expect($result['rank_2_count'])->toBe(4);
+    expect($result['rank_3_count'])->toBe(0);
+    expect(RankQualification::where('distributor_id', $candidate->id)->where('rank_number', 3)->exists())->toBeFalse();
+});
+
+it('counts a prior-month own rank-2 achievement toward the Q-Period gate', function (): void {
+    ['candidate' => $candidate] = seedEmeraldStructure();
+    $month = Carbon::parse('2026-06-01');
+
+    // Candidate achieved Pearl in May — no R2 group BV this month.
+    RankQualification::create([
+        'distributor_id' => $candidate->id,
+        'rank_number' => 2,
+        'month_start' => '2026-05-01',
+        'occurrence_in_month' => 1,
+        'is_carry_forward' => false,
+        'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+
+    $result = app(RankQualificationService::class)->checkForMonth($month);
+
+    expect($result['rank_3_count'])->toBeGreaterThanOrEqual(1);
+    expect(RankQualification::where('distributor_id', $candidate->id)->where('rank_number', 3)->exists())->toBeTrue();
+});
+
+it('counts Q-Period over distinct months, not occurrences within one month (Option B, KP 2026-08-05)', function (): void {
+    // Raise Rank 2's Q-Period to 2 (admin-configurable) so rank 3 needs the
+    // candidate's own Pearl achieved in TWO distinct months.
+    DB::table('rank_tiers')->where('rank_number', 2)->update(['pyp_required' => 2]);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+
+    ['candidate' => $candidate] = seedEmeraldStructure();
+    $month = Carbon::parse('2026-06-01');
+
+    // Two occurrences of Pearl in the SAME prior month = 1 distinct month.
+    foreach ([1, 2] as $occurrence) {
+        RankQualification::create([
+            'distributor_id' => $candidate->id,
+            'rank_number' => 2,
+            'month_start' => '2026-05-01',
+            'occurrence_in_month' => $occurrence,
+            'is_carry_forward' => false,
+            'status' => RankQualification::STATUS_QUALIFIED,
+        ]);
+    }
+
+    $result = app(RankQualificationService::class)->checkForMonth($month);
+    expect($result['rank_3_count'])->toBe(0);
+
+    // A second DISTINCT month (April) completes the Q-Period.
+    RankQualification::create([
+        'distributor_id' => $candidate->id,
+        'rank_number' => 2,
+        'month_start' => '2026-04-01',
+        'occurrence_in_month' => 1,
+        'is_carry_forward' => false,
+        'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+
+    $result = app(RankQualificationService::class)->checkForMonth($month, occurrenceNumber: 2);
+    expect($result['rank_3_count'])->toBeGreaterThanOrEqual(1);
+});
+
+it('allows attaining rank 2 directly without ever holding rank 1 (skip allowed, KP 2026-08-05)', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    // No prior rank-1 qualification in any month; 8L/8L + Wholesaler title.
+    seedPersonalBv($dist->id, 1_500_000);
+    seedGroupBv($dist->id, '2026-06-10', 81_000_000, 81_000_000);
+
+    $result = app(RankQualificationService::class)->checkForMonth($month);
+
+    expect($result['rank_2_count'])->toBe(1);
+    expect(
+        RankQualification::where('distributor_id', $dist->id)->where('rank_number', 2)->exists()
+    )->toBeTrue();
+});
+
+it('requires 8L per side for rank 2 — 7,99,999 BV on one side fails; the 30,000 BV top-up can bridge it', function (): void {
+    // Side A: 79,999,900 paise (7,99,999 BV) with no personal top-up → fails.
+    $short = Distributor::factory()->create();
+    seedPersonalBv($short->id, 1_500_000); // Wholesaler title, but dated pre-June (helper stamps now())
+    seedGroupBv($short->id, '2026-06-10', 81_000_000, 79_999_900);
+
+    // Side B: 7,70,000 BV weaker side + 30,000 BV of this-month personal BV
+    // (top-up cap for Rank 2) = exactly 8L → passes.
+    $topped = Distributor::factory()->create();
+    seedPersonalBvOn($topped->id, 3_000_000, '2026-06-15');
+    seedGroupBv($topped->id, '2026-06-10', 81_000_000, 77_000_000);
+
+    $month = Carbon::parse('2026-06-01');
+    app(RankQualificationService::class)->checkForMonth($month);
+
+    expect(RankQualification::where('distributor_id', $short->id)->where('rank_number', 2)->exists())->toBeFalse();
+    expect(RankQualification::where('distributor_id', $topped->id)->where('rank_number', 2)->exists())->toBeTrue();
 });

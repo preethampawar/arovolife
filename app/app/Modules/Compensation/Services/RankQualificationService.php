@@ -11,15 +11,20 @@ use Illuminate\Support\Facades\DB;
 /**
  * Checks rank qualification for a given calendar month.
  *
- * Run once per month for occurrence 1 (standard qualification).
- * Run up to 2 more times in the same month for PYP (ranks 3-9).
+ * Run once per month for occurrence 1 (standard qualification); extra runs in
+ * the same month record further occurrences.
  *
- * Cascade order: ranks 1-2 from raw BV, ranks 3-9 from prior rank qualifiers.
- * The "1+2 rule" carry-forward is admin-configurable per rank via
- * rank_tiers.carry_forward_months (seeded Rank 1 = 2, Ranks 2-9 = 0 per KP
- * 2026-06-28): a qualifier keeps being paid for that many months after the
- * qualifying month while repurchase continues. A rank-2 qualification still
- * voids any pending rank-1 carry.
+ * Cascade order: ranks 1-2 from raw BV, ranks 3-9 from prior rank qualifiers
+ * per Genos side PLUS the candidate's own Q-Period promotion gate (KP
+ * 2026-08-05): rank r opens only once the candidate has achieved rank r-1 at
+ * least pyp_required[r-1] times, counted over distinct calendar months
+ * (Option B, tentative — see qPeriodCounts()).
+ *
+ * The "1+2 rule" carry-forward is RETIRED (KP 2026-08-05, replaced by the
+ * AO-GO offer) but stays admin-configurable per rank via
+ * rank_tiers.carry_forward_months (now seeded 0 for every rank) so historical
+ * rows remain explicable. A rank-2 qualification still voids any pending
+ * rank-1 carry.
  */
 final class RankQualificationService
 {
@@ -252,7 +257,10 @@ final class RankQualificationService
 
     /**
      * Check higher ranks (3-9) by counting prerequisite-rank qualifiers on each
-     * side of the Genos tree for each candidate distributor.
+     * side of the Genos tree for each candidate distributor, then applying the
+     * candidate's OWN Q-Period promotion gate (KP 2026-08-05): two qualified
+     * partners per side are not enough — the candidate must personally have
+     * achieved rank r-1 the required number of times.
      *
      * Uses the same side-detection query as GroupBvAccumulatorService.
      *
@@ -298,6 +306,12 @@ final class RankQualificationService
             $sideCountMap[$ancestorId][$side]++;
         }
 
+        // The candidate's own prior-rank Q-Period: lower-rank rows for THIS
+        // month were already written by the cascade, so the current month
+        // counts toward the gate.
+        $qPeriodRequired = $this->plan->rankPypRequired($rank - 1);
+        $qPeriodCounts = $this->qPeriodCounts(array_keys($sideCountMap), $rank - 1, $monthStart);
+
         $qualifiedIds = [];
 
         foreach ($sideCountMap as $distributorId => $sides) {
@@ -306,6 +320,9 @@ final class RankQualificationService
             }
             $personalBv = $personalBvMap[$distributorId] ?? 0;
             if ($personalBv < $personalBvRequired) {
+                continue;
+            }
+            if (($qPeriodCounts[$distributorId] ?? 0) < $qPeriodRequired) {
                 continue;
             }
 
@@ -328,6 +345,43 @@ final class RankQualificationService
         }
 
         return $qualifiedIds;
+    }
+
+    /**
+     * Q-Period (a.k.a. PYP / qualified count) per distributor for a rank:
+     * distinct calendar months with a qualified, non-carry-forward
+     * qualification up to and including $uptoMonthStart.
+     *
+     * Counting window = Option B, KP 2026-08-05 (TENTATIVE — "not 100% sure"):
+     * distinct months count once, however many occurrences the month had. To
+     * switch to lifetime-occurrence counting (Option C), change the COUNT
+     * expression to COUNT(*) — nothing else depends on the window.
+     *
+     * @param  int[]  $distributorIds
+     * @return array<int, int>
+     */
+    private function qPeriodCounts(array $distributorIds, int $rank, string $uptoMonthStart): array
+    {
+        if ($distributorIds === []) {
+            return [];
+        }
+
+        $rows = DB::table('rank_qualifications')
+            ->whereIn('distributor_id', $distributorIds)
+            ->where('rank_number', $rank)
+            ->where('status', RankQualification::STATUS_QUALIFIED)
+            ->where('is_carry_forward', false)
+            ->where('month_start', '<=', $uptoMonthStart)
+            ->groupBy('distributor_id')
+            ->selectRaw('distributor_id, COUNT(DISTINCT month_start) as achieved_months')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[(int) $row->distributor_id] = (int) $row->achieved_months;
+        }
+
+        return $map;
     }
 
     /**

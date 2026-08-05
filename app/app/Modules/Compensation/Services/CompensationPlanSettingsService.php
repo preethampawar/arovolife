@@ -96,6 +96,11 @@ final class CompensationPlanSettingsService
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
         'comp.adc.cap_paise' => 10_000_000,
+        // AO-GO offer (KP 2026-08-05): points a degraded ex-rank-holder earns
+        // in the Rank-1 pool, and the lifetime cap on how many times the offer
+        // can be used.
+        'comp.rank.aogo_points' => 5,
+        'comp.rank.aogo_lifetime_max' => 3,
         'comp.repurchase.rate_bp' => 1000,
         'comp.repurchase.cap_paise' => 1_000_000,
         'comp.repurchase.grace_days' => 7,
@@ -487,6 +492,7 @@ final class CompensationPlanSettingsService
                     'rank_name' => (string) $row->rank_name,
                     'pool_pct' => (float) $row->pool_pct,
                     'pyp_required' => (int) $row->pyp_required,
+                    'rap_points' => ($row->rap_points ?? null) !== null ? (int) $row->rap_points : null,
                     'personal_bv_required_paise' => (int) $row->personal_bv_required_paise,
                     'group_bv_required_paise' => $row->group_bv_required_paise !== null ? (int) $row->group_bv_required_paise : null,
                     'weaker_leg_topup_bv_paise' => (int) ($row->weaker_leg_topup_bv_paise ?? 0),
@@ -507,9 +513,37 @@ final class CompensationPlanSettingsService
         return (float) ($this->rankTiers()[$rank]['pool_pct'] ?? 0.0);
     }
 
+    /**
+     * The Q-Period (a.k.a. PYP / qualified count): how many times this rank
+     * must be achieved before the next rank opens (KP 2026-08-05).
+     */
     public function rankPypRequired(int $rank): int
     {
         return (int) ($this->rankTiers()[$rank]['pyp_required'] ?? 1);
+    }
+
+    /**
+     * Rank Achievement Points per achiever (KP 2026-08-05). Non-null switches
+     * the rank's pool to points division (pool ÷ (Σ RAP + Σ AO-GO points));
+     * null keeps the equal split among achievers. Seeded: Rank 1 = 10, 2–9 null.
+     */
+    public function rankRapPoints(int $rank): ?int
+    {
+        $value = $this->rankTiers()[$rank]['rap_points'] ?? null;
+
+        return $value !== null ? (int) $value : null;
+    }
+
+    /** AO-GO points a degraded ex-rank-holder earns in the Rank-1 pool. */
+    public function aogoPointsPerGrant(): int
+    {
+        return $this->scalarInt('comp.rank.aogo_points');
+    }
+
+    /** Lifetime cap on AO-GO grants per distributor. */
+    public function aogoLifetimeMax(): int
+    {
+        return $this->scalarInt('comp.rank.aogo_lifetime_max');
     }
 
     public function rankPersonalBvRequired(int $rank): int

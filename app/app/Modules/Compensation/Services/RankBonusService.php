@@ -6,19 +6,41 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
+use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankQualification;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Monthly Rank Bonus engine.
+ * Monthly Rank Bonus engine (KP 2026-08-05 spec).
  *
  * Pool per rank = company_turnover * pool_pct[rank] / 100.
- * Per-distributor gross = floor(pool / qualifier_count).
- * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
  *
- * All rates, caps and pool/PYP figures are read from
+ * Distribution:
+ *  - Ranks with rap_points set (seeded: Rank 1 = 10) divide their pool by
+ *    points, like the MSB daily pool: point value = floor-to-whole-rupee(
+ *    pool ÷ (payable achievers × RAP + Σ AO-GO points)); each participant is
+ *    paid own points × point value. AO-GO grantees always share the RANK-1
+ *    pool, whatever rank they previously held.
+ *  - Ranks with null rap_points (2–9) split their pool equally among payable
+ *    achievers: floor(pool / count).
+ *
+ * Payment follows achievement — the old occurrence >= pyp_required payment
+ * filter is retired (pyp_required is the Q-Period promotion gate in
+ * RankQualificationService), as is the "1+2 rule" carry-forward (replaced by
+ * the AO-GO offer).
+ *
+ * §8 requalification gate: a 2nd-or-later lifetime qualification of the same
+ * rank is credited only if the month's requalification conditions hold
+ * (rank's repurchase BV + wallet cleared — RankRequalificationGateService);
+ * otherwise the result is recorded as `requalification_held`, excluded from
+ * the pool denominator (MSB precedent: only paid participants dilute the
+ * pool) and never back-paid.
+ *
+ * Deductions (admin charge, TDS) are applied at payout time, not credit time.
+ * All rates, caps and pool figures are read from
  * CompensationPlanSettingsService (admin-editable), not hardcoded.
  */
 final class RankBonusService
@@ -26,6 +48,8 @@ final class RankBonusService
     public function __construct(
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
+        private readonly AogoOfferService $aogo,
+        private readonly RankRequalificationGateService $gate,
     ) {}
 
     /**
@@ -35,13 +59,13 @@ final class RankBonusService
      * @return array{
      *     turnover_paise: int,
      *     credited: int,
-     *     by_rank: array<int, array{qualifiers: int, pool_paise: int, net_total: int}>
+     *     by_rank: array<int, array{qualifiers: int, held: int, aogo_grants: int, pool_paise: int, total_points: int|null, point_value_paise: int|null, net_total: int}>
      * }
      */
     public function runForMonth(Carbon $month): array
     {
-        $monthStart = $month->copy()->startOfMonth()->toDateString();
         $monthStartCarbon = $month->copy()->startOfMonth();
+        $monthStart = $monthStartCarbon->toDateString();
         $monthEnd = $month->copy()->endOfMonth();
 
         $turnoverPaise = $this->companyTurnoverPaise($monthStartCarbon, $monthEnd);
@@ -50,47 +74,63 @@ final class RankBonusService
         $byRank = [];
 
         DB::transaction(function () use (
-            $monthStart, $turnoverPaise, &$credited, &$byRank,
+            $monthStartCarbon, $monthStart, $turnoverPaise, &$credited, &$byRank,
         ): void {
             foreach (range(1, 9) as $rank) {
                 $poolPct = $this->plan->rankPoolPct($rank);
                 $poolPaise = (int) round($turnoverPaise * $poolPct / 100);
-                $pypRequired = $this->plan->rankPypRequired($rank);
+                $rapPoints = $this->plan->rankRapPoints($rank);
 
                 $qualifierIds = RankQualification::where('month_start', $monthStart)
                     ->where('rank_number', $rank)
                     ->where('status', RankQualification::STATUS_QUALIFIED)
-                    ->where('occurrence_in_month', '>=', $pypRequired)
+                    ->where('is_carry_forward', false)
                     ->distinct()
                     ->pluck('distributor_id')
                     ->map(fn ($id) => (int) $id)
                     ->toArray();
 
-                $carryForwardIds = RankQualification::where('month_start', $monthStart)
-                    ->where('rank_number', $rank)
-                    ->where('status', RankQualification::STATUS_QUALIFIED)
-                    ->where('is_carry_forward', true)
-                    ->distinct()
-                    ->pluck('distributor_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->toArray();
+                $heldIds = $this->requalificationHeldIds($qualifierIds, $monthStartCarbon, $rank);
+                $payableIds = array_values(array_diff($qualifierIds, $heldIds));
 
-                $allQualifierIds = array_unique(array_merge($qualifierIds, $carryForwardIds));
-                $qualifierCount = count($allQualifierIds);
+                /** @var Collection<int, RankAogoGrant> $grants */
+                $grants = $rank === 1 ? $this->aogo->grantForMonth($monthStartCarbon) : collect();
+
+                $totalPoints = null;
+                $pointValuePaise = null;
+                if ($rapPoints !== null) {
+                    $totalPoints = count($payableIds) * $rapPoints + (int) $grants->sum('points');
+                    // Point value floored to the whole rupee; the remainder
+                    // stays unspent (KP confirmed 2026-08-05, same as MSB).
+                    $pointValuePaise = $totalPoints > 0
+                        ? intdiv(intdiv($poolPaise, $totalPoints), 100) * 100
+                        : 0;
+                    $grossPerQualifier = $rapPoints * $pointValuePaise;
+                } else {
+                    $grossPerQualifier = $payableIds !== []
+                        ? (int) floor($poolPaise / count($payableIds))
+                        : 0;
+                }
 
                 $byRank[$rank] = [
-                    'qualifiers' => $qualifierCount,
+                    'qualifiers' => count($payableIds),
+                    'held' => count($heldIds),
+                    'aogo_grants' => $grants->count(),
                     'pool_paise' => $poolPaise,
+                    'total_points' => $totalPoints,
+                    'point_value_paise' => $pointValuePaise,
                     'net_total' => 0,
                 ];
 
-                if ($qualifierCount === 0 || $poolPaise === 0) {
+                foreach ($heldIds as $distributorId) {
+                    $this->recordHeld($distributorId, $monthStart, $rank, $turnoverPaise, $poolPaise, count($payableIds));
+                }
+
+                if ($poolPaise === 0 || ($payableIds === [] && $grants->isEmpty())) {
                     continue;
                 }
 
-                $grossPerDistributor = (int) floor($poolPaise / $qualifierCount);
-
-                foreach ($allQualifierIds as $distributorId) {
+                foreach ($payableIds as $distributorId) {
                     $alreadyCredited = RankBonusResult::where('distributor_id', $distributorId)
                         ->where('month_start', $monthStart)
                         ->where('rank_number', $rank)
@@ -110,20 +150,24 @@ final class RankBonusService
                         [
                             'company_turnover_paise' => $turnoverPaise,
                             'pool_paise' => $poolPaise,
-                            'qualifier_count' => $qualifierCount,
-                            'gross_paise' => $grossPerDistributor,
+                            'qualifier_count' => count($payableIds),
+                            'rap_points' => $rapPoints,
+                            'aogo_points' => null,
+                            'total_points' => $totalPoints,
+                            'point_value_paise' => $pointValuePaise,
+                            'gross_paise' => $grossPerQualifier,
                             'admin_charge_paise' => 0,
                             'tds_paise' => 0,
-                            'net_paise' => $grossPerDistributor,
+                            'net_paise' => $grossPerQualifier,
                             'status' => RankBonusResult::STATUS_PENDING,
                         ],
                     );
 
-                    if ($grossPerDistributor > 0) {
+                    if ($grossPerQualifier > 0) {
                         $rankName = $this->plan->rankName($rank);
                         $this->wallet->credit(
                             distributorId: $distributorId,
-                            amountPaise: $grossPerDistributor,
+                            amountPaise: $grossPerQualifier,
                             type: 'rank_credit',
                             referenceId: $result->id,
                             referenceType: 'rank_bonus_result',
@@ -135,11 +179,28 @@ final class RankBonusService
                             'credited_at' => now(),
                         ]);
 
-                        $byRank[$rank]['net_total'] += $grossPerDistributor;
+                        $byRank[$rank]['net_total'] += $grossPerQualifier;
                         $credited++;
                     }
 
                     $this->maybeCreateLifetimeAward($distributorId, $rank, $monthStart);
+                }
+
+                foreach ($grants as $grant) {
+                    $creditedNow = $this->creditAogoGrant(
+                        $grant,
+                        $monthStart,
+                        $turnoverPaise,
+                        $poolPaise,
+                        count($payableIds),
+                        $totalPoints,
+                        $pointValuePaise ?? 0,
+                    );
+
+                    if ($creditedNow > 0) {
+                        $byRank[$rank]['net_total'] += $creditedNow;
+                        $credited++;
+                    }
                 }
             }
         });
@@ -149,6 +210,153 @@ final class RankBonusService
             'credited' => $credited,
             'by_rank' => $byRank,
         ];
+    }
+
+    /**
+     * §8: among this month's qualifiers, the 2nd-or-later lifetime achievers of
+     * this rank that fail the requalification conditions. First-time achievers
+     * are exempt.
+     *
+     * @param  int[]  $qualifierIds
+     * @return int[]
+     */
+    private function requalificationHeldIds(array $qualifierIds, Carbon $month, int $rank): array
+    {
+        if ($qualifierIds === []) {
+            return [];
+        }
+
+        $repeatIds = RankQualification::whereIn('distributor_id', $qualifierIds)
+            ->where('rank_number', $rank)
+            ->where('status', RankQualification::STATUS_QUALIFIED)
+            ->where('is_carry_forward', false)
+            ->where('month_start', '<', $month->toDateString())
+            ->distinct()
+            ->pluck('distributor_id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+
+        if ($repeatIds === []) {
+            return [];
+        }
+
+        $passMap = $this->gate->passMap($repeatIds, $month, $rank);
+
+        return array_values(array_filter(
+            $repeatIds,
+            fn (int $id): bool => ! ($passMap[$id] ?? false),
+        ));
+    }
+
+    /** Record a requalification-held result: visible in reports, never credited, not back-paid. */
+    private function recordHeld(
+        int $distributorId,
+        string $monthStart,
+        int $rank,
+        int $turnoverPaise,
+        int $poolPaise,
+        int $payableCount,
+    ): void {
+        $alreadyCredited = RankBonusResult::where('distributor_id', $distributorId)
+            ->where('month_start', $monthStart)
+            ->where('rank_number', $rank)
+            ->where('status', RankBonusResult::STATUS_CREDITED)
+            ->exists();
+
+        if ($alreadyCredited) {
+            return;
+        }
+
+        RankBonusResult::updateOrCreate(
+            [
+                'distributor_id' => $distributorId,
+                'month_start' => $monthStart,
+                'rank_number' => $rank,
+            ],
+            [
+                'company_turnover_paise' => $turnoverPaise,
+                'pool_paise' => $poolPaise,
+                'qualifier_count' => $payableCount,
+                'rap_points' => null,
+                'aogo_points' => null,
+                'total_points' => null,
+                'point_value_paise' => null,
+                'gross_paise' => 0,
+                'admin_charge_paise' => 0,
+                'tds_paise' => 0,
+                'net_paise' => 0,
+                'status' => RankBonusResult::STATUS_REQUALIFICATION_HELD,
+            ],
+        );
+    }
+
+    /**
+     * Credit one AO-GO grant from the Rank-1 pool: points × point value.
+     * Returns the paise credited (0 when already credited or value is 0).
+     */
+    private function creditAogoGrant(
+        RankAogoGrant $grant,
+        string $monthStart,
+        int $turnoverPaise,
+        int $poolPaise,
+        int $payableCount,
+        ?int $totalPoints,
+        int $pointValuePaise,
+    ): int {
+        if ($grant->status === RankAogoGrant::STATUS_CREDITED) {
+            return 0;
+        }
+
+        $grossPaise = $grant->points * $pointValuePaise;
+
+        $result = RankBonusResult::updateOrCreate(
+            [
+                'distributor_id' => $grant->distributor_id,
+                'month_start' => $monthStart,
+                'rank_number' => 1,
+            ],
+            [
+                'company_turnover_paise' => $turnoverPaise,
+                'pool_paise' => $poolPaise,
+                'qualifier_count' => $payableCount,
+                'rap_points' => null,
+                'aogo_points' => $grant->points,
+                'total_points' => $totalPoints,
+                'point_value_paise' => $pointValuePaise,
+                'gross_paise' => $grossPaise,
+                'admin_charge_paise' => 0,
+                'tds_paise' => 0,
+                'net_paise' => $grossPaise,
+                'status' => RankBonusResult::STATUS_PENDING,
+            ],
+        );
+
+        if ($grossPaise === 0) {
+            return 0;
+        }
+
+        $this->wallet->credit(
+            distributorId: $grant->distributor_id,
+            amountPaise: $grossPaise,
+            type: 'rank_credit',
+            referenceId: $result->id,
+            referenceType: 'rank_bonus_result',
+            memo: 'AO-GO Offer '.$monthStart,
+        );
+
+        $result->update([
+            'status' => RankBonusResult::STATUS_CREDITED,
+            'credited_at' => now(),
+        ]);
+
+        $grant->update([
+            'point_value_paise' => $pointValuePaise,
+            'income_paise' => $grossPaise,
+            'status' => RankAogoGrant::STATUS_CREDITED,
+            'credited_at' => now(),
+        ]);
+
+        return $grossPaise;
     }
 
     /**

@@ -17,6 +17,10 @@ use Illuminate\Support\Carbon;
  * @property int $company_turnover_paise
  * @property int $pool_paise
  * @property int $qualifier_count
+ * @property int|null $rap_points
+ * @property int|null $aogo_points
+ * @property int|null $total_points
+ * @property int|null $point_value_paise
  * @property int $gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
@@ -32,6 +36,9 @@ final class RankBonusResult extends Model
 
     public const string STATUS_REVERSED = 'reversed';
 
+    /** Re-qualified but failed KP §8's requalification conditions — recorded, never credited. */
+    public const string STATUS_REQUALIFICATION_HELD = 'requalification_held';
+
     protected $fillable = [
         'distributor_id',
         'month_start',
@@ -39,6 +46,10 @@ final class RankBonusResult extends Model
         'company_turnover_paise',
         'pool_paise',
         'qualifier_count',
+        'rap_points',
+        'aogo_points',
+        'total_points',
+        'point_value_paise',
         'gross_paise',
         'admin_charge_paise',
         'tds_paise',
@@ -54,6 +65,10 @@ final class RankBonusResult extends Model
             'company_turnover_paise' => 'int',
             'pool_paise' => 'int',
             'qualifier_count' => 'int',
+            'rap_points' => 'int',
+            'aogo_points' => 'int',
+            'total_points' => 'int',
+            'point_value_paise' => 'int',
             'gross_paise' => 'int',
             'admin_charge_paise' => 'int',
             'tds_paise' => 'int',

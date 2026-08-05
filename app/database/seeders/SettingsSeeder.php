@@ -73,6 +73,8 @@ final class SettingsSeeder extends Seeder
             'comp.msb.pool_rate_bp' => '300',               // 3% daily MSB pool (÷ the day's total MSB points)
             'comp.gbb.pool_rate_bp' => '500',               // 5% of monthly turnover
             'comp.gbb.agp_cap' => '120',
+            'comp.rank.aogo_points' => '5',                 // AO-GO points per grant (Rank-1 pool)
+            'comp.rank.aogo_lifetime_max' => '3',           // AO-GO uses per distributor, lifetime
             'comp.adc.rate_bp' => '300',                    // 3%
             'comp.adc.cap_paise' => '10000000',             // ₹1,00,000
             'comp.repurchase.rate_bp' => '1000',            // 10%

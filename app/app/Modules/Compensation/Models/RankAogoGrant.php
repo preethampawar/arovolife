@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Compensation\Models;
+
+use App\Modules\Identity\Models\Distributor;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+
+/**
+ * One use of the AO-GO ("Achieve Once – Get Once") offer (KP 2026-08-05):
+ * a degraded ex-rank-holder earns a fixed number of points in the Rank-1 pool
+ * for the month. Max `comp.rank.aogo_lifetime_max` uses per distributor, never
+ * in consecutive months, and a rank must be re-achieved between uses.
+ *
+ * @property int $id
+ * @property int $distributor_id
+ * @property string $month_start
+ * @property int $grant_number
+ * @property int $points
+ * @property int $previous_rank_number
+ * @property int|null $point_value_paise
+ * @property int|null $income_paise
+ * @property string $status
+ * @property Carbon|null $credited_at
+ */
+final class RankAogoGrant extends Model
+{
+    public const string STATUS_GRANTED = 'granted';
+
+    public const string STATUS_CREDITED = 'credited';
+
+    public const string STATUS_VOIDED = 'voided';
+
+    protected $fillable = [
+        'distributor_id',
+        'month_start',
+        'grant_number',
+        'points',
+        'previous_rank_number',
+        'point_value_paise',
+        'income_paise',
+        'status',
+        'credited_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'grant_number' => 'int',
+            'points' => 'int',
+            'previous_rank_number' => 'int',
+            'point_value_paise' => 'int',
+            'income_paise' => 'int',
+            'credited_at' => 'datetime',
+        ];
+    }
+
+    /** @return BelongsTo<Distributor, $this> */
+    public function distributor(): BelongsTo
+    {
+        return $this->belongsTo(Distributor::class);
+    }
+}
