@@ -13,6 +13,7 @@ use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
@@ -285,12 +286,21 @@ final class IncomeController extends Controller
                 ->withQueryString();
 
             $totalNet = $rows->getCollection()->sum('net_paise');
+
+            // AO-GO lifetime counter ("x of 3 used") — shown once the offer
+            // has ever been used.
+            $aogoUsed = RankAogoGrant::where('distributor_id', $distributor->id)
+                ->where('status', '!=', RankAogoGrant::STATUS_VOIDED)
+                ->count();
         } catch (QueryException) {
             $rows = collect();
             $totalNet = 0;
+            $aogoUsed = 0;
         }
 
-        return view('income.rank-bonus', compact('distributor', 'rows', 'totalNet'));
+        $aogoMax = app(CompensationPlanSettingsService::class)->aogoLifetimeMax();
+
+        return view('income.rank-bonus', compact('distributor', 'rows', 'totalNet', 'aogoUsed', 'aogoMax'));
     }
 
     public function fortuneBonus(Request $request): View

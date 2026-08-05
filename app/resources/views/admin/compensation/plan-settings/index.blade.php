@@ -233,8 +233,13 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">PYP required <x-help-tip text="Times the rank must be re-proven (Prove Your Position) within a month before it is confirmed." /></label>
-                    <input type="number" name="pyp_required" data-field-label="PYP required" value="{{ $row->pyp_required }}" required min="0"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Q-Period (PYP) <x-help-tip text="Times this rank must be achieved (distinct months) before the NEXT rank opens for the distributor. KP 2026-08-05: R1/R2 = 1, R3–R5 = 2, R6–R9 = 3." /></label>
+                    <input type="number" name="pyp_required" data-field-label="Q-Period (PYP)" value="{{ $row->pyp_required }}" required min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">RAP points <x-help-tip text="Rank Achievement Points per achiever. When set, this rank's pool is divided by total points (achievers × RAP + AO-GO points) and each participant is paid points × point value. Leave blank for an equal split among achievers (ranks 2–9). KP 2026-08-05: Rank 1 = 10." /></label>
+                    <input type="number" name="rap_points" data-field-label="RAP points" value="{{ $row->rap_points }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                 </div>
                 <div>
@@ -261,7 +266,7 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Carry-forward months <x-help-tip text="The '1+2 rule': extra months this rank keeps paying a qualifier after the qualifying month, while repurchase continues. 0 = no carry-forward. Seeded as Rank 1 = 2, all others 0." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Carry-forward months <x-help-tip text="RETIRED (KP 2026-08-05, replaced by the AO-GO offer): extra months this rank kept paying a qualifier after the qualifying month. Now 0 for every rank; kept configurable for audit of historical rows." /></label>
                     <input type="number" name="carry_forward_months" data-field-label="Carry-forward months" value="{{ $row->carry_forward_months }}" required min="0" max="24"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                 </div>

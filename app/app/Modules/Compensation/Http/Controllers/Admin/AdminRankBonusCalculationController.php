@@ -13,6 +13,12 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * RB Monthly Calculation report — two tables per KP's 2026-08-05 mocks:
+ * Rank 1 (points model: RAP / AO-GO points × point value) and Ranks 2–9
+ * (equal split: rank + income). AO-GO grantee rows live in the Rank-1 table
+ * with RAP shown as "—".
+ */
 final class AdminRankBonusCalculationController extends Controller
 {
     private const PER_PAGE = 50;
@@ -27,7 +33,7 @@ final class AdminRankBonusCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
             'rank' => ['nullable', 'integer', 'min:1'],
-            'status' => ['nullable', 'in:pending,credited,reversed'],
+            'status' => ['nullable', 'in:pending,credited,reversed,requalification_held'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -35,21 +41,31 @@ final class AdminRankBonusCalculationController extends Controller
         $rank = $request->query('rank');
         $status = $request->query('status');
 
-        $rows = $this->buildQuery($q, $month, $rank, $status)
-            ->paginate(self::PER_PAGE)
+        $rank1Rows = $this->buildQuery($q, $month, 1, $status)
+            ->paginate(self::PER_PAGE, ['*'], 'p1')
             ->withQueryString();
 
-        $distributorIds = collect($rows->items())->pluck('distributor_id')->unique()->values()->all();
-        $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
+        $rankRows = $this->buildQuery($q, $month, (int) $rank >= 2 ? (int) $rank : null, $status, higherRanksOnly: true)
+            ->paginate(self::PER_PAGE, ['*'], 'p2')
+            ->withQueryString();
+
+        $distributorIds = collect($rank1Rows->items())
+            ->merge($rankRows->items())
+            ->pluck('distributor_id')
+            ->unique()
+            ->values()
+            ->all();
 
         return view('admin.compensation.rb-calculation.index', [
-            'rows' => $rows,
+            'rank1Rows' => $rank1Rows,
+            'rankRows' => $rankRows,
             'q' => $q ?: null,
             'month' => $month,
             'rank' => $rank,
             'status' => $status,
             'titleService' => $this->titleService,
-            'personalBvMap' => $personalBvMap,
+            'personalBvMap' => $this->batchPersonalBvPaise($distributorIds),
+            'areteCenterMap' => $this->batchAreteCenters($distributorIds),
         ]);
     }
 
@@ -59,7 +75,7 @@ final class AdminRankBonusCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
             'rank' => ['nullable', 'integer', 'min:1'],
-            'status' => ['nullable', 'in:pending,credited,reversed'],
+            'status' => ['nullable', 'in:pending,credited,reversed,requalification_held'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -67,22 +83,27 @@ final class AdminRankBonusCalculationController extends Controller
         $rank = $request->query('rank');
         $status = $request->query('status');
 
-        $rows = $this->buildQuery($q, $month, $rank, $status)->get();
+        $rows = $this->buildQuery($q, $month, $rank !== null ? (int) $rank : null, $status)->get();
 
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
+        $areteCenterMap = $this->batchAreteCenters($distributorIds);
 
-        $csv = "SNo,ADN,Name,Title,Month,Rank,Gross RB (Rs),TDS (Rs),Net RB (Rs),Status\n";
+        $csv = "SNo,ADN,Arete Center,Name,Title,Month,Rank,RAP,AO-GO Points,Point Value (Rs),Gross RB (Rs),TDS (Rs),Net RB (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $csv .= implode(',', [
                 $i + 1,
                 $this->csvStr($row->adn),
+                $this->csvStr($areteCenterMap[$row->distributor_id] ?? ''),
                 $this->csvStr($row->full_name ?? ''),
                 $this->csvStr($title),
                 Carbon::parse($row->month_start)->format('Y-m'),
                 $row->rank_number,
+                $row->rap_points ?? '',
+                $row->aogo_points ?? '',
+                $row->point_value_paise !== null ? number_format($row->point_value_paise / 100, 2, '.', '') : '',
                 number_format($row->gross_paise / 100, 2, '.', ''),
                 number_format($row->tds_paise / 100, 2, '.', ''),
                 number_format($row->net_paise / 100, 2, '.', ''),
@@ -96,7 +117,7 @@ final class AdminRankBonusCalculationController extends Controller
         ]);
     }
 
-    private function buildQuery(string $q, ?string $month, ?string $rank, ?string $status): Builder
+    private function buildQuery(string $q, ?string $month, ?int $rank, ?string $status, bool $higherRanksOnly = false): Builder
     {
         return DB::table('rank_bonus_results as rbr')
             ->join('distributors as d', 'd.id', '=', 'rbr.distributor_id')
@@ -106,13 +127,18 @@ final class AdminRankBonusCalculationController extends Controller
                 ->orWhere('u.full_name', 'like', "%{$q}%")
             ))
             ->when($month, fn ($b) => $b->whereRaw("DATE_FORMAT(rbr.month_start, '%Y-%m') = ?", [$month]))
-            ->when($rank, fn ($b) => $b->where('rbr.rank_number', (int) $rank))
+            ->when($higherRanksOnly, fn ($b) => $b->where('rbr.rank_number', '>', 1))
+            ->when($rank, fn ($b) => $b->where('rbr.rank_number', $rank))
             ->when($status, fn ($b) => $b->where('rbr.status', $status))
             ->select(
                 'rbr.id',
                 'rbr.distributor_id',
                 'rbr.month_start',
                 'rbr.rank_number',
+                'rbr.rap_points',
+                'rbr.aogo_points',
+                'rbr.total_points',
+                'rbr.point_value_paise',
                 'rbr.gross_paise',
                 'rbr.tds_paise',
                 'rbr.net_paise',
@@ -151,6 +177,28 @@ final class AdminRankBonusCalculationController extends Controller
             ->groupBy('distributor_id')
             ->pluck(DB::raw('SUM(bv_paise)'), 'distributor_id')
             ->map(fn ($v) => (int) $v)
+            ->all();
+    }
+
+    /**
+     * Current Arete Center per distributor (open membership: effective_to null).
+     *
+     * @param  int[]  $distributorIds
+     * @return array<int, string> distributor_id → center name
+     */
+    private function batchAreteCenters(array $distributorIds): array
+    {
+        if ($distributorIds === []) {
+            return [];
+        }
+
+        return DB::table('arete_center_members as acm')
+            ->join('arete_centers as ac', 'ac.id', '=', 'acm.center_id')
+            ->whereIn('acm.distributor_id', $distributorIds)
+            ->whereNull('acm.effective_to')
+            ->orderBy('acm.effective_from')
+            ->pluck('ac.name', 'acm.distributor_id')
+            ->map(fn ($v) => (string) $v)
             ->all();
     }
 }

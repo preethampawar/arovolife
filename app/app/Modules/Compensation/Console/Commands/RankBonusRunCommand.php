@@ -53,12 +53,19 @@ final class RankBonusRunCommand extends Command
                 $rank,
                 $rankName,
                 $data['qualifiers'],
+                $data['held'] ?? 0,
+                $data['aogo_grants'] ?? 0,
+                $data['total_points'] !== null ? (string) $data['total_points'] : '—',
+                $data['point_value_paise'] !== null ? '₹'.Number::format($data['point_value_paise'] / 100, 0) : '—',
                 '₹'.Number::format($data['pool_paise'] / 100, 2),
                 '₹'.Number::format($data['net_total'] / 100, 2),
             ];
         }
 
-        $this->table(['Rank', 'Name', 'Qualifiers', 'Pool', 'Net Credited'], $rows);
+        $this->table(
+            ['Rank', 'Name', 'Payable', 'Held', 'AO-GO', 'Points', 'Point Value', 'Pool', 'Net Credited'],
+            $rows,
+        );
 
         return self::SUCCESS;
     }

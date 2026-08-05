@@ -20,7 +20,9 @@
 | **Group / Leg** | One side of a distributor's Genos — the left group or the right group. |
 | **Line change** | A request to move a distributor's placement. Allowed only within a short window (≤ 5 days) after joining and subject to admin approval. |
 | **Couple registration** | A married couple registered under a **single ADN** with a primary and a secondary holder. |
-| **PYP** | **Prove Your Position** — a rank-maintenance rule used by the compensation plan in later phases. |
+| **PYP / Q-Period** | **Prove Your Position**, also called the **Q-Period** or qualified count — how many times a rank must be achieved (distinct months) before the next rank opens: R1/R2 once, R3–R5 twice, R6–R9 three times. |
+| **RAP** | **Rank Achievement Points** — 10 points each Rank-1 achiever earns in the monthly Rank-1 pool; income = points × the month's point value. |
+| **AO-GO** | **Achieve Once – Get Once** — a degraded ex-rank-holder earns 5 points in the Rank-1 pool; max 3 lifetime uses, never in consecutive months, a rank must be re-achieved between uses. |
 
 ---
 

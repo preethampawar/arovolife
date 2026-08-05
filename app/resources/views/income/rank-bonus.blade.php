@@ -9,11 +9,15 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Rank Bonus is your share of a monthly pool set aside for your qualifying rank. Each rank has its own pool (a fixed % of company turnover). Your share is pool ÷ number of qualifiers. Admin charge (min of 3%, max ₹25,000 per monthly batch) and 5% TDS are deducted. Credited on the 8th of the following month.
+        The Rank Bonus is paid monthly from each rank's pool (a fixed % of company turnover).
+        Rank 1 (Silver) is points-based: each achiever earned 10 RAP and each AO-GO grantee 5 points that month; the pool was divided by the month's total points and your income is your points × the point value.
+        Ranks 2–9 pools are split equally among that rank's achievers.
+        Re-qualifying a rank you already achieved requires that month's repurchase BV and a cleared repurchase wallet.
+        Admin charge (min of 3%, max ₹25,000 per monthly batch) and 5% TDS are deducted. Credited on the 8th of the following month.
     </div>
 
     {{-- Summary cards --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+    <div class="grid grid-cols-1 {{ ($aogoUsed ?? 0) > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Net Rank Bonus earned (page)</p>
             <p class="text-2xl font-bold text-gray-900">
@@ -26,6 +30,15 @@
                 {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \Illuminate\Support\Number::format($rows->total()) : count($rows) }}
             </p>
         </div>
+        @if(($aogoUsed ?? 0) > 0)
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+            <p class="text-xs text-gray-500 mb-1 flex items-center justify-center gap-1">
+                AO-GO offer used
+                <x-help-tip text="Achieve Once – Get Once: if you lose your rank, you can earn 5 points in the Rank-1 pool up to {{ $aogoMax }} times in your lifetime — never in consecutive months, and only after re-achieving a rank between uses." />
+            </p>
+            <p class="text-2xl font-bold text-gray-900">{{ $aogoUsed }} of {{ $aogoMax }}</p>
+        </div>
+        @endif
     </div>
 
     {{-- Filter --}}
@@ -56,6 +69,12 @@
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Month</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Rank</th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center justify-end gap-1">
+                                Points × Value
+                                <x-help-tip text="Rank 1 only: RAP (Rank Achievement Points, 10 per achiever) or AO-GO offer points (5), multiplied by the month's point value (Rank-1 pool ÷ total points). Ranks 2–9 are an equal split, shown as —." />
+                            </span>
+                        </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Gross</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">
@@ -78,9 +97,23 @@
                             {{ \Illuminate\Support\Carbon::parse($row->month_start)->format('F Y') }}
                         </td>
                         <td class="px-4 py-3">
+                            @if($row->aogo_points !== null)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
+                                AO-GO Offer
+                            </span>
+                            @else
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
                                 {{ $rankNames[$row->rank_number] ?? 'Rank '.$row->rank_number }}
                             </span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-600">
+                            @php $points = $row->rap_points ?? $row->aogo_points; @endphp
+                            @if($points !== null && $row->point_value_paise !== null)
+                                {{ $points }} × ₹{{ \Illuminate\Support\Number::format($row->point_value_paise / 100, 0) }}
+                            @else
+                                —
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono">₹{{ \Illuminate\Support\Number::format($row->gross_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->admin_charge_paise / 100, 2) }}</td>

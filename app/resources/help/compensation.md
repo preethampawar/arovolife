@@ -89,6 +89,19 @@ Distributors whose **KYC is not yet verified** (account not `active`) get a `kyc
 
 Distributors with **no bank account on file** get a `no_bank_account` line: nothing is debited or swept, the balance stays in the wallet, and the first batch after they add bank details pays it out. (Same rule in the monthly batch.)
 
+## Rank Bonus — points model & AO-GO (KP 2026-08-05)
+
+Each rank's pool is its `pool %` of monthly company turnover (rank tiers sum to the 20% RB envelope; R5 = 1.7%). Credited by the monthly run on the 8th.
+
+- **Rank 1 (Silver) — points-based.** Every achiever earns **10 RAP** (Rank Achievement Points) and every AO-GO grantee **5 points**. Point value = Rank-1 pool ÷ the month's total points, floored to the whole rupee (remainder unspent). Income = own points × point value. The RAP figure is per-rank config (`rap_points` on the rank tier); a blank `rap_points` means equal split.
+- **Ranks 2–9 — equal split** among that rank's achievers (`rap_points` blank).
+- **AO-GO ("Achieve Once – Get Once")** replaces the retired 1+2 carry-forward: a distributor who genuinely achieved a rank but holds none this month earns 5 points in the Rank-1 pool (whatever rank they held) — max 3 lifetime uses, never in consecutive months, a rank must be re-achieved between uses, and the month's requalification conditions must be met. A failed month consumes no use.
+- **Requalification conditions (§8).** Achieving a rank a **2nd or later time** is credited only if, in that month, personal purchase BV ≥ the rank's repurchase BV (R1 1,000 … R9 2,300) **and** the repurchase wallet is cleared. Otherwise the row is recorded as `requalification_held` — visible in the RB report, excluded from the pool denominator, never back-paid. First-time achievers are exempt.
+- **Q-Period (PYP).** Achieving rank r its `Q-Period` number of times (distinct months) grants permission to attain rank r+1 — R1/R2 once, R3–R5 twice, R6–R9 three times. It no longer filters payment; payment follows achievement. For ranks 3+, two qualified partners per Genos side are not enough: the candidate must personally have completed the lower rank's Q-Period.
+- **R2 group BV** is 8,00,000 per side (was 5L); Rank 1 may be skipped — Rank 2 is attainable directly.
+
+The **RB Monthly Calculation** report shows two tables: Rank 1 (Arete Center, RAP, AO-GO points, point value, total income; AO-GO rows show RAP as "—") and Ranks 2–9 (rank + income).
+
 ## Monthly payout (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC)
 Runs monthly. A per-group admin charge (3%, each group capped ₹25,000/cycle) and TDS (5%) are applied. Repurchase is deducted only in the weekly batch.
 
