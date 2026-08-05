@@ -510,3 +510,147 @@ it('pays the held balance once KYC is verified on a later batch', function () {
     expect($paid)->not->toBeNull();
     expect($paid->gross_paise)->toBe(100_000);
 });
+
+// ── Repurchase deduction in the MONTHLY batch ────────────────────────────────
+
+it('monthly batch: collects the repurchase deduction for a distributor with only monthly income', function () {
+    // Regression: the monthly path hardcoded repurchase_deduction_paise = 0, so
+    // anyone earning purely Growth Booster / Rank / Fortune (no weekly GSB or
+    // Mentorship income at all) never paid the 10% repurchase deduction.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    // Prior-month Growth Booster ₹2,000 → monthly repurchase target = 20,000 paise.
+    Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
+    $wallet->credit($dist->id, 200_000, 'gbb_credit');
+
+    // Current-month Growth Booster ₹1,000. No Group-A credits exist, so no
+    // weekly batch can ever collect on this distributor's behalf.
+    Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
+    $wallet->credit($dist->id, 100_000, 'gbb_credit');
+
+    $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
+
+    // Both months' unswept credits sweep (₹3,000 gross); the repurchase figure
+    // is 10% of PRIOR-month credits only. Order: gross → repurchase → admin → TDS.
+    // 300,000 − 20,000 − 9,000 = payable 271,000 → TDS 13,550 → net 257,450.
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->first();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING);
+    expect($line->gross_paise)->toBe(300_000);
+    expect($line->repurchase_deduction_paise)->toBe(20_000);
+    expect($line->admin_charge_paise)->toBe(9_000);
+    expect($line->tds_paise)->toBe(13_550);
+    expect($line->net_transferred_paise)->toBe(257_450);
+
+    // The withheld amount lands in the repurchase wallet, referencing the line item.
+    $held = WalletLedgerEntry::where('distributor_id', $dist->id)
+        ->where('type', 'repurchase_deduction')
+        ->get();
+    expect($held)->toHaveCount(1);
+    expect($held->first()->amount_paise)->toBe(20_000);
+    expect($held->first()->reference_type)->toBe('payout_line_item');
+    expect($held->first()->reference_id)->toBe($line->id);
+
+    // Wallet nets to the held-back deduction only.
+    expect($wallet->balancePaise($dist->id))->toBe(20_000);
+
+    Carbon::setTestNow(null);
+});
+
+it('monthly batch: the repurchase deduction is clamped to the batch gross', function () {
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    // June earns ₹10,000 GBB and is swept by June's own monthly batch, so it
+    // cannot inflate July's gross. July's repurchase target = 10% = 100,000 paise.
+    Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
+    $wallet->credit($dist->id, 1_000_000, 'gbb_credit');
+    app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 6, 1));
+
+    // July earns only ₹500 — far below the 100,000-paise target.
+    Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
+    $wallet->credit($dist->id, 50_000, 'gbb_credit');
+    $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->first();
+    expect($line->gross_paise)->toBe(50_000);
+    // Clamped to the gross, never the full 100,000 target.
+    expect($line->repurchase_deduction_paise)->toBe(50_000);
+    expect($line->net_transferred_paise)->toBe(0);
+    expect($line->status)->toBe(PayoutLineItem::STATUS_BELOW_MINIMUM);
+
+    // Below-minimum: nothing swept, nothing debited, nothing withheld — the
+    // undeductable remainder is picked up by a later batch.
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'repurchase_deduction')->count())->toBe(0);
+    expect($wallet->balancePaise($dist->id))->toBe(50_000);
+
+    Carbon::setTestNow(null);
+});
+
+it('monthly batch: does not re-collect a repurchase target the week batches already took', function () {
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    // Prior-month GSB ₹2,000 → monthly repurchase target = 20,000 paise.
+    Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
+    $wallet->credit($dist->id, 200_000, 'gsb_credit');
+
+    // First Tuesday of July: the weekly batch collects the whole target.
+    Carbon::setTestNow(Carbon::create(2026, 7, 7, 9));
+    $wallet->credit($dist->id, 100_000, 'gsb_credit');
+    $weekly = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+    expect(PayoutLineItem::where('payout_batch_id', $weekly->id)->where('distributor_id', $dist->id)->first()->repurchase_deduction_paise)
+        ->toBe(20_000);
+
+    // Month-end monthly batch, same calendar month: nothing left to collect.
+    Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
+    $wallet->credit($dist->id, 100_000, 'gbb_credit');
+    $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
+
+    $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
+    expect($line->repurchase_deduction_paise)->toBe(0);
+    // 100,000 − admin 3,000 = 97,000 → TDS 4,850 → net 92,150.
+    expect($line->net_transferred_paise)->toBe(92_150);
+
+    // Exactly 20,000 withheld for the whole month, not 40,000.
+    expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'repurchase_deduction')->sum('amount_paise'))
+        ->toBe(20_000);
+
+    Carbon::setTestNow(null);
+});
+
+it('monthly batch: takes only the remainder when a weekly batch collected part of the target', function () {
+    setPayoutSetting('payout.min_threshold_paise', '0'); // let a fully-deducted weekly line still pay
+
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    // June GBB ₹5,000, swept by June's monthly batch → July target = 50,000 paise.
+    Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
+    $wallet->credit($dist->id, 500_000, 'gbb_credit');
+    app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 6, 1));
+
+    // July weekly: gross ₹300 is smaller than the target, so only 30,000 is taken.
+    Carbon::setTestNow(Carbon::create(2026, 7, 7, 9));
+    $wallet->credit($dist->id, 30_000, 'gsb_credit');
+    $weekly = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+    expect(PayoutLineItem::where('payout_batch_id', $weekly->id)->where('distributor_id', $dist->id)->first()->repurchase_deduction_paise)
+        ->toBe(30_000);
+
+    // July monthly: 50,000 target − 30,000 already collected = 20,000 remainder.
+    Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
+    $wallet->credit($dist->id, 200_000, 'gbb_credit');
+    $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
+
+    $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
+    expect($line->gross_paise)->toBe(200_000);
+    expect($line->repurchase_deduction_paise)->toBe(20_000);
+    // 200,000 − 20,000 − admin 6,000 = payable 174,000 → TDS 8,700 → net 165,300.
+    expect($line->net_transferred_paise)->toBe(165_300);
+
+    // 30,000 + 20,000 = the full monthly target, collected exactly once.
+    expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'repurchase_deduction')->sum('amount_paise'))
+        ->toBe(50_000);
+
+    Carbon::setTestNow(null);
+});

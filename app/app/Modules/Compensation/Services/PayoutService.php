@@ -27,9 +27,10 @@ final class PayoutService
     /**
      * Weekly payout batch (Group A: GSB + Mentorship).
      *
-     * Sweeps all unswept gsb_credit and mb_credit entries. Deductions: repurchase
-     * (10% of prior-month Group A+B credits, applied only in the weekly batch),
-     * Group-A admin charge (3%, capped at ₹25k), TDS (5% of payable).
+     * Sweeps all unswept gsb_credit and mb_credit entries. Deductions, in order:
+     * repurchase (10% of prior-month Group A+B credits, shared month-wide with
+     * the monthly batch), Group-A admin charge (3%, capped at ₹25k), TDS (5% of
+     * payable).
      */
     public function runWeeklyBatch(Carbon $cycleEnd): PayoutBatch
     {
@@ -274,9 +275,10 @@ final class PayoutService
      * Monthly payout batch (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC).
      *
      * Sweeps all unswept entries for the five monthly bonus streams. Applies the
-     * ₹50L per-distributor rank cap (KP Round-4), per-group admin charges (each
-     * capped at ₹25k), and TDS (5% on payable). Repurchase is not deducted here —
-     * it is fully covered by the weekly batch.
+     * ₹50L per-distributor rank cap (KP Round-4), the repurchase deduction
+     * remainder not already collected by the month's weekly batches, per-group
+     * admin charges (each capped at ₹25k), and TDS (5% on payable). Deduction
+     * order: gross → repurchase → admin charge → TDS.
      */
     public function runMonthlyBatch(Carbon $month): PayoutBatch
     {
@@ -449,7 +451,15 @@ final class PayoutService
                 $adminD = $this->adminChargeFor([[BonusType::Arete, $grossD]], $adminRateBp, $adminCapPaise);
                 $adminCharge = $adminB + $adminC + $adminD;
 
-                $payable = max(0, $gross - $adminCharge);
+                // Repurchase is a MONTHLY figure computed off prior-month bonus
+                // credits; repurchaseDeductionPaise() nets off whatever the
+                // month's weekly batches already collected, so only the
+                // remainder is taken here. Capped at this batch's gross — an
+                // undeductable remainder stays uncollected for the next run.
+                // Deduction order (KP-confirmed): gross → repurchase → admin → TDS.
+                $repurchase = min($this->repurchaseDeductionPaise($distributorId, $month), $gross);
+
+                $payable = max(0, $gross - $repurchase - $adminCharge);
                 $tds = (int) round($payable * $tdsRateBp / 10_000);
                 $net = max(0, $payable - $tds);
 
@@ -459,7 +469,7 @@ final class PayoutService
                         'distributor_id' => $distributorId,
                         'wallet_balance_paise' => $gross,
                         'gross_paise' => $gross,
-                        'repurchase_deduction_paise' => 0,
+                        'repurchase_deduction_paise' => $repurchase,
                         'admin_charge_paise' => $adminCharge,
                         'tds_paise' => $tds,
                         'net_transferred_paise' => max(0, $net),
@@ -480,7 +490,7 @@ final class PayoutService
                     'distributor_id' => $distributorId,
                     'wallet_balance_paise' => $gross,
                     'gross_paise' => $gross,
-                    'repurchase_deduction_paise' => 0,
+                    'repurchase_deduction_paise' => $repurchase,
                     'admin_charge_paise' => $adminCharge,
                     'tds_paise' => $tds,
                     'net_transferred_paise' => $net,
@@ -508,6 +518,16 @@ final class PayoutService
                         referenceId: $lineItem->id,
                         referenceType: 'payout_line_item',
                         memo: 'Cash income above the combined monthly income cap',
+                    );
+                }
+
+                if ($repurchase > 0) {
+                    $this->wallet->credit(
+                        distributorId: $distributorId,
+                        amountPaise: $repurchase,
+                        type: 'repurchase_deduction',
+                        referenceId: $lineItem->id,
+                        referenceType: 'payout_line_item',
                     );
                 }
             });
@@ -610,10 +630,10 @@ final class PayoutService
      * GSB + Mentorship + Growth Booster + Fortune + Rank net credits.
      *
      * The deduction is a MONTHLY figure but the weekly batch runs 4–5 times a
-     * month, so whatever was already collected this month (the
-     * repurchase_deduction credits posted by earlier batches) is subtracted —
-     * only the remainder is taken. Without this, the same 10% would be
-     * re-deducted every Tuesday.
+     * month and the monthly batch once more, so whatever was already collected
+     * this month (the repurchase_deduction credits posted by earlier batches of
+     * either type) is subtracted — only the remainder is taken. Without this,
+     * the same 10% would be re-deducted every Tuesday and again month-end.
      *
      * Only positive amount_paise entries are summed — reversal entries of the
      * same types carry negative values and must not reduce the deduction.
