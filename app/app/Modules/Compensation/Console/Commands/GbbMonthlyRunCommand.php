@@ -44,7 +44,10 @@ final class GbbMonthlyRunCommand extends Command
             [
                 ['Pool', '₹'.Number::format($result['pool_paise'] / 100, 2)],
                 ['Total AGP', Number::format($result['total_agp'])],
+                ['Point value', '₹'.Number::format($result['point_value_paise'] / 100, 2)],
                 ['Distributors credited', $result['credited']],
+                ['Held (repurchase grace)', $result['held']],
+                ['Suspended (grace lapsed)', $result['suspended']],
                 ['Skipped (no AGP)', $result['skipped_no_agp']],
             ],
         );

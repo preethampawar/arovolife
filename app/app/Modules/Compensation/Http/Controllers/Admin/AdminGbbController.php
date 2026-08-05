@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -52,6 +53,12 @@ final class AdminGbbController extends Controller
             ')
             ->first();
 
-        return view('admin.compensation.gbb.show', compact('rows', 'summary', 'date'));
+        // Frozen month economics. Null for months run before the pool snapshot
+        // existed — the view degrades to "—" rather than recomputing them.
+        $pool = GbbMonthlyPool::query()
+            ->where('month_start', $date->toDateString())
+            ->first();
+
+        return view('admin.compensation.gbb.show', compact('rows', 'summary', 'date', 'pool'));
     }
 }

@@ -4,9 +4,21 @@
 
 @section('content')
 
+@php
+    $statusBadges = [
+        'credited' => 'bg-green-100 text-green-700',
+        'pending'  => 'bg-amber-100 text-amber-700',
+        'reversed' => 'bg-red-100 text-red-700',
+        'repurchase_held' => 'bg-orange-100 text-orange-700',
+        'repurchase_suspended' => 'bg-red-100 text-red-700',
+    ];
+@endphp
+
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Growth Booster Bonus (GBB) calculation table — one row per distributor per month.
-    AGP Points = slab occurrences earned that month. AGP Value = per-point share of the monthly pool.
+    AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP.
+    "repurchase_held" = calculated inside the repurchase grace window, released on repurchase completion.
+    "repurchase_suspended" = the grace window lapsed, so the month is not payable.
     Search by ADN or name, filter by month and status.
 </div>
 
@@ -22,6 +34,8 @@
         <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Pending</option>
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
+        <option value="repurchase_held" {{ $status === 'repurchase_held' ? 'selected' : '' }}>Repurchase held</option>
+        <option value="repurchase_suspended" {{ $status === 'repurchase_suspended' ? 'selected' : '' }}>Repurchase suspended</option>
     </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $status)
@@ -52,8 +66,12 @@
                         <x-help-tip text="Total slab occurrences (AGP) earned by this distributor in the month." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                        Point Value
+                        <x-help-tip text="The month's frozen point value: GBB pool ÷ total payable AGP, floored to the rupee. Blank (—) on rows recorded before this snapshot existed." />
+                    </th>
+                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
                         AGP Value
-                        <x-help-tip text="Per-point pool share = gross GBB ÷ AGP points earned." />
+                        <x-help-tip text="Per-point pool share actually realised on this row = gross GBB ÷ AGP points earned." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">Income (Net GBB)</th>
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
@@ -67,11 +85,6 @@
                     $agpValuePerPoint = $row->agp_earned > 0
                         ? $row->gbb_gross_paise / $row->agp_earned / 100
                         : 0;
-                    $statusBadges = [
-                        'credited' => 'bg-green-100 text-green-700',
-                        'pending'  => 'bg-amber-100 text-amber-700',
-                        'reversed' => 'bg-red-100 text-red-700',
-                    ];
                 @endphp
                 <tr class="hover:bg-gray-50">
                     <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
@@ -97,11 +110,16 @@
                     <td class="px-3 py-2 text-right font-semibold text-gray-800">
                         {{ \Illuminate\Support\Number::format($row->agp_earned) }}
                     </td>
+                    <td class="px-3 py-2 text-right text-gray-600">
+                        {{ $row->point_value_paise !== null
+                            ? '₹'.\Illuminate\Support\Number::format((int) $row->point_value_paise / 100, 2)
+                            : '—' }}
+                    </td>
                     <td class="px-3 py-2 text-right text-gray-700">
                         ₹{{ \Illuminate\Support\Number::format($agpValuePerPoint, 2) }}
                     </td>
                     <td class="px-3 py-2 text-right">
-                        <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
+                        <span class="font-semibold {{ in_array($row->status, ['reversed', 'repurchase_suspended'], true) ? 'text-red-600' : ($row->status === 'repurchase_held' ? 'text-orange-700' : 'text-green-700') }}">
                             ₹{{ \Illuminate\Support\Number::format($row->gbb_net_paise / 100, 2) }}
                         </span>
                         @if($row->tds_paise > 0)
@@ -112,7 +130,7 @@
                     </td>
                     <td class="px-3 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusBadges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ $row->status }}
+                            {{ str_replace('_', ' ', $row->status) }}
                         </span>
                     </td>
                 </tr>

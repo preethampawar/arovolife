@@ -27,7 +27,7 @@ final class AdminGbbCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,credited,reversed'],
+            'status' => ['nullable', 'in:pending,credited,reversed,repurchase_held,repurchase_suspended'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -54,7 +54,7 @@ final class AdminGbbCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,credited,reversed'],
+            'status' => ['nullable', 'in:pending,credited,reversed,repurchase_held,repurchase_suspended'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -66,13 +66,17 @@ final class AdminGbbCalculationController extends Controller
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
-        $csv = "SNo,ADN,Name,Title,Month,AGP Points,AGP Value Per Point (Rs),Gross GBB (Rs),TDS (Rs),Net GBB (Rs),Status\n";
+        $csv = "SNo,ADN,Name,Title,Month,AGP Points,Point Value (Rs),AGP Value Per Point (Rs),Gross GBB (Rs),TDS (Rs),Net GBB (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $agpValuePerPoint = $row->agp_earned > 0
                 ? number_format($row->gbb_gross_paise / $row->agp_earned / 100, 2, '.', '')
                 : '0.00';
+            // Frozen month point value; legacy rows predate the snapshot column.
+            $pointValue = $row->point_value_paise !== null
+                ? number_format((int) $row->point_value_paise / 100, 2, '.', '')
+                : '';
             $csv .= implode(',', [
                 $i + 1,
                 $this->csvStr($row->adn),
@@ -80,6 +84,7 @@ final class AdminGbbCalculationController extends Controller
                 $this->csvStr($title),
                 Carbon::parse($row->year_month)->format('Y-m'),
                 $row->agp_earned,
+                $pointValue,
                 $agpValuePerPoint,
                 number_format($row->gbb_gross_paise / 100, 2, '.', ''),
                 number_format($row->tds_paise / 100, 2, '.', ''),
@@ -117,6 +122,7 @@ final class AdminGbbCalculationController extends Controller
                 'gmr.distributor_id',
                 'gmr.year_month',
                 'gmr.agp_earned',
+                'gmr.point_value_paise',
                 'gmr.gbb_gross_paise',
                 'gmr.tds_paise',
                 'gmr.gbb_net_paise',
