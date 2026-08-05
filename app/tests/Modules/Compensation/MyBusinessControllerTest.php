@@ -123,6 +123,9 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         // Lifetime Awards & Rewards has no page until Phase 5 — disabled tile, not a link.
         ->assertSee('Awards &amp; Rewards', false)
         ->assertSee('Coming soon')
+        // The topnav account menu links here instead of a separate "My Income"
+        // entry — every income page is reachable from this page's tiles.
+        ->assertDontSee('My Income')
         // Note block — the partner's canonical carry over / carry forward definitions.
         ->assertSee('Business that occurs before matching is called carry over.')
         ->assertSee('The remaining BVs after matching are called carry forward.')
