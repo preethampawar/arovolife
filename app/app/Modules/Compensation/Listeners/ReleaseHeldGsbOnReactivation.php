@@ -22,10 +22,11 @@ use Illuminate\Support\Facades\DB;
  * post-grace suspension ({@see GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED})
  * are forfeited for the lapsed period and are intentionally NOT released.
  *
- * Mentorship and Rank are never suspended (so nothing to release), and Fortune
- * and Growth Booster are monthly batches that simply skip an ineligible
- * distributor rather than persist a per-day held record — there is no held
- * artefact to release for them here.
+ * Mentorship and Rank are never suspended, so there is nothing to release for
+ * them. Growth Booster now persists its own monthly held rows and is released
+ * by {@see ReleaseHeldGbbOnReactivation}, registered beside this listener.
+ * Fortune remains a monthly batch that simply skips an ineligible distributor
+ * rather than persist a held record, so it has no held artefact to release.
  *
  * Idempotent: each row is credited only while it is still HELD, flipped to
  * CREDITED inside the same row-locked transaction, so a re-fired event (or a

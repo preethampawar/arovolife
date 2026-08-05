@@ -61,6 +61,22 @@ final class GsbDailyPoolService
             ->sum('bv_paise');
     }
 
+    /**
+     * Company-wide BV generated across an inclusive date range: the same signed
+     * bv_ledger_entries sum as {@see companyBvPaiseForDate()}, widened to a
+     * period. This is the canonical "company turnover" for the MONTHLY pools
+     * (Rank Bonus envelope, Growth Booster) — user-confirmed 2026-08-05 that
+     * turnover means BV, not order sales value, so every pool in the plan
+     * measures the same thing and they can never disagree.
+     */
+    public function companyBvPaiseBetween(Carbon $from, Carbon $to): int
+    {
+        return (int) DB::table('bv_ledger_entries')
+            ->where('effective_at', '>=', $from->copy()->startOfDay())
+            ->where('effective_at', '<=', $to->copy()->endOfDay())
+            ->sum('bv_paise');
+    }
+
     /** The frozen pool snapshot for a date, or null for pre-feature dates. */
     public function poolForDate(Carbon $date): ?GsbDailyPool
     {

@@ -14,6 +14,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
+use App\Modules\Compensation\Listeners\ReleaseHeldGbbOnReactivation;
 use App\Modules\Compensation\Listeners\ReleaseHeldGsbOnReactivation;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Identity\Models\User;
@@ -56,6 +57,10 @@ class AppServiceProvider extends ServiceProvider
         // distributor completes their repurchase (KP 2026-06-28). Suspended
         // (post-grace) income stays forfeited — see the listener.
         Event::listen(IncomeReactivated::class, ReleaseHeldGsbOnReactivation::class);
+
+        // Same for the Growth Booster's monthly held rows. Suspended
+        // (post-grace) months stay forfeited — see the listener.
+        Event::listen(IncomeReactivated::class, ReleaseHeldGbbOnReactivation::class);
 
         // Super staff: `developer` and `admin` bypass every permission check
         // (R-17 separation of duties). The specialised roles (admin-operations

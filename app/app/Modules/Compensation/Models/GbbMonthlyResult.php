@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property int $company_turnover_paise
  * @property int $pool_paise
  * @property int $total_pool_agp
+ * @property int|null $point_value_paise
  * @property int $gbb_gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
@@ -34,6 +35,20 @@ final class GbbMonthlyResult extends Model
 
     public const STATUS_REVERSED = 'reversed';
 
+    /**
+     * Repurchase grace window: the bonus was calculated at the frozen point
+     * value but not credited. Releasable by ReleaseHeldGbbOnReactivation once
+     * the distributor completes their repurchase.
+     */
+    public const STATUS_REPURCHASE_HELD = 'repurchase_held';
+
+    /**
+     * Post-grace repurchase suspension: an audit-only row recording the AGP the
+     * distributor earned and forfeited. Gross is 0, the AGP is excluded from
+     * the month's denominator, and the row is NEVER released.
+     */
+    public const STATUS_REPURCHASE_SUSPENDED = 'repurchase_suspended';
+
     // AGP cap and per-slab AGP now live in the admin-editable `gsb_slabs` table
     // (agp_per_occurrence column) and the `comp.gbb.agp_cap` setting — read them
     // through CompensationPlanSettingsService, not constants on this model.
@@ -45,6 +60,7 @@ final class GbbMonthlyResult extends Model
         'company_turnover_paise',
         'pool_paise',
         'total_pool_agp',
+        'point_value_paise',
         'gbb_gross_paise',
         'admin_charge_paise',
         'tds_paise',
@@ -60,6 +76,7 @@ final class GbbMonthlyResult extends Model
             'company_turnover_paise' => 'int',
             'pool_paise' => 'int',
             'total_pool_agp' => 'int',
+            'point_value_paise' => 'int',
             'gbb_gross_paise' => 'int',
             'admin_charge_paise' => 'int',
             'tds_paise' => 'int',
