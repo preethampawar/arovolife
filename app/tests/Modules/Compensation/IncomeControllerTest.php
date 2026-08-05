@@ -146,6 +146,63 @@ it('shows accumulated group BV on the dashboard once personal BV reaches 600', f
         ->assertDontSee('requires 600 BV of personal purchases');
 });
 
+it('shows carry-forward folded into the dashboard group BV cards as the opening balance', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    disableTestForeignKeys();
+    try {
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => 999_996,
+            'bv_paise' => 60_000, // 600 BV — eligible for group BV counting
+            'type' => 'accrual',
+            'effective_at' => now()->format('Y-m-d H:i:s.v'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    // Yesterday's unmatched Left BV sits in power-side carry-forward, and the
+    // weaker side's BV sits in the side-less slab-1 weaker bucket…
+    DB::table('gsb_carryforward')->insert([
+        'distributor_id' => $distributorId,
+        'power_side_bv_paise' => 600_000, // 6,000 BV
+        'power_side' => 'L',
+        'slab1_weaker_bv_paise' => 60_000, // 600 BV
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // …and today's fresh Left BV lands on top of it.
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => $distributorId,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 1_500_000, // 15,000 BV
+        'right_bv_paise' => 0,
+    ]);
+
+    $this->get(route('income.dashboard'))
+        ->assertOk()
+        // Headline = the figure tonight's cut-off will use: 15,000 + 6,000.
+        ->assertSee('21,000')
+        ->assertSee('15,000 today + 6,000 carried over')
+        ->assertSee('Power-side carry over (opening balance)')
+        // Left holds the power carry-forward, so Right is the weaker side.
+        ->assertSee('Power side')
+        ->assertSee('Weaker side')
+        // The side-less slab-1 bucket is surfaced under the weaker side…
+        ->assertSee('+ 600 BV in slab-1 weaker carry over (see card below)')
+        // …and its own card names the side it is currently accumulating from.
+        ->assertSee('Currently accumulating from your Right (weaker) side')
+        // Guard against uncompiled Blade leaking to the page: a directive whose
+        // @ is glued to a preceding word character is rendered as literal text.
+        ->assertDontSee('@if', false)
+        ->assertDontSee('@endif', false);
+});
+
 it('shows the genos ledger with buyer ADN only — never the buyer name', function (): void {
     ['user' => $user, 'distributorId' => $rootId] = incomeDistributor();
     ['user' => $buyerUser, 'distributorId' => $buyerId] = incomeDistributor();
@@ -260,6 +317,57 @@ it('shows the slab ladder with the next target and remaining matched BV', functi
         ->assertSee('Next target')
         ->assertSee('12,000 BV more to match') // slab 1: 15,000 − 3,000 matched
         ->assertSee('unlocks at 3,000 BV of personal purchases');
+});
+
+it('shows per-side slab progress and the slab-1 weaker carry-forward on the genos bv page', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    disableTestForeignKeys();
+    try {
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => 999_995,
+            'bv_paise' => 60_000, // 600 BV — eligible for group BV counting
+            'type' => 'accrual',
+            'effective_at' => now()->format('Y-m-d H:i:s.v'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    // Side-less slab-1 accumulator; no power-side carry-forward.
+    DB::table('gsb_carryforward')->insert([
+        'distributor_id' => $distributorId,
+        'power_side_bv_paise' => 0,
+        'power_side' => 'L',
+        'slab1_weaker_bv_paise' => 60_000, // 600 BV
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // Both sides below the 15,000 BV first slab, so no personal-BV top-up is
+    // previewed and the per-side figures stay deterministic.
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => $distributorId,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 1_000_000, // 10,000 BV — power side
+        'right_bv_paise' => 300_000,  // 3,000 BV — weaker side
+    ]);
+
+    $this->get(route('income.genos-bv'))
+        ->assertOk()
+        ->assertSee('Power side')
+        ->assertSee('Weaker side')
+        ->assertSee('600 BV in slab-1 weaker carry over')
+        // Slab 1 row: the weaker (Right) side carries the 600 BV accumulator,
+        // the Left side does not — min(10,000, 3,600) is the matched figure.
+        ->assertSee('L 10,000 / 15,000')
+        ->assertSee('R 3,600 / 15,000')
+        ->assertDontSee('@if', false)
+        ->assertDontSee('@endif', false);
 });
 
 it('highlights earned slabs on the ladder', function (): void {

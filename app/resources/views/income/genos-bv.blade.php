@@ -32,14 +32,49 @@
                 Genos BV is not being counted yet. Group BV starts counting toward these slabs after your lifetime personal purchases reach {{ \Illuminate\Support\Number::format($slabProgress->gsbMinBvPaise / 100, 0) }} BV.
             </div>
         @else
+            @php
+                // The slab-1 weaker carry-forward bucket has no L/R column: it
+                // applies to whichever side is weaker at the next cut-off, so it
+                // is shown as a hint under the currently weaker tile rather than
+                // added into either side's total. Tie ⇒ Left is the power side
+                // (engine tie-break), so Right is the weaker one.
+                $slab1WeakerCfBv = (int) round($slabProgress->slab1WeakerCfPaise / 100);
+                $powerSideIsLeft = $slabProgress->powerSide() === 'L';
+                $weakerSideIsLeft = ! $powerSideIsLeft;
+                $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
+                $powerBadgeClasses = $sideBadgeClasses.' bg-indigo-100 text-indigo-700';
+                $weakerBadgeClasses = $sideBadgeClasses.' bg-amber-100 text-amber-700';
+                $slab1WeakerCfHint = $slab1WeakerCfBv > 0
+                    ? '+ '.\Illuminate\Support\Number::format($slab1WeakerCfBv, 0).' BV in slab-1 weaker carry over — counted under Slab 1 below'
+                    : null;
+                $slab1WeakerCfTip = 'Weaker-side BV from earlier days — including any personal-BV top-up — carries over into the slab-1 weaker bucket at each cut-off. That bucket is not pinned to a side; it applies to whichever side is weaker at the next cut-off, so it is not part of this side\'s total. It appears as Slab 1 "Your progress" in the ladder below and counts toward the 15,000 BV first-slab match.';
+            @endphp
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-5">
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
-                    <p class="text-xs text-gray-500 flex items-center gap-1">Left group BV today <x-help-tip text="Today's Left group BV plus any carry-forward sitting on your Left side. This is the figure tonight's 23:59 cut-off will use." /></p>
+                    <p class="text-xs text-gray-500 flex items-center gap-1">Left group BV today <x-help-tip text="Today's Left group BV plus any BV carried over on your Left side. This is the figure tonight's 23:59 cut-off will use." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \Illuminate\Support\Number::format($slabProgress->leftEffectivePaise / 100, 0) }}</p>
+                    <p class="mt-1">
+                        <span class="{{ $powerSideIsLeft ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $powerSideIsLeft ? 'Power side' : 'Weaker side' }}</span>
+                    </p>
+                    @if ($slab1WeakerCfHint !== null && $weakerSideIsLeft)
+                        <p class="text-xs text-gray-400 mt-1 flex items-start gap-1">
+                            {{ $slab1WeakerCfHint }}
+                            <x-help-tip :text="$slab1WeakerCfTip" />
+                        </p>
+                    @endif
                 </div>
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
-                    <p class="text-xs text-gray-500 flex items-center gap-1">Right group BV today <x-help-tip text="Today's Right group BV plus any carry-forward sitting on your Right side. This is the figure tonight's 23:59 cut-off will use." /></p>
+                    <p class="text-xs text-gray-500 flex items-center gap-1">Right group BV today <x-help-tip text="Today's Right group BV plus any BV carried over on your Right side. This is the figure tonight's 23:59 cut-off will use." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \Illuminate\Support\Number::format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
+                    <p class="mt-1">
+                        <span class="{{ $powerSideIsLeft ? $weakerBadgeClasses : $powerBadgeClasses }}">{{ $powerSideIsLeft ? 'Weaker side' : 'Power side' }}</span>
+                    </p>
+                    @if ($slab1WeakerCfHint !== null && ! $weakerSideIsLeft)
+                        <p class="text-xs text-gray-400 mt-1 flex items-start gap-1">
+                            {{ $slab1WeakerCfHint }}
+                            <x-help-tip :text="$slab1WeakerCfTip" />
+                        </p>
+                    @endif
                 </div>
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
                     <p class="text-xs text-gray-500 flex items-center gap-1">Matched BV so far <x-help-tip text="The lower of your Left and Right group BV. The slabs below are matched against this figure at the 23:59 cut-off." /></p>
@@ -49,7 +84,7 @@
         @endif
 
         <div class="overflow-x-auto border-t border-gray-200">
-            <table class="w-full text-sm min-w-[640px]">
+            <table class="w-full text-sm min-w-[820px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="text-left px-5 py-3 font-semibold text-gray-600">Slab</th>
@@ -59,8 +94,11 @@
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center gap-1">Title required <x-help-tip text="Your personal purchase title caps the slab you can earn. Titles come from your own lifetime purchase BV." /></span>
                         </th>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center gap-1">Left / Right <x-help-tip text="Each side's BV counting toward this slab, shown against the slab's requirement: L is your Left group, R your Right group. Only the weaker (lower) side is matched at the 23:59 cut-off, so a slab pays only once BOTH sides reach it. For Slab 1 the weaker side's figure also includes your lifetime slab-1 weaker carry over." /></span>
+                        </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Your progress <x-help-tip text="Matched BV counting toward this slab right now. Slab 1 includes your lifetime carry-forward; slabs 2-7 count today's BV only." /></span>
+                            <span class="flex items-center justify-end gap-1">Your progress <x-help-tip text="Matched BV counting toward this slab right now. Slab 1 includes your lifetime carry over; slabs 2-7 count today's BV only." /></span>
                         </th>
                         <th class="text-left px-5 py-3 font-semibold text-gray-600">Status</th>
                     </tr>
@@ -74,6 +112,29 @@
                             {{ $row->titleRequired }}
                             @if($row->lockedByTitle)
                                 <span class="block text-xs text-gray-400">unlocks at {{ \Illuminate\Support\Number::format($row->titleMinBvPaise / 100, 0) }} BV of personal purchases</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">
+                            @if($slabProgress->genosBvEligible)
+                                @php
+                                    $slabRequiredBv = \Illuminate\Support\Number::format($row->matchedBvPaise / 100, 0);
+                                    $leftMet = $row->leftProgressPaise >= $row->matchedBvPaise;
+                                    $rightMet = $row->rightProgressPaise >= $row->matchedBvPaise;
+                                @endphp
+                                <div class="{{ $leftMet ? 'text-green-700 font-medium' : 'text-gray-500' }}">
+                                    L {{ \Illuminate\Support\Number::format($row->leftProgressPaise / 100, 0) }} / {{ $slabRequiredBv }}
+                                    @if($leftMet)
+                                        <span aria-label="met">&check;</span>
+                                    @endif
+                                </div>
+                                <div class="{{ $rightMet ? 'text-green-700 font-medium' : 'text-gray-500' }}">
+                                    R {{ \Illuminate\Support\Number::format($row->rightProgressPaise / 100, 0) }} / {{ $slabRequiredBv }}
+                                    @if($rightMet)
+                                        <span aria-label="met">&check;</span>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="text-gray-300">—</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono {{ $row->isNext ? 'font-medium text-amber-800' : 'text-gray-600' }}">
@@ -139,7 +200,7 @@
                             <span class="flex items-center justify-center gap-1">Slab <x-help-tip text="The Genos Sales Bonus slab matched at this day's cut-off. See the slab ladder above for each slab's matched BV requirement." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Power CF after <x-help-tip text="BV on your stronger Genos side carried forward to the next day. Capped at 4,50,000 BV." /></span>
+                            <span class="flex items-center justify-end gap-1">Power CF after <x-help-tip text="BV on your stronger Genos side that moves to the next day — carry over before a slab match; on a day a slab matched, it is the remaining carry forward. Capped at 4,50,000 BV." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">Slab-1 weaker CF <x-help-tip text="Weaker side BV accumulating toward the 15,000 BV first-slab match. No time limit." /></span>

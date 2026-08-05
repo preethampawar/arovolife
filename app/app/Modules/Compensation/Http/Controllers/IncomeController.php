@@ -67,6 +67,13 @@ final class IncomeController extends Controller
                 : null;
 
             $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
+
+            // Same CF-inclusive per-side figures the Genos BV page shows, so the
+            // two pages never disagree: before the first slab matches, the whole
+            // leg is carried forward and becomes the next day's opening balance.
+            $slabProgress = $genosBvEligible
+                ? app(GsbSlabProgressService::class)->forDistributor($distributorId)
+                : null;
         } catch (QueryException) {
             $walletBalancePaise = null;
             $personalBvPaise = null;
@@ -75,11 +82,12 @@ final class IncomeController extends Controller
             $cf = null;
             $gsbMinBvPaise = null;
             $genosBvEligible = true;
+            $slabProgress = null;
         }
 
         return view('income.dashboard', compact(
             'distributor', 'walletBalancePaise', 'personalBvPaise',
-            'title', 'dailyBv', 'cf', 'genosBvEligible', 'gsbMinBvPaise',
+            'title', 'dailyBv', 'cf', 'genosBvEligible', 'gsbMinBvPaise', 'slabProgress',
         ));
     }
 

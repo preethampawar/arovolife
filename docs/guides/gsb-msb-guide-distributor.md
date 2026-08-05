@@ -22,14 +22,27 @@
 
 Shortly after midnight, the system closes the previous day:
 
-1. It takes your Left and Right Group BV for the day, **plus any carry-forward**
+1. It takes your Left and Right Group BV for the day, **plus any carry over**
    from earlier days.
 2. Your **weaker side** (the lower of the two) is matched against the slab
    table. The slab you can be paid on is also capped by your purchase title —
    e.g. the first slab requires the Retailer title.
 3. If a slab matches, the bonus is **credited to your wallet**, the weaker side
-   resets, and the remaining stronger-side BV **carries forward** (up to the
-   plan's cap).
+   resets to 0, and the remaining stronger-side BV **carries forward** (up to
+   the plan's cap).
+
+**Two words matter here (partner-canonical, Aug 2026).** Business that occurs
+*before* matching is called **carry over**; the remaining BVs *after* matching
+are called **carry forward**. Carry over is an opening balance, not a deduction
+— nothing is taken away at the cut-off. Until your first slab matches, *both*
+sides keep accumulating: each night the day's unmatched BV carries over, and the
+next morning it is added straight back to the same side. So a day that closes
+with 6,000 BV on your Left starts the next day at 6,000 BV on your Left, and a
+further 15,000 BV that day makes it 21,000 BV. Only once a slab actually pays is
+the matched amount deducted — the weaker side resets to 0 and the stronger
+side's remainder is the carry forward. My Income → **Genos BV**, the Left/Right
+Group BV cards on your income dashboard and the **My Business** page all show
+the carry-over-inclusive figure: the one tonight's cut-off will use.
 
 Until you reach the Retailer title, bonuses accumulate in your web wallet but
 are not transferred to your bank.
@@ -66,7 +79,7 @@ earn.
 
 | What you want to check | Where |
 |---|---|
-| Wallet balance, Personal BV & title, **today's Left/Right BV**, carry-forward | **My Income** (`/income`) |
+| Wallet balance, Personal BV & title, **today's Left/Right BV**, carry over | **My Income** (`/income`) |
 | Day-by-day Left/Right Group BV and each day's cut-off outcome | My Income → **Genos BV** (`/income/genos-bv`) |
 | Which GSB slab you reached each day, and what was credited | My Income → **GSB History** (`/income/gsb-history`, downloadable) |
 | Mentorship Bonus earned per sponsee | My Income → **Mentorship** (`/income/mentorship`) |
@@ -81,7 +94,7 @@ earn.
   when the company records the payment, not at delivery booking).
 - *"I had matching BV — why no bonus?"* Check (a) your purchase title covers
   the slab, (b) the weaker side actually reached the first slab after
-  carry-forward, (c) the outcome row for that day in Genos BV, which states the
+  carry over, (c) the outcome row for that day in Genos BV, which states the
   reason.
 - *"Bonus credited — why no bank transfer?"* You may be below the ₹100 weekly
   minimum, below the Retailer title, or your bank account is not yet verified.

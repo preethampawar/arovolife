@@ -48,8 +48,12 @@ The per-day economics are visible under **Compensation → GSB Input & Output / 
 
 The title column is the distributor's **lifetime personal purchase BV** requirement (KP's confirmed 27-06-2026 table, stored in the admin-editable `gsb_slabs` rows). The cut-off pays the **lower** of the matched-BV slab and the title slab: a Retailer whose Genos matches Slab-3-level volume is still paid Slab 1 only, and the weaker-side BV above 15,000 is consumed, not banked. Between 600 and 2,999 personal BV, group BV accumulates as carry-forward but **no slab pays at all** — Slab 1 itself requires the Retailer title.
 
-## Carry-forward
-- **Power side** (stronger leg): carries forward capped at 4,50,000 BV
+## Carry over & carry forward
+Partner-canonical terminology (KP, Aug 2026), used on every distributor-facing page:
+- **Carry over** — business that occurs **before** matching. It keeps accumulating day after day as that side's opening balance — never a deduction. This is what the rolling `gsb_carryforward` store holds between matches, and what distributor pages label "carried over".
+- **Carry forward** — the remaining BVs **after** matching: when a slab pays, the weaker side resets to 0 and the power side's remainder carries forward. The distributor's My Business page shows this as the `power_cf_after` of their most recent matched cut-off; it reads **0 until their first slab matches**.
+- **The rolled balance is the next day's opening balance, not a deduction.** The cut-off folds each side's balance back onto that same side before measuring (`GsbCutoffService::computeForDistributor()`), so a leg that closed at 6,000 BV starts the next day at 6,000 BV. Before the first slab matches, both sides simply keep accumulating. Expect distributor queries about "my BV disappeared"; the dashboard, Genos BV and My Business pages all show the carry-over-inclusive figure.
+- **Power side** (stronger leg): rolling balance capped at 4,50,000 BV
 - **Slab-1 weaker side**: accumulates indefinitely toward the 15K first match
 - **Equal sides tie-break** (KP 2026-07-21): when the two legs are exactly equal at cut-off, the **Left** leg is treated as the stronger/power side — its excess carries forward and the Right leg settles to zero.
 

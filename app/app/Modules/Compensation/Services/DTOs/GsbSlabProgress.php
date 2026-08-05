@@ -29,5 +29,62 @@ final readonly class GsbSlabProgress
         public int $personalBvTopupPaise = 0,
         /** Which side the topup was applied to ('L', 'R', or null if none). */
         public ?string $topupSide = null,
+        /** Lifetime weaker-side BV accumulating toward slab 1 (paise); side-less by design. */
+        public int $slab1WeakerCfPaise = 0,
+        /** Power-side carry-forward already folded into the effective figures (paise). */
+        public int $powerCfPaise = 0,
+        /** Side the power carry-forward sits on ('L', 'R', or null when there is none). */
+        public ?string $powerCfSide = null,
     ) {}
+
+    /**
+     * Carry-forward that opened the day on the Left side — the part of
+     * leftEffectivePaise that did not arrive today.
+     */
+    public function carriedLeftPaise(): int
+    {
+        return $this->powerCfSide === 'L' ? $this->powerCfPaise : 0;
+    }
+
+    /**
+     * Carry-forward that opened the day on the Right side.
+     */
+    public function carriedRightPaise(): int
+    {
+        return $this->powerCfSide === 'R' ? $this->powerCfPaise : 0;
+    }
+
+    /**
+     * The side tonight's cut-off will treat as stronger: the higher effective
+     * figure, with the engine's Left-wins tie-break (the stored carry-forward
+     * side breaks an exact tie when one exists).
+     */
+    public function powerSide(): string
+    {
+        if ($this->leftEffectivePaise === $this->rightEffectivePaise) {
+            return $this->powerCfSide === 'R' ? 'R' : 'L';
+        }
+
+        return $this->leftEffectivePaise > $this->rightEffectivePaise ? 'L' : 'R';
+    }
+
+    /**
+     * The side that will be matched against the slab table tonight.
+     */
+    public function weakerSide(): string
+    {
+        return $this->powerSide() === 'L' ? 'R' : 'L';
+    }
+
+    /**
+     * Everything currently carried on one side: its power-side carry-forward
+     * plus, on the weaker side only, the side-less slab-1 weaker accumulator
+     * (which counts toward whichever side is weaker at the next cut-off).
+     */
+    public function totalCarriedPaise(string $side): int
+    {
+        $carried = $side === 'L' ? $this->carriedLeftPaise() : $this->carriedRightPaise();
+
+        return $carried + ($side === $this->weakerSide() ? $this->slab1WeakerCfPaise : 0);
+    }
 }

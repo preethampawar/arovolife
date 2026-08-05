@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        A transaction view of your Genos BV. Each purchase made in your Left or Right group adds BV here as it happens; at the daily 23:59 cut-off the day is settled — the matched BV is used for your Genos Sales Bonus, the weaker side resets, and the carry-forward shown is what moves into the next day.
+        A transaction view of your Genos BV. Each purchase made in your Left or Right group adds BV here as it happens; at the daily 23:59 cut-off the day is settled — the matched BV is used for your Genos Sales Bonus, the weaker side resets, and the balance shown carries over as the next day's opening BV. Business that occurs before matching is carry over; on a day a slab matches, the remaining BV is your carry forward.
     </div>
 
     @if(! $genosBvEligible)
@@ -136,7 +136,7 @@
                             @endif
                         </td>
                         <td colspan="2" class="px-4 py-2.5 text-right text-indigo-900 text-xs">
-                            carried forward: <span class="font-mono font-medium">power {{ $c->power_side_after ? '('.$c->power_side_after.') ' : '' }}{{ \Illuminate\Support\Number::format($c->power_cf_after_paise / 100, 0) }}</span>
+                            {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ $c->power_side_after ? '('.$c->power_side_after.') ' : '' }}{{ \Illuminate\Support\Number::format($c->power_cf_after_paise / 100, 0) }}</span>
                             · <span class="font-mono font-medium">slab-1 weaker {{ \Illuminate\Support\Number::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
                         </td>
                     </tr>

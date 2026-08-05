@@ -48,6 +48,8 @@ final class GsbSlabProgressService
         $slab1Cf = 0;
         $personalBvTopupPaise = 0;
         $topupSide = null;
+        $powerCfPaise = 0;
+        $powerCfSide = null;
 
         if ($eligible) {
             $today = Carbon::today('Asia/Kolkata')->toDateString();
@@ -61,6 +63,8 @@ final class GsbSlabProgressService
             $rightEffective = ($daily->right_bv_paise ?? 0)
                 + ($cf !== null && $cf->power_side === 'R' ? $cf->power_side_bv_paise : 0);
             $slab1Cf = $cf->slab1_weaker_bv_paise ?? 0;
+            $powerCfPaise = $cf->power_side_bv_paise ?? 0;
+            $powerCfSide = $cf->power_side ?? null;
 
             // Preview the conditional personal-BV weaker-leg topup (KP 2026-07-21).
             // Topups already applied today are in the accumulator; expose them.
@@ -97,6 +101,8 @@ final class GsbSlabProgressService
         $weakerEffective = min($leftEffective, $rightEffective);
         $strongerEffective = max($leftEffective, $rightEffective);
         $slab1Progress = min($weakerEffective + $slab1Cf, $strongerEffective);
+        // Tie ⇒ Right is the weaker side (the engine treats Left as power).
+        $weakerIsLeft = $leftEffective < $rightEffective;
 
         /** @var array<int, int> $earnedCounts slab => number of credited cut-offs */
         $earnedCounts = GsbCutoffResult::query()
@@ -127,6 +133,13 @@ final class GsbSlabProgressService
 
             $progress = $slab === 1 ? $slab1Progress : $weakerEffective;
 
+            // Per-side split of the same measurement: only slab 1 carries the
+            // side-less weaker accumulator, and only onto the weaker side, so
+            // min(left, right) reproduces $progress on every rung.
+            $slab1CfForSlab = $slab === 1 ? $slab1Cf : 0;
+            $leftProgress = $leftEffective + ($weakerIsLeft ? $slab1CfForSlab : 0);
+            $rightProgress = $rightEffective + ($weakerIsLeft ? 0 : $slab1CfForSlab);
+
             $rows[] = new GsbSlabRow(
                 slab: $slab,
                 titleRequired: $slabRow['title'],
@@ -137,6 +150,8 @@ final class GsbSlabProgressService
                 isNext: $isNext,
                 progressPaise: $progress,
                 remainingPaise: max(0, $threshold - $progress),
+                leftProgressPaise: $leftProgress,
+                rightProgressPaise: $rightProgress,
             );
         }
 
@@ -151,6 +166,11 @@ final class GsbSlabProgressService
             highestEarnedSlab: $highestEarnedSlab,
             personalBvTopupPaise: $personalBvTopupPaise,
             topupSide: $topupSide,
+            // Zero on the ineligible path, exactly like left/right effective:
+            // below the personal-BV minimum nothing is counted for the ladder.
+            slab1WeakerCfPaise: $slab1Cf,
+            powerCfPaise: $powerCfPaise,
+            powerCfSide: $powerCfSide,
         );
     }
 }
