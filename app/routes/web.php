@@ -52,6 +52,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
 use App\Modules\Compensation\Http\Controllers\IncomeController;
+use App\Modules\Compensation\Http\Controllers\MyBusinessController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
@@ -618,6 +619,9 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Distributor BV ledger — personal accruals + reversals history.
     Route::get('/bv-ledger', [MyBvLedgerController::class, 'index'])->name('bv-ledger.index');
+
+    // My Business — one-page snapshot linking into the My Income pages below.
+    Route::get('/my-business', MyBusinessController::class)->name('my-business');
 
     // My Income (Compensation — Phase 4)
     Route::get('/income', [IncomeController::class, 'dashboard'])->name('income.dashboard');

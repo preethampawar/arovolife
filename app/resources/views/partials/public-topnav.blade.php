@@ -66,6 +66,10 @@
                             </a>
                         @endif
                         @if(! $isAdmin && $user->distributor)
+                        <a href="{{ route('my-business') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 6.006a2.18 2.18 0 0 1-.75.421 48.09 48.09 0 0 1-15 0 2.18 2.18 0 0 1-.75-.42m0 0a2.18 2.18 0 0 1-.75-1.661V8.706c0-1.081.768-2.015 1.837-2.175a48.11 48.11 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                            My Business
+                        </a>
                         <a href="{{ route('orders.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
                             <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2"/></svg>
                             My Orders &amp; Sales
@@ -140,6 +144,10 @@
                 <a href="{{ route('admin.dashboard') }}" class="hover:text-brand-50 transition-colors">Admin Console</a>
             @else
                 <a href="{{ route('dashboard') }}" class="hover:text-brand-50 transition-colors">My Dashboard</a>
+                @if(auth()->user()->distributor)
+                    <span class="text-brand-400">|</span>
+                    <a href="{{ route('my-business') }}" class="hover:text-brand-50 transition-colors">My Business</a>
+                @endif
             @endif
         @else
             <a href="{{ route('about') }}" class="hover:text-brand-50 transition-colors">About Us</a>
@@ -367,6 +375,7 @@
                     <a href="{{ route('dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Dashboard</a>
                 @endif
                 @if(! auth()->user()->isSuperStaff() && auth()->user()->distributor)
+                <a href="{{ route('my-business') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Business</a>
                 <a href="{{ route('orders.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Orders &amp; Sales</a>
                 <a href="{{ route('income.dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My Income</a>
                 <a href="{{ route('bv-ledger.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors font-medium">My BV Ledger</a>
