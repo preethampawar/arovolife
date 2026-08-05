@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Commerce\Models\Order;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
@@ -16,7 +15,20 @@ use Illuminate\Support\Facades\DB;
 /**
  * Monthly Rank Bonus engine (KP 2026-08-05 spec).
  *
- * Pool per rank = company_turnover * pool_pct[rank] / 100.
+ * Pool per rank = company BV × envelope × pool_pct[rank].
+ *
+ * "Turnover" here means COMPANY BV — the signed bv_ledger_entries sum for the
+ * month (GsbDailyPoolService::companyBvPaiseBetween), not order sales value.
+ * The Rank Bonus envelope (comp.rank.envelope_bp, default 2000 bp = 20%) is
+ * carved out of that BV first; each rank's `rank_tiers.pool_pct` is then a
+ * share OF THE ENVELOPE, not of turnover directly — the nine seeded
+ * percentages sum to exactly 20.
+ *
+ * Worked example (product owner 2026-08-05): 10,00,000 BV in the month →
+ * 20% envelope = 2,00,000 → Rank 1's 7% share = ₹14,000.
+ *
+ * Company BV is a SIGNED sum, so a refund-heavy month can be negative; every
+ * pool is floored at 0 so a negative amount can never reach the wallet.
  *
  * Distribution:
  *  - Ranks with rap_points set (seeded: Rank 1 = 10) divide their pool by
@@ -50,6 +62,7 @@ final class RankBonusService
         private readonly CompensationPlanSettingsService $plan,
         private readonly AogoOfferService $aogo,
         private readonly RankRequalificationGateService $gate,
+        private readonly GsbDailyPoolService $gsbPool,
     ) {}
 
     /**
@@ -68,7 +81,7 @@ final class RankBonusService
         $monthStart = $monthStartCarbon->toDateString();
         $monthEnd = $month->copy()->endOfMonth();
 
-        $turnoverPaise = $this->companyTurnoverPaise($monthStartCarbon, $monthEnd);
+        $turnoverPaise = $this->gsbPool->companyBvPaiseBetween($monthStartCarbon, $monthEnd);
 
         $credited = 0;
         $byRank = [];
@@ -78,7 +91,9 @@ final class RankBonusService
         ): void {
             foreach (range(1, 9) as $rank) {
                 $poolPct = $this->plan->rankPoolPct($rank);
-                $poolPaise = (int) round($turnoverPaise * $poolPct / 100);
+                $poolPaise = max(0, (int) round(
+                    $turnoverPaise * $this->plan->rankEnvelopeBp() / 10_000 * $poolPct / 100,
+                ));
                 $rapPoints = $this->plan->rankRapPoints($rank);
 
                 $qualifierIds = RankQualification::where('month_start', $monthStart)
@@ -395,20 +410,5 @@ final class RankBonusService
         if ($existing->status === LifetimeAwardMilestone::STATUS_PENDING) {
             $existing->increment('qualification_count');
         }
-    }
-
-    private function companyTurnoverPaise(Carbon $monthStart, Carbon $monthEnd): int
-    {
-        return (int) Order::whereBetween('created_at', [$monthStart, $monthEnd->endOfDay()])
-            ->whereNotIn('status', [
-                Order::STATUS_DRAFT,
-                Order::STATUS_PLACED,
-                Order::STATUS_CANCELLED,
-                Order::STATUS_REFUND_REQUESTED,
-                Order::STATUS_REFUND_INSPECTION,
-                Order::STATUS_REFUND_APPROVED,
-                Order::STATUS_REFUNDED,
-            ])
-            ->sum('total_paise');
     }
 }

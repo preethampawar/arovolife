@@ -71,8 +71,9 @@ final class SettingsSeeder extends Seeder
             'comp.gsb.pool_rate_bp' => '4500',              // 45% daily GSB pool (slabs 3–7 pro-rated)
             'comp.gsb.score_rate_paise' => '36000',         // ₹360 per score point
             'comp.msb.pool_rate_bp' => '300',               // 3% daily MSB pool (÷ the day's total MSB points)
-            'comp.gbb.pool_rate_bp' => '500',               // 5% of monthly turnover
+            'comp.gbb.pool_rate_bp' => '500',               // 5% of the month's company BV
             'comp.gbb.agp_cap' => '120',
+            'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds all nine rank pools
             'comp.rank.aogo_points' => '5',                 // AO-GO points per grant (Rank-1 pool)
             'comp.rank.aogo_lifetime_max' => '3',           // AO-GO uses per distributor, lifetime
             'comp.adc.rate_bp' => '300',                    // 3%

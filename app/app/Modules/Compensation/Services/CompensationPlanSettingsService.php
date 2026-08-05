@@ -96,6 +96,9 @@ final class CompensationPlanSettingsService
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
         'comp.adc.cap_paise' => 10_000_000,
+        // Rank Bonus envelope (KP 2026-08-05): share of company BV set aside for
+        // ALL nine rank pools together. 2000 bp = 20%.
+        'comp.rank.envelope_bp' => 2_000,
         // AO-GO offer (KP 2026-08-05): points a degraded ex-rank-holder earns
         // in the Rank-1 pool, and the lifetime cap on how many times the offer
         // can be used.
@@ -511,6 +514,23 @@ final class CompensationPlanSettingsService
     public function rankPoolPct(int $rank): float
     {
         return (float) ($this->rankTiers()[$rank]['pool_pct'] ?? 0.0);
+    }
+
+    /**
+     * Share of company BV (the signed bv_ledger_entries sum for the month) that
+     * funds the Rank Bonus envelope. Basis points: 2000 = 20%.
+     *
+     * Each rank's `rank_tiers.pool_pct` is a share OF THIS ENVELOPE, not of
+     * turnover directly — which is why the seeded per-rank percentages
+     * (7.00, 3.40, 2.70, 2.20, 1.70, 1.20, 0.90, 0.60, 0.30) sum to exactly 20
+     * and are stored verbatim as the product owner writes them.
+     *
+     * Worked example (product owner 2026-08-05): 10,00,000 BV in the month →
+     * 20% envelope = 2,00,000 → Rank 1's 7% share = ₹14,000.
+     */
+    public function rankEnvelopeBp(): int
+    {
+        return $this->scalarInt('comp.rank.envelope_bp');
     }
 
     /**

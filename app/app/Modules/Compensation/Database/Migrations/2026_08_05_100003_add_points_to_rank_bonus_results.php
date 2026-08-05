@@ -24,8 +24,20 @@ return new class extends Migration
         // 'requalification_held': the distributor re-qualified but failed the
         // month's requalification conditions (rank's repurchase BV + wallet
         // cleared) — recorded, never credited (KP §8, confirmed 2026-08-05).
+        //
+        // SQLite is NOT a no-op here, contrary to the comment on the earlier
+        // gsb_cutoff_results widen: Blueprint::enum() compiles to a TEXT column
+        // plus a CHECK constraint, so a MySQL-only widen leaves the test
+        // database rejecting a status the application legitimately writes
+        // ("CHECK constraint failed: status"). Rebuilding the column as a plain
+        // string drops that constraint; the allowed set is enforced by the
+        // model constants either way.
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE rank_bonus_results MODIFY COLUMN status ENUM('pending','credited','reversed','requalification_held') NOT NULL DEFAULT 'pending'");
+        } else {
+            Schema::table('rank_bonus_results', function (Blueprint $table) {
+                $table->string('status', 32)->default('pending')->nullable(false)->change();
+            });
         }
     }
 

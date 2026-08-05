@@ -439,6 +439,16 @@ final class AdminSettingsController extends Controller
                 'max' => 100000,
                 'default' => '120',
             ],
+            'comp.rank.envelope_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'Rank Bonus envelope (basis points)',
+                'description' => 'Share of monthly company BV set aside for all nine Rank Bonus pools together. 2000 = 20%. Each rank\'s percentage is a share of THIS envelope, not of BV directly — the nine rank percentages sum to 100% of the envelope (20% of BV). Example: 10,00,000 BV → 2,00,000 envelope → Rank 1 (7%) = ₹14,000.',
+                'impact' => 'Rescales every rank pool. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '2000',
+            ],
             'comp.rank.aogo_points' => [
                 'group' => 'compensation_plan',
                 'label' => 'AO-GO points per grant',
