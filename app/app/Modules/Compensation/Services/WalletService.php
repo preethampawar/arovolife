@@ -15,6 +15,28 @@ class WalletService
             ->sum('amount_paise');
     }
 
+    /**
+     * Positive (credit) totals grouped by entry type, optionally from a date.
+     *
+     * The income dashboard's per-bonus summary reads the wallet ledger rather
+     * than the per-engine result tables so that "credited to wallet" means
+     * exactly that for every bonus, from one source — held/suspended engine
+     * rows never appear here because they were never credited.
+     *
+     * @return array<string, int> type => total paise
+     */
+    public function creditTotalsByType(int $distributorId, ?\DateTimeInterface $from = null): array
+    {
+        return WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->where('amount_paise', '>', 0)
+            ->when($from !== null, fn ($q) => $q->where('created_at', '>=', $from))
+            ->groupBy('type')
+            ->selectRaw('type, SUM(amount_paise) as total_paise')
+            ->pluck('total_paise', 'type')
+            ->map(fn ($total): int => (int) $total)
+            ->all();
+    }
+
     public function credit(
         int $distributorId,
         int $amountPaise,

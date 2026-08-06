@@ -42,7 +42,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Growth Booster Bonus comes from a monthly pool set at 5% of the company's business volume for that month, shared out through arovolife Growth Points (AGP). AGP is recorded each time you match a Genos Sales Bonus slab — Slab 1 records 12 AGP, Slab 2 records 5 AGP, Slab 3 records 2 AGP, up to 120 AGP in a month. Each month's point value is that month's pool divided by the AGP of everyone eligible in it, and your bonus for the month is your AGP multiplied by that point value.
+        The Growth Booster Bonus comes from a monthly pool set at 5% of the company's business volume for that month, shared out through arovolife Growth Points (AGP). It is for distributors who held no rank in the previous month — achieving your first rank this month keeps you eligible for this month. AGP is recorded each time you match a Genos Sales Bonus slab — Slab 1 records 12 AGP, Slab 2 records 5 AGP, Slab 3 records 2 AGP, up to 120 AGP in a month. Each month's point value is that month's pool divided by the AGP of everyone eligible in it, and your bonus for the month is your AGP multiplied by that point value.
     </div>
 
     {{-- Summary cards --}}
@@ -52,18 +52,18 @@
                 Net credited (this page)
                 <x-help-tip text="Total Growth Booster Bonus credited to you across the months listed on this page. Held and non-payable months are excluded." />
             </p>
-            <p class="text-2xl font-bold text-gray-900">{{ $creditedRows->isEmpty() ? '—' : '₹'.\Illuminate\Support\Number::format($creditedNetPaise / 100, 0) }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ $creditedRows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($creditedNetPaise / 100, 0) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">
                 AGP behind it
                 <x-help-tip text="The AGP you recorded in the months that were credited on this page." />
             </p>
-            <p class="text-2xl font-bold text-gray-900">{{ $creditedRows->isEmpty() ? '—' : \Illuminate\Support\Number::format($creditedAgp) }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ $creditedRows->isEmpty() ? '—' : \App\Modules\Shared\Support\IndianNumber::format($creditedAgp) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Months listed</p>
-            <p class="text-2xl font-bold text-gray-900">{{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \Illuminate\Support\Number::format($rows->total()) : \Illuminate\Support\Number::format(count($rows)) }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : \App\Modules\Shared\Support\IndianNumber::format(count($rows)) }}</p>
         </div>
     </div>
 
@@ -97,7 +97,7 @@
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">
                                 AGP earned
-                                <x-help-tip text="Your Arovolife Growth Points for this month (Slab 1 = 12, Slab 2 = 5, Slab 3 = 2). Capped at 120." />
+                                <x-help-tip text="Your arovolife Growth Points for this month (Slab 1 = 12, Slab 2 = 5, Slab 3 = 2). Capped at 120." />
                             </span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
@@ -133,18 +133,18 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
-                            {{ $pointValuePaise !== null ? '₹'.\Illuminate\Support\Number::format($pointValuePaise / 100, 2) : '—' }}
+                            {{ $pointValuePaise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pointValuePaise / 100, 2) : '—' }}
                         </td>
                         <td class="px-4 py-3 text-right font-mono">
-                            ₹{{ \Illuminate\Support\Number::format($row->gbb_gross_paise / 100, 2) }}
+                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_gross_paise / 100, 2) }}
                             @if($isPayable && $pointValuePaise !== null && $row->agp_earned > 0)
                             <span class="block text-[11px] text-gray-400 font-sans">
-                                {{ \Illuminate\Support\Number::format($row->agp_earned) }} AGP × ₹{{ \Illuminate\Support\Number::format($pointValuePaise / 100, 2) }}
+                                {{ \App\Modules\Shared\Support\IndianNumber::format($row->agp_earned) }} AGP × ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pointValuePaise / 100, 2) }}
                             </span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold {{ $row->status === 'credited' ? 'text-green-700' : 'text-gray-600' }}">₹{{ \Illuminate\Support\Number::format($row->gbb_net_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold {{ $row->status === 'credited' ? 'text-green-700' : 'text-gray-600' }}">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}</td>
                         <td class="px-4 py-3">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $statusBadges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ $statusLabels[$row->status] ?? ucfirst(str_replace('_', ' ', $row->status)) }}

@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Rank Bonus is distributed monthly from 9 separate pools (one per rank). Each pool is a fixed percentage of company monthly turnover. Qualified distributors share their rank's pool equally. Runs automatically on the 8th of each month via <code class="font-mono bg-blue-100 px-1 rounded">php artisan rank:monthly-run</code>.
+    The Rank Bonus is distributed monthly from 9 separate pools (one per rank). Each pool is that rank's percentage of the month's rank envelope — the envelope being a configurable share (default 20%) of the month's company-wide BV. Rank 1 is points-based: achievers earn RAP and AO-GO grantees earn offer points, and the pool is divided by the month's total points. Ranks 2–9 split their pool equally among achievers. Runs automatically on the 8th of each month via <code class="font-mono bg-blue-100 px-1 rounded">php artisan rank:monthly-run</code>.
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -27,8 +27,8 @@
                 @foreach($months as $m)
                 <tr>
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->month_start)->format('F Y') }}</td>
-                    <td class="px-4 py-2 text-right">{{ \Illuminate\Support\Number::format($m->qualifier_count) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($m->total_net_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->qualifier_count) }}</td>
+                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_net_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right text-gray-500">
                         {{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}
                     </td>

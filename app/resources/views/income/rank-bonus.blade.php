@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Rank Bonus is paid monthly from each rank's pool (a fixed % of company turnover).
+        The Rank Bonus is paid monthly from each rank's pool (a share of the company's business volume for that month).
         Rank 1 (Silver) is points-based: each achiever earned 10 RAP and each AO-GO grantee 5 points that month; the pool was divided by the month's total points and your income is your points × the point value.
         Ranks 2–9 pools are split equally among that rank's achievers.
         Re-qualifying a rank you already achieved requires that month's repurchase BV and a cleared repurchase wallet.
@@ -21,13 +21,13 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Net Rank Bonus earned (page)</p>
             <p class="text-2xl font-bold text-gray-900">
-                {{ $rows->isEmpty() ? '—' : '₹'.\Illuminate\Support\Number::format($totalNet / 100, 0) }}
+                {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Months credited</p>
             <p class="text-2xl font-bold text-gray-900">
-                {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \Illuminate\Support\Number::format($rows->total()) : count($rows) }}
+                {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}
             </p>
         </div>
         @if(($aogoUsed ?? 0) > 0)
@@ -110,15 +110,15 @@
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
                             @php $points = $row->rap_points ?? $row->aogo_points; @endphp
                             @if($points !== null && $row->point_value_paise !== null)
-                                {{ $points }} × ₹{{ \Illuminate\Support\Number::format($row->point_value_paise / 100, 0) }}
+                                {{ $points }} × ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 0) }}
                             @else
                                 —
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ \Illuminate\Support\Number::format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->admin_charge_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->net_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($row->status) }}

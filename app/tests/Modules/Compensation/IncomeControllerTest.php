@@ -477,3 +477,68 @@ it('streams wallet ledger csv for authenticated distributor', function (): void 
         ->assertOk()
         ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
 });
+
+/**
+ * Dashboard clarity additions (goal 2026-08-06): the income-calendar strip
+ * (tonight's cut-off + payout days — schedule facts only, no amounts) and the
+ * per-bonus "credited to wallet" summary sourced from the wallet ledger.
+ */
+it('shows the key-dates strip and per-bonus wallet summary on the dashboard', function (): void {
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $id, 'type' => 'gsb_credit', 'amount_paise' => 200_000, 'created_at' => now()],
+        ['distributor_id' => $id, 'type' => 'gbb_credit', 'amount_paise' => 294_500, 'created_at' => now()],
+        // A lifetime-only credit from a previous month must appear in the
+        // lifetime figure but not in this month's.
+        ['distributor_id' => $id, 'type' => 'gsb_credit', 'amount_paise' => 100_000, 'created_at' => now()->subMonths(2)],
+        // Debits must never inflate the credited-to-wallet figures.
+        ['distributor_id' => $id, 'type' => 'payout_debit', 'amount_paise' => -50_000, 'created_at' => now()],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('income.dashboard'))
+        ->assertOk()
+        ->assertSee("Tonight's cut-off", false)
+        ->assertSee('Next weekly payout')
+        ->assertSee('Next monthly payout')
+        ->assertSee('My bonuses — credited to wallet')
+        ->assertSee('Genos Sales Bonus')
+        ->assertSee('Growth Booster Bonus')
+        // GSB: 2,000 this month, 3,000 lifetime (Indian grouping, whole ₹).
+        ->assertSee('₹2,000')
+        ->assertSee('₹3,000')
+        // GBB: same figure this month and lifetime.
+        ->assertSee('₹2,945');
+});
+
+it('hides the monthly payout card and flag-gated bonuses when no monthly bonus is active', function (): void {
+    ['user' => $user] = incomeDistributor();
+
+    $this->actingAs($user)
+        ->get(route('income.dashboard'))
+        ->assertOk()
+        ->assertSee('Next weekly payout')
+        ->assertDontSee('Next monthly payout')
+        ->assertDontSee('Growth Booster')
+        ->assertDontSee('Mentorship');
+});
+
+it('shows friendly wallet ledger type labels, never raw machine types', function (): void {
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $id, 'type' => 'gsb_credit', 'amount_paise' => 200_000, 'created_at' => now()],
+        ['distributor_id' => $id, 'type' => 'repurchase_deduction', 'amount_paise' => -20_000, 'created_at' => now()],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('income.wallet'))
+        ->assertOk()
+        ->assertSee('Genos Sales Bonus')
+        ->assertSee('Repurchase deduction')
+        ->assertDontSee('gsb_credit')
+        ->assertDontSee('repurchase_deduction');
+});

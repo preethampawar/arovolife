@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your wallet receives GSB and Mentorship Bonus credits after each 23:59 cut-off. Every Tuesday, your wallet balance (minus deductions) is transferred to your registered bank account — provided the balance is at least ₹{{ \Illuminate\Support\Number::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of your previous month's GSB + Mentorship Bonus (max ₹10,000) is held back to fund your mandatory monthly repurchase. Balances below ₹{{ \Illuminate\Support\Number::format($minThresholdPaise / 100, 0) }} roll over to the next Tuesday.
+        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income transfers to your registered bank account every Tuesday and monthly income in the monthly payout on the 9th — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of your previous month's bonus income (max ₹10,000) is held back to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
     </div>
 
     {{-- Stat cards --}}
@@ -20,7 +20,7 @@
                 <x-help-tip text="Your current wallet balance — GSB and other bonus credits net of any debits. This will be transferred to your bank account on the next payout date." />
             </div>
             <p class="text-2xl font-bold {{ $walletBalancePaise > 0 ? 'text-green-700' : 'text-gray-900' }}">
-                ₹{{ \Illuminate\Support\Number::format($walletBalancePaise / 100, 2) }}
+                ₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBalancePaise / 100, 2) }}
             </p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
@@ -28,7 +28,7 @@
                 <p class="text-xs text-gray-500">Total Paid Out</p>
                 <x-help-tip text="Total net amount transferred to your bank account since you joined." />
             </div>
-            <p class="text-2xl font-bold text-gray-900">₹{{ \Illuminate\Support\Number::format($totalPaidOutPaise / 100, 2) }}</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalPaidOutPaise / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
@@ -42,7 +42,7 @@
                 <p class="text-xs text-gray-500">Min. Payout</p>
                 <x-help-tip text="Wallet balances below this threshold roll over to the next Tuesday batch." />
             </div>
-            <p class="text-2xl font-bold text-gray-900">₹{{ \Illuminate\Support\Number::format($minThresholdPaise / 100, 0) }}</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}</p>
         </div>
     </div>
 
@@ -64,7 +64,7 @@
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center gap-1">Type <x-help-tip text="gsb_credit = daily GSB. mb_credit = Mentorship Bonus. payout_debit = Tuesday bank transfer. manual_credit = admin adjustment." /></span>
+                            <span class="flex items-center gap-1">Type <x-help-tip text="What this wallet entry is: a bonus credit (Genos Sales, Mentorship, Growth Booster, Rank, Fortune or ADC), a payout to your bank, the repurchase deduction held back for your monthly repurchase, an amount above the monthly income cap, or a manual adjustment by arovolife." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Amount</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
@@ -73,16 +73,37 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
+                    @php
+                        // Friendly labels for a first-time distributor; the raw
+                        // machine type stays available in the CSV export.
+                        $walletTypeLabels = [
+                            'gsb_credit' => 'Genos Sales Bonus',
+                            'mb_credit' => 'Mentorship Bonus',
+                            'gbb_credit' => 'Growth Booster Bonus',
+                            'rank_credit' => 'Rank Bonus',
+                            'fortune_credit' => 'Fortune Bonus',
+                            'adc_credit' => 'ADC Bonus',
+                            'payout_debit' => 'Payout to bank',
+                            'repurchase_deduction' => 'Repurchase deduction',
+                            'income_cap_forfeit' => 'Monthly income cap',
+                            'manual_credit' => 'Manual adjustment',
+                        ];
+                    @endphp
                     @foreach($ledgerRows as $item)
                     @php $entry = $item['entry']; $runningBalance = $item['running_balance_paise']; @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
-                        <td class="px-4 py-3 font-mono text-gray-600 text-xs">{{ $entry->type }}</td>
+                        <td class="px-4 py-3 text-gray-700">
+                            {{ $walletTypeLabels[$entry->type] ?? \Illuminate\Support\Str::of($entry->type)->replace('_', ' ')->ucfirst() }}
+                            @if($entry->memo)
+                                <span class="block text-xs text-gray-400">{{ $entry->memo }}</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">
-                            {{ $entry->amount_paise >= 0 ? '+' : '-' }}₹{{ \Illuminate\Support\Number::format(abs($entry->amount_paise) / 100, 2) }}
+                            {{ $entry->amount_paise >= 0 ? '+' : '-' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($entry->amount_paise) / 100, 2) }}
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-blue-700">
-                            ₹{{ \Illuminate\Support\Number::format($runningBalance / 100, 2) }}
+                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($runningBalance / 100, 2) }}
                         </td>
                     </tr>
                     @endforeach
@@ -115,12 +136,12 @@
                     @foreach($payoutRows as $row)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-700">{{ $row->created_at?->format('d M Y') }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->net_transferred_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_transferred_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-center">
                             @if($row->status === 'transferred')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Transferred</span>
                             @elseif($row->status === 'below_minimum')
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Below ₹{{ \Illuminate\Support\Number::format($minThresholdPaise / 100, 0) }}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}</span>
                             @elseif($row->status === 'kyc_pending')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Awaiting KYC</span>
                             @else

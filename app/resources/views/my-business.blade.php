@@ -3,7 +3,7 @@
 
 @section('content')
 @php
-    use Illuminate\Support\Number;
+    use App\Modules\Shared\Support\IndianNumber as Number;
 
     $navLinks = \App\Modules\Compensation\Support\IncomeNavLinks::visible();
 
@@ -78,7 +78,7 @@
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
-                <x-help-tip text="Payouts run every Tuesday (IST). This is the balance sitting in your wallet right now, not a forecast. At payout it is transferred after the 3% admin charge, 5% TDS and any repurchase deduction; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following Tuesday." />
+                <x-help-tip text="Weekly payouts run every Tuesday (IST); monthly bonus income transfers in the monthly payout on the 9th. This is the balance sitting in your wallet right now, not a forecast. At payout it is transferred after the 3% admin charge, 5% TDS and any repurchase deduction; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout." />
             </div>
             <p class="{{ $statValueClasses }}">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
             <p class="text-xs text-gray-500 mt-1">Transferred after 3% admin charge + 5% TDS + repurchase deduction.</p>
