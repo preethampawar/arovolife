@@ -89,6 +89,21 @@ final class RankBonusService
         DB::transaction(function () use (
             $monthStartCarbon, $monthStart, $turnoverPaise, &$credited, &$byRank,
         ): void {
+            // A distributor is paid ONLY their highest qualified rank for the
+            // month. The qualification service deliberately records every
+            // cleared rank (a Rank-2 achiever also clears Rank 1's bar, and
+            // structural counts / the GBB prior-month gate query those rows),
+            // but KP's plan is explicit that reaching Rank 2 cancels the
+            // Rank-1 benefit — without this filter every dual qualifier is
+            // paid from both pools, as the first real July 2026 run did.
+            $highestRankByDistributor = RankQualification::where('month_start', $monthStart)
+                ->where('status', RankQualification::STATUS_QUALIFIED)
+                ->where('is_carry_forward', false)
+                ->groupBy('distributor_id')
+                ->selectRaw('distributor_id, MAX(rank_number) as highest_rank')
+                ->pluck('highest_rank', 'distributor_id')
+                ->map(fn ($rank) => (int) $rank);
+
             foreach (range(1, 9) as $rank) {
                 $poolPct = $this->plan->rankPoolPct($rank);
                 $poolPaise = max(0, (int) round(
@@ -103,6 +118,8 @@ final class RankBonusService
                     ->distinct()
                     ->pluck('distributor_id')
                     ->map(fn ($id) => (int) $id)
+                    ->filter(fn (int $id) => ($highestRankByDistributor[$id] ?? $rank) === $rank)
+                    ->values()
                     ->toArray();
 
                 $heldIds = $this->requalificationHeldIds($qualifierIds, $monthStartCarbon, $rank);

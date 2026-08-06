@@ -414,3 +414,44 @@ it('pays ranks 3–9 on the first occurrence — pyp no longer filters payment',
     expect($row->status)->toBe(RankBonusResult::STATUS_CREDITED)
         ->and($row->gross_paise)->toBe(540_000);
 });
+
+/**
+ * A Rank-2 achiever has by definition also cleared Rank 1's bar (8L/side ⊃
+ * 3L/side), and the qualification service records BOTH ranks — deliberately,
+ * so structural counts ("2 Pearl Partners per side") and the GBB prior-month
+ * gate can query cleared ranks directly. The bonus run must therefore pay
+ * each distributor ONLY their highest qualified rank: KP's plan is explicit
+ * that reaching Rank 2 cancels the Rank-1 benefit. The first real July 2026
+ * run paid all seven dual qualifiers from both pools.
+ */
+it('pays only the highest qualified rank when a distributor cleared several', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+
+    // One pure Rank-1 achiever, one dual achiever (cleared both bars).
+    $silverOnly = Distributor::factory()->create();
+    seedRankQualification($silverOnly->id, rank: 1, monthStart: '2026-06-01');
+
+    $pearl = Distributor::factory()->create();
+    seedRankQualification($pearl->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($pearl->id, rank: 2, monthStart: '2026-06-01');
+
+    $result = app(RankBonusService::class)->runForMonth($month);
+
+    // The dual achiever gets exactly one result row — Rank 2.
+    $pearlRows = RankBonusResult::where('distributor_id', $pearl->id)->get();
+    expect($pearlRows)->toHaveCount(1)
+        ->and($pearlRows->first()->rank_number)->toBe(2);
+
+    // Rank-1 pool = ₹14,000; only the pure R1 achiever's 10 RAP are in the
+    // denominator → ₹1,400/point → ₹14,000, all to the silver-only achiever.
+    $silverRow = RankBonusResult::where('distributor_id', $silverOnly->id)->firstOrFail();
+    expect($silverRow->rank_number)->toBe(1)
+        ->and($silverRow->rap_points)->toBe(10)
+        ->and((int) $silverRow->point_value_paise)->toBe(140_000)
+        ->and((int) $silverRow->net_paise)->toBe(1_400_000);
+
+    // Rank-2 pool = 100,000,000 × 20% × 3.4% = ₹6,800, sole achiever takes it.
+    expect((int) $pearlRows->first()->net_paise)->toBe(680_000)
+        ->and($result['credited'])->toBe(2);
+});
