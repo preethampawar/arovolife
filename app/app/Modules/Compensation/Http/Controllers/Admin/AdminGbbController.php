@@ -19,7 +19,12 @@ final class AdminGbbController extends Controller
         abort_unless(Feature::for(null)->active(GrowthBoosterBonusFeature::class), 404);
 
         $months = GbbMonthlyResult::query()
-            ->selectRaw('year_month, COUNT(*) as distributor_count, SUM(gbb_net_paise) as total_net_paise, SUM(agp_earned) as total_agp, MAX(credited_at) as credited_at')
+            // `year_month` must stay quoted here: YEAR_MONTH is a reserved
+            // interval unit in MySQL 8, so a bare reference inside raw SQL is a
+            // syntax error. groupBy()/where() are quoted by the query builder,
+            // but selectRaw() is passed through verbatim. Backticks are
+            // understood by both MySQL and SQLite.
+            ->selectRaw('`year_month`, COUNT(*) as distributor_count, SUM(gbb_net_paise) as total_net_paise, SUM(agp_earned) as total_agp, MAX(credited_at) as credited_at')
             ->where('status', GbbMonthlyResult::STATUS_CREDITED)
             ->groupBy('year_month')
             ->orderByDesc('year_month')

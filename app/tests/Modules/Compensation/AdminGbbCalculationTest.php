@@ -210,3 +210,23 @@ it('degrades to a dash when a month has no frozen pool row', function () {
         ->assertSee('No frozen pool row for this month')
         ->assertSee('—');
 });
+
+// Regression: the batch list aggregates with selectRaw, and YEAR_MONTH is a
+// reserved interval unit in MySQL 8 — an unquoted `year_month` there is a
+// syntax error that took the whole page down. Only bites on MySQL (SQLite
+// accepts the bare word), so this guards the canonical arovolife_test target.
+it('lists credited GBB batches without tripping the reserved YEAR_MONTH keyword', function () {
+    $alice = gbbReportDistributor('GBBAAA', 'Alice');
+    $bob = gbbReportDistributor('GBBBBB', 'Bob');
+
+    makeGbbRow($alice, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
+    makeGbbRow($bob, 5, 25_000, 125_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
+    // A held row must not be counted as a credited batch.
+    makeGbbRow($bob, 5, 25_000, 125_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
+
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb.index'))
+        ->assertOk()
+        ->assertSee('Growth Booster Bonus')
+        ->assertDontSee('No GBB batches yet');
+});
