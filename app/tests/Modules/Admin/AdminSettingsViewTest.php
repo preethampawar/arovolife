@@ -237,3 +237,42 @@ it('AS-08: settings index page renders even when the table is empty (defaults ar
     $response->assertStatus(200);
     $response->assertSee('Storefront checkout');
 });
+
+/**
+ * The 'date' string format was added so the personal-BV top-up go-live
+ * boundary is tunable from the UI like every other plan scalar. It must reject
+ * anything that would not round-trip to the exact Y-m-d string the GSB engine
+ * compares accruals against — Carbon would happily coerce "next tuesday" or
+ * roll "2026-02-31" over into March.
+ */
+it('AS-DATE-01: accepts a real calendar date for a date-format plan setting', function (): void {
+    $admin = asvSeedAdmin();
+    asvSeedSetting('comp.gsb.topup_golive_date', '1970-01-01');
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/comp.gsb.topup_golive_date', ['value' => '2026-07-21'])
+        ->assertRedirect(route('admin.settings'));
+
+    expect(DB::table('settings')->where('key', 'comp.gsb.topup_golive_date')->value('value'))
+        ->toBe('2026-07-21');
+});
+
+it('AS-DATE-02: rejects non-dates and dates that do not exist', function (string $bad): void {
+    $admin = asvSeedAdmin();
+    asvSeedSetting('comp.gsb.topup_golive_date', '1970-01-01');
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/comp.gsb.topup_golive_date', ['value' => $bad]);
+
+    // Unchanged — a rejected value must never reach the settings table.
+    expect(DB::table('settings')->where('key', 'comp.gsb.topup_golive_date')->value('value'))
+        ->toBe('1970-01-01');
+})->with([
+    'prose date' => 'next tuesday',
+    'non-existent day' => '2026-02-31',
+    'wrong separator' => '21/07/2026',
+    'partial date' => '2026-07',
+    'garbage' => 'not-a-date',
+]);

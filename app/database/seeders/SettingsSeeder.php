@@ -70,6 +70,8 @@ final class SettingsSeeder extends Seeder
             'comp.gsb.power_cf_cap_paise' => '45000000',    // 4,50,000 BV
             'comp.gsb.pool_rate_bp' => '4500',              // 45% daily GSB pool (slabs 3–7 pro-rated)
             'comp.gsb.score_rate_paise' => '36000',         // ₹360 per score point
+            'comp.gsb.min_bv_paise' => '60000',             // 600 BV personal minimum before income accrues
+            'comp.gsb.topup_golive_date' => '1970-01-01',   // permissive default; production pins it in GsbSlabsSeeder
             'comp.msb.pool_rate_bp' => '300',               // 3% daily MSB pool (÷ the day's total MSB points)
             'comp.gbb.pool_rate_bp' => '500',               // 5% of the month's company BV
             'comp.gbb.agp_cap' => '120',

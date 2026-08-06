@@ -113,7 +113,7 @@
                                       data-confirm-title="Confirm setting change"
                                       data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
                                     @csrf
-                                    <input type="{{ ($meta['format'] ?? '') === 'email' ? 'email' : 'text' }}"
+                                    <input type="{{ match($meta['format'] ?? '') { 'email' => 'email', 'date' => 'date', default => 'text' } }}"
                                            id="{{ $fieldId }}"
                                            name="value"
                                            data-field-label="{{ $meta['label'] }}"

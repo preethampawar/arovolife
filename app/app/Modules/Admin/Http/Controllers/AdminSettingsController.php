@@ -20,10 +20,15 @@ final class AdminSettingsController extends Controller
      * platform-settings UI should render and validate one key.
      *
      * Setting types:
-     *   - 'bool'  : stored as the string 'true' | 'false'
-     *   - 'int'   : stored as a decimal integer string; clamped to [min, max]
-     *   - 'enum'  : one of the values in `options`
-     *   - 'json'  : free-form JSON; validation is custom (see updateStateAgeMinimums)
+     *   - 'bool'   : stored as the string 'true' | 'false'
+     *   - 'int'    : stored as a decimal integer string; clamped to [min, max]
+     *   - 'enum'   : one of the values in `options` (each a ['value', 'label',
+     *                'note'] map — a flat list of strings will not render)
+     *   - 'string' : free text, truncated to `max` (default 255). The optional
+     *                `format` field narrows it: 'email' validates an address,
+     *                'date' requires a real YYYY-MM-DD calendar date. Both
+     *                also pick the HTML input type.
+     *   - 'json'   : free-form JSON; validation is custom (see updateStateAgeMinimums)
      *
      * The 'group' field controls grouping in the friendly admin UI.
      *
@@ -401,6 +406,25 @@ final class AdminSettingsController extends Controller
                 'min' => 0,
                 'max' => 10000,
                 'default' => '4500',
+            ],
+            'comp.gsb.min_bv_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Personal-BV minimum for income (BV paise)',
+                'description' => 'Lifetime personal purchase BV a distributor must reach before Genos BV accrues to them at all. 60000 = 600 BV (KP 2026-07 §14). Below this, downline BV is not added to their account; from 600 BV income accrues but stays web-only until the 3,000 BV Retailer title releases it to bank.',
+                'impact' => 'Changes who earns and who dilutes the GSB and MSB daily pools — sub-minimum distributors are excluded from the denominator. Takes effect from the next daily cut-off.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100_000_000_000,
+                'default' => '60000',
+            ],
+            'comp.gsb.topup_golive_date' => [
+                'group' => 'compensation_plan',
+                'label' => 'Personal-BV top-up go-live date',
+                'description' => 'Accruals dated before this are excluded from the conditional personal-BV top-up pool — the pre-2026-07-21 engine already credited them daily, so counting them again would double-credit. Pinned to the deploy date by GsbSlabsSeeder.',
+                'impact' => 'DANGER: moving this date backwards pulls accruals into the top-up pool that the pre-2026-07-21 engine already credited daily, double-crediting them. Moving it forwards silently drops pending top-ups. Change it only alongside a reviewed data migration.',
+                'type' => 'string',
+                'format' => 'date',
+                'default' => '1970-01-01',
             ],
             'comp.gsb.power_cf_cap_paise' => [
                 'group' => 'compensation_plan',
@@ -875,10 +899,22 @@ final class AdminSettingsController extends Controller
             case 'string':
                 $raw = trim((string) $request->input('value', ''));
                 // An empty value is allowed (e.g. clears/disables the setting).
-                if ($raw !== '' && ($meta['format'] ?? null) === 'email' && ! filter_var($raw, FILTER_VALIDATE_EMAIL)) {
+                $format = $meta['format'] ?? null;
+                if ($raw !== '' && $format === 'email' && ! filter_var($raw, FILTER_VALIDATE_EMAIL)) {
                     $error = "{$meta['label']} must be a valid email address (or left blank).";
 
                     return '';
+                }
+                if ($raw !== '' && $format === 'date') {
+                    // Reject anything Carbon would silently coerce ("next
+                    // tuesday", "2026-02-31"): a plan boundary must round-trip
+                    // to exactly the Y-m-d string the engines compare against.
+                    $parsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+                    if ($parsed === false || $parsed->format('Y-m-d') !== $raw) {
+                        $error = "{$meta['label']} must be a calendar date in YYYY-MM-DD format.";
+
+                        return '';
+                    }
                 }
 
                 return mb_substr($raw, 0, (int) ($meta['max'] ?? 255));
