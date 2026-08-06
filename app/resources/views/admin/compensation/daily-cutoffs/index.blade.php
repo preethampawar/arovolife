@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Each row is one 23:59 cut-off for one distributor. The slab is determined by the lower of the distributor's personal purchase title and the matched left/right group BV. After each cut-off: weaker leg resets to zero, power leg carries forward (capped 4,50,000 BV). Slab 1 (15,000 BV) is lifetime — the weaker leg accumulates until matched. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls</a> to retry failed rows or reverse incorrect credits.
+    Each row is one 23:59 cut-off for one distributor. The slab is determined by the lower of the distributor's personal purchase title and the matched left/right Genos BV. After each cut-off: weaker leg resets to zero, power leg carries forward (capped 4,50,000 BV). Slab 1 (15,000 BV) is lifetime — the weaker leg accumulates until matched. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls</a> to retry failed rows or reverse incorrect credits.
 </div>
 
 {{-- Filters --}}
@@ -43,10 +43,10 @@
                         Title <x-help-tip text="Personal purchase title based on lifetime BV. The GSB slab is capped at the title's max slab — e.g. a distributor without the Retailer title (3,000 BV) is capped at Slab 1." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500">
-                        Left BV <x-help-tip text="Left Genos group BV accumulated today (fresh, excluding carry-forward)." />
+                        Left BV <x-help-tip text="Left Genos BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500">
-                        Right BV <x-help-tip text="Right Genos group BV accumulated today (fresh, excluding carry-forward)." />
+                        Right BV <x-help-tip text="Right Genos BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
                     <th class="px-3 py-2 text-center text-gray-500">
                         Slab <x-help-tip :text="$slabThresholdTip" />

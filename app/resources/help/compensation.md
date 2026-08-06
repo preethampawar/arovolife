@@ -5,16 +5,16 @@ The Compensation section tracks GSB (Genos Sales Bonus), Mentorship Bonus, walle
 
 ## Daily cut-off
 The day closes at midnight IST; the cut-off job runs at 00:10 the next morning and processes the previous day (the 10-minute buffer lets in-flight BV propagation from late-evening orders land before the day is settled). For each active distributor:
-- Reads their Left and Right Genos group BV accumulated during the day
+- Reads their Left and Right Genos BV accumulated during the day
 - Adds any carry-forward from previous days
 - Matches against GSB slabs (constrained by their personal purchase title)
 - Credits the wallet with the **gross** GSB amount — admin charge and TDS are deducted later, at payout time (not at cut-off)
 
 ### 600 BV eligibility gate
-Distributors whose lifetime personal BV is below the minimum (default 600 BV, admin-editable) are skipped at cut-off with status `below_600bv`: their day's group BV is discarded, never carried forward, and never retroactively counted. Group BV still *propagates* into the raw accumulator intraday, so on this page their Left/Right Group BV cards show the raw figures struck through with an amber **"Not credited — personal BV below 600"** pill; the distributor's own income dashboard shows 0 instead. This is why a distributor can appear to "have" group BV yet earn no GSB.
+Distributors whose lifetime personal BV is below the minimum (default 600 BV, admin-editable) are skipped at cut-off with status `below_600bv`: their day's Genos BV is discarded, never carried forward, and never retroactively counted. Genos BV still *propagates* into the raw accumulator intraday, so on this page their Left/Right Genos BV cards show the raw figures struck through with an amber **"Not credited — personal BV below 600"** pill; the distributor's own income dashboard shows 0 instead. This is why a distributor can appear to "have" Genos BV yet earn no GSB.
 
 ### Genos BV Ledger tab
-The distributor compensation page has a **Genos BV Ledger** tab: a transaction-style view grouped by day. Each day lists every paid downline order that credited the distributor's Left or Right group BV (order link, buyer ADN, side, +BV — snapshotted per ancestor at credit time, not double-written), any cancelled-order **reversal** rows (red, −BV), closed by that day's **cut-off settlement** row showing the status, any slab matched, and the carry-forward that survived (power side + slab-1 weaker). Use it to answer "where did this Left/Right BV come from and where did it go?".
+The distributor compensation page has a **Genos BV Ledger** tab: a transaction-style view grouped by day. Each day lists every paid downline order that credited the distributor's Left or Right Genos BV (order link, buyer ADN, side, +BV — snapshotted per ancestor at credit time, not double-written), any cancelled-order **reversal** rows (red, −BV), closed by that day's **cut-off settlement** row showing the status, any slab matched, and the carry-forward that survived (power side + slab-1 weaker). Use it to answer "where did this Left/Right BV come from and where did it go?".
 
 Distributors have the same ledger under **My Income → Genos Ledger**, with two differences (data minimisation): buyers appear as **ADN only** (no names, no order links), and the page is hidden entirely while the distributor is below the 600 BV personal minimum — same gate as their dashboard.
 
@@ -46,7 +46,7 @@ Worked example (KP): 10L BV day → pool ₹4,50,000; 14× slab 1 + 11× slab 2 
 
 The per-day economics are visible under **Compensation → GSB Input & Output / Day**: each day's total BV, pool, fixed section (slabs 1–2), variable section (slabs 3–7 with the variance vs the ₹250 cap), section totals, grand total and leftover, searchable by day number / week number / date range with CSV export. The whole model ships behind the **GSB daily pool pricing** feature flag — flag off = every slab pays its fixed value, no pool rows are written.
 
-The title column is the distributor's **lifetime personal purchase BV** requirement (KP's confirmed 27-06-2026 table, stored in the admin-editable `gsb_slabs` rows). The cut-off pays the **lower** of the matched-BV slab and the title slab: a Retailer whose Genos matches Slab-3-level volume is still paid Slab 1 only, and the weaker-side BV above 15,000 is consumed, not banked. Between 600 and 2,999 personal BV, group BV accumulates as carry-forward but **no slab pays at all** — Slab 1 itself requires the Retailer title.
+The title column is the distributor's **lifetime personal purchase BV** requirement (KP's confirmed 27-06-2026 table, stored in the admin-editable `gsb_slabs` rows). The cut-off pays the **lower** of the matched-BV slab and the title slab: a Retailer whose Genos matches Slab-3-level volume is still paid Slab 1 only, and the weaker-side BV above 15,000 is consumed, not banked. Between 600 and 2,999 personal BV, Genos BV accumulates as carry-forward but **no slab pays at all** — Slab 1 itself requires the Retailer title.
 
 ## Carry over & carry forward
 Partner-canonical terminology (KP, Aug 2026), used on every distributor-facing page:
@@ -75,11 +75,11 @@ The per-day arithmetic is visible under **Compensation → MSB Input & Output / 
 
 This engine replaced the fixed ₹250-per-point model (2026-07-25), which had itself replaced the 10%→1% rate ladder on cumulative sponsee GSB — old rows keep their amounts and show "—" in the points columns.
 
-## Cancelled / refunded orders — group BV reversal
-When an order is cancelled (pre-shipment) or its refund is approved (cooling-off or buyback), its group BV is automatically reversed from **exactly the upline distributors it was originally credited to** (a per-ancestor snapshot taken at credit time), on the **same side** — all the way up to the company root. Per KP's confirmed rules (Q8, 27-06-2026):
+## Cancelled / refunded orders — Genos BV reversal
+When an order is cancelled (pre-shipment) or its refund is approved (cooling-off or buyback), its Genos BV is automatically reversed from **exactly the upline distributors it was originally credited to** (a per-ancestor snapshot taken at credit time), on the **same side** — all the way up to the company root. Per KP's confirmed rules (Q8, 27-06-2026):
 - **No clawback**: GSB already credited or paid out is never taken back, and earned titles/ranks stay (sticky).
 - If the day the reversal lands is **not yet settled**, the BV is simply subtracted from that day's accumulator (shown in the ledger as a red −BV row).
-- Whatever the day can't absorb becomes an **open adjustment (negative-carry)** on that side: the next propagated purchases in the same group pay it down **before** any new group BV is credited. Both ledgers show an amber "adjustment pending" banner while any balance is open, and credit rows note when part of an order's BV was consumed by an adjustment.
+- Whatever the day can't absorb becomes an **open adjustment (negative-carry)** on that side: the next propagated purchases in the same group pay it down **before** any new Genos BV is credited. Both ledgers show an amber "adjustment pending" banner while any balance is open, and credit rows note when part of an order's BV was consumed by an adjustment.
 - The buyer's **personal BV** is reversed as before (net lifetime BV drops; the repurchase obligation no longer counts that order).
 
 ## Weekly payout (Group A: GSB + Mentorship)
@@ -119,7 +119,7 @@ Each rank's pool is its `pool %` **of the 20% Rank-Bonus envelope of the month's
 - **AO-GO ("Achieve Once – Get Once")** replaces the retired 1+2 carry-forward: a distributor who genuinely achieved a rank but holds none this month earns 5 points in the Rank-1 pool (whatever rank they held) — max 3 lifetime uses, never in consecutive months, a rank must be re-achieved between uses, and the month's requalification conditions must be met. A failed month consumes no use.
 - **Requalification conditions (§8).** Achieving a rank a **2nd or later time** is credited only if, in that month, personal purchase BV ≥ the rank's repurchase BV (R1 1,000 … R9 2,300) **and** the repurchase wallet is cleared. Otherwise the row is recorded as `requalification_held` — visible in the RB report, excluded from the pool denominator, never back-paid. First-time achievers are exempt.
 - **Q-Period (PYP).** Achieving rank r its `Q-Period` number of times (distinct months) grants permission to attain rank r+1 — R1/R2 once, R3–R5 twice, R6–R9 three times. It no longer filters payment; payment follows achievement. For ranks 3+, two qualified partners per Genos side are not enough: the candidate must personally have completed the lower rank's Q-Period.
-- **R2 group BV** is 8,00,000 per side (was 5L); Rank 1 may be skipped — Rank 2 is attainable directly.
+- **R2 Genos BV** is 8,00,000 per side (was 5L); Rank 1 may be skipped — Rank 2 is attainable directly.
 
 The **RB Monthly Calculation** report shows two tables: Rank 1 (Arete Center, RAP, AO-GO points, point value, total income; AO-GO rows show RAP as "—") and Ranks 2–9 (rank + income).
 

@@ -249,8 +249,8 @@
                     <span class="text-[11px] text-gray-400">{{ $bv($row->personal_bv_required_paise) }}</span>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Group BV (paise, ranks 1–2) <x-help-tip text="Calendar-month Genos BV required on each side for ranks 1–2. Leave blank for ranks 3+, which use structural qualifiers instead." /></label>
-                    <input type="number" name="group_bv_required_paise" data-field-label="Group BV (paise)" value="{{ $row->group_bv_required_paise }}" min="0"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Genos BV (paise, ranks 1–2) <x-help-tip text="Calendar-month Genos BV required on each side for ranks 1–2. Leave blank for ranks 3+, which use structural qualifiers instead." /></label>
+                    <input type="number" name="group_bv_required_paise" data-field-label="Genos BV (paise)" value="{{ $row->group_bv_required_paise }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                     <span class="text-[11px] text-gray-400">{{ $bv($row->group_bv_required_paise) }}</span>
                 </div>

@@ -14,15 +14,15 @@
   decides your purchase title (Retailer, Dealer, Wholesaler, …), and titles
   unlock higher GSB slabs and bank transfers.
 - **Your team's purchases** flow up the Genos: every paid order in your LEFT
-  group adds to your **Left Group BV** for that day, and every paid order in
-  your RIGHT group adds to your **Right Group BV**. This happens automatically
+  group adds to your **Left Genos BV** for that day, and every paid order in
+  your RIGHT group adds to your **Right Genos BV**. This happens automatically
   within minutes of an order being paid.
 
 ## 2. How the Genos Sales Bonus (GSB) works
 
 Shortly after midnight, the system closes the previous day:
 
-1. It takes your Left and Right Group BV for the day, **plus any carry over**
+1. It takes your Left and Right Genos BV for the day, **plus any carry over**
    from earlier days.
 2. Your **weaker side** (the lower of the two) is matched against the slab
    table. The slab you can be paid on is also capped by your purchase title —
@@ -41,7 +41,7 @@ with 6,000 BV on your Left starts the next day at 6,000 BV on your Left, and a
 further 15,000 BV that day makes it 21,000 BV. Only once a slab actually pays is
 the matched amount deducted — the weaker side resets to 0 and the stronger
 side's remainder is the carry forward. My Income → **Genos BV**, the Left/Right
-Group BV cards on your income dashboard and the **My Business** page all show
+Genos BV cards on your income dashboard and the **My Business** page all show
 the carry-over-inclusive figure: the one tonight's cut-off will use.
 
 Until you reach the Retailer title, bonuses accumulate in your web wallet but
@@ -80,7 +80,7 @@ earn.
 | What you want to check | Where |
 |---|---|
 | Wallet balance, Personal BV & title, **today's Left/Right BV**, carry over | **My Income** (`/income`) |
-| Day-by-day Left/Right Group BV and each day's cut-off outcome | My Income → **Genos BV** (`/income/genos-bv`) |
+| Day-by-day Left/Right Genos BV and each day's cut-off outcome | My Income → **Genos BV** (`/income/genos-bv`) |
 | Which GSB slab you reached each day, and what was credited | My Income → **GSB History** (`/income/gsb-history`, downloadable) |
 | Mentorship Bonus earned per sponsee | My Income → **Mentorship** (`/income/mentorship`) |
 | Every wallet credit, deduction and payout | My Income → **Wallet** (`/income/wallet`, downloadable) |

@@ -10,7 +10,7 @@
 @if($debtParts !== [])
 <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
     <span class="font-semibold">Open cancelled-order adjustment:</span>
-    {{ implode(' · ', $debtParts) }} — deducted from the next propagated purchases on that side before new group BV is credited (KP Q8: no clawback, negative-carry on the same leg).
+    {{ implode(' · ', $debtParts) }} — deducted from the next propagated purchases on that side before new Genos BV is credited (KP Q8: no clawback, negative-carry on the same leg).
 </div>
 @endif
 
@@ -61,7 +61,7 @@
             @endphp
             @if($visibleCount === 0)
             <tr>
-                <td colspan="5" class="px-3 py-2 text-gray-400 italic">No {{ ($entryType ?? null) === 'credits' ? 'credit' : (($entryType ?? null) === 'reversals' ? 'reversal' : 'group BV') }} entries this day.</td>
+                <td colspan="5" class="px-3 py-2 text-gray-400 italic">No {{ ($entryType ?? null) === 'credits' ? 'credit' : (($entryType ?? null) === 'reversals' ? 'reversal' : 'Genos BV') }} entries this day.</td>
             </tr>
             @endif
             @if($showCredits)

@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    Global view of every group BV credit and cancelled-order reversal across all distributors.
+    Global view of every Genos BV credit and cancelled-order reversal across all distributors.
     Use the search box to narrow by ADN or name. Credits show the BV that flowed into an upline's
     Left or Right group; Reversals show the BV deducted when the triggering order was cancelled.
 </div>

@@ -83,7 +83,7 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-4 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-4 py-2 text-right text-gray-500 font-medium">Left BV <x-help-tip text="Left group BV accumulated today." /></th>
+                    <th class="px-4 py-2 text-right text-gray-500 font-medium">Left BV <x-help-tip text="Left Genos BV accumulated today." /></th>
                     <th class="px-4 py-2 text-right text-gray-500 font-medium">Right BV</th>
                     <th class="px-4 py-2 text-center text-gray-500 font-medium">Slab</th>
                     <th class="px-4 py-2 text-right text-gray-500 font-medium">Net GSB</th>

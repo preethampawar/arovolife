@@ -15,7 +15,7 @@
     @if(! $genosBvEligible)
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-500 font-medium">Genos BV is not being counted yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Group BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? \App\Modules\Shared\Support\IndianNumber::format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
+            <p class="text-sm text-gray-400 mt-1">Genos BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? \App\Modules\Shared\Support\IndianNumber::format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
         </div>
     @else
 
@@ -28,7 +28,7 @@
     {{-- Outstanding cancelled-order adjustment --}}
     <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 mb-6">
         <span class="font-semibold">Adjustment pending from cancelled orders:</span>
-        {{ implode(' · ', $debtParts) }} — this BV will be deducted from the next purchases made in that group before new group BV is added.
+        {{ implode(' · ', $debtParts) }} — this BV will be deducted from the next purchases made in that group before new Genos BV is added.
     </div>
     @endif
 
@@ -79,7 +79,7 @@
                     </tr>
                     @if(count($day->credits) === 0 && count($day->reversals) === 0)
                     <tr>
-                        <td colspan="4" class="px-4 py-2.5 text-gray-400 italic">No group BV added this day.</td>
+                        <td colspan="4" class="px-4 py-2.5 text-gray-400 italic">No Genos BV added this day.</td>
                     </tr>
                     @endif
                     @foreach($day->credits as $credit)
@@ -104,7 +104,7 @@
                         <td class="px-4 py-2.5 text-red-700">
                             Order cancelled — BV reversed
                             @if($reversal->debt_paise > 0)
-                            <span class="block text-xs text-red-500">{{ \App\Modules\Shared\Support\IndianNumber::format($reversal->debt_paise / 100, 0) }} BV will be deducted from future {{ $reversal->side === 'L' ? 'Left' : 'Right' }} group BV before new BV is added</span>
+                            <span class="block text-xs text-red-500">{{ \App\Modules\Shared\Support\IndianNumber::format($reversal->debt_paise / 100, 0) }} BV will be deducted from future {{ $reversal->side === 'L' ? 'Left' : 'Right' }} Genos BV before new BV is added</span>
                             @endif
                         </td>
                         <td class="px-4 py-2.5 font-mono text-gray-700">{{ $reversal->buyer_adn }}</td>

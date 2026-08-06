@@ -132,11 +132,11 @@ test.describe('Distributor: Income Dashboard', () => {
         expect(value?.trim()).toMatch(/[\d,]+/);
     });
 
-    test('left and right group BV cards are present', async ({ distributorPage: page }) => {
+    test('left and right Genos BV cards are present', async ({ distributorPage: page }) => {
         await page.goto('/income');
 
-        await expect(page.locator('.grid > div').filter({ hasText: 'Left Group BV' })).toBeVisible();
-        await expect(page.locator('.grid > div').filter({ hasText: 'Right Group BV' })).toBeVisible();
+        await expect(page.locator('.grid > div').filter({ hasText: 'Left Genos BV' })).toBeVisible();
+        await expect(page.locator('.grid > div').filter({ hasText: 'Right Genos BV' })).toBeVisible();
     });
 
     test('power-side carry-forward card is present', async ({ distributorPage: page }) => {

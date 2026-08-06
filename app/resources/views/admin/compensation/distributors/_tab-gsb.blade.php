@@ -29,7 +29,7 @@
         <thead class="bg-gray-50">
             <tr>
                 <th class="px-3 py-2 text-left text-gray-500">Date</th>
-                <th class="px-3 py-2 text-right text-gray-500">Left BV <x-help-tip text="Left group BV today (fresh, no carry-forward)." /></th>
+                <th class="px-3 py-2 text-right text-gray-500">Left BV <x-help-tip text="Left Genos BV today (fresh, no carry-forward)." /></th>
                 <th class="px-3 py-2 text-right text-gray-500">Right BV</th>
                 <th class="px-3 py-2 text-center text-gray-500">Slab</th>
                 <th class="px-3 py-2 text-right text-gray-500">Gross GSB</th>

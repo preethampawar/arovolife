@@ -16,10 +16,10 @@
    `order.paid` event fires and a queued job (`PropagateGroupBvJob`) does two things:
    - credits **personal BV** to the buyer's BV ledger (`bv_ledger_entries`), and
    - walks **up the Genos tree** adding the order's BV to every ancestor's
-     **left or right group BV for that date** (`group_bv_daily`), depending on
+     **left or right Genos BV for that date** (`group_bv_daily`), depending on
      which side the buyer sits under.
 2. **Daily GSB cut-off** (00:10 IST, processes the *previous* day): for every active
-   distributor it takes yesterday's left/right group BV plus any carry-forward,
+   distributor it takes yesterday's left/right Genos BV plus any carry-forward,
    matches the weaker side against the slab table, and — if a slab is hit and the
    distributor's personal-purchase title allows it — **credits GSB to the wallet**
    and records the result (`gsb_cutoff_results`). The weaker side resets; the
@@ -124,7 +124,7 @@ is audit-logged with a reason.
 | What are the GSB slabs / values / title gates? | Admin → Compensation → **Plan Settings** (`/admin/compensation/plan-settings`) — also editable here (finance role) |
 | Did BV credit the buyer? | Admin → **BV Ledger** (`/admin/commerce/bv-ledger`) → distributor |
 | Did BV reach the upline? | Admin → Compensation → **Daily Cut-offs** → date → the ancestor's left/right BV row; or the per-distributor view below |
-| Everything about one distributor's compensation | Admin → Compensation → **Distributor drill-down** (`/admin/compensation/distributors/{id}`) — group BV, cut-off history, wallet, carry-forward |
+| Everything about one distributor's compensation | Admin → Compensation → **Distributor drill-down** (`/admin/compensation/distributors/{id}`) — Genos BV, cut-off history, wallet, carry-forward |
 | Which slab did a distributor reach on a date? | Daily Cut-offs → date → their row (slab + amount) |
 | Carry-forward positions | Admin → Compensation → **Carry-forwards** |
 | Wallet → bank money movement | Admin → Compensation → **Weekly Payouts** → batch detail + NEFT export |

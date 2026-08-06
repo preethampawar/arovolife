@@ -85,11 +85,11 @@ confirms the money has been returned.
 ### BV treatment
 
 Alongside the money reversal, the order's **personal BV** is reversed and its
-**group BV** is reversed from exactly the upline distributors it was originally
+**Genos BV** is reversed from exactly the upline distributors it was originally
 credited to, on the same side, up to the company root — with **no clawback** of
 GSB already credited or paid (what the unsettled day can't absorb becomes a
-same-side adjustment against future group BV). See **Compensation → Cancelled /
-refunded orders — group BV reversal**.
+same-side adjustment against future Genos BV). See **Compensation → Cancelled /
+refunded orders — Genos BV reversal**.
 
 ---
 

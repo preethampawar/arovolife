@@ -23,7 +23,7 @@ Neither the Company nor any Distributor may publish, project, suggest, average, 
 BV is the single volume measure used throughout the plan. Every arovolife SKU carries a published BV value, shown on the product page and itemised on every invoice.
 
 - BV is credited **only** on a completed, paid product sale, and is reversed if that sale is cancelled, returned or refunded.
-- BV accrues to a Distributor from their own qualifying purchases ("personal BV") and, for group calculations, from qualifying purchases made by members of their Genos placement tree ("group BV").
+- BV accrues to a Distributor from their own qualifying purchases ("personal BV") and, for group calculations, from qualifying purchases made by members of their Genos placement tree ("Genos BV").
 - BV is **not** a currency, is not redeemable, has no cash value, and cannot be bought, sold or transferred.
 - For the arithmetic on this page, the plan treats **1 BV as ₹1**.
 
@@ -31,15 +31,15 @@ BV is the single volume measure used throughout the plan. Every arovolife SKU ca
 
 | Personal BV (lifetime) | What applies |
 |---|---|
-| Below 600 BV | No group BV is added to your account. No bonus accrues. |
-| 600 BV and above | Group BV accumulates and bonuses are calculated and credited to your **web account**. Bank transfer is held. |
+| Below 600 BV | No Genos BV is added to your account. No bonus accrues. |
+| 600 BV and above | Genos BV accumulates and bonuses are calculated and credited to your **web account**. Bank transfer is held. |
 | 3,000 BV and above (Retailer title) | Bonuses become transferable to your bank account, subject to §8. |
 
 Income that is calculated while a Distributor is below 3,000 BV is **not forfeited** — it is held in the web account and released once the conditions in §8 are met.
 
 ## 4. The Genos placement tree
 
-Each Distributor occupies one position in the Genos, a two-sided placement tree with a left group and a right group. Group BV is totalled separately for each side. The **weaker side** — the side with the lower BV for the period — determines every group calculation in §5. This is a matching model: volume on one side alone produces nothing.
+Each Distributor occupies one position in the Genos, a two-sided placement tree with a left group and a right group. Genos BV is totalled separately for each side. The **weaker side** — the side with the lower BV for the period — determines every group calculation in §5. This is a matching model: volume on one side alone produces nothing.
 
 ## 5. Genos Sales Bonus (GSB)
 
@@ -47,7 +47,7 @@ GSB is the plan's principal group bonus. It is funded from **45%** of the BV gen
 
 ### 5.1 The daily cut-off
 
-Every day at 23:59 IST the system totals each Distributor's left-group and right-group BV for that day, takes the weaker side, and matches it against the slab table in §5.2. The highest slab whose threshold is met on **both** sides is the matched slab.
+Every day at 23:59 IST the system totals each Distributor's Left and Right Genos BV for that day, takes the weaker side, and matches it against the slab table in §5.2. The highest slab whose threshold is met on **both** sides is the matched slab.
 
 A slab is payable only if the Distributor's own personal BV has reached the title shown for that slab. Where the matched BV would reach a higher slab than the personal-BV title allows, the **lower** of the two applies.
 

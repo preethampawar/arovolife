@@ -26,10 +26,10 @@
                     <th class="px-3 py-2 text-left text-gray-500">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-500">Name</th>
                     <th class="px-3 py-2 text-right text-gray-500">
-                        Left BV <x-help-tip text="Left Genos group BV accumulated today (fresh, excluding carry-forward)." />
+                        Left BV <x-help-tip text="Left Genos BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500">
-                        Right BV <x-help-tip text="Right Genos group BV accumulated today (fresh, excluding carry-forward)." />
+                        Right BV <x-help-tip text="Right Genos BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
                     <th class="px-3 py-2 text-center text-gray-500">
                         Slab <x-help-tip :text="$slabThresholdTip" />
