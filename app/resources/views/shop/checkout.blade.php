@@ -272,7 +272,7 @@
             @foreach($cart->items as $item)
             <div class="flex justify-between text-sm">
                 <span class="text-gray-700">{{ $item->variant->product->name }} × {{ $item->qty }}</span>
-                <span class="font-medium">₹{{ \Illuminate\Support\Number::format($item->lineTotalPaise() / 100, 2) }}</span>
+                <span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format($item->lineTotalPaise() / 100, 2) }}</span>
             </div>
             @endforeach
         </div>
@@ -290,25 +290,25 @@
                  (hard rule #3). --}}
             <div class="flex justify-between text-sm mb-4 pb-4 border-b border-gray-200 text-brand-700">
                 <span class="font-semibold">Total BV</span>
-                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ \Illuminate\Support\Number::format($bvTotal / 100, 0) }} BV</span>
+                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ \App\Modules\Shared\Support\IndianNumber::format($bvTotal / 100, 0) }} BV</span>
             </div>
             @endif
         @endauth
         <div class="space-y-2 text-sm mb-4 pb-4 border-b border-gray-200">
-            <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ \Illuminate\Support\Number::format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ \Illuminate\Support\Number::format($cart->gstPaise() / 100, 2) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
+            <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format($cart->gstPaise() / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">Shipping</span>
-                @if($shippingPaise > 0)<span class="font-medium">₹{{ \Illuminate\Support\Number::format($shippingPaise / 100, 2) }}</span>
+                @if($shippingPaise > 0)<span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format($shippingPaise / 100, 2) }}</span>
                 @else<span class="font-medium text-green-700">Free</span>@endif
             </div>
             @if($couponDiscount > 0)
-            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ \Illuminate\Support\Number::format($couponDiscount / 100, 2) }}</span></div>
+            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($couponDiscount / 100, 2) }}</span></div>
             @endif
         </div>
 
         <div class="flex justify-between mb-5">
             <span class="font-semibold text-gray-900">Total</span>
-            <span class="font-bold text-lg text-gray-900">₹{{ \Illuminate\Support\Number::format($finalTotal / 100, 2) }}</span>
+            <span class="font-bold text-lg text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($finalTotal / 100, 2) }}</span>
         </div>
 
         <button type="submit"

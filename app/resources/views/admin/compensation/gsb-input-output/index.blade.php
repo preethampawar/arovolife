@@ -63,10 +63,10 @@
             <span class="text-gray-500">Week <strong class="text-gray-700">{{ $weekNo ?? '—' }}</strong></span>
             <span class="text-gray-500">Day total BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
             <span class="text-gray-500">GSB pool ({{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%)
-                <strong class="text-gray-700">₹{{ \Illuminate\Support\Number::format($pool->pool_paise / 100, 2) }}</strong></span>
+                <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) }}</strong></span>
             <span class="text-gray-500">Variable score value
-                <strong class="text-gray-700">₹{{ \Illuminate\Support\Number::format($pool->variable_score_value_paise / 100, 2) }}</strong>
-                <span class="text-gray-400">(cap ₹{{ \Illuminate\Support\Number::format($pool->variable_score_value_cap_paise / 100, 2) }})</span></span>
+                <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_paise / 100, 2) }}</strong>
+                <span class="text-gray-400">(cap ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_cap_paise / 100, 2) }})</span></span>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
@@ -99,12 +99,12 @@
                                 {{ $isFixed ? 'Fixed' : 'Variable' }}
                             </span>
                         </td>
-                        <td class="px-3 py-2 text-right text-gray-700">{{ \Illuminate\Support\Number::format((int) $agg->achievers) }}</td>
-                        <td class="px-3 py-2 text-right font-semibold text-gray-800">{{ \Illuminate\Support\Number::format((int) $agg->total_score) }}</td>
-                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \Illuminate\Support\Number::format($value / 100, 2) }}</td>
-                        <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($agg->income_paise / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $agg->achievers) }}</td>
+                        <td class="px-3 py-2 text-right font-semibold text-gray-800">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $agg->total_score) }}</td>
+                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($value / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($agg->income_paise / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $variance < 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
-                            {{ $variance === 0 ? '0' : '−₹'.\Illuminate\Support\Number::format(abs($variance) / 100, 2) }}
+                            {{ $variance === 0 ? '0' : '−₹'.\App\Modules\Shared\Support\IndianNumber::format(abs($variance) / 100, 2) }}
                         </td>
                     </tr>
                     @empty
@@ -114,19 +114,19 @@
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
                     <tr>
                         <td class="px-3 py-1.5 text-right text-xs" colspan="5">Fixed section total (slabs 1–2)</td>
-                        <td class="px-3 py-1.5 text-right font-semibold">₹{{ \Illuminate\Support\Number::format($fixedIncome / 100, 2) }}</td>
+                        <td class="px-3 py-1.5 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($fixedIncome / 100, 2) }}</td>
                         <td></td>
                     </tr>
                     <tr>
                         <td class="px-3 py-1.5 text-right text-xs" colspan="5">Variable section total (slabs 3–7)</td>
-                        <td class="px-3 py-1.5 text-right font-semibold">₹{{ \Illuminate\Support\Number::format($variableIncome / 100, 2) }}</td>
+                        <td class="px-3 py-1.5 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($variableIncome / 100, 2) }}</td>
                         <td></td>
                     </tr>
                     <tr class="font-semibold">
                         <td class="px-3 py-2 text-right text-xs" colspan="5">Grand total income</td>
-                        <td class="px-3 py-2 text-right text-green-700">₹{{ \Illuminate\Support\Number::format(($fixedIncome + $variableIncome) / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($fixedIncome + $variableIncome) / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-500' }} text-[11px]">
-                            leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \Illuminate\Support\Number::format(abs($pool->leftover_paise) / 100, 2) }}
+                            leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($pool->leftover_paise) / 100, 2) }}
                         </td>
                     </tr>
                 </tfoot>

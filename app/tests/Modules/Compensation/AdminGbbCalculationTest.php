@@ -178,10 +178,13 @@ it('surfaces the frozen monthly pool on the GBB month screen', function () {
         ->get(route('admin.compensation.gbb.show', ['month' => '2026-07']))
         ->assertOk()
         ->assertSee('Frozen month economics')
-        ->assertSee('₹'.\Illuminate\Support\Number::format(200_000, 2))   // company BV
-        ->assertSee('5%')                                                 // pool rate
-        ->assertSee('₹'.\Illuminate\Support\Number::format(10_000, 2))    // pool and payout
-        ->assertSee('₹'.\Illuminate\Support\Number::format(250, 2));      // point value
+        // Literal Indian-grouped strings: this doubles as the display-format
+        // guard — Illuminate\Support\Number would render 200,000.00 here
+        // because modern ICU dropped lakh grouping from the Indian locales.
+        ->assertSee('₹2,00,000.00')   // company BV
+        ->assertSee('5%')             // pool rate
+        ->assertSee('₹10,000.00')     // pool and payout
+        ->assertSee('₹250.00');       // point value
 });
 
 it('shows the distributor their own AGP times the frozen point value', function () {

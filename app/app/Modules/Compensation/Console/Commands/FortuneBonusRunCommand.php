@@ -6,9 +6,9 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\FortuneBonusService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class FortuneBonusRunCommand extends Command

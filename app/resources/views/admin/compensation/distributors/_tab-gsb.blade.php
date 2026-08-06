@@ -48,10 +48,10 @@
                 <td class="px-3 py-2 text-right">@bv($row->left_bv_paise)</td>
                 <td class="px-3 py-2 text-right">@bv($row->right_bv_paise)</td>
                 <td class="px-3 py-2 text-center">{{ $row->slab ?? '—' }}</td>
-                <td class="px-3 py-2 text-right font-semibold">{{ $row->gross_gsb_paise ? '₹'.\Illuminate\Support\Number::format($row->gross_gsb_paise / 100, 2) : '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-500">{{ $row->admin_charge_paise ? '₹'.\Illuminate\Support\Number::format($row->admin_charge_paise / 100, 2) : '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-500">{{ $row->tds_paise ? '₹'.\Illuminate\Support\Number::format($row->tds_paise / 100, 2) : '—' }}</td>
-                <td class="px-3 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">{{ $row->net_gsb_paise > 0 ? '₹'.\Illuminate\Support\Number::format($row->net_gsb_paise / 100, 2) : '—' }}</td>
+                <td class="px-3 py-2 text-right font-semibold">{{ $row->gross_gsb_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->gross_gsb_paise / 100, 2) : '—' }}</td>
+                <td class="px-3 py-2 text-right text-gray-500">{{ $row->admin_charge_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) : '—' }}</td>
+                <td class="px-3 py-2 text-right text-gray-500">{{ $row->tds_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) : '—' }}</td>
+                <td class="px-3 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">{{ $row->net_gsb_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->net_gsb_paise / 100, 2) : '—' }}</td>
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $b[$row->status] ?? 'bg-gray-100 text-gray-500' }}">{{ str_replace('_', ' ', $row->status) }}</span>
                 </td>

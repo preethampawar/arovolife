@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Models;
 
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Number;
 
 final class Coupon extends Model
 {

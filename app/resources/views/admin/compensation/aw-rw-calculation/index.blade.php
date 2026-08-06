@@ -113,11 +113,11 @@
                     <td class="px-3 py-2 text-right">
                         @if($isCash && $row->net_paise)
                         <span class="font-semibold text-green-700">
-                            ₹{{ \Illuminate\Support\Number::format($row->net_paise / 100, 2) }}
+                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
                         @if($row->gross_paise && $row->gross_paise !== $row->net_paise)
                         <span class="block text-[10px] text-gray-400 font-normal">
-                            gross ₹{{ \Illuminate\Support\Number::format($row->gross_paise / 100, 2) }}
+                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}
                         </span>
                         @endif
                         @else

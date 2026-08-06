@@ -15,14 +15,14 @@
     @if(! $genosBvEligible)
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-500 font-medium">Genos BV is not being counted yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Group BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? \Illuminate\Support\Number::format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
+            <p class="text-sm text-gray-400 mt-1">Group BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? \App\Modules\Shared\Support\IndianNumber::format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
         </div>
     @else
 
     @php
         $debtParts = [];
-        if (($openDebts['L'] ?? 0) > 0) { $debtParts[] = 'Left group '.\Illuminate\Support\Number::format($openDebts['L'] / 100, 0).' BV'; }
-        if (($openDebts['R'] ?? 0) > 0) { $debtParts[] = 'Right group '.\Illuminate\Support\Number::format($openDebts['R'] / 100, 0).' BV'; }
+        if (($openDebts['L'] ?? 0) > 0) { $debtParts[] = 'Left group '.\App\Modules\Shared\Support\IndianNumber::format($openDebts['L'] / 100, 0).' BV'; }
+        if (($openDebts['R'] ?? 0) > 0) { $debtParts[] = 'Right group '.\App\Modules\Shared\Support\IndianNumber::format($openDebts['R'] / 100, 0).' BV'; }
     @endphp
     @if($debtParts !== [])
     {{-- Outstanding cancelled-order adjustment --}}
@@ -87,15 +87,15 @@
                         <td class="px-4 py-2.5 text-gray-500">
                             Purchase BV
                             @if($credit->debt_consumed_paise > 0)
-                            <span class="block text-xs text-gray-400">after {{ \Illuminate\Support\Number::format($credit->debt_consumed_paise / 100, 0) }} BV adjusted for a cancelled order</span>
+                            <span class="block text-xs text-gray-400">after {{ \App\Modules\Shared\Support\IndianNumber::format($credit->debt_consumed_paise / 100, 0) }} BV adjusted for a cancelled order</span>
                             @endif
                         </td>
                         <td class="px-4 py-2.5 font-mono text-gray-700">{{ $credit->buyer_adn }}</td>
                         <td class="px-4 py-2.5 text-right font-mono font-medium {{ $credit->side === 'L' ? 'text-green-700' : 'text-gray-300' }}">
-                            {{ $credit->side === 'L' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
+                            {{ $credit->side === 'L' ? '+'.\App\Modules\Shared\Support\IndianNumber::format($credit->bv_paise / 100, 0) : '—' }}
                         </td>
                         <td class="px-4 py-2.5 text-right font-mono font-medium {{ $credit->side === 'R' ? 'text-green-700' : 'text-gray-300' }}">
-                            {{ $credit->side === 'R' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
+                            {{ $credit->side === 'R' ? '+'.\App\Modules\Shared\Support\IndianNumber::format($credit->bv_paise / 100, 0) : '—' }}
                         </td>
                     </tr>
                     @endforeach
@@ -104,15 +104,15 @@
                         <td class="px-4 py-2.5 text-red-700">
                             Order cancelled — BV reversed
                             @if($reversal->debt_paise > 0)
-                            <span class="block text-xs text-red-500">{{ \Illuminate\Support\Number::format($reversal->debt_paise / 100, 0) }} BV will be deducted from future {{ $reversal->side === 'L' ? 'Left' : 'Right' }} group BV before new BV is added</span>
+                            <span class="block text-xs text-red-500">{{ \App\Modules\Shared\Support\IndianNumber::format($reversal->debt_paise / 100, 0) }} BV will be deducted from future {{ $reversal->side === 'L' ? 'Left' : 'Right' }} group BV before new BV is added</span>
                             @endif
                         </td>
                         <td class="px-4 py-2.5 font-mono text-gray-700">{{ $reversal->buyer_adn }}</td>
                         <td class="px-4 py-2.5 text-right font-mono font-medium {{ $reversal->side === 'L' ? 'text-red-700' : 'text-gray-300' }}">
-                            {{ $reversal->side === 'L' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                            {{ $reversal->side === 'L' ? '−'.\App\Modules\Shared\Support\IndianNumber::format($reversal->absorbed_paise / 100, 0) : '—' }}
                         </td>
                         <td class="px-4 py-2.5 text-right font-mono font-medium {{ $reversal->side === 'R' ? 'text-red-700' : 'text-gray-300' }}">
-                            {{ $reversal->side === 'R' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                            {{ $reversal->side === 'R' ? '−'.\App\Modules\Shared\Support\IndianNumber::format($reversal->absorbed_paise / 100, 0) : '—' }}
                         </td>
                     </tr>
                     @endforeach
@@ -136,8 +136,8 @@
                             @endif
                         </td>
                         <td colspan="2" class="px-4 py-2.5 text-right text-indigo-900 text-xs">
-                            {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ $c->power_side_after ? '('.$c->power_side_after.') ' : '' }}{{ \Illuminate\Support\Number::format($c->power_cf_after_paise / 100, 0) }}</span>
-                            · <span class="font-mono font-medium">slab-1 weaker {{ \Illuminate\Support\Number::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
+                            {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ $c->power_side_after ? '('.$c->power_side_after.') ' : '' }}{{ \App\Modules\Shared\Support\IndianNumber::format($c->power_cf_after_paise / 100, 0) }}</span>
+                            · <span class="font-mono font-medium">slab-1 weaker {{ \App\Modules\Shared\Support\IndianNumber::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
                         </td>
                     </tr>
                     @else

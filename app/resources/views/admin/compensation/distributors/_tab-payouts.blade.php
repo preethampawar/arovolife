@@ -28,11 +28,11 @@
                         {{ $line->payoutBatch?->batch_date?->format('d M Y') ?? '—' }}
                     </a>
                 </td>
-                <td class="px-3 py-2 text-right">₹{{ \Illuminate\Support\Number::format($line->wallet_balance_paise / 100, 2) }}</td>
+                <td class="px-3 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($line->wallet_balance_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-right text-gray-500">
-                    {{ $line->repurchase_deduction_paise > 0 ? '₹'.\Illuminate\Support\Number::format($line->repurchase_deduction_paise / 100, 2) : '—' }}
+                    {{ $line->repurchase_deduction_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($line->repurchase_deduction_paise / 100, 2) : '—' }}
                 </td>
-                <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($line->net_transferred_paise / 100, 2) }}</td>
+                <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($line->net_transferred_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 font-mono text-gray-500">{{ $line->utr_number ?? '—' }}</td>
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $lc[$line->status] ?? 'bg-gray-100 text-gray-500' }}">

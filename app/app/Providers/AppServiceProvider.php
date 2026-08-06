@@ -51,7 +51,10 @@ class AppServiceProvider extends ServiceProvider
 
         // All human-facing numbers (BV, ₹) use Indian digit grouping
         // (24,30,000 not 2,430,000) — every display surface must format via
-        // Number::format / the @bv directive, never raw number_format().
+        // IndianNumber::format / the @bv directive, never raw number_format()
+        // and never Illuminate\Support\Number::format: CLDR dropped lakh
+        // grouping from the Indian locales (ICU 78 renders en_IN western), so
+        // this locale is kept only as a sane default for third-party callers.
         // CSV exports are the exception: they stay ungrouped for spreadsheets.
         Number::useLocale('en_IN');
 

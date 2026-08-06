@@ -16,11 +16,11 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">MB Earned This Month</p>
-            <p class="text-2xl font-bold text-gray-900">₹{{ \Illuminate\Support\Number::format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">MB Earned Lifetime</p>
-            <p class="text-2xl font-bold text-gray-900">₹{{ \Illuminate\Support\Number::format(($mbLifetimePaise ?? 0) / 100, 2) }}</p>
+            <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbLifetimePaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-500 mb-1">Active Sponsees Contributing</p>
@@ -86,9 +86,9 @@
                             @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-400 font-normal">—</span>@endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
-                            @if($row->msb_point_value_paise !== null)₹{{ \Illuminate\Support\Number::format($row->msb_point_value_paise / 100, 0) }}@else<span class="text-gray-400">—</span>@endif
+                            @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 0) }}@else<span class="text-gray-400">—</span>@endif
                         </td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->mb_gross_paise / 100, 0) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->mb_gross_paise / 100, 0) }}</td>
                     </tr>
                     @endforeach
                 </tbody>

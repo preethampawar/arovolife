@@ -116,11 +116,11 @@
                         </span>
                     </td>
                     <td class="px-3 py-2 text-right text-gray-700">
-                        {{ $row->score_value_paise !== null ? '₹'.\Illuminate\Support\Number::format($row->score_value_paise / 100, 2) : '—' }}
+                        {{ $row->score_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-3 py-2 text-right">
                         <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
-                            ₹{{ \Illuminate\Support\Number::format($row->gross_gsb_paise / 100, 2) }}
+                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_gsb_paise / 100, 2) }}
                         </span>
                     </td>
                     <td class="px-3 py-2 text-center">
@@ -134,9 +134,9 @@
             <tfoot class="bg-gray-50 border-t-2 border-gray-200">
                 <tr class="font-semibold text-gray-800">
                     <td class="px-3 py-2 text-right" colspan="6">Grand total (all filtered rows)</td>
-                    <td class="px-3 py-2 text-right">{{ \Illuminate\Support\Number::format($totalScore) }}</td>
+                    <td class="px-3 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($totalScore) }}</td>
                     <td class="px-3 py-2"></td>
-                    <td class="px-3 py-2 text-right text-green-700">₹{{ \Illuminate\Support\Number::format($totalIncomePaise / 100, 2) }}</td>
+                    <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncomePaise / 100, 2) }}</td>
                     <td class="px-3 py-2"></td>
                 </tr>
             </tfoot>

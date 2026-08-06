@@ -37,12 +37,12 @@
                 <tr>
                     <td class="px-4 py-2 font-medium">{{ $row->center->name ?? '—' }}</td>
                     <td class="px-4 py-2 font-mono">{{ $row->distributor->adn ?? '—' }}</td>
-                    <td class="px-4 py-2 text-right">{{ \Illuminate\Support\Number::format($row->member_count) }}</td>
+                    <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($row->member_count) }}</td>
                     <td class="px-4 py-2 text-right">@bv($row->total_member_bv_paise)</td>
-                    <td class="px-4 py-2 text-right font-mono">₹{{ \Illuminate\Support\Number::format($row->gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-mono text-gray-500">₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">
-                        ₹{{ \Illuminate\Support\Number::format($row->net_paise / 100, 2) }}
+                        ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                     </td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Models;
 
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Number;
 
 /**
  * @property string $order_no

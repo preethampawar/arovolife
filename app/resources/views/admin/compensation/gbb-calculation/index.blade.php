@@ -108,23 +108,23 @@
                         {{ \Illuminate\Support\Carbon::parse($row->year_month)->format('M Y') }}
                     </td>
                     <td class="px-3 py-2 text-right font-semibold text-gray-800">
-                        {{ \Illuminate\Support\Number::format($row->agp_earned) }}
+                        {{ \App\Modules\Shared\Support\IndianNumber::format($row->agp_earned) }}
                     </td>
                     <td class="px-3 py-2 text-right text-gray-600">
                         {{ $row->point_value_paise !== null
-                            ? '₹'.\Illuminate\Support\Number::format((int) $row->point_value_paise / 100, 2)
+                            ? '₹'.\App\Modules\Shared\Support\IndianNumber::format((int) $row->point_value_paise / 100, 2)
                             : '—' }}
                     </td>
                     <td class="px-3 py-2 text-right text-gray-700">
-                        ₹{{ \Illuminate\Support\Number::format($agpValuePerPoint, 2) }}
+                        ₹{{ \App\Modules\Shared\Support\IndianNumber::format($agpValuePerPoint, 2) }}
                     </td>
                     <td class="px-3 py-2 text-right">
                         <span class="font-semibold {{ in_array($row->status, ['reversed', 'repurchase_suspended'], true) ? 'text-red-600' : ($row->status === 'repurchase_held' ? 'text-orange-700' : 'text-green-700') }}">
-                            ₹{{ \Illuminate\Support\Number::format($row->gbb_net_paise / 100, 2) }}
+                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}
                         </span>
                         @if($row->tds_paise > 0)
                         <span class="block text-[10px] text-gray-400 font-normal">
-                            gross ₹{{ \Illuminate\Support\Number::format($row->gbb_gross_paise / 100, 2) }} · TDS ₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}
+                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_gross_paise / 100, 2) }} · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
                         </span>
                         @endif
                     </td>

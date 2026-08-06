@@ -43,7 +43,7 @@
                             {{ ucfirst($center->status) }}
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-right">{{ \Illuminate\Support\Number::format($center->members_count) }}</td>
+                    <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($center->members_count) }}</td>
                     <td class="px-4 py-2 text-gray-600">
                         {{ $center->approved_at ? \Illuminate\Support\Carbon::parse($center->approved_at)->format('d M Y') : '—' }}
                     </td>

@@ -7,8 +7,8 @@
 @include('partials._toast-container')
 
 @php
-    $bv = fn ($paise) => $paise === null ? '—' : \Illuminate\Support\Number::format($paise / 100, 0).' BV';
-    $rupees = fn ($paise) => $paise === null ? '—' : '₹'.\Illuminate\Support\Number::format($paise / 100, 2);
+    $bv = fn ($paise) => $paise === null ? '—' : \App\Modules\Shared\Support\IndianNumber::format($paise / 100, 0).' BV';
+    $rupees = fn ($paise) => $paise === null ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($paise / 100, 2);
     $activeTab = in_array(request('tab'), ['gsb', 'ranks', 'fortune'], true) ? request('tab') : 'gsb';
 @endphp
 
@@ -146,24 +146,24 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab. The bonus is score × this slab's score value, so it recomputes on save. Leave blank to leave the bonus unset." /></label>
                     <input type="number" name="score" data-field-label="Score" data-score-input value="{{ $row->score }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.\Illuminate\Support\Number::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
+                    <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Rupee value of one score point for this slab (KP 2026-07-21, default ₹250). The bonus is score × this value. Slabs 1–2 are fixed — always paid in full." /></label>
                     <input type="number" name="score_value_paise" data-field-label="Score value (paise)" data-score-value-input value="{{ $row->score_value_paise }}" required min="1"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">₹{{ \Illuminate\Support\Number::format($row->score_value_paise / 100, 2) }} / score</span>
+                    <span class="text-[11px] text-gray-400">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) }} / score</span>
                 </div>
                 @else
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab (fixed by the plan). Not editable: slabs 3–7 are priced daily from the GSB pool." /></label>
                     <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">{{ $row->score ?? '—' }}</div>
-                    <span class="text-[11px] text-gray-400">→ up to {{ $row->score !== null ? '₹'.\Illuminate\Support\Number::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
+                    <span class="text-[11px] text-gray-400">→ up to {{ $row->score !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Variable — computed at each daily cut-off from the GSB pool (45% of the day's company BV), capped at this fixed value. See the GSB Input & Output report for each day's value." /></label>
                     <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">Variable (pool)</div>
-                    <span class="text-[11px] text-gray-400">up to ₹{{ \Illuminate\Support\Number::format($row->score_value_paise / 100, 2) }} / score</span>
+                    <span class="text-[11px] text-gray-400">up to ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) }} / score</span>
                 </div>
                 @endif
                 <div>

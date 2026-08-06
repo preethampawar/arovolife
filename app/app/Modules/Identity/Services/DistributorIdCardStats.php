@@ -6,9 +6,9 @@ namespace App\Modules\Identity\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Number;
 
 /**
  * The ID-card stats panel rendered in three places:

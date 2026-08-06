@@ -25,11 +25,11 @@
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Distributors</p>
-        <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">{{ \Illuminate\Support\Number::format($cards['distributors']) }}</p>
+        <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">{{ \App\Modules\Shared\Support\IndianNumber::format($cards['distributors']) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Entries</p>
-        <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">{{ \Illuminate\Support\Number::format($cards['entries']) }}</p>
+        <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">{{ \App\Modules\Shared\Support\IndianNumber::format($cards['entries']) }}</p>
     </div>
 </div>
 

@@ -83,17 +83,17 @@
                             <p class="text-xs text-gray-400 font-mono">{{ $it->variant_sku_snapshot }}</p>
                         </td>
                         <td class="py-2 text-right">{{ $it->qty }}</td>
-                        <td class="py-2 text-right font-semibold">₹{{ \Illuminate\Support\Number::format($it->line_total_paise / 100, 2) }}</td>
+                        <td class="py-2 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($it->line_total_paise / 100, 2) }}</td>
                     </tr>
                     @endforeach
                 </tbody>
             </table>
             <div class="mt-3 pt-3 border-t border-gray-100 flex flex-col items-end text-sm space-y-1">
-                <div class="flex gap-8"><span class="text-gray-500">Subtotal (incl. GST)</span><span class="w-28 text-right">₹{{ \Illuminate\Support\Number::format($order->subtotal_paise / 100, 2) }}</span></div>
+                <div class="flex gap-8"><span class="text-gray-500">Subtotal (incl. GST)</span><span class="w-28 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->subtotal_paise / 100, 2) }}</span></div>
                 @if($order->discount_paise > 0)
-                <div class="flex gap-8 text-green-700"><span>Discount</span><span class="w-28 text-right">−₹{{ \Illuminate\Support\Number::format($order->discount_paise / 100, 2) }}</span></div>
+                <div class="flex gap-8 text-green-700"><span>Discount</span><span class="w-28 text-right">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
                 @endif
-                <div class="flex gap-8"><span class="text-gray-500">Shipping</span><span class="w-28 text-right">@if($order->shipping_paise > 0)₹{{ \Illuminate\Support\Number::format($order->shipping_paise / 100, 2) }}@else Free @endif</span></div>
+                <div class="flex gap-8"><span class="text-gray-500">Shipping</span><span class="w-28 text-right">@if($order->shipping_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}@else Free @endif</span></div>
                 <div class="flex gap-8 font-semibold pt-1 border-t border-gray-100 mt-1"><span>Total paid</span><span class="w-28 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
         </div>
@@ -149,19 +149,19 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
             <h3 class="font-semibold text-gray-900 mb-3">Computed refund (T&amp;C §8 matrix)</h3>
             <dl class="text-sm space-y-1.5">
-                <div class="flex justify-between"><dt class="text-gray-500">Base (ex-GST)</dt><dd>₹{{ \Illuminate\Support\Number::format($decision->refund_base_paise / 100, 2) }}</dd></div>
-                <div class="flex justify-between"><dt class="text-gray-500">GST refund</dt><dd>₹{{ \Illuminate\Support\Number::format($decision->gst_adjustment_paise / 100, 2) }}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">Base (ex-GST)</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->refund_base_paise / 100, 2) }}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">GST refund</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->gst_adjustment_paise / 100, 2) }}</dd></div>
                 @if($decision->admin_deduction_paise > 0)
-                <div class="flex justify-between text-red-700"><dt>Admin deduction</dt><dd>−₹{{ \Illuminate\Support\Number::format($decision->admin_deduction_paise / 100, 2) }}</dd></div>
+                <div class="flex justify-between text-red-700"><dt>Admin deduction</dt><dd>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->admin_deduction_paise / 100, 2) }}</dd></div>
                 @endif
-                <div class="flex justify-between font-semibold border-t border-gray-100 pt-1.5 mt-1"><dt>Net refund</dt><dd>₹{{ \Illuminate\Support\Number::format($decision->net_refund_paise / 100, 2) }}</dd></div>
+                <div class="flex justify-between font-semibold border-t border-gray-100 pt-1.5 mt-1"><dt>Net refund</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->net_refund_paise / 100, 2) }}</dd></div>
             </dl>
             <p class="text-xs text-gray-400 mt-3">Matrix version {{ $decision->decision_matrix_version }} · ADR-0009 §8</p>
         </div>
         @elseif($return->isCoolingOff())
         <div class="bg-blue-50 rounded-2xl border border-blue-200 p-5">
             <p class="text-sm text-blue-800 font-medium">Full refund</p>
-            <p class="text-xl font-bold text-blue-900 mt-1">₹{{ \Illuminate\Support\Number::format($order->total_paise / 100, 2) }}</p>
+            <p class="text-xl font-bold text-blue-900 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->total_paise / 100, 2) }}</p>
             <p class="text-xs text-blue-700 mt-1">Cooling-off: full order total (including shipping; hard rule #5).</p>
         </div>
         @endif
@@ -176,7 +176,7 @@
                 data-confirm-title="Approve refund"
                 data-confirm-impact="Impact: posts ledger reversal (Dr revenue.sales/GST Cr liability.refund_payable), reverses BV accrual, moves order to refund_approved. Stub gateway records intent (Phase-3 will settle with Razorpay). This cannot be undone from here.">
                 @csrf
-                <button type="submit" class="w-full py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold">Approve refund ₹{{ \Illuminate\Support\Number::format($decision->net_refund_paise / 100, 2) }}</button>
+                <button type="submit" class="w-full py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold">Approve refund ₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->net_refund_paise / 100, 2) }}</button>
             </form>
             <form method="POST" action="{{ route('admin.returns.reject', $return) }}"
                 data-confirm="Reject this return request?"

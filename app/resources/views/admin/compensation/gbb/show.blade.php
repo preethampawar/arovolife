@@ -12,22 +12,22 @@
             <x-help-tip text="Written once, before any credit, and never recomputed — a re-run prices against this snapshot so the month's economics never move under a distributor who was already paid." />
         </span>
         <span class="text-gray-500">Company BV
-            <strong class="text-gray-700">{{ $pool ? '₹'.\Illuminate\Support\Number::format($pool->company_bv_paise / 100, 2) : '—' }}</strong></span>
+            <strong class="text-gray-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->company_bv_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-500">Pool rate
             <strong class="text-gray-700">{{ $pool ? rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.').'%' : '—' }}</strong></span>
         <span class="text-gray-500">Pool
-            <strong class="text-indigo-700">{{ $pool ? '₹'.\Illuminate\Support\Number::format($pool->pool_paise / 100, 2) : '—' }}</strong></span>
+            <strong class="text-indigo-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-500">Total AGP
             <x-help-tip text="The month's payable AGP — the denominator of the point value. Repurchase-suspended AGP is excluded because it can never be paid." />
-            <strong class="text-gray-700">{{ $pool ? \Illuminate\Support\Number::format($pool->total_agp) : '—' }}</strong></span>
+            <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) : '—' }}</strong></span>
         <span class="text-gray-500">Point value
             <x-help-tip text="Pool ÷ total payable AGP, floored to the whole rupee." />
-            <strong class="text-gray-700">{{ $pool ? '₹'.\Illuminate\Support\Number::format($pool->point_value_paise / 100, 2) : '—' }}</strong></span>
+            <strong class="text-gray-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-500">Payout
-            <strong class="text-green-700">{{ $pool ? '₹'.\Illuminate\Support\Number::format($pool->payout_paise / 100, 2) : '—' }}</strong></span>
+            <strong class="text-green-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->payout_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-500">Leftover
             <x-help-tip text="The flooring remainder. Normally small and positive; it can go negative when a later release credits AGP that was not in the frozen denominator." />
-            <strong class="{{ $pool && $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-700' }}">{{ $pool ? '₹'.\Illuminate\Support\Number::format($pool->leftover_paise / 100, 2) : '—' }}</strong></span>
+            <strong class="{{ $pool && $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-700' }}">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->leftover_paise / 100, 2) : '—' }}</strong></span>
     </div>
     @unless($pool)
     <p class="px-4 py-3 text-xs text-gray-400">
@@ -41,21 +41,21 @@
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">Distributors</p>
-        <p class="text-lg font-bold text-gray-900">{{ \Illuminate\Support\Number::format($summary->distributor_count) }}</p>
+        <p class="text-lg font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->distributor_count) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">
             AGP Recorded <x-help-tip text="Sum of the AGP on every row for this month, including repurchase-held and repurchase-suspended rows." />
         </p>
-        <p class="text-lg font-bold text-gray-900">{{ \Illuminate\Support\Number::format($summary->total_agp) }}</p>
+        <p class="text-lg font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_agp) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">Gross</p>
-        <p class="text-lg font-bold text-indigo-700">₹{{ \Illuminate\Support\Number::format($summary->total_gross_paise / 100, 0) }}</p>
+        <p class="text-lg font-bold text-indigo-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_gross_paise / 100, 0) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
         <p class="text-xs text-gray-500 mb-1">Net</p>
-        <p class="text-lg font-bold text-green-700">₹{{ \Illuminate\Support\Number::format($summary->total_net_paise / 100, 0) }}</p>
+        <p class="text-lg font-bold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 0) }}</p>
     </div>
 </div>
 @endif
@@ -93,9 +93,9 @@
                             {{ $row->agp_earned }} AGP
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-right">₹{{ \Illuminate\Support\Number::format($row->gbb_gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right text-gray-500">₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \Illuminate\Support\Number::format($row->gbb_net_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_gross_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-center">
                         @php
                         $sc = [

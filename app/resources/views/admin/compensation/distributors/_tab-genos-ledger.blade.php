@@ -83,10 +83,10 @@
                     @endif
                 </td>
                 <td class="px-3 py-2 text-right font-medium {{ $credit->side === 'L' ? 'text-green-700' : 'text-gray-300' }}">
-                    {{ $credit->side === 'L' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
+                    {{ $credit->side === 'L' ? '+'.\App\Modules\Shared\Support\IndianNumber::format($credit->bv_paise / 100, 0) : '—' }}
                 </td>
                 <td class="px-3 py-2 text-right font-medium {{ $credit->side === 'R' ? 'text-green-700' : 'text-gray-300' }}">
-                    {{ $credit->side === 'R' ? '+'.\Illuminate\Support\Number::format($credit->bv_paise / 100, 0) : '—' }}
+                    {{ $credit->side === 'R' ? '+'.\App\Modules\Shared\Support\IndianNumber::format($credit->bv_paise / 100, 0) : '—' }}
                 </td>
             </tr>
             @endforeach
@@ -110,10 +110,10 @@
                     @endif
                 </td>
                 <td class="px-3 py-2 text-right font-medium {{ $reversal->side === 'L' ? 'text-red-700' : 'text-gray-300' }}">
-                    {{ $reversal->side === 'L' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                    {{ $reversal->side === 'L' ? '−'.\App\Modules\Shared\Support\IndianNumber::format($reversal->absorbed_paise / 100, 0) : '—' }}
                 </td>
                 <td class="px-3 py-2 text-right font-medium {{ $reversal->side === 'R' ? 'text-red-700' : 'text-gray-300' }}">
-                    {{ $reversal->side === 'R' ? '−'.\Illuminate\Support\Number::format($reversal->absorbed_paise / 100, 0) : '—' }}
+                    {{ $reversal->side === 'R' ? '−'.\App\Modules\Shared\Support\IndianNumber::format($reversal->absorbed_paise / 100, 0) : '—' }}
                 </td>
             </tr>
             @endforeach
@@ -128,7 +128,7 @@
                     <span class="font-semibold">Cut-off settlement</span>
                     <span class="inline-flex ml-2 px-2 py-0.5 rounded text-[10px] font-medium {{ $b[$c->status] ?? 'bg-gray-100 text-gray-500' }}">{{ str_replace('_', ' ', $c->status) }}</span>
                     @if($c->slab)
-                    · slab {{ $c->slab }} matched, gross GSB ₹{{ \Illuminate\Support\Number::format($c->gross_gsb_paise / 100, 2) }}
+                    · slab {{ $c->slab }} matched, gross GSB ₹{{ \App\Modules\Shared\Support\IndianNumber::format($c->gross_gsb_paise / 100, 2) }}
                     @endif
                 </td>
                 <td colspan="2" class="px-3 py-2 text-right text-purple-800">

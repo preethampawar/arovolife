@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Support;
 
-use Illuminate\Support\Number;
+use App\Modules\Shared\Support\IndianNumber as Number;
 
 /**
  * The single source of truth for turning a BV amount in paise into the values

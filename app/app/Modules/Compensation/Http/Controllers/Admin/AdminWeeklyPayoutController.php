@@ -9,11 +9,11 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Number;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminWeeklyPayoutController extends Controller

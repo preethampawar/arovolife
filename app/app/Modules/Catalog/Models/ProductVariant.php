@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Number;
 
 /**
  * @property string $inventory_policy

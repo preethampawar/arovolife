@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Compliance\Models;
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Number;
 
 /**
  * A compliance document uploaded by an admin and published for public

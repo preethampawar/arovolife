@@ -10,9 +10,9 @@
     @foreach($levelSummaries as $level => $summary)
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm text-center">
         <p class="text-xs font-medium text-gray-500 mb-1">Level {{ $level }}</p>
-        <p class="text-sm font-bold text-gray-900">{{ \Illuminate\Support\Number::format($summary->participant_count) }} participants</p>
-        <p class="text-xs text-green-700 font-medium mt-0.5">₹{{ \Illuminate\Support\Number::format($levelBonusPaise[$level] / 100, 2) }} each</p>
-        <p class="text-xs text-gray-500 mt-0.5">Net total: ₹{{ \Illuminate\Support\Number::format($summary->total_net_paise / 100, 2) }}</p>
+        <p class="text-sm font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->participant_count) }} participants</p>
+        <p class="text-xs text-green-700 font-medium mt-0.5">₹{{ \App\Modules\Shared\Support\IndianNumber::format($levelBonusPaise[$level] / 100, 2) }} each</p>
+        <p class="text-xs text-gray-500 mt-0.5">Net total: ₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }}</p>
     </div>
     @endforeach
 </div>
@@ -48,17 +48,17 @@
                     $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-500', 'pending' => 'bg-amber-100 text-amber-700'];
                 @endphp
                 <tr>
-                    <td class="px-4 py-2 text-right font-mono text-gray-400">{{ \Illuminate\Support\Number::format($participant->position) }}</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-400">{{ \App\Modules\Shared\Support\IndianNumber::format($participant->position) }}</td>
                     <td class="px-4 py-2 font-mono">{{ $participant->distributor->adn ?? '—' }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-medium">L{{ $participant->matrix_level }}</span>
                     </td>
                     <td class="px-4 py-2 text-center text-gray-600">{{ str_replace('_', ' ', $participant->eligibility_tier) }}</td>
                     <td class="px-4 py-2 text-gray-600">{{ $participant->first_gsb_date ?? '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono">{{ $result ? '₹'.\Illuminate\Support\Number::format($result->gross_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono text-gray-500">{{ $result ? '₹'.\Illuminate\Support\Number::format($result->tds_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-2 text-right font-mono">{{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->gross_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-500">{{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->tds_paise / 100, 2) : '—' }}</td>
                     <td class="px-4 py-2 text-right font-mono font-semibold {{ ($result?->net_paise ?? 0) > 0 ? 'text-green-700' : 'text-gray-400' }}">
-                        {{ $result ? '₹'.\Illuminate\Support\Number::format($result->net_paise / 100, 2) : '—' }}
+                        {{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->net_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-4 py-2 text-center">
                         @if($result)

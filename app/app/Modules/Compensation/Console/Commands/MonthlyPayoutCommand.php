@@ -7,9 +7,9 @@ namespace App\Modules\Compensation\Console\Commands;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class MonthlyPayoutCommand extends Command

@@ -103,9 +103,9 @@
                         </td>
                         <td class="py-2 text-gray-600 font-mono text-xs">{{ $item->hsn_code_snapshot ?: '—' }}</td>
                         <td class="py-2 text-right text-gray-700">{{ $item->qty }}</td>
-                        <td class="py-2 text-right text-gray-700">₹{{ \Illuminate\Support\Number::format($item->unit_price_paise / 100, 2) }}</td>
-                        <td class="py-2 text-right text-gray-600">{{ \Illuminate\Support\Number::format($item->gst_rate_bp / 100, 0) }}%</td>
-                        <td class="py-2 text-right font-medium text-gray-900">₹{{ \Illuminate\Support\Number::format($item->line_total_paise / 100, 2) }}</td>
+                        <td class="py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($item->unit_price_paise / 100, 2) }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($item->gst_rate_bp / 100, 0) }}%</td>
+                        <td class="py-2 text-right font-medium text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($item->line_total_paise / 100, 2) }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -114,13 +114,13 @@
             {{-- Totals --}}
             <div class="flex justify-end mt-4">
                 <div class="w-full sm:w-72 space-y-1">
-                    <div class="flex justify-between text-sm"><span class="text-gray-600">Taxable value</span><span>₹{{ \Illuminate\Support\Number::format($order->items->sum('taxable_value_paise') / 100, 2) }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ \Illuminate\Support\Number::format($order->gst_paise / 100, 2) }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-gray-600">Taxable value</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->items->sum('taxable_value_paise') / 100, 2) }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->gst_paise / 100, 2) }}</span></div>
                     @if($order->discount_paise > 0)
-                    <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \Illuminate\Support\Number::format($order->discount_paise / 100, 2) }}</span></div>
+                    <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
                     @endif
                     <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span>
-                        @if($order->shipping_paise > 0)<span>₹{{ \Illuminate\Support\Number::format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
+                        @if($order->shipping_paise > 0)<span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
                     </div>
                     <div class="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200 mt-1">
                         <span>Total</span><span>{{ $order->displayTotal() }}</span>

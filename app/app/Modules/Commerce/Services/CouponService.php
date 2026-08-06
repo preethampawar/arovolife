@@ -9,7 +9,7 @@ use App\Modules\Commerce\Models\Coupon;
 use App\Modules\Commerce\Models\CouponRedemption;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Services\DTOs\CouponResult;
-use Illuminate\Support\Number;
+use App\Modules\Shared\Support\IndianNumber as Number;
 
 /**
  * Validates promo codes against a cart and computes the rupee discount.

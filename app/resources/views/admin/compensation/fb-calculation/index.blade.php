@@ -97,11 +97,11 @@
                     </td>
                     <td class="px-3 py-2 text-right">
                         <span class="font-semibold {{ $row->status === 'skipped' ? 'text-gray-400' : 'text-green-700' }}">
-                            ₹{{ \Illuminate\Support\Number::format($row->net_paise / 100, 2) }}
+                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
                         @if($row->tds_paise > 0)
                         <span class="block text-[10px] text-gray-400 font-normal">
-                            gross ₹{{ \Illuminate\Support\Number::format($row->gross_paise / 100, 2) }} · TDS ₹{{ \Illuminate\Support\Number::format($row->tds_paise / 100, 2) }}
+                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }} · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
                         </span>
                         @endif
                     </td>

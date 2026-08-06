@@ -96,7 +96,7 @@
             <span class="text-gray-500 group-hover:text-brand-500 transition-colors text-lg leading-none" aria-hidden="true">→</span>
         </div>
         <p class="text-xs uppercase tracking-wider text-gray-700 font-medium mb-1">{{ $card['label'] }}</p>
-        <p class="text-3xl font-bold text-gray-900 leading-none mb-2">{{ \Illuminate\Support\Number::format($card['value']) }}</p>
+        <p class="text-3xl font-bold text-gray-900 leading-none mb-2">{{ \App\Modules\Shared\Support\IndianNumber::format($card['value']) }}</p>
         <p class="text-xs text-gray-600">{{ $card['hint'] }}</p>
     </a>
     @endforeach

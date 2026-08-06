@@ -25,10 +25,10 @@
                 <td class="px-3 py-2 font-medium">{{ $entry->created_at?->format('d M Y') }}</td>
                 <td class="px-3 py-2 font-mono text-gray-600">{{ $entry->type }}</td>
                 <td class="px-3 py-2 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">
-                    {{ $entry->amount_paise >= 0 ? '+' : '' }}₹{{ \Illuminate\Support\Number::format($entry->amount_paise / 100, 2) }}
+                    {{ $entry->amount_paise >= 0 ? '+' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format($entry->amount_paise / 100, 2) }}
                 </td>
                 <td class="px-3 py-2 text-right font-semibold text-blue-700">
-                    ₹{{ \Illuminate\Support\Number::format($runningBalance / 100, 2) }}
+                    ₹{{ \App\Modules\Shared\Support\IndianNumber::format($runningBalance / 100, 2) }}
                 </td>
                 <td class="px-3 py-2 text-gray-500">{{ $entry->memo ?? '—' }}</td>
             </tr>

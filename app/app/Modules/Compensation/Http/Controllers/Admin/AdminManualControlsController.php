@@ -11,6 +11,7 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,6 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 final class AdminManualControlsController extends Controller

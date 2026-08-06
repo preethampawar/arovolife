@@ -66,7 +66,7 @@
                         <td class="px-4 py-3 text-right font-medium text-gray-900">{{ $order->displayTotal() }}</td>
                         <td class="px-4 py-3">@include('partials.order-status-badge', ['status' => $order->status])</td>
                         @if($showBv ?? false)
-                        <td class="px-4 py-3 text-right text-brand-700">{{ \Illuminate\Support\Number::format($order->bvTotalPaise() / 100, 0) }} BV</td>
+                        <td class="px-4 py-3 text-right text-brand-700">{{ \App\Modules\Shared\Support\IndianNumber::format($order->bvTotalPaise() / 100, 0) }} BV</td>
                         <td class="px-4 py-3">
                             @if($bv['state'] !== 'none')
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border {{ $bvBadge($bv['state']) }}">{{ $bv['label'] }}</span>
@@ -97,7 +97,7 @@
                 </div>
                 @if(($showBv ?? false) && $order->bvTotalPaise() > 0)
                 <div class="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-                    <span class="text-xs text-brand-700 font-semibold">{{ \Illuminate\Support\Number::format($order->bvTotalPaise() / 100, 0) }} BV</span>
+                    <span class="text-xs text-brand-700 font-semibold">{{ \App\Modules\Shared\Support\IndianNumber::format($order->bvTotalPaise() / 100, 0) }} BV</span>
                     @if($bv['state'] !== 'none')
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border {{ $bvBadge($bv['state']) }}">{{ $bv['label'] }}</span>
                     @endif

@@ -36,10 +36,10 @@
                 <span>
                     <strong class="text-gray-900">{{ $item->product_name_snapshot }}</strong> × {{ $item->qty }}
                     @if($item->lineBvPaise() > 0)
-                    <span class="ml-1 text-xs text-brand-700">({{ \Illuminate\Support\Number::format($item->lineBvPaise() / 100, 0) }} BV)</span>
+                    <span class="ml-1 text-xs text-brand-700">({{ \App\Modules\Shared\Support\IndianNumber::format($item->lineBvPaise() / 100, 0) }} BV)</span>
                     @endif
                 </span>
-                <span class="font-medium">₹{{ \Illuminate\Support\Number::format($item->line_total_paise / 100, 2) }}</span>
+                <span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format($item->line_total_paise / 100, 2) }}</span>
             </div>
             @endforeach
         </div>
@@ -47,16 +47,16 @@
             @if($order->bvTotalPaise() > 0)
             <div class="flex justify-between text-brand-700 pb-2 mb-2 border-b border-gray-100">
                 <span class="font-semibold">Total BV</span>
-                <span class="font-bold" title="Business Volume credited to you from this customer sale">{{ \Illuminate\Support\Number::format($order->bvTotalPaise() / 100, 0) }} BV</span>
+                <span class="font-bold" title="Business Volume credited to you from this customer sale">{{ \App\Modules\Shared\Support\IndianNumber::format($order->bvTotalPaise() / 100, 0) }} BV</span>
             </div>
             @endif
-            <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span>₹{{ \Illuminate\Support\Number::format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
-            <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ \Illuminate\Support\Number::format($order->gst_paise / 100, 2) }}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format(($order->subtotal_paise - $order->gst_paise) / 100, 2) }}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->gst_paise / 100, 2) }}</span></div>
             @if($order->discount_paise > 0)
-            <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \Illuminate\Support\Number::format($order->discount_paise / 100, 2) }}</span></div>
+            <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
             @endif
             <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span>
-                @if($order->shipping_paise > 0)<span>₹{{ \Illuminate\Support\Number::format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
+                @if($order->shipping_paise > 0)<span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
             </div>
             <div class="flex justify-between font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span>{{ $order->displayTotal() }}</span></div>
         </div>
@@ -68,7 +68,7 @@
         <h2 class="font-semibold text-gray-900 mb-2">Business Volume (your credit)</h2>
         <div class="flex items-center gap-3">
             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border {{ $bvBadge }}">{{ $bv['label'] }}</span>
-            <span class="text-sm text-gray-600">{{ \Illuminate\Support\Number::format($order->bvTotalPaise() / 100, 0) }} BV credited to your account from this sale</span>
+            <span class="text-sm text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($order->bvTotalPaise() / 100, 0) }} BV credited to your account from this sale</span>
         </div>
         @if($bv['state'] === 'pending')
         <p class="text-xs text-gray-500 mt-2">BV is counted once payment clears. It is reversed if the customer returns the order.</p>

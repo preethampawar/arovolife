@@ -103,11 +103,11 @@
                     </td>
                     <td class="px-3 py-2 text-right font-semibold {{ $tab === 'reversals' ? 'text-red-700' : 'text-green-700' }}">
                         @if($tab === 'reversals')
-                        {{ \Illuminate\Support\Number::format($row->bv_paise / 100, 0) }}
+                        {{ \App\Modules\Shared\Support\IndianNumber::format($row->bv_paise / 100, 0) }}
                         @else
-                        +{{ \Illuminate\Support\Number::format($row->bv_paise / 100, 0) }}
+                        +{{ \App\Modules\Shared\Support\IndianNumber::format($row->bv_paise / 100, 0) }}
                         @if($row->debt_consumed_paise > 0)
-                        <span class="block text-[10px] text-gray-400 font-normal">after {{ \Illuminate\Support\Number::format($row->debt_consumed_paise / 100, 0) }} adj.</span>
+                        <span class="block text-[10px] text-gray-400 font-normal">after {{ \App\Modules\Shared\Support\IndianNumber::format($row->debt_consumed_paise / 100, 0) }} adj.</span>
                         @endif
                         @endif
                     </td>
@@ -116,9 +116,9 @@
                         {{ $row->reversed_at ? \Illuminate\Support\Carbon::parse($row->reversed_at)->format('d/m/y') : '—' }}
                     </td>
                     <td class="px-3 py-2 text-right font-semibold text-red-700">
-                        −{{ \Illuminate\Support\Number::format($row->absorbed_paise / 100, 0) }}
+                        −{{ \App\Modules\Shared\Support\IndianNumber::format($row->absorbed_paise / 100, 0) }}
                         @if($row->debt_paise > 0)
-                        <span class="block text-[10px] text-amber-600 font-normal">+{{ \Illuminate\Support\Number::format($row->debt_paise / 100, 0) }} fwd debt</span>
+                        <span class="block text-[10px] text-amber-600 font-normal">+{{ \App\Modules\Shared\Support\IndianNumber::format($row->debt_paise / 100, 0) }} fwd debt</span>
                         @endif
                     </td>
                     @endif
