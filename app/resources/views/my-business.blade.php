@@ -5,8 +5,6 @@
 @php
     use App\Modules\Shared\Support\IndianNumber as Number;
 
-    $navLinks = \App\Modules\Compensation\Support\IncomeNavLinks::visible();
-
     // Every Genos figure is gated by eligibility: below the personal-BV minimum
     // the cut-off discards group BV, so the page shows 0 rather than a number
     // the distributor will never be credited for.
@@ -42,24 +40,11 @@
 <div class="max-w-5xl mx-auto px-4 py-8">
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My Business</h1>
 
+    @include('income._tabs')
+
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        A snapshot of your own arovolife business: your personal purchase BV and title, your current wallet balance, and the Left and Right Genos figures tonight's 23:59 cut-off will use. Every number here is a record of what has already happened on your account. Use the menu below to open the detailed pages.
-    </div>
-
-    {{-- Group 1 — menu tiles --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
-        @foreach($navLinks as $link)
-            <a href="{{ route($link['route']) }}"
-               class="{{ $cardClasses }} flex items-center justify-center text-center text-sm font-medium text-gray-700 hover:border-brand-400 hover:text-brand-600 hover:shadow-sm transition-colors min-h-[72px]">
-                {{ $link['tile_label'] }}
-            </a>
-        @endforeach
-        {{-- Lifetime Awards & Rewards has no page until Phase 5 — shown disabled per the partner's design. --}}
-        <div class="bg-gray-50 rounded-2xl border border-gray-200 p-5 flex flex-col items-center justify-center text-center text-sm font-medium text-gray-400 min-h-[72px] cursor-not-allowed select-none" aria-disabled="true">
-            <span>Awards &amp; Rewards</span>
-            <span class="text-xs font-normal mt-0.5">Coming soon</span>
-        </div>
+        A snapshot of your own arovolife business: your personal purchase BV and title, your current wallet balance, and the Left and Right Genos figures tonight's 23:59 cut-off will use. Every number here is a record of what has already happened on your account. Use the tabs above to open the detailed pages.
     </div>
 
     {{-- Group 2 — headline stats --}}
