@@ -89,20 +89,26 @@ final class RankBonusService
         DB::transaction(function () use (
             $monthStartCarbon, $monthStart, $turnoverPaise, &$credited, &$byRank,
         ): void {
-            // A distributor is paid ONLY their highest qualified rank for the
-            // month. The qualification service deliberately records every
-            // cleared rank (a Rank-2 achiever also clears Rank 1's bar, and
-            // structural counts / the GBB prior-month gate query those rows),
-            // but KP's plan is explicit that reaching Rank 2 cancels the
-            // Rank-1 benefit — without this filter every dual qualifier is
-            // paid from both pools, as the first real July 2026 run did.
-            $highestRankByDistributor = RankQualification::where('month_start', $monthStart)
-                ->where('status', RankQualification::STATUS_QUALIFIED)
-                ->where('is_carry_forward', false)
-                ->groupBy('distributor_id')
-                ->selectRaw('distributor_id, MAX(rank_number) as highest_rank')
-                ->pluck('highest_rank', 'distributor_id')
-                ->map(fn ($rank) => (int) $rank);
+            // Exclusive pools (the default): a distributor is paid ONLY their
+            // highest qualified rank for the month. The qualification service
+            // deliberately records every cleared rank (a Rank-2 achiever also
+            // clears Rank 1's bar, and structural counts / the GBB prior-month
+            // gate query those rows), but the plan text says reaching Rank 2
+            // cancels the Rank-1 benefit — without this filter every dual
+            // qualifier is paid from both pools, as the first real July 2026
+            // run did. `comp.rank.pay_highest_rank_only` = false switches to
+            // cumulative pools (pay every cleared rank) if the product owner
+            // rules that way.
+            $payHighestOnly = $this->plan->rankPayHighestOnly();
+            $highestRankByDistributor = $payHighestOnly
+                ? RankQualification::where('month_start', $monthStart)
+                    ->where('status', RankQualification::STATUS_QUALIFIED)
+                    ->where('is_carry_forward', false)
+                    ->groupBy('distributor_id')
+                    ->selectRaw('distributor_id, MAX(rank_number) as highest_rank')
+                    ->pluck('highest_rank', 'distributor_id')
+                    ->map(fn ($rank) => (int) $rank)
+                : collect();
 
             foreach (range(1, 9) as $rank) {
                 $poolPct = $this->plan->rankPoolPct($rank);

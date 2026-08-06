@@ -76,6 +76,7 @@ final class SettingsSeeder extends Seeder
             'comp.gbb.pool_rate_bp' => '500',               // 5% of the month's company BV
             'comp.gbb.agp_cap' => '120',
             'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds all nine rank pools
+            'comp.rank.pay_highest_rank_only' => 'true',    // exclusive rank pools (plan text); false = cumulative
             'comp.rank.aogo_points' => '5',                 // AO-GO points per grant (Rank-1 pool)
             'comp.rank.aogo_lifetime_max' => '3',           // AO-GO uses per distributor, lifetime
             'comp.adc.rate_bp' => '300',                    // 3%

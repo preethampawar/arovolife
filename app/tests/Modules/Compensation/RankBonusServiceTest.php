@@ -455,3 +455,36 @@ it('pays only the highest qualified rank when a distributor cleared several', fu
     expect((int) $pearlRows->first()->net_paise)->toBe(680_000)
         ->and($result['credited'])->toBe(2);
 });
+
+/**
+ * The exclusive-vs-cumulative choice is a plan setting awaiting the product
+ * owner's ruling. OFF = cumulative: a dual qualifier is paid from every rank
+ * pool whose bar they cleared, and they count in each pool's denominator.
+ */
+it('pays every cleared rank when pay_highest_rank_only is switched off', function (): void {
+    DB::table('settings')->insert([
+        'key' => 'comp.rank.pay_highest_rank_only', 'value' => 'false', 'version' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $month = Carbon::parse('2026-06-01');
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+
+    $silverOnly = Distributor::factory()->create();
+    seedRankQualification($silverOnly->id, rank: 1, monthStart: '2026-06-01');
+
+    $pearl = Distributor::factory()->create();
+    seedRankQualification($pearl->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($pearl->id, rank: 2, monthStart: '2026-06-01');
+
+    $result = app(RankBonusService::class)->runForMonth($month);
+
+    // Cumulative: the dual achiever holds TWO result rows (R1 + R2).
+    expect(RankBonusResult::where('distributor_id', $pearl->id)->count())->toBe(2)
+        ->and($result['credited'])->toBe(3);
+
+    // R1 pool ₹14,000 across 2 achievers × 10 RAP = 20 points → ₹700/point.
+    $silverRow = RankBonusResult::where('distributor_id', $silverOnly->id)->firstOrFail();
+    expect((int) $silverRow->point_value_paise)->toBe(70_000)
+        ->and((int) $silverRow->net_paise)->toBe(700_000);
+});

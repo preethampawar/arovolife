@@ -473,6 +473,14 @@ final class AdminSettingsController extends Controller
                 'max' => 10000,
                 'default' => '2000',
             ],
+            'comp.rank.pay_highest_rank_only' => [
+                'group' => 'compensation_plan',
+                'label' => 'Rank pools: pay highest rank only',
+                'description' => 'ON (exclusive): a distributor who cleared several ranks in a month is paid only their highest — the plan-text reading ("reaching Rank 2 cancels the Rank-1 benefit"). OFF (cumulative): they are paid from every rank pool whose bar they cleared. Also changes each pool\'s denominator, so it re-prices every achiever in the affected pools.',
+                'impact' => 'Changes who is paid from which rank pool and how each pool divides. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched. Awaiting the product owner\'s exclusive-vs-cumulative ruling — change only on that ruling.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
             'comp.rank.aogo_points' => [
                 'group' => 'compensation_plan',
                 'label' => 'AO-GO points per grant',

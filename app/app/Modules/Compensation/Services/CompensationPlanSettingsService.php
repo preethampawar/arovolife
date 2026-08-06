@@ -104,6 +104,12 @@ final class CompensationPlanSettingsService
         // can be used.
         'comp.rank.aogo_points' => 5,
         'comp.rank.aogo_lifetime_max' => 3,
+        // Exclusive (true) vs cumulative (false) rank pools. Exclusive pays a
+        // multi-rank qualifier only their highest rank — the plan-text reading
+        // ("reaching Rank 2 cancels the Rank-1 benefit"). Cumulative pays every
+        // rank they cleared. Awaiting the product owner's ruling (2026-08-06);
+        // default follows the written plan.
+        'comp.rank.pay_highest_rank_only' => true,
         'comp.repurchase.rate_bp' => 1000,
         'comp.repurchase.cap_paise' => 1_000_000,
         'comp.repurchase.grace_days' => 7,
@@ -531,6 +537,16 @@ final class CompensationPlanSettingsService
     public function rankEnvelopeBp(): int
     {
         return $this->scalarInt('comp.rank.envelope_bp');
+    }
+
+    /**
+     * Exclusive (true) vs cumulative (false) rank pools. Exclusive pays a
+     * multi-rank qualifier only their highest rank for the month; cumulative
+     * pays every rank whose bar they cleared. See the SCALAR_DEFAULTS note.
+     */
+    public function rankPayHighestOnly(): bool
+    {
+        return $this->scalarBool('comp.rank.pay_highest_rank_only');
     }
 
     /**
