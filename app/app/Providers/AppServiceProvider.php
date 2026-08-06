@@ -8,9 +8,15 @@ use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
 use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
+use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
+use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
@@ -72,12 +78,25 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(fn (User $user) => $user->isSuperStaff() ? true : null);
 
         if ($this->app->runningInConsole()) {
+            // Module commands live outside app/Console/Commands, so Laravel's
+            // auto-discovery never sees them — every one must be listed here.
+            // Schedule::command() in routes/console.php only formats the
+            // signature into an artisan string; it does NOT verify the command
+            // is registered, so an omission here surfaces as a cron-time
+            // "There are no commands defined" and nothing else.
+            // ScheduledCommandsAreRegisteredTest guards the whole schedule.
             $this->commands([
                 DeployCommand::class,
                 ResetAdnsCommand::class,
                 CreateStaffUserCommand::class,
                 GsbDailyCutoffCommand::class,
                 GsbWeeklyPayoutCommand::class,
+                GbbMonthlyRunCommand::class,
+                RankBonusRunCommand::class,
+                RankCheckCommand::class,
+                FortuneBonusRunCommand::class,
+                FortuneBonusEnrollCommand::class,
+                AdcBonusRunCommand::class,
                 MonthlyPayoutCommand::class,
                 RepurchaseEvaluateCommand::class,
             ]);

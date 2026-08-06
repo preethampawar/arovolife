@@ -757,42 +757,6 @@ parameters:
 			path: app/Modules/Commerce/Support/OrderBuyerNotifier.php
 
 		-
-			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Modules/Compensation/Console/Commands/AdcBonusRunCommand.php
-
-		-
-			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Modules/Compensation/Console/Commands/FortuneBonusEnrollCommand.php
-
-		-
-			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Modules/Compensation/Console/Commands/FortuneBonusRunCommand.php
-
-		-
-			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Modules/Compensation/Console/Commands/GbbMonthlyRunCommand.php
-
-		-
-			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Modules/Compensation/Console/Commands/RankBonusRunCommand.php
-
-		-
-			message: '#^Cannot cast non\-empty\-array\|float\|int\<min, \-1\>\|int\<1, max\>\|non\-falsy\-string\|true to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: app/Modules/Compensation/Console/Commands/RankCheckCommand.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1905,7 +1869,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 5
+			count: 6
 			path: tests/Modules/Admin/AdminHelpTest.php
 
 		-
@@ -1959,7 +1923,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 11
+			count: 13
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
@@ -2590,6 +2554,30 @@ parameters:
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 4
+			path: tests/Modules/Compensation/AdminCompensationNavTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminCompensationNavTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Compensation/AdminDailyCutoffTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminDailyCutoffTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
 			path: tests/Modules/Compensation/AdminDistributorCompTest.php
 
 		-
@@ -2641,6 +2629,12 @@ parameters:
 			path: tests/Modules/Compensation/AdminMsbCalculationTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminMsbCalculationTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 9
@@ -2651,12 +2645,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Compensation/AdminMsbInputOutputTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Compensation/AdminMsbCalculationTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -2679,6 +2667,48 @@ parameters:
 			identifier: method.deprecated
 			count: 1
 			path: tests/Modules/Compensation/CompensationPlanSettingsServiceTest.php
+
+		-
+			message: '#^Call to an undefined method object\:\:down\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
+
+		-
+			message: '#^Call to an undefined method object\:\:up\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
+
+		-
+			message: '#^Function migrationAuditRows\(\) should return array\<string, mixed\> but returns array\<int, array\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
+
+		-
+			message: '#^Offset 0 does not exist on array\<string, mixed\>\.$#'
+			identifier: offsetAccess.notFound
+			count: 5
+			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
+
+		-
+			message: '#^Parameter \#1 \$value of function expect contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
+
+		-
+			message: '#^Return type of call to function expect contains unresolvable type\.$#'
+			identifier: function.unresolvableReturnType
+			count: 1
+			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 2
+			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\GsbCutoffResult\:\:\$power_side_before\.$#'
@@ -2725,13 +2755,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 7
 			path: tests/Modules/Compensation/MyBusinessControllerTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 8
 			path: tests/Modules/Compensation/MyBusinessControllerTest.php
 
 		-
@@ -2761,7 +2791,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 9
 			path: tests/Modules/Content/ContentPagesTest.php
 
 		-
