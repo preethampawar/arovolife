@@ -266,3 +266,17 @@ it('lists credited GBB batches without tripping the reserved YEAR_MONTH keyword'
         ->assertSee('Growth Booster Bonus')
         ->assertDontSee('No GBB batches yet');
 });
+
+it('hides the GBB calculation report while the feature is off', function (): void {
+    Feature::for(null)->deactivate(GrowthBoosterBonusFeature::class);
+
+    $admin = gbbReportAdmin();
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.gbb-calculation.index'))
+        ->assertNotFound();
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.gbb-calculation.export'))
+        ->assertNotFound();
+});

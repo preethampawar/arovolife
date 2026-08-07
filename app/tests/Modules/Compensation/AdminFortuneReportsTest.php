@@ -263,3 +263,17 @@ it('shows the distributor their own FB points times the frozen point value', fun
         ->assertDontSee('could earn')
         ->assertDontSee('will earn');
 });
+
+it('hides the FB calculation report while the feature is off', function (): void {
+    Feature::for(null)->deactivate(FortuneBonusFeature::class);
+
+    $admin = fbReportAdmin();
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.fb-calculation.index'))
+        ->assertNotFound();
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.fb-calculation.export'))
+        ->assertNotFound();
+});

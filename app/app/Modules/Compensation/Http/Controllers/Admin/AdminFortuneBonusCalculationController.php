@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Shared\Features\FortuneBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 /**
  * FB Monthly Calculation report — KP's 2026-08-07 mock, one row per
@@ -36,6 +38,8 @@ final class AdminFortuneBonusCalculationController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(FortuneBonusFeature::class), 404);
+
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
@@ -68,6 +72,8 @@ final class AdminFortuneBonusCalculationController extends Controller
 
     public function export(Request $request): Response
     {
+        abort_unless(Feature::for(null)->active(FortuneBonusFeature::class), 404);
+
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],

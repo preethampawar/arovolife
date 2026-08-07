@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 /**
  * RB Monthly Calculation report — two tables per KP's 2026-08-05 mocks:
@@ -29,6 +31,8 @@ final class AdminRankBonusCalculationController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(RankBonusFeature::class), 404);
+
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
@@ -71,6 +75,8 @@ final class AdminRankBonusCalculationController extends Controller
 
     public function export(Request $request): Response
     {
+        abort_unless(Feature::for(null)->active(RankBonusFeature::class), 404);
+
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 final class AdminGbbCalculationController extends Controller
 {
@@ -24,6 +26,8 @@ final class AdminGbbCalculationController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(GrowthBoosterBonusFeature::class), 404);
+
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
@@ -51,6 +55,8 @@ final class AdminGbbCalculationController extends Controller
 
     public function export(Request $request): Response
     {
+        abort_unless(Feature::for(null)->active(GrowthBoosterBonusFeature::class), 404);
+
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
