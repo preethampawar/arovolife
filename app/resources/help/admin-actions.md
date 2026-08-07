@@ -105,6 +105,18 @@ concern, a fraud pattern, a security incident — switch it off yourself. Do not
 wait for the technical team. In-progress wizards continue; only new entries are
 blocked.
 
+**Bonus feature flags depend on each other.** The compensation engines build
+on one another, so their flags must be switched on in order: **Genos Sales
+Bonus** first (its daily cut-off produces the slab achievements that the
+Mentorship, Growth Booster and Fortune bonuses consume), then **Rank Bonus**
+(its rank check writes the qualifications that Growth Booster, Fortune and
+Lifetime Awards read). A dependent bonus switched on without its prerequisites
+runs on missing data — for example, with Rank Bonus off, Growth Booster treats
+every distributor as never ranked. The Arete Development Center Bonus stands
+alone. Each flag card on the Feature flags page lists its prerequisites and
+whether they are currently on. Each bonus's calculation report is visible only
+while its flag is on.
+
 **Values you can see but not change.** The statutory cooling-off period, the
 TDS and admin-charge rates, and the payout thresholds are shown read-only on
 the Settings page so you can verify them during a review. If one is wrong,

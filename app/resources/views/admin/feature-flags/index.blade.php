@@ -7,6 +7,13 @@
     <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
         <p class="font-semibold mb-1">Feature flags</p>
         <p class="leading-relaxed">Runtime switches that enable or disable platform features. Some (like the registration killswitch) have wide impact; every toggle is audit-logged.</p>
+        <p class="leading-relaxed mt-2">
+            <span class="font-semibold">Bonus dependency hierarchy</span> — the compensation engines build on each other, so switch them on in this order:
+            <span class="font-medium">Genos Sales Bonus</span> first (its daily cut-off produces the slab achievements that Mentorship, Growth Booster and Fortune consume, and the repurchase engine applies its holds there), then
+            <span class="font-medium">Rank Bonus</span> (its rank:check run writes the rank qualifications that Growth Booster's prior-month-rank exclusion, Fortune's tier gates and Lifetime Awards all read).
+            A dependent bonus left ON without its prerequisites computes on missing data — e.g. with Rank Bonus OFF, Growth Booster treats every distributor as never ranked. Arete Development Center Bonus is independent.
+            Each card below lists its prerequisites.
+        </p>
     </div>
 
     <p class="text-sm text-gray-600 mb-6">
@@ -32,6 +39,19 @@
                     </div>
                     <div class="text-base font-medium text-gray-900">{{ $flag['label'] }} <x-help-tip text="Toggling this flag enables or disables the feature platform-wide for all users on arovolife; the change is audit-logged and reversible." /></div>
                     <div class="text-sm text-gray-600 mt-1">{{ $flag['description'] }}</div>
+                    @if (! empty($flag['requires']))
+                        <div class="text-xs mt-2 flex flex-wrap items-center gap-1.5">
+                            <span class="text-gray-500 font-medium">Requires:</span>
+                            @foreach ($flag['requires'] as $reqKey)
+                                @php $req = $flags[$reqKey] ?? null; @endphp
+                                @if ($req !== null)
+                                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium {{ $req['active'] ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">
+                                        {{ $req['label'] }} — {{ $req['active'] ? 'ON' : 'OFF' }}
+                                    </span>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
                 <form method="POST" action="{{ route('admin.feature-flags.toggle', $key) }}" class="shrink-0"
                     data-confirm="{{ $flag['active'] ? 'Deactivate' : 'Activate' }} the &lsquo;{{ $flag['label'] }}&rsquo; flag?"

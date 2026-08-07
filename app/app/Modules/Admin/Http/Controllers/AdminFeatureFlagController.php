@@ -38,7 +38,12 @@ final class AdminFeatureFlagController extends Controller
      * Flags a viewer does not own are filtered out server-side and 404 on the
      * toggle endpoint.
      *
-     * @return array<string, array{class: class-string, label: string, description: string, owner: string}>
+     * `requires` lists the registry keys of flags this feature builds on —
+     * purely informational for the admin UI (a dependent flag left ON without
+     * its prerequisites computes on missing data rather than erroring, so
+     * enforcement would only block viewing historical reports).
+     *
+     * @return array<string, array{class: class-string, label: string, description: string, owner: string, requires?: list<string>}>
      */
     private function registry(): array
     {
@@ -66,24 +71,28 @@ final class AdminFeatureFlagController extends Controller
             'compensation.gsb_daily_pool_pricing' => [
                 'class' => GsbDailyPoolPricingFeature::class,
                 'label' => 'GSB daily pool pricing — slabs 3–7 (KP 2026-07-29)',
+                'requires' => ['compensation.genos_sales_bonus'],
                 'description' => '⚠ COMPLIANCE GATE (risk register R-33). When ON, GSB slabs 3–7 are no longer paid a fixed ₹ amount: each day their score value is pro-rated from the 45% company-BV pool (slabs 1–2 stay fixed and always pay in full). This changes what distributors are paid, so it must NOT be enabled in any environment paying real distributors until the DSA §6.2 thirty-day written notice has run its course AND the formula is published at /p/compensation. When OFF, the engine is byte-identical to the fixed-bonus behaviour.',
                 'owner' => 'developer',
             ],
             'compensation.mentorship_bonus' => [
                 'class' => MentorshipBonusFeature::class,
                 'label' => 'Mentorship Bonus (Phase 4)',
+                'requires' => ['compensation.genos_sales_bonus'],
                 'description' => 'Shows the Mentorship Bonus income tab and admin views for distributors, and lets the daily cut-off accrue and credit MSB. When a directly sponsored sponsee matches a GSB slab, the sponsor earns that slab\'s MSB points; each day\'s point value is the MSB pool (default 3% of the day\'s company BV) divided by the day\'s total points, floored to whole rupees. Enable after partners approve the mentorship plan.',
                 'owner' => 'developer',
             ],
             'compensation.repurchase_engine' => [
                 'class' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase / income-eligibility engine (Phase 4)',
+                'requires' => ['compensation.genos_sales_bonus'],
                 'description' => 'When ON, the daily GSB cut-off consults each distributor\'s monthly repurchase status: if they missed their repurchase due date the bonus is held (grace) or, after grace, suspended — GSB/Fortune/GBB only, never Mentorship or Rank. When OFF, repurchase status is ignored. Run repurchase:evaluate daily.',
                 'owner' => 'developer',
             ],
             'compensation.growth_booster_bonus' => [
                 'class' => GrowthBoosterBonusFeature::class,
                 'label' => 'Growth Booster Bonus (Phase 4)',
+                'requires' => ['compensation.genos_sales_bonus', 'compensation.rank_bonus'],
                 'description' => 'Enables the monthly GBB pool (5% of turnover) distributed via AGP points. Shows the Growth Booster tab in income views and admin GBB dashboard. Also gates the gbb:monthly-run artisan command.',
                 'owner' => 'developer',
             ],
@@ -98,6 +107,7 @@ final class AdminFeatureFlagController extends Controller
             'compensation.lifetime_awards' => [
                 'class' => LifetimeAwardsFeature::class,
                 'label' => 'Lifetime Awards & Rewards (Phase 5)',
+                'requires' => ['compensation.rank_bonus'],
                 'description' => 'Non-cash rewards triggered on rank achievement (32% of turnover, non-cash). Tracks award delivery workflow for cars, insurance, trips. Requires perquisite tax verification before release.',
                 'owner' => 'developer',
             ],
@@ -106,6 +116,7 @@ final class AdminFeatureFlagController extends Controller
             'compensation.fortune_bonus' => [
                 'class' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus (Phase 6)',
+                'requires' => ['compensation.genos_sales_bonus', 'compensation.rank_bonus'],
                 'description' => 'Enables the 3×9 monthly matrix bonus (replaces Auto Pool). Participation-based, first-come-first-served placement. Monthly reset. Capped at Rank 5.',
                 'owner' => 'developer',
             ],
