@@ -221,8 +221,8 @@ Pool split across 9 ranks, paid monthly on 8th:
 ### Prove Your Position (PYP)
 
 - Ranks 1 & 2: no PYP needed for initial achievement.
-- Ranks 3–5: must re-achieve the rank **twice** in the same calendar month before promotion is confirmed; subsequent re-qualifications require 1,000 BV + wallet zero.
-- Ranks 6–9: must re-achieve the rank **three times** in the same calendar month.
+- Ranks 3–5: must achieve the rank **twice** — counted over the **lifetime** (Option C, KP confirmed 2026-08-07): any two qualified occurrences, whenever they happen (gaps fine, two in one month count as two), open the next rank **permanently**. Subsequent re-qualifications require the rank's repurchase BV + wallet zero.
+- Ranks 6–9 (incl. Elite Diamond): must achieve the rank **three times**, same lifetime counting. (The old "same calendar month" wording above is the superseded June doc.)
 
 ---
 

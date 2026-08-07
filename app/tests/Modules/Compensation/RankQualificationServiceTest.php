@@ -328,42 +328,64 @@ it('counts a prior-month own rank-2 achievement toward the Q-Period gate', funct
     expect(RankQualification::where('distributor_id', $candidate->id)->where('rank_number', 3)->exists())->toBeTrue();
 });
 
-it('counts Q-Period over distinct months, not occurrences within one month (Option B, KP 2026-08-05)', function (): void {
+it('counts Q-Period over lifetime occurrences, including two in one month (Option C, KP 2026-08-07)', function (): void {
     // Raise Rank 2's Q-Period to 2 (admin-configurable) so rank 3 needs the
-    // candidate's own Pearl achieved in TWO distinct months.
+    // candidate's own Pearl achieved twice, whenever.
     DB::table('rank_tiers')->where('rank_number', 2)->update(['pyp_required' => 2]);
     app()->forgetInstance(CompensationPlanSettingsService::class);
 
     ['candidate' => $candidate] = seedEmeraldStructure();
     $month = Carbon::parse('2026-06-01');
 
-    // Two occurrences of Pearl in the SAME prior month = 1 distinct month.
-    foreach ([1, 2] as $occurrence) {
-        RankQualification::create([
-            'distributor_id' => $candidate->id,
-            'rank_number' => 2,
-            'month_start' => '2026-05-01',
-            'occurrence_in_month' => $occurrence,
-            'is_carry_forward' => false,
-            'status' => RankQualification::STATUS_QUALIFIED,
-        ]);
-    }
+    // A single Pearl occurrence is not enough.
+    RankQualification::create([
+        'distributor_id' => $candidate->id,
+        'rank_number' => 2,
+        'month_start' => '2026-05-01',
+        'occurrence_in_month' => 1,
+        'is_carry_forward' => false,
+        'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
 
     $result = app(RankQualificationService::class)->checkForMonth($month);
     expect($result['rank_3_count'])->toBe(0);
 
-    // A second DISTINCT month (April) completes the Q-Period.
+    // A second occurrence in the SAME month completes the lifetime count.
     RankQualification::create([
         'distributor_id' => $candidate->id,
         'rank_number' => 2,
-        'month_start' => '2026-04-01',
-        'occurrence_in_month' => 1,
+        'month_start' => '2026-05-01',
+        'occurrence_in_month' => 2,
         'is_carry_forward' => false,
         'status' => RankQualification::STATUS_QUALIFIED,
     ]);
 
     $result = app(RankQualificationService::class)->checkForMonth($month, occurrenceNumber: 2);
     expect($result['rank_3_count'])->toBeGreaterThanOrEqual(1);
+});
+
+it('counts Q-Period occurrences across months with gaps (Option C, KP 2026-08-07)', function (): void {
+    DB::table('rank_tiers')->where('rank_number', 2)->update(['pyp_required' => 2]);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+
+    ['candidate' => $candidate] = seedEmeraldStructure();
+    $month = Carbon::parse('2026-06-01');
+
+    // February + May — a gap in between changes nothing; the count is lifetime.
+    foreach (['2026-02-01', '2026-05-01'] as $monthStart) {
+        RankQualification::create([
+            'distributor_id' => $candidate->id,
+            'rank_number' => 2,
+            'month_start' => $monthStart,
+            'occurrence_in_month' => 1,
+            'is_carry_forward' => false,
+            'status' => RankQualification::STATUS_QUALIFIED,
+        ]);
+    }
+
+    $result = app(RankQualificationService::class)->checkForMonth($month);
+    expect($result['rank_3_count'])->toBeGreaterThanOrEqual(1);
+    expect(RankQualification::where('distributor_id', $candidate->id)->where('rank_number', 3)->exists())->toBeTrue();
 });
 
 it('allows attaining rank 2 directly without ever holding rank 1 (skip allowed, KP 2026-08-05)', function (): void {

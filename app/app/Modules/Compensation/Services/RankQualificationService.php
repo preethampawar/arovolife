@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\DB;
  * Cascade order: ranks 1-2 from raw BV, ranks 3-9 from prior rank qualifiers
  * per Genos side PLUS the candidate's own Q-Period promotion gate (KP
  * 2026-08-05): rank r opens only once the candidate has achieved rank r-1 at
- * least pyp_required[r-1] times, counted over distinct calendar months
- * (Option B, tentative — see qPeriodCounts()).
+ * least pyp_required[r-1] times, counted over lifetime occurrences
+ * (Option C, confirmed — see qPeriodCounts()).
  *
  * The "1+2 rule" carry-forward is RETIRED (KP 2026-08-05, replaced by the
  * AO-GO offer) but stays admin-configurable per rank via
@@ -349,13 +349,14 @@ final class RankQualificationService
 
     /**
      * Q-Period (a.k.a. PYP / qualified count) per distributor for a rank:
-     * distinct calendar months with a qualified, non-carry-forward
-     * qualification up to and including $uptoMonthStart.
+     * qualified, non-carry-forward occurrences up to and including
+     * $uptoMonthStart.
      *
-     * Counting window = Option B, KP 2026-08-05 (TENTATIVE — "not 100% sure"):
-     * distinct months count once, however many occurrences the month had. To
-     * switch to lifetime-occurrence counting (Option C), change the COUNT
-     * expression to COUNT(*) — nothing else depends on the window.
+     * Counting window = Option C, KP confirmed 2026-08-07 ("lifetime total is
+     * 100% correct"): every qualified occurrence counts, whenever it happened
+     * and however many fell in one month; once the count is reached the next
+     * rank opens permanently. (Supersedes the tentative Option B shipped
+     * 2026-08-05, which counted distinct months.)
      *
      * @param  int[]  $distributorIds
      * @return array<int, int>
@@ -373,7 +374,7 @@ final class RankQualificationService
             ->where('is_carry_forward', false)
             ->where('month_start', '<=', $uptoMonthStart)
             ->groupBy('distributor_id')
-            ->selectRaw('distributor_id, COUNT(DISTINCT month_start) as achieved_months')
+            ->selectRaw('distributor_id, COUNT(*) as achieved_months')
             ->get();
 
         $map = [];
