@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $state
  * @property int|null $assigned_distributor_id
  * @property string $status
+ * @property int $development_phase
+ * @property int|null $monthly_cap_override_paise
  * @property string|null $approved_at
  * @property string|null $notes
  * @property bool $is_company_default
@@ -28,6 +30,18 @@ final class AreteCenter extends Model
 
     public const string STATUS_INACTIVE = 'inactive';
 
+    /**
+     * Development phases (KP 2026-08-07): judged on a single calendar month's
+     * ADC income; upgraded manually by admin once the owner emails a letter
+     * and photos of the developed center.
+     */
+    public const array PHASES = [
+        1 => 'Phase 1 — up to ₹20,000/month · 400 sq ft, basic setup',
+        2 => 'Phase 2 — up to ₹40,000/month · 600 sq ft, TV / Wi-Fi / stage',
+        3 => 'Phase 3 — up to ₹60,000/month · 900 sq ft, AC + projector',
+        4 => 'Phase 4 — up to ₹80,000/month · 1,200 sq ft, full facility',
+    ];
+
     protected $fillable = [
         'name',
         'location',
@@ -36,6 +50,8 @@ final class AreteCenter extends Model
         'state',
         'assigned_distributor_id',
         'status',
+        'development_phase',
+        'monthly_cap_override_paise',
         'approved_at',
         'notes',
         'is_company_default',
@@ -44,6 +60,8 @@ final class AreteCenter extends Model
     protected function casts(): array
     {
         return [
+            'development_phase' => 'int',
+            'monthly_cap_override_paise' => 'int',
             'is_company_default' => 'bool',
         ];
     }

@@ -85,6 +85,29 @@
         </div>
 
         <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Development phase
+                <x-help-tip text="The center's current development phase, judged on its ADC income in a single calendar month. Upgrade it here only after the owner has emailed the company a letter and photos proving the facility upgrade." />
+            </label>
+            <select name="development_phase"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                @foreach(\App\Modules\Compensation\Models\AreteCenter::PHASES as $phaseNo => $phaseLabel)
+                <option value="{{ $phaseNo }}" @selected((int) old('development_phase', $center->development_phase ?? 1) === $phaseNo)>{{ $phaseLabel }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Monthly cap override (₹)
+                <x-help-tip text="Leave blank to pay up to the standard ADC cap. Set a lower amount to apply the development-phase penalty: a center that crossed a phase income level without emailing proof of the upgrade is paid a lower slab income until it does. The override can only lower the standard cap, never raise it. Clear it once the upgrade is verified." />
+            </label>
+            <input type="number" name="monthly_cap_override" value="{{ old('monthly_cap_override', isset($center->monthly_cap_override_paise) ? intdiv($center->monthly_cap_override_paise, 100) : '') }}"
+                   min="0" max="100000" step="1" placeholder="Blank = standard cap"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+        </div>
+
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Approval date <x-help-tip text="Date the company approved this center. Optional." /></label>
             <input type="date" name="approved_at" value="{{ old('approved_at', $center->approved_at ?? '') }}"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">

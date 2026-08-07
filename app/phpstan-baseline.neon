@@ -3399,7 +3399,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 19
+			count: 23
 			path: tests/Modules/Admin/AdminAdcReportsTest.php
 
 		-

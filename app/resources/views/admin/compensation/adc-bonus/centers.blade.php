@@ -26,6 +26,7 @@
                     <th class="px-4 py-2 text-left text-gray-500">Pincode / District / State</th>
                     <th class="px-4 py-2 text-left text-gray-500">Assigned distributor</th>
                     <th class="px-4 py-2 text-center text-gray-500">Status</th>
+                    <th class="px-4 py-2 text-center text-gray-500">Phase</th>
                     <th class="px-4 py-2 text-right text-gray-500">Members</th>
                     <th class="px-4 py-2 text-left text-gray-500">Approved</th>
                     <th class="px-4 py-2 text-right text-gray-500">Actions</th>
@@ -49,6 +50,15 @@
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$center->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ ucfirst($center->status) }}
                         </span>
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        <span title="{{ \App\Modules\Compensation\Models\AreteCenter::PHASES[$center->development_phase] ?? '' }}">{{ $center->development_phase }}</span>
+                        @if($center->monthly_cap_override_paise !== null)
+                        <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700"
+                              title="Monthly cap overridden to ₹{{ \App\Modules\Shared\Support\IndianNumber::format(intdiv($center->monthly_cap_override_paise, 100)) }} — development-phase penalty">
+                            Cap ₹{{ \App\Modules\Shared\Support\IndianNumber::format(intdiv($center->monthly_cap_override_paise, 100)) }}
+                        </span>
+                        @endif
                     </td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($center->members_count) }}</td>
                     <td class="px-4 py-2 text-gray-600">

@@ -375,3 +375,40 @@ it('skips inactive centers', function (): void {
     expect($result['credited'])->toBe(0);
     expect(AdcBonusResult::count())->toBe(0);
 });
+
+it('applies a per-center monthly cap override below the standard cap (phase penalty)', function (): void {
+    $assignee = Distributor::factory()->create();
+    $member = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    $center = makeActiveCenter($assignee->id, 'Penalised Center');
+    $center->update(['monthly_cap_override_paise' => 2_000_000]); // ₹20,000
+    addCenterMember($center->id, $member->id);
+    // 1,000,000,000 paise BV → 3% = 30,000,000 paise, standard cap 10,000,000
+    seedMemberBv($member->id, 1_000_000_000);
+
+    app(AreteDevelopmentCenterBonusService::class)->runForMonth($month);
+
+    $bonus = AdcBonusResult::where('center_id', $center->id)->first();
+    expect($bonus->gross_paise)->toBe(2_000_000);
+
+    $ledger = WalletLedgerEntry::where('distributor_id', $assignee->id)
+        ->where('type', 'adc_credit')->first();
+    expect($ledger->amount_paise)->toBe(2_000_000);
+});
+
+it('never lets the per-center override raise the standard cap', function (): void {
+    $assignee = Distributor::factory()->create();
+    $member = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    $center = makeActiveCenter($assignee->id, 'Over-eager Center');
+    $center->update(['monthly_cap_override_paise' => 50_000_000]); // ₹5,00,000 — above the plan cap
+    addCenterMember($center->id, $member->id);
+    seedMemberBv($member->id, 1_000_000_000);
+
+    app(AreteDevelopmentCenterBonusService::class)->runForMonth($month);
+
+    $bonus = AdcBonusResult::where('center_id', $center->id)->first();
+    expect($bonus->gross_paise)->toBe(10_000_000); // still the ₹1,00,000 plan cap
+});

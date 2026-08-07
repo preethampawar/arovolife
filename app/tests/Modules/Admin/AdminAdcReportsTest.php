@@ -371,3 +371,88 @@ it('links each centre row to its edit form', function (): void {
         ->assertOk()
         ->assertSee(route('admin.compensation.adc-bonus.centers.edit', $center), false);
 });
+
+it('records a phase upgrade and cap override on the centre form and audit-logs them', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+
+    $center = AreteCenter::create([
+        'name' => 'Medak Center',
+        'location' => null,
+        'assigned_distributor_id' => $assignee->id,
+        'status' => AreteCenter::STATUS_ACTIVE,
+        'approved_at' => null,
+        'notes' => null,
+    ]);
+
+    $this->actingAs(adcReportAdmin())
+        ->put(route('admin.compensation.adc-bonus.centers.update', $center), [
+            'name' => 'Medak Center',
+            'assigned_adn' => $assignee->adn,
+            'development_phase' => 2,
+            'monthly_cap_override' => 20000,
+        ])
+        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+
+    $center->refresh();
+    expect($center->development_phase)->toBe(2)
+        ->and($center->monthly_cap_override_paise)->toBe(2_000_000);
+
+    $audit = AuditLog::where('action', 'adc.center.updated')
+        ->where('subject_id', $center->id)
+        ->firstOrFail();
+    expect($audit->details['before']['development_phase'])->toBe(1)
+        ->and($audit->details['after']['development_phase'])->toBe(2)
+        ->and($audit->details['after']['monthly_cap_override_paise'])->toBe(2_000_000);
+});
+
+it('clears the cap override when the field is left blank', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+
+    $center = AreteCenter::create([
+        'name' => 'Medak Center',
+        'location' => null,
+        'assigned_distributor_id' => $assignee->id,
+        'status' => AreteCenter::STATUS_ACTIVE,
+        'development_phase' => 2,
+        'monthly_cap_override_paise' => 2_000_000,
+        'approved_at' => null,
+        'notes' => null,
+    ]);
+
+    $this->actingAs(adcReportAdmin())
+        ->put(route('admin.compensation.adc-bonus.centers.update', $center), [
+            'name' => 'Medak Center',
+            'assigned_adn' => $assignee->adn,
+            'development_phase' => 2,
+            'monthly_cap_override' => '',
+        ])
+        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+
+    $center->refresh();
+    expect($center->monthly_cap_override_paise)->toBeNull()
+        ->and($center->development_phase)->toBe(2);
+});
+
+it('rejects a development phase outside 1–4', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+
+    $this->actingAs(adcReportAdmin())
+        ->post(route('admin.compensation.adc-bonus.centers.store'), [
+            'name' => 'Phase Nine Center',
+            'assigned_adn' => $assignee->adn,
+            'development_phase' => 9,
+        ])
+        ->assertSessionHasErrors('development_phase');
+
+    expect(AreteCenter::where('name', 'Phase Nine Center')->exists())->toBeFalse();
+});
+
+it('offers the four development phases on the centre form', function (): void {
+    $this->actingAs(adcReportAdmin())
+        ->get(route('admin.compensation.adc-bonus.centers.create'))
+        ->assertOk()
+        ->assertSee('Development phase')
+        ->assertSee('Phase 1 — up to ₹20,000/month · 400 sq ft, basic setup')
+        ->assertSee('Phase 4 — up to ₹80,000/month · 1,200 sq ft, full facility')
+        ->assertSee('Monthly cap override');
+});

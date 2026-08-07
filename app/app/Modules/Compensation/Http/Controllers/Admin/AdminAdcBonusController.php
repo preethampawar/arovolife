@@ -85,6 +85,8 @@ final class AdminAdcBonusController extends Controller
             'district' => ['nullable', 'string', 'max:100'],
             'state' => ['nullable', Rule::in(IndianStates::all())],
             'assigned_adn' => ['required', 'string'],
+            'development_phase' => ['nullable', 'integer', 'between:1,4'],
+            'monthly_cap_override' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'approved_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ]);
@@ -100,6 +102,8 @@ final class AdminAdcBonusController extends Controller
             'state' => $data['state'] ?? null,
             'assigned_distributor_id' => $distributor->id,
             'status' => AreteCenter::STATUS_ACTIVE,
+            'development_phase' => $data['development_phase'] ?? 1,
+            'monthly_cap_override_paise' => isset($data['monthly_cap_override']) ? (int) $data['monthly_cap_override'] * 100 : null,
             'approved_at' => $data['approved_at'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
@@ -135,6 +139,8 @@ final class AdminAdcBonusController extends Controller
             'district' => ['nullable', 'string', 'max:100'],
             'state' => ['nullable', Rule::in(IndianStates::all())],
             'assigned_adn' => ['required', 'string'],
+            'development_phase' => ['nullable', 'integer', 'between:1,4'],
+            'monthly_cap_override' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'approved_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ]);
@@ -153,6 +159,8 @@ final class AdminAdcBonusController extends Controller
             'district' => $data['district'] ?? null,
             'state' => $data['state'] ?? null,
             'assigned_distributor_id' => $distributor->id,
+            'development_phase' => $data['development_phase'] ?? $center->development_phase,
+            'monthly_cap_override_paise' => isset($data['monthly_cap_override']) ? (int) $data['monthly_cap_override'] * 100 : null,
             'approved_at' => $data['approved_at'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
@@ -186,6 +194,8 @@ final class AdminAdcBonusController extends Controller
             'state' => $center->state,
             'assigned_distributor_id' => $center->assigned_distributor_id,
             'status' => $center->status,
+            'development_phase' => $center->development_phase,
+            'monthly_cap_override_paise' => $center->monthly_cap_override_paise,
             'approved_at' => $center->approved_at,
             'notes' => $center->notes,
         ];
