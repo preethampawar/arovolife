@@ -72,7 +72,7 @@ final class AdminAdcCalculationController extends Controller
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
-        $csv = "SNo,ADN,Arete Center,Name,Title,Rank,Month,Monthly Turnover BV,Rate %,Gross ADC (Rs),TDS (Rs),Net ADC (Rs),Status,Location,Pincode,District,State\n";
+        $csv = "SNo,ADN,Arete Center,Name,Title,Rank,Month,Monthly Turnover BV (net),Rate %,Gross ADC (Rs),TDS (Rs),Net ADC (Rs),Status,Location,Pincode,District,State\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
