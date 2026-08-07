@@ -39,6 +39,30 @@
         </div>
 
         <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Pincode <x-help-tip text="6-digit postal code of the center. Used to search the ADC monthly calculation report by area. Optional." /></label>
+            <input type="text" name="pincode" value="{{ old('pincode') }}" maxlength="6" inputmode="numeric"
+                   placeholder="e.g. 502001"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-400">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">District <x-help-tip text="District the center operates in. Used to search the ADC monthly calculation report by area. Optional." /></label>
+            <input type="text" name="district" value="{{ old('district') }}" maxlength="100"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">State / Union Territory <x-help-tip text="State or union territory the center operates in. Used to search the ADC monthly calculation report by area. Optional." /></label>
+            <select name="state"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
+                <option value="">— Select state —</option>
+                @foreach(\App\Modules\Shared\Support\IndianStates::all() as $stateName)
+                <option value="{{ $stateName }}" {{ old('state') === $stateName ? 'selected' : '' }}>{{ $stateName }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
                 Assigned distributor ADN <span class="text-red-500">*</span>
                 <x-help-tip text="Enter the ADN of the distributor who will receive the ADC Bonus for this center." />

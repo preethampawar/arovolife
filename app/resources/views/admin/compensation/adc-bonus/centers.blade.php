@@ -23,6 +23,7 @@
                 <tr>
                     <th class="px-4 py-2 text-left text-gray-500">Name</th>
                     <th class="px-4 py-2 text-left text-gray-500">Location</th>
+                    <th class="px-4 py-2 text-left text-gray-500">Pincode / District / State</th>
                     <th class="px-4 py-2 text-left text-gray-500">Assigned distributor</th>
                     <th class="px-4 py-2 text-center text-gray-500">Status</th>
                     <th class="px-4 py-2 text-right text-gray-500">Members</th>
@@ -33,10 +34,15 @@
                 @foreach($centers as $center)
                 @php
                     $sc = ['active' => 'bg-green-100 text-green-700', 'inactive' => 'bg-gray-100 text-gray-500'];
+                    $addressParts = [$center->pincode, $center->district, $center->state];
+                    $hasAddress = array_filter($addressParts, fn ($part) => filled($part)) !== [];
                 @endphp
                 <tr>
                     <td class="px-4 py-2 font-medium">{{ $center->name }}</td>
                     <td class="px-4 py-2 text-gray-600">{{ $center->location ?? '—' }}</td>
+                    <td class="px-4 py-2 text-gray-600">
+                        {{ $hasAddress ? implode(' · ', array_map(fn ($part) => filled($part) ? $part : '—', $addressParts)) : '—' }}
+                    </td>
                     <td class="px-4 py-2 font-mono">{{ $center->assignedDistributor->adn ?? '—' }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$center->status] ?? 'bg-gray-100 text-gray-600' }}">

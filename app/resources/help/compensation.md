@@ -126,6 +126,11 @@ The **RB Monthly Calculation** report shows two tables: Rank 1 (Arete Center, RA
 ## Monthly payout (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC)
 Runs monthly. A per-group admin charge (3%, each group capped ₹25,000/cycle) and TDS (5%) are applied. Repurchase is deducted only in the weekly batch.
 
+### Arete Development Center (ADC) Bonus
+The bonus base is the month's **net** member BV — refunds are deducted, so a cancelled or refunded order no longer pays the centre owner. A centre whose members net to zero or below for the month is skipped as no-BV; it is never credited a negative amount.
+
+Each centre carries a pincode, district and state alongside its legacy free-text location, all set on **Add Center**. The **ADC Monthly Calculation** report is searchable by any of them (pincode matches exactly or by prefix) and shows the centre name and its Pincode / District / State on screen and in the CSV export.
+
 ## ₹50 lakh combined monthly income cap
 The five cash bonuses (GSB, Mentorship, GBB, Rank, Fortune) share one ₹50,00,000/month gross ceiling, enforced across the month's weekly and monthly batches together. Income above the cap is forfeited at payout with an explicit `income_cap_forfeit` wallet debit (no phantom balance, no carry to next month). When the monthly batch has to trim, Rank is forfeited first, then GBB, then Fortune. Awards (non-cash) and ADC (own ₹1L cap) are outside this ceiling.
 

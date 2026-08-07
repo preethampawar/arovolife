@@ -9,11 +9,13 @@ use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Support\IndianStates;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Laravel\Pennant\Feature;
 
 final class AdminAdcBonusController extends Controller
@@ -77,6 +79,9 @@ final class AdminAdcBonusController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:200'],
             'location' => ['nullable', 'string', 'max:300'],
+            'pincode' => ['nullable', 'digits:6'],
+            'district' => ['nullable', 'string', 'max:100'],
+            'state' => ['nullable', Rule::in(IndianStates::all())],
             'assigned_adn' => ['required', 'string'],
             'approved_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
@@ -88,6 +93,9 @@ final class AdminAdcBonusController extends Controller
         AreteCenter::create([
             'name' => $data['name'],
             'location' => $data['location'] ?? null,
+            'pincode' => $data['pincode'] ?? null,
+            'district' => $data['district'] ?? null,
+            'state' => $data['state'] ?? null,
             'assigned_distributor_id' => $distributor->id,
             'status' => AreteCenter::STATUS_ACTIVE,
             'approved_at' => $data['approved_at'] ?? null,
