@@ -140,13 +140,16 @@ final class AdminPlanSettingsController extends Controller
     {
         abort_unless(DB::table('fortune_bonus_levels')->where('level', $level)->exists(), 404);
 
+        // Points, not rupees: since KP's 2026-08-07 rework a matrix level is
+        // worth N points per downline member, and the rupee value of a point is
+        // derived monthly from the pool (never admin-set).
         $data = $request->validate([
-            'bonus_paise' => ['required', 'integer', 'min:0', 'max:1000000000'],
+            'points_per_member' => ['required', 'integer', 'min:0', 'max:1000000'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $new = [
-            'bonus_paise' => (int) $data['bonus_paise'],
+            'points_per_member' => (int) $data['points_per_member'],
             'is_active' => $request->boolean('is_active'),
         ];
 

@@ -113,6 +113,50 @@ it('no longer offers an MSB score value field and explains how both pools price'
     $res->assertSee("the day's total MSB points", false);
 });
 
+it('edits the fortune matrix ladder in points per member, not rupees', function () {
+    // The fixed per-level rupee bonus (bonus_paise) died with KP's 2026-08-07
+    // pool + points rework: a level is now worth N points per downline member,
+    // and rupees are derived monthly from the pool.
+    $res = $this->actingAs(planAdmin('developer'))
+        ->get(route('admin.compensation.plan-settings.index', ['tab' => 'fortune']))
+        ->assertOk()
+        ->assertSee('Points per member at level 1')
+        ->assertSee('name="points_per_member"', false);
+
+    $res->assertDontSee('name="bonus_paise"', false);
+});
+
+it('persists a fortune level edit as points, writes an audit log, and dispatches the domain event', function () {
+    Event::fake([CompensationPlanChanged::class]);
+
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.fortune-level.update', 3), [
+            'points_per_member' => 11,
+            'is_active' => 1,
+        ])
+        ->assertRedirect(route('admin.compensation.plan-settings.index'));
+
+    expect((int) DB::table('fortune_bonus_levels')->where('level', 3)->value('points_per_member'))->toBe(11);
+
+    expect(AuditLog::where('action', 'compensation.plan.fortune_level.updated')->exists())->toBeTrue();
+    Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'fortune_level' && $e->key === '3');
+});
+
+it('rejects a fortune level edit without points per member', function () {
+    $before = (int) DB::table('fortune_bonus_levels')->where('level', 2)->value('points_per_member');
+
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.fortune-level.update', 2), [
+            'bonus_paise' => 5_100, // the dropped column — not a substitute
+            'is_active' => 1,
+        ])
+        ->assertSessionHasErrors('points_per_member');
+
+    expect((int) DB::table('fortune_bonus_levels')->where('level', 2)->value('points_per_member'))->toBe($before);
+});
+
 it('rejects a crafted POST that tries to reinstate the MSB score value', function () {
     $before = DB::table('gsb_slabs')->where('slab', 1)->first();
 
@@ -167,7 +211,7 @@ it('forbids every business admin role from editing the plan', function (string $
     $this->actingAs(planAdmin($role))
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.fortune-level.update', 0), [
-            'bonus_paise' => 999,
+            'points_per_member' => 999,
             'is_active' => 1,
         ])
         ->assertForbidden();

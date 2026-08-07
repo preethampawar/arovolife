@@ -309,7 +309,7 @@
               data-editable
               data-confirm="Update Fortune level {{ $row->level }}?"
               data-confirm-title="Confirm: Fortune level {{ $row->level }}"
-              data-confirm-impact="Changes the Fortune Bonus payout for this matrix level. Audit-logged; takes effect on the next monthly run."
+              data-confirm-impact="Changes the FB points earned from each downline member at this matrix depth, which changes every participant's share of the monthly pool. Audit-logged; takes effect on the next monthly run."
               class="rounded-xl border border-gray-200 bg-white p-4 flex items-end gap-3">
             @csrf
             {{-- Plan values are shown to every console role for monitoring;
@@ -318,14 +318,14 @@
                  in one place, without touching each input. --}}
             <fieldset class="contents" @disabled(! $canEdit)>
             <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Level {{ $row->level }} bonus (paise) <x-help-tip text="Per-member Fortune Bonus (paise) paid at this matrix level." /></label>
-                <input type="number" name="bonus_paise" data-field-label="Level {{ $row->level }} bonus (paise)" value="{{ $row->bonus_paise }}" required min="0"
+                <label class="block text-xs font-medium text-gray-600 mb-1">Points per member at level {{ $row->level }} <x-help-tip text="FB points a participant earns for each enrolled distributor sitting this many levels below them in the month's matrix. The rupee value of a point is not set here — it is the month's pool divided by everyone's total points." /></label>
+                <input type="number" name="points_per_member" data-field-label="Points per member at level {{ $row->level }}" value="{{ $row->points_per_member }}" required min="0"
                        class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                <span class="text-[11px] text-gray-400">{{ $rupees($row->bonus_paise) }}</span>
+                <span class="text-[11px] text-gray-400">{{ \App\Modules\Shared\Support\IndianNumber::format($row->points_per_member) }} pts per member</span>
             </div>
             <label class="flex items-center gap-2 text-xs text-gray-600 pb-2">
                 <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
-                Active <x-help-tip text="When off, this matrix level pays nothing." />
+                Active <x-help-tip text="Marks the level as in force in the ladder. To stop a level earning, set its points per member to 0." />
             </label>
             @if($canEdit)
             <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
@@ -11,8 +12,18 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * FB Monthly Calculation report — KP's 2026-08-07 mock, one row per
+ * distributor per month: ADN, Arete Center, name, title, rank, enrolment date,
+ * matrix level, FB points, the month's point value and the resulting income.
+ *
+ * Since the pool + points rework a participant's income is points × the
+ * month's frozen point value, so both factors are shown next to the total.
+ * Rows written before that rework carry no points and render "—".
+ */
 final class AdminFortuneBonusCalculationController extends Controller
 {
     private const PER_PAGE = 50;
@@ -37,8 +48,10 @@ final class AdminFortuneBonusCalculationController extends Controller
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
-        $distributorIds = collect($rows->items())->pluck('distributor_id')->unique()->values()->all();
-        $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
+        $items = collect($rows->items());
+        $distributorIds = $items->pluck('distributor_id')->unique()->values()->all();
+
+        $this->attachMonthlyRanks($items);
 
         return view('admin.compensation.fb-calculation.index', [
             'rows' => $rows,
@@ -46,7 +59,8 @@ final class AdminFortuneBonusCalculationController extends Controller
             'month' => $month,
             'status' => $status,
             'titleService' => $this->titleService,
-            'personalBvMap' => $personalBvMap,
+            'personalBvMap' => $this->batchPersonalBvPaise($distributorIds),
+            'areteCenterMap' => $this->batchAreteCenters($distributorIds),
         ]);
     }
 
@@ -66,22 +80,28 @@ final class AdminFortuneBonusCalculationController extends Controller
 
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
+        $areteCenterMap = $this->batchAreteCenters($distributorIds);
+        $this->attachMonthlyRanks($rows);
 
-        $csv = "SNo,ADN,Name,Title,Rank (Tier),Month,Matrix Level,Gross FB (Rs),TDS (Rs),Net FB (Rs),Status\n";
+        // Numbers stay ungrouped in CSV (project convention) — the grouped
+        // Indian format is a display concern of the on-screen report.
+        $csv = "SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
+
             $csv .= implode(',', [
                 $i + 1,
                 $this->csvStr($row->adn),
+                $this->csvStr($areteCenterMap[$row->distributor_id] ?? ''),
                 $this->csvStr($row->full_name ?? ''),
                 $this->csvStr($title),
-                $this->csvStr($row->eligibility_tier ?? '—'),
-                Carbon::parse($row->month_start)->format('Y-m'),
+                $row->rank ?? '',
+                $row->first_gsb_date !== null ? Carbon::parse($row->first_gsb_date)->format('d/m/y') : '',
                 $row->matrix_level,
+                $row->points ?? '',
+                $row->point_value_paise !== null ? number_format($row->point_value_paise / 100, 2, '.', '') : '',
                 number_format($row->gross_paise / 100, 2, '.', ''),
-                number_format($row->tds_paise / 100, 2, '.', ''),
-                number_format($row->net_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
             ])."\n";
         }
@@ -112,11 +132,11 @@ final class AdminFortuneBonusCalculationController extends Controller
                 'fbr.distributor_id',
                 'fbr.month_start',
                 'fbr.matrix_level',
+                'fbr.points',
+                'fbr.point_value_paise',
                 'fbr.gross_paise',
-                'fbr.tds_paise',
-                'fbr.net_paise',
                 'fbr.status',
-                'fbp.eligibility_tier',
+                'fbp.first_gsb_date',
                 'd.adn',
                 'u.full_name',
             )
@@ -152,5 +172,73 @@ final class AdminFortuneBonusCalculationController extends Controller
             ->pluck(DB::raw('SUM(bv_paise)'), 'distributor_id')
             ->map(fn ($v) => (int) $v)
             ->all();
+    }
+
+    /**
+     * Current Arete Center per distributor (open membership: effective_to null).
+     * The ADC itself is a later phase, so most rows have no center and render
+     * "—" — the linkage is read here rather than invented.
+     *
+     * @param  int[]  $distributorIds
+     * @return array<int, string> distributor_id → center name
+     */
+    private function batchAreteCenters(array $distributorIds): array
+    {
+        if ($distributorIds === []) {
+            return [];
+        }
+
+        return DB::table('arete_center_members as acm')
+            ->join('arete_centers as ac', 'ac.id', '=', 'acm.center_id')
+            ->whereIn('acm.distributor_id', $distributorIds)
+            ->whereNull('acm.effective_to')
+            ->orderBy('acm.effective_from')
+            ->pluck('ac.name', 'acm.distributor_id')
+            ->map(fn ($v) => (string) $v)
+            ->all();
+    }
+
+    /**
+     * Set `rank` on every row to the highest rank that distributor held in that
+     * row's month (null when they held none). One grouped query for the whole
+     * page — the report spans months, so the lookup is keyed by both.
+     *
+     * @param  Collection<int, \stdClass>  $rows
+     */
+    private function attachMonthlyRanks(Collection $rows): void
+    {
+        $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
+
+        if ($distributorIds === []) {
+            return;
+        }
+
+        $months = $rows
+            ->pluck('month_start')
+            ->filter()
+            ->map(fn ($month): string => Carbon::parse((string) $month)->toDateString())
+            ->unique()
+            ->values()
+            ->all();
+
+        $map = [];
+
+        $qualifications = DB::table('rank_qualifications')
+            ->whereIn('distributor_id', $distributorIds)
+            ->whereIn('month_start', $months)
+            ->where('status', RankQualification::STATUS_QUALIFIED)
+            ->selectRaw('distributor_id, month_start, MAX(rank_number) as max_rank')
+            ->groupBy('distributor_id', 'month_start')
+            ->get();
+
+        foreach ($qualifications as $qualification) {
+            $key = (int) $qualification->distributor_id.'|'.Carbon::parse((string) $qualification->month_start)->toDateString();
+            $map[$key] = (int) $qualification->max_rank;
+        }
+
+        foreach ($rows as $row) {
+            $key = (int) $row->distributor_id.'|'.Carbon::parse((string) $row->month_start)->toDateString();
+            $row->rank = $map[$key] ?? null;
+        }
     }
 }

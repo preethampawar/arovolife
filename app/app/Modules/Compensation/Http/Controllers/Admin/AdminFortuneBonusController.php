@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
+use App\Modules\Compensation\Models\FortuneMonthlyPool;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -30,7 +31,15 @@ final class AdminFortuneBonusController extends Controller
             ->orderByDesc('month_start')
             ->get();
 
-        return view('admin.compensation.fortune-bonus.index', compact('months'));
+        // Frozen pool economics per month, keyed by month_start. Null for a
+        // month run before the pool snapshot existed — the view degrades to "—"
+        // rather than recomputing anything.
+        $pools = FortuneMonthlyPool::query()
+            ->orderByDesc('month_start')
+            ->get()
+            ->keyBy('month_start');
+
+        return view('admin.compensation.fortune-bonus.index', compact('months', 'pools'));
     }
 
     public function show(string $month): View
@@ -44,6 +53,7 @@ final class AdminFortuneBonusController extends Controller
             ->selectRaw('
                 matrix_level,
                 COUNT(*) as participant_count,
+                SUM(points) as total_points,
                 SUM(gross_paise) as total_gross_paise,
                 SUM(tds_paise) as total_tds_paise,
                 SUM(net_paise) as total_net_paise
@@ -64,10 +74,18 @@ final class AdminFortuneBonusController extends Controller
             ->get()
             ->keyBy('distributor_id');
 
-        $levelBonusPaise = app(CompensationPlanSettingsService::class)->fortuneLevelPoints();
+        // Points a member at each matrix depth is worth to their upline — the
+        // admin-editable ladder, shown next to each level's totals.
+        $levelPoints = app(CompensationPlanSettingsService::class)->fortuneLevelPoints();
+
+        // Frozen month economics. Null for months run before the pool snapshot
+        // existed — the view degrades to "—" rather than recomputing them.
+        $pool = FortuneMonthlyPool::query()
+            ->where('month_start', $monthStart)
+            ->first();
 
         return view('admin.compensation.fortune-bonus.show', compact(
-            'rows', 'levelSummaries', 'date', 'resultsByDistributor', 'levelBonusPaise',
+            'rows', 'levelSummaries', 'date', 'resultsByDistributor', 'levelPoints', 'pool',
         ));
     }
 }

@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Fortune Bonus is a monthly matrix reward. Eligible distributors are placed in a 3×9 matrix in order of GSB activity. Your bonus depends on your matrix level. No admin charge applies; 5% TDS is deducted. Credited on the 9th of the following month.
+        The Fortune Bonus is a monthly matrix reward. Eligible distributors are placed in a 3×9 matrix in order of GSB activity, and each month you earn FB points from the enrolled distributors below you in that matrix. Your bonus is your FB points multiplied by the month's point value. No admin charge applies; 5% TDS is deducted. Credited on the 9th of the following month. Every figure below is a record of a completed month.
     </div>
 
     {{-- Summary cards --}}
@@ -51,12 +51,16 @@
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-            <table class="w-full text-sm min-w-[600px]">
+            <table class="w-full text-sm min-w-[760px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Month</th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Position</th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Matrix Level</th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            FB points × value
+                            <x-help-tip text="The month's fortune pool — 5% of company BV — divided by the total points of all enrolled distributors, rounded down to the whole rupee." />
+                        </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Gross</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">TDS (5%)</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Net</th>
@@ -79,6 +83,13 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
                                 Level {{ $row->matrix_level }}
                             </span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-700">
+                            @if($row->points !== null && $row->point_value_paise !== null)
+                                {{ \App\Modules\Shared\Support\IndianNumber::format($row->points) }} × ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) }}
+                            @else
+                                <span class="text-gray-400">—</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
