@@ -30,7 +30,7 @@ final class AreteDevelopmentCenterBonusService
      * Calculate and credit ADC Bonus for all active centers in the month.
      * Idempotent: skips centers already credited for the month.
      *
-     * @return array{credited: int, skipped_no_bv: int, total_net_paise: int}
+     * @return array{credited: int, skipped_no_bv: int, skipped_net_negative: int, total_net_paise: int}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -41,9 +41,10 @@ final class AreteDevelopmentCenterBonusService
 
         $credited = 0;
         $skippedNoBv = 0;
+        $skippedNetNegative = 0;
         $totalNet = 0;
 
-        DB::transaction(function () use ($centers, $monthStart, $monthEnd, &$credited, &$skippedNoBv, &$totalNet): void {
+        DB::transaction(function () use ($centers, $monthStart, $monthEnd, &$credited, &$skippedNoBv, &$skippedNetNegative, &$totalNet): void {
             foreach ($centers as $center) {
                 $alreadyCredited = AdcBonusResult::where('center_id', $center->id)
                     ->where('month_start', $monthStart)
@@ -80,8 +81,17 @@ final class AreteDevelopmentCenterBonusService
                     ->whereBetween('effective_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
                     ->sum('bv_paise');
 
-                // A refund-heavy month can net to zero or below — nothing to pay.
-                if ($totalBv <= 0) {
+                // A refund-heavy month can net to zero or below — nothing to
+                // pay either way, but the two cases are counted apart: a
+                // net-negative centre sold and then refunded, which is worth
+                // surfacing separately from a centre that simply had no sales.
+                if ($totalBv < 0) {
+                    $skippedNetNegative++;
+
+                    continue;
+                }
+
+                if ($totalBv === 0) {
                     $skippedNoBv++;
 
                     continue;
@@ -138,6 +148,7 @@ final class AreteDevelopmentCenterBonusService
         return [
             'credited' => $credited,
             'skipped_no_bv' => $skippedNoBv,
+            'skipped_net_negative' => $skippedNetNegative,
             'total_net_paise' => $totalNet,
         ];
     }

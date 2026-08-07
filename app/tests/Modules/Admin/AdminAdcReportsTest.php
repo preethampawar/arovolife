@@ -246,6 +246,20 @@ it('rejects an unknown status filter', function (): void {
         ->assertSessionHasErrors('status');
 });
 
+it('hides the ADC calculation report while the feature is off', function (): void {
+    Feature::for(null)->deactivate(AreteDevelopmentCenterBonusFeature::class);
+
+    $admin = adcReportAdmin();
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.adc-calculation.index'))
+        ->assertNotFound();
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.adc-calculation.export'))
+        ->assertNotFound();
+});
+
 it('edits a centre and audit-logs the before and after', function (): void {
     $assignee = adcReportDistributor('ADCOWN', 'Owner');
     $newAssignee = adcReportDistributor('ADCNEW', 'Nandini');

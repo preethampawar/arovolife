@@ -41,6 +41,7 @@ final class AdcBonusRunCommand extends Command
 
         $this->line('Centers credited: '.$result['credited']);
         $this->line('Skipped (no BV): '.$result['skipped_no_bv']);
+        $this->line('Skipped (net-negative BV): '.$result['skipped_net_negative']);
         $this->line('Total net credited: ₹'.Number::format($result['total_net_paise'] / 100, 2));
 
         return self::SUCCESS;
