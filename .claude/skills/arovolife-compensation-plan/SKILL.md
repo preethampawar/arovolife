@@ -15,6 +15,8 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 >
 > ⚠️ **GSB SUPERSEDED by KP's 2026-07-21 "New Engine"** (memory `gsb_new_engine_2026_07_21.md`, shipped 2026-07-25). GSB bonus = matched slab's `score` × that slab's **per-slab configurable score value** (default ₹250/point) — NOT the old global ₹360 rate. New scores **8/16/32/60/112/184/280**; both-sides thresholds **15K/36K/1L/3L/9L/27L/81L**; bonuses **₹2,000 / ₹4,000 / ₹8,000 / ₹15,000 / ₹28,000 / ₹46,000 / ₹70,000**. Personal-BV title thresholds unchanged. **Conditional personal-BV top-up**: personal purchase BV accumulates and is credited to the weaker leg only on a cut-off where a leg's effective BV (incl. CF) has touched a slab threshold (real personal BV never mutated). **Equal-sides tie-break**: Left is the power side (its excess carries forward, Right → 0). The sheet's "45% of daily turnover ÷ total score" example is a future company P/L metric only — not implemented. The slab table below shows even older 06-19 numbers — use the New Engine values.
 >
+> ⚠️ **FORTUNE BONUS SUPERSEDED by KP's 2026-08-07 rework** — see the "5th Benefit" section below. There are **no fixed rupee amounts per matrix level** any more (the ₹3.39 … ₹51.00 column is dead and the `bonus_paise` config column is dropped). The monthly pool is **5% of the month's company BV** (the signed BV-ledger sum, superseding the June envelope's 6% Fortune share); points come from your **downline in the matrix** — 9 / 9 / 9 / 8 / 7 / 6 / 5 / 4 / 3 per member at relative levels 1–9, admin-editable; point value = `floor-to-whole-rupee(pool ÷ the month's total FB points)` with **no manual override**; income = own points × that value. Gate slab-achievement counts are now **8 / 11 / 14 / 17 / 20** for ranks 1–5 with graduated BV **1,000 / 1,100 / 1,200 / 1,300 / 1,400**; ranks 6–9 remain excluded. Fortune stays behind its feature flag, OFF, until the plan change is published with the DSA §6.2 notice period (see R-37 in `docs/compliance/risk-register.md`).
+>
 > ⚠️ **GBB + RANK BONUS SUPERSEDED by the Product Owner's 2026-08-05 confirmations** — see the "3rd Benefit" and "4th Benefit" sections below. **GBB:** the monthly pool is 5% of the month's company **BV** (the signed BV-ledger sum), **not** turnover / order sales value; only distributors who held **no rank in the previous month** are eligible (a first-time rank achiever in the current month stays eligible); the month's pool economics are **frozen** in a `gbb_monthly_pools` row before any credit and never recomputed, so re-runs and retries price against the same snapshot; the point value is `floor-to-whole-rupee(pool ÷ the total AGP of all eligible distributors)` and the flooring remainder stays unspent. **Rank Bonus:** each rank's `pool %` is a share of the **20% Rank-Bonus envelope of company BV**, not of turnover directly — 10,00,000 BV in a month → envelope ₹2,00,000 → Rank 1's 7% share = ₹14,000. GBB stays behind its feature flag, OFF, until the plan change is published with the DSA §6.2 notice period (see R-36 in `docs/compliance/risk-register.md`).
 
 **Source document (this file):** "Arovolife Is Our New Life" dated 2026-06-19.
@@ -210,7 +212,9 @@ Pool split across 9 ranks, paid monthly on 8th:
 
 **Total pool = 7+4+3+2.3+1.7+1.2+0.9+0.6+0.3 = 21%**
 
-### 1+2 Rule (Ranks 1 and 2 only)
+### 1+2 Rule (Ranks 1 and 2 only) — RETIRED
+
+> ⚠️ **SUPERSEDED by AO-GO (KP 2026-08-05) — the 1+2 rule below is retired and its machinery is removed from the code** (`rank_tiers.carry_forward_months` dropped, no carry-forward rows are created; historical `rank_qualifications.is_carry_forward` rows are retained and still read). In its place: **AO-GO ("Achieve Once – Get Once")** — a distributor who genuinely achieved a rank but holds none this month earns **5 points in the Rank-1 pool** (whatever rank they held), **max 3 lifetime uses**, never in consecutive months, a rank must be re-achieved between uses, and the month's requalification conditions must be met; a failed month consumes no use. Rank 1 is otherwise points-based (10 RAP per achiever, point value = Rank-1 pool ÷ total points floored to the whole rupee); ranks 2–9 split their pool equally. Do not reintroduce 1+2.
 
 - When a distributor qualifies for Rank 1 in month M, they receive the 7% share in M, M+1, and M+2 — even if they don't re-qualify in M+1/M+2, provided they complete 1,000 BV repurchase and zero their wallet each month.
 - After the 1+2 window expires, they must re-qualify to restart the cycle.
@@ -227,6 +231,22 @@ Pool split across 9 ranks, paid monthly on 8th:
 ---
 
 ## 5th Benefit: Fortune Bonus (replaces "Auto Pool" from old plan)
+
+> ⚠️ **SUPERSEDED by KP's 2026-08-07 rework — the whole "Bonus per member (₹)" column below is dead.** Current model:
+>
+> ```
+> Fortune pool = comp.fortune.pool_rate_bp (default 500 bp = 5%) × the month's company BV
+> FB points    = Σ over your matrix downline of points_per_member[relative level]
+>                relative level 1→9, 2→9, 3→9, 4→8, 5→7, 6→6, 7→5, 8→4, 9→3; deeper → 0
+> point value  = floor_to_whole_rupee(pool ÷ the month's total FB points)   ← no manual override
+> income       = own points × point value
+> ```
+>
+> The 5% rate supersedes the June envelope's 6% Fortune share. Per-level points are admin-editable (`fortune_bonus_levels.points_per_member`); the old `bonus_paise` column is dropped. Matrix placement (3-wide, 9 levels, monthly reset, FCFS by first GSB credit date) is unchanged. Pool economics are frozen per month in `fortune_monthly_pools` before any credit (`fortune.pool.frozen` audit row) and never recomputed — same design as the GSB/MSB/GBB pools.
+>
+> **New eligibility gates** (the list further down is the superseded June version): new joiner (month 1) 3,000 BV lifetime personal purchases **and GSB slab 1 specifically** in the same month; non-ranked (month 2+) one of the 7 personal-purchase titles (≥3,000 BV lifetime) + 600 BV this month + wallet zero + ≥1 slab; **rank 1 → 1,000 BV / 8 achievements, rank 2 → 1,100 / 11, rank 3 → 1,200 / 14, rank 4 → 1,300 / 17, rank 5 → 1,400 / 20**; ranks 6–9 still excluded. "8 achievements" means credited slab cut-offs counted with repeats (GSB has only 7 distinct slabs). Repurchase hold/suspension applies as for every other bonus.
+>
+> **Compliance:** KP's own spec frames this as income "based on luck or chance". That framing must **never** appear in public copy — describe it factually as a participation-based monthly pool (see R-37).
 
 A 3×9 matrix-based monthly bonus, reset each month. Distributors are placed "first-come, first-served" based on GSB activity.
 

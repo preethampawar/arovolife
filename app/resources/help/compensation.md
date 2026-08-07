@@ -123,6 +123,50 @@ Each rank's pool is its `pool %` **of the 20% Rank-Bonus envelope of the month's
 
 The **RB Monthly Calculation** report shows two tables: Rank 1 (Arete Center, RAP, AO-GO points, point value, total income; AO-GO rows show RAP as "—") and Ranks 2–9 (rank + income).
 
+## Fortune Bonus — monthly pool & downline points (KP 2026-08-07)
+
+A monthly bonus funded from a share of the month's company BV and divided by the points every enrolled distributor earned from the distributors sitting below them in that month's Fortune matrix.
+
+### The matrix
+
+A **3-wide forced matrix, 9 levels deep**, rebuilt from scratch **every month** — nothing carries over. Enrolment is **first-come, first-served**, ordered by the date of each distributor's first GSB credit (ties broken by distributor id), so the earliest qualifier that month takes position 1 and everyone else fills the matrix sequentially below.
+
+### Points
+
+Points come from the distributors placed **below** you in the matrix, by how many levels down they sit:
+
+| Levels below you | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|
+| **Points per member** | 9 | 9 | 9 | 8 | 7 | 6 | 5 | 4 | 3 |
+
+Members deeper than level 9 earn nothing. All nine figures are **admin-editable** on Compensation → Plan settings. A distributor earns no points from their own position, so the newest entries at the bottom of the month's matrix typically finish the month on zero points.
+
+### Monthly pool & point value
+
+1. **Pool** = the *Fortune monthly pool rate* (Settings → Compensation plan, default **5%**) of the month's company-wide **BV** — the same signed BV-ledger sum the GSB, MSB and GBB pools use.
+2. **Point value** = `floor-to-whole-rupee(pool ÷ the total Fortune points of everyone enrolled that month)`. There is **no configured rupee amount per level and no manual override** of the computed value; income = **their points × that one value**. The flooring remainder stays unspent with the company. On a month where the division works out below ₹1 the value is ₹0 and nothing is credited.
+3. The month's economics are frozen in a `fortune_monthly_pools` row **before any credit** and never recomputed, so re-runs and single-distributor retries price against the same snapshot (`fortune.pool.frozen` audit entry) — the same auditable design as the GSB, MSB and GBB pools.
+
+### Who is enrolled
+
+Every gate is assessed **per month**, and the distributor's repurchase wallet must be clear — a distributor inside their repurchase grace window is held, and a lapsed grace window suspends the month's Fortune Bonus entirely.
+
+| Tier | Personal BV required | GSB slab achievements required in the month |
+|---|---|---|
+| New joiner (month 1) | 3,000 BV lifetime personal purchases (Retailer title) | **Slab 1 specifically** (the 15K/15K match), in the same calendar month |
+| Non-ranked (month 2+) | holds one of the 7 personal-purchase titles (3,000 BV lifetime) **and** 600 BV this month, wallet zero | at least 1 of the 7 slabs |
+| Rank 1 | 1,000 BV, wallet zero | 8 |
+| Rank 2 | 1,100 BV, wallet zero | 11 |
+| Rank 3 | 1,200 BV, wallet zero | 14 |
+| Rank 4 | 1,300 BV, wallet zero | 17 |
+| Rank 5 | 1,400 BV, wallet zero | 20 |
+
+**Ranks 6–9 are not eligible.** "Slab achievements" is a **count of credited cut-offs**, not distinct slabs — GSB has only 7 slabs, so hitting the same slab repeatedly is how a rank-5 distributor reaches 20. All BV figures and achievement counts are admin-editable on Compensation → Plan settings.
+
+Fortune sits behind its own feature flag and is **OFF**; nothing is enrolled or credited until the plan change is published with the §6.2 notice period. Enrolment runs on the 9th at 08:45 IST and the monthly credit run at 09:00, both for the previous month. The per-month arithmetic (company BV, pool, total points, point value, payout, leftover, and the per-distributor level/points/value/income rows) is visible in the admin **FB Monthly Calculation** report.
+
+This engine replaced a fixed rupee amount per matrix level (₹3.39 … ₹51.00), which paid the same figure regardless of the month's volume — the old per-level amounts no longer exist anywhere in the plan configuration.
+
 ## Monthly payout (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC)
 Runs monthly. A per-group admin charge (3%, each group capped ₹25,000/cycle) and TDS (5%) are applied. Repurchase is deducted only in the weekly batch.
 

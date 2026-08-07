@@ -25,6 +25,8 @@
 | **AO-GO** | **Achieve Once – Get Once** — a degraded ex-rank-holder earns 5 points in the Rank-1 pool; max 3 lifetime uses, never in consecutive months, a rank must be re-achieved between uses. |
 | **AGP** | **arovolife Growth Points** — points that accrue in a month for each Genos Sales Bonus slab match: **12** for a slab-1 match, **5** for slab 2, **2** for slab 3, none for slabs 4–7. Repeat matches in the same month add up, capped at **120 AGP per distributor per month**. Used only by the Growth Booster Bonus. |
 | **GBB point value** | The one rupee value every AGP is worth in a given month: the month's Growth Booster Bonus pool (5% of the month's company BV) ÷ the total AGP of all eligible distributors, floored to the whole rupee. Growth Booster income = your AGP × that value. It is set after the month closes and is not fixed in advance. |
+| **FB points** | **Fortune Bonus points** — points earned in a month from the distributors placed below you in that month's Fortune matrix (3 wide, 9 levels, rebuilt every month, filled first-come-first-served by first GSB credit date): **9** points per member one, two or three levels below, then **8 / 7 / 6 / 5 / 4 / 3** for levels 4 to 9. Members deeper than level 9 earn nothing, and your own position earns nothing. Used only by the Fortune Bonus. |
+| **FB point value** | The one rupee value every FB point is worth in a given month: the month's Fortune Bonus pool (5% of the month's company BV) ÷ the total FB points of everyone enrolled that month, floored to the whole rupee. Fortune income = your points × that value. It is set after the month closes and is not fixed in advance. |
 
 ---
 
