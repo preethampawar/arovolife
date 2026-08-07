@@ -1,10 +1,12 @@
-@props(['text'])
+@props(['text', 'light' => false])
 {{-- Info icon with a hover/focus tooltip. Usage: <x-help-tip text="..." /> --}}
+{{-- Pass light (boolean) when the icon sits on a dark/gradient background. --}}
 {{-- The popup is repositioned to fixed viewport coordinates on show so it is never
      clipped by overflow-x-auto table wrappers or overflow-hidden cards. --}}
 <span class="relative inline-flex items-center align-middle ml-1" data-help-tip>
     <button type="button" tabindex="0" aria-label="More information"
-        class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] font-bold text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400">
+        class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-brand-400
+               {{ $light ? 'border-white/60 text-white/90 hover:bg-white/10' : 'border-gray-400 text-gray-500 hover:bg-gray-100' }}">
         i
     </button>
     <span role="tooltip"

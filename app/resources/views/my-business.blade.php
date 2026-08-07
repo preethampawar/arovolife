@@ -48,26 +48,26 @@
     </div>
 
     {{-- Group 2 — headline stats --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <div class="{{ $cardClasses }}">
+    <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-4">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 text-white sm:col-span-2">
             <div class="flex items-center justify-between mb-1">
-                <p class="{{ $statLabelClasses }}">Personal BV (lifetime)</p>
-                <x-help-tip text="The total Business Volume from your own personal purchases since joining. It is a lifetime running total and never resets, and it is what decides your purchase title." />
+                <p class="text-xs text-indigo-200 font-medium">Personal BV (lifetime)</p>
+                <x-help-tip :light="true" text="The total Business Volume from your own personal purchases since joining. It is a lifetime running total and never resets, and it is what decides your purchase title." />
             </div>
-            <p class="{{ $statValueClasses }}">{{ $personalBvPaise !== null ? Number::format($personalBvPaise / 100, 0) : '—' }}</p>
-            <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
+            <p class="text-2xl font-bold">{{ $personalBvPaise !== null ? Number::format($personalBvPaise / 100, 0) : '—' }}</p>
+            <p class="text-xs text-indigo-200 mt-1 flex items-center gap-1">
                 Title: {{ $title?->title ?? 'No title yet' }}
-                <x-help-tip text="Your title comes from the personal purchase ladder — it moves up as your lifetime personal BV grows. Below 3,000 BV of personal purchases no title is held yet, which is shown as 'No title yet'." />
+                <x-help-tip :light="true" text="Your title comes from the personal purchase ladder — it moves up as your lifetime personal BV grows. Below 3,000 BV of personal purchases no title is held yet, which is shown as 'No title yet'." />
             </p>
         </div>
-        <div class="{{ $cardClasses }}">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 text-white sm:col-span-3">
             <div class="flex items-center justify-between mb-1">
-                <p class="{{ $statLabelClasses }}">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
-                <x-help-tip text="Weekly payouts run every Tuesday (IST); monthly bonus income transfers in the monthly payout on the 9th. This is the balance sitting in your wallet right now, not a forecast. At payout it is transferred after the 3% admin charge, 5% TDS and any repurchase deduction; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout." />
+                <p class="text-xs text-indigo-200 font-medium">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
+                <x-help-tip :light="true" text="Weekly payouts run every Tuesday (IST); monthly bonus income transfers in the monthly payout on the 9th. This is the balance sitting in your wallet right now, not a forecast. At payout it is transferred after the 3% admin charge, 5% TDS and any repurchase deduction; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout." />
             </div>
-            <p class="{{ $statValueClasses }}">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
-            <p class="text-xs text-gray-500 mt-1">Transferred after 3% admin charge + 5% TDS + repurchase deduction.</p>
-            <p class="text-xs text-gray-400 mt-1">Current wallet balance</p>
+            <p class="text-2xl font-bold">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
+            <p class="text-xs text-indigo-200 mt-1">Transferred after 3% admin charge + 5% TDS + repurchase deduction.</p>
+            <p class="text-xs text-indigo-300 mt-1">Current wallet balance</p>
         </div>
     </div>
 
