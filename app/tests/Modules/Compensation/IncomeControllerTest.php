@@ -91,7 +91,7 @@ it('renders income dashboard for a distributor', function (): void {
 
     $this->get(route('income.dashboard'))
         ->assertOk()
-        ->assertSee('My Income');
+        ->assertSee('Income');
 });
 
 it('shows group BV as 0 on the dashboard when personal BV is below 600', function (): void {

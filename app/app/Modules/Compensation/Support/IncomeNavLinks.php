@@ -29,7 +29,7 @@ final class IncomeNavLinks
     {
         $links = [
             ['route' => 'my-business', 'label' => 'My Business', 'visible' => true],
-            ['route' => 'income.dashboard', 'label' => 'Dashboard & Income', 'visible' => true],
+            ['route' => 'income.dashboard', 'label' => 'Income', 'visible' => true],
             ['route' => 'income.genos-bv', 'label' => 'Genos BV', 'visible' => true],
             ['route' => 'income.genos-ledger', 'label' => 'Genos Ledger', 'visible' => true],
             ['route' => 'income.gsb-history', 'label' => 'GSB History', 'visible' => true],

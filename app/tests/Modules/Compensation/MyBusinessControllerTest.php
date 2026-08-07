@@ -113,7 +113,7 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         ->assertOk()
         ->assertSee('My Business')
         // Group 1 — menu tiles, unflagged pages only.
-        ->assertSee('Dashboard &amp; Income', false)
+        ->assertSee('Income')
         ->assertSee('Genos BV')
         ->assertSee('Genos Ledger')
         ->assertSee('GSB History')

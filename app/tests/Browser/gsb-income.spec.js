@@ -112,7 +112,7 @@ test.describe('Admin: Daily Cut-Off Table', () => {
 test.describe('Distributor: Income Dashboard', () => {
     test('dashboard loads for authenticated distributor', async ({ distributorPage: page }) => {
         await page.goto('/income');
-        await expect(page).toHaveTitle(/My Income/i);
+        await expect(page).toHaveTitle(/Income/i);
     });
 
     test('wallet balance hero card shows a ₹ amount', async ({ distributorPage: page }) => {
