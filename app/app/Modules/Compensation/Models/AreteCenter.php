@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $name
  * @property string|null $location
+ * @property string|null $pincode
+ * @property string|null $district
+ * @property string|null $state
  * @property int|null $assigned_distributor_id
  * @property string $status
  * @property string|null $approved_at
@@ -28,6 +31,9 @@ final class AreteCenter extends Model
     protected $fillable = [
         'name',
         'location',
+        'pincode',
+        'district',
+        'state',
         'assigned_distributor_id',
         'status',
         'approved_at',

@@ -9,6 +9,7 @@ use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -82,6 +83,38 @@ function makeGbbRow(int $distributorId, int $agp, ?int $pointValuePaise, int $gr
         'status' => $status,
     ]);
 }
+
+function seedGbbReportBvEntry(int $distributorId, int $bvPaise, string $type): void
+{
+    static $orderId = 970000;
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'order_id' => $orderId++,
+        'bv_paise' => $bvPaise,
+        'type' => $type,
+        'effective_at' => '2026-07-10 12:00:00',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+}
+
+// Regression: the Title column summed accruals only, so a distributor whose
+// orders were refunded kept the title their gross purchases bought. The
+// signed SUM must net the reversal out — 7,000 BV bought then 4,000 BV
+// refunded is 3,000 BV net, i.e. Retailer and not Dealer.
+it('titles a distributor from personal BV net of reversals', function () {
+    $distributorId = gbbReportDistributor('GBBNET', 'Nethra');
+    makeGbbRow($distributorId, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
+    seedGbbReportBvEntry($distributorId, 700_000, 'accrual');
+    seedGbbReportBvEntry($distributorId, -400_000, 'reversal');
+
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.index'))
+        ->assertOk()
+        ->assertSee('GBBNET')
+        ->assertSee('Retailer')
+        ->assertDontSee('Dealer');
+});
 
 it('shows the frozen point value and renders a dash for legacy rows', function () {
     $withValue = gbbReportDistributor('GBBAAA', 'Alice');
@@ -195,7 +228,7 @@ it('shows the distributor their own AGP times the frozen point value', function 
     $this->actingAs($user)
         ->get(route('income.growth-booster'))
         ->assertOk()
-        ->assertSee('12 AGP × ₹'.\Illuminate\Support\Number::format(250, 2))
+        ->assertSee('12 AGP × ₹'.Number::format(250, 2))
         ->assertSee('Credited')
         // Historical fact only — never a projection of what they might earn.
         ->assertDontSee('could earn')

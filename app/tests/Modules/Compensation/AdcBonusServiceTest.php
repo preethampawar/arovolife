@@ -54,6 +54,20 @@ function seedMemberBv(int $distributorId, int $bvPaise, string $date = '2026-06-
     ]);
 }
 
+function seedAdcMemberBvReversal(int $distributorId, int $bvPaise, string $date = '2026-06-20'): void
+{
+    static $reversalOrderId = 950000;
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'order_id' => $reversalOrderId++,
+        'bv_paise' => -abs($bvPaise),
+        'type' => 'reversal',
+        'effective_at' => $date.' 12:00:00',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+}
+
 it('credits 3% of member BV to the assigned distributor', function (): void {
     $assignee = Distributor::factory()->create();
     $member = Distributor::factory()->create();
@@ -269,6 +283,74 @@ it('aggregates BV across multiple members', function (): void {
     expect($bonus->total_member_bv_paise)->toBe(800_000);
     expect($bonus->member_count)->toBe(2);
     expect($bonus->gross_paise)->toBe((int) floor(800_000 * 0.03)); // 24,000
+});
+
+it('pays on the net member BV after a partial refund in the month', function (): void {
+    $assignee = Distributor::factory()->create();
+    $member = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    $center = makeActiveCenter($assignee->id);
+    addCenterMember($center->id, $member->id);
+    seedMemberBv($member->id, 1_000_000, '2026-06-10');
+    seedAdcMemberBvReversal($member->id, 400_000, '2026-06-20'); // net 600,000
+
+    $result = app(AreteDevelopmentCenterBonusService::class)->runForMonth($month);
+
+    expect($result['credited'])->toBe(1)
+        ->and($result['skipped_no_bv'])->toBe(0);
+
+    $bonus = AdcBonusResult::where('center_id', $center->id)->first();
+    expect($bonus->total_member_bv_paise)->toBe(600_000);   // net, not the 1,000,000 accrual
+    expect($bonus->gross_paise)->toBe(18_000);              // 3% of the net
+    expect($bonus->net_paise)->toBe(18_000);
+
+    expect(WalletLedgerEntry::where('distributor_id', $assignee->id)
+        ->where('type', 'adc_credit')->value('amount_paise'))->toBe(18_000);
+});
+
+it('skips a center whose members net below zero after refunds', function (): void {
+    $assignee = Distributor::factory()->create();
+    $member = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    $center = makeActiveCenter($assignee->id);
+    addCenterMember($center->id, $member->id);
+    seedMemberBv($member->id, 300_000, '2026-06-10');
+    seedAdcMemberBvReversal($member->id, 500_000, '2026-06-20'); // net −200,000
+
+    $result = app(AreteDevelopmentCenterBonusService::class)->runForMonth($month);
+
+    // A refunded-out centre is counted apart from one that never sold.
+    expect($result['credited'])->toBe(0)
+        ->and($result['skipped_net_negative'])->toBe(1)
+        ->and($result['skipped_no_bv'])->toBe(0)
+        ->and($result['total_net_paise'])->toBe(0);
+
+    // No result row, no wallet credit, and above all no negative gross.
+    expect(AdcBonusResult::count())->toBe(0);
+    expect(WalletLedgerEntry::where('type', 'adc_credit')->count())->toBe(0);
+});
+
+it('counts a center whose refunds exactly cancel its sales as no BV', function (): void {
+    $assignee = Distributor::factory()->create();
+    $member = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    $center = makeActiveCenter($assignee->id);
+    addCenterMember($center->id, $member->id);
+    seedMemberBv($member->id, 300_000, '2026-06-10');
+    seedAdcMemberBvReversal($member->id, 300_000, '2026-06-20'); // net 0
+
+    $result = app(AreteDevelopmentCenterBonusService::class)->runForMonth($month);
+
+    expect($result['credited'])->toBe(0)
+        ->and($result['skipped_no_bv'])->toBe(1)
+        ->and($result['skipped_net_negative'])->toBe(0)
+        ->and($result['total_net_paise'])->toBe(0);
+
+    expect(AdcBonusResult::count())->toBe(0);
+    expect(WalletLedgerEntry::where('type', 'adc_credit')->count())->toBe(0);
 });
 
 it('skips inactive centers', function (): void {

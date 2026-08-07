@@ -23,20 +23,27 @@
                 <tr>
                     <th class="px-4 py-2 text-left text-gray-500">Name</th>
                     <th class="px-4 py-2 text-left text-gray-500">Location</th>
+                    <th class="px-4 py-2 text-left text-gray-500">Pincode / District / State</th>
                     <th class="px-4 py-2 text-left text-gray-500">Assigned distributor</th>
                     <th class="px-4 py-2 text-center text-gray-500">Status</th>
                     <th class="px-4 py-2 text-right text-gray-500">Members</th>
                     <th class="px-4 py-2 text-left text-gray-500">Approved</th>
+                    <th class="px-4 py-2 text-right text-gray-500">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
                 @foreach($centers as $center)
                 @php
                     $sc = ['active' => 'bg-green-100 text-green-700', 'inactive' => 'bg-gray-100 text-gray-500'];
+                    $addressParts = [$center->pincode, $center->district, $center->state];
+                    $hasAddress = array_filter($addressParts, fn ($part) => filled($part)) !== [];
                 @endphp
                 <tr>
                     <td class="px-4 py-2 font-medium">{{ $center->name }}</td>
                     <td class="px-4 py-2 text-gray-600">{{ $center->location ?? '—' }}</td>
+                    <td class="px-4 py-2 text-gray-600">
+                        {{ $hasAddress ? implode(' · ', array_map(fn ($part) => filled($part) ? $part : '—', $addressParts)) : '—' }}
+                    </td>
                     <td class="px-4 py-2 font-mono">{{ $center->assignedDistributor->adn ?? '—' }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$center->status] ?? 'bg-gray-100 text-gray-600' }}">
@@ -46,6 +53,9 @@
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($center->members_count) }}</td>
                     <td class="px-4 py-2 text-gray-600">
                         {{ $center->approved_at ? \Illuminate\Support\Carbon::parse($center->approved_at)->format('d M Y') : '—' }}
+                    </td>
+                    <td class="px-4 py-2 text-right">
+                        <a href="{{ route('admin.compensation.adc-bonus.centers.edit', $center) }}" class="text-brand-600 hover:text-brand-700 font-medium">Edit</a>
                     </td>
                 </tr>
                 @endforeach

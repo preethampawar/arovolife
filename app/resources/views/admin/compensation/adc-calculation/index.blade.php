@@ -6,9 +6,9 @@
 
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly ADC Bonus calculation table — one row per Arete centre per month.
-    <strong>Monthly Turnover BV</strong> = total BV of all members assigned to the centre.
+    <strong>Monthly Turnover BV</strong> = net BV of all members assigned to the centre (refunds deducted).
     <strong>Rate %</strong> = gross ADC ÷ turnover BV × 100.
-    Search by pincode, district, or state to filter by centre location.
+    Search by pincode, district or state to filter by centre area.
 </div>
 
 {{-- Filters --}}
@@ -16,8 +16,9 @@
     <input type="text" name="q" value="{{ $q ?? '' }}"
            placeholder="Search ADN or name…"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-44">
-    <input type="text" name="location" value="{{ $location ?? '' }}"
-           placeholder="Pincode / district / state…"
+    <input type="text" name="area" value="{{ $area ?? '' }}"
+           placeholder="Pincode / District / State…"
+           aria-label="Pincode / District / State"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-52">
     <input type="month" name="month" value="{{ $month ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
@@ -28,11 +29,11 @@
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
     </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
-    @if($q || $location || $month || $status)
+    @if($q || $area || $month || $status)
     <a href="{{ route('admin.compensation.adc-calculation.index') }}"
        class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
     @endif
-    <a href="{{ route('admin.compensation.adc-calculation.export', array_filter(['q' => $q, 'location' => $location, 'month' => $month, 'status' => $status])) }}"
+    <a href="{{ route('admin.compensation.adc-calculation.export', array_filter(['q' => $q, 'area' => $area, 'month' => $month, 'status' => $status])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
         ↓ Download CSV
     </a>
@@ -48,6 +49,7 @@
                 <tr>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Rank</th>
@@ -63,7 +65,7 @@
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">Income (Net ADC)</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">
                         Pincode / District / State
-                        <x-help-tip text="Centre location as registered. Use the location filter to narrow down by area." />
+                        <x-help-tip text="Centre address as registered. Use the Pincode / District / State search box to narrow down by area." />
                     </th>
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
                 </tr>
@@ -81,6 +83,10 @@
                         'pending'  => 'bg-amber-100 text-amber-700',
                         'reversed' => 'bg-red-100 text-red-700',
                     ];
+                    $addressParts = [$row->pincode, $row->district, $row->state];
+                    $addressLine = array_filter($addressParts, fn ($part) => filled($part)) !== []
+                        ? implode(' · ', array_map(fn ($part) => filled($part) ? $part : '—', $addressParts))
+                        : ($row->center_location ?: null);
                 @endphp
                 <tr class="hover:bg-gray-50">
                     <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
@@ -90,6 +96,7 @@
                             {{ $row->adn }}
                         </a>
                     </td>
+                    <td class="px-3 py-2 text-gray-700">{{ $row->center_name ?? '—' }}</td>
                     <td class="px-3 py-2 text-gray-700">{{ $row->full_name ?? '—' }}</td>
                     <td class="px-3 py-2">
                         @if($titleObj->title !== null)
@@ -137,10 +144,9 @@
                         </span>
                         @endif
                     </td>
-                    <td class="px-3 py-2 text-gray-600">
-                        @if($row->center_location)
-                        <span class="text-gray-700">{{ $row->center_location }}</span>
-                        <span class="block text-[10px] text-gray-400">{{ $row->center_name }}</span>
+                    <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
+                        @if($addressLine !== null)
+                        <span class="text-gray-700">{{ $addressLine }}</span>
                         @else
                         <span class="text-gray-400">—</span>
                         @endif
