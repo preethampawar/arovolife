@@ -75,7 +75,7 @@
                     </th>
                     <th class="px-4 py-2 text-right text-gray-500">Gross GBB</th>
                     <th class="px-4 py-2 text-right text-gray-500">
-                        TDS (5%) <x-help-tip text="Income Tax deduction at source. No admin charge applies to GBB." />
+                        TDS (5%) <x-help-tip text="Income Tax deduction at source. A 3% admin charge (Group B, capped) is also deducted at payout." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-500">Net GBB</th>
                     <th class="px-4 py-2 text-center text-gray-500">Status</th>
