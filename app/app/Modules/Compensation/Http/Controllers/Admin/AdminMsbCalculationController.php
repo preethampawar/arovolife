@@ -198,8 +198,12 @@ final class AdminMsbCalculationController extends Controller
     }
 
     /**
+     * `bv_paise` is signed (+ accrual, − reversal), so the unfiltered SUM is the
+     * net personal BV. Filtering to accruals would overstate the title of a
+     * distributor whose orders were later refunded.
+     *
      * @param  int[]  $distributorIds
-     * @return array<int, int> distributor_id → total personal BV paise
+     * @return array<int, int> distributor_id → net personal BV paise
      */
     private function batchPersonalBvPaise(array $distributorIds): array
     {
@@ -209,7 +213,6 @@ final class AdminMsbCalculationController extends Controller
 
         return DB::table('bv_ledger_entries')
             ->whereIn('distributor_id', $distributorIds)
-            ->where('type', 'accrual')
             ->groupBy('distributor_id')
             ->pluck(DB::raw('SUM(bv_paise)'), 'distributor_id')
             ->map(fn ($v) => (int) $v)

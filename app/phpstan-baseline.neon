@@ -2589,7 +2589,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 11
 			path: tests/Modules/Compensation/AdminGbbCalculationTest.php
 
 		-

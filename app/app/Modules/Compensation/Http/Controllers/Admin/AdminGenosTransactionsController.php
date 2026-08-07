@@ -203,8 +203,12 @@ final class AdminGenosTransactionsController extends Controller
     }
 
     /**
+     * `bv_paise` is signed (+ accrual, − reversal), so the unfiltered SUM is the
+     * net personal BV. Filtering to accruals would overstate the title of a
+     * distributor whose orders were later refunded.
+     *
      * @param  int[]  $ancestorIds
-     * @return array<int, int> distributor_id → total personal BV paise
+     * @return array<int, int> distributor_id → net personal BV paise
      */
     private function batchPersonalBvPaise(array $ancestorIds): array
     {
@@ -214,7 +218,6 @@ final class AdminGenosTransactionsController extends Controller
 
         return DB::table('bv_ledger_entries')
             ->whereIn('distributor_id', $ancestorIds)
-            ->where('type', 'accrual')
             ->groupBy('distributor_id')
             ->pluck(DB::raw('SUM(bv_paise)'), 'distributor_id')
             ->map(fn ($v) => (int) $v)
