@@ -184,7 +184,7 @@ it('does not create carry-forward records by default (1+2 rule retired for AO-GO
         ->where('rank_number', 1)
         ->get();
 
-    // Only the qualifying month — carry_forward_months is seeded 0 everywhere.
+    // Only the qualifying month — the engine creates no carry-forward rows.
     expect($records)->toHaveCount(1);
     expect($records->where('is_carry_forward', true))->toHaveCount(0);
 });
@@ -209,23 +209,6 @@ it('does NOT create carry-forward records for rank 2 (1+2 rule is Rank 1 only, K
     // Only the qualifying month — no M+1 / M+2 carry-forwards for rank 2.
     expect($records)->toHaveCount(1);
     expect($records->where('is_carry_forward', true))->toHaveCount(0);
-});
-
-it('reads carry-forward months from rank_tiers config (admin-configurable, not hardcoded)', function (): void {
-    // Admin lowers Rank 1's carry-forward to a single month.
-    DB::table('rank_tiers')->where('rank_number', 1)->update(['carry_forward_months' => 1]);
-    app()->forgetInstance(CompensationPlanSettingsService::class);
-
-    $dist = Distributor::factory()->create();
-    $month = Carbon::parse('2026-06-01');
-    seedPersonalBv($dist->id, 700_000);
-    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 31_000_000);
-
-    app(RankQualificationService::class)->checkForMonth($month, occurrenceNumber: 1);
-
-    $records = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->get();
-    expect($records)->toHaveCount(2); // qualifying month + 1 carry-forward (not the default 2)
-    expect($records->where('is_carry_forward', true))->toHaveCount(1);
 });
 
 /**

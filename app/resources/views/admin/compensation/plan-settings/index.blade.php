@@ -266,11 +266,6 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Carry-forward months <x-help-tip text="RETIRED (KP 2026-08-05, replaced by the AO-GO offer): extra months this rank kept paying a qualifier after the qualifying month. Now 0 for every rank; kept configurable for audit of historical rows." /></label>
-                    <input type="number" name="carry_forward_months" data-field-label="Carry-forward months" value="{{ $row->carry_forward_months }}" required min="0" max="24"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                </div>
-                <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Repurchase BV (paise) <x-help-tip text="Monthly repurchase BV this rank must complete each cycle to stay income-eligible. Stored in paise (BV × 100). KP: R1 1,000 … R9 2,300 BV." /></label>
                     <input type="number" name="repurchase_bv_paise" data-field-label="Repurchase BV (paise)" value="{{ $row->repurchase_bv_paise }}" required min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">

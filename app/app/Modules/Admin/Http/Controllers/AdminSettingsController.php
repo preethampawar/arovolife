@@ -260,16 +260,6 @@ final class AdminSettingsController extends Controller
                 'max' => 10000000,
                 'default' => '10000',
             ],
-            'payout.gsb_min_bv_paise' => [
-                'group' => 'payout',
-                'label' => 'Bonus eligibility — minimum personal BV (paise)',
-                'description' => 'Lifetime personal BV a distributor must reach before any GSB or Mentorship Bonus is credited to their wallet. Default 60,000 paise = 600 BV.',
-                'impact' => 'Raising this blocks bonuses for more distributors; lowering it lets more distributors earn. Takes effect from the next daily GSB cut-off run.',
-                'type' => 'int',
-                'min' => 1,
-                'max' => 100_000_000,
-                'default' => '60000',
-            ],
             'payout.neft_min_bv_paise' => [
                 'group' => 'payout',
                 'label' => 'NEFT eligibility — minimum personal BV (paise)',
@@ -386,16 +376,6 @@ final class AdminSettingsController extends Controller
                 'min' => 0,
                 'max' => 10000,
                 'default' => '500',
-            ],
-            'comp.gsb.score_rate_paise' => [
-                'group' => 'compensation_plan',
-                'label' => 'GSB score rate (paise per point) — retired',
-                'description' => 'Retired by KP 2026-07-21. The single global score rate was replaced by a per-slab score value, edited under Compensation → Plan settings. Nothing reads this key any more.',
-                'impact' => 'None. Changing it does not affect any payout.',
-                'type' => 'int',
-                'min' => 0,
-                'max' => 100_000_000,
-                'default' => '36000',
             ],
             'comp.gsb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
@@ -676,7 +656,7 @@ final class AdminSettingsController extends Controller
         'comp.admin_charge.rate_bp',
         'payout.min_threshold_paise',
         'payout.neft_min_bv_paise',
-        'payout.gsb_min_bv_paise',
+        'comp.gsb.min_bv_paise',
     ];
 
     /** May the given user WRITE settings owned by $owner? */

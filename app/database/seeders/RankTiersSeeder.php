@@ -27,9 +27,9 @@ final class RankTiersSeeder extends Seeder
         // rap_points (KP 2026-08-05): Rank Achievement Points — Rank 1's pool
         // is divided by total points (RAP + AO-GO); null = equal split among
         // achievers (ranks 2–9).
-        // carry_forward_months: the "1+2 rule" is RETIRED (KP 2026-08-05) in
-        // favour of the AO-GO offer — 0 for every rank; the mechanism stays
-        // config-driven for audit of historical rows.
+        // The "1+2 rule" carry-forward is RETIRED (KP 2026-08-05) in favour of
+        // the AO-GO offer: the column and its engine path are gone, only the
+        // historical rank_qualifications rows remain.
         // pyp_required = the Q-Period: achieving rank r this many times grants
         // permission to attain rank r+1 (KP 2026-08-05).
         // repurchase_bv_paise = monthly repurchase obligation (KP: R1 1,000 …
@@ -42,16 +42,16 @@ final class RankTiersSeeder extends Seeder
         // weaker Genos leg toward the rank's group-BV match (KP 2026-06-28):
         // Ranks 1 & 2 only — R1 15,000 BV, R2 30,000 BV; Ranks 3-9 = 0.
         $rows = [
-            // rank, name, pool_pct, pyp, rap_points, personal_bv, group_bv, weaker_leg_topup_bv, structural_per_side, carry_forward_months, repurchase_bv_paise, lifetime_award_budget_paise
-            [1, 'Silver Partner', 7.00, 1, 10, 700_000, 30_000_000, 1_500_000, null, 0, 100_000, 1_500_000],
-            [2, 'Pearl Partner', 3.40, 1, null, 1_500_000, 80_000_000, 3_000_000, null, 0, 110_000, 3_000_000],
-            [3, 'Emerald Partner', 2.70, 2, null, 3_200_000, null, 0, 2, 0, 120_000, 9_000_000],
-            [4, 'Gold Partner', 2.20, 2, null, 6_800_000, null, 0, 2, 0, 130_000, 36_500_000],
-            [5, 'Diamond Partner', 1.70, 2, null, 14_400_000, null, 0, 2, 0, 140_000, 100_000_000],
-            [6, 'Blue Diamond Partner', 1.20, 3, null, 30_000_000, null, 0, 2, 0, 160_000, 300_000_000],
-            [7, 'Royal Diamond Partner', 0.90, 3, null, 30_000_000, null, 0, 2, 0, 180_000, 900_000_000],
-            [8, 'Crown Diamond Partner', 0.60, 3, null, 30_000_000, null, 0, 2, 0, 200_000, 1_400_000_000],
-            [9, 'Elite Diamond Partner', 0.30, 3, null, 30_000_000, null, 0, 2, 0, 230_000, 2_250_000_000],
+            // rank, name, pool_pct, pyp, rap_points, personal_bv, group_bv, weaker_leg_topup_bv, structural_per_side, repurchase_bv_paise, lifetime_award_budget_paise
+            [1, 'Silver Partner', 7.00, 1, 10, 700_000, 30_000_000, 1_500_000, null, 100_000, 1_500_000],
+            [2, 'Pearl Partner', 3.40, 1, null, 1_500_000, 80_000_000, 3_000_000, null, 110_000, 3_000_000],
+            [3, 'Emerald Partner', 2.70, 2, null, 3_200_000, null, 0, 2, 120_000, 9_000_000],
+            [4, 'Gold Partner', 2.20, 2, null, 6_800_000, null, 0, 2, 130_000, 36_500_000],
+            [5, 'Diamond Partner', 1.70, 2, null, 14_400_000, null, 0, 2, 140_000, 100_000_000],
+            [6, 'Blue Diamond Partner', 1.20, 3, null, 30_000_000, null, 0, 2, 160_000, 300_000_000],
+            [7, 'Royal Diamond Partner', 0.90, 3, null, 30_000_000, null, 0, 2, 180_000, 900_000_000],
+            [8, 'Crown Diamond Partner', 0.60, 3, null, 30_000_000, null, 0, 2, 200_000, 1_400_000_000],
+            [9, 'Elite Diamond Partner', 0.30, 3, null, 30_000_000, null, 0, 2, 230_000, 2_250_000_000],
         ];
 
         $records = array_map(fn (array $r): array => [
@@ -64,9 +64,8 @@ final class RankTiersSeeder extends Seeder
             'group_bv_required_paise' => $r[6],
             'weaker_leg_topup_bv_paise' => $r[7],
             'structural_qualifiers_per_side' => $r[8],
-            'carry_forward_months' => $r[9],
-            'repurchase_bv_paise' => $r[10],
-            'lifetime_award_budget_paise' => $r[11],
+            'repurchase_bv_paise' => $r[9],
+            'lifetime_award_budget_paise' => $r[10],
             'is_active' => true,
             'created_at' => $now,
             'updated_at' => $now,
@@ -75,7 +74,7 @@ final class RankTiersSeeder extends Seeder
         DB::table('rank_tiers')->upsert(
             $records,
             ['rank_number'],
-            ['rank_name', 'pool_pct', 'pyp_required', 'rap_points', 'personal_bv_required_paise', 'group_bv_required_paise', 'weaker_leg_topup_bv_paise', 'structural_qualifiers_per_side', 'carry_forward_months', 'repurchase_bv_paise', 'lifetime_award_budget_paise', 'is_active', 'updated_at'],
+            ['rank_name', 'pool_pct', 'pyp_required', 'rap_points', 'personal_bv_required_paise', 'group_bv_required_paise', 'weaker_leg_topup_bv_paise', 'structural_qualifiers_per_side', 'repurchase_bv_paise', 'lifetime_award_budget_paise', 'is_active', 'updated_at'],
         );
     }
 }

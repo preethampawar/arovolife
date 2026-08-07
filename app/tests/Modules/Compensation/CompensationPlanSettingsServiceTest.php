@@ -29,7 +29,6 @@ it('falls back to the registry default when a scalar setting is absent', functio
     expect($plan->adminChargeWeeklyCapPaise())->toBe(2_500_000);  // ₹25,000 (KP Round-5)
     expect($plan->adminChargeMonthlyCapPaise())->toBe(2_500_000); // ₹25,000 (KP Round-5)
     expect($plan->minPayoutPaise())->toBe(10_000);          // ₹100 (KP)
-    expect($plan->gsbScoreRatePaise())->toBe(36_000);       // ₹360/point
     expect($plan->gsbPoolRateBp())->toBe(4500);             // 45% daily GSB pool (KP 2026-07-29)
 });
 

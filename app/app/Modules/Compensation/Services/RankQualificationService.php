@@ -21,10 +21,11 @@ use Illuminate\Support\Facades\DB;
  * (Option C, confirmed — see qPeriodCounts()).
  *
  * The "1+2 rule" carry-forward is RETIRED (KP 2026-08-05, replaced by the
- * AO-GO offer) but stays admin-configurable per rank via
- * rank_tiers.carry_forward_months (now seeded 0 for every rank) so historical
- * rows remain explicable. A rank-2 qualification still voids any pending
- * rank-1 carry.
+ * AO-GO offer): no carry-forward qualification is ever created any more and the
+ * rank_tiers column that configured it is gone. Historical
+ * rank_qualifications.is_carry_forward rows are retained and still read (the
+ * Q-Period count excludes them, the Rank Bonus does not pay them), and a rank-2
+ * qualification still voids any pending rank-1 carry left in the table.
  */
 final class RankQualificationService
 {
@@ -77,12 +78,9 @@ final class RankQualificationService
         $counts['rank_2_count'] = count($rank2Ids);
 
         if ($occurrenceNumber === 1) {
-            // Carry-forward ("1+2 rule") months are admin-configurable per rank
-            // (rank_tiers.carry_forward_months). Seeded Rank 1 = 2, Ranks 2-9 = 0
-            // per KP 2026-06-28, so Rank 2 creates none; reaching Rank 2 still
-            // voids a pending Rank-1 carry.
-            $this->createCarryForwards($rank1Ids, rank: 1, months: $this->plan->rankCarryForwardMonths(1), sourceMonth: $monthStart);
-            $this->createCarryForwards($rank2Ids, rank: 2, months: $this->plan->rankCarryForwardMonths(2), sourceMonth: $monthStart);
+            // No carry-forward is created: the "1+2 rule" is retired (KP
+            // 2026-08-05, replaced by AO-GO). Reaching Rank 2 still voids any
+            // pending Rank-1 carry surviving from before the retirement.
             $this->voidRank1CarryForwardsForRank2Qualifiers($rank2Ids, $monthStart);
         }
 
@@ -386,51 +384,11 @@ final class RankQualificationService
     }
 
     /**
-     * Create carry-forward qualification records for the next $months months
-     * (the "1+2 rule"; $months comes from rank_tiers.carry_forward_months).
-     * Idempotent: skips if a record already exists for that month.
-     *
-     * @param  int[]  $distributorIds
-     */
-    private function createCarryForwards(array $distributorIds, int $rank, int $months, string $sourceMonth): void
-    {
-        if ($months < 1 || empty($distributorIds)) {
-            return;
-        }
-
-        $source = Carbon::parse($sourceMonth);
-
-        foreach (range(1, $months) as $offset) {
-            $targetMonth = $source->copy()->addMonths($offset)->startOfMonth()->toDateString();
-
-            foreach ($distributorIds as $distributorId) {
-                $alreadyExists = RankQualification::where('distributor_id', $distributorId)
-                    ->where('rank_number', $rank)
-                    ->where('month_start', $targetMonth)
-                    ->where('is_carry_forward', true)
-                    ->where('carry_forward_from_month', $sourceMonth)
-                    ->exists();
-
-                if ($alreadyExists) {
-                    continue;
-                }
-
-                RankQualification::create([
-                    'distributor_id' => $distributorId,
-                    'rank_number' => $rank,
-                    'month_start' => $targetMonth,
-                    'occurrence_in_month' => 1,
-                    'is_carry_forward' => true,
-                    'carry_forward_from_month' => $sourceMonth,
-                    'status' => RankQualification::STATUS_QUALIFIED,
-                ]);
-            }
-        }
-    }
-
-    /**
      * When a distributor achieves rank 2, void any pending rank-1 carry-forwards
      * for M+1 and M+2 that originated from an earlier source month.
+     *
+     * No new carry-forwards are created since the 1+2 rule was retired, so this
+     * only ever touches pre-retirement rows.
      *
      * @param  int[]  $rank2DistributorIds
      */

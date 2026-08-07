@@ -2671,16 +2671,6 @@ parameters:
 			path: tests/Modules/Compensation/AdminPlanSettingsTest.php
 
 		-
-			message: '''
-				#^Call to deprecated method gsbScoreRatePaise\(\) of class App\\Modules\\Compensation\\Services\\CompensationPlanSettingsService\:
-				KP 2026\-07\-21 — the GSB bonus is now score × per\-slab
-				gsb_slabs\.score_value_paise\. Retained only for backward compatibility\.$#
-			'''
-			identifier: method.deprecated
-			count: 1
-			path: tests/Modules/Compensation/CompensationPlanSettingsServiceTest.php
-
-		-
 			message: '#^Call to an undefined method object\:\:down\(\)\.$#'
 			identifier: method.notFound
 			count: 1

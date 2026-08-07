@@ -237,8 +237,9 @@ final class ProductionSeeder extends Seeder
             'payments.gateway.razorpay.enabled' => 'false',
             'payments.gateway.stub.enabled' => 'false',
 
+            'comp.gsb.min_bv_paise' => '60000',   // 600 BV — minimum for any bonus to credit wallet
+
             'payout.min_threshold_paise' => '50000',
-            'payout.gsb_min_bv_paise' => '60000',   // 600 BV — minimum for any bonus to credit wallet
             'payout.neft_min_bv_paise' => '300000',  // 3,000 BV (Retailer) — minimum for NEFT bank transfer
         ];
 

@@ -71,10 +71,6 @@ final class CompensationPlanSettingsService
         'comp.admin_charge.applies_to_awards' => false,
         'comp.tds.rate_bp' => 500,
         'comp.gsb.power_cf_cap_paise' => 45_000_000,
-        // DEPRECATED (KP 2026-07-21): the single global score rate is superseded
-        // by per-slab gsb_slabs.score_value_paise. Kept only for back-compat with
-        // any legacy reader; the GSB engine and admin editor no longer use it.
-        'comp.gsb.score_rate_paise' => 36_000,
         'comp.gsb.min_bv_paise' => 60_000,
         // Daily GSB pool for the pro-rated slabs 3–7 (KP 2026-07-29): share of
         // the day's company-wide BV (bv_ledger_entries signed sum) that funds
@@ -192,15 +188,6 @@ final class CompensationPlanSettingsService
     }
 
     /**
-     * @deprecated KP 2026-07-21 — the GSB bonus is now score × per-slab
-     * gsb_slabs.score_value_paise. Retained only for backward compatibility.
-     */
-    public function gsbScoreRatePaise(): int
-    {
-        return $this->scalarInt('comp.gsb.score_rate_paise');
-    }
-
-    /**
      * The personal-BV top-up go-live date. Personal-BV accruals dated before it
      * never enter the conditional weaker-leg top-up pending pool (the old engine
      * credited them daily before cut-over).
@@ -231,16 +218,12 @@ final class CompensationPlanSettingsService
 
     /**
      * Minimum lifetime personal BV (paise) before bonuses are credited.
-     * Falls back to the legacy `payout.gsb_min_bv_paise` key for backwards
-     * compatibility with values seeded before this service existed.
+     *
+     * The pre-service `payout.gsb_min_bv_paise` key was migrated into
+     * `comp.gsb.min_bv_paise` on 2026-08-07 and is no longer read.
      */
     public function gsbMinBvPaise(): int
     {
-        $legacy = $this->scalar('payout.gsb_min_bv_paise');
-        if ($legacy !== null) {
-            return (int) $legacy;
-        }
-
         return $this->scalarInt('comp.gsb.min_bv_paise');
     }
 
@@ -511,7 +494,6 @@ final class CompensationPlanSettingsService
                     'group_bv_required_paise' => $row->group_bv_required_paise !== null ? (int) $row->group_bv_required_paise : null,
                     'weaker_leg_topup_bv_paise' => (int) ($row->weaker_leg_topup_bv_paise ?? 0),
                     'structural_qualifiers_per_side' => $row->structural_qualifiers_per_side !== null ? (int) $row->structural_qualifiers_per_side : null,
-                    'carry_forward_months' => (int) ($row->carry_forward_months ?? 0),
                     'repurchase_bv_paise' => (int) ($row->repurchase_bv_paise ?? 0),
                     'lifetime_award_budget_paise' => (int) ($row->lifetime_award_budget_paise ?? 0),
                     'is_active' => (bool) $row->is_active,
@@ -610,15 +592,6 @@ final class CompensationPlanSettingsService
     public function rankStructuralQualifiersPerSide(int $rank): int
     {
         return (int) ($this->rankTiers()[$rank]['structural_qualifiers_per_side'] ?? 2);
-    }
-
-    /**
-     * Extra months a rank keeps paying a qualifier after the qualifying month
-     * (the "1+2 rule"). Admin-editable per rank; default 0 (no carry-forward).
-     */
-    public function rankCarryForwardMonths(int $rank): int
-    {
-        return (int) ($this->rankTiers()[$rank]['carry_forward_months'] ?? 0);
     }
 
     public function rankName(int $rank): string
