@@ -75,12 +75,31 @@ final class FortuneBonusService
      * and assign FCFS positions in the matrix. Idempotent for already-enrolled
      * participants.
      *
-     * @return array{enrolled: int, skipped_ineligible: int}
+     * REFUSED ONCE THE MONTH IS FROZEN. The pool row fixes total_points and
+     * point_value_paise for the month; a participant enrolled afterwards would
+     * be credited at that frozen value on points that were never in the frozen
+     * denominator, so the month would pay out more than pool_paise. The month
+     * is closed to new entrants the moment runForMonth() freezes it.
+     *
+     * @return array{enrolled: int, skipped_ineligible: int, refused_pool_frozen: bool}
      */
     public function enrollEligible(Carbon $month): array
     {
         $monthStart = $month->copy()->startOfMonth()->toDateString();
         $monthEnd = $month->copy()->endOfMonth()->toDateString();
+
+        if (FortuneMonthlyPool::where('month_start', $monthStart)->exists()) {
+            Log::warning('fortune.enroll.refused_pool_frozen', [
+                'month_start' => $monthStart,
+                'reason' => 'The month\'s pool economics are already frozen; enrolling now would credit points outside the frozen denominator and overspend the pool.',
+            ]);
+
+            return [
+                'enrolled' => 0,
+                'skipped_ineligible' => 0,
+                'refused_pool_frozen' => true,
+            ];
+        }
 
         // First GSB credit date per distributor in the month.
         $firstGsbDates = $this->buildFirstGsbDates($monthStart, $monthEnd);
@@ -93,8 +112,8 @@ final class FortuneBonusService
         // Personal BV (accrual) per distributor in the month.
         $personalBvMap = $this->buildPersonalBvMap($monthStart, $monthEnd);
 
-        // Lifetime personal BV (accrual) per distributor — the non_ranked title
-        // gate, and never month-bounded.
+        // Lifetime personal BV (signed net) per distributor — the non_ranked
+        // title gate, and never month-bounded.
         $lifetimeBvMap = $this->buildLifetimeBvMap();
 
         // Distributors whose registration falls in this very month: they are
@@ -198,6 +217,7 @@ final class FortuneBonusService
         return [
             'enrolled' => $enrolled,
             'skipped_ineligible' => count($firstGsbDates) - $enrolled,
+            'refused_pool_frozen' => false,
         ];
     }
 
@@ -506,15 +526,21 @@ final class FortuneBonusService
     }
 
     /**
-     * Map distributor_id → LIFETIME personal BV accrued (paise), never
-     * month-bounded — the basis of the personal-purchase title.
+     * Map distributor_id → LIFETIME personal BV (paise), never month-bounded —
+     * the basis of the personal-purchase title.
+     *
+     * SIGNED NET over every entry type, matching the canonical definition in
+     * BvLedgerService::totalPersonalBvPaise() that the GSB income gate uses: a
+     * reversal (cancelled or refunded order) must pull the title back down, so
+     * filtering to `accrual` would leave a distributor holding a title on BV
+     * that no longer exists. This is the same figure, batched into one grouped
+     * query rather than a per-distributor service call.
      *
      * @return array<int, int>
      */
     private function buildLifetimeBvMap(): array
     {
         $rows = DB::table('bv_ledger_entries')
-            ->where('type', 'accrual')
             ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
             ->groupBy('distributor_id')
             ->get();

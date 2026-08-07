@@ -40,6 +40,12 @@ final class FortuneBonusEnrollCommand extends Command
 
         $result = $this->fortuneBonus->enrollEligible($month);
 
+        if ($result['refused_pool_frozen']) {
+            $this->warn("Refused — the {$month->format('F Y')} Fortune pool is already frozen. Nobody can be enrolled after the month's point value is fixed; the month is closed.");
+
+            return self::SUCCESS;
+        }
+
         $this->line('Enrolled: '.$result['enrolled']);
         $this->line('Skipped (ineligible or already enrolled): '.$result['skipped_ineligible']);
 

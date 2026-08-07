@@ -74,6 +74,21 @@ function seedCompanyBvForFortunePool(int $bvPaise, string $date = '2026-06-15'):
     seedPersonalBvForFortune($fakeDistributorId++, $bvPaise, $date);
 }
 
+/** A BV reversal (cancelled or refunded order) — the negative half of the ledger. */
+function seedBvReversalForFortune(int $distributorId, int $bvPaise, string $date = '2026-05-20'): void
+{
+    static $fakeOrderId = 700000;
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'order_id' => $fakeOrderId++,
+        'bv_paise' => -abs($bvPaise),
+        'type' => 'reversal',
+        'effective_at' => $date.' 12:00:00',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+}
+
 function seedRankQualForFortune(int $distributorId, int $rank, string $monthStart): void
 {
     DB::table('rank_qualifications')->insert([
@@ -322,6 +337,55 @@ it('assigns positions in FCFS order by first GSB credit date', function (): void
     expect($p2->position)->toBe(1);
     expect($p3->position)->toBe(2);
     expect($p1->position)->toBe(3);
+});
+
+it('drops the non-ranked title gate when a reversal wipes the lifetime BV that earned it', function (): void {
+    $dist = registerDistributorForFortune('2026-05-02'); // month 2 — not a new joiner
+    $month = Carbon::parse('2026-06-01');
+
+    // 3,000 BV lifetime earns the Retailer title, then the order is refunded.
+    seedTitleBvForFortune($dist->id, '2026-05-10');
+    seedBvReversalForFortune($dist->id, 300_000, '2026-05-20');
+
+    // The month's own gates are still satisfied: 600 BV in June and a slab.
+    seedPersonalBvForFortune($dist->id, 60_000);
+    seedGsbCredit($dist->id, '2026-06-05');
+
+    $svc = app(FortuneBonusService::class);
+
+    // Lifetime BV is the SIGNED NET sum, so the title is gone with the refund.
+    expect($svc->enrollEligible($month)['enrolled'])->toBe(0);
+    expect(FortuneBonusParticipant::count())->toBe(0);
+
+    // Re-earning the BV restores the title and, with it, enrolment.
+    seedTitleBvForFortune($dist->id, '2026-05-25');
+
+    expect($svc->enrollEligible($month)['enrolled'])->toBe(1);
+});
+
+it('refuses to enroll anyone once the month\'s pool is frozen', function (): void {
+    $month = Carbon::parse('2026-06-01');
+
+    // A two-person matrix, run and therefore frozen.
+    placeFortuneParticipant(Distributor::factory()->create()->id, 1);
+    placeFortuneParticipant(Distributor::factory()->create()->id, 2);
+    seedCompanyBvForFortunePool(100_000_000);
+
+    app(FortuneBonusService::class)->runForMonth($month);
+    expect(FortuneMonthlyPool::where('month_start', '2026-06-01')->exists())->toBeTrue();
+
+    // A distributor who would otherwise qualify cleanly for the same month.
+    $late = Distributor::factory()->create();
+    seedTitleBvForFortune($late->id);
+    seedPersonalBvForFortune($late->id, 60_000);
+    seedGsbCredit($late->id, '2026-06-05');
+
+    $result = app(FortuneBonusService::class)->enrollEligible($month);
+
+    expect($result['refused_pool_frozen'])->toBeTrue();
+    expect($result['enrolled'])->toBe(0);
+    expect(FortuneBonusParticipant::where('month_start', '2026-06-01')->count())->toBe(2);
+    expect(FortuneBonusParticipant::where('distributor_id', $late->id)->exists())->toBeFalse();
 });
 
 // ── Points + pool ───────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
@@ -30,6 +31,7 @@ final class AdminFortuneBonusCalculationController extends Controller
 
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
+        private readonly CompensationPlanSettingsService $plan,
     ) {}
 
     public function index(Request $request): View
@@ -96,7 +98,7 @@ final class AdminFortuneBonusCalculationController extends Controller
                 $this->csvStr($areteCenterMap[$row->distributor_id] ?? ''),
                 $this->csvStr($row->full_name ?? ''),
                 $this->csvStr($title),
-                $row->rank ?? '',
+                $this->csvStr($row->rank_name ?? ''),
                 $row->first_gsb_date !== null ? Carbon::parse($row->first_gsb_date)->format('d/m/y') : '',
                 $row->matrix_level,
                 $row->points ?? '',
@@ -156,6 +158,12 @@ final class AdminFortuneBonusCalculationController extends Controller
     }
 
     /**
+     * Lifetime personal BV per distributor — the SIGNED NET sum over every
+     * entry type, the canonical definition used by
+     * BvLedgerService::totalPersonalBvPaise() and by the Fortune title gate in
+     * FortuneBonusService. Filtering to `accrual` would show a Title here that
+     * the engine no longer grants once a reversal has landed.
+     *
      * @param  int[]  $distributorIds
      * @return array<int, int> distributor_id → total personal BV paise
      */
@@ -167,7 +175,6 @@ final class AdminFortuneBonusCalculationController extends Controller
 
         return DB::table('bv_ledger_entries')
             ->whereIn('distributor_id', $distributorIds)
-            ->where('type', 'accrual')
             ->groupBy('distributor_id')
             ->pluck(DB::raw('SUM(bv_paise)'), 'distributor_id')
             ->map(fn ($v) => (int) $v)
@@ -199,9 +206,12 @@ final class AdminFortuneBonusCalculationController extends Controller
     }
 
     /**
-     * Set `rank` on every row to the highest rank that distributor held in that
-     * row's month (null when they held none). One grouped query for the whole
-     * page — the report spans months, so the lookup is keyed by both.
+     * Set `rank` (number) and `rank_name` on every row from the highest rank
+     * that distributor held in that row's month — both null when they held
+     * none. The report shows the NAME (KP's mock: "SILVER", "PEARL"), read from
+     * the admin-editable rank ladder rather than hardcoded. One grouped query
+     * for the whole page — the report spans months, so the lookup is keyed by
+     * both.
      *
      * @param  Collection<int, \stdClass>  $rows
      */
@@ -212,6 +222,8 @@ final class AdminFortuneBonusCalculationController extends Controller
         if ($distributorIds === []) {
             return;
         }
+
+        $rankNames = $this->plan->rankNames();
 
         $months = $rows
             ->pluck('month_start')
@@ -239,6 +251,9 @@ final class AdminFortuneBonusCalculationController extends Controller
         foreach ($rows as $row) {
             $key = (int) $row->distributor_id.'|'.Carbon::parse((string) $row->month_start)->toDateString();
             $row->rank = $map[$key] ?? null;
+            $row->rank_name = $row->rank !== null && isset($rankNames[$row->rank])
+                ? mb_strtoupper($rankNames[$row->rank])
+                : null;
         }
     }
 }

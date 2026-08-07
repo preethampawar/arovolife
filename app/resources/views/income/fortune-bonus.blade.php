@@ -9,7 +9,7 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Fortune Bonus is a monthly matrix reward. Eligible distributors are placed in a 3×9 matrix in order of GSB activity, and each month you earn FB points from the enrolled distributors below you in that matrix. Your bonus is your FB points multiplied by the month's point value. No admin charge applies; 5% TDS is deducted. Credited on the 9th of the following month. Every figure below is a record of a completed month.
+        The Fortune Bonus is a monthly matrix reward. Eligible distributors are placed in a 3×9 matrix in order of GSB activity, and each month you earn FB points from the enrolled distributors below you in that matrix. Your bonus is your FB points multiplied by the month's point value. A 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Credited on the 9th of the following month. Every figure below is a record of a completed month.
     </div>
 
     {{-- Summary cards --}}

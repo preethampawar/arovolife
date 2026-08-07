@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Fortune Bonus is 5% of the month's company-wide BV, shared out on FB points. Eligible distributors are placed first-come, first-served into a monthly 3×9 forced matrix based on GSB activity, and each participant earns points from the enrolled distributors below them (9/9/9/8/7/6/5/4/3 per member at levels 1–9). The point value is the month's pool divided by everyone's total points, floored to the whole rupee; pool, total points and point value are frozen before any credit and never recomputed. No admin charge applies; 5% TDS is deducted. Runs automatically on the 9th via <code class="font-mono bg-blue-100 px-1 rounded">php artisan fortune:monthly-run</code>.
+    The Fortune Bonus is 5% of the month's company-wide BV, shared out on FB points. Eligible distributors are placed first-come, first-served into a monthly 3×9 forced matrix based on GSB activity, and each participant earns points from the enrolled distributors below them (9/9/9/8/7/6/5/4/3 per member at levels 1–9). The point value is the month's pool divided by everyone's total points, floored to the whole rupee; pool, total points and point value are frozen before any credit and never recomputed. A 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Runs automatically on the 9th via <code class="font-mono bg-blue-100 px-1 rounded">php artisan fortune:monthly-run</code>.
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

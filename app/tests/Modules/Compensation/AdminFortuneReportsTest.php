@@ -128,7 +128,9 @@ it("renders KP's FB calculation columns with points, value and income", function
         ->assertSee('₹72.00')     // 36 points × ₹2
         ->assertSee('—');         // legacy row's points/value, and the ADC center
 
-    // Rank comes from the month's qualification, not the enrolment tier.
+    // Rank comes from the month's qualification, not the enrolment tier, and
+    // renders the ladder's NAME rather than the bare number (KP's mock).
+    $res->assertSee('PEARL PARTNER');
     $res->assertDontSee('non_ranked');
 });
 
@@ -160,6 +162,14 @@ it('exports the FB calculation report with the points columns ungrouped', functi
     makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01');
     makeFbResult($legacy, null, null, 5_100, FortuneBonusResult::STATUS_CREDITED, '2026-07-01', position: 2);
 
+    RankQualification::create([
+        'distributor_id' => $alice,
+        'rank_number' => 1,
+        'month_start' => '2026-07-01',
+        'occurrence_in_month' => 1,
+        'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+
     $res = $this->actingAs(fbReportAdmin())
         ->get(route('admin.compensation.fb-calculation.export'));
 
@@ -167,8 +177,8 @@ it('exports the FB calculation report with the points columns ungrouped', functi
     $csv = $res->getContent();
 
     expect($csv)->toContain('SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Status');
-    expect($csv)->toContain(',14/07/26,0,36,2.00,72.00,');   // points × value → income
-    expect($csv)->toContain(',,0,,,51.00,');                  // legacy row: no date, points or value
+    expect($csv)->toContain('"SILVER PARTNER",14/07/26,0,36,2.00,72.00,'); // rank name, then points × value → income
+    expect($csv)->toContain(',"",,0,,,51.00,');                             // legacy row: no rank, date, points or value
 });
 
 it('surfaces the frozen fortune pool on the month screen', function () {

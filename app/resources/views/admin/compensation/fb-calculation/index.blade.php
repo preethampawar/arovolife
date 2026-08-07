@@ -107,9 +107,9 @@
                         @endif
                     </td>
                     <td class="px-3 py-2 text-center">
-                        @if($row->rank !== null)
-                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 font-bold text-[11px]">
-                            {{ $row->rank }}
+                        @if($row->rank_name !== null)
+                        <span class="inline-flex px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold text-[10px] whitespace-nowrap">
+                            {{ $row->rank_name }}
                         </span>
                         @else
                         <span class="text-gray-400">—</span>

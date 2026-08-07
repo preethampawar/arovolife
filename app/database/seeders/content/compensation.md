@@ -206,7 +206,7 @@ Non-cash awards are not subject to the administrative charge. Applicable tax on 
 
 ## 9. Payment
 
-- **Cadence:** GSB and MSB are calculated daily and paid weekly, every Tuesday. Monthly bonuses are paid on the 8th of the following month.
+- **Cadence:** GSB and MSB are calculated daily and paid weekly, every Tuesday. Monthly bonuses are calculated and credited to your account over the first nine days of the following month — Growth Booster on the 2nd, Rank Bonus and Arete Development Centre Bonus on the 8th, Fortune Bonus on the 9th — and are then paid out together in a single monthly transfer run on the 9th.
 - **Minimum payment:** ₹100. Balances below this are carried to the next payout run and are not forfeited.
 - **Bank transfer requires all of:** personal BV of at least 3,000; active, verified KYC; and verified bank details on file. Until all three are met, income accrues in the web account and is not swept or forfeited.
 
