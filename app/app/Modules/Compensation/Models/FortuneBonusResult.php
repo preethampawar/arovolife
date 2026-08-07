@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
  * @property string $month_start
  * @property int $position
  * @property int $matrix_level
+ * @property int|null $points
+ * @property int|null $point_value_paise
  * @property int $gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
@@ -35,6 +37,8 @@ final class FortuneBonusResult extends Model
         'month_start',
         'position',
         'matrix_level',
+        'points',
+        'point_value_paise',
         'gross_paise',
         'admin_charge_paise',
         'tds_paise',
@@ -48,6 +52,8 @@ final class FortuneBonusResult extends Model
         return [
             'position' => 'integer',
             'matrix_level' => 'integer',
+            'points' => 'integer',
+            'point_value_paise' => 'integer',
             'gross_paise' => 'integer',
             'admin_charge_paise' => 'integer',
             'tds_paise' => 'integer',

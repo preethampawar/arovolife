@@ -64,7 +64,7 @@ final class AdminFortuneBonusController extends Controller
             ->get()
             ->keyBy('distributor_id');
 
-        $levelBonusPaise = app(CompensationPlanSettingsService::class)->fortuneLevelBonuses();
+        $levelBonusPaise = app(CompensationPlanSettingsService::class)->fortuneLevelPoints();
 
         return view('admin.compensation.fortune-bonus.show', compact(
             'rows', 'levelSummaries', 'date', 'resultsByDistributor', 'levelBonusPaise',

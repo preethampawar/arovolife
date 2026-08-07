@@ -21,9 +21,9 @@ use Illuminate\Support\Carbon;
  */
 final class FortuneBonusParticipant extends Model
 {
-    // Level bonuses live in the admin-editable `fortune_bonus_levels` table and
-    // the per-tier BV/slab gates in `fortune_bonus_tiers` — read them through
-    // CompensationPlanSettingsService, not constants on this model.
+    // Per-level FB points live in the admin-editable `fortune_bonus_levels`
+    // table and the per-tier BV/slab gates in `fortune_bonus_tiers` — read them
+    // through CompensationPlanSettingsService, not constants on this model.
 
     protected $fillable = [
         'distributor_id',
@@ -48,6 +48,24 @@ final class FortuneBonusParticipant extends Model
     public function distributor(): BelongsTo
     {
         return $this->belongsTo(Distributor::class);
+    }
+
+    /**
+     * The 1-indexed position of the node directly above $position in the 3-wide
+     * forced matrix, or null for the root (position 1) and any invalid input.
+     *
+     * The matrix is filled sequentially, so the three children of node k sit at
+     * positions 3k−1, 3k and 3k+1 — inverting that gives parent(p) =
+     * intdiv(p + 1, 3). This is the exact inverse of the level arithmetic in
+     * {@see self::levelFromPosition()}: a parent always sits one level up.
+     */
+    public static function parentPosition(int $position): ?int
+    {
+        if ($position <= 1) {
+            return null;
+        }
+
+        return intdiv($position + 1, 3);
     }
 
     /**

@@ -555,6 +555,16 @@ final class AdminSettingsController extends Controller
                 'max' => 1_000_000_000,
                 'default' => '60000',
             ],
+            'comp.fortune.pool_rate_bp' => [
+                'group' => 'compensation_plan',
+                'label' => 'Fortune Bonus pool rate (basis points)',
+                'description' => 'Share of the month\'s company-wide BV funding the Fortune Bonus pool. The pool is divided by the month\'s total FB points to give one point value for every participant, floored to whole rupees. 500 = 5%.',
+                'impact' => 'Changes what every Fortune Bonus participant is paid. Takes effect from the next monthly run; months already frozen in fortune_monthly_pools are untouched.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '500',
+            ],
             'comp.fortune.exclude_rank_6' => [
                 'group' => 'compensation_plan',
                 'label' => 'Fortune Bonus: exclude Rank 6 (Blue Diamond)',

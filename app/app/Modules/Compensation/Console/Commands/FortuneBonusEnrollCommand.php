@@ -13,7 +13,7 @@ use Laravel\Pennant\Feature;
 final class FortuneBonusEnrollCommand extends Command
 {
     protected $signature = 'fortune:enroll-eligible
-                            {--month= : Month to enroll for (YYYY-MM, defaults to current month)}';
+                            {--month= : Month to enroll for (YYYY-MM, defaults to previous month)}';
 
     protected $description = 'Enroll eligible distributors into the Fortune Bonus matrix (FCFS)';
 
@@ -30,9 +30,11 @@ final class FortuneBonusEnrollCommand extends Command
             return self::SUCCESS;
         }
 
+        // Defaults to the PREVIOUS month, matching fortune:monthly-run: both
+        // are scheduled on the 9th and must always act on the same month.
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
-            : Carbon::today()->startOfMonth();
+            : Carbon::today()->startOfMonth()->subMonth();
 
         $this->info("Fortune Bonus enrollment — {$month->format('F Y')}");
 

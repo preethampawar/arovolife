@@ -39,9 +39,12 @@ final class FortuneBonusRunCommand extends Command
 
         $result = $this->fortuneBonus->runForMonth($month);
 
+        $this->line('Pool: ₹'.Number::format($result['pool_paise'] / 100, 2));
+        $this->line('Total FB points: '.Number::format($result['total_points']));
+        $this->line('Point value: ₹'.Number::format($result['point_value_paise'] / 100, 2));
         $this->line('Credited: '.$result['credited']);
-        $this->line('Skipped (level 9, no bonus): '.$result['skipped_no_bonus']);
-        $this->line('Total net credited: ₹'.Number::format($result['total_net_paise'] / 100, 2));
+        $this->line('Skipped (no points earned): '.$result['skipped_zero_points']);
+        $this->line('Total credited: ₹'.Number::format($result['total_net_paise'] / 100, 2));
 
         return self::SUCCESS;
     }

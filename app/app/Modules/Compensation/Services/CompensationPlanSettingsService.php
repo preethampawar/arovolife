@@ -116,6 +116,11 @@ final class CompensationPlanSettingsService
         'comp.repurchase.non_ranked_bv_paise' => 60_000,
         'payout.min_threshold_paise' => 10_000,
         'payout.neft_min_bv_paise' => 300_000,
+        // Monthly Fortune Bonus pool (KP 2026-08-07): share of the month's
+        // company-wide BV (the same signed bv_ledger_entries sum as every other
+        // pool) divided by the month's total FB points. 500 bp = 5%, which
+        // supersedes the June envelope's 6% Fortune share.
+        'comp.fortune.pool_rate_bp' => 500,
         // Fortune Bonus excludes ranks 6–9 by default (KP-confirmed).
         'comp.fortune.exclude_rank_6' => true,
         'comp.fortune.exclude_rank_7' => true,
@@ -135,8 +140,8 @@ final class CompensationPlanSettingsService
     /** @var array<int, list<array{item: string, worth_paise: int}>>|null lifetime award items keyed by rank. */
     private ?array $lifetimeAwardCache = null;
 
-    /** @var array<int, int>|null fortune level → bonus_paise. */
-    private ?array $fortuneLevelCache = null;
+    /** @var array<int, int>|null fortune matrix depth → points_per_member. */
+    private ?array $fortunePointsCache = null;
 
     /** @var array<string, array{bv_required_paise: int, slabs_required: int}>|null */
     private ?array $fortuneTierCache = null;
@@ -638,26 +643,46 @@ final class CompensationPlanSettingsService
 
     // ── Fortune Bonus ────────────────────────────────────────────────────────
 
-    public function fortuneLevelBonusPaise(int $level): int
+    /**
+     * Share of the month's company-wide BV funding the Fortune Bonus pool
+     * (KP 2026-08-07: 5%, superseding the June envelope's 6% Fortune share).
+     */
+    public function fortunePoolRateBp(): int
     {
-        return $this->fortuneLevelBonuses()[$level] ?? 0;
+        return $this->scalarInt('comp.fortune.pool_rate_bp');
     }
 
     /**
-     * All Fortune matrix level → bonus_paise (display convenience for admin).
+     * FB points a participant earns for one enrolled distributor sitting
+     * $depth levels below them in the month's Fortune matrix (KP 2026-08-07:
+     * 9/9/9/8/7/6/5/4/3 for depths 1–9). Depth 0 — yourself — and anything
+     * deeper than the 9-level matrix are worth nothing.
+     */
+    public function fortunePointsForDepth(int $depth): int
+    {
+        if ($depth <= 0 || $depth > 9) {
+            return 0;
+        }
+
+        return $this->fortuneLevelPoints()[$depth] ?? 0;
+    }
+
+    /**
+     * All Fortune matrix depth → points_per_member (display convenience for
+     * admin; the engine reads it through fortunePointsForDepth()).
      *
      * @return array<int, int>
      */
-    public function fortuneLevelBonuses(): array
+    public function fortuneLevelPoints(): array
     {
-        if ($this->fortuneLevelCache === null) {
-            $this->fortuneLevelCache = [];
+        if ($this->fortunePointsCache === null) {
+            $this->fortunePointsCache = [];
             foreach (DB::table('fortune_bonus_levels')->orderBy('level')->get() as $row) {
-                $this->fortuneLevelCache[(int) $row->level] = (int) $row->bonus_paise;
+                $this->fortunePointsCache[(int) $row->level] = (int) $row->points_per_member;
             }
         }
 
-        return $this->fortuneLevelCache;
+        return $this->fortunePointsCache;
     }
 
     /** @return array{bv_required_paise: int, slabs_required: int} */

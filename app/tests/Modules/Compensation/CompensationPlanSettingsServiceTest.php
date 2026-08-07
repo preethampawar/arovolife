@@ -97,8 +97,12 @@ it('exposes the seeded GSB slab ladder', function () {
 
     expect($plan->rankPoolPct(1))->toBe(7.0);
     expect($plan->rankName(9))->toBe('Elite Diamond Partner');
-    expect($plan->fortuneLevelBonusPaise(0))->toBe(339);
-    expect($plan->fortuneTier('rank_3')['slabs_required'])->toBe(13); // KP 2026-06-28: 7/10/13/16/19
+    expect($plan->fortunePointsForDepth(1))->toBe(9); // KP 2026-08-07: 9/9/9/8/7/6/5/4/3
+    expect($plan->fortunePointsForDepth(9))->toBe(3);
+    expect($plan->fortunePointsForDepth(0))->toBe(0); // you earn nothing from yourself
+    expect($plan->fortunePointsForDepth(10))->toBe(0); // the matrix is 9 levels deep
+    expect($plan->fortunePoolRateBp())->toBe(500); // 5% of the month's company BV
+    expect($plan->fortuneTier('rank_3')['slabs_required'])->toBe(14); // KP 2026-08-07: 8/11/14/17/20
 });
 
 it('builds the slab tooltip from the live ladder, not from written-out numbers', function () {

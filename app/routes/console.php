@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
@@ -59,6 +60,16 @@ Schedule::command(GbbMonthlyRunCommand::class)
 // Rank Bonus runs on the 8th of each month at 08:00 IST.
 Schedule::command(RankBonusRunCommand::class)
     ->monthlyOn(8, '08:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Fortune Bonus enrolment runs on the 9th at 08:45 IST, immediately before the
+// 09:00 payout run and for the same (previous) month. A single batched pass is
+// what keeps the FCFS matrix deterministic: every eligible distributor is
+// placed in one go, ordered by their first GSB credit date.
+Schedule::command(FortuneBonusEnrollCommand::class)
+    ->monthlyOn(9, '08:45')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
