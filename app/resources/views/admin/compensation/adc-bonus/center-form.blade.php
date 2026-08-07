@@ -1,6 +1,13 @@
 @extends('admin.layouts.admin')
-@section('title', $center ? 'Edit Center' : 'Add Center')
-@section('heading', $center ? 'Edit Center' : 'Add Arete Development Center')
+@php
+    $center = $center ?? null;
+    $isEdit = $center !== null;
+    $action = $isEdit
+        ? route('admin.compensation.adc-bonus.centers.update', $center)
+        : route('admin.compensation.adc-bonus.centers.store');
+@endphp
+@section('title', $isEdit ? 'Edit Center' : 'Add Center')
+@section('heading', $isEdit ? 'Edit Arete Development Center' : 'Add Arete Development Center')
 
 @section('content')
 
@@ -10,11 +17,16 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-xl">
     <div class="mb-4 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-        Add a company-approved Arete Development Center and assign it to the distributor who will earn the ADC Bonus.
+        @if($isEdit)
+            Update this company-approved Arete Development Center. Every change is recorded in the audit log.
+        @else
+            Add a company-approved Arete Development Center and assign it to the distributor who will earn the ADC Bonus.
+        @endif
     </div>
 
-    <form method="POST" action="{{ route('admin.compensation.adc-bonus.centers.store') }}" class="space-y-4">
+    <form method="POST" action="{{ $action }}" class="space-y-4">
         @csrf
+        @if($isEdit) @method('PUT') @endif
 
         @if($errors->any())
         <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -28,26 +40,26 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Center name <span class="text-red-500">*</span> <x-help-tip text="Name of the company-approved Arete Development Center." /></label>
-            <input type="text" name="name" value="{{ old('name') }}" required maxlength="200"
+            <input type="text" name="name" value="{{ old('name', $center->name ?? '') }}" required maxlength="200"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Location <x-help-tip text="City or address of the center. Optional." /></label>
-            <input type="text" name="location" value="{{ old('location') }}" maxlength="300"
+            <input type="text" name="location" value="{{ old('location', $center->location ?? '') }}" maxlength="300"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Pincode <x-help-tip text="6-digit postal code of the center. Used to search the ADC monthly calculation report by area. Optional." /></label>
-            <input type="text" name="pincode" value="{{ old('pincode') }}" maxlength="6" inputmode="numeric"
+            <input type="text" name="pincode" value="{{ old('pincode', $center->pincode ?? '') }}" maxlength="6" inputmode="numeric"
                    placeholder="e.g. 502001"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">District <x-help-tip text="District the center operates in. Used to search the ADC monthly calculation report by area. Optional." /></label>
-            <input type="text" name="district" value="{{ old('district') }}" maxlength="100"
+            <input type="text" name="district" value="{{ old('district', $center->district ?? '') }}" maxlength="100"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
@@ -57,7 +69,7 @@
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
                 <option value="">— Select state —</option>
                 @foreach(\App\Modules\Shared\Support\IndianStates::all() as $stateName)
-                <option value="{{ $stateName }}" {{ old('state') === $stateName ? 'selected' : '' }}>{{ $stateName }}</option>
+                <option value="{{ $stateName }}" @selected(old('state', $center->state ?? '') === $stateName)>{{ $stateName }}</option>
                 @endforeach
             </select>
         </div>
@@ -67,26 +79,26 @@
                 Assigned distributor ADN <span class="text-red-500">*</span>
                 <x-help-tip text="Enter the ADN of the distributor who will receive the ADC Bonus for this center." />
             </label>
-            <input type="text" name="assigned_adn" value="{{ old('assigned_adn') }}" required
+            <input type="text" name="assigned_adn" value="{{ old('assigned_adn', $center?->assignedDistributor?->adn ?? '') }}" required
                    placeholder="e.g. ARV1000001"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Approval date <x-help-tip text="Date the company approved this center. Optional." /></label>
-            <input type="date" name="approved_at" value="{{ old('approved_at') }}"
+            <input type="date" name="approved_at" value="{{ old('approved_at', $center->approved_at ?? '') }}"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Notes <x-help-tip text="Internal notes about this center. Optional." /></label>
             <textarea name="notes" rows="3"
-                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">{{ old('notes') }}</textarea>
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">{{ old('notes', $center->notes ?? '') }}</textarea>
         </div>
 
         <div class="pt-2 flex gap-3">
             <button type="submit" class="px-5 py-2 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">
-                Save Center
+                {{ $isEdit ? 'Edit Center' : 'Add Center' }}
             </button>
             <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}"
                class="px-5 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors">

@@ -413,6 +413,8 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::get('/centers', [AdminAdcBonusController::class, 'centersIndex'])->name('centers.index');
             Route::get('/centers/create', [AdminAdcBonusController::class, 'centersCreate'])->name('centers.create');
             Route::post('/centers', [AdminAdcBonusController::class, 'centersStore'])->name('centers.store');
+            Route::get('/centers/{center}/edit', [AdminAdcBonusController::class, 'centersEdit'])->name('centers.edit')->whereNumber('center');
+            Route::put('/centers/{center}', [AdminAdcBonusController::class, 'centersUpdate'])->name('centers.update')->whereNumber('center');
             Route::post('/centers/{center}/members', [AdminAdcBonusController::class, 'centersAddMember'])->name('centers.add-member')->whereNumber('center');
             Route::get('/{month}', [AdminAdcBonusController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
         });

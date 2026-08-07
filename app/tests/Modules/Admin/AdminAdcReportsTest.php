@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\AdcBonusResult;
 use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -243,4 +244,116 @@ it('rejects an unknown status filter', function (): void {
     $this->actingAs(adcReportAdmin())
         ->get(route('admin.compensation.adc-calculation.index', ['status' => 'nonsense']))
         ->assertSessionHasErrors('status');
+});
+
+it('edits a centre and audit-logs the before and after', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+    $newAssignee = adcReportDistributor('ADCNEW', 'Nandini');
+
+    $center = AreteCenter::create([
+        'name' => 'Medak Center',
+        'location' => 'Main Road',
+        'pincode' => '502001',
+        'district' => 'Medak',
+        'state' => 'Telangana',
+        'assigned_distributor_id' => $assignee->id,
+        'status' => AreteCenter::STATUS_INACTIVE,
+        'approved_at' => null,
+        'notes' => null,
+    ]);
+
+    $this->actingAs(adcReportAdmin())
+        ->put(route('admin.compensation.adc-bonus.centers.update', $center), [
+            'name' => 'Sangareddy Center',
+            'location' => 'Ring Road',
+            'pincode' => '502285',
+            'district' => 'Sangareddy',
+            'state' => 'Telangana',
+            'assigned_adn' => $newAssignee->adn,
+        ])
+        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+
+    $center->refresh();
+    expect($center->name)->toBe('Sangareddy Center')
+        ->and($center->pincode)->toBe('502285')
+        ->and($center->district)->toBe('Sangareddy')
+        ->and($center->assigned_distributor_id)->toBe($newAssignee->id)
+        // Status is not on the form, so an edit must leave it alone.
+        ->and($center->status)->toBe(AreteCenter::STATUS_INACTIVE);
+
+    $audit = AuditLog::where('action', 'adc.center.updated')
+        ->where('subject_id', $center->id)
+        ->firstOrFail();
+    expect($audit->details['before']['name'])->toBe('Medak Center')
+        ->and($audit->details['before']['assigned_distributor_id'])->toBe($assignee->id)
+        ->and($audit->details['after']['name'])->toBe('Sangareddy Center')
+        ->and($audit->details['after']['assigned_distributor_id'])->toBe($newAssignee->id);
+});
+
+it('audit-logs a centre creation', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+
+    $this->actingAs(adcReportAdmin())
+        ->post(route('admin.compensation.adc-bonus.centers.store'), [
+            'name' => 'Medak Center',
+            'pincode' => '502001',
+            'assigned_adn' => $assignee->adn,
+        ])
+        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+
+    $center = AreteCenter::where('name', 'Medak Center')->firstOrFail();
+    $audit = AuditLog::where('action', 'adc.center.created')
+        ->where('subject_id', $center->id)
+        ->firstOrFail();
+
+    expect($audit->details['before'])->toBeNull()
+        ->and($audit->details['after']['name'])->toBe('Medak Center')
+        ->and($audit->details['after']['pincode'])->toBe('502001')
+        ->and($audit->details['after']['status'])->toBe(AreteCenter::STATUS_ACTIVE);
+});
+
+it('prefills the edit form with the stored centre and preselects its state', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+
+    $center = AreteCenter::create([
+        'name' => 'Medak Center',
+        'location' => 'Main Road',
+        'pincode' => '502001',
+        'district' => 'Medak',
+        'state' => 'Telangana',
+        'assigned_distributor_id' => $assignee->id,
+        'status' => AreteCenter::STATUS_ACTIVE,
+        'approved_at' => null,
+        'notes' => null,
+    ]);
+
+    $this->actingAs(adcReportAdmin())
+        ->get(route('admin.compensation.adc-bonus.centers.edit', $center))
+        ->assertOk()
+        ->assertSee('Edit Center')
+        ->assertSee('value="Medak Center"', false)
+        ->assertSee('value="502001"', false)
+        ->assertSee('value="'.$assignee->adn.'"', false)
+        ->assertSee('<option value="Telangana" selected>Telangana</option>', false);
+});
+
+it('links each centre row to its edit form', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+
+    $center = AreteCenter::create([
+        'name' => 'Medak Center',
+        'location' => null,
+        'pincode' => '502001',
+        'district' => null,
+        'state' => 'Telangana',
+        'assigned_distributor_id' => $assignee->id,
+        'status' => AreteCenter::STATUS_ACTIVE,
+        'approved_at' => null,
+        'notes' => null,
+    ]);
+
+    $this->actingAs(adcReportAdmin())
+        ->get(route('admin.compensation.adc-bonus.centers.index'))
+        ->assertOk()
+        ->assertSee(route('admin.compensation.adc-bonus.centers.edit', $center), false);
 });
