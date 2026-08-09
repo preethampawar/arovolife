@@ -298,33 +298,55 @@
 @if($activeTab === 'fortune')
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-3">Fortune Bonus — matrix levels</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <p class="text-xs text-gray-500 mb-3">Points per member apply by <strong>relative depth</strong> below a participant; payout mode and cap apply to the <strong>absolute matrix level</strong> in the monthly cascade. Caps include the guaranteed minimum commission (edited under Settings → Compensation plan).</p>
+    <div class="grid grid-cols-1 gap-3">
         @foreach($fortuneLevels as $row)
         <form method="POST" action="{{ route('admin.compensation.plan-settings.fortune-level.update', $row->level) }}"
               data-editable
               data-confirm="Update Fortune level {{ $row->level }}?"
               data-confirm-title="Confirm: Fortune level {{ $row->level }}"
-              data-confirm-impact="Changes the FB points earned from each downline member at this matrix depth, which changes every participant's share of the monthly pool. Audit-logged; takes effect on the next monthly run."
-              class="rounded-xl border border-gray-200 bg-white p-4 flex items-end gap-3">
+              data-confirm-impact="Changes the FB points earned from each downline member at this depth, and/or the payout mode and cap applied at this matrix level in the cascade — which changes every participant's share of the monthly pool. Audit-logged; takes effect on the next monthly run."
+              class="rounded-xl border border-gray-200 bg-white p-4">
             @csrf
             {{-- Plan values are shown to every console role for monitoring;
                  editing is reserved for platform configuration. A disabled
                  fieldset makes the whole block non-editable and unsubmittable
                  in one place, without touching each input. --}}
             <fieldset class="contents" @disabled(! $canEdit)>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Points per member at level {{ $row->level }} <x-help-tip text="FB points a participant earns for each enrolled distributor sitting this many levels below them in the month's matrix. The rupee value of a point is not set here — it is the month's pool divided by everyone's total points." /></label>
-                <input type="number" name="points_per_member" data-field-label="Points per member at level {{ $row->level }}" value="{{ $row->points_per_member }}" required min="0"
-                       class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                <span class="text-[11px] text-gray-400">{{ \App\Modules\Shared\Support\IndianNumber::format($row->points_per_member) }} pts per member</span>
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-semibold text-gray-700">Level {{ $row->level }}</span>
+                <label class="flex items-center gap-2 text-xs text-gray-600">
+                    <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
+                    Active <x-help-tip text="Marks the level as in force in the ladder. To stop a depth earning points, set its points per member to 0." />
+                </label>
             </div>
-            <label class="flex items-center gap-2 text-xs text-gray-600 pb-2">
-                <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
-                Active <x-help-tip text="Marks the level as in force in the ladder. To stop a level earning, set its points per member to 0." />
-            </label>
-            @if($canEdit)
-            <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
-            @endif
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Points per member (depth {{ $row->level }}) <x-help-tip text="FB points a participant earns for each enrolled distributor sitting this many levels below them in the month's matrix. The rupee value of a point is not set here — each level's value is derived from the pool at the monthly run." /></label>
+                    <input type="number" name="points_per_member" data-field-label="Points per member at depth {{ $row->level }}" value="{{ $row->points_per_member }}" required min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Payout mode (level {{ $row->level }}) <x-help-tip text="How this ABSOLUTE matrix level pays in the monthly cascade. Capped: per-level point value with a per-member ceiling. Residual: shares one point value with the other residual levels over their combined points, no cap. Flat minimum: the guaranteed minimum only." /></label>
+                    <select name="payout_mode" data-field-label="Payout mode at level {{ $row->level }}"
+                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                        <option value="capped" @selected($row->payout_mode === 'capped')>Capped</option>
+                        <option value="residual" @selected($row->payout_mode === 'residual')>Residual</option>
+                        <option value="flat_min" @selected($row->payout_mode === 'flat_min')>Flat minimum</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Cap (paise) <x-help-tip text="Per-member ceiling at this level, in paise, INCLUDING the guaranteed minimum commission (30,00,000 = ₹30,000). Required for capped mode; ignored for residual and flat-minimum levels." /></label>
+                    <input type="number" name="cap_paise" data-field-label="Cap (paise) at level {{ $row->level }}" value="{{ $row->cap_paise }}" min="0"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                    <span class="text-[11px] text-gray-400">{{ $row->cap_paise !== null ? $bv($row->cap_paise) : '—' }}</span>
+                </div>
+                <div class="flex items-end">
+                    @if($canEdit)
+                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    @endif
+                </div>
+            </div>
             </fieldset>
         </form>
         @endforeach

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Events\CompensationPlanChanged;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Contracts\View\View;
@@ -24,6 +25,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class AdminPlanSettingsController extends Controller
 {
+    public function __construct(private readonly CompensationPlanSettingsService $plan) {}
+
     public function index(Request $request): View
     {
         return view('admin.compensation.plan-settings.index', [
@@ -138,16 +141,29 @@ final class AdminPlanSettingsController extends Controller
     {
         abort_unless(DB::table('fortune_bonus_levels')->where('level', $level)->exists(), 404);
 
-        // Points, not rupees: since KP's 2026-08-07 rework a matrix level is
-        // worth N points per downline member, and the rupee value of a point is
-        // derived monthly from the pool (never admin-set).
+        // points_per_member is read by RELATIVE DEPTH (points per downline
+        // member that many levels below); payout_mode and cap_paise apply to
+        // this ABSOLUTE matrix level in the KP 2026-08-09 cascade. The rupee
+        // value of a point is derived monthly from the pool (never admin-set).
         $data = $request->validate([
             'points_per_member' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'payout_mode' => ['required', 'in:capped,residual,flat_min'],
+            'cap_paise' => ['nullable', 'required_if:payout_mode,capped', 'integer', 'min:0', 'max:100000000000'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
+        // The cap INCLUDES the guaranteed minimum, so it can never sit below it.
+        $minCommission = $this->plan->fortuneMinCommissionPaise();
+        if ($data['payout_mode'] === 'capped' && (int) $data['cap_paise'] < $minCommission) {
+            return back()->withErrors([
+                'cap_paise' => 'The cap includes the ₹'.number_format($minCommission / 100, 2).' minimum commission and cannot be below it.',
+            ])->withInput();
+        }
+
         $new = [
             'points_per_member' => (int) $data['points_per_member'],
+            'payout_mode' => $data['payout_mode'],
+            'cap_paise' => $data['payout_mode'] === 'capped' ? (int) $data['cap_paise'] : null,
             'is_active' => $request->boolean('is_active'),
         ];
 

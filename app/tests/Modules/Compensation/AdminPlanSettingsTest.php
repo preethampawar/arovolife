@@ -120,24 +120,31 @@ it('edits the fortune matrix ladder in points per member, not rupees', function 
     $res = $this->actingAs(planAdmin('developer'))
         ->get(route('admin.compensation.plan-settings.index', ['tab' => 'fortune']))
         ->assertOk()
-        ->assertSee('Points per member at level 1')
-        ->assertSee('name="points_per_member"', false);
+        ->assertSee('Points per member (depth 1)')
+        ->assertSee('name="points_per_member"', false)
+        ->assertSee('name="payout_mode"', false)
+        ->assertSee('name="cap_paise"', false);
 
     $res->assertDontSee('name="bonus_paise"', false);
 });
 
-it('persists a fortune level edit as points, writes an audit log, and dispatches the domain event', function () {
+it('persists a fortune level edit — points, payout mode and cap — with audit log and domain event', function () {
     Event::fake([CompensationPlanChanged::class]);
 
     $this->actingAs(planAdmin('developer'))
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.fortune-level.update', 3), [
             'points_per_member' => 11,
+            'payout_mode' => 'capped',
+            'cap_paise' => 2_500_000,
             'is_active' => 1,
         ])
         ->assertRedirect(route('admin.compensation.plan-settings.index'));
 
-    expect((int) DB::table('fortune_bonus_levels')->where('level', 3)->value('points_per_member'))->toBe(11);
+    $row = DB::table('fortune_bonus_levels')->where('level', 3)->first();
+    expect((int) $row->points_per_member)->toBe(11)
+        ->and((string) $row->payout_mode)->toBe('capped')
+        ->and((int) $row->cap_paise)->toBe(2_500_000);
 
     expect(AuditLog::where('action', 'compensation.plan.fortune_level.updated')->exists())->toBeTrue();
     Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'fortune_level' && $e->key === '3');
@@ -150,11 +157,51 @@ it('rejects a fortune level edit without points per member', function () {
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.fortune-level.update', 2), [
             'bonus_paise' => 5_100, // the dropped column — not a substitute
+            'payout_mode' => 'capped',
+            'cap_paise' => 3_000_000,
             'is_active' => 1,
         ])
         ->assertSessionHasErrors('points_per_member');
 
     expect((int) DB::table('fortune_bonus_levels')->where('level', 2)->value('points_per_member'))->toBe($before);
+});
+
+it('rejects capped mode without a cap, and a cap below the minimum commission', function () {
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.fortune-level.update', 2), [
+            'points_per_member' => 8,
+            'payout_mode' => 'capped',
+            'is_active' => 1,
+        ])
+        ->assertSessionHasErrors('cap_paise');
+
+    // The cap includes the ₹30 minimum, so ₹20 is invalid.
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.fortune-level.update', 2), [
+            'points_per_member' => 8,
+            'payout_mode' => 'capped',
+            'cap_paise' => 2000,
+            'is_active' => 1,
+        ])
+        ->assertSessionHasErrors('cap_paise');
+});
+
+it('nulls the cap when a level switches to residual mode', function () {
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.fortune-level.update', 6), [
+            'points_per_member' => 4,
+            'payout_mode' => 'residual',
+            'cap_paise' => 500_000, // sent but ignored for residual
+            'is_active' => 1,
+        ])
+        ->assertRedirect(route('admin.compensation.plan-settings.index'));
+
+    $row = DB::table('fortune_bonus_levels')->where('level', 6)->first();
+    expect((string) $row->payout_mode)->toBe('residual')
+        ->and($row->cap_paise)->toBeNull();
 });
 
 it('rejects a crafted POST that tries to reinstate the MSB score value', function () {
