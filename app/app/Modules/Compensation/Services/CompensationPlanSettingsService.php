@@ -117,6 +117,9 @@ final class CompensationPlanSettingsService
         // pool) divided by the month's total FB points. 500 bp = 5%, which
         // supersedes the June envelope's 6% Fortune share.
         'comp.fortune.pool_rate_bp' => 500,
+        // Minimum commission every Fortune qualifier receives (KP 2026-08-09:
+        // ₹30), reserved off the pool before the level cascade distributes.
+        'comp.fortune.min_commission_paise' => 3000,
         // Fortune Bonus excludes ranks 6–9 by default (KP-confirmed).
         'comp.fortune.exclude_rank_6' => true,
         'comp.fortune.exclude_rank_7' => true,
@@ -138,6 +141,9 @@ final class CompensationPlanSettingsService
 
     /** @var array<int, int>|null fortune matrix depth → points_per_member. */
     private ?array $fortunePointsCache = null;
+
+    /** @var array<int, array{payout_mode: string, cap_paise: ?int, points_per_member: int}>|null fortune cascade config keyed by absolute matrix level. */
+    private ?array $fortuneLevelConfigCache = null;
 
     /** @var array<string, array{bv_required_paise: int, slabs_required: int}>|null */
     private ?array $fortuneTierCache = null;
@@ -626,10 +632,19 @@ final class CompensationPlanSettingsService
     }
 
     /**
+     * The ₹30 minimum commission every Fortune qualifier receives
+     * (KP 2026-08-09), reserved off the pool before the cascade distributes.
+     */
+    public function fortuneMinCommissionPaise(): int
+    {
+        return $this->scalarInt('comp.fortune.min_commission_paise');
+    }
+
+    /**
      * FB points a participant earns for one enrolled distributor sitting
-     * $depth levels below them in the month's Fortune matrix (KP 2026-08-07:
-     * 9/9/9/8/7/6/5/4/3 for depths 1–9). Depth 0 — yourself — and anything
-     * deeper than the 9-level matrix are worth nothing.
+     * $depth levels below them in the month's Fortune matrix (KP 2026-08-09:
+     * 9/8/7/6/5/4/3/2/1 for depths 1–9 — 1L-9P … 9L-1P). Depth 0 — yourself —
+     * and anything deeper than the 9-level matrix are worth nothing.
      */
     public function fortunePointsForDepth(int $depth): int
     {
@@ -656,6 +671,32 @@ final class CompensationPlanSettingsService
         }
 
         return $this->fortunePointsCache;
+    }
+
+    /**
+     * Full Fortune cascade config keyed by ABSOLUTE matrix level 0–9
+     * (KP 2026-08-09): the payout mode ('capped' / 'residual' / 'flat_min')
+     * and, for capped levels, the per-member ceiling in paise. Note the
+     * fortune_bonus_levels table's double duty — points_per_member is read by
+     * relative depth via fortunePointsForDepth(), mode and cap by absolute
+     * level here.
+     *
+     * @return array<int, array{payout_mode: string, cap_paise: ?int, points_per_member: int}>
+     */
+    public function fortuneLevelConfigs(): array
+    {
+        if ($this->fortuneLevelConfigCache === null) {
+            $this->fortuneLevelConfigCache = [];
+            foreach (DB::table('fortune_bonus_levels')->orderBy('level')->get() as $row) {
+                $this->fortuneLevelConfigCache[(int) $row->level] = [
+                    'payout_mode' => (string) $row->payout_mode,
+                    'cap_paise' => $row->cap_paise === null ? null : (int) $row->cap_paise,
+                    'points_per_member' => (int) $row->points_per_member,
+                ];
+            }
+        }
+
+        return $this->fortuneLevelConfigCache;
     }
 
     /** @return array{bv_required_paise: int, slabs_required: int} */
