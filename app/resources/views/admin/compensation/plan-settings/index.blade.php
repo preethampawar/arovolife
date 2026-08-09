@@ -339,7 +339,7 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">Cap (paise) <x-help-tip text="Per-member ceiling at this level, in paise, INCLUDING the guaranteed minimum commission (30,00,000 = ₹30,000). Required for capped mode; ignored for residual and flat-minimum levels." /></label>
                     <input type="number" name="cap_paise" data-field-label="Cap (paise) at level {{ $row->level }}" value="{{ $row->cap_paise }}" min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $row->cap_paise !== null ? $bv($row->cap_paise) : '—' }}</span>
+                    <span class="text-[11px] text-gray-400">{{ $row->cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->cap_paise / 100, 2) : '—' }}</span>
                 </div>
                 <div class="flex items-end">
                     @if($canEdit)

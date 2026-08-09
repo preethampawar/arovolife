@@ -845,6 +845,24 @@ final class AdminSettingsController extends Controller
                 ->with('saved_key', $key);
         }
 
+        // Cross-table invariant: every capped Fortune level's per-member cap
+        // INCLUDES the minimum commission, so the minimum can never exceed the
+        // lowest active capped-level cap. The level form enforces the same
+        // invariant from the other side (AdminPlanSettingsController).
+        if ($key === 'comp.fortune.min_commission_paise') {
+            $lowestCap = DB::table('fortune_bonus_levels')
+                ->where('payout_mode', 'capped')
+                ->where('is_active', true)
+                ->whereNotNull('cap_paise')
+                ->min('cap_paise');
+
+            if ($lowestCap !== null && (int) $value > (int) $lowestCap) {
+                return redirect()->route('admin.settings')
+                    ->withErrors(['value' => 'The minimum commission cannot exceed the lowest capped Fortune level cap ('.$lowestCap.' paise) — every cap includes the minimum.'])
+                    ->with('saved_key', $key);
+            }
+        }
+
         $this->persistSetting($key, $value, $request);
 
         return redirect()->route('admin.settings')

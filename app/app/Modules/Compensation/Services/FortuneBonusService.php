@@ -309,9 +309,20 @@ final class FortuneBonusService
 
                 $result = $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, $gross, FortuneBonusResult::STATUS_PENDING);
 
-                $memo = $pool->is_shortfall
-                    ? 'Fortune Bonus pro-rated minimum '.$monthStart
-                    : 'Fortune Bonus L'.$participant->matrix_level.' '.$points.' pts @ ₹'.IndianNumber::format($valuePaise / 100, 2).' '.$monthStart;
+                // The memo is a distributor-facing statement line — it must
+                // reconcile arithmetically with the credited amount: minimum +
+                // points × value, with an explicit marker when the cap clipped it.
+                if ($pool->is_shortfall) {
+                    $memo = 'Fortune Bonus pro-rated minimum '.$monthStart;
+                } elseif ($pool->point_value_paise !== null) {
+                    $memo = 'Fortune Bonus '.$points.' pts @ ₹'.IndianNumber::format($valuePaise / 100, 2).' '.$monthStart;
+                } else {
+                    $memo = 'Fortune Bonus L'.$participant->matrix_level
+                        .' ₹'.IndianNumber::format(((int) $minCommission) / 100, 2).' min + '
+                        .$points.' pts @ ₹'.IndianNumber::format($valuePaise / 100, 2)
+                        .($capPaise !== null && $gross === $capPaise ? ' (capped at ₹'.IndianNumber::format($capPaise / 100, 2).')' : '')
+                        .' '.$monthStart;
+                }
 
                 $this->wallet->credit(
                     distributorId: $distributorId,

@@ -168,25 +168,24 @@ A Distributor earns points from the Distributors placed **below** them in that m
 
 | Levels below | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---|---|---|---|---|---|---|---|---|
-| Points per Distributor | 9 | 9 | 9 | 8 | 7 | 6 | 5 | 4 | 3 |
+| Points per Distributor | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
 
-Nothing is earned from a Distributor more than nine levels below, and nothing is earned from one's own position. A Distributor who entered the matrix late in the month may therefore hold no points at all for that month, and receives no Fortune Bonus for it.
+Nothing is earned from a Distributor more than nine levels below, and nothing is earned from one's own position. A Distributor who entered the matrix late in the month may therefore hold no points at all for that month; such a Distributor receives only the minimum amount described in §7.4, if the month's pool covers it.
 
 ### 7.4 How the bonus is calculated
 
-Fortune Bonus points have **no fixed rupee value**. Their value is set fresh each month, after the month has closed:
+Fortune Bonus points have **no fixed rupee value**. The month's 5% pool is distributed after the month has closed, in the following order:
 
-**Point value = the month's 5% Fortune Bonus pool ÷ the total Fortune Bonus points earned by everyone in that matrix**
+1. **Minimum amount.** An amount of ₹30 per qualifying Distributor is set aside from the pool first, and forms part of every payment below. If the month's pool is too small to cover ₹30 for every qualifier, the whole pool is instead divided equally among the qualifiers (rounded down to a whole rupee) and nothing further is paid — **this equal share may be ₹0** in a month with no pool.
+2. **Matrix levels 0 to 6.** Each of these levels is priced in turn: a point value is computed as the remaining pool divided by all points not yet paid, rounded **down** to a whole rupee, and each Distributor at the level receives the minimum plus their points at that value — **subject to a per-Distributor ceiling for the level**: ₹30,000 at levels 0–3, ₹20,000 at level 4, ₹10,000 at level 5 and ₹5,000 at level 6, each ceiling including the ₹30 minimum.
+3. **Matrix levels 7 and 8.** These two levels share a single point value computed over their combined points from whatever pool remains, with no ceiling.
+4. **Matrix level 9.** Distributors at the deepest level receive the minimum amount only.
 
-rounded **down** to a whole rupee. Each Distributor is then paid:
-
-**Fortune Bonus = your points × that month's point value**
-
-Every participant is paid at the same point value, so the total Fortune Bonus paid for a month can never exceed the 5% pool. No amount per level is fixed, and no value can be set for an individual Distributor.
+Point values therefore differ by matrix level, and the total Fortune Bonus paid for a month can never exceed the 5% pool. Whatever the distribution cannot pay out — rounding remainders and amounts above the ceilings — remains with the Company. No value can be set for an individual Distributor.
 
 ### 7.5 The value is variable
 
-The point value depends on the Company's total BV for the month and on how many other Distributors participated and how their positions fell — none of which any Distributor can know in advance or control. **It may be ₹0**, in which case no Fortune Bonus is payable for that month. No minimum value is promised.
+Every point value depends on the Company's total BV for the month, on how many other Distributors participated and on how their positions fell — none of which any Distributor can know in advance or control. **A level's point value may be ₹0**, and in a month whose pool cannot fund the minimum amounts, the equal share paid instead **may itself be ₹0**, in which case no Fortune Bonus is payable for that month. The ₹30 minimum is funded solely from the month's pool and is not promised beyond it.
 
 ### 7.6 Status
 
