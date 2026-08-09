@@ -123,9 +123,9 @@ Each rank's pool is its `pool %` **of the 20% Rank-Bonus envelope of the month's
 
 The **RB Monthly Calculation** report shows two tables: Rank 1 (Arete Center, RAP, AO-GO points, point value, total income; AO-GO rows show RAP as "—") and Ranks 2–9 (rank + income).
 
-## Fortune Bonus — monthly pool & downline points (KP 2026-08-07)
+## Fortune Bonus — monthly pool, downline points & level cascade (KP 2026-08-09)
 
-A monthly bonus funded from a share of the month's company BV and divided by the points every enrolled distributor earned from the distributors sitting below them in that month's Fortune matrix.
+A monthly bonus funded from a share of the month's company BV, distributed through a level cascade: a guaranteed ₹30 minimum for every qualifier, per-level point values with per-member caps at the top of the matrix, a shared residual value deeper down, and the flat minimum at the bottom.
 
 ### The matrix
 
@@ -137,15 +137,19 @@ Points come from the distributors placed **below** you in the matrix, by how man
 
 | Levels below you | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---|---|---|---|---|---|---|---|---|
-| **Points per member** | 9 | 9 | 9 | 8 | 7 | 6 | 5 | 4 | 3 |
+| **Points per member** | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
 
-Members deeper than level 9 earn nothing. All nine figures are **admin-editable** on Compensation → Plan settings. A distributor earns no points from their own position, so the newest entries at the bottom of the month's matrix typically finish the month on zero points.
+Members deeper than level 9 earn nothing. All nine figures are **admin-editable** on Compensation → Plan settings. A distributor earns no points from their own position, so the newest entries at the bottom of the month's matrix finish the month on zero points — they still receive the ₹30 minimum.
 
-### Monthly pool & point value
+### Monthly pool & the level cascade
 
 1. **Pool** = the *Fortune monthly pool rate* (Settings → Compensation plan, default **5%**) of the month's company-wide **BV** — the same signed BV-ledger sum the GSB, MSB and GBB pools use.
-2. **Point value** = `floor-to-whole-rupee(pool ÷ the total Fortune points of everyone enrolled that month)`. There is **no configured rupee amount per level and no manual override** of the computed value; income = **their points × that one value**. The flooring remainder stays unspent with the company. On a month where the division works out below ₹1 the value is ₹0 and nothing is credited.
-3. The month's economics are frozen in a `fortune_monthly_pools` row **before any credit** and never recomputed, so re-runs and single-distributor retries price against the same snapshot (`fortune.pool.frozen` audit entry) — the same auditable design as the GSB, MSB and GBB pools.
+2. **Minimum commission** — every qualifier is guaranteed the configured minimum (default **₹30**), reserved off the pool before anything else. If a month's pool cannot cover the guarantees, every qualifier gets the same pro-rated whole-rupee share (`floor(pool ÷ qualifiers)`) and nothing else that month; a ₹0 pool credits nothing.
+3. **Capped levels** (matrix levels 0–6 by default) settle top-down. Each level prices at `floor-to-whole-rupee(remaining pool ÷ ALL remaining points)`, and each member receives `minimum + points × value`, limited by the level's per-member cap — **₹30,000** at levels 0–3, **₹20,000** at level 4, **₹10,000** at level 5, **₹5,000** at level 6, every cap **including** the ₹30. What a level actually consumed is deducted before the next level's value is computed.
+4. **Residual levels** (7–8 by default) share **one** value computed over their **combined** points from whatever pool remains, uncapped: `minimum + points × value`.
+5. **Flat level** (9) receives the minimum only.
+6. Payout modes, caps and the minimum are all admin-editable (Plan settings → Fortune levels; the minimum under Settings → Compensation plan). There is **no manual override** of any computed value. Whatever the cascade cannot distribute — flooring remainders and cap headroom — stays unspent with the company.
+7. The month's economics — the pool row **and one row per matrix level** (`fortune_monthly_pool_levels`: mode, cap, participants, points, value, paid) — are frozen **before any credit** and never recomputed, so re-runs and single-distributor retries reconstruct incomes from the same snapshot (`fortune.pool.frozen` audit entry) — the same auditable design as the GSB, MSB and GBB pools. Sparse months keep the **absolute-level** treatment: caps stay glued to levels 0–6 even when deeper levels are empty.
 
 ### Who is enrolled
 
@@ -163,7 +167,7 @@ Every gate is assessed **per month**, and the distributor's repurchase wallet mu
 
 **Ranks 6–9 are not eligible.** "Slab achievements" is a **count of credited cut-offs**, not distinct slabs — GSB has only 7 slabs, so hitting the same slab repeatedly is how a rank-5 distributor reaches 20. All BV figures and achievement counts are admin-editable on Compensation → Plan settings.
 
-Fortune sits behind its own feature flag and is **OFF**; nothing is enrolled or credited until the plan change is published with the §6.2 notice period. Enrolment runs on the 9th at 08:45 IST and the monthly credit run at 09:00, both for the previous month. The per-month arithmetic (company BV, pool, total points, point value, payout, leftover, and the per-distributor level/points/value/income rows) is visible in the admin **FB Monthly Calculation** report.
+Fortune sits behind its own feature flag and is **OFF**; nothing is enrolled or credited until the plan change is published with the §6.2 notice period. Enrolment runs on the 9th at 08:45 IST and the monthly credit run at 09:00, both for the previous month. The per-month arithmetic (company BV, pool, minimum guarantee, per-level values/caps/paid, payout, leftover, and the per-distributor level/points/value/income rows) is visible in the admin **FB Monthly Calculation** report and on the Fortune month screen's per-level economics table.
 
 This engine replaced a fixed rupee amount per matrix level (₹3.39 … ₹51.00), which paid the same figure regardless of the month's volume — the old per-level amounts no longer exist anywhere in the plan configuration.
 
