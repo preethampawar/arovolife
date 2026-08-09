@@ -6,6 +6,7 @@ use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\FortuneBonusService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -139,6 +140,29 @@ function registerDistributorForFortune(string $effectiveDate): Distributor
 }
 
 // ── Matrix geometry ─────────────────────────────────────────────────────────
+
+it('exposes the KP 2026-08-09 cascade config — depth points, modes, caps, ₹30 minimum', function (): void {
+    $plan = app(CompensationPlanSettingsService::class);
+
+    // Depth points 1L-9P … 9L-1P.
+    foreach ([1 => 9, 2 => 8, 3 => 7, 4 => 6, 5 => 5, 6 => 4, 7 => 3, 8 => 2, 9 => 1] as $depth => $points) {
+        expect($plan->fortunePointsForDepth($depth))->toBe($points);
+    }
+    expect($plan->fortunePointsForDepth(0))->toBe(0)
+        ->and($plan->fortunePointsForDepth(10))->toBe(0);
+
+    $configs = $plan->fortuneLevelConfigs();
+    expect($configs[0])->toBe(['payout_mode' => 'capped', 'cap_paise' => 3_000_000, 'points_per_member' => 0])
+        ->and($configs[3]['cap_paise'])->toBe(3_000_000)
+        ->and($configs[4]['cap_paise'])->toBe(2_000_000)
+        ->and($configs[5]['cap_paise'])->toBe(1_000_000)
+        ->and($configs[6]['cap_paise'])->toBe(500_000)
+        ->and($configs[7])->toBe(['payout_mode' => 'residual', 'cap_paise' => null, 'points_per_member' => 3])
+        ->and($configs[8]['payout_mode'])->toBe('residual')
+        ->and($configs[9])->toBe(['payout_mode' => 'flat_min', 'cap_paise' => null, 'points_per_member' => 1]);
+
+    expect($plan->fortuneMinCommissionPaise())->toBe(3000);
+});
 
 it('levelFromPosition returns correct matrix level', function (): void {
     expect(FortuneBonusParticipant::levelFromPosition(1))->toBe(0);
@@ -407,79 +431,132 @@ it('awards FB points from the enrolled downline, by relative depth', function ()
     $pointsFor = fn (int $position): int => (int) FortuneBonusResult::where('distributor_id', $dists[$position]->id)->first()->points;
 
     // Positions 2, 3, 4 are the children of 1; position 5 is the child of 2.
-    expect($pointsFor(1))->toBe(36); // 3 × 9 at depth 1, plus 9 at depth 2
+    // KP 2026-08-09 depth points: 9 at depth 1, 8 at depth 2.
+    expect($pointsFor(1))->toBe(35); // 3 × 9 at depth 1, plus 8 at depth 2
     expect($pointsFor(2))->toBe(9);  // one child
     expect($pointsFor(3))->toBe(0);
     expect($pointsFor(4))->toBe(0);
     expect($pointsFor(5))->toBe(0);
 
-    expect((int) FortuneMonthlyPool::where('month_start', '2026-06-01')->first()->total_points)->toBe(45);
+    expect((int) FortuneMonthlyPool::where('month_start', '2026-06-01')->first()->total_points)->toBe(44);
 });
 
-it('floors the point value to the whole rupee and leaves the remainder in the pool', function (): void {
+it('runs the level cascade — per-level values, caps, ₹30 minimum, frozen level rows', function (): void {
     $month = Carbon::parse('2026-06-01');
+    $dists = [];
 
-    // KP's worked illustration: a ₹50,000 pool over 20,000 points is ₹2.50 a
-    // point, which floors to ₹2 — so a 40-point participant is paid ₹80 and
-    // ₹10,000 stays unspent.
-    setFortunePointsPerDepth([1 => 40, 2 => 19_840, 3 => 0, 4 => 0, 5 => 0, 6 => 0, 7 => 0, 8 => 0, 9 => 0]);
+    foreach (range(1, 5) as $position) {
+        $dist = Distributor::factory()->create();
+        $dists[$position] = $dist;
+        placeFortuneParticipant($dist->id, $position);
+    }
+
+    seedCompanyBvForFortunePool(100_000_000); // 10,00,000 BV → 5% = ₹50,000 pool
+
+    // Points 35 / 9 / 0 / 0 / 0 on levels 0 / 1 / 1 / 1 / 2. Cascade:
+    //   guarantee 5 × ₹30 = ₹150 → remaining ₹49,850 over 44 points
+    //   L0 value floor(₹49,850 ÷ 44) = ₹1,132 → 35 pts would earn ₹39,620,
+    //     capped at ₹30,000 (incl the ₹30) → ₹29,970 deducted
+    //   L1 value floor(₹19,880 ÷ 9) = ₹2,208 → position 2 earns ₹19,872 + ₹30
+    //     = ₹19,902 (below the cap); zero-point members get ₹30
+    //   L2 value ₹0 (no points left) → ₹30
+    $result = app(FortuneBonusService::class)->runForMonth($month);
+
+    expect($result['pool_paise'])->toBe(5_000_000);
+    expect($result['total_points'])->toBe(44);
+    expect($result['guaranteed_total_paise'])->toBe(15_000);
+    expect($result['is_shortfall'])->toBeFalse();
+    expect($result['credited'])->toBe(5);
+    expect($result['skipped_zero_income'])->toBe(0);
+    expect($result['leftover_paise'])->toBe(800);
+
+    $grossFor = fn (int $position): int => (int) FortuneBonusResult::where('distributor_id', $dists[$position]->id)->first()->gross_paise;
+    expect($grossFor(1))->toBe(3_000_000);
+    expect($grossFor(2))->toBe(1_990_200);
+    expect($grossFor(3))->toBe(3000);
+    expect($grossFor(4))->toBe(3000);
+    expect($grossFor(5))->toBe(3000);
+
+    $topResult = FortuneBonusResult::where('distributor_id', $dists[1]->id)->first();
+    expect($topResult->point_value_paise)->toBe(113_200)
+        ->and($topResult->min_commission_paise)->toBe(3000)
+        ->and($topResult->cap_paise)->toBe(3_000_000);
+
+    $pool = FortuneMonthlyPool::where('month_start', '2026-06-01')->first();
+    expect($pool->point_value_paise)->toBeNull()
+        ->and($pool->payout_paise)->toBe(4_999_200)
+        ->and($pool->leftover_paise)->toBe(800)
+        ->and($pool->min_commission_paise)->toBe(3000);
+
+    $levels = $pool->levels()->get()->keyBy('matrix_level');
+    expect($levels)->toHaveCount(3)
+        ->and($levels[0]->point_value_paise)->toBe(113_200)
+        ->and($levels[0]->cap_paise)->toBe(3_000_000)
+        ->and($levels[0]->paid_paise)->toBe(3_000_000)
+        ->and($levels[1]->point_value_paise)->toBe(220_800)
+        ->and($levels[1]->paid_paise)->toBe(1_990_200 + 3000 + 3000)
+        ->and($levels[2]->point_value_paise)->toBe(0)
+        ->and($levels[2]->paid_paise)->toBe(3000);
+
+    // Wallet entries match every gross.
+    foreach ($dists as $position => $dist) {
+        $ledger = WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'fortune_credit')->first();
+        expect($ledger)->not->toBeNull();
+        expect((int) $ledger->amount_paise)->toBe($grossFor($position));
+    }
+});
+
+it('pro-rates the ₹30 minimum when the pool cannot cover it', function (): void {
+    $month = Carbon::parse('2026-06-01');
 
     $top = Distributor::factory()->create();
     $second = Distributor::factory()->create();
     placeFortuneParticipant($top->id, 1);
     placeFortuneParticipant($second->id, 2);
-    foreach ([3, 4] as $position) {
-        placeFortuneParticipant(Distributor::factory()->create()->id, $position);
-    }
-    placeFortuneParticipant(Distributor::factory()->create()->id, 5);
 
-    seedCompanyBvForFortunePool(100_000_000); // 10,00,000 BV → 5% = ₹50,000
+    // ₹5 pool against 2 × ₹30 of guarantees → floor_rupee(₹5 ÷ 2) = ₹2 each.
+    seedCompanyBvForFortunePool(10_000);
 
     $result = app(FortuneBonusService::class)->runForMonth($month);
 
-    expect($result['pool_paise'])->toBe(5_000_000);
-    expect($result['total_points'])->toBe(20_000);   // 19,960 for position 1 + 40 for position 2
-    expect($result['point_value_paise'])->toBe(200); // ₹2.50 floored to ₹2
-
-    $secondResult = FortuneBonusResult::where('distributor_id', $second->id)->first();
-    expect($secondResult->points)->toBe(40);
-    expect($secondResult->gross_paise)->toBe(8_000); // ₹80
-    expect($secondResult->point_value_paise)->toBe(200);
+    expect($result['is_shortfall'])->toBeTrue();
+    expect($result['credited'])->toBe(2);
+    expect($result['skipped_zero_income'])->toBe(0);
+    expect($result['leftover_paise'])->toBe(100);
 
     $pool = FortuneMonthlyPool::where('month_start', '2026-06-01')->first();
-    expect($pool->payout_paise)->toBe(4_000_000);
-    expect($pool->leftover_paise)->toBe(1_000_000); // ₹10,000 unspent
+    expect($pool->pool_paise)->toBe(500)
+        ->and($pool->is_shortfall)->toBeTrue()
+        ->and($pool->shortfall_per_head_paise)->toBe(200);
+
+    foreach ([$top, $second] as $dist) {
+        $row = FortuneBonusResult::where('distributor_id', $dist->id)->first();
+        expect($row->gross_paise)->toBe(200)
+            ->and($row->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
+        expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'fortune_credit')->first()->amount_paise)->toBe(200);
+    }
 });
 
-it('credits nothing when the pool prices a point below one rupee', function (): void {
+it('skips everyone in a zero-pool month, with no wallet credits', function (): void {
     $month = Carbon::parse('2026-06-01');
 
     $top = Distributor::factory()->create();
     placeFortuneParticipant($top->id, 1);
     placeFortuneParticipant(Distributor::factory()->create()->id, 2);
 
-    // 9 points against a ₹5 pool — 55 paise a point, which floors to ₹0.
-    seedCompanyBvForFortunePool(10_000);
-
+    // No company BV at all → ₹0 pool → ₹0 per head.
     $result = app(FortuneBonusService::class)->runForMonth($month);
 
-    expect($result['point_value_paise'])->toBe(0);
     expect($result['credited'])->toBe(0);
-    expect($result['skipped_zero_points'])->toBe(2);
+    expect($result['skipped_zero_income'])->toBe(2);
     expect(WalletLedgerEntry::where('type', 'fortune_credit')->count())->toBe(0);
 
-    $pool = FortuneMonthlyPool::where('month_start', '2026-06-01')->first();
-    expect($pool->pool_paise)->toBe(500);
-    expect($pool->payout_paise)->toBe(0);
-    expect($pool->leftover_paise)->toBe(500);
-
     $topResult = FortuneBonusResult::where('distributor_id', $top->id)->first();
-    expect($topResult->points)->toBe(9);
-    expect($topResult->point_value_paise)->toBe(0);
-    expect($topResult->status)->toBe(FortuneBonusResult::STATUS_SKIPPED);
+    expect($topResult->gross_paise)->toBe(0)
+        ->and($topResult->status)->toBe(FortuneBonusResult::STATUS_SKIPPED);
 });
 
-it('records a participant with no downline as skipped, with no wallet credit', function (): void {
+it('pays a participant with no downline the ₹30 minimum, credited to the wallet', function (): void {
     $month = Carbon::parse('2026-06-01');
 
     $top = Distributor::factory()->create();
@@ -491,27 +568,23 @@ it('records a participant with no downline as skipped, with no wallet credit', f
 
     $result = app(FortuneBonusService::class)->runForMonth($month);
 
-    expect($result['credited'])->toBe(1);
-    expect($result['skipped_zero_points'])->toBe(1);
+    expect($result['credited'])->toBe(2);
+    expect($result['skipped_zero_income'])->toBe(0);
 
     $bottomResult = FortuneBonusResult::where('distributor_id', $bottom->id)->first();
-    expect($bottomResult)->not->toBeNull();
-    expect($bottomResult->points)->toBe(0);
-    expect($bottomResult->point_value_paise)->toBe($result['point_value_paise']);
-    expect($bottomResult->gross_paise)->toBe(0);
-    expect($bottomResult->net_paise)->toBe(0);
-    expect($bottomResult->status)->toBe(FortuneBonusResult::STATUS_SKIPPED);
+    expect($bottomResult->points)->toBe(0)
+        ->and($bottomResult->gross_paise)->toBe(3000)
+        ->and($bottomResult->min_commission_paise)->toBe(3000)
+        ->and($bottomResult->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
+    expect((int) WalletLedgerEntry::where('distributor_id', $bottom->id)->where('type', 'fortune_credit')->first()->amount_paise)->toBe(3000);
 
-    expect(WalletLedgerEntry::where('distributor_id', $bottom->id)->where('type', 'fortune_credit')->count())->toBe(0);
-
+    // The top's 9 points at L0 value floor((₹50,000 − ₹60) ÷ 9) = ₹5,548
+    // would earn ₹49,932 + ₹30 — capped at ₹30,000 including the minimum.
     $topResult = FortuneBonusResult::where('distributor_id', $top->id)->first();
-    expect($topResult->points)->toBe(9);
-    expect($topResult->gross_paise)->toBe(9 * $result['point_value_paise']);
-    expect($topResult->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
-
-    $ledger = WalletLedgerEntry::where('distributor_id', $top->id)->where('type', 'fortune_credit')->first();
-    expect($ledger)->not->toBeNull();
-    expect($ledger->amount_paise)->toBe($topResult->gross_paise);
+    expect($topResult->points)->toBe(9)
+        ->and($topResult->gross_paise)->toBe(3_000_000)
+        ->and($topResult->cap_paise)->toBe(3_000_000)
+        ->and($topResult->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
 });
 
 it('freezes the month economics — later BV and later enrolments never reprice it', function (): void {
@@ -535,9 +608,36 @@ it('freezes the month economics — later BV and later enrolments never reprice 
 
     expect($second['pool_paise'])->toBe($first['pool_paise']);
     expect($second['total_points'])->toBe($first['total_points']);
-    expect($second['point_value_paise'])->toBe($first['point_value_paise']);
+    expect($second['leftover_paise'])->toBe($first['leftover_paise']);
+    expect($second['guaranteed_total_paise'])->toBe($first['guaranteed_total_paise']);
     expect(FortuneMonthlyPool::where('month_start', '2026-06-01')->count())->toBe(1);
     expect((int) FortuneBonusResult::where('distributor_id', $top->id)->first()->gross_paise)->toBe($paidGross);
+});
+
+it('re-credits a deleted result at the frozen per-level value, not live config', function (): void {
+    $month = Carbon::parse('2026-06-01');
+
+    $top = Distributor::factory()->create();
+    placeFortuneParticipant($top->id, 1);
+    placeFortuneParticipant(Distributor::factory()->create()->id, 2);
+
+    seedCompanyBvForFortunePool(100_000_000);
+
+    $svc = app(FortuneBonusService::class);
+    $svc->runForMonth($month);
+    $paidGross = (int) FortuneBonusResult::where('distributor_id', $top->id)->first()->gross_paise;
+    $frozenValue = (int) FortuneBonusResult::where('distributor_id', $top->id)->first()->point_value_paise;
+
+    // Config changes after the freeze must not reprice the retry.
+    setFortunePointsPerDepth([1 => 100]);
+    DB::table('fortune_bonus_levels')->where('level', 0)->update(['cap_paise' => 100]);
+    FortuneBonusResult::where('distributor_id', $top->id)->delete();
+
+    $svc->runForMonth($month);
+
+    $row = FortuneBonusResult::where('distributor_id', $top->id)->first();
+    expect((int) $row->gross_paise)->toBe($paidGross)
+        ->and((int) $row->point_value_paise)->toBe($frozenValue);
 });
 
 it('runForMonth is idempotent — re-running does not double-credit', function (): void {

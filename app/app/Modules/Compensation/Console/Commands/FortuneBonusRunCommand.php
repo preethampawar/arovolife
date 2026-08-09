@@ -41,10 +41,14 @@ final class FortuneBonusRunCommand extends Command
 
         $this->line('Pool: ₹'.Number::format($result['pool_paise'] / 100, 2));
         $this->line('Total FB points: '.Number::format($result['total_points']));
-        $this->line('Point value: ₹'.Number::format($result['point_value_paise'] / 100, 2));
+        $this->line('Minimum guarantee reserved: ₹'.Number::format($result['guaranteed_total_paise'] / 100, 2));
+        if ($result['is_shortfall']) {
+            $this->warn('Shortfall month — the pool could not cover the minimum guarantees; every qualifier received the same pro-rated share.');
+        }
         $this->line('Credited: '.$result['credited']);
-        $this->line('Skipped (no points earned): '.$result['skipped_zero_points']);
+        $this->line('Skipped (zero income): '.$result['skipped_zero_income']);
         $this->line('Total credited: ₹'.Number::format($result['total_net_paise'] / 100, 2));
+        $this->line('Leftover: ₹'.Number::format($result['leftover_paise'] / 100, 2));
 
         return self::SUCCESS;
     }
