@@ -59,7 +59,12 @@ function cutoffRowForToday(): void
         'updated_at' => now()->format('Y-m-d H:i:s.v'),
     ]);
 
-    GsbCutoffResult::create([
+    // Raw insert, not GsbCutoffResult::create(): the model's 'date' cast
+    // serialises through the connection's datetime format, which on SQLite
+    // stores "…: 00:00:00" and silently misses the controller's plain
+    // where('cutoff_date', 'Y-m-d') — the same driver trap documented on
+    // FortuneMonthlyPool::$month_start.
+    DB::table('gsb_cutoff_results')->insert([
         'distributor_id' => $id,
         'cutoff_date' => today()->toDateString(),
         'left_bv_paise' => 2_000_000,
@@ -72,6 +77,8 @@ function cutoffRowForToday(): void
         'tds_paise' => 0,
         'net_gsb_paise' => 200_000,
         'status' => GsbCutoffResult::STATUS_CREDITED,
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
     ]);
 }
 

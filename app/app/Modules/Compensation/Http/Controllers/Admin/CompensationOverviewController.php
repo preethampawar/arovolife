@@ -46,7 +46,7 @@ final class CompensationOverviewController extends Controller
 
         $cutoffTable = GsbCutoffResult::with('distributor.user')
             ->where('cutoff_date', $today)
-            ->orderByRaw("FIELD(status, 'failed', 'credited', 'no_match', 'below_600bv', 'frozen')")
+            ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'no_match' THEN 2 WHEN 'below_600bv' THEN 3 WHEN 'frozen' THEN 4 ELSE 5 END")
             ->paginate(50);
 
         return view('admin.compensation.overview', compact(

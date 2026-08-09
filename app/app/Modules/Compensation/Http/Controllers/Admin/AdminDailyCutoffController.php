@@ -39,7 +39,7 @@ final class AdminDailyCutoffController extends Controller
             ->where('cutoff_date', $date->toDateString())
             ->when($status, fn ($b) => $b->where('status', $status))
             ->when($q, fn ($b) => $b->whereHas('distributor', fn ($d) => $d->where('adn', 'like', "%{$q}%")))
-            ->orderByRaw("FIELD(status, 'failed', 'credited', 'no_match', 'below_600bv', 'frozen', 'calculated')");
+            ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'no_match' THEN 2 WHEN 'below_600bv' THEN 3 WHEN 'frozen' THEN 4 WHEN 'calculated' THEN 5 ELSE 6 END");
 
         $rows = $query->paginate(self::PER_PAGE)->withQueryString();
 
@@ -74,7 +74,7 @@ final class AdminDailyCutoffController extends Controller
 
         $rows = GsbCutoffResult::with('distributor.user')
             ->where('cutoff_date', $parsed->toDateString())
-            ->orderByRaw("FIELD(status, 'failed', 'credited', 'no_match', 'below_600bv', 'frozen', 'calculated')")
+            ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'no_match' THEN 2 WHEN 'below_600bv' THEN 3 WHEN 'frozen' THEN 4 WHEN 'calculated' THEN 5 ELSE 6 END")
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
