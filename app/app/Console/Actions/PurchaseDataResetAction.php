@@ -54,11 +54,17 @@ final class PurchaseDataResetAction
         'msb_daily_pools',
         'group_bv_daily',
         'gbb_monthly_results',
+        // Same rule for the monthly frozen pools (GBB + Fortune): a surviving
+        // row would price the month against pre-reset BV, and the Fortune
+        // post-freeze enrolment guard would permanently refuse re-enrolment.
+        'gbb_monthly_pools',
         'rank_bonus_results',
         'rank_qualifications',
         'lifetime_award_milestones',
         'fortune_bonus_results',
         'fortune_bonus_participants',
+        'fortune_monthly_pool_levels',
+        'fortune_monthly_pools',
         'adc_bonus_results',
         'repurchase_cycles',
         // Commerce — the purchase flow and its BV trail

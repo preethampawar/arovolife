@@ -14,11 +14,12 @@
 
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Fortune Bonus (FB) calculation table — one row per distributor per month.
-    Income = FB points × the month's point value, where the point value is the month's pool
-    (5% of company BV) divided by the total FB points of all enrolled distributors, floored to
-    the whole rupee. Level = matrix depth (0 = top); Date = the first GSB credit that enrolled
-    them. Rows written before the pool + points rework show "—" for points and value.
-    Search by ADN or name.
+    Value = the whole-rupee point value applied at the distributor's matrix level in the month's
+    cascade (the pool is 5% of company BV). Income includes the ₹30 minimum every qualifier
+    receives and is capped per level (₹30,000 at levels 0–3, ₹20,000 / ₹10,000 / ₹5,000 at
+    levels 4–6; levels 7–8 share the residual pool; level 9 gets the minimum). Level = matrix
+    depth (0 = top); Date = the first GSB credit that enrolled them. Rows written before the
+    cascade rework show "—" for points and value. Search by ADN or name.
 </div>
 
 {{-- Filters --}}
@@ -73,7 +74,7 @@
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">
                         Value
-                        <x-help-tip text="The month's point value — the pool divided by the total FB points of all enrolled distributors, floored to the whole rupee." />
+                        <x-help-tip text="The whole-rupee point value applied at this distributor's matrix level in the month's cascade. Income = the guaranteed minimum + points × this value, capped per level." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
                     <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>

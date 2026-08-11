@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
+use App\Modules\Compensation\Models\FortuneMonthlyPoolLevel;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\FortuneBonusFeature;
@@ -262,6 +263,87 @@ it('shows the distributor their own FB points times the frozen point value', fun
         // Historical fact only — never a projection of what they might earn.
         ->assertDontSee('could earn')
         ->assertDontSee('will earn');
+});
+
+it('renders the frozen per-level cascade economics for a cascade month', function () {
+    $alice = fbReportDistributor('FBAAA1', 'Alice');
+    makeFbParticipant($alice, 1, 0, '2026-08-01', '2026-08-14');
+    makeFbResult($alice, 35, 113_200, 3_000_000, FortuneBonusResult::STATUS_CREDITED, '2026-08-01');
+
+    $pool = FortuneMonthlyPool::create([
+        'month_start' => '2026-08-01',
+        'company_bv_paise' => 100_000_000,
+        'pool_rate_bp' => 500,
+        'pool_paise' => 5_000_000,
+        'total_points' => 44,
+        'point_value_paise' => null,
+        'payout_paise' => 4_999_200,
+        'leftover_paise' => 800,
+        'min_commission_paise' => 3000,
+        'guaranteed_total_paise' => 15_000,
+        'is_shortfall' => false,
+        'shortfall_per_head_paise' => null,
+    ]);
+
+    FortuneMonthlyPoolLevel::create([
+        'fortune_monthly_pool_id' => $pool->id,
+        'matrix_level' => 0,
+        'payout_mode' => 'capped',
+        'cap_paise' => 3_000_000,
+        'participants' => 1,
+        'points' => 35,
+        'point_value_paise' => 113_200,
+        'paid_paise' => 3_000_000,
+    ]);
+    FortuneMonthlyPoolLevel::create([
+        'fortune_monthly_pool_id' => $pool->id,
+        'matrix_level' => 1,
+        'payout_mode' => 'residual',
+        'cap_paise' => null,
+        'participants' => 3,
+        'points' => 9,
+        'point_value_paise' => 220_800,
+        'paid_paise' => 1_996_200,
+    ]);
+
+    $this->actingAs(fbReportAdmin())
+        ->get(route('admin.compensation.fortune-bonus.show', ['month' => '2026-08']))
+        ->assertOk()
+        ->assertSee('Frozen per-level economics')
+        ->assertSee('Per level')            // header stat instead of a single value
+        ->assertSee('Minimum guarantee')
+        ->assertSee('₹150.00')              // 5 × ₹30 reserved
+        ->assertSee('₹1,132.00')            // L0 point value
+        ->assertSee('₹2,208.00')            // L1 point value
+        ->assertSee('₹30,000.00')           // the L0 cap
+        ->assertSee('Residual');
+});
+
+it('flags a shortfall month where the ₹30 minimum was pro-rated', function () {
+    $alice = fbReportDistributor('FBAAA1', 'Alice');
+    makeFbParticipant($alice, 1, 0, '2026-08-01', '2026-08-14');
+    makeFbResult($alice, 0, 0, 200, FortuneBonusResult::STATUS_CREDITED, '2026-08-01');
+
+    FortuneMonthlyPool::create([
+        'month_start' => '2026-08-01',
+        'company_bv_paise' => 10_000,
+        'pool_rate_bp' => 500,
+        'pool_paise' => 500,
+        'total_points' => 0,
+        'point_value_paise' => null,
+        'payout_paise' => 400,
+        'leftover_paise' => 100,
+        'min_commission_paise' => 3000,
+        'guaranteed_total_paise' => 6000,
+        'is_shortfall' => true,
+        'shortfall_per_head_paise' => 200,
+    ]);
+
+    $this->actingAs(fbReportAdmin())
+        ->get(route('admin.compensation.fortune-bonus.show', ['month' => '2026-08']))
+        ->assertOk()
+        ->assertSee('Shortfall month')
+        ->assertSee('₹2.00');
 });
 
 it('hides the FB calculation report while the feature is off', function (): void {

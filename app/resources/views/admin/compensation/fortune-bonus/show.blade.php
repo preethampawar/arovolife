@@ -21,20 +21,67 @@
             <x-help-tip text="The sum of every enrolled participant's FB points for the month — the denominator of the point value." />
             <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) : '—' }}</strong></span>
         <span class="text-gray-500">Point value
-            <x-help-tip text="Pool ÷ total FB points, floored to the whole rupee." />
-            <strong class="text-gray-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : '—' }}</strong></span>
+            <x-help-tip text="Cascade months price each capped level against the remaining pool and share one value across the residual levels — see the per-level table below. Months run before the cascade carry one month-wide value." />
+            <strong class="text-gray-700">{{ $pool ? ($pool->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : 'Per level') : '—' }}</strong></span>
+        <span class="text-gray-500">Minimum guarantee
+            <x-help-tip text="Every qualifier's guaranteed minimum × the number of qualifiers, reserved off the pool before the cascade distributes." />
+            <strong class="text-gray-700">{{ $pool && $pool->guaranteed_total_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->guaranteed_total_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-500">Payout
             <strong class="text-green-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->payout_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-500">Leftover
-            <x-help-tip text="The flooring remainder — the part of the pool no whole-rupee point value could distribute." />
+            <x-help-tip text="The part of the pool the cascade could not distribute — whole-rupee flooring remainders and the headroom left by per-level caps." />
             <strong class="{{ $pool && $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-700' }}">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->leftover_paise / 100, 2) : '—' }}</strong></span>
     </div>
+    @if($pool && $pool->is_shortfall)
+    <p class="px-4 py-3 text-xs text-amber-700 bg-amber-50 border-t border-amber-200">
+        Shortfall month — the pool could not cover the minimum guarantee for every qualifier, so each received the same pro-rated share of
+        ₹{{ \App\Modules\Shared\Support\IndianNumber::format(($pool->shortfall_per_head_paise ?? 0) / 100, 2) }} and no point earnings were distributed.
+    </p>
+    @endif
     @unless($pool)
     <p class="px-4 py-3 text-xs text-gray-400">
         No frozen pool row for this month — the engine has not run for it yet.
     </p>
     @endunless
 </div>
+
+{{-- Frozen per-level cascade economics (fortune_monthly_pool_levels) --}}
+@if($pool && $pool->point_value_paise === null && $pool->levels->isNotEmpty())
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-800">
+        Frozen per-level economics
+        <x-help-tip text="Capped levels settle top-down, each at the whole-rupee floor of the remaining pool over all remaining points, with a per-member ceiling that includes the guaranteed minimum. Residual levels share one value over their combined points, uncapped. Flat-minimum levels receive the minimum only." />
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+            <thead class="bg-gray-50 text-gray-500">
+                <tr>
+                    <th class="px-4 py-2 text-left font-medium">Level</th>
+                    <th class="px-4 py-2 text-left font-medium">Mode</th>
+                    <th class="px-4 py-2 text-right font-medium">Participants</th>
+                    <th class="px-4 py-2 text-right font-medium">FB points</th>
+                    <th class="px-4 py-2 text-right font-medium">Point value</th>
+                    <th class="px-4 py-2 text-right font-medium">Cap / member</th>
+                    <th class="px-4 py-2 text-right font-medium">Paid</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @foreach($pool->levels as $level)
+                <tr>
+                    <td class="px-4 py-2 font-medium text-gray-700">L{{ $level->matrix_level }}</td>
+                    <td class="px-4 py-2 text-gray-600">{{ ['capped' => 'Capped', 'residual' => 'Residual', 'flat_min' => 'Flat minimum'][$level->payout_mode] ?? $level->payout_mode }}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($level->participants) }}</td>
+                    <td class="px-4 py-2 text-right text-indigo-700">{{ \App\Modules\Shared\Support\IndianNumber::format($level->points) }}</td>
+                    <td class="px-4 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($level->point_value_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">{{ $level->cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($level->cap_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($level->paid_paise / 100, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
 
 {{-- Per-depth points ladder (admin-editable under Plan settings → Fortune Bonus) --}}
 <div class="mb-6 flex flex-wrap items-center gap-2 text-xs text-gray-500">

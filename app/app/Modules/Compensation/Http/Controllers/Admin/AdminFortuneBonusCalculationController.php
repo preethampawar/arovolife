@@ -23,9 +23,11 @@ use Laravel\Pennant\Feature;
  * distributor per month: ADN, Arete Center, name, title, rank, enrolment date,
  * matrix level, FB points, the month's point value and the resulting income.
  *
- * Since the pool + points rework a participant's income is points × the
- * month's frozen point value, so both factors are shown next to the total.
- * Rows written before that rework carry no points and render "—".
+ * Since the KP 2026-08-09 cascade a participant's income is the guaranteed
+ * minimum plus points × the value applied at their matrix level, capped per
+ * level — the row's point_value_paise is that level value, shown next to the
+ * total. Rows written before the pool + points rework carry no points and
+ * render "—".
  */
 final class AdminFortuneBonusCalculationController extends Controller
 {

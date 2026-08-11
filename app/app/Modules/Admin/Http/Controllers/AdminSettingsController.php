@@ -538,12 +538,22 @@ final class AdminSettingsController extends Controller
             'comp.fortune.pool_rate_bp' => [
                 'group' => 'compensation_plan',
                 'label' => 'Fortune Bonus pool rate (basis points)',
-                'description' => 'Share of the month\'s company-wide BV funding the Fortune Bonus pool. The pool is divided by the month\'s total FB points to give one point value for every participant, floored to whole rupees. 500 = 5%.',
+                'description' => 'Share of the month\'s company-wide BV funding the Fortune Bonus pool. The pool distributes through the level cascade: ₹30 minimum per qualifier, then per-level point values with per-level caps (edited on Compensation → Plan settings → Fortune). 500 = 5%.',
                 'impact' => 'Changes what every Fortune Bonus participant is paid. Takes effect from the next monthly run; months already frozen in fortune_monthly_pools are untouched.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 10000,
                 'default' => '500',
+            ],
+            'comp.fortune.min_commission_paise' => [
+                'group' => 'compensation_plan',
+                'label' => 'Fortune Bonus minimum commission (paise)',
+                'description' => 'Guaranteed amount every Fortune Bonus qualifier receives, reserved off the pool before the level cascade distributes. Level caps INCLUDE this minimum. 3000 = ₹30 (KP 2026-08-09). If a month\'s pool cannot cover it, every qualifier gets the same pro-rated whole-rupee share instead.',
+                'impact' => 'Changes the guaranteed floor of every Fortune Bonus participant and the pool left for point earnings. Takes effect from the next monthly run; frozen months are untouched.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 1_000_000,
+                'default' => '3000',
             ],
             'comp.fortune.exclude_rank_6' => [
                 'group' => 'compensation_plan',
@@ -833,6 +843,24 @@ final class AdminSettingsController extends Controller
             return redirect()->route('admin.settings')
                 ->withErrors(['value' => $error])
                 ->with('saved_key', $key);
+        }
+
+        // Cross-table invariant: every capped Fortune level's per-member cap
+        // INCLUDES the minimum commission, so the minimum can never exceed the
+        // lowest active capped-level cap. The level form enforces the same
+        // invariant from the other side (AdminPlanSettingsController).
+        if ($key === 'comp.fortune.min_commission_paise') {
+            $lowestCap = DB::table('fortune_bonus_levels')
+                ->where('payout_mode', 'capped')
+                ->where('is_active', true)
+                ->whereNotNull('cap_paise')
+                ->min('cap_paise');
+
+            if ($lowestCap !== null && (int) $value > (int) $lowestCap) {
+                return redirect()->route('admin.settings')
+                    ->withErrors(['value' => 'The minimum commission cannot exceed the lowest capped Fortune level cap ('.$lowestCap.' paise) — every cap includes the minimum.'])
+                    ->with('saved_key', $key);
+            }
         }
 
         $this->persistSetting($key, $value, $request);

@@ -8,6 +8,7 @@ use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
+use App\Modules\Compensation\Models\FortuneMonthlyPoolLevel;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compliance\Models\AuditLog;
@@ -27,19 +28,29 @@ use Illuminate\Support\Facades\Log;
  *
  * ENTITLEMENT — FB points earned from the enrolled downline in the month's
  * matrix: every participant sitting at relative depth d below you is worth
- * fortunePointsForDepth(d) points (9/9/9/8/7/6/5/4/3 for depths 1–9, nothing
- * deeper). The bottom of the matrix therefore earns nothing — a participant
- * with no one below them is recorded as skipped with 0 points. This replaced
- * the old fixed rupee payout per matrix level, which was not a pool at all.
+ * fortunePointsForDepth(d) points (KP 2026-08-09: 9/8/7/6/5/4/3/2/1 for
+ * depths 1–9, nothing deeper).
  *
- * FROZEN ECONOMICS — the month's pool, total points and point value are
- * written once to fortune_monthly_pools BEFORE any credit and never
- * recomputed. A re-run after more BV or more enrolments have landed prices
- * against that snapshot, so the month's economics never move under a
- * distributor who was already paid.
+ * DISTRIBUTION (KP 2026-08-09 level cascade, FortuneDistributionCalculator) —
+ * every qualifier is guaranteed the ₹30 minimum commission, reserved off the
+ * pool first. Then absolute matrix levels settle ascending: capped levels
+ * (0–6 by default) each price at floor_rupee(remaining pool ÷ all remaining
+ * points) with per-member ceilings (₹30k/₹30k/₹30k/₹30k/₹20k/₹10k/₹5k,
+ * ceilings INCLUDE the ₹30); residual levels (7–8) share one value over their
+ * combined points, uncapped; the flat level (9) gets the ₹30 only. When the
+ * pool cannot cover the guarantees, everyone gets the same whole-rupee share
+ * and nothing else. Sparse months keep the ABSOLUTE-level treatment (user
+ * decision 2026-08-09) — the unspent remainder stays as leftover.
  *
- * The point value floors to whole rupees (KP 2026-08-07 — the same rule as the
- * Rank, MSB and GBB pools); the flooring remainder stays in leftover_paise.
+ * FROZEN ECONOMICS — the month's pool row and its per-level economics
+ * (fortune_monthly_pool_levels) are written once BEFORE any credit and never
+ * recomputed. A re-run after more BV or more enrolments have landed
+ * reconstructs incomes from that snapshot, so the month's economics never
+ * move under a distributor who was already paid. Legacy pre-cascade months
+ * keep their single point_value_paise and re-run on the old formula.
+ *
+ * Point values floor to whole rupees (the same rule as the Rank, MSB and GBB
+ * pools); flooring and cap remainders stay in leftover_paise.
  *
  * REPURCHASE — a held/suspended distributor is filtered out at ENROLMENT
  * (IncomeEligibilityService), so unlike GBB there is no held/suspended split at
@@ -68,6 +79,7 @@ final class FortuneBonusService
         private readonly IncomeEligibilityService $eligibility,
         private readonly GsbDailyPoolService $gsbPool,
         private readonly PersonalBvTitleService $titleService,
+        private readonly FortuneDistributionCalculator $calculator,
     ) {}
 
     /**
@@ -223,12 +235,12 @@ final class FortuneBonusService
 
     /**
      * Calculate and credit Fortune Bonus for all enrolled participants in the
-     * month: every participant's FB points × the month's frozen point value.
-     * Idempotent — a participant already credited (or already recorded as
-     * earning nothing) is left alone, and the month's economics are reused
-     * rather than recomputed.
+     * month through the KP 2026-08-09 level cascade. Idempotent — a
+     * participant already credited (or already recorded as earning nothing)
+     * is left alone, and the month's frozen economics are reused rather than
+     * recomputed: incomes are reconstructed from the per-level snapshot.
      *
-     * @return array{credited: int, skipped_zero_points: int, total_net_paise: int, pool_paise: int, total_points: int, point_value_paise: int}
+     * @return array{credited: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -241,20 +253,31 @@ final class FortuneBonusService
 
         $pointsByDistributor = $this->buildPointsByDistributor($participants);
 
+        $participantRows = [];
+        foreach ($participants as $participant) {
+            $participantRows[] = [
+                'position' => (int) $participant->position,
+                'matrix_level' => (int) $participant->matrix_level,
+                'points' => $pointsByDistributor[(int) $participant->distributor_id] ?? 0,
+            ];
+        }
+
         $pool = $this->freezePoolForMonth(
             $monthStartDate,
             $month->copy()->endOfMonth(),
-            array_sum($pointsByDistributor),
+            $participantRows,
         );
-        $pointValuePaise = (int) $pool->point_value_paise;
+
+        /** @var array<int, FortuneMonthlyPoolLevel> $frozenLevels */
+        $frozenLevels = $pool->levels()->get()->keyBy('matrix_level')->all();
 
         $credited = 0;
-        $skippedZeroPoints = 0;
+        $skippedZeroIncome = 0;
         $totalNet = 0;
 
         DB::transaction(function () use (
-            $participants, $monthStart, $pointsByDistributor, $pointValuePaise,
-            &$credited, &$skippedZeroPoints, &$totalNet,
+            $participants, $monthStart, $pointsByDistributor, $pool, $frozenLevels,
+            &$credited, &$skippedZeroIncome, &$totalNet,
         ): void {
             foreach ($participants as $participant) {
                 $distributorId = (int) $participant->distributor_id;
@@ -269,19 +292,37 @@ final class FortuneBonusService
                 }
 
                 $points = $pointsByDistributor[$distributorId] ?? 0;
-                $gross = $points * $pointValuePaise;
+                $level = $frozenLevels[(int) $participant->matrix_level] ?? null;
+                $gross = $this->incomeFromFrozenEconomics($pool, $level, $points);
+                $valuePaise = $pool->point_value_paise ?? $level->point_value_paise ?? 0;
+                $minCommission = $pool->min_commission_paise;
+                $capPaise = $level?->cap_paise;
 
                 if ($gross === 0) {
-                    // Either nobody is enrolled below them (the bottom of the
-                    // matrix) or the month's point value floored to ₹0 — no
-                    // wallet entry either way, but the row records why.
-                    $this->writeResult($participant, $monthStart, $points, $pointValuePaise, 0, FortuneBonusResult::STATUS_SKIPPED);
-                    $skippedZeroPoints++;
+                    // A ₹0-pool month (or a legacy zero-value month) — no
+                    // wallet entry, but the row records why.
+                    $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_SKIPPED);
+                    $skippedZeroIncome++;
 
                     continue;
                 }
 
-                $result = $this->writeResult($participant, $monthStart, $points, $pointValuePaise, $gross, FortuneBonusResult::STATUS_PENDING);
+                $result = $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, $gross, FortuneBonusResult::STATUS_PENDING);
+
+                // The memo is a distributor-facing statement line — it must
+                // reconcile arithmetically with the credited amount: minimum +
+                // points × value, with an explicit marker when the cap clipped it.
+                if ($pool->is_shortfall) {
+                    $memo = 'Fortune Bonus pro-rated minimum '.$monthStart;
+                } elseif ($pool->point_value_paise !== null) {
+                    $memo = 'Fortune Bonus '.$points.' pts @ ₹'.IndianNumber::format($valuePaise / 100, 2).' '.$monthStart;
+                } else {
+                    $memo = 'Fortune Bonus L'.$participant->matrix_level
+                        .' ₹'.IndianNumber::format(((int) $minCommission) / 100, 2).' min + '
+                        .$points.' pts @ ₹'.IndianNumber::format($valuePaise / 100, 2)
+                        .($capPaise !== null && $gross === $capPaise ? ' (capped at ₹'.IndianNumber::format($capPaise / 100, 2).')' : '')
+                        .' '.$monthStart;
+                }
 
                 $this->wallet->credit(
                     distributorId: $distributorId,
@@ -289,7 +330,7 @@ final class FortuneBonusService
                     type: 'fortune_credit',
                     referenceId: $result->id,
                     referenceType: 'fortune_bonus_result',
-                    memo: 'Fortune Bonus '.$points.' pts @ ₹'.IndianNumber::format($pointValuePaise / 100, 2).' '.$monthStart,
+                    memo: $memo,
                 );
 
                 $result->update([
@@ -303,16 +344,53 @@ final class FortuneBonusService
         });
 
         // Reported straight off the frozen snapshot, never off a live
-        // recomputation — pool ÷ total_points must always reconcile to the
-        // point value that was actually paid.
+        // recomputation — the pool row must always reconcile to what was
+        // actually paid.
         return [
             'credited' => $credited,
-            'skipped_zero_points' => $skippedZeroPoints,
+            'skipped_zero_income' => $skippedZeroIncome,
             'total_net_paise' => $totalNet,
             'pool_paise' => (int) $pool->pool_paise,
             'total_points' => (int) $pool->total_points,
-            'point_value_paise' => $pointValuePaise,
+            'guaranteed_total_paise' => (int) ($pool->guaranteed_total_paise ?? 0),
+            'leftover_paise' => (int) $pool->leftover_paise,
+            'is_shortfall' => (bool) $pool->is_shortfall,
         ];
+    }
+
+    /**
+     * One participant's gross income, reconstructed purely from the month's
+     * frozen economics — the ONLY income formula re-runs are allowed to use.
+     *
+     * Legacy pre-cascade months carry a month-wide point_value_paise on the
+     * pool row and pay points × value with no minimum and no cap.
+     */
+    private function incomeFromFrozenEconomics(FortuneMonthlyPool $pool, ?FortuneMonthlyPoolLevel $level, int $points): int
+    {
+        if ($pool->point_value_paise !== null) {
+            return $points * (int) $pool->point_value_paise;
+        }
+
+        if ($pool->is_shortfall) {
+            return (int) $pool->shortfall_per_head_paise;
+        }
+
+        if ($level === null) {
+            // Defensive: a cascade month freezes a level row for every level
+            // that had participants, and enrolment is refused post-freeze.
+            return 0;
+        }
+
+        $minCommission = (int) $pool->min_commission_paise;
+
+        return match ((string) $level->payout_mode) {
+            'flat_min' => $minCommission,
+            'residual' => $minCommission + $points * (int) $level->point_value_paise,
+            default => min(
+                $minCommission + $points * (int) $level->point_value_paise,
+                $level->cap_paise === null ? PHP_INT_MAX : (int) $level->cap_paise,
+            ),
+        };
     }
 
     /**
@@ -365,6 +443,8 @@ final class FortuneBonusService
         string $monthStart,
         int $points,
         int $pointValuePaise,
+        ?int $minCommissionPaise,
+        ?int $capPaise,
         int $grossPaise,
         string $status,
     ): FortuneBonusResult {
@@ -378,6 +458,8 @@ final class FortuneBonusService
                 'matrix_level' => $participant->matrix_level,
                 'points' => $points,
                 'point_value_paise' => $pointValuePaise,
+                'min_commission_paise' => $minCommissionPaise,
+                'cap_paise' => $capPaise,
                 'gross_paise' => $grossPaise,
                 'admin_charge_paise' => 0,
                 'tds_paise' => 0,
@@ -388,13 +470,16 @@ final class FortuneBonusService
     }
 
     /**
-     * Freeze the month's pool economics. Idempotent: an existing row is
-     * returned unchanged — the month's economics never move once written, no
-     * matter how much BV or how many enrolments land afterwards.
+     * Freeze the month's pool economics — the cascade allocation over every
+     * enrolled participant, snapshotted as the pool row plus one
+     * fortune_monthly_pool_levels row per occupied matrix level. Idempotent:
+     * an existing row is returned unchanged — the month's economics never
+     * move once written, no matter how much BV or how many enrolments land
+     * afterwards.
      *
-     * @param  int  $totalPoints  Σ FB points over the month's participants
+     * @param  array<int, array{position: int, matrix_level: int, points: int}>  $participantRows
      */
-    private function freezePoolForMonth(Carbon $monthStart, Carbon $monthEnd, int $totalPoints): FortuneMonthlyPool
+    private function freezePoolForMonth(Carbon $monthStart, Carbon $monthEnd, array $participantRows): FortuneMonthlyPool
     {
         $existing = FortuneMonthlyPool::where('month_start', $monthStart->toDateString())->first();
         if ($existing !== null) {
@@ -404,26 +489,53 @@ final class FortuneBonusService
         $companyBvPaise = $this->gsbPool->companyBvPaiseBetween($monthStart, $monthEnd);
         $rateBp = $this->plan->fortunePoolRateBp();
         $poolPaise = max(0, intdiv($companyBvPaise * $rateBp, 10_000));
+        $minCommissionPaise = $this->plan->fortuneMinCommissionPaise();
 
-        // Floor the per-point value to whole rupees: truncate to a multiple of
-        // 100 paise. max() guards a refund-heavy (negative-BV) month, where
-        // intdiv() truncates toward zero.
-        $valuePaise = $totalPoints === 0
-            ? 0
-            : max(0, intdiv(intdiv($poolPaise, $totalPoints), 100) * 100);
+        $totalPoints = 0;
+        foreach ($participantRows as $row) {
+            $totalPoints += $row['points'];
+        }
 
-        $payoutPaise = $valuePaise * $totalPoints;
+        $allocation = $this->calculator->allocate(
+            $participantRows,
+            $poolPaise,
+            $minCommissionPaise,
+            $this->plan->fortuneLevelConfigs(),
+        );
 
-        $pool = FortuneMonthlyPool::create([
-            'month_start' => $monthStart->toDateString(),
-            'company_bv_paise' => $companyBvPaise,
-            'pool_rate_bp' => $rateBp,
-            'pool_paise' => $poolPaise,
-            'total_points' => $totalPoints,
-            'point_value_paise' => $valuePaise,
-            'payout_paise' => $payoutPaise,
-            'leftover_paise' => $poolPaise - $payoutPaise,
-        ]);
+        $payoutPaise = array_sum($allocation['incomes']);
+
+        $pool = DB::transaction(function () use ($monthStart, $companyBvPaise, $rateBp, $poolPaise, $totalPoints, $minCommissionPaise, $payoutPaise, $allocation): FortuneMonthlyPool {
+            $pool = FortuneMonthlyPool::create([
+                'month_start' => $monthStart->toDateString(),
+                'company_bv_paise' => $companyBvPaise,
+                'pool_rate_bp' => $rateBp,
+                'pool_paise' => $poolPaise,
+                'total_points' => $totalPoints,
+                'point_value_paise' => null,
+                'payout_paise' => $payoutPaise,
+                'leftover_paise' => $allocation['leftover_paise'],
+                'min_commission_paise' => $minCommissionPaise,
+                'guaranteed_total_paise' => $allocation['guaranteed_total_paise'],
+                'is_shortfall' => $allocation['is_shortfall'],
+                'shortfall_per_head_paise' => $allocation['shortfall_per_head_paise'],
+            ]);
+
+            foreach ($allocation['levels'] as $matrixLevel => $level) {
+                FortuneMonthlyPoolLevel::create([
+                    'fortune_monthly_pool_id' => $pool->id,
+                    'matrix_level' => $matrixLevel,
+                    'payout_mode' => $level['payout_mode'],
+                    'cap_paise' => $level['cap_paise'],
+                    'participants' => $level['participants'],
+                    'points' => $level['points'],
+                    'point_value_paise' => $level['point_value_paise'],
+                    'paid_paise' => $level['paid_paise'],
+                ]);
+            }
+
+            return $pool;
+        });
 
         $details = [
             'month_start' => $monthStart->toDateString(),
@@ -431,9 +543,13 @@ final class FortuneBonusService
             'pool_rate_bp' => $rateBp,
             'pool_paise' => $poolPaise,
             'total_points' => $totalPoints,
-            'point_value_paise' => $valuePaise,
+            'min_commission_paise' => $minCommissionPaise,
+            'guaranteed_total_paise' => $allocation['guaranteed_total_paise'],
+            'is_shortfall' => $allocation['is_shortfall'],
+            'shortfall_per_head_paise' => $allocation['shortfall_per_head_paise'],
             'payout_paise' => $payoutPaise,
-            'leftover_paise' => $pool->leftover_paise,
+            'leftover_paise' => $allocation['leftover_paise'],
+            'levels' => $allocation['levels'],
         ];
 
         Log::info('fortune.pool.frozen', $details);
