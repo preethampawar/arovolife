@@ -35,6 +35,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminAwRwCalculationControll
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminEngineRunsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbCalculationController;
@@ -431,6 +432,12 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::post('reverse', [AdminManualControlsController::class, 'reverseCredit'])->name('reverse')->middleware('can:compliance.discipline');
             Route::post('force-payout', [AdminManualControlsController::class, 'forcePayout'])->name('force-payout')->middleware('can:finance.record');
             Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb')->middleware('can:compliance.discipline');
+        });
+
+        Route::prefix('engine-runs')->name('engine-runs.')->group(function (): void {
+            Route::get('/', [AdminEngineRunsController::class, 'index'])->name('index');
+            Route::get('events', [AdminEngineRunsController::class, 'events'])->name('events');
+            Route::post('trigger', [AdminEngineRunsController::class, 'trigger'])->name('trigger')->middleware('can:finance.record');
         });
     });
 

@@ -38,7 +38,9 @@ it('renders the compensation sub-nav inside a report page so there is a way back
         ->assertSee('Plan &amp; controls', false)
         // The way back to the Overview, plus a sibling report.
         ->assertSee(route('admin.compensation.overview'), false)
-        ->assertSee(route('admin.compensation.msb-input-output.index'), false);
+        ->assertSee(route('admin.compensation.msb-input-output.index'), false)
+        // Plan & controls links, including the Engine Runs page.
+        ->assertSee(route('admin.compensation.engine-runs.index'), false);
 });
 
 it('renders the sub-nav on the compensation overview too', function (): void {
