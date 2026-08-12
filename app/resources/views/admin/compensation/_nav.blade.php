@@ -67,6 +67,7 @@
 
         ['label' => 'Plan & controls', 'items' => [
             ['label' => 'Manual Controls', 'route' => 'admin.compensation.manual-controls.index', 'match' => 'admin.compensation.manual-controls'],
+            ['label' => 'Engine Runs', 'route' => 'admin.compensation.engine-runs.index', 'match' => 'admin.compensation.engine-runs'],
             ['label' => 'Plan Settings', 'route' => 'admin.compensation.plan-settings.index', 'match' => 'admin.compensation.plan-settings'],
         ]],
     ];

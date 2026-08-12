@@ -20,11 +20,15 @@ use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
+use App\Modules\Compensation\Listeners\RecordEngineRun;
 use App\Modules\Compensation\Listeners\ReleaseHeldGbbOnReactivation;
 use App\Modules\Compensation\Listeners\ReleaseHeldGsbOnReactivation;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\User;
 use App\Modules\Returns\Events\OrderRefundApproved;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -39,7 +43,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // RecordEngineRun keeps the in-flight run ids between CommandStarting
+        // and CommandFinished, so it must be the same instance for both events;
+        // EngineRunContext carries the "who asked for this run" attribution
+        // that EngineRunService binds around each Artisan::call.
+        $this->app->scoped(EngineRunContext::class);
+        $this->app->singleton(RecordEngineRun::class);
     }
 
     /**
@@ -70,6 +79,14 @@ class AppServiceProvider extends ServiceProvider
         // Same for the Growth Booster's monthly held rows. Suspended
         // (post-grace) months stay forfeited — see the listener.
         Event::listen(IncomeReactivated::class, ReleaseHeldGbbOnReactivation::class);
+
+        // Run log for the ten compensation engines. Listening to the console
+        // events (rather than refactoring the commands) means cron runs,
+        // developer CLI runs and admin-triggered runs are all recorded by one
+        // writer. Module listeners are not auto-discovered, hence the explicit
+        // wiring — and the method-array form because one class handles both.
+        Event::listen(CommandStarting::class, [RecordEngineRun::class, 'starting']);
+        Event::listen(CommandFinished::class, [RecordEngineRun::class, 'finished']);
 
         // Super staff: `developer` and `admin` bypass every permission check
         // (R-17 separation of duties). The specialised roles (admin-operations

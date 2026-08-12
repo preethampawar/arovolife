@@ -190,3 +190,14 @@ All of the above rates and caps are admin-editable under **Settings → Compensa
 
 ## Manual controls
 Use Manual Controls (always audit-logged) for: failed cut-offs (Retry is safe/idempotent), BV reversals after cut-off (Recalculate CF), incorrect credits (Reverse), and frozen accounts.
+
+## Engine Runs (run a bonus engine manually)
+**Compensation → Plan & controls → Engine Runs** lists every compensation engine with its schedule, feature-flag state, last run and a run-events log. Use it when a scheduled run failed or never happened and a whole engine needs to run for a whole period — for a single distributor fix, use Manual Controls instead.
+
+- **Dependencies run first.** Triggering an engine also runs the engines it depends on, for any periods that are missing — e.g. running Growth Booster first fills any missing GSB daily cut-offs for the month and the prior month's rank check. Periods already computed are skipped. Running an engine never triggers the engines *downstream* of it (Growth Booster does not fire the monthly payout).
+- **Runs are queued.** A trigger returns immediately; the work runs in the background. Refresh the page or open **Run events** to follow progress. A run stuck in *running* for over 2 hours is shown as *stale* — the process died and the run can be re-triggered.
+- **Safe to re-run.** Every engine is idempotent: distributors already credited for the period are skipped and frozen pool economics are reused, so a re-run never credits anybody twice.
+- **Every trigger is audit-logged** with your admin ID, the reason you provide, and the exact chain of steps that was planned.
+- **Rank Qualification Check is manual-only** (it has no schedule). It writes the qualification rows that Rank Bonus, Growth Booster, Fortune Bonus and Lifetime Awards all read — run it for a month before running those engines.
+- **The two payout-batch engines (GSB Weekly Payout, Monthly Payout Batch) are scheduler-only.** They create payout batches, and batches are approved by the same finance permission — allowing a manual trigger would let one person both create and approve a payout. They still appear on the page with their last run and events.
+- **An engine whose feature flag is off cannot be triggered** — it would record nothing. Enable the flag first.
