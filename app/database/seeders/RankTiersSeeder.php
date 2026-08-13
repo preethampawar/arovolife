@@ -22,8 +22,9 @@ final class RankTiersSeeder extends Seeder
         // 2026-08-05 — the doc table's 1.75 was a typo). Personal-BV
         // requirements track the revised personal-title ladder — R1 Dealer
         // 7,000 (explicit), R3 Distributor 32,000, R4 Regional 68,000, R5
-        // National 1,44,000 BV. R2 group BV = 8L per side (KP 2026-08-05, was
-        // 5L in the June plan).
+        // National 1,44,000 BV. Group-BV matches revised 2026-08-13 (KP):
+        // R1 2.5L per side (was 3L), R2 6L per side (was 8L per 2026-08-05,
+        // itself raised from the June plan's 5L).
         // rap_points (KP 2026-08-05): Rank Achievement Points — Rank 1's pool
         // is divided by total points (RAP + AO-GO); null = equal split among
         // achievers (ranks 2–9).
@@ -43,8 +44,8 @@ final class RankTiersSeeder extends Seeder
         // Ranks 1 & 2 only — R1 15,000 BV, R2 30,000 BV; Ranks 3-9 = 0.
         $rows = [
             // rank, name, pool_pct, pyp, rap_points, personal_bv, group_bv, weaker_leg_topup_bv, structural_per_side, repurchase_bv_paise, lifetime_award_budget_paise
-            [1, 'Silver Partner', 7.00, 1, 10, 700_000, 30_000_000, 1_500_000, null, 100_000, 1_500_000],
-            [2, 'Pearl Partner', 3.40, 1, null, 1_500_000, 80_000_000, 3_000_000, null, 110_000, 3_000_000],
+            [1, 'Silver Partner', 7.00, 1, 10, 700_000, 25_000_000, 1_500_000, null, 100_000, 1_500_000],
+            [2, 'Pearl Partner', 3.40, 1, null, 1_500_000, 60_000_000, 3_000_000, null, 110_000, 3_000_000],
             [3, 'Emerald Partner', 2.70, 2, null, 3_200_000, null, 0, 2, 120_000, 9_000_000],
             [4, 'Gold Partner', 2.20, 2, null, 6_800_000, null, 0, 2, 130_000, 36_500_000],
             [5, 'Diamond Partner', 1.70, 2, null, 14_400_000, null, 0, 2, 140_000, 100_000_000],

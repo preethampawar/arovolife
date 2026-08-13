@@ -73,7 +73,7 @@ it('qualifies a distributor with sufficient monthly group BV and personal BV for
     $month = Carbon::parse('2026-06-01');
 
     seedPersonalBv($dist->id, 700_000); // Dealer title (Rank-1 min) = 7,000 BV
-    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 31_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 26_000_000, 26_000_000);
 
     $svc = app(RankQualificationService::class);
     $result = $svc->checkForMonth($month, occurrenceNumber: 1);
@@ -96,7 +96,7 @@ it('does not qualify a distributor whose personal BV is below rank-1 minimum', f
     $month = Carbon::parse('2026-06-01');
 
     seedPersonalBv($dist->id, 400_000);
-    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 31_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 26_000_000, 26_000_000);
 
     $svc = app(RankQualificationService::class);
     $result = $svc->checkForMonth($month);
@@ -110,7 +110,7 @@ it('does not qualify for rank 1 when only one side meets the group BV threshold'
     $month = Carbon::parse('2026-06-01');
 
     seedPersonalBv($dist->id, 700_000); // meets Dealer title; only the weak side should disqualify
-    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 10_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 26_000_000, 10_000_000);
 
     $svc = app(RankQualificationService::class);
     $result = $svc->checkForMonth($month);
@@ -136,23 +136,23 @@ function seedPersonalBvOn(int $distributorId, int $bvPaise, string $date): void
 
 it('qualifies for rank 1 when the weaker leg is topped up by this-month personal BV', function (): void {
     // KP 2026-06-28: up to 15,000 BV of this month's personal purchases may
-    // supplement the weaker Genos leg toward the rank-1 3L/3L match.
+    // supplement the weaker Genos leg toward the rank-1 2.5L/2.5L match.
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
     // 7,000 BV personal purchase in June → meets Dealer title AND feeds the top-up.
     seedPersonalBvOn($dist->id, 700_000, '2026-06-15');
-    // Right (weaker) leg is 5,000 BV short of the 3L (30,000,000 paise) match.
-    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 29_500_000);
+    // Right (weaker) leg is 5,000 BV short of the 2.5L (25,000,000 paise) match.
+    seedGroupBv($dist->id, '2026-06-10', 26_000_000, 24_500_000);
 
     $result = app(RankQualificationService::class)->checkForMonth($month);
 
-    expect($result['rank_1_count'])->toBe(1); // 29,500,000 + 700,000 top-up ≥ 30,000,000
+    expect($result['rank_1_count'])->toBe(1); // 24,500,000 + 700,000 top-up ≥ 25,000,000
 
     $record = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
     expect($record)->not->toBeNull();
     // The recorded group BV stays the RAW figure — the top-up only aids qualification.
-    expect((int) $record->right_genos_bv_paise)->toBe(29_500_000);
+    expect((int) $record->right_genos_bv_paise)->toBe(24_500_000);
 });
 
 it('caps the rank-1 weaker-leg top-up at 15,000 BV', function (): void {
@@ -163,11 +163,11 @@ it('caps the rank-1 weaker-leg top-up at 15,000 BV', function (): void {
 
     seedPersonalBvOn($dist->id, 5_000_000, '2026-06-15'); // 50,000 BV this month (well above cap)
     // Right leg 20,000 BV short — more than the 15,000 BV top-up cap can bridge.
-    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 28_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 26_000_000, 23_000_000);
 
     $result = app(RankQualificationService::class)->checkForMonth($month);
 
-    expect($result['rank_1_count'])->toBe(0); // 28,000,000 + 1,500,000 cap = 29,500,000 < 30,000,000
+    expect($result['rank_1_count'])->toBe(0); // 23,000,000 + 1,500,000 cap = 24,500,000 < 25,000,000
 });
 
 it('does not create carry-forward records by default (1+2 rule retired for AO-GO, KP 2026-08-05)', function (): void {
@@ -175,7 +175,7 @@ it('does not create carry-forward records by default (1+2 rule retired for AO-GO
     $month = Carbon::parse('2026-06-01');
 
     seedPersonalBv($dist->id, 700_000); // Dealer title (Rank-1 min) = 7,000 BV
-    seedGroupBv($dist->id, '2026-06-10', 31_000_000, 31_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 26_000_000, 26_000_000);
 
     $svc = app(RankQualificationService::class);
     $svc->checkForMonth($month, occurrenceNumber: 1);
@@ -193,9 +193,9 @@ it('does NOT create carry-forward records for rank 2 (1+2 rule is Rank 1 only, K
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    // Rank 2 (Pearl): Wholesaler title (15,000 BV personal) + 8L/8L group BV per side.
+    // Rank 2 (Pearl): Wholesaler title (15,000 BV personal) + 6L/6L group BV per side.
     seedPersonalBv($dist->id, 1_500_000);
-    seedGroupBv($dist->id, '2026-06-10', 81_000_000, 81_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 61_000_000, 61_000_000);
 
     $svc = app(RankQualificationService::class);
     $result = $svc->checkForMonth($month, occurrenceNumber: 1);
@@ -213,7 +213,7 @@ it('does NOT create carry-forward records for rank 2 (1+2 rule is Rank 1 only, K
 
 /**
  * Build the rank-3 structural tree: candidate with 2 Pearl-grade qualifiers on
- * each Genos side (each with 8L/8L group BV + Wholesaler personal BV).
+ * each Genos side (each with 6L/6L group BV + Wholesaler personal BV).
  *
  * @return array{candidate: Distributor}
  */
@@ -231,10 +231,10 @@ function seedEmeraldStructure(): array
     // Candidate personal BV >= 3,200,000 (rank-3 threshold).
     seedPersonalBv($candidate->id, 6_000_000);
 
-    // All 4 Pearl qualifiers: personal BV >= 1,500,000 + group BV >= 80M per side.
+    // All 4 Pearl qualifiers: personal BV >= 1,500,000 + group BV >= 60M per side.
     foreach ([$leftQual1, $leftQual2, $rightQual1, $rightQual2] as $dist) {
         seedPersonalBv($dist->id, 2_000_000);
-        seedGroupBv($dist->id, '2026-06-10', 81_000_000, 81_000_000);
+        seedGroupBv($dist->id, '2026-06-10', 61_000_000, 61_000_000);
     }
 
     // Direct children of candidate.
@@ -261,8 +261,8 @@ it('qualifies a distributor for rank 3 (Emerald) with 2+ Pearls per side and the
     $month = Carbon::parse('2026-06-01');
 
     // Q-Period gate (KP 2026-08-05): the candidate must personally have
-    // achieved Rank 2 once — give them the 8L/8L match this month.
-    seedGroupBv($candidate->id, '2026-06-10', 81_000_000, 81_000_000);
+    // achieved Rank 2 once — give them the 6L/6L match this month.
+    seedGroupBv($candidate->id, '2026-06-10', 61_000_000, 61_000_000);
 
     $svc = app(RankQualificationService::class);
     $result = $svc->checkForMonth($month);
@@ -375,9 +375,9 @@ it('allows attaining rank 2 directly without ever holding rank 1 (skip allowed, 
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    // No prior rank-1 qualification in any month; 8L/8L + Wholesaler title.
+    // No prior rank-1 qualification in any month; 6L/6L + Wholesaler title.
     seedPersonalBv($dist->id, 1_500_000);
-    seedGroupBv($dist->id, '2026-06-10', 81_000_000, 81_000_000);
+    seedGroupBv($dist->id, '2026-06-10', 61_000_000, 61_000_000);
 
     $result = app(RankQualificationService::class)->checkForMonth($month);
 
@@ -387,17 +387,17 @@ it('allows attaining rank 2 directly without ever holding rank 1 (skip allowed, 
     )->toBeTrue();
 });
 
-it('requires 8L per side for rank 2 — 7,99,999 BV on one side fails; the 30,000 BV top-up can bridge it', function (): void {
-    // Side A: 79,999,900 paise (7,99,999 BV) with no personal top-up → fails.
+it('requires 6L per side for rank 2 — 5,99,999 BV on one side fails; the 30,000 BV top-up can bridge it', function (): void {
+    // Side A: 59,999,900 paise (5,99,999 BV) with no personal top-up → fails.
     $short = Distributor::factory()->create();
     seedPersonalBv($short->id, 1_500_000); // Wholesaler title, but dated pre-June (helper stamps now())
-    seedGroupBv($short->id, '2026-06-10', 81_000_000, 79_999_900);
+    seedGroupBv($short->id, '2026-06-10', 61_000_000, 59_999_900);
 
-    // Side B: 7,70,000 BV weaker side + 30,000 BV of this-month personal BV
-    // (top-up cap for Rank 2) = exactly 8L → passes.
+    // Side B: 5,70,000 BV weaker side + 30,000 BV of this-month personal BV
+    // (top-up cap for Rank 2) = exactly 6L → passes.
     $topped = Distributor::factory()->create();
     seedPersonalBvOn($topped->id, 3_000_000, '2026-06-15');
-    seedGroupBv($topped->id, '2026-06-10', 81_000_000, 77_000_000);
+    seedGroupBv($topped->id, '2026-06-10', 61_000_000, 57_000_000);
 
     $month = Carbon::parse('2026-06-01');
     app(RankQualificationService::class)->checkForMonth($month);
