@@ -10,6 +10,7 @@ use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Contracts\View\View;
@@ -31,6 +32,8 @@ final class AdminManualControlsController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $adn = $request->query('adn');
         $action = $request->query('action');
         $date = $request->query('date', Carbon::today()->toDateString());
@@ -49,6 +52,8 @@ final class AdminManualControlsController extends Controller
 
     public function retryCutoff(Request $request): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'adn' => ['required', 'string'],
             'date' => ['required', 'date'],
@@ -138,6 +143,8 @@ final class AdminManualControlsController extends Controller
 
     public function freezeGsb(Request $request): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'adn' => ['required', 'string'],
             'freeze' => ['required', 'in:freeze,unfreeze'],
@@ -164,6 +171,8 @@ final class AdminManualControlsController extends Controller
 
     public function reverseCredit(Request $request): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'adn' => ['required', 'string'],
             'date' => ['required', 'date'],
@@ -218,6 +227,8 @@ final class AdminManualControlsController extends Controller
 
     public function recalcCarryForward(Request $request): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'adn' => ['required', 'string'],
             'reason' => ['required', 'string', 'min:10', 'max:500'],
@@ -244,6 +255,8 @@ final class AdminManualControlsController extends Controller
 
     public function manualCredit(Request $request): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'adn' => ['required', 'string'],
             'gsb_cutoff_result_id' => ['required', 'integer', 'min:1'],
@@ -299,6 +312,8 @@ final class AdminManualControlsController extends Controller
 
     public function forcePayout(Request $request): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'adn' => ['required', 'string'],
             'reason' => ['required', 'string', 'min:10', 'max:500'],

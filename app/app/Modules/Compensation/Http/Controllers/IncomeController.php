@@ -22,6 +22,7 @@ use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -43,6 +44,7 @@ final class IncomeController extends Controller
         abort_unless($distributor !== null, 403);
 
         $distributorId = $distributor->id;
+        $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
 
         try {
             $walletService = app(WalletService::class);
@@ -67,12 +69,14 @@ final class IncomeController extends Controller
                     ->first()
                 : null;
 
-            $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
+            $cf = $gsbOn
+                ? GsbCarryforward::where('distributor_id', $distributorId)->first()
+                : null;
 
             // Same CF-inclusive per-side figures the Genos BV page shows, so the
             // two pages never disagree: before the first slab matches, the whole
             // leg is carried forward and becomes the next day's opening balance.
-            $slabProgress = $genosBvEligible
+            $slabProgress = ($gsbOn && $genosBvEligible)
                 ? app(GsbSlabProgressService::class)->forDistributor($distributorId)
                 : null;
 
@@ -102,7 +106,7 @@ final class IncomeController extends Controller
         return view('income.dashboard', compact(
             'distributor', 'walletBalancePaise', 'personalBvPaise',
             'title', 'dailyBv', 'cf', 'genosBvEligible', 'gsbMinBvPaise', 'slabProgress',
-            'bonusSummary', 'keyDates',
+            'bonusSummary', 'keyDates', 'gsbOn',
         ));
     }
 
@@ -153,7 +157,7 @@ final class IncomeController extends Controller
     private static function bonusSummary(array $monthTotals, array $lifetimeTotals): array
     {
         $rows = [
-            ['type' => 'gsb_credit', 'label' => 'Genos Sales Bonus', 'route' => 'income.gsb-history', 'active' => true,
+            ['type' => 'gsb_credit', 'label' => 'Genos Sales Bonus', 'route' => 'income.gsb-history', 'active' => Feature::for(null)->active(GenosSalesBonusFeature::class),
                 'tip' => 'Your daily Genos Sales Bonus credits — earned when both your Left and Right groups match a slab at the 23:59 cut-off.'],
             ['type' => 'mb_credit', 'label' => 'Mentorship Bonus', 'route' => 'income.mentorship', 'active' => Feature::for(null)->active(MentorshipBonusFeature::class),
                 'tip' => 'Earned when a distributor you directly sponsored matches a Genos Sales Bonus slab.'],
@@ -189,8 +193,14 @@ final class IncomeController extends Controller
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
 
+        $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
+
         try {
-            $slabProgress = app(GsbSlabProgressService::class)->forDistributor($distributor->id);
+            // The slab ladder is the GSB configuration table — it disappears
+            // with the flag; the historical daily rows below it remain facts.
+            $slabProgress = $gsbOn
+                ? app(GsbSlabProgressService::class)->forDistributor($distributor->id)
+                : null;
 
             $rows = GsbCutoffResult::where('distributor_id', $distributor->id)
                 ->when($request->filled('from'), fn ($q) => $q->where('cutoff_date', '>=', $request->input('from')))
@@ -203,7 +213,7 @@ final class IncomeController extends Controller
             $rows = collect();
         }
 
-        return view('income.genos-bv', compact('distributor', 'rows', 'slabProgress'));
+        return view('income.genos-bv', compact('distributor', 'rows', 'slabProgress', 'gsbOn'));
     }
 
     public function genosLedger(Request $request): View
@@ -214,10 +224,14 @@ final class IncomeController extends Controller
         $from = $request->filled('from') ? Carbon::parse((string) $request->input('from')) : null;
         $to = $request->filled('to') ? Carbon::parse((string) $request->input('to')) : null;
 
+        $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
+
         try {
             $personalBvPaise = app(BvLedgerService::class)->totalPersonalBvPaise($distributor->id);
             $gsbMinBvPaise = app(CompensationPlanSettingsService::class)->gsbMinBvPaise();
-            $genosBvEligible = $personalBvPaise >= $gsbMinBvPaise;
+            // The eligibility minimum is a GSB rule — with the flag off the
+            // ledger is plain BV data and shows for everyone.
+            $genosBvEligible = ! $gsbOn || $personalBvPaise >= $gsbMinBvPaise;
 
             // Same rule as the dashboard: below the minimum personal BV, group
             // BV is never credited, so the ledger stays hidden — not a raw
@@ -237,11 +251,13 @@ final class IncomeController extends Controller
             $openDebts = ['L' => 0, 'R' => 0];
         }
 
-        return view('income.genos-ledger', compact('distributor', 'days', 'genosBvEligible', 'gsbMinBvPaise', 'openDebts'));
+        return view('income.genos-ledger', compact('distributor', 'days', 'genosBvEligible', 'gsbMinBvPaise', 'openDebts', 'gsbOn'));
     }
 
     public function gsbHistory(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
 
@@ -262,6 +278,8 @@ final class IncomeController extends Controller
 
     public function exportGsb(Request $request): StreamedResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
 

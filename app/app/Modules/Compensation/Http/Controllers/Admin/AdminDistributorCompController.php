@@ -18,12 +18,16 @@ use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Laravel\Pennant\Feature;
 
 final class AdminDistributorCompController extends Controller
 {
@@ -37,15 +41,32 @@ final class AdminDistributorCompController extends Controller
 
     public function show(Distributor $distributor, Request $request): View
     {
+        // Flag-gated tabs disappear entirely while their feature is off — a
+        // disabled bonus leaves no trace, even on admin debugging surfaces.
+        $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
+        $msbOn = Feature::for(null)->active(MentorshipBonusFeature::class);
+        $repurchaseOn = Feature::for(null)->active(RepurchaseEngineFeature::class);
+
+        $visibleTabs = array_filter([
+            'gsb' => $gsbOn ? 'GSB History' : null,
+            'genos-ledger' => 'Genos BV Ledger',
+            'mb' => $msbOn ? 'Mentorship Bonus' : null,
+            'bv-log' => 'Daily BV Log',
+            'wallet' => 'Wallet Ledger',
+            'repurchase' => $repurchaseOn ? 'Repurchase' : null,
+            'payouts' => 'Payout History',
+            'audit' => 'Audit Log',
+        ]);
+
         $request->validate([
-            'tab' => ['nullable', 'in:gsb,genos-ledger,mb,bv-log,wallet,payouts,audit,repurchase'],
+            'tab' => ['nullable', 'in:'.implode(',', array_keys($visibleTabs))],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'status' => ['nullable', 'in:no_match,calculated,credited,failed,frozen,below_600bv'],
             'type' => ['nullable', 'in:credits,reversals'],
         ]);
 
-        $tab = $request->query('tab', 'gsb');
+        $tab = $request->query('tab', (string) array_key_first($visibleTabs));
         $from = $request->query('from') ? Carbon::parse((string) $request->query('from')) : null;
         $to = $request->query('to') ? Carbon::parse((string) $request->query('to')) : null;
 
@@ -60,13 +81,15 @@ final class AdminDistributorCompController extends Controller
         // but the view flags it as not credited.
         $gsbMinBvPaise = $this->plan->gsbMinBvPaise();
         $genosBvEligible = $personalBvPaise >= $gsbMinBvPaise;
-        $cf = GsbCarryforward::where('distributor_id', $distributor->id)->first();
+        $cf = $gsbOn ? GsbCarryforward::where('distributor_id', $distributor->id)->first() : null;
         $walletBalance = $this->wallet->balancePaise($distributor->id);
 
-        $failedToday = GsbCutoffResult::where('distributor_id', $distributor->id)
-            ->where('status', GsbCutoffResult::STATUS_FAILED)
-            ->whereDate('cutoff_date', today())
-            ->first();
+        $failedToday = $gsbOn
+            ? GsbCutoffResult::where('distributor_id', $distributor->id)
+                ->where('status', GsbCutoffResult::STATUS_FAILED)
+                ->whereDate('cutoff_date', today())
+                ->first()
+            : null;
 
         $tabData = match ($tab) {
             'gsb' => [
@@ -125,6 +148,8 @@ final class AdminDistributorCompController extends Controller
             'cf' => $cf,
             'walletBalance' => $walletBalance,
             'failedToday' => $failedToday,
+            'gsbOn' => $gsbOn,
+            'visibleTabs' => $visibleTabs,
             'tab' => $tab,
             'from' => $request->query('from'),
             'to' => $request->query('to'),

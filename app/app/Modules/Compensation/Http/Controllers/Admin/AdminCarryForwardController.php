@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GsbCarryforward;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Laravel\Pennant\Feature;
 
 final class AdminCarryForwardController extends Controller
 {
@@ -15,6 +17,8 @@ final class AdminCarryForwardController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'filter' => ['nullable', 'in:near_cap'],

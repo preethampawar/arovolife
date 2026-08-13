@@ -5,9 +5,14 @@ declare(strict_types=1);
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -246,6 +251,7 @@ it('AS-08: settings index page renders even when the table is empty (defaults ar
  * roll "2026-02-31" over into March.
  */
 it('AS-DATE-01: accepts a real calendar date for a date-format plan setting', function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
     $admin = asvSeedAdmin();
     asvSeedSetting('comp.gsb.topup_golive_date', '1970-01-01');
 
@@ -259,6 +265,7 @@ it('AS-DATE-01: accepts a real calendar date for a date-format plan setting', fu
 });
 
 it('AS-DATE-02: rejects non-dates and dates that do not exist', function (string $bad): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
     $admin = asvSeedAdmin();
     asvSeedSetting('comp.gsb.topup_golive_date', '1970-01-01');
 
@@ -276,3 +283,87 @@ it('AS-DATE-02: rejects non-dates and dates that do not exist', function (string
     'partial date' => '2026-07',
     'garbage' => 'not-a-date',
 ]);
+
+it('AS-FLAG-01: fortune and ADC settings vanish from the page while their feature flags are off', function (): void {
+    asvSeedSetting('comp.fortune.pool_rate_bp', '500');
+    asvSeedSetting('comp.adc.rate_bp', '300');
+
+    // Flags default to off — no trace of the keys, in the friendly sections
+    // or in the developer-only raw table.
+    $this->actingAs(asvSeedAdmin())
+        ->get('/admin/settings')
+        ->assertOk()
+        ->assertDontSee('comp.fortune.pool_rate_bp')
+        ->assertDontSee('comp.fortune.exclude_rank_6')
+        ->assertDontSee('comp.adc.rate_bp')
+        ->assertDontSee('comp.adc.cap_paise')
+        ->assertDontSee('comp.admin_charge.applies_to_fortune')
+        ->assertDontSee('comp.admin_charge.applies_to_adc');
+
+    // Flags on — the keys are back.
+    Feature::for(null)->activate(FortuneBonusFeature::class);
+    Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
+
+    $this->actingAs(asvSeedAdmin())
+        ->get('/admin/settings')
+        ->assertOk()
+        ->assertSee('comp.fortune.pool_rate_bp')
+        ->assertSee('comp.adc.rate_bp');
+});
+
+it('AS-FLAG-02: writing a fortune or ADC setting 404s while its feature flag is off', function (): void {
+    asvSeedSetting('comp.fortune.pool_rate_bp', '500');
+
+    $this->actingAs(asvSeedAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/comp.fortune.pool_rate_bp', ['value' => '600'])
+        ->assertNotFound();
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/comp.adc.rate_bp', ['value' => '400'])
+        ->assertNotFound();
+
+    expect(DB::table('settings')->where('key', 'comp.fortune.pool_rate_bp')->value('value'))->toBe('500');
+
+    // Flag on — the same write goes through.
+    Feature::for(null)->activate(FortuneBonusFeature::class);
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/comp.fortune.pool_rate_bp', ['value' => '600'])
+        ->assertRedirect(route('admin.settings'));
+    expect(DB::table('settings')->where('key', 'comp.fortune.pool_rate_bp')->value('value'))->toBe('600');
+});
+
+it('AS-FLAG-03: every stream config carries its feature flag — GSB, MSB, GBB, Rank, Awards, Repurchase keys vanish while off', function (): void {
+    asvSeedSetting('comp.gsb.pool_rate_bp', '4500');
+    asvSeedSetting('comp.repurchase.rate_bp', '1000');
+
+    // All bonus flags default to off — no trace of any stream's keys.
+    $this->actingAs(asvSeedAdmin())
+        ->get('/admin/settings')
+        ->assertOk()
+        ->assertDontSee('comp.gsb.pool_rate_bp')
+        ->assertDontSee('comp.gsb.min_bv_paise')
+        ->assertDontSee('comp.msb.pool_rate_bp')
+        ->assertDontSee('comp.gbb.pool_rate_bp')
+        ->assertDontSee('comp.rank.envelope_bp')
+        ->assertDontSee('comp.repurchase.rate_bp')
+        ->assertDontSee('comp.admin_charge.applies_to_gsb')
+        ->assertDontSee('comp.admin_charge.applies_to_mb')
+        ->assertDontSee('comp.admin_charge.applies_to_awards');
+
+    // Writes 404 while off.
+    $this->actingAs(asvSeedAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/comp.gsb.pool_rate_bp', ['value' => '4000'])
+        ->assertNotFound();
+    expect(DB::table('settings')->where('key', 'comp.gsb.pool_rate_bp')->value('value'))->toBe('4500');
+
+    // Flags on — the keys are back.
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $this->actingAs(asvSeedAdmin())
+        ->get('/admin/settings')
+        ->assertOk()
+        ->assertSee('comp.gsb.pool_rate_bp')
+        ->assertSee('comp.repurchase.rate_bp');
+});

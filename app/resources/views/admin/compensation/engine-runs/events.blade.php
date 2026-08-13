@@ -17,7 +17,7 @@
             <select name="engine" onchange="this.form.submit()"
                     class="rounded-lg border border-gray-300 px-2 py-1.5 text-xs focus:ring-2 focus:ring-brand-400 focus:outline-none">
                 <option value="">All engines</option>
-                @foreach($definitions as $key => $definition)
+                @foreach($filterOptions as $key => $definition)
                 <option value="{{ $key }}" @selected($engineKey === $key)>{{ $definition->label }}</option>
                 @endforeach
             </select>

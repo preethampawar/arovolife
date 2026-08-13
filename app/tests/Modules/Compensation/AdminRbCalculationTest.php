@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,4 +51,27 @@ it('shows the RB calculation report while the feature is on', function (): void 
     $this->actingAs(rbCalcReportAdmin())
         ->get(route('admin.compensation.rb-calculation.index'))
         ->assertOk();
+});
+
+it('hides the Arete Center column on page and CSV while the ADC flag is off', function (): void {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    // ADC flag defaults to off — no Arete Center column anywhere.
+    $this->actingAs(rbCalcReportAdmin())
+        ->get(route('admin.compensation.rb-calculation.index'))
+        ->assertOk()
+        ->assertDontSee('Arete Center');
+    $this->actingAs(rbCalcReportAdmin())
+        ->get(route('admin.compensation.rb-calculation.export'))
+        ->assertOk()
+        ->assertDontSee('Arete Center');
+
+    // ADC flag on — the column returns (asserted on the CSV, whose header
+    // renders even with zero result rows; the HTML tables don't).
+    Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
+
+    $this->actingAs(rbCalcReportAdmin())
+        ->get(route('admin.compensation.rb-calculation.export'))
+        ->assertOk()
+        ->assertSee('Arete Center');
 });

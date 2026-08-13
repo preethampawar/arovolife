@@ -7,11 +7,20 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Laravel\Pennant\Feature;
 
 final class AdminSettingsController extends Controller
 {
@@ -41,9 +50,14 @@ final class AdminSettingsController extends Controller
      * The optional 'owner' field overrides the group's default owner for a
      * single key — see ownerForKey().
      *
+     * The optional 'feature' field ties the key to a Pennant feature class:
+     * while that flag is off the key is invisible on the settings page and a
+     * 404 on the update endpoint — a disabled feature leaves no trace.
+     *
      * @return array<string, array{
      *   group: string,
      *   owner?: string,
+     *   feature?: class-string,
      *   label: string,
      *   description: string,
      *   impact?: string,
@@ -321,6 +335,7 @@ final class AdminSettingsController extends Controller
             // Each toggle exempts one stream when turned OFF.
             'comp.admin_charge.applies_to_gsb' => [
                 'group' => 'compensation_plan',
+                'feature' => GenosSalesBonusFeature::class,
                 'label' => 'Admin charge: apply to Genos Sales Bonus',
                 'description' => 'When ON, the admin charge is deducted from GSB payouts. KP-confirmed ON.',
                 'type' => 'bool',
@@ -328,6 +343,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.admin_charge.applies_to_mb' => [
                 'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
                 'label' => 'Admin charge: apply to Mentorship Bonus',
                 'description' => 'When ON, the admin charge is deducted from Mentorship Bonus payouts. KP-confirmed ON.',
                 'type' => 'bool',
@@ -335,6 +351,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.admin_charge.applies_to_rank' => [
                 'group' => 'compensation_plan',
+                'feature' => RankBonusFeature::class,
                 'label' => 'Admin charge: apply to Rank Bonus',
                 'description' => 'When ON, the admin charge is deducted from Rank Bonus payouts. KP-confirmed ON.',
                 'type' => 'bool',
@@ -342,6 +359,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.admin_charge.applies_to_gbb' => [
                 'group' => 'compensation_plan',
+                'feature' => GrowthBoosterBonusFeature::class,
                 'label' => 'Admin charge: apply to Growth Booster Bonus',
                 'description' => 'When ON, the admin charge is deducted from Growth Booster Bonus payouts. KP-confirmed ON.',
                 'type' => 'bool',
@@ -349,6 +367,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.admin_charge.applies_to_fortune' => [
                 'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
                 'label' => 'Admin charge: apply to Fortune Bonus',
                 'description' => 'When ON, the admin charge is deducted from Fortune Bonus payouts. KP-confirmed ON.',
                 'type' => 'bool',
@@ -356,6 +375,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.admin_charge.applies_to_adc' => [
                 'group' => 'compensation_plan',
+                'feature' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Admin charge: apply to Arete Development Center Bonus',
                 'description' => 'When ON, the admin charge is deducted from ADC payouts. KP-confirmed ON (2026-06-27; previously exempt).',
                 'type' => 'bool',
@@ -363,6 +383,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.admin_charge.applies_to_awards' => [
                 'group' => 'compensation_plan',
+                'feature' => LifetimeAwardsFeature::class,
                 'label' => 'Admin charge: apply to Lifetime Awards & Rewards',
                 'description' => 'When ON, the admin charge is deducted from Lifetime Awards. Default OFF: KP confirmed (2026-06-27 Round-2 Q6) that non-cash awards (gifts/goods) carry NO admin charge or TDS — only awards released as cash/cheque are charged. The Lifetime Awards payout engine ships in a later phase; turn this ON only if a cash award component is paid.',
                 'type' => 'bool',
@@ -379,6 +400,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.gsb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
+                'feature' => GenosSalesBonusFeature::class,
                 'label' => 'GSB daily pool rate (basis points)',
                 'description' => 'Share of the day\'s company-wide BV funding the GSB pool. Slabs 1–2 are paid fixed from it first; the remainder sets the pro-rated slab 3–7 score value (capped at the fixed score value). 4500 = 45%.',
                 'impact' => 'Changes the daily variable score value for GSB slabs 3–7. Takes effect from the next daily cut-off.',
@@ -389,6 +411,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.gsb.min_bv_paise' => [
                 'group' => 'compensation_plan',
+                'feature' => GenosSalesBonusFeature::class,
                 'label' => 'Personal-BV minimum for income (BV paise)',
                 'description' => 'Lifetime personal purchase BV a distributor must reach before Genos BV accrues to them at all. 60000 = 600 BV (KP 2026-07 §14). Below this, downline BV is not added to their account; from 600 BV income accrues but stays web-only until the 3,000 BV Retailer title releases it to bank.',
                 'impact' => 'Changes who earns and who dilutes the GSB and MSB daily pools — sub-minimum distributors are excluded from the denominator. Takes effect from the next daily cut-off.',
@@ -399,6 +422,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.gsb.topup_golive_date' => [
                 'group' => 'compensation_plan',
+                'feature' => GenosSalesBonusFeature::class,
                 'label' => 'Personal-BV top-up go-live date',
                 'description' => 'Accruals dated before this are excluded from the conditional personal-BV top-up pool — the pre-2026-07-21 engine already credited them daily, so counting them again would double-credit. Pinned to the deploy date by GsbSlabsSeeder.',
                 'impact' => 'DANGER: moving this date backwards pulls accruals into the top-up pool that the pre-2026-07-21 engine already credited daily, double-crediting them. Moving it forwards silently drops pending top-ups. Change it only alongside a reviewed data migration.',
@@ -408,6 +432,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.gsb.power_cf_cap_paise' => [
                 'group' => 'compensation_plan',
+                'feature' => GenosSalesBonusFeature::class,
                 'label' => 'GSB power-side carry-forward cap (BV paise)',
                 'description' => 'Maximum BV carried forward on the stronger Genos side after a bonus. 45000000 = 4,50,000 BV. Excess is flushed.',
                 'type' => 'int',
@@ -417,6 +442,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.msb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
                 'label' => 'MSB daily pool rate (basis points)',
                 'description' => 'Share of the day\'s company-wide BV funding the Mentorship Bonus pool. The pool is divided by the day\'s total MSB score points to give one point value for every earner, floored to whole rupees. 300 = 3%.',
                 'impact' => 'Changes what every Mentorship Bonus earner is paid. Takes effect from the next daily cut-off.',
@@ -427,6 +453,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.gbb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
+                'feature' => GrowthBoosterBonusFeature::class,
                 'label' => 'Growth Booster pool rate (basis points)',
                 'description' => 'Share of monthly company turnover funding the Growth Booster Bonus pool. 500 = 5%.',
                 'type' => 'int',
@@ -436,6 +463,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.gbb.agp_cap' => [
                 'group' => 'compensation_plan',
+                'feature' => GrowthBoosterBonusFeature::class,
                 'label' => 'Growth Booster AGP cap per distributor',
                 'description' => 'Maximum Arovolife Growth Points a single distributor can earn in a month. Default 120.',
                 'type' => 'int',
@@ -445,6 +473,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.rank.envelope_bp' => [
                 'group' => 'compensation_plan',
+                'feature' => RankBonusFeature::class,
                 'label' => 'Rank Bonus envelope (basis points)',
                 'description' => 'Share of monthly company BV set aside for all nine Rank Bonus pools together. 2000 = 20%. Each rank\'s percentage is a share of THIS envelope, not of BV directly — the nine rank percentages sum to 100% of the envelope (20% of BV). Example: 10,00,000 BV → 2,00,000 envelope → Rank 1 (7%) = ₹14,000.',
                 'impact' => 'Rescales every rank pool. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched.',
@@ -455,6 +484,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.rank.pay_highest_rank_only' => [
                 'group' => 'compensation_plan',
+                'feature' => RankBonusFeature::class,
                 'label' => 'Rank pools: pay highest rank only',
                 'description' => 'ON (exclusive): a distributor who cleared several ranks in a month is paid only their highest — the plan-text reading ("reaching Rank 2 cancels the Rank-1 benefit"). OFF (cumulative): they are paid from every rank pool whose bar they cleared. Also changes each pool\'s denominator, so it re-prices every achiever in the affected pools.',
                 'impact' => 'Changes who is paid from which rank pool and how each pool divides. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched. Awaiting the product owner\'s exclusive-vs-cumulative ruling — change only on that ruling.',
@@ -463,6 +493,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.rank.aogo_points' => [
                 'group' => 'compensation_plan',
+                'feature' => RankBonusFeature::class,
                 'label' => 'AO-GO points per grant',
                 'description' => 'Points a degraded ex-rank-holder earns in the Rank-1 pool under the Achieve Once – Get Once offer. Default 5 (Rank-1 achievers earn 10 RAP).',
                 'impact' => 'Changes every AO-GO grantee\'s share of the Rank-1 pool. Takes effect from the next monthly Rank Bonus run.',
@@ -473,6 +504,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.rank.aogo_lifetime_max' => [
                 'group' => 'compensation_plan',
+                'feature' => RankBonusFeature::class,
                 'label' => 'AO-GO lifetime grants per distributor',
                 'description' => 'Maximum number of times one distributor can use the Achieve Once – Get Once offer, ever. Default 3.',
                 'impact' => 'Applies from the next monthly Rank Bonus run; already-used grants keep counting.',
@@ -483,6 +515,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.adc.rate_bp' => [
                 'group' => 'compensation_plan',
+                'feature' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center bonus rate (basis points)',
                 'description' => 'Rate on BV served by a center. 300 = 3%. ADC is exempt from the admin charge.',
                 'type' => 'int',
@@ -492,6 +525,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.adc.cap_paise' => [
                 'group' => 'compensation_plan',
+                'feature' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center monthly cap (paise)',
                 'description' => 'Maximum ADC bonus per center per month. 10000000 = ₹1,00,000.',
                 'type' => 'int',
@@ -501,6 +535,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.repurchase.rate_bp' => [
                 'group' => 'compensation_plan',
+                'feature' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase wallet rate (basis points)',
                 'description' => 'Share of prior-month GSB + MB + GBB + Fortune + Rank bonuses moved to the repurchase wallet. 1000 = 10%.',
                 'type' => 'int',
@@ -510,6 +545,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.repurchase.cap_paise' => [
                 'group' => 'compensation_plan',
+                'feature' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase wallet cap (paise)',
                 'description' => 'Maximum repurchase-wallet deduction per payout. 1000000 = ₹10,000.',
                 'type' => 'int',
@@ -519,6 +555,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.repurchase.grace_days' => [
                 'group' => 'compensation_plan',
+                'feature' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase grace period (days)',
                 'description' => 'Days after the repurchase due date during which income is calculated but held before suspension. KP-confirmed 7.',
                 'type' => 'int',
@@ -528,6 +565,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.repurchase.non_ranked_bv_paise' => [
                 'group' => 'compensation_plan',
+                'feature' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase BV — non-ranked (paise)',
                 'description' => 'Monthly repurchase BV a distributor with no rank must complete to stay income-eligible. 60000 = 600 BV. Per-rank values (R1 1,000 … R9 2,300) are edited on the Compensation → Plan settings page.',
                 'type' => 'int',
@@ -537,6 +575,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.fortune.pool_rate_bp' => [
                 'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus pool rate (basis points)',
                 'description' => 'Share of the month\'s company-wide BV funding the Fortune Bonus pool. The pool distributes through the level cascade: ₹30 minimum per qualifier, then per-level point values with per-level caps (edited on Compensation → Plan settings → Fortune). 500 = 5%.',
                 'impact' => 'Changes what every Fortune Bonus participant is paid. Takes effect from the next monthly run; months already frozen in fortune_monthly_pools are untouched.',
@@ -547,6 +586,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.fortune.min_commission_paise' => [
                 'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus minimum commission (paise)',
                 'description' => 'Guaranteed amount every Fortune Bonus qualifier receives, reserved off the pool before the level cascade distributes. Level caps INCLUDE this minimum. 3000 = ₹30 (KP 2026-08-09). If a month\'s pool cannot cover it, every qualifier gets the same pro-rated whole-rupee share instead.',
                 'impact' => 'Changes the guaranteed floor of every Fortune Bonus participant and the pool left for point earnings. Takes effect from the next monthly run; frozen months are untouched.',
@@ -557,6 +597,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.fortune.exclude_rank_6' => [
                 'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus: exclude Rank 6 (Blue Diamond)',
                 'description' => 'When ON, Rank 6 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
                 'type' => 'bool',
@@ -564,6 +605,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.fortune.exclude_rank_7' => [
                 'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus: exclude Rank 7 (Royal Diamond)',
                 'description' => 'When ON, Rank 7 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
                 'type' => 'bool',
@@ -571,6 +613,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.fortune.exclude_rank_8' => [
                 'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus: exclude Rank 8 (Crown Diamond)',
                 'description' => 'When ON, Rank 8 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
                 'type' => 'bool',
@@ -578,6 +621,7 @@ final class AdminSettingsController extends Controller
             ],
             'comp.fortune.exclude_rank_9' => [
                 'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus: exclude Rank 9 (Elite Diamond)',
                 'description' => 'When ON, Rank 9 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
                 'type' => 'bool',
@@ -753,11 +797,13 @@ final class AdminSettingsController extends Controller
         // Drop keys this viewer may not see, server-side, so the response body
         // carries no trace of them. Keys on the admin-readable list survive
         // and render read-only below — statutory and deduction values must
-        // stay verifiable by whoever reviews compliance.
+        // stay verifiable by whoever reviews compliance. Keys of a disabled
+        // feature disappear for every role.
         $registry = array_filter(
             self::registry(),
-            fn (string $key): bool => self::userCanRead($viewer, $key),
-            ARRAY_FILTER_USE_KEY,
+            fn (array $meta, string $key): bool => self::userCanRead($viewer, $key)
+                && self::featureVisible($meta),
+            ARRAY_FILTER_USE_BOTH,
         );
 
         // Build a grouped view-model. Each group only renders if it has at
@@ -796,11 +842,27 @@ final class AdminSettingsController extends Controller
 
         return view('admin.settings.index', [
             // The legacy engineer table dumps every raw settings row, so it is
-            // developer-only — it would otherwise leak the hidden keys.
-            'settings' => $viewer?->hasRole('developer') ? $rows : collect(),
+            // developer-only — it would otherwise leak the hidden keys. Rows
+            // belonging to a disabled feature are dropped here too.
+            'settings' => $viewer?->hasRole('developer')
+                ? $rows->filter(fn (object $row, string $key): bool => self::featureVisible(self::registry()[$key] ?? []))
+                : collect(),
             'grouped' => $grouped,         // for the friendly view
             'registry' => $registry,
         ]);
+    }
+
+    /**
+     * Whether a registry entry's feature flag (if any) allows it to be shown
+     * or written. Entries without a 'feature' field are always visible.
+     *
+     * @param  array{feature?: class-string}  $meta
+     */
+    private static function featureVisible(array $meta): bool
+    {
+        $feature = $meta['feature'] ?? null;
+
+        return $feature === null || Feature::for(null)->active($feature);
     }
 
     /**
@@ -816,8 +878,10 @@ final class AdminSettingsController extends Controller
 
         // Stealth + authorization: a developer-owned key is a 404 for anyone
         // else — the same response an unknown key gets, so probing the
-        // endpoint can't confirm that the key (or the role) exists.
+        // endpoint can't confirm that the key (or the role) exists. A key
+        // whose feature flag is off gets the same 404.
         abort_unless(self::userOwns($request->user(), self::ownerForKey($key)), 404);
+        abort_unless(self::featureVisible($registry[$key]), 404);
 
         $meta = $registry[$key];
 

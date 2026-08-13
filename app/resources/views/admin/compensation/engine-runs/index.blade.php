@@ -50,10 +50,8 @@
 
                     @if($engine['flagOn'] === null)
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">Always on</span>
-                    @elseif($engine['flagOn'])
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Flag on</span>
                     @else
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-200 text-gray-600">Flag off — run records nothing</span>
+                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Flag on</span>
                     @endif
 
                     @if($notScheduled)
@@ -113,12 +111,6 @@
                 <span class="font-semibold text-gray-700">Scheduler-only.</span>
                 Payout batches are created by the scheduler and approved separately on the Payouts page,
                 so the same person never both creates and approves a batch.
-            </div>
-            @elseif($engine['flagOn'] === false)
-            <div class="w-full lg:w-80 shrink-0 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
-                <span class="font-semibold text-gray-700">Feature flag off.</span>
-                This engine cannot run while its flag is off — it would record nothing.
-                Enable the flag under Feature Flags first.
             </div>
             @else
             <form method="POST" action="{{ route('admin.compensation.engine-runs.trigger') }}"

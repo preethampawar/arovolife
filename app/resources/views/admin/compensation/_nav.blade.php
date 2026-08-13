@@ -13,11 +13,15 @@
 @php
     use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
     use App\Modules\Shared\Features\FortuneBonusFeature;
+    use App\Modules\Shared\Features\GenosSalesBonusFeature;
     use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
     use App\Modules\Shared\Features\LifetimeAwardsFeature;
+    use App\Modules\Shared\Features\MentorshipBonusFeature;
     use App\Modules\Shared\Features\RankBonusFeature;
     use Laravel\Pennant\Feature;
 
+    $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
+    $msbOn = Feature::for(null)->active(MentorshipBonusFeature::class);
     $gbbOn = Feature::for(null)->active(GrowthBoosterBonusFeature::class);
     $rankOn = Feature::for(null)->active(RankBonusFeature::class);
     $fortuneOn = Feature::for(null)->active(FortuneBonusFeature::class);
@@ -34,19 +38,25 @@
     $compNavGroups = [
         ['label' => 'Overview', 'route' => 'admin.compensation.overview', 'match' => 'admin.compensation.overview'],
 
-        ['label' => 'Daily engine', 'items' => [
-            ['heading' => 'GSB — Genos Sales Bonus'],
-            ['label' => 'Daily cut-offs', 'route' => 'admin.compensation.daily-cutoffs.index', 'match' => 'admin.compensation.daily-cutoffs'],
-            ['label' => 'GSB Calculation', 'route' => 'admin.compensation.gsb-calculation.index', 'match' => 'admin.compensation.gsb-calculation'],
-            ['label' => 'GSB Input & Output / Day', 'route' => 'admin.compensation.gsb-input-output.index', 'match' => 'admin.compensation.gsb-input-output'],
-            ['heading' => 'MSB — Mentorship Bonus'],
-            ['label' => 'MSB Calculation', 'route' => 'admin.compensation.msb-calculation.index', 'match' => 'admin.compensation.msb-calculation'],
-            ['label' => 'MSB Input & Output / Day', 'route' => 'admin.compensation.msb-input-output.index', 'match' => 'admin.compensation.msb-input-output'],
-            ['heading' => 'Inputs'],
-            ['label' => 'Genos BV Transactions', 'route' => 'admin.compensation.genos-transactions.index', 'match' => 'admin.compensation.genos-transactions'],
-            ['label' => 'Personal BV Topups', 'route' => 'admin.compensation.personal-bv-topups.index', 'match' => 'admin.compensation.personal-bv-topups'],
-            ['label' => 'Carry-forwards', 'route' => 'admin.compensation.carry-forwards.index', 'match' => 'admin.compensation.carry-forwards'],
-        ]],
+        ['label' => 'Daily engine', 'items' => array_values(array_filter(array_merge(
+            $gsbOn ? [
+                ['heading' => 'GSB — Genos Sales Bonus'],
+                ['label' => 'Daily cut-offs', 'route' => 'admin.compensation.daily-cutoffs.index', 'match' => 'admin.compensation.daily-cutoffs'],
+                ['label' => 'GSB Calculation', 'route' => 'admin.compensation.gsb-calculation.index', 'match' => 'admin.compensation.gsb-calculation'],
+                ['label' => 'GSB Input & Output / Day', 'route' => 'admin.compensation.gsb-input-output.index', 'match' => 'admin.compensation.gsb-input-output'],
+            ] : [],
+            $msbOn ? [
+                ['heading' => 'MSB — Mentorship Bonus'],
+                ['label' => 'MSB Calculation', 'route' => 'admin.compensation.msb-calculation.index', 'match' => 'admin.compensation.msb-calculation'],
+                ['label' => 'MSB Input & Output / Day', 'route' => 'admin.compensation.msb-input-output.index', 'match' => 'admin.compensation.msb-input-output'],
+            ] : [],
+            [
+                ['heading' => 'Inputs'],
+                ['label' => 'Genos BV Transactions', 'route' => 'admin.compensation.genos-transactions.index', 'match' => 'admin.compensation.genos-transactions'],
+                $gsbOn ? ['label' => 'Personal BV Topups', 'route' => 'admin.compensation.personal-bv-topups.index', 'match' => 'admin.compensation.personal-bv-topups'] : null,
+                $gsbOn ? ['label' => 'Carry-forwards', 'route' => 'admin.compensation.carry-forwards.index', 'match' => 'admin.compensation.carry-forwards'] : null,
+            ],
+        )))],
 
         ['label' => 'Monthly bonuses', 'items' => array_values(array_filter([
             ['heading' => 'Runs'],
@@ -56,20 +66,20 @@
             $adcOn ? ['label' => 'ADC Bonus', 'route' => 'admin.compensation.adc-bonus.index', 'match' => 'admin.compensation.adc-bonus'] : null,
             $awardsOn ? ['label' => 'Lifetime Awards', 'route' => 'admin.lifetime-awards.index', 'match' => 'admin.lifetime-awards'] : null,
             ['heading' => 'Calculation reports'],
-            ['label' => 'GBB Calculation', 'route' => 'admin.compensation.gbb-calculation.index', 'match' => 'admin.compensation.gbb-calculation'],
-            ['label' => 'Rank Bonus Calculation', 'route' => 'admin.compensation.rb-calculation.index', 'match' => 'admin.compensation.rb-calculation'],
-            ['label' => 'Fortune Bonus Calculation', 'route' => 'admin.compensation.fb-calculation.index', 'match' => 'admin.compensation.fb-calculation'],
+            $gbbOn ? ['label' => 'GBB Calculation', 'route' => 'admin.compensation.gbb-calculation.index', 'match' => 'admin.compensation.gbb-calculation'] : null,
+            $rankOn ? ['label' => 'Rank Bonus Calculation', 'route' => 'admin.compensation.rb-calculation.index', 'match' => 'admin.compensation.rb-calculation'] : null,
+            $fortuneOn ? ['label' => 'Fortune Bonus Calculation', 'route' => 'admin.compensation.fb-calculation.index', 'match' => 'admin.compensation.fb-calculation'] : null,
             ['label' => 'Awards & Rewards', 'route' => 'admin.compensation.aw-rw-calculation.index', 'match' => 'admin.compensation.aw-rw-calculation'],
             $adcOn ? ['label' => 'ADC Calculation', 'route' => 'admin.compensation.adc-calculation.index', 'match' => 'admin.compensation.adc-calculation'] : null,
         ]))],
 
         ['label' => 'Payouts', 'route' => 'admin.compensation.weekly-payouts.index', 'match' => 'admin.compensation.weekly-payouts'],
 
-        ['label' => 'Plan & controls', 'items' => [
-            ['label' => 'Manual Controls', 'route' => 'admin.compensation.manual-controls.index', 'match' => 'admin.compensation.manual-controls'],
+        ['label' => 'Plan & controls', 'items' => array_values(array_filter([
+            $gsbOn ? ['label' => 'Manual Controls', 'route' => 'admin.compensation.manual-controls.index', 'match' => 'admin.compensation.manual-controls'] : null,
             ['label' => 'Engine Runs', 'route' => 'admin.compensation.engine-runs.index', 'match' => 'admin.compensation.engine-runs'],
             ['label' => 'Plan Settings', 'route' => 'admin.compensation.plan-settings.index', 'match' => 'admin.compensation.plan-settings'],
-        ]],
+        ]))],
     ];
 
     $compNavIsActive = static fn (array $item): bool => isset($item['match'])

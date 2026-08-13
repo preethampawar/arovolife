@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
     disableTestForeignKeys();
     $this->seed(RolesAndPermissionsSeeder::class);
 });
@@ -180,4 +183,13 @@ it('exports a CSV with a grand-total row', function () {
     expect($csv)->toContain('SNo,Sponsor ADN,Sponsor Name,Title,Date,Sponsee ADN,Sponsee Name,MSB Points,Value (Rs),Income (Rs),Status');
     expect($csv)->toContain('"TOTAL"');
     expect($csv)->toContain('5250.00');   // income total
+});
+
+it('hides the MSB reports while the feature is off', function (): void {
+    Feature::for(null)->deactivate(MentorshipBonusFeature::class);
+
+    $admin = msbReportAdmin();
+
+    $this->actingAs($admin)->get(route('admin.compensation.msb-calculation.index'))->assertNotFound();
+    $this->actingAs($admin)->get(route('admin.compensation.msb-input-output.index'))->assertNotFound();
 });

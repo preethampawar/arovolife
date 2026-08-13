@@ -8,11 +8,15 @@ use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 /**
  * Admin editor for the tabular compensation-plan ladders (GSB slabs, rank
@@ -29,21 +33,32 @@ final class AdminPlanSettingsController extends Controller
 
     public function index(Request $request): View
     {
+        // Each tab (and its tables) exists only while its feature flag is on —
+        // a disabled feature leaves no trace on any admin surface.
+        $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
+        $rankOn = Feature::for(null)->active(RankBonusFeature::class);
+        $fortuneOn = Feature::for(null)->active(FortuneBonusFeature::class);
+
         return view('admin.compensation.plan-settings.index', [
             // Viewing the plan is monitoring (whole admin family); editing it
             // changes what the platform pays, so the forms render only for the
             // role that owns platform configuration. The write routes carry
             // the same gate — this just keeps the UI honest.
             'canEdit' => $request->user()?->hasRole('developer') ?? false,
-            'slabs' => DB::table('gsb_slabs')->orderBy('slab')->get(),
-            'rankTiers' => DB::table('rank_tiers')->orderBy('rank_number')->get(),
-            'fortuneLevels' => DB::table('fortune_bonus_levels')->orderBy('level')->get(),
-            'fortuneTiers' => DB::table('fortune_bonus_tiers')->orderBy('sort_order')->get(),
+            'gsbOn' => $gsbOn,
+            'rankOn' => $rankOn,
+            'fortuneOn' => $fortuneOn,
+            'slabs' => $gsbOn ? DB::table('gsb_slabs')->orderBy('slab')->get() : collect(),
+            'rankTiers' => $rankOn ? DB::table('rank_tiers')->orderBy('rank_number')->get() : collect(),
+            'fortuneLevels' => $fortuneOn ? DB::table('fortune_bonus_levels')->orderBy('level')->get() : collect(),
+            'fortuneTiers' => $fortuneOn ? DB::table('fortune_bonus_tiers')->orderBy('sort_order')->get() : collect(),
         ]);
     }
 
     public function updateGsbSlab(Request $request, int $slab): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $row = DB::table('gsb_slabs')->where('slab', $slab)->first();
         abort_unless($row !== null, 404);
 
@@ -104,6 +119,7 @@ final class AdminPlanSettingsController extends Controller
 
     public function updateRankTier(Request $request, int $rank): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(RankBonusFeature::class), 404);
         abort_unless(DB::table('rank_tiers')->where('rank_number', $rank)->exists(), 404);
 
         $data = $request->validate([
@@ -139,6 +155,7 @@ final class AdminPlanSettingsController extends Controller
 
     public function updateFortuneLevel(Request $request, int $level): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(FortuneBonusFeature::class), 404);
         abort_unless(DB::table('fortune_bonus_levels')->where('level', $level)->exists(), 404);
 
         // points_per_member is read by RELATIVE DEPTH (points per downline
@@ -172,6 +189,7 @@ final class AdminPlanSettingsController extends Controller
 
     public function updateFortuneTier(Request $request, string $tier): RedirectResponse
     {
+        abort_unless(Feature::for(null)->active(FortuneBonusFeature::class), 404);
         abort_unless(DB::table('fortune_bonus_tiers')->where('tier', $tier)->exists(), 404);
 
         $data = $request->validate([

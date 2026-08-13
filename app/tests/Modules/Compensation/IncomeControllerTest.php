@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,6 +12,13 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    // GSB is the core engine these pages describe; its surfaces are
+    // flag-gated, so the suite runs with the flag on (dedicated flag-off
+    // tests deactivate it explicitly).
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+});
 
 function incomeDistributor(): array
 {
@@ -541,4 +549,24 @@ it('shows friendly wallet ledger type labels, never raw machine types', function
         ->assertSee('Repurchase deduction')
         ->assertDontSee('gsb_credit')
         ->assertDontSee('repurchase_deduction');
+});
+
+it('hides every GSB surface for distributors while the feature is off', function (): void {
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+
+    ['user' => $user] = incomeDistributor();
+    $this->actingAs($user);
+
+    // The GSB History tab, the cut-off card, the slab/carry-forward panels and
+    // the Genos Sales Bonus summary row all disappear from the dashboard.
+    $this->get(route('income.dashboard'))
+        ->assertOk()
+        ->assertDontSee('GSB History')
+        ->assertDontSee("Tonight's cut-off", false)
+        ->assertDontSee('Genos Sales Bonus')
+        ->assertDontSee('Power-side carry over');
+
+    // The GSB history page and its CSV export 404.
+    $this->get(route('income.gsb-history'))->assertNotFound();
+    $this->get(route('income.gsb-history.export'))->assertNotFound();
 });

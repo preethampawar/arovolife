@@ -8,11 +8,13 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Laravel\Pennant\Feature;
 
 final class AdminDailyCutoffController extends Controller
 {
@@ -25,6 +27,8 @@ final class AdminDailyCutoffController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'date' => ['nullable', 'date'],
             'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated'],
@@ -70,6 +74,8 @@ final class AdminDailyCutoffController extends Controller
 
     public function show(string $date): View
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $parsed = Carbon::parse($date);
 
         $rows = GsbCutoffResult::with('distributor.user')
@@ -87,6 +93,8 @@ final class AdminDailyCutoffController extends Controller
 
     public function export(Request $request): Response
     {
+        abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
+
         $request->validate([
             'date' => ['nullable', 'date'],
             'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated'],

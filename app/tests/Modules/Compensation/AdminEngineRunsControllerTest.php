@@ -6,6 +6,7 @@ use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -36,6 +37,12 @@ function engineRunsUser(string $role): User
 }
 
 it('renders the engine runs index with every engine, its schedule and dependencies', function (): void {
+    // Flag-off engines are hidden, so the engines this test asserts on need
+    // their flags on.
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(GrowthBoosterBonusFeature::class);
+    Feature::activate(RankBonusFeature::class);
+
     $this->actingAs(engineRunsUser('admin'))
         ->get(route('admin.compensation.engine-runs.index'))
         ->assertOk()
@@ -48,7 +55,24 @@ it('renders the engine runs index with every engine, its schedule and dependenci
         ->assertSee(route('admin.compensation.engine-runs.events', ['engine' => 'gbb.monthly']), false);
 });
 
+it('hides flag-off engines from the index entirely, including their dependency chips', function (): void {
+    // Every flag defaults to off, so only the always-on Monthly Payout Batch
+    // remains — and its "Runs first" chips must not name the hidden engines
+    // either. A disabled feature leaves no trace.
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Monthly Payout Batch')
+        ->assertDontSee('GSB Daily Cut-off (incl. MSB)')
+        ->assertDontSee('Growth Booster Bonus')
+        ->assertDontSee('Fortune Bonus Enrolment')
+        ->assertDontSee('Fortune Bonus Payout')
+        ->assertDontSee('ADC Bonus');
+});
+
 it('shows the last recorded run on the index', function (): void {
+    Feature::activate(GrowthBoosterBonusFeature::class);
+
     EngineRun::create([
         'engine_key' => 'gbb.monthly',
         'period_start' => '2026-07-01',

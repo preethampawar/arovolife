@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 /**
  * MSB daily (24-hr) calculation report (KP 2026-07-25 points engine).
@@ -30,6 +32,8 @@ final class AdminMsbCalculationController extends Controller
 
     public function index(Request $request): View
     {
+        abort_unless(Feature::for(null)->active(MentorshipBonusFeature::class), 404);
+
         [$q, $from, $to, $status, $slab] = $this->filters($request);
 
         $rows = $this->buildQuery($q, $from, $to, $status, $slab)
@@ -56,6 +60,8 @@ final class AdminMsbCalculationController extends Controller
 
     public function export(Request $request): Response
     {
+        abort_unless(Feature::for(null)->active(MentorshipBonusFeature::class), 404);
+
         [$q, $from, $to, $status, $slab] = $this->filters($request);
 
         $rows = $this->buildQuery($q, $from, $to, $status, $slab)->get();

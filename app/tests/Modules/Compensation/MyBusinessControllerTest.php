@@ -7,6 +7,7 @@ use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\TeamStatsService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -14,6 +15,13 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    // GSB is the core engine these pages describe; its surfaces are
+    // flag-gated, so the suite runs with the flag on (dedicated flag-off
+    // tests deactivate it explicitly).
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+});
 
 /**
  * @return array{user: User, distributorId: int}
@@ -295,4 +303,22 @@ it('shows a Tuesday as the next payout date on my business', function (): void {
     $this->get(route('my-business'))
         ->assertOk()
         ->assertSee('Next payout — Tuesday, '.$expected->format('d M Y'), false);
+});
+
+it('hides the GSB matching mechanics while the feature is off', function (): void {
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+
+    ['user' => $user] = myBusinessDistributor();
+    $this->actingAs($user);
+
+    // Carry forward / carry over cards and the matching note disappear; the
+    // team counts and today's Genos BV stay (plain Genos data, not GSB).
+    $this->get(route('my-business'))
+        ->assertOk()
+        ->assertDontSee('Left carry forward')
+        ->assertDontSee('Carried-over Left Genos BV')
+        ->assertDontSee('carry forward is capped')
+        ->assertDontSee('23:59 cut-off')
+        ->assertSee('Left Genos total team')
+        ->assertSee('Today Left Genos BV');
 });

@@ -114,8 +114,12 @@ Lifetime Awards read). A dependent bonus switched on without its prerequisites
 runs on missing data — for example, with Rank Bonus off, Growth Booster treats
 every distributor as never ranked. The Arete Development Center Bonus stands
 alone. Each flag card on the Feature flags page lists its prerequisites and
-whether they are currently on. Each bonus's calculation report is visible only
-while its flag is on.
+whether they are currently on. Switching a bonus flag off removes every trace
+of that bonus from the console and the distributor site — menu links, reports,
+engine-run cards, plan-settings tabs, settings fields and per-distributor
+tabs — and its pages return Not Found until the flag is switched back on.
+Historical records (wallet entries, run history, past cut-off rows) keep
+their labels.
 
 **Values you can see but not change.** The statutory cooling-off period, the
 TDS and admin-charge rates, and the payout thresholds are shown read-only on

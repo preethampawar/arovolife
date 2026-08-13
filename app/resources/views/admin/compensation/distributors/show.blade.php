@@ -17,8 +17,10 @@
         <div class="flex gap-2">
             <a href="{{ route('admin.distributors.show', $distributor) }}"
                class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">← Profile</a>
+            @if($gsbOn)
             <a href="{{ route('admin.compensation.manual-controls.index', ['adn' => $distributor->adn]) }}"
                class="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600">⚠ Manual Controls</a>
+            @endif
         </div>
     </div>
 
@@ -55,13 +57,14 @@
         <div class="rounded-xl border border-gray-200 p-3">
             <p class="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
                 Wallet balance
-                <x-help-tip text="Net GSB and MB credits not yet paid out." />
+                <x-help-tip text="{{ $gsbOn ? 'Net GSB and MB credits not yet paid out.' : 'Net bonus credits not yet paid out.' }}" />
             </p>
             <p class="text-lg font-bold text-blue-700 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBalance / 100, 2) }}</p>
         </div>
     </div>
 
-    {{-- Carry-forward state --}}
+    {{-- Carry-forward state (GSB engine concept — hidden with the flag) --}}
+    @if($gsbOn)
     <div class="grid grid-cols-2 gap-3">
         <div class="bg-purple-50 border border-purple-200 rounded-xl p-3">
             <p class="text-[10px] uppercase tracking-wider text-purple-600 flex items-center gap-1">
@@ -92,6 +95,7 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
 
 {{-- Failed cut-off alert --}}
@@ -105,7 +109,7 @@
 
 {{-- Tabs --}}
 <div class="flex border-b border-gray-200 mb-5">
-    @foreach(['gsb' => 'GSB History', 'genos-ledger' => 'Genos BV Ledger', 'mb' => 'Mentorship Bonus', 'bv-log' => 'Daily BV Log', 'wallet' => 'Wallet Ledger', 'repurchase' => 'Repurchase', 'payouts' => 'Payout History', 'audit' => 'Audit Log'] as $key => $label)
+    @foreach($visibleTabs as $key => $label)
     <a href="{{ route('admin.compensation.distributors.show', [$distributor, 'tab' => $key]) }}"
        class="px-4 py-2 text-sm font-medium border-b-2 -mb-px
               {{ $tab === $key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
@@ -114,6 +118,6 @@
     @endforeach
 </div>
 
-@include('admin.compensation.distributors._tab-'.(in_array($tab, ['gsb','genos-ledger','mb','bv-log','wallet','repurchase','payouts','audit'], true) ? $tab : 'gsb'))
+@include('admin.compensation.distributors._tab-'.(array_key_exists($tab, $visibleTabs) ? $tab : array_key_first($visibleTabs)))
 
 @endsection

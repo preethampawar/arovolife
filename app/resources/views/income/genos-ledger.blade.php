@@ -9,7 +9,11 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        A transaction view of your Genos BV. Each purchase made in your Left or Right group adds BV here as it happens; at the daily 23:59 cut-off the day is settled — the matched BV is used for your Genos Sales Bonus, the weaker side resets, and the balance shown carries over as the next day's opening BV. Business that occurs before matching is carry over; on a day a slab matches, the remaining BV is your carry forward.
+        @if($gsbOn)
+            A transaction view of your Genos BV. Each purchase made in your Left or Right group adds BV here as it happens; at the daily 23:59 cut-off the day is settled — the matched BV is used for your Genos Sales Bonus, the weaker side resets, and the balance shown carries over as the next day's opening BV. Business that occurs before matching is carry over; on a day a slab matches, the remaining BV is your carry forward.
+        @else
+            A transaction view of your Genos BV. Each purchase made in your Left or Right group adds BV here as it happens, day by day.
+        @endif
     </div>
 
     @if(! $genosBvEligible)

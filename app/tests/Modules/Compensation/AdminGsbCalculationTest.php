@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
     disableTestForeignKeys();
     $this->seed(RolesAndPermissionsSeeder::class);
 });
@@ -159,4 +162,22 @@ it('exports a CSV with a grand-total row', function () {
     expect($csv)->toContain('SNo,ADN,Name,Title,Date,Slab,Score,Score Value (Rs),Income (Rs),Status');
     expect($csv)->toContain('"TOTAL"');
     expect($csv)->toContain('2000.00');   // income total
+});
+
+it('hides every GSB admin surface while the feature is off', function (): void {
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+
+    $admin = reportAdmin();
+
+    foreach ([
+        route('admin.compensation.gsb-calculation.index'),
+        route('admin.compensation.gsb-calculation.export'),
+        route('admin.compensation.gsb-input-output.index'),
+        route('admin.compensation.daily-cutoffs.index'),
+        route('admin.compensation.personal-bv-topups.index'),
+        route('admin.compensation.carry-forwards.index'),
+        route('admin.compensation.manual-controls.index'),
+    ] as $url) {
+        $this->actingAs($admin)->get($url)->assertNotFound();
+    }
 });

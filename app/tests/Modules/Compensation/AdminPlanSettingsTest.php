@@ -5,18 +5,28 @@ declare(strict_types=1);
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Laravel\Pennant\Feature;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(RankBonusFeature::class);
     $this->seed(RolesAndPermissionsSeeder::class);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    // The Fortune tab and its write routes only exist while the flag is on;
+    // the flag-off cases assert the disappearance explicitly.
+    Feature::for(null)->activate(FortuneBonusFeature::class);
 });
 
 function planAdmin(string $role): User
@@ -58,6 +68,33 @@ it('renders the plan-settings page for an admin with the four editors', function
         ->assertOk()
         ->assertSee('Fortune Bonus — matrix levels')
         ->assertSee('Fortune Bonus — eligibility tiers');
+});
+
+it('hides the Fortune tab and its editors while the Fortune Bonus flag is off', function () {
+    Feature::for(null)->deactivate(FortuneBonusFeature::class);
+
+    // No tab button, and ?tab=fortune falls back to the GSB tab.
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk()
+        ->assertSee('GSB Slabs')
+        ->assertSee('Rank Tiers')
+        ->assertDontSee('Fortune Bonus');
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index', ['tab' => 'fortune']))
+        ->assertOk()
+        ->assertDontSee('Fortune Bonus — matrix levels')
+        ->assertSee('GSB slabs');
+
+    // The write routes 404 even for the role that owns them.
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.fortune-level.update', 2), [])
+        ->assertNotFound();
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.fortune-tier.update', 'starter'), [])
+        ->assertNotFound();
 });
 
 it('persists a GSB slab edit, writes an audit log, and dispatches the domain event', function () {
@@ -287,4 +324,32 @@ it('updates a comp.* scalar via the generic settings endpoint', function () {
 
     expect(DB::table('settings')->where('key', 'comp.tds.rate_bp')->value('value'))->toBe('600');
     expect(AuditLog::where('action', 'admin.settings.changed')->exists())->toBeTrue();
+});
+
+it('hides the GSB and Rank tabs and their editors while their flags are off', function () {
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+    Feature::for(null)->deactivate(RankBonusFeature::class);
+
+    // Only the Fortune tab (still on from beforeEach) remains, and it becomes
+    // the fallback active tab.
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk()
+        ->assertDontSee('GSB Slabs')
+        ->assertDontSee('Rank Tiers')
+        ->assertSee('Fortune Bonus — matrix levels');
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index', ['tab' => 'gsb']))
+        ->assertOk()
+        ->assertDontSee('GSB Slabs');
+
+    // The write routes 404 even for the role that owns them.
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.gsb-slab.update', 2), [])
+        ->assertNotFound();
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.rank-tier.update', 1), [])
+        ->assertNotFound();
 });

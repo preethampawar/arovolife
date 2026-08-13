@@ -3,8 +3,15 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -29,6 +36,9 @@ function compNavAdmin(): User
 }
 
 it('renders the compensation sub-nav inside a report page so there is a way back', function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
     $this->actingAs(compNavAdmin())
         ->get(route('admin.compensation.gsb-input-output.index'))
         ->assertOk()
@@ -59,13 +69,43 @@ it('does not render the compensation sub-nav on unrelated admin pages', function
 });
 
 it('hides feature-gated bonus engines while their flag is off', function (): void {
-    // GBB / Rank / Fortune / ADC / Lifetime Awards all default to off; their
-    // calculation reports are always visible, the engine run pages are not.
+    // Every bonus flag defaults to off: the GSB/MSB daily-engine links, the
+    // monthly engine run pages AND their calculation reports disappear — a
+    // disabled feature leaves no trace. The Overview and the ungated
+    // Awards & Rewards report stay reachable.
+    $this->actingAs(compNavAdmin())
+        ->get(route('admin.compensation.overview'))
+        ->assertOk()
+        ->assertDontSee(route('admin.compensation.gsb-calculation.index'), false)
+        ->assertDontSee(route('admin.compensation.daily-cutoffs.index'), false)
+        ->assertDontSee(route('admin.compensation.msb-calculation.index'), false)
+        ->assertDontSee(route('admin.compensation.manual-controls.index'), false)
+        ->assertDontSee(route('admin.compensation.gbb-calculation.index'), false)
+        ->assertDontSee(route('admin.compensation.rb-calculation.index'), false)
+        ->assertDontSee(route('admin.compensation.fb-calculation.index'), false)
+        ->assertDontSee(route('admin.compensation.adc-calculation.index'), false)
+        ->assertDontSee('Growth Booster Bonus')
+        ->assertDontSee('Fortune Bonus')
+        ->assertDontSee('Lifetime Awards')
+        ->assertSee(route('admin.compensation.aw-rw-calculation.index'), false);
+});
+
+it('shows the gated daily-engine links and calculation reports when their flags are on', function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+    Feature::for(null)->activate(RankBonusFeature::class);
+    Feature::for(null)->activate(FortuneBonusFeature::class);
+    Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
+
     $this->actingAs(compNavAdmin())
         ->get(route('admin.compensation.gsb-calculation.index'))
         ->assertOk()
+        ->assertSee(route('admin.compensation.daily-cutoffs.index'), false)
+        ->assertSee(route('admin.compensation.msb-calculation.index'), false)
+        ->assertSee(route('admin.compensation.manual-controls.index'), false)
         ->assertSee(route('admin.compensation.gbb-calculation.index'), false)
-        // Not the URL: /compensation/gbb is a substring of /compensation/gbb-calculation.
-        ->assertDontSee('Growth Booster Bonus')
-        ->assertDontSee('Lifetime Awards');
+        ->assertSee(route('admin.compensation.rb-calculation.index'), false)
+        ->assertSee(route('admin.compensation.fb-calculation.index'), false)
+        ->assertSee(route('admin.compensation.adc-calculation.index'), false);
 });

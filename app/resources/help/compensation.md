@@ -200,4 +200,4 @@ Use Manual Controls (always audit-logged) for: failed cut-offs (Retry is safe/id
 - **Every trigger is audit-logged** with your admin ID, the reason you provide, and the exact chain of steps that was planned.
 - **Rank Qualification Check is manual-only** (it has no schedule). It writes the qualification rows that Rank Bonus, Growth Booster, Fortune Bonus and Lifetime Awards all read — run it for a month before running those engines.
 - **The two payout-batch engines (GSB Weekly Payout, Monthly Payout Batch) are scheduler-only.** They create payout batches, and batches are approved by the same finance permission — allowing a manual trigger would let one person both create and approve a payout. They still appear on the page with their last run and events.
-- **An engine whose feature flag is off cannot be triggered** — it would record nothing. Enable the flag first.
+- **An engine whose feature flag is off is not shown on the page** — like every other surface of a disabled feature. Enable the flag under Feature Flags and the engine reappears with its run history intact.

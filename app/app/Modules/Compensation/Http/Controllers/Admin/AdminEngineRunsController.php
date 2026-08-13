@@ -46,21 +46,38 @@ final class AdminEngineRunsController extends Controller
 
         $engines = [];
         foreach ($definitions as $key => $definition) {
+            $flagOn = $definition->featureFlagClass === null
+                ? null
+                : Feature::for(null)->active($definition->featureFlagClass);
+
+            // A disabled feature must leave no trace on any admin surface, so
+            // a flag-off engine disappears from the page until re-enabled.
+            if ($flagOn === false) {
+                continue;
+            }
+
             $lastRun = $lastRuns[$key] ?? null;
 
             $engines[] = [
                 'definition' => $definition,
-                'flagOn' => $definition->featureFlagClass === null
-                    ? null
-                    : Feature::for(null)->active($definition->featureFlagClass),
+                'flagOn' => $flagOn,
                 'lastRun' => $lastRun,
                 // Bootstrap fallback: before the run log has history, the
                 // engine's own result tables are the only proof it ever ran.
                 'derivedPeriod' => $lastRun === null ? $this->status->lastComputedPeriod($key) : null,
-                'dependencyLabels' => array_map(
+                // Flag-off prerequisites are skipped at runtime by the chain
+                // resolver, so their chips are hidden here too.
+                'dependencyLabels' => array_values(array_map(
                     static fn (array $dependency): string => EngineRegistry::get($dependency['key'])->label,
-                    $definition->dependencies,
-                ),
+                    array_filter(
+                        $definition->dependencies,
+                        static function (array $dependency): bool {
+                            $flagClass = EngineRegistry::get($dependency['key'])->featureFlagClass;
+
+                            return $flagClass === null || Feature::for(null)->active($flagClass);
+                        },
+                    ),
+                )),
                 'defaultPeriodValue' => $this->periodInputValue($definition),
             ];
         }
@@ -87,7 +104,14 @@ final class AdminEngineRunsController extends Controller
         return view('admin.compensation.engine-runs.events', [
             'runs' => $runs,
             'engineKey' => $engineKey,
+            // Full map so historical rows of a now-disabled engine keep their
+            // label; the filter dropdown only offers currently visible engines.
             'definitions' => EngineRegistry::all(),
+            'filterOptions' => array_filter(
+                EngineRegistry::all(),
+                static fn (EngineDefinition $definition): bool => $definition->featureFlagClass === null
+                    || Feature::for(null)->active($definition->featureFlagClass),
+            ),
         ]);
     }
 

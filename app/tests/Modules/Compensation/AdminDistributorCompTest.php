@@ -3,14 +3,21 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
     $this->seed(RolesAndPermissionsSeeder::class);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 });
@@ -187,4 +194,32 @@ it('shows no not-credited pill once the distributor has 600 personal BV', functi
         ->assertOk()
         ->assertSee('1,500')
         ->assertDontSee('Not credited — personal BV below 600');
+});
+
+it('hides the GSB, Mentorship and Repurchase tabs while their flags are off', function (): void {
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+    Feature::for(null)->deactivate(MentorshipBonusFeature::class);
+    Feature::for(null)->deactivate(RepurchaseEngineFeature::class);
+
+    $distributorId = compDistributor();
+
+    // The default tab falls back to the first visible one; the flag-gated
+    // tabs, the carry-forward cards and the Manual Controls button all
+    // disappear — a disabled feature leaves no trace.
+    $this->actingAs(compAdmin())
+        ->get(route('admin.compensation.distributors.show', $distributorId))
+        ->assertOk()
+        ->assertDontSee('GSB History')
+        ->assertDontSee('Mentorship Bonus')
+        ->assertDontSee('Repurchase')
+        ->assertDontSee('Power-side CF')
+        ->assertDontSee('Manual Controls')
+        ->assertSee('Genos BV Ledger')
+        ->assertSee('Wallet Ledger');
+
+    // A direct request for a hidden tab is rejected by validation.
+    $this->actingAs(compAdmin())
+        ->from(route('admin.compensation.distributors.show', $distributorId))
+        ->get(route('admin.compensation.distributors.show', [$distributorId, 'tab' => 'repurchase']))
+        ->assertSessionHasErrors('tab');
 });

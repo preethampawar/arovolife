@@ -6,11 +6,16 @@
 
 {{-- Page note --}}
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Compensation Overview shows the real-time status of today's daily GSB cut-off, any failed or stuck jobs, the total pending payout queue, and this week's GSB distributed. Items in the attention feed need action before Tuesday's payout — use Retry or Recalculate to resolve them.
+    @if($gsbOn)
+        The Compensation Overview shows the real-time status of today's daily GSB cut-off, any failed or stuck jobs, the total pending payout queue, and this week's GSB distributed. Items in the attention feed need action before Tuesday's payout — use Retry or Recalculate to resolve them.
+    @else
+        The Compensation Overview shows the total amount queued for the next payout run.
+    @endif
 </div>
 
 {{-- Stat cards --}}
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+<div class="grid grid-cols-2 {{ $gsbOn ? 'lg:grid-cols-4' : 'lg:grid-cols-1' }} gap-3 mb-6">
+    @if($gsbOn)
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             Today's cut-off
@@ -27,6 +32,7 @@
         </p>
         <p class="mt-1 text-lg font-bold {{ $todayFailed > 0 ? 'text-red-600' : 'text-green-700' }}">{{ \App\Modules\Shared\Support\IndianNumber::format($todayFailed) }}</p>
     </div>
+    @endif
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             Pending payouts
@@ -34,6 +40,7 @@
         </p>
         <p class="mt-1 text-lg font-bold text-blue-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pendingPayoutPaise / 100, 2) }}</p>
     </div>
+    @if($gsbOn)
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
             GSB this week
@@ -44,8 +51,10 @@
             <p class="text-xs text-amber-600 font-medium mt-0.5">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gsbReversalsThisWeekPaise / 100, 2) }} reversed</p>
         @endif
     </div>
+    @endif
 </div>
 
+@if($gsbOn)
 {{-- Attention feed --}}
 @if($failedCutoffs->isEmpty())
 <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700 font-medium">
@@ -114,5 +123,6 @@
     <div class="px-4 py-3 border-t border-gray-100">{{ $cutoffTable->links() }}</div>
     @endif
 </div>
+@endif
 
 @endsection

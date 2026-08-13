@@ -9,7 +9,17 @@
 @php
     $bv = fn ($paise) => $paise === null ? '—' : \App\Modules\Shared\Support\IndianNumber::format($paise / 100, 0).' BV';
     $rupees = fn ($paise) => $paise === null ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($paise / 100, 2);
-    $activeTab = in_array(request('tab'), ['gsb', 'ranks', 'fortune'], true) ? request('tab') : 'gsb';
+    $planTabs = [];
+    if ($gsbOn) {
+        $planTabs['gsb'] = 'GSB Slabs';
+    }
+    if ($rankOn) {
+        $planTabs['ranks'] = 'Rank Tiers';
+    }
+    if ($fortuneOn) {
+        $planTabs['fortune'] = 'Fortune Bonus';
+    }
+    $activeTab = array_key_exists(request('tab'), $planTabs) ? request('tab') : array_key_first($planTabs);
 @endphp
 
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
@@ -82,7 +92,7 @@
 
 {{-- Tabs --}}
 <div class="flex border-b border-gray-200 mb-6">
-    @foreach(['gsb' => 'GSB Slabs', 'ranks' => 'Rank Tiers', 'fortune' => 'Fortune Bonus'] as $key => $label)
+    @foreach($planTabs as $key => $label)
     <a href="{{ route('admin.compensation.plan-settings.index', ['tab' => $key]) }}"
        class="px-4 py-2 text-sm font-medium border-b-2 -mb-px
               {{ $activeTab === $key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">

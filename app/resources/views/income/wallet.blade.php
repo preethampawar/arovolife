@@ -55,7 +55,7 @@
     @if($ledgerRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
             <p class="text-gray-500 font-medium">No wallet transactions yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Credits will appear here after your first GSB cut-off.</p>
+            <p class="text-sm text-gray-400 mt-1">{{ \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\GenosSalesBonusFeature::class) ? 'Credits will appear here after your first GSB cut-off.' : 'Credits will appear here once you start earning bonuses.' }}</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto mb-6">
@@ -63,8 +63,25 @@
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
+                        @php
+                            // Bonus names in the tip track the feature flags —
+                            // a disabled bonus is never mentioned to distributors.
+                            $tipBonusNames = array_values(array_filter([
+                                \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\GenosSalesBonusFeature::class) ? 'Genos Sales' : null,
+                                \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MentorshipBonusFeature::class) ? 'Mentorship' : null,
+                                \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\GrowthBoosterBonusFeature::class) ? 'Growth Booster' : null,
+                                \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\RankBonusFeature::class) ? 'Rank' : null,
+                                \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FortuneBonusFeature::class) ? 'Fortune' : null,
+                                \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature::class) ? 'ADC' : null,
+                            ]));
+                            $tipBonusParen = match (count($tipBonusNames)) {
+                                0 => '',
+                                1 => ' ('.$tipBonusNames[0].')',
+                                default => ' ('.implode(', ', array_slice($tipBonusNames, 0, -1)).' or '.end($tipBonusNames).')',
+                            };
+                        @endphp
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center gap-1">Type <x-help-tip text="What this wallet entry is: a bonus credit (Genos Sales, Mentorship, Growth Booster, Rank, Fortune or ADC), a payout to your bank, the repurchase deduction held back for your monthly repurchase, an amount above the monthly income cap, or a manual adjustment by arovolife." /></span>
+                            <span class="flex items-center gap-1">Type <x-help-tip :text="'What this wallet entry is: a bonus credit'.$tipBonusParen.', a payout to your bank, the repurchase deduction held back for your monthly repurchase, an amount above the monthly income cap, or a manual adjustment by arovolife.'" /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Amount</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">

@@ -5,12 +5,15 @@ declare(strict_types=1);
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
     disableTestForeignKeys();
     $this->seed(RolesAndPermissionsSeeder::class);
 });

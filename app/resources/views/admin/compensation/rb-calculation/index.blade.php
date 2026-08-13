@@ -59,7 +59,7 @@
                 <tr>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>
+                    @if($adcOn)<th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>@endif
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Month</th>
@@ -84,7 +84,7 @@
                             {{ $row->adn }}
                         </a>
                     </td>
-                    <td class="px-3 py-2 text-gray-600">{{ $areteCenterMap[$row->distributor_id] ?? '—' }}</td>
+                    @if($adcOn)<td class="px-3 py-2 text-gray-600">{{ $areteCenterMap[$row->distributor_id] ?? '—' }}</td>@endif
                     <td class="px-3 py-2 text-gray-700">{{ $row->full_name ?? '—' }}</td>
                     <td class="px-3 py-2">
                         @if($titleObj->title !== null)
@@ -139,7 +139,7 @@
                 <tr>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>
+                    @if($adcOn)<th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>@endif
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
                     <th class="px-3 py-2 text-left text-gray-500 font-medium">Month</th>
@@ -162,7 +162,7 @@
                             {{ $row->adn }}
                         </a>
                     </td>
-                    <td class="px-3 py-2 text-gray-600">{{ $areteCenterMap[$row->distributor_id] ?? '—' }}</td>
+                    @if($adcOn)<td class="px-3 py-2 text-gray-600">{{ $areteCenterMap[$row->distributor_id] ?? '—' }}</td>@endif
                     <td class="px-3 py-2 text-gray-700">{{ $row->full_name ?? '—' }}</td>
                     <td class="px-3 py-2">
                         @if($titleObj->title !== null)

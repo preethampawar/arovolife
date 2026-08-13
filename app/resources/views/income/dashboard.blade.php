@@ -9,7 +9,11 @@
 
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. Deductions (3% admin charge, 5% TDS, and any repurchase wallet balance) are applied before transfer.
+        @if ($gsbOn)
+            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. Deductions (3% admin charge, 5% TDS, and any repurchase wallet balance) are applied before transfer.
+        @else
+            This dashboard shows a live snapshot of your income. Weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. Deductions (3% admin charge, 5% TDS, and any repurchase wallet balance) are applied before transfer.
+        @endif
     </div>
 
     {{-- Wallet hero card --}}
@@ -30,7 +34,12 @@
             ? (int) round(min($slabProgress->leftEffectivePaise, $slabProgress->rightEffectivePaise) / 100)
             : null;
     @endphp
-    <div class="grid grid-cols-1 {{ ($keyDates['hasMonthlyBonuses'] ?? false) ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-4 mb-6">
+    @php
+        $keyDateCardCount = 1 + ($gsbOn ? 1 : 0) + (($keyDates['hasMonthlyBonuses'] ?? false) ? 1 : 0);
+        $keyDateGridClass = [1 => 'sm:grid-cols-1', 2 => 'sm:grid-cols-2'][$keyDateCardCount] ?? 'sm:grid-cols-3';
+    @endphp
+    <div class="grid grid-cols-1 {{ $keyDateGridClass }} gap-4 mb-6">
+        @if ($gsbOn)
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500 font-medium">Tonight's cut-off</p>
@@ -43,10 +52,11 @@
                 <p class="text-xs text-gray-400 mt-1">Locks today's Genos BV</p>
             @endif
         </div>
+        @endif
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500 font-medium">Next weekly payout</p>
-                <x-help-tip text="Your weekly bonus income — Genos Sales Bonus and other weekly credits — transfers to your bank every Tuesday, after deductions and provided your balance meets the minimum. See Wallet &amp; Payouts for the exact rules." />
+                <x-help-tip text="Your weekly bonus income{{ $gsbOn ? ' — Genos Sales Bonus and other weekly credits —' : '' }} transfers to your bank every Tuesday, after deductions and provided your balance meets the minimum. See Wallet &amp; Payouts for the exact rules." />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextWeeklyPayout']->format('D, d M') }}</p>
             <p class="text-xs text-gray-400 mt-1">Weekly bonus income</p>
@@ -87,7 +97,7 @@
     @endif
 
     {{-- Stat cards --}}
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 {{ $gsbOn ? 'sm:grid-cols-3' : 'sm:grid-cols-1' }} gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500 font-medium">Personal BV (Lifetime)</p>
@@ -148,6 +158,7 @@
                 ? '+ '.\App\Modules\Shared\Support\IndianNumber::format($slab1WeakerCfBv, 0).' BV in slab-1 weaker carry over (see card below)'
                 : null;
         @endphp
+        @if ($gsbOn)
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-500 font-medium">Left Genos BV (Today)</p>
@@ -182,8 +193,10 @@
             @endif
             <p class="text-xs text-gray-400 mt-1">{{ $groupBvNote }}</p>
         </div>
+        @endif
     </div>
 
+    @if ($gsbOn)
     {{-- Carry-forward cards --}}
     @php
         $powerCfBv = $cf ? (int) round($cf->power_side_bv_paise / 100) : 0;
@@ -223,5 +236,6 @@
             <p class="text-xs text-gray-400 mt-2">No time limit</p>
         </div>
     </div>
+    @endif
 </div>
 @endsection

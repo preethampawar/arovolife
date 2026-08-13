@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Support;
 
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -32,7 +33,7 @@ final class IncomeNavLinks
             ['route' => 'income.dashboard', 'label' => 'Income', 'visible' => true],
             ['route' => 'income.genos-bv', 'label' => 'Genos BV', 'visible' => true],
             ['route' => 'income.genos-ledger', 'label' => 'Genos Ledger', 'visible' => true],
-            ['route' => 'income.gsb-history', 'label' => 'GSB History', 'visible' => true],
+            ['route' => 'income.gsb-history', 'label' => 'GSB History', 'visible' => Feature::for(null)->active(GenosSalesBonusFeature::class)],
             ['route' => 'income.mentorship', 'label' => 'Mentorship', 'visible' => Feature::for(null)->active(MentorshipBonusFeature::class)],
             ['route' => 'income.growth-booster', 'label' => 'Growth Booster', 'visible' => Feature::for(null)->active(GrowthBoosterBonusFeature::class)],
             ['route' => 'income.rank-bonus', 'label' => 'Rank Bonus', 'visible' => Feature::for(null)->active(RankBonusFeature::class)],

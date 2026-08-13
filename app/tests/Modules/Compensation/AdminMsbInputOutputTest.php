@@ -2,16 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
     disableTestForeignKeys();
     $this->seed(RolesAndPermissionsSeeder::class);
 });
@@ -82,7 +86,7 @@ it("renders KP's five-earner day: 75 points at ₹40 totalling ₹3,000", functi
         ->assertOk();
 
     // Day header: total received BV and the 3% pool.
-    $res->assertSee(\App\Modules\Commerce\Support\Bv::format(10_000_000));
+    $res->assertSee(Bv::format(10_000_000));
     $res->assertSee('3,000.00');
 
     // Every earner's points and the one point value.

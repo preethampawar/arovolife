@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
@@ -60,6 +61,9 @@ final class AdminRankBonusCalculationController extends Controller
             ->values()
             ->all();
 
+        // The Arete Center column only exists while the ADC feature is on.
+        $adcOn = Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
+
         return view('admin.compensation.rb-calculation.index', [
             'rank1Rows' => $rank1Rows,
             'rankRows' => $rankRows,
@@ -69,7 +73,8 @@ final class AdminRankBonusCalculationController extends Controller
             'status' => $status,
             'titleService' => $this->titleService,
             'personalBvMap' => $this->batchPersonalBvPaise($distributorIds),
-            'areteCenterMap' => $this->batchAreteCenters($distributorIds),
+            'adcOn' => $adcOn,
+            'areteCenterMap' => $adcOn ? $this->batchAreteCenters($distributorIds) : [],
         ]);
     }
 
@@ -93,16 +98,20 @@ final class AdminRankBonusCalculationController extends Controller
 
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
-        $areteCenterMap = $this->batchAreteCenters($distributorIds);
 
-        $csv = "SNo,ADN,Arete Center,Name,Title,Month,Rank,RAP,AO-GO Points,Point Value (Rs),Gross RB (Rs),TDS (Rs),Net RB (Rs),Status\n";
+        // The Arete Center column only exists while the ADC feature is on —
+        // header and cells drop together so the CSV stays rectangular.
+        $adcOn = Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
+        $areteCenterMap = $adcOn ? $this->batchAreteCenters($distributorIds) : [];
+
+        $csv = 'SNo,ADN,'.($adcOn ? 'Arete Center,' : '')."Name,Title,Month,Rank,RAP,AO-GO Points,Point Value (Rs),Gross RB (Rs),TDS (Rs),Net RB (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-            $csv .= implode(',', [
+            $csv .= implode(',', array_merge([
                 $i + 1,
                 $this->csvStr($row->adn),
-                $this->csvStr($areteCenterMap[$row->distributor_id] ?? ''),
+            ], $adcOn ? [$this->csvStr($areteCenterMap[$row->distributor_id] ?? '')] : [], [
                 $this->csvStr($row->full_name ?? ''),
                 $this->csvStr($title),
                 Carbon::parse($row->month_start)->format('Y-m'),
@@ -114,7 +123,7 @@ final class AdminRankBonusCalculationController extends Controller
                 number_format($row->tds_paise / 100, 2, '.', ''),
                 number_format($row->net_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
-            ])."\n";
+            ]))."\n";
         }
 
         return response($csv, 200, [

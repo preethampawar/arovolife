@@ -12,11 +12,13 @@ use App\Modules\Compensation\Services\GsbSlabProgressService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Services\TeamStatsService;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Laravel\Pennant\Feature;
 
 /**
  * "My Business" — the distributor's one-page snapshot of their own account:
@@ -35,6 +37,7 @@ final class MyBusinessController extends Controller
         abort_unless($distributor !== null, 403);
 
         $distributorId = $distributor->id;
+        $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
 
         try {
             $personalBvPaise = app(BvLedgerService::class)->totalPersonalBvPaise($distributorId);
@@ -55,7 +58,7 @@ final class MyBusinessController extends Controller
                     ->first()
                 : null;
 
-            $slabProgress = $genosBvEligible
+            $slabProgress = ($gsbOn && $genosBvEligible)
                 ? app(GsbSlabProgressService::class)->forDistributor($distributorId)
                 : null;
 
@@ -63,7 +66,7 @@ final class MyBusinessController extends Controller
             // the last slab match (the weaker side resets to 0, the power
             // side's remainder survives). Zero until the first slab matches —
             // BV building up before a match is carry over, not carry forward.
-            $lastMatch = $genosBvEligible
+            $lastMatch = ($gsbOn && $genosBvEligible)
                 ? GsbCutoffResult::query()
                     ->where('distributor_id', $distributorId)
                     ->whereNotNull('slab')
@@ -100,6 +103,7 @@ final class MyBusinessController extends Controller
         return view('my-business', compact(
             'distributor', 'personalBvPaise', 'title', 'gsbMinBvPaise', 'genosBvEligible',
             'walletBalancePaise', 'nextPayout', 'dailyBv', 'slabProgress', 'lastMatch', 'teamCounts',
+            'gsbOn',
         ));
     }
 }
