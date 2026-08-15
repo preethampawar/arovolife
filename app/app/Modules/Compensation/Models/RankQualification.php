@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Models;
 
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -56,5 +58,32 @@ final class RankQualification extends Model
     public function distributor(): BelongsTo
     {
         return $this->belongsTo(Distributor::class);
+    }
+
+    /**
+     * A genuine rank achievement: qualified, and not a carry-forward row.
+     * The single definition of "actually achieved a rank" — AO-GO eligibility
+     * and any report that must exclude carried rows go through here.
+     *
+     * @param  Builder<RankQualification>  $query
+     */
+    #[Scope]
+    protected function achieved(Builder $query): void
+    {
+        $query->where('status', self::STATUS_QUALIFIED)
+            ->where('is_carry_forward', false);
+    }
+
+    /**
+     * Holding a rank in a given month. Carry-forward rows COUNT here — a paid
+     * carry row still means the distributor was ranked that month.
+     *
+     * @param  Builder<RankQualification>  $query
+     */
+    #[Scope]
+    protected function rankedInMonth(Builder $query, string $monthStart): void
+    {
+        $query->where('month_start', $monthStart)
+            ->where('status', self::STATUS_QUALIFIED);
     }
 }

@@ -365,12 +365,11 @@ final class RankQualificationService
             return [];
         }
 
-        $rows = DB::table('rank_qualifications')
+        $rows = RankQualification::query()->achieved()
             ->whereIn('distributor_id', $distributorIds)
             ->where('rank_number', $rank)
-            ->where('status', RankQualification::STATUS_QUALIFIED)
-            ->where('is_carry_forward', false)
             ->where('month_start', '<=', $uptoMonthStart)
+            ->toBase()
             ->groupBy('distributor_id')
             ->selectRaw('distributor_id, COUNT(*) as achieved_months')
             ->get();

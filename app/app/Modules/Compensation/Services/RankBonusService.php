@@ -101,9 +101,9 @@ final class RankBonusService
             // rules that way.
             $payHighestOnly = $this->plan->rankPayHighestOnly();
             $highestRankByDistributor = $payHighestOnly
-                ? RankQualification::where('month_start', $monthStart)
-                    ->where('status', RankQualification::STATUS_QUALIFIED)
-                    ->where('is_carry_forward', false)
+                ? RankQualification::query()->achieved()
+                    ->where('month_start', $monthStart)
+                    ->toBase()
                     ->groupBy('distributor_id')
                     ->selectRaw('distributor_id, MAX(rank_number) as highest_rank')
                     ->pluck('highest_rank', 'distributor_id')
@@ -117,10 +117,9 @@ final class RankBonusService
                 ));
                 $rapPoints = $this->plan->rankRapPoints($rank);
 
-                $qualifierIds = RankQualification::where('month_start', $monthStart)
+                $qualifierIds = RankQualification::query()->achieved()
+                    ->where('month_start', $monthStart)
                     ->where('rank_number', $rank)
-                    ->where('status', RankQualification::STATUS_QUALIFIED)
-                    ->where('is_carry_forward', false)
                     ->distinct()
                     ->pluck('distributor_id')
                     ->map(fn ($id) => (int) $id)
@@ -264,10 +263,9 @@ final class RankBonusService
             return [];
         }
 
-        $repeatIds = RankQualification::whereIn('distributor_id', $qualifierIds)
+        $repeatIds = RankQualification::query()->achieved()
+            ->whereIn('distributor_id', $qualifierIds)
             ->where('rank_number', $rank)
-            ->where('status', RankQualification::STATUS_QUALIFIED)
-            ->where('is_carry_forward', false)
             ->where('month_start', '<', $month->toDateString())
             ->distinct()
             ->pluck('distributor_id')

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Models;
 
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -62,5 +64,19 @@ final class RankAogoGrant extends Model
     public function distributor(): BelongsTo
     {
         return $this->belongsTo(Distributor::class);
+    }
+
+    /**
+     * A use of the offer that still counts: everything except voided grants.
+     * The single definition of "used" — the lifetime counter, the
+     * consecutive-month rule and every display of the offer read through here,
+     * so a voided grant can never count in one place and not another.
+     *
+     * @param  Builder<RankAogoGrant>  $query
+     */
+    #[Scope]
+    protected function live(Builder $query): void
+    {
+        $query->where('status', '!=', self::STATUS_VOIDED);
     }
 }

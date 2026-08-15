@@ -281,8 +281,7 @@ final class GrowthBoosterBonusService
         }
 
         $rankedIds = RankQualification::query()
-            ->where('month_start', $monthStart->copy()->subMonth()->startOfMonth()->toDateString())
-            ->where('status', RankQualification::STATUS_QUALIFIED)
+            ->rankedInMonth($monthStart->copy()->subMonth()->startOfMonth()->toDateString())
             ->whereIn('distributor_id', $agpMap->keys()->all())
             ->distinct()
             ->pluck('distributor_id')

@@ -703,8 +703,7 @@ final class FortuneBonusService
      */
     private function buildIneligibleRankIds(string $monthStart): array
     {
-        return RankQualification::where('month_start', $monthStart)
-            ->where('status', RankQualification::STATUS_QUALIFIED)
+        return RankQualification::query()->rankedInMonth($monthStart)
             ->whereIn('rank_number', $this->plan->fortuneIneligibleRanks())
             ->distinct()
             ->pluck('distributor_id')
@@ -719,8 +718,7 @@ final class FortuneBonusService
      */
     private function buildRankMap(string $monthStart): array
     {
-        $rows = RankQualification::where('month_start', $monthStart)
-            ->where('status', RankQualification::STATUS_QUALIFIED)
+        $rows = RankQualification::query()->rankedInMonth($monthStart)
             ->select('distributor_id', DB::raw('MAX(rank_number) as max_rank'))
             ->groupBy('distributor_id')
             ->get();
