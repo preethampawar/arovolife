@@ -126,6 +126,21 @@ final class TeamStatsService
     }
 
     /**
+     * Distributor IDs in a scope — the same membership the counts and rosters
+     * are built from, for callers that must intersect a leg with another table
+     * (e.g. counting a leg's rank qualifiers) instead of just counting it.
+     *
+     * @return list<int>
+     */
+    public function scopedIds(Distributor $distributor, string $scope): array
+    {
+        return array_values(array_map(
+            static fn ($id): int => (int) $id,
+            $this->scopedQuery($distributor, $scope)->pluck('d.id')->all(),
+        ));
+    }
+
+    /**
      * The single source of truth — every downline / referral question
      * about a distributor flows through here. Returns a builder seeded
      * at `distributors as d` joined to `users as u`, with the WHERE/JOIN

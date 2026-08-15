@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Pennant\Feature;
 
 /**
  * The ID-card stats panel rendered in three places:
@@ -26,10 +30,10 @@ use Illuminate\Support\Facades\Storage;
  * wire the placeholder fields (rank engine, BV ledger, payouts) every
  * surface picks up the new values automatically.
  *
- * Three fields are Phase-4+ placeholders that resolve to `null` for now
- * (highest_rank, current_rank, total_withdrawal_income); personal_sales_position
- * and total_personal_bv are wired to the BV ledger. Grep for
- * `PHASE_LATER_PLACEHOLDER` to find every remaining wire-up site.
+ * One field is still a later-phase placeholder that resolves to `null`
+ * (total_withdrawal_income); personal_sales_position and total_personal_bv are
+ * wired to the BV ledger, and highest_rank / current_rank to the rank engine.
+ * Grep for `PHASE_LATER_PLACEHOLDER` to find every remaining wire-up site.
  */
 final class DistributorIdCardStats
 {
@@ -51,17 +55,44 @@ final class DistributorIdCardStats
         // nullsafe access here as unreachable. Read directly.
         $user = $distributor->user;
 
+        $ranks = $this->ownRankLabels($distributor);
+
         return [
             'name' => $user->full_name ?: $user->email,
             'adn' => $distributor->adn,
-            'highest_rank' => null, // PHASE_LATER_PLACEHOLDER (Phase 4 — rank engine)
-            'current_rank' => null, // PHASE_LATER_PLACEHOLDER (Phase 4 — rank engine)
+            'highest_rank' => $ranks['highest'],
+            'current_rank' => $ranks['current'],
             'region' => 'India',
             'verification_label' => $user->verificationLabel(),
             'verification_class' => $user->verificationClass(),
             'activation_date' => $user->activated_at,
             'total_personal_bv' => $this->ownPersonalBv($distributor),
         ];
+    }
+
+    /**
+     * The distributor's current and highest achieved rank — shown ONLY to the
+     * authenticated owner, exactly like personal BV below (hard rule #3 — own
+     * data only), and only while the Rank Bonus feature is live, so a
+     * flag-off bonus leaves no trace on the card.
+     *
+     * @return array{current: ?string, highest: ?string}
+     */
+    private function ownRankLabels(Distributor $distributor): array
+    {
+        if (auth()->id() !== $distributor->user_id) {
+            return ['current' => null, 'highest' => null];
+        }
+
+        if (! Feature::for(null)->active(RankBonusFeature::class)) {
+            return ['current' => null, 'highest' => null];
+        }
+
+        try {
+            return app(RankStatusService::class)->labelsFor((int) $distributor->id);
+        } catch (QueryException) {
+            return ['current' => null, 'highest' => null];
+        }
     }
 
     /**

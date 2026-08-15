@@ -13,12 +13,13 @@ use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
-use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Services\AogoOfferService;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\GsbSlabProgressService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
@@ -397,20 +398,23 @@ final class IncomeController extends Controller
 
             $totalNet = $rows->getCollection()->sum('net_paise');
 
-            // AO-GO lifetime counter ("x of 3 used") — shown once the offer
-            // has ever been used.
-            $aogoUsed = RankAogoGrant::where('distributor_id', $distributor->id)
-                ->where('status', '!=', RankAogoGrant::STATUS_VOIDED)
-                ->count();
+            // AO-GO: lifetime counter ("x of 3 used") plus this month's
+            // published conditions measured against the distributor's own state.
+            $aogoStatus = app(AogoOfferService::class)
+                ->eligibilityFor((int) $distributor->id, Carbon::today('Asia/Kolkata'));
+            $aogoUsed = $aogoStatus->usesUsed;
+            $aogoMax = $aogoStatus->usesMax;
+            $rankStatus = app(RankStatusService::class)->forDistributor($distributor);
         } catch (QueryException) {
             $rows = collect();
             $totalNet = 0;
+            $aogoStatus = null;
             $aogoUsed = 0;
+            $aogoMax = app(CompensationPlanSettingsService::class)->aogoLifetimeMax();
+            $rankStatus = null;
         }
 
-        $aogoMax = app(CompensationPlanSettingsService::class)->aogoLifetimeMax();
-
-        return view('income.rank-bonus', compact('distributor', 'rows', 'totalNet', 'aogoUsed', 'aogoMax'));
+        return view('income.rank-bonus', compact('distributor', 'rows', 'totalNet', 'aogoUsed', 'aogoMax', 'aogoStatus', 'rankStatus'));
     }
 
     public function fortuneBonus(Request $request): View

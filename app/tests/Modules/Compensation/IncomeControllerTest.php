@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -569,4 +571,93 @@ it('hides every GSB surface for distributors while the feature is off', function
     // The GSB history page and its CSV export 404.
     $this->get(route('income.gsb-history'))->assertNotFound();
     $this->get(route('income.gsb-history.export'))->assertNotFound();
+});
+
+it('shows the distributor their own rank status and the next rank conditions', function (): void {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    $monthStart = Carbon::today('Asia/Kolkata')->startOfMonth();
+
+    disableTestForeignKeys();
+    try {
+        DB::table('rank_qualifications')->insert([
+            'distributor_id' => $distributorId,
+            'rank_number' => 1,
+            'month_start' => $monthStart->toDateString(),
+            'occurrence_in_month' => 1,
+            'is_carry_forward' => false,
+            'status' => 'qualified',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $rankOne = app(CompensationPlanSettingsService::class)->rankName(1);
+    $rankTwo = app(CompensationPlanSettingsService::class)->rankName(2);
+
+    $this->get(route('income.rank-bonus'))
+        ->assertOk()
+        ->assertSee('My rank status')
+        ->assertSee('Current rank')
+        ->assertSee('Highest rank')
+        ->assertSee($rankOne)
+        ->assertSee('Conditions for '.$rankTwo)
+        ->assertSee('Left Genos BV this month');
+});
+
+it('shows the AO-GO offer and its conditions once a rank has been achieved, and not before', function (): void {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    // Never ranked → the offer cannot apply, so the panel stays off the page.
+    ['user' => $fresh] = incomeDistributor();
+    $this->actingAs($fresh)
+        ->get(route('income.rank-bonus'))
+        ->assertOk()
+        ->assertDontSee('AO-GO offer');
+
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+
+    disableTestForeignKeys();
+    try {
+        DB::table('rank_qualifications')->insert([
+            'distributor_id' => $distributorId,
+            'rank_number' => 1,
+            'month_start' => Carbon::today('Asia/Kolkata')->startOfMonth()->subMonths(2)->toDateString(),
+            'occurrence_in_month' => 1,
+            'is_carry_forward' => false,
+            'status' => 'qualified',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $this->actingAs($user)
+        ->get(route('income.rank-bonus'))
+        ->assertOk()
+        ->assertSee('AO-GO offer')
+        ->assertSee('Achieve Once – Get Once', false)
+        ->assertSee('Used 0 of 3')
+        ->assertSee("This month's conditions", false)
+        ->assertSee('A rank achieved in an earlier month')
+        ->assertSee('No rank held this month')
+        ->assertSee('Lifetime uses remaining');
+});
+
+it('keeps the rank status panel out of every surface while the Rank Bonus flag is off', function (): void {
+    Feature::for(null)->deactivate(RankBonusFeature::class);
+
+    ['user' => $user] = incomeDistributor();
+    $this->actingAs($user);
+
+    $this->get(route('income.rank-bonus'))->assertNotFound();
+    $this->get(route('income.dashboard'))
+        ->assertOk()
+        ->assertDontSee('Rank Bonus');
 });

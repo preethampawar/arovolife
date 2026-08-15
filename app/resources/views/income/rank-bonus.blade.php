@@ -16,6 +16,158 @@
         Admin charge (min of 3%, max ₹25,000 per monthly batch) and 5% TDS are deducted. Credited on the 8th of the following month.
     </div>
 
+    {{-- Rank status — the distributor's own standing, and the published
+         conditions of the next rank measured against their own figures. --}}
+    @if($rankStatus)
+    <section class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+        <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900">My rank status</h2>
+                <p class="text-xs text-gray-500 mt-0.5">Ranks are checked once a month. Everything below is your own recorded result.</p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
+                    <p class="text-[11px] uppercase tracking-wider text-gray-500 flex items-center justify-center gap-1">
+                        Current rank
+                        <x-help-tip text="The rank you achieved this month, or last month while this month is still being counted." />
+                    </p>
+                    <p class="text-base font-bold text-indigo-700 mt-1">{{ $rankStatus->currentRankName() ?? 'No rank yet' }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
+                    <p class="text-[11px] uppercase tracking-wider text-gray-500 flex items-center justify-center gap-1">
+                        Highest rank
+                        <x-help-tip text="The highest rank you have ever achieved." />
+                    </p>
+                    <p class="text-base font-bold text-purple-700 mt-1">{{ $rankStatus->highestRankName() ?? '—' }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
+                    <p class="text-[11px] uppercase tracking-wider text-gray-500">This month</p>
+                    <p class="text-base font-bold mt-1 {{ $rankStatus->qualifiedThisMonth ? 'text-green-700' : 'text-gray-400' }}">
+                        {{ $rankStatus->qualifiedThisMonth ? ($rankStatus->rankNames[$rankStatus->thisMonthRank] ?? 'Achieved') : 'Not yet achieved' }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        @if($rankStatus->requalificationConditionsMet === false)
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 mb-4">
+            <strong>Requalification conditions not met this month.</strong>
+            Achieving a rank you already hold pays only when the month's repurchase BV for that rank is completed and your repurchase wallet is cleared.
+            <a href="{{ route('income.wallet') }}" class="underline">Check my wallet →</a>
+        </div>
+        @endif
+
+        {{-- Achievement history: how many times each rank has been achieved. --}}
+        @if($rankStatus->totalAchievements() > 0)
+        <div class="mb-5">
+            <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Ranks achieved</p>
+            <div class="flex flex-wrap gap-2">
+                @foreach($rankStatus->achievementCounts as $rankNumber => $times)
+                <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-sm text-indigo-800">
+                    {{ $rankStatus->rankNames[$rankNumber] ?? 'Rank '.$rankNumber }}
+                    <span class="text-xs text-indigo-600">×{{ $times }}</span>
+                </span>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- Next rank conditions — plan facts vs the distributor's own figures.
+             No timeline, no earnings estimate (DSR 2021 r.5(1)(d)). --}}
+        @if($rankStatus->nextRank !== null)
+        <div>
+            <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
+                Conditions for {{ $rankStatus->nextRankName() }}
+            </p>
+            <div class="space-y-3">
+                @foreach($rankStatus->nextRequirements as $requirement)
+                @php
+                    $isBv = $requirement->unit === 'bv';
+                    $currentLabel = $isBv
+                        ? \App\Modules\Shared\Support\IndianNumber::format($requirement->current / 100, 0).' BV'
+                        : \App\Modules\Shared\Support\IndianNumber::format($requirement->current);
+                    $requiredLabel = $isBv
+                        ? \App\Modules\Shared\Support\IndianNumber::format($requirement->required / 100, 0).' BV'
+                        : \App\Modules\Shared\Support\IndianNumber::format($requirement->required);
+                @endphp
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1">
+                        <span class="text-gray-700 flex items-center gap-1">
+                            {{ $requirement->label }}
+                            @if($requirement->note)
+                                <x-help-tip :text="$requirement->note" />
+                            @endif
+                        </span>
+                        <span class="font-mono {{ $requirement->met() ? 'text-green-700 font-semibold' : 'text-gray-600' }}">
+                            {{ $currentLabel }} <span class="text-gray-400">of</span> {{ $requiredLabel }}
+                            @if($requirement->met()) <span class="ml-1">✓</span> @endif
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                        <div class="{{ $requirement->met() ? 'bg-green-500' : 'bg-brand-500' }} h-1.5 rounded-full" style="width:{{ $requirement->percent() }}%"></div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            <p class="text-xs text-gray-500 mt-3">
+                These are the plan's published conditions for {{ $rankStatus->nextRankName() }} shown next to your own current figures. Meeting them is not a guarantee of any income.
+            </p>
+        </div>
+        @endif
+    </section>
+    @endif
+
+    {{-- AO-GO offer — shown to anyone the offer can apply to (a rank achieved
+         at least once). Conditions only, in points; no rupee figure and no
+         suggestion the offer will be granted (DSR 2021 r.5(1)(d)). --}}
+    @if($aogoStatus && ($aogoStatus->everAchievedRank || $aogoStatus->usesUsed > 0))
+    <section class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900">AO-GO offer</h2>
+                <p class="text-xs text-gray-500 mt-0.5">Achieve Once – Get Once</p>
+            </div>
+            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 border border-teal-100 text-sm text-teal-800">
+                Used {{ $aogoStatus->usesUsed }} of {{ $aogoStatus->usesMax }}
+                <span class="text-xs text-teal-600">{{ $aogoStatus->usesLeft() }} left</span>
+            </span>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-4">
+            If you have achieved a rank in an earlier month and hold no rank in a later month, that month earns you
+            <strong>{{ $aogoStatus->pointsPerGrant }} points</strong> in the Rank-1 pool — up to {{ $aogoStatus->usesMax }} times in your lifetime,
+            never in two months running, and only after achieving a rank again between uses.
+        </p>
+
+        @if($aogoStatus->granted())
+        <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            <strong>Applied this month.</strong>
+            {{ $aogoStatus->grantedPoints }} points recorded in the Rank-1 pool for this month
+            ({{ str_replace('_', ' ', $aogoStatus->grantedStatus ?? '') }}).
+        </div>
+        @else
+        <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">This month's conditions</p>
+        <ul class="space-y-2">
+            @foreach($aogoStatus->conditions as $condition)
+            <li class="flex items-start gap-2 text-sm">
+                <span class="mt-0.5 {{ $condition->met ? 'text-green-600' : 'text-gray-300' }}">{{ $condition->met ? '✓' : '○' }}</span>
+                <span class="{{ $condition->met ? 'text-gray-700' : 'text-gray-500' }} flex items-center gap-1">
+                    {{ $condition->label }}
+                    @if($condition->note)
+                        <x-help-tip :text="$condition->note" />
+                    @endif
+                </span>
+            </li>
+            @endforeach
+        </ul>
+        <p class="text-xs text-gray-500 mt-3">
+            These conditions are checked once a month, when the rank calculation runs. A month that misses them uses nothing —
+            the offer stays available for a later month. Meeting them is not a guarantee of any income.
+        </p>
+        @endif
+    </section>
+    @endif
+
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 {{ ($aogoUsed ?? 0) > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">

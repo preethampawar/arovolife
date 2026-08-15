@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -217,9 +218,59 @@ it('hides the GSB, Mentorship and Repurchase tabs while their flags are off', fu
         ->assertSee('Genos BV Ledger')
         ->assertSee('Wallet Ledger');
 
-    // A direct request for a hidden tab is rejected by validation.
+    // A direct request for a hidden tab falls back to the first visible tab
+    // instead of erroring — the hidden feature still leaves no trace.
     $this->actingAs(compAdmin())
-        ->from(route('admin.compensation.distributors.show', $distributorId))
         ->get(route('admin.compensation.distributors.show', [$distributorId, 'tab' => 'repurchase']))
-        ->assertSessionHasErrors('tab');
+        ->assertOk()
+        ->assertDontSee('Repurchase');
+});
+
+it('opens the Rank Bonus tab the RB calculation report links to', function (): void {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    $distributorId = compDistributor();
+
+    disableTestForeignKeys();
+    try {
+        DB::table('rank_bonus_results')->insert([
+            'distributor_id' => $distributorId,
+            'month_start' => now()->startOfMonth()->subMonth()->toDateString(),
+            'rank_number' => 1,
+            'company_turnover_paise' => 100_000_000,
+            'pool_paise' => 1_400_000,
+            'qualifier_count' => 1,
+            'rap_points' => 10,
+            'total_points' => 10,
+            'point_value_paise' => 140_000,
+            'gross_paise' => 1_400_000,
+            'admin_charge_paise' => 42_000,
+            'tds_paise' => 70_000,
+            'net_paise' => 1_288_000,
+            'status' => 'credited',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('rank_qualifications')->insert([
+            'distributor_id' => $distributorId,
+            'rank_number' => 1,
+            'month_start' => now()->startOfMonth()->subMonth()->toDateString(),
+            'left_genos_bv_paise' => 1_500_000,
+            'right_genos_bv_paise' => 1_500_000,
+            'occurrence_in_month' => 1,
+            'is_carry_forward' => false,
+            'status' => 'qualified',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $this->actingAs(compAdmin())
+        ->get(route('admin.compensation.distributors.show', [$distributorId, 'tab' => 'rank-bonus']))
+        ->assertOk()
+        ->assertSessionHasNoErrors()
+        ->assertSee('Rank qualifications')
+        ->assertSee('12,880.00');
 });

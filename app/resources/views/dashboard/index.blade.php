@@ -129,6 +129,13 @@
                 <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">My Genos →</a>
                 <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">My Referrals →</a>
                 <a href="{{ route('orders.index') }}" class="text-brand-600 hover:text-brand-700 underline">My Orders →</a>
+                @foreach(\App\Modules\Compensation\Support\IncomeNavLinks::visible() as $businessLink)
+                    @if(in_array($businessLink['route'], ['my-business', 'income.rank-bonus'], true))
+                        <a href="{{ route($businessLink['route']) }}" class="text-brand-600 hover:text-brand-700 underline">
+                            {{ $businessLink['route'] === 'income.rank-bonus' ? 'My Rank Status' : $businessLink['label'] }} →
+                        </a>
+                    @endif
+                @endforeach
                 @if($lcAvailable)
                     <a href="{{ route('line-change.show') }}" class="text-brand-600 hover:text-brand-700 underline">
                         Request line-change →
