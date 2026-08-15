@@ -7,6 +7,7 @@ use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -71,8 +72,7 @@ it('does not render the compensation sub-nav on unrelated admin pages', function
 it('hides feature-gated bonus engines while their flag is off', function (): void {
     // Every bonus flag defaults to off: the GSB/MSB daily-engine links, the
     // monthly engine run pages AND their calculation reports disappear — a
-    // disabled feature leaves no trace. The Overview and the ungated
-    // Awards & Rewards report stay reachable.
+    // disabled feature leaves no trace. Only the Overview stays reachable.
     $this->actingAs(compNavAdmin())
         ->get(route('admin.compensation.overview'))
         ->assertOk()
@@ -84,10 +84,21 @@ it('hides feature-gated bonus engines while their flag is off', function (): voi
         ->assertDontSee(route('admin.compensation.rb-calculation.index'), false)
         ->assertDontSee(route('admin.compensation.fb-calculation.index'), false)
         ->assertDontSee(route('admin.compensation.adc-calculation.index'), false)
+        ->assertDontSee(route('admin.compensation.aw-rw-calculation.index'), false)
         ->assertDontSee('Growth Booster Bonus')
         ->assertDontSee('Fortune Bonus')
         ->assertDontSee('Lifetime Awards')
-        ->assertSee(route('admin.compensation.aw-rw-calculation.index'), false);
+        ->assertDontSee('Awards &amp; Rewards', false);
+});
+
+it('404s the Awards & Rewards report while the lifetime-awards flag is off', function (): void {
+    $this->actingAs(compNavAdmin())
+        ->get(route('admin.compensation.aw-rw-calculation.index'))
+        ->assertNotFound();
+
+    $this->actingAs(compNavAdmin())
+        ->get(route('admin.compensation.aw-rw-calculation.export'))
+        ->assertNotFound();
 });
 
 it('shows the gated daily-engine links and calculation reports when their flags are on', function (): void {
@@ -97,6 +108,7 @@ it('shows the gated daily-engine links and calculation reports when their flags 
     Feature::for(null)->activate(RankBonusFeature::class);
     Feature::for(null)->activate(FortuneBonusFeature::class);
     Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
 
     $this->actingAs(compNavAdmin())
         ->get(route('admin.compensation.gsb-calculation.index'))
@@ -107,5 +119,6 @@ it('shows the gated daily-engine links and calculation reports when their flags 
         ->assertSee(route('admin.compensation.gbb-calculation.index'), false)
         ->assertSee(route('admin.compensation.rb-calculation.index'), false)
         ->assertSee(route('admin.compensation.fb-calculation.index'), false)
-        ->assertSee(route('admin.compensation.adc-calculation.index'), false);
+        ->assertSee(route('admin.compensation.adc-calculation.index'), false)
+        ->assertSee(route('admin.compensation.aw-rw-calculation.index'), false);
 });

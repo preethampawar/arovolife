@@ -69,7 +69,7 @@
             $gbbOn ? ['label' => 'GBB Calculation', 'route' => 'admin.compensation.gbb-calculation.index', 'match' => 'admin.compensation.gbb-calculation'] : null,
             $rankOn ? ['label' => 'Rank Bonus Calculation', 'route' => 'admin.compensation.rb-calculation.index', 'match' => 'admin.compensation.rb-calculation'] : null,
             $fortuneOn ? ['label' => 'Fortune Bonus Calculation', 'route' => 'admin.compensation.fb-calculation.index', 'match' => 'admin.compensation.fb-calculation'] : null,
-            ['label' => 'Awards & Rewards', 'route' => 'admin.compensation.aw-rw-calculation.index', 'match' => 'admin.compensation.aw-rw-calculation'],
+            $awardsOn ? ['label' => 'Awards & Rewards', 'route' => 'admin.compensation.aw-rw-calculation.index', 'match' => 'admin.compensation.aw-rw-calculation'] : null,
             $adcOn ? ['label' => 'ADC Calculation', 'route' => 'admin.compensation.adc-calculation.index', 'match' => 'admin.compensation.adc-calculation'] : null,
         ]))],
 
