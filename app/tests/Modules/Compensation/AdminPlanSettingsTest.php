@@ -5,8 +5,12 @@ declare(strict_types=1);
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -137,6 +141,9 @@ it('hides the score inputs for pro-rated slabs 3–7 and shows the pool note', f
 });
 
 it('no longer offers an MSB score value field and explains how both pools price', function () {
+    // The MSB half of the explainer follows the MSB flag.
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
     $res = $this->actingAs(planAdmin('developer'))
         ->get(route('admin.compensation.plan-settings.index'))
         ->assertOk();
@@ -352,4 +359,37 @@ it('hides the GSB and Rank tabs and their editors while their flags are off', fu
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.rank-tier.update', 1), [])
         ->assertNotFound();
+});
+
+it('shows a "How it is calculated" explainer only for bonuses whose flag is on', function () {
+    // beforeEach turns on GSB, Rank and Fortune only — their explainers render
+    // (collapsed), the rest leave no trace, and with MSB off the daily-engine
+    // heading names GSB alone.
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk()
+        ->assertSee('How GSB is calculated')
+        ->assertSee('How Rank Bonus is calculated')
+        ->assertSee('How Fortune Bonus is calculated')
+        ->assertDontSee('How Growth Booster Bonus is calculated')
+        ->assertDontSee('How ADC Bonus is calculated')
+        ->assertDontSee('How Awards')
+        ->assertDontSee('Mentorship Bonus — 3%');
+
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+    Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk()
+        ->assertSee('How GSB and MSB are calculated')
+        ->assertSee('How Growth Booster Bonus is calculated')
+        ->assertSee('How ADC Bonus is calculated')
+        ->assertSee('How Awards &amp; Rewards are calculated', false)
+        // The worked examples ride along with their sections.
+        ->assertSee('Worked example — a 10,00,000 BV month')
+        ->assertSee('Worked example — one centre')
+        ->assertSee('Illustrative arithmetic only — not an earnings projection.');
 });

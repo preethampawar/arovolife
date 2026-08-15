@@ -8,8 +8,12 @@ use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -48,6 +52,12 @@ final class AdminPlanSettingsController extends Controller
             'gsbOn' => $gsbOn,
             'rankOn' => $rankOn,
             'fortuneOn' => $fortuneOn,
+            // The "How X is calculated" explainers follow the same flags as
+            // every other surface of their bonus.
+            'msbOn' => Feature::for(null)->active(MentorshipBonusFeature::class),
+            'gbbOn' => Feature::for(null)->active(GrowthBoosterBonusFeature::class),
+            'adcOn' => Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class),
+            'awardsOn' => Feature::for(null)->active(LifetimeAwardsFeature::class),
             'slabs' => $gsbOn ? DB::table('gsb_slabs')->orderBy('slab')->get() : collect(),
             'rankTiers' => $rankOn ? DB::table('rank_tiers')->orderBy('rank_number')->get() : collect(),
             'fortuneLevels' => $fortuneOn ? DB::table('fortune_bonus_levels')->orderBy('level')->get() : collect(),

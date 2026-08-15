@@ -41,12 +41,15 @@
     </div>
 @endif
 
-{{-- How the two daily engines price themselves. Explanatory only — no control
-     lives here, so it renders identically for every console role. --}}
-<details class="mb-6 rounded-xl border border-gray-200 bg-white p-4" open>
-    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How GSB and MSB are calculated</summary>
+{{-- How each engine prices itself. Explanatory only — no control lives here,
+     so each block renders identically for every console role, but a block only
+     exists while its bonus's feature flag is on (zero-trace rule). --}}
+@if($gsbOn || $msbOn)
+<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4" open>
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How {{ $gsbOn && $msbOn ? 'GSB and MSB are' : ($gsbOn ? 'GSB is' : 'MSB is') }} calculated</summary>
 
     <div class="mt-4 grid gap-4 md:grid-cols-2">
+        @if($gsbOn)
         <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
             <h3 class="text-xs font-semibold text-gray-700 mb-2">Genos Sales Bonus — 45% of the day's BV</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
@@ -56,7 +59,9 @@
                 <li>Each slab 3–7 earner is paid <strong>their score × that one value</strong>.</li>
             </ol>
         </div>
+        @endif
 
+        @if($msbOn)
         <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
             <h3 class="text-xs font-semibold text-gray-700 mb-2">Mentorship Bonus — 3% of the day's BV</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
@@ -66,8 +71,10 @@
                 <li>Each sponsor is paid <strong>their points × that one value</strong>, so the day's MSB spend is the 3% envelope.</li>
             </ol>
         </div>
+        @endif
     </div>
 
+    @if($msbOn)
     <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
         <p class="font-semibold mb-1">Worked example — a 1,00,000 BV day</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
@@ -79,16 +86,206 @@
             <strong>₹3,000</strong> in total, exactly the pool.
         </p>
     </div>
+    @endif
 
     <p class="mt-3 text-[11px] text-gray-500">
         Both pool rates are set under
         <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
         Each day's arithmetic is frozen before anything is credited and is visible on the
-        <a href="{{ route('admin.compensation.gsb-input-output.index') }}" class="underline">GSB</a> and
-        <a href="{{ route('admin.compensation.msb-input-output.index') }}" class="underline">MSB</a>
+        @if($gsbOn)<a href="{{ route('admin.compensation.gsb-input-output.index') }}" class="underline">GSB</a>@endif
+        @if($gsbOn && $msbOn) and @endif
+        @if($msbOn)<a href="{{ route('admin.compensation.msb-input-output.index') }}" class="underline">MSB</a>@endif
         Input &amp; Output reports.
     </p>
 </details>
+@endif
+
+@if($rankOn)
+<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How Rank Bonus is calculated</summary>
+
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Qualifying — assessed per calendar month</h3>
+            <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+                <li><strong>Ranks 1–2</strong> need the tier's Genos BV match on <strong>both sides within one calendar month</strong> (Rank 1: 2,50,000 per side; Rank 2: 6,00,000) plus the tier's lifetime personal BV (7,000 / 15,000).</li>
+                <li>Up to the tier's <strong>weaker-leg top-up</strong> (15,000 / 30,000 BV) of <strong>that month's</strong> personal purchase BV supplements the weaker side. Rank 1 may be skipped — Rank 2 is attainable directly.</li>
+                <li><strong>Ranks 3–9</strong> need the configured qualifiers of the previous rank on <strong>each</strong> Genos side, the tier's personal BV, and the candidate's own completed <strong>Q-Period</strong> of the rank below.</li>
+                <li>A <strong>2nd-or-later</strong> qualification of the same rank pays only if that month's repurchase BV is met and the repurchase wallet is clear — otherwise the row is held.</li>
+            </ol>
+        </div>
+
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Paying — pool shares of the 20% envelope</h3>
+            <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+                <li>The month's <strong>envelope</strong> is the Rank envelope rate (20%) of the month's company-wide BV; each rank's <strong>pool</strong> is its Pool % share of that envelope.</li>
+                <li><strong>Rank 1 is points-based</strong>: every achiever earns the tier's RAP (10 points) and every AO-GO grantee 5 points. Point value = pool ÷ total points, floored to whole rupees; income = own points × value.</li>
+                <li><strong>Ranks 2–9 split their pool equally</strong> among that rank's paid achievers.</li>
+                <li>A distributor holding several ranks in one month is paid from their <strong>highest</strong> qualified rank only.</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+        <p class="font-semibold mb-1">Worked example — a 10,00,000 BV month</p>
+        <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
+        <p>
+            Envelope = 20% = <strong>₹2,00,000</strong>, so the Rank 1 pool is its 7% share = <strong>₹14,000</strong>.
+            Two Silver achievers (10 RAP each) and one AO-GO grantee (5 points) make <strong>25 points</strong>.
+            Point value = 14,000 ÷ 25 = <strong>₹560</strong>.
+            Each achiever earns 10 × 560 = ₹5,600 and the AO-GO grantee 5 × 560 = ₹2,800 —
+            <strong>₹14,000</strong> in total, exactly the pool.
+        </p>
+    </div>
+
+    <p class="mt-3 text-[11px] text-gray-500">
+        Thresholds, RAP and pool shares are the Rank Tiers table below; the envelope rate lives under
+        <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
+        Each month's arithmetic is visible on the
+        <a href="{{ route('admin.compensation.rb-calculation.index') }}" class="underline">RB Monthly Calculation</a> report.
+    </p>
+</details>
+@endif
+
+@if($gbbOn)
+<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How Growth Booster Bonus is calculated</summary>
+
+    <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
+        <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+            <li>Only distributors who held <strong>no rank in the previous month</strong> are eligible (reaching a first rank in the current month is fine).</li>
+            <li><strong>AGP</strong> (arovolife Growth Points) accrue per GSB slab match during the month — <strong>12</strong> for slab 1, <strong>5</strong> for slab 2, <strong>2</strong> for slab 3, none above — capped at <strong>120 AGP</strong> per month, nothing carried over.</li>
+            <li>The month's <strong>pool</strong> is the GBB monthly pool rate (5%) of the month's company-wide BV.</li>
+            <li><strong>Point value = pool ÷ the total AGP of all eligible distributors</strong>, floored to whole rupees; income = <strong>own AGP × that value</strong>. Distributors inside their repurchase grace window are held (still in the denominator); a lapsed window forfeits the month.</li>
+        </ol>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+        <p class="font-semibold mb-1">Worked example — a 10,00,000 BV month</p>
+        <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
+        <p>
+            Pool = 5% = <strong>₹50,000</strong>. All eligible distributors together earned <strong>100 AGP</strong>,
+            so the point value is 50,000 ÷ 100 = <strong>₹500</strong>.
+            A distributor with two slab-1 matches (24 AGP) earns 24 × 500 = <strong>₹12,000</strong>.
+        </p>
+    </div>
+
+    <p class="mt-3 text-[11px] text-gray-500">
+        AGP per slab sits on the GSB Slabs table; the pool rate lives under
+        <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
+        Each month's economics are frozen before any credit and visible on the
+        <a href="{{ route('admin.compensation.gbb-calculation.index') }}" class="underline">GBB Calculation</a> report.
+    </p>
+</details>
+@endif
+
+@if($fortuneOn)
+<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How Fortune Bonus is calculated</summary>
+
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">The monthly matrix &amp; points</h3>
+            <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+                <li>A <strong>3-wide, 9-level forced matrix</strong> is rebuilt from scratch every month; qualifiers enrol <strong>first-come first-served</strong> by the date of their first GSB credit.</li>
+                <li>Qualification is per tier (the Fortune Bonus tab below): the tier's personal BV plus its required count of GSB slab achievements in the month, with a clear repurchase wallet. Ranks 6–9 are not eligible.</li>
+                <li>Points come from members placed <strong>below</strong> you: 9 points per member one level down, 8 for two levels, … 1 for nine levels (editable on the matrix-levels table).</li>
+            </ol>
+        </div>
+
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">The pool &amp; the level cascade</h3>
+            <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+                <li>The month's <strong>pool</strong> is the Fortune monthly pool rate (5%) of the month's company-wide BV; every qualifier's <strong>₹30 minimum</strong> is reserved off it first.</li>
+                <li><strong>Capped levels 0–6</strong> settle top-down: each level prices at <strong>floor(remaining pool ÷ all remaining points)</strong> and each member receives minimum + points × value, limited by the level's cap (₹30,000 at levels 0–3, then ₹20,000 / ₹10,000 / ₹5,000).</li>
+                <li><strong>Levels 7–8</strong> share one uncapped value over their combined points from what remains; <strong>level 9</strong> receives the minimum only.</li>
+                <li>Whatever the cascade cannot distribute stays unspent with the company.</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+        <p class="font-semibold mb-1">Worked example — one capped level</p>
+        <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
+        <p>
+            After the ₹30 guarantees, <strong>₹10,000</strong> of pool remains against <strong>100 remaining points</strong>,
+            so this level prices at 10,000 ÷ 100 = <strong>₹100 per point</strong>.
+            A member here with 24 points receives 30 + 24 × 100 = <strong>₹2,430</strong> — under the level's ₹30,000 cap,
+            so it pays in full; what the level consumed is deducted before the next level is priced.
+        </p>
+    </div>
+
+    <p class="mt-3 text-[11px] text-gray-500">
+        Matrix-level values and eligibility tiers are the Fortune Bonus tab below; the pool rate and minimum live under
+        <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
+        Each month's per-level economics are frozen before any credit and visible on the
+        <a href="{{ route('admin.compensation.fb-calculation.index') }}" class="underline">FB Monthly Calculation</a> report.
+    </p>
+</details>
+@endif
+
+@if($adcOn)
+<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How ADC Bonus is calculated</summary>
+
+    <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
+        <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+            <li>Each approved Arete Development Center earns the ADC rate (3%) of the month's <strong>net member BV</strong> served by that centre — refunds are deducted first.</li>
+            <li>The credit is limited by the centre's <strong>monthly cap</strong> — ₹1,00,000 as standard, or the lower cap override applied while a development-phase upgrade is unproven.</li>
+            <li>A centre whose members net to <strong>zero or negative</strong> BV for the month is skipped — a centre is never credited a negative amount.</li>
+            <li>The bonus is credited to the centre owner in the monthly payout; ADC sits outside the ₹50 lakh combined income ceiling under its own cap.</li>
+        </ol>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+        <p class="font-semibold mb-1">Worked example — one centre's month</p>
+        <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
+        <p>
+            A centre's members generate 21,00,000 BV with 1,00,000 BV refunded — <strong>20,00,000 net BV</strong>.
+            ADC = 3% = <strong>₹60,000</strong>, under the ₹1,00,000 cap, so ₹60,000 is credited to the centre owner.
+        </p>
+    </div>
+
+    <p class="mt-3 text-[11px] text-gray-500">
+        The rate and cap live under
+        <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>;
+        per-centre phase caps are set on the centre's Edit form. Each month's per-centre arithmetic is visible on the
+        <a href="{{ route('admin.compensation.adc-calculation.index') }}" class="underline">ADC Monthly Calculation</a> report.
+    </p>
+</details>
+@endif
+
+@if($awardsOn)
+<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+    <summary class="cursor-pointer text-sm font-semibold text-gray-800">How Awards &amp; Rewards are calculated</summary>
+
+    <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
+        <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
+            <li>Lifetime Awards are <strong>non-cash milestones</strong>, not a pool: a distributor's first qualification at a rank creates one milestone worth that rank's <strong>lifetime award budget</strong> (the itemised reward catalogue — insurance, trips, gold, down payments…).</li>
+            <li>A milestone becomes <strong>releasable only after re-qualification</strong>: ranks 1–2 need 1 lifetime qualification, ranks 3–5 need 2, ranks 6–9 need 3.</li>
+            <li>Awards delivered as <strong>goods</strong> carry no admin charge or TDS; only a component released as cash/cheque is charged.</li>
+            <li>Each rank is awarded <strong>once per lifetime</strong> — there is no monthly recurrence.</li>
+        </ol>
+    </div>
+
+    <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+        <p class="font-semibold mb-1">Worked example — an Emerald (Rank 3) milestone</p>
+        <p class="mb-1 text-[11px] text-blue-700">Illustrative only — not an earnings projection.</p>
+        <p>
+            A distributor's first Rank 3 qualification creates a milestone against the Rank 3 budget of
+            <strong>₹90,000</strong> (health insurance + a foreign trip + gold).
+            Rank 3 requires <strong>2</strong> lifetime qualifications, so the award is deliverable only after they
+            qualify at Rank 3 a second time — until then it stays pending.
+        </p>
+    </div>
+
+    <p class="mt-3 text-[11px] text-gray-500">
+        Per-rank budgets are the Rank Tiers table below; the reward catalogue and pending milestones are managed under
+        <a href="{{ route('admin.lifetime-awards.index') }}" class="underline">Lifetime Awards</a>, with the
+        <a href="{{ route('admin.compensation.aw-rw-calculation.index') }}" class="underline">Awards &amp; Rewards</a> report alongside.
+    </p>
+</details>
+@endif
 
 {{-- Tabs --}}
 <div class="flex border-b border-gray-200 mb-6">
