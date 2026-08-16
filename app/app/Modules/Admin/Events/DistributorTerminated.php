@@ -8,9 +8,13 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Support\Carbon;
 
 /**
- * Admin permanently closed a distributor account ('terminated' status).
+ * A distributor account was permanently closed ('terminated' status).
  * Distinct from 'rejected' — there is no path back to active from this state.
  * Reason captured in audit_log and surfaced in the email.
+ *
+ * `actorUserId` is null when the closure was automatic — the agreement §21
+ * twelve-month dormancy sweep has no human actor, and naming one would put a
+ * false attribution into the record.
  */
 final class DistributorTerminated
 {
@@ -18,7 +22,7 @@ final class DistributorTerminated
 
     public function __construct(
         public readonly int $distributorId,
-        public readonly int $actorUserId,
+        public readonly ?int $actorUserId,
         public readonly string $reason,
         public readonly Carbon $terminatedAt,
     ) {}

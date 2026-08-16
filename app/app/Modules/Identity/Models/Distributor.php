@@ -42,7 +42,13 @@ use Illuminate\Support\Carbon;
  * @property int $depth
  * @property Carbon $effective_date
  * @property Carbon $cooling_off_end_at
+ * @property string $status
  * @property Carbon|null $gsb_frozen_at
+ * @property Carbon|null $inactivity_notice_at
+ * @property Carbon|null $inactivity_notice_expires_at
+ * @property Carbon|null $terminated_at
+ * @property string|null $termination_reason
+ * @property Carbon|null $reregistration_allowed_from
  * @property string $state
  * @property int|null $spouse_distributor_id
  * @property bool $is_primary_couple
@@ -83,6 +89,12 @@ final class Distributor extends Model
         'is_primary_couple',
         'status',
         'gsb_frozen_at',
+        // Agreement §21 dormancy termination.
+        'inactivity_notice_at',
+        'inactivity_notice_expires_at',
+        'terminated_at',
+        'termination_reason',
+        'reregistration_allowed_from',
     ];
 
     protected $hidden = [
@@ -98,6 +110,10 @@ final class Distributor extends Model
             'effective_date' => 'datetime',
             'cooling_off_end_at' => 'datetime',
             'gsb_frozen_at' => 'datetime',
+            'inactivity_notice_at' => 'datetime',
+            'inactivity_notice_expires_at' => 'datetime',
+            'terminated_at' => 'datetime',
+            'reregistration_allowed_from' => 'date',
             'is_primary_couple' => 'boolean',
             'depth' => 'integer',
             // Encrypted at rest with the dedicated PII key (ADR-0008), not
