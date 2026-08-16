@@ -25,7 +25,7 @@
 | 5 | Compensation — ranks, Rank Bonus, Lifetime Awards | ✅ shipped |
 | 6 | Compensation — Fortune Bonus cascade (replaced Auto Pool) | ✅ shipped |
 | 7 | Arete Development Center bonus | ✅ shipped |
-| — | Operations build-out (grievance, termination, franchise, offers, analytics) | 🔨 in progress |
+| — | Operations build-out (grievance, termination, franchise, offers, analytics, GST invoice) | ✅ shipped |
 | 12 | Production hardening (MFA, observability, Redis, couple follow-ups) | ⏸ deferred |
 | — | Final sign-off gate | ⏳ batched to launch |
 
@@ -298,27 +298,38 @@ at launch sign-off.
 
 ---
 
-## Operations build-out 🔨 (current work)
+## Operations build-out ✅
 
-Formerly sketched as "Phase 7–8, implied". Now specced and in progress.
+Formerly sketched as "Phase 7–8, implied". Specced and shipped 2026-08-16/17.
 
-### 1. Grievance redressal workflow (DSR Rule 4) — **statutory**
+### 1. Grievance redressal workflow (DSR Rule 4) — **statutory** ✅
 
-`app/Modules/Grievance/` holds `Ticket` + `TicketEvent` models and one
-migration, and nothing else: no services, no controllers, no routes.
-`/p/grievance` publishes the officers' names but has no intake behind it.
+**Shipped 2026-08-16** (compliance PASS). Complaint intake from every
+published channel — public, authenticated, and staff-recorded for phone,
+email, post and walk-in — into one tracker. `GRV-YYMMDD-XXXXX` complaint
+numbers, a 48-hour acknowledgement and 45-day resolution clock with breach
+flagging, the four-step escalation ladder to the Nodal Officer, internal
+notes invisible to the complainant, attachments, and the monthly compliance
+report with its CSV.
 
-Required: complaint intake (public + authenticated), unique complaint
-number, acknowledgement inside 48 hours, resolution inside 45 days, SLA
-clock with breach flagging, escalation to the Nodal Officer, admin queue
-with audit trail, and the monthly compliance report.
+`can:grievance.handle` excludes admin-finance (R-17), and `TicketPolicy`
+narrows ethics complaints to the compliance side — middleware cannot see a
+ticket's category, so the two work together. A `NoRawGovernmentId` rule keeps
+Aadhaar and PAN out of free-text fields. 28 tests.
 
-### 2. Termination workflow beyond cooling-off (T&C §21) — **statutory**
+### 2. Termination workflow beyond cooling-off (T&C §21) — **statutory** ✅
 
-Auto-termination after 12 continuous months with no sales, plus the
-re-registration wait by rank (Sales Master = 1 year, Diamond Master and
-above = 2 years). Referenced in
-`docs/runbooks/cooling-off-cancellation.md` but never built.
+**Shipped 2026-08-16.** Two-stage notice → terminate: twelve continuous
+months with no sale issues a 7-day written notice, and only an expired notice
+terminates. A sale during the notice period clears it automatically — the
+sweep's first pass is the revival check, before it terminates anything.
+Re-registration wait is set by rank at termination (Sales Master 1 year,
+Diamond Master and above 2 years).
+
+The master switch `termination.inactivity_sweep_enabled` **ships OFF**: a
+sweep that terminates real distributors on its first scheduled run, before
+anyone has seen what it would do, is not a switch to leave on by default.
+Admin → Dormancy shows exactly who the sweep would touch. 12 tests.
 
 ### 3. Franchise + 3% payout
 
@@ -339,11 +350,14 @@ above = 2 years). Referenced in
 
 **Built 2026-08-16** behind `FranchiseFeature` (default OFF, zero-trace).
 Franchise register with an application → approval lifecycle, `FR-XXXXX` codes
-that cannot be mistaken for an ADN, a collection-point picker at checkout, and
-a monthly commission engine (`franchise:monthly-run`, 8th at 09:45 IST).
+that cannot be mistaken for an ADN, and a monthly commission engine (`franchise:monthly-run`, 8th at 09:45 IST).
 Base is the product value of orders **delivered** through the franchise —
-subtotal less discount, excluding GST and shipping. Exempt from the admin
-charge. 11 tests. Three gates before any real payout: the DSA §6.2 notice,
+subtotal less discount, excluding GST and shipping. Including GST would have
+paid 3.54% while the plan says 3%. Exempt from the admin charge. 15 tests.
+
+The checkout collection-point picker was **removed** (R-47): nothing fulfils
+through a franchise yet, so the picker offered customers a delivery
+arrangement the platform could not honour. Three gates before any real payout: the DSA §6.2 notice,
 the effective date on `/p/compensation` §11.1, and R-24's counsel opinion.
 Consignment **stock tracking is not built** — see R-46; until it is, a
 franchise can only be a handover point, not a stockist.
@@ -363,13 +377,51 @@ For distributors holding **no rank**:
   the distributor's own documented product purchases, framed neutrally
   with no income projection.
 
-### 5. Analytics
+**Shipped 2026-08-17** behind `PurchaseOffersFeature` (default OFF,
+zero-trace), compliance PASS on the third pass. Qualification counts only
+`orders.self_consumption` — retail sales to third parties never count, or the
+published "earned entirely from a Distributor's own product purchases" would
+be false. A refund nets against the month the **purchase** belongs to, not the
+month of the refund. Points are a discount entitlement in their own ledger,
+never wallet money: not withdrawable, no TDS, no admin charge, and a refund
+returns them **in points** with the cash refund reduced by their value.
 
-Distributor performance, registration/order funnel, retention. Admin-facing
-reports reusing `TeamStatsService::scopedQuery()` and existing BV/order
-data — never re-implementing closure or sponsorship counting.
+**Only the redeem-points half is live.** Nothing applies the half-price offer
+at cart or checkout, so its paragraph was removed from published §11.2 and its
+card from My Offers, and the admin screen carries the same warning (R-49). 18
+tests. Flag-on gated on R-48 (a)–(f), including two readings only KP can
+settle and a GST question for counsel.
 
-### Also in this build-out
+### 5. Analytics ✅
+
+**Shipped 2026-08-17.** Admin → Analytics: a registration funnel, a commerce
+funnel, monthly buyer retention, the shape of the distributor base, and the
+window's highest-volume distributors. The module holds no tables — analytics
+that keeps its own copy of the numbers eventually disagrees with the system it
+describes, and the report is the version people believe.
+
+Nothing on the page forecasts (hard rule 3). Retention is measured on
+purchases rather than logins, and against **last** month's buyers so new
+buyers are never counted as retained. Team sizes route through
+`TeamStatsService::scopedCount()`. 11 tests.
+
+### 6. GST tax invoice (R-28) ✅
+
+**Shipped 2026-08-17.** `tax.seller_gstin` ships blank and the document is
+honestly labelled a **receipt** until it is set — an invoice without a
+supplier GSTIN is not a tax invoice and cannot support input credit. Invoice
+numbers are a locked per-financial-year sequence (`AL/2026-27/000001`),
+replacing a `timestamp % 1000000` that was neither consecutive nor unique.
+HSN-wise lines, CGST/SGST vs IGST by place of supply, recipient GSTIN,
+reverse-charge line, truth declaration. 10 tests.
+
+Coupons and redeemed points reduce the **amount payable**, not the taxable
+value: checkout and the shipment journal carry GST on the full sale value, and
+the invoice is the source for GSTR-1, so all three now agree. Whether to claim
+the §15(3)(a) reduction instead is a question for counsel (R-48 gate (c),
+R-28).
+
+### Still open in this build-out
 
 - Distributor messaging / mentor calls / FAQ library tooling
 - Quarterly internal audit cadence formalised (the agreement promises it)
@@ -400,11 +452,11 @@ want per-phase sign-offs.
 |---|---|
 | T-6.1 security-auditor 10-point pass | `security-auditor` |
 | T-6.2 compliance-officer sign-off C-01…C-09 | `compliance-officer` |
-| T-5.6 Pa11y / WCAG 2.1 AA scan + evidence | engineering |
-| T-5.5 performance proof — 1M-row tree, p95 placement ≤ 250 ms | engineering |
-| T-5.7 backup + restore drill into staging | engineering |
+| T-5.6 WCAG 2.1 AA scan + evidence | engineering — **spec written**, `tests/Browser/accessibility.spec.js`; needs `npm i -D @axe-core/playwright` (dependency approval) then one run |
+| T-5.5 performance proof — 1M-row tree, p95 placement ≤ 250 ms | ✅ **PASS 2026-08-17** — 1M distributors, 18.95M closure rows, depth 19, p95 **1.8 ms**. `docs/compliance/evidence/t-5.5-placement-performance-2026-08-17.md` |
+| T-5.7 backup + restore drill into staging | engineering — **procedure written**, `docs/runbooks/backup-restore-drill.md`; the drill itself overwrites the staging database and needs a scheduled window |
 | T-6.3 UAT with PO sign-off | Product Owner |
-| Named officers — real Grievance Officer / DPO / Nodal Officer, real helpline, provisioned `@arovolife.com` mailboxes | company |
+| Named officers — the published content now names G. Shankar (Grievance Officer, DPO) and L. Rajender (Nodal Officer) on a +91 88866 62949 helpline. What remains is **company confirmation that those are the right people** and that eight mailboxes are provisioned and monitored: `grievance@`, `nodal@`, `dpo@`, `privacy@`, `compliance@`, `ethics@`, `support@`, `cooling-off@` | company |
 | KP's four open compensation questions (§ Phase 5) | KP |
 | R-24 legal-counsel opinion on the franchise + binary surface | counsel |
 | DSA §6.2 30-day notice before enabling the flagged bonus engines | compliance |
