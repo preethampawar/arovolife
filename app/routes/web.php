@@ -17,14 +17,15 @@ use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
+use App\Modules\Analytics\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminBannerController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseController;
-use App\Modules\Commerce\Http\Controllers\Admin\AdminOfferController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseReportController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminOfferController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
@@ -65,12 +66,12 @@ use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
+use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Grievance\Http\Controllers\AdminGrievanceController;
 use App\Modules\Grievance\Http\Controllers\AdminGrievanceReportController;
 use App\Modules\Grievance\Http\Controllers\DistributorGrievanceController;
 use App\Modules\Grievance\Http\Controllers\PublicGrievanceController;
 use App\Modules\Grievance\Http\Controllers\SupportHubController;
-use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
@@ -320,6 +321,11 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/returns/{return}/inspect', [AdminReturnController::class, 'inspect'])->middleware('can:finance.record')->whereNumber('return')->name('returns.inspect');
     Route::post('/returns/{return}/approve', [AdminReturnController::class, 'approve'])->middleware('can:finance.record')->whereNumber('return')->name('returns.approve');
     Route::post('/returns/{return}/reject', [AdminReturnController::class, 'reject'])->middleware('can:finance.record')->whereNumber('return')->name('returns.reject');
+
+    // Analytics — read-only funnels and retention over data other modules own.
+    // Open to the whole admin family: it holds no money controls and no PII
+    // beyond an ADN and a name, both of which every admin role already sees.
+    Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
 
     // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
     // The static `export` path is declared before the {distributor} wildcard
@@ -586,24 +592,24 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // TicketPolicy — middleware cannot see the ticket's category, so the two
     // work together rather than one replacing the other.
     Route::middleware('can:grievance.handle')->group(function (): void {
-    Route::get('/grievances', [AdminGrievanceController::class, 'index'])->name('grievances.index');
-    Route::get('/grievances/create', [AdminGrievanceController::class, 'create'])->name('grievances.create');
-    Route::post('/grievances', [AdminGrievanceController::class, 'store'])->name('grievances.store');
-    // Monthly compliance report + its CSV, handed to the Compliance Committee
-    // quarterly and to a regulator on request.
-    Route::get('/grievances/report', [AdminGrievanceReportController::class, 'index'])->name('grievances.report');
-    Route::get('/grievances/report/export', [AdminGrievanceReportController::class, 'export'])->name('grievances.report.export');
-    Route::get('/grievances/{id}', [AdminGrievanceController::class, 'show'])->whereNumber('id')->name('grievances.show');
-    Route::get('/grievances/{id}/attachments/{attachmentId}', [AdminGrievanceController::class, 'streamAttachment'])
-        ->whereNumber('id')->whereNumber('attachmentId')->name('grievances.attachment');
-    Route::post('/grievances/{id}/respond', [AdminGrievanceController::class, 'respond'])->whereNumber('id')->name('grievances.respond');
-    Route::post('/grievances/{id}/internal-note', [AdminGrievanceController::class, 'internalNote'])->whereNumber('id')->name('grievances.internal-note');
-    Route::post('/grievances/{id}/assign', [AdminGrievanceController::class, 'assign'])->whereNumber('id')->name('grievances.assign');
-    Route::post('/grievances/{id}/escalate', [AdminGrievanceController::class, 'escalate'])->whereNumber('id')->name('grievances.escalate');
-    Route::post('/grievances/{id}/third-party', [AdminGrievanceController::class, 'markThirdParty'])->whereNumber('id')->name('grievances.third-party');
-    Route::post('/grievances/{id}/status-update', [AdminGrievanceController::class, 'publishStatusUpdate'])->whereNumber('id')->name('grievances.status-update');
-    Route::post('/grievances/{id}/resolve', [AdminGrievanceController::class, 'resolve'])->whereNumber('id')->name('grievances.resolve');
-    Route::post('/grievances/{id}/close', [AdminGrievanceController::class, 'close'])->whereNumber('id')->name('grievances.close');
+        Route::get('/grievances', [AdminGrievanceController::class, 'index'])->name('grievances.index');
+        Route::get('/grievances/create', [AdminGrievanceController::class, 'create'])->name('grievances.create');
+        Route::post('/grievances', [AdminGrievanceController::class, 'store'])->name('grievances.store');
+        // Monthly compliance report + its CSV, handed to the Compliance Committee
+        // quarterly and to a regulator on request.
+        Route::get('/grievances/report', [AdminGrievanceReportController::class, 'index'])->name('grievances.report');
+        Route::get('/grievances/report/export', [AdminGrievanceReportController::class, 'export'])->name('grievances.report.export');
+        Route::get('/grievances/{id}', [AdminGrievanceController::class, 'show'])->whereNumber('id')->name('grievances.show');
+        Route::get('/grievances/{id}/attachments/{attachmentId}', [AdminGrievanceController::class, 'streamAttachment'])
+            ->whereNumber('id')->whereNumber('attachmentId')->name('grievances.attachment');
+        Route::post('/grievances/{id}/respond', [AdminGrievanceController::class, 'respond'])->whereNumber('id')->name('grievances.respond');
+        Route::post('/grievances/{id}/internal-note', [AdminGrievanceController::class, 'internalNote'])->whereNumber('id')->name('grievances.internal-note');
+        Route::post('/grievances/{id}/assign', [AdminGrievanceController::class, 'assign'])->whereNumber('id')->name('grievances.assign');
+        Route::post('/grievances/{id}/escalate', [AdminGrievanceController::class, 'escalate'])->whereNumber('id')->name('grievances.escalate');
+        Route::post('/grievances/{id}/third-party', [AdminGrievanceController::class, 'markThirdParty'])->whereNumber('id')->name('grievances.third-party');
+        Route::post('/grievances/{id}/status-update', [AdminGrievanceController::class, 'publishStatusUpdate'])->whereNumber('id')->name('grievances.status-update');
+        Route::post('/grievances/{id}/resolve', [AdminGrievanceController::class, 'resolve'])->whereNumber('id')->name('grievances.resolve');
+        Route::post('/grievances/{id}/close', [AdminGrievanceController::class, 'close'])->whereNumber('id')->name('grievances.close');
     });
 });
 

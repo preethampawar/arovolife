@@ -76,6 +76,11 @@ final class AdminHelpController extends Controller
             'description' => 'How to work the complaint queue: the published SLA clocks, the four-step escalation ladder, third-party extensions, and the monthly compliance report.',
             'file' => 'grievance-handling.md',
         ],
+        'analytics' => [
+            'title' => 'Analytics',
+            'description' => 'How to read the funnels, the retention table and the base panel — what each figure counts, and why nothing on the page forecasts.',
+            'file' => 'analytics.md',
+        ],
         'status-reference' => [
             'title' => 'Status Reference',
             'description' => 'Every status / lifecycle value across the platform — accounts, KYC, genealogy, catalog, orders, payments, returns and more — with plain-English explanations.',

@@ -115,6 +115,7 @@
                         : []),
                     ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => '🛒', 'prefix' => 'admin.commerce.orders'],
                     ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => '📊', 'prefix' => 'admin.commerce.bv-ledger'],
+                    ['route' => 'admin.analytics.index',          'label' => 'Analytics',      'icon' => '📈', 'prefix' => 'admin.analytics'],
                     ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => '💰', 'prefix' => 'admin.compensation'],
                     ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => '🏷', 'prefix' => 'admin.commerce.coupons'],
                     // Zero-trace: an unlaunched franchise programme leaves no
