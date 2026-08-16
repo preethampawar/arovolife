@@ -235,6 +235,21 @@
             </div>
         </div>
 
+        @if ($redeemablePoints > 0)
+            {{-- Redeem points. Capped at the net product value, so they can
+                 never pay the GST or the delivery charge. --}}
+            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-1 text-sm font-semibold text-gray-900">Use your redeem points</h2>
+                <p class="mb-4 text-sm text-gray-600">
+                    You can use up to <strong>{{ number_format($redeemablePoints) }}</strong> points on this
+                    order — ₹1 off per point. Points cannot be used for GST or delivery.
+                </p>
+                <input type="number" name="redeem_points" min="0" max="{{ $redeemablePoints }}"
+                       value="{{ old('redeem_points', 0) }}"
+                       class="w-40 rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
+            </div>
+        @endif
+
         {{-- Payment method (online only) --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Payment Method</h2>

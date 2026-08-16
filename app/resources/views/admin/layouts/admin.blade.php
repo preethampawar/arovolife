@@ -122,6 +122,9 @@
                     ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FranchiseFeature::class)
                         ? [['route' => 'admin.commerce.franchises.index', 'label' => 'Franchises', 'icon' => '🏪', 'prefix' => 'admin.commerce.franchises']]
                         : []),
+                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class)
+                        ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => '🎁', 'prefix' => 'admin.commerce.offers']]
+                        : []),
                     ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => '📦', 'prefix' => 'admin.catalog.products'],
                     ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => '🗂', 'prefix' => 'admin.catalog.categories'],
                     ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => '🖼', 'prefix' => 'admin.catalog.banners'],

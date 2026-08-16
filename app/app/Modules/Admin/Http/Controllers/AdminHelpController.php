@@ -56,6 +56,11 @@ final class AdminHelpController extends Controller
             'description' => 'The statutory 30-day cancellation window, the one-click refund flow, reminders, and edge cases.',
             'file' => 'cooling-off.md',
         ],
+        'purchase-offers' => [
+            'title' => 'Purchase Offers',
+            'description' => 'The half-price monthly product and the redeem-points streak for unranked distributors: who qualifies, why points are not money, and the two readings that need KP before launch.',
+            'file' => 'purchase-offers.md',
+        ],
         'franchise-programme' => [
             'title' => 'Franchise Programme',
             'description' => 'Pickup points operated by distributors: what a franchise is and is not, the 3% fulfilment commission, the approval lifecycle, and the three gates before it goes live.',

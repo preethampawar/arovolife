@@ -91,6 +91,22 @@ final class CheckoutController extends Controller
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
             'buyerDistributor' => $buyerDistributor,
+            // Redeem points the buyer could spend on this cart. Zero — and so
+            // no field at all — unless the offers are live, they are signed in
+            // as a distributor, and they actually hold points.
+            //
+            // Read from the authenticated user rather than `$buyerDistributor`,
+            // which is a display array describing whose sale it is (it can
+            // name a referrer who is not the buyer). Points belong to the
+            // person paying, not to whoever gets the commission.
+            'redeemablePoints' => Feature::for(null)->active(PurchaseOffersFeature::class)
+                && $request->user()?->distributor !== null
+                ? $this->redeemPoints->maxRedeemableForOrder(
+                    $request->user()->distributor->id,
+                    $cart->subtotalPaise(),
+                    $cart->gstPaise(),
+                )
+                : 0,
         ]);
     }
 

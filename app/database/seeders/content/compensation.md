@@ -236,6 +236,20 @@ This payment is consideration for fulfilment work performed on identified produc
 
 > **Not yet operative.** The franchise commission becomes payable on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement, and is additionally subject to written legal-counsel confirmation of the programme's structure. No franchise commission has been paid to any Distributor to date, and no franchise has been appointed.
 
+### 11.2 Purchase offers for Distributors holding no rank
+
+Two offers are available **exclusively to Distributors who hold no rank**. Both are earned entirely from a Distributor's own product purchases. Neither can be earned by joining, by sponsoring anyone, or by anything other than the Distributor's own purchases.
+
+**Half-price monthly product.** A Distributor who has reached 3,000 BV in lifetime personal purchases (the Retailer title) and who purchases at least 1,000 BV in a calendar month may buy one product, announced by the Company for that month, at 50% of its Distributor Price. The entitlement is for the month it was earned in and the month following, and lapses after that. If the Company announces no product for a month, no entitlement arises for that month.
+
+**Redeem points.** A Distributor who purchases at least 1,000 BV in each of six consecutive calendar months is credited redeem points equal to 20% of the BV accumulated over those six months, at one point per rupee of BV. A further six consecutive months credits another 20%, and completing twelve consecutive months credits an additional 10% of the twelve-month total. A single month below 1,000 BV ends the streak, which then begins again from zero.
+
+A refund reduces the month it belongs to. A purchase that was returned does not keep a month qualifying.
+
+**Redeem points are not money.** They are a discount entitlement. One point reduces the product value of a future arovolife purchase by ₹1. They carry no cash value, cannot be withdrawn, transferred or exchanged, are not paid out in any circumstance, and cannot be used to pay GST or delivery charges. If an order paid partly in points is cancelled or refunded, the points are restored.
+
+> The purchase offers are **not yet operative**. They become available on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement. No offer has been granted and no redeem point has been credited to any Distributor to date.
+
 ## 12. Changes to this plan
 
 This plan may be amended only with **30 days' prior written notice** to all active Distributors, under §6.2 of the Direct Seller Agreement. An amendment takes effect from the date stated in that notice and never retrospectively: bonuses already calculated are settled at the values that applied on the day they were calculated, and are not recomputed when the plan changes.

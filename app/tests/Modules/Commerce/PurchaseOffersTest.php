@@ -18,6 +18,8 @@ declare(strict_types=1);
  * OFR-010: redemption is capped at the product subtotal, never the GST or shipping
  * OFR-011: refunding an order returns its points exactly once
  * OFR-012: the flag off means the command grants nothing
+ * OFR-013: points come off the net product value at checkout, never the GST or delivery
+ * OFR-014: the same points cannot be spent twice by two concurrent checkouts
  */
 
 use App\Modules\Commerce\Enums\PurchaseOfferType;
@@ -312,4 +314,36 @@ it('OFR-012: the flag off means the command grants nothing', function () {
     $this->artisan('offers:monthly-run', ['--month' => '2026-07'])->assertSuccessful();
 
     expect(PurchaseOfferGrant::count())->toBeGreaterThan(0);
+});
+
+it('OFR-013: points come off the net product value at checkout, never the GST or delivery', function () {
+    Feature::for(null)->activate(PurchaseOffersFeature::class);
+
+    $distributor = Distributor::factory()->create(['status' => 'active']);
+    ofrPoints()->accrue($distributor->id, 100_000, 'test', null, 'seed');
+
+    // ₹10,000 tax-inclusive line. The GST inside it is 10,00,000 × 18/118 =
+    // 1,52,542 paise, so the net product value is 8,47,458 — 8,474 points.
+    $subtotal = 10_00_000;
+    $gst = (int) round($subtotal * 1800 / 11800);
+
+    expect(ofrPoints()->maxRedeemableForOrder($distributor->id, $subtotal, $gst))->toBe(8474);
+
+    // The old cap, taken from the subtotal alone, would have allowed 10,000
+    // points — letting the buyer settle the GST the company remits in cash.
+    expect(ofrPoints()->maxRedeemableForOrder($distributor->id, $subtotal, 0))->toBe(10000);
+});
+
+it('OFR-014: the same points cannot be spent twice by two concurrent checkouts', function () {
+    $distributor = Distributor::factory()->create(['status' => 'active']);
+    ofrPoints()->accrue($distributor->id, 500, 'test', null, 'seed');
+
+    ofrPoints()->redeem($distributor->id, 400, 1, 'order 1');
+
+    // The balance is re-read under a lock inside the transaction, so the
+    // second spend sees 100, not the 500 the first one started from.
+    expect(fn () => ofrPoints()->redeem($distributor->id, 400, 2, 'order 2'))
+        ->toThrow(RuntimeException::class);
+
+    expect(ofrPoints()->balance($distributor->id))->toBe(100);
 });

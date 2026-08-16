@@ -10,6 +10,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\FranchiseFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
@@ -82,6 +83,88 @@ final class AdminSettingsController extends Controller
                 'description' => 'Override the default 18-year minimum registration age for specific states. JSON map of two-letter state code to age (e.g. {"MH":21}).',
                 'type' => 'json',
                 'default' => '{"MH":21}',
+            ],
+
+            // ── Purchase offers ────────────────────────────────────────────
+            // Feature-gated: invisible and 404 on update while the offers flag
+            // is off, so an unlaunched programme leaves no trace.
+            'offers.activation_bv_paise' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => PurchaseOffersFeature::class,
+                'label' => 'Offer activation threshold (BV in paise)',
+                'description' => 'Lifetime personal BV a distributor must reach before the half-price product offer applies. 300000 paise = 3,000 BV (the Retailer title). BV is stored at 100 paise to the BV.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100_000_000,
+                'default' => '300000',
+            ],
+            'offers.qualifying_bv_paise' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => PurchaseOffersFeature::class,
+                'label' => 'Monthly qualifying volume (BV in paise)',
+                'description' => 'Personal BV a distributor must purchase in a month for it to count towards both offers. 100000 paise = 1,000 BV. A refund in the month reduces it, so a returned purchase does not keep a month qualifying.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100_000_000,
+                'default' => '100000',
+            ],
+            'offers.cycle_months' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => PurchaseOffersFeature::class,
+                'label' => 'Redeem-point cycle (months)',
+                'description' => 'Consecutive qualifying months that complete a cycle and award points. KP specified six. A single month below the threshold resets the streak.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 24,
+                'default' => '6',
+            ],
+            'offers.cycle_rate_bp' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => PurchaseOffersFeature::class,
+                'label' => 'Redeem points per cycle (basis points of BV)',
+                'description' => 'Share of the cycle\'s BV awarded as points, at one point per rupee of BV. 2000 bp = 20%.',
+                'impact' => 'Changes what future cycles award. Cycles already granted are unaffected — the points are already in the ledger.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '2000',
+            ],
+            'offers.full_year_bonus_rate_bp' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => PurchaseOffersFeature::class,
+                'label' => 'Full-year bonus (basis points of BV)',
+                'description' => 'Extra share of the whole year\'s BV awarded on completing two consecutive cycles. 1000 bp = 10%, added on top of the second cycle\'s award.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '1000',
+            ],
+            'offers.half_price_rate_bp' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => PurchaseOffersFeature::class,
+                'label' => 'Monthly offer price (basis points of DP)',
+                'description' => 'What the announced product costs a qualifying distributor, as a share of its distributor price. 5000 bp = 50%.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '5000',
+            ],
+            'offers.half_price_validity_months' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => PurchaseOffersFeature::class,
+                'label' => 'Half-price grant validity (months)',
+                'description' => 'How long a half-price grant stays usable beyond the month it was earned in. 1 means "the month it was earned plus the next one". Letting it run indefinitely would turn a monthly promotion into a permanent discount.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 12,
+                'default' => '1',
             ],
 
             // ── Franchise ──────────────────────────────────────────────────
