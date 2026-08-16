@@ -117,7 +117,21 @@ final class MyOrdersController extends Controller
             throw new NotFoundHttpException;
         }
 
-        return view('shop.orders.invoice', ['order' => $order]);
+        // The tax invoice is a document in its own right: its number, its GST
+        // split and the supplier identity on it are what make it one. Render
+        // the record, not a recomputation of the order — the two must never be
+        // able to disagree.
+        $invoice = \App\Modules\Tax\Models\Invoice::with('lines')->where('order_id', $order->id)->first();
+        $tax = app(\App\Modules\Tax\Services\TaxSettings::class);
+
+        return view('shop.orders.invoice', [
+            'order' => $order,
+            'invoice' => $invoice,
+            'tax' => $tax,
+            // Without a supplier GSTIN the document is a receipt and says so,
+            // rather than presenting itself as something it is not.
+            'isTaxInvoice' => $invoice !== null && $tax->canIssueTaxInvoice(),
+        ]);
     }
 
     /**

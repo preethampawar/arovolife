@@ -146,6 +146,14 @@ final class CheckoutController extends Controller
             // product-value cap in the service, not here — the balance can
             // move between rendering the form and submitting it.
             'redeem_points' => ['nullable', 'integer', 'min:0'],
+            // A registered buyer's GSTIN, so they can claim input credit
+            // (CGST Rule 46(e)). Optional — most buyers are consumers.
+            // Format: 2 state digits, 10-char PAN, entity digit, 'Z', checksum.
+            'buyer_gstin' => ['nullable', 'string', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i'],
+            'buyer_legal_name' => ['nullable', 'string', 'max:200', 'required_with:buyer_gstin'],
+        ], [
+            'buyer_gstin.regex' => 'That does not look like a GSTIN. It is 15 characters, e.g. 36ABCDE1234F1Z5.',
+            'buyer_legal_name.required_with' => 'A GSTIN needs the registered business name it belongs to.',
         ]);
 
         // Guard: the buyer_email must not belong to another registered user on
@@ -225,6 +233,10 @@ final class CheckoutController extends Controller
             saveShippingAddress: Auth::check() && $request->boolean('save_address'),
             shippingLabel: $validated['address_label'] ?? null,
             redeemPoints: $this->resolveRedeemPoints($request, (int) ($validated['redeem_points'] ?? 0)),
+            buyerGstin: isset($validated['buyer_gstin']) && $validated['buyer_gstin'] !== ''
+                ? strtoupper($validated['buyer_gstin'])
+                : null,
+            buyerLegalName: $validated['buyer_legal_name'] ?? null,
         );
 
         // Capture immediately via the gateway (Phase 2 stub auto-captures → order paid).

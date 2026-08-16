@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order summary {{ $order->order_no }} — arovolife</title>
+    <title>{{ $isTaxInvoice ? 'Tax invoice '.$invoice->invoice_no : 'Order summary '.$order->order_no }} — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .inv-sheet, .inv-sheet * {
@@ -27,7 +27,7 @@
         <div class="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
             <div class="flex items-center gap-3 min-w-0">
                 <a href="{{ route('orders.show', $order->order_no) }}" class="text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap">← Back to order</a>
-                <h1 class="text-base sm:text-lg font-bold text-gray-900 truncate">Order summary</h1>
+                <h1 class="text-base sm:text-lg font-bold text-gray-900 truncate">{{ $isTaxInvoice ? 'Tax invoice' : 'Order summary' }}</h1>
             </div>
             <button type="button" onclick="window.print()"
                 class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-sm font-medium text-white transition-colors">
@@ -112,12 +112,85 @@
             </table>
 
             {{-- Totals --}}
+            @if ($isTaxInvoice)
+                {{-- Supplier identity. CGST Rule 46(b): without the GSTIN this
+                     is not a tax invoice and no buyer can claim credit on it. --}}
+                <div class="mt-6 pt-4 border-t border-gray-200 grid gap-4 sm:grid-cols-2 text-xs text-gray-700">
+                    <div>
+                        <p class="font-semibold text-gray-900">{{ $tax->sellerLegalName() }}</p>
+                        <p class="text-gray-600 leading-snug">{{ $tax->sellerAddress() }}</p>
+                        <p class="mt-1"><span class="text-gray-500">GSTIN</span> <span class="font-mono font-semibold">{{ $invoice->seller_gstin }}</span></p>
+                        <p><span class="text-gray-500">State</span> {{ $invoice->seller_state }} ({{ $tax->sellerStateCode() }})</p>
+                    </div>
+                    <div class="sm:text-right">
+                        <p><span class="text-gray-500">Invoice no.</span> <span class="font-mono font-semibold">{{ $invoice->invoice_no }}</span></p>
+                        <p><span class="text-gray-500">Date</span> {{ $invoice->issued_at->format('d M Y') }}</p>
+                        <p><span class="text-gray-500">Place of supply</span> {{ $invoice->place_of_supply }}</p>
+                        @if ($invoice->buyer_gstin)
+                            <p class="mt-1"><span class="text-gray-500">Recipient GSTIN</span> <span class="font-mono font-semibold">{{ $invoice->buyer_gstin }}</span></p>
+                            <p>{{ $order->buyer_legal_name }}</p>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- HSN-wise tax summary. Rule 46 wants the taxable value, the
+                     rate and the tax under each head shown separately. --}}
+                <div class="mt-5 overflow-x-auto">
+                    <table class="min-w-full text-xs border border-gray-200">
+                        <thead class="bg-gray-50 text-left text-gray-600">
+                            <tr>
+                                <th class="px-2 py-1.5 border-b border-gray-200">HSN</th>
+                                <th class="px-2 py-1.5 border-b border-gray-200 text-right">Qty</th>
+                                <th class="px-2 py-1.5 border-b border-gray-200 text-right">Taxable value</th>
+                                <th class="px-2 py-1.5 border-b border-gray-200 text-right">Rate</th>
+                                @if ($invoice->igst_paise > 0)
+                                    <th class="px-2 py-1.5 border-b border-gray-200 text-right">IGST</th>
+                                @else
+                                    <th class="px-2 py-1.5 border-b border-gray-200 text-right">CGST</th>
+                                    <th class="px-2 py-1.5 border-b border-gray-200 text-right">SGST</th>
+                                @endif
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($invoice->lines as $line)
+                                <tr>
+                                    <td class="px-2 py-1.5 border-b border-gray-100 font-mono">{{ $line->hsn_code }}</td>
+                                    <td class="px-2 py-1.5 border-b border-gray-100 text-right">{{ $line->qty }}</td>
+                                    <td class="px-2 py-1.5 border-b border-gray-100 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($line->taxable_value_paise / 100, 2) }}</td>
+                                    <td class="px-2 py-1.5 border-b border-gray-100 text-right">{{ number_format($line->gst_rate_bp / 100, 0) }}%</td>
+                                    @if ($invoice->igst_paise > 0)
+                                        <td class="px-2 py-1.5 border-b border-gray-100 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($line->igst_paise / 100, 2) }}</td>
+                                    @else
+                                        <td class="px-2 py-1.5 border-b border-gray-100 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($line->cgst_paise / 100, 2) }}</td>
+                                        <td class="px-2 py-1.5 border-b border-gray-100 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($line->sgst_paise / 100, 2) }}</td>
+                                    @endif
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
             <div class="flex justify-end mt-4">
                 <div class="w-full sm:w-72 space-y-1">
-                    <div class="flex justify-between text-sm"><span class="text-gray-600">Taxable value</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->items->sum('taxable_value_paise') / 100, 2) }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->gst_paise / 100, 2) }}</span></div>
+                    @if ($isTaxInvoice)
+                        <div class="flex justify-between text-sm"><span class="text-gray-600">Taxable value</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($invoice->subtotal_paise / 100, 2) }}</span></div>
+                        @if ($invoice->igst_paise > 0)
+                            <div class="flex justify-between text-sm"><span class="text-gray-600">IGST</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($invoice->igst_paise / 100, 2) }}</span></div>
+                        @else
+                            <div class="flex justify-between text-sm"><span class="text-gray-600">CGST</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($invoice->cgst_paise / 100, 2) }}</span></div>
+                            <div class="flex justify-between text-sm"><span class="text-gray-600">SGST</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($invoice->sgst_paise / 100, 2) }}</span></div>
+                        @endif
+                    @else
+                        <div class="flex justify-between text-sm"><span class="text-gray-600">Taxable value</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->items->sum('taxable_value_paise') / 100, 2) }}</span></div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-600">GST</span><span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->gst_paise / 100, 2) }}</span></div>
+                    @endif
+
                     @if($order->discount_paise > 0)
                     <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
+                    @endif
+                    @if(($order->redeem_points_paise ?? 0) > 0)
+                    <div class="flex justify-between text-sm text-green-700"><span>Redeem points</span><span>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->redeem_points_paise / 100, 2) }}</span></div>
                     @endif
                     <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span>
                         @if($order->shipping_paise > 0)<span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
@@ -125,8 +198,22 @@
                     <div class="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200 mt-1">
                         <span>Total</span><span>{{ $order->displayTotal() }}</span>
                     </div>
-                    <p class="text-[11px] text-gray-400 pt-1">Amounts are inclusive of GST. Payment: {{ strtoupper($order->payment_method) }}.</p>
-                    <p class="text-[11px] text-gray-400">This is an order summary / payment receipt, not a GST tax invoice.</p>
+
+                    @if ($isTaxInvoice)
+                        <p class="text-[11px] text-gray-400 pt-1">
+                            Prices are inclusive of GST. Any discount shown above has been deducted from the
+                            taxable value under §15(3)(a) of the CGST Act.
+                        </p>
+                        <p class="text-[11px] text-gray-400">
+                            Tax payable on reverse charge: {{ $tax->reverseCharge() ? 'Yes' : 'No' }}.
+                        </p>
+                        <p class="text-[11px] text-gray-500 pt-1">
+                            Certified that the particulars given above are true and correct.
+                        </p>
+                    @else
+                        <p class="text-[11px] text-gray-400 pt-1">Amounts are inclusive of GST. Payment: {{ strtoupper($order->payment_method) }}.</p>
+                        <p class="text-[11px] text-gray-400">This is an order summary / payment receipt, not a GST tax invoice.</p>
+                    @endif
                 </div>
             </div>
 

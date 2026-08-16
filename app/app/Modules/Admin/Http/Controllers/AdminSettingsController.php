@@ -85,6 +85,54 @@ final class AdminSettingsController extends Controller
                 'default' => '{"MH":21}',
             ],
 
+            // ── Tax identity (GST invoicing) ───────────────────────────────
+            'tax.seller_gstin' => [
+                'group' => 'commerce',
+                'owner' => 'developer',
+                'label' => 'Company GSTIN',
+                'description' => 'The company\'s GST registration number, printed on every tax invoice (CGST Rule 46(b)). **While this is blank the platform issues order receipts, not tax invoices**, and says so on the document — an invoice without a GSTIN is not a tax invoice and no buyer can claim input credit against it.',
+                'impact' => 'Setting this turns every subsequent order document into a tax invoice. Do not set it before the registration is real.',
+                'type' => 'string',
+                'max' => 15,
+                'default' => '',
+            ],
+            'tax.seller_legal_name' => [
+                'group' => 'commerce',
+                'owner' => 'developer',
+                'label' => 'Registered legal name',
+                'description' => 'The name the company is registered under, as it must appear on a tax invoice.',
+                'type' => 'string',
+                'max' => 200,
+                'default' => 'Arovolife Private Limited',
+            ],
+            'tax.seller_state' => [
+                'group' => 'commerce',
+                'owner' => 'developer',
+                'label' => 'Supply-from state code',
+                'description' => 'Two-letter state of supply. Decides the CGST+SGST versus IGST split: a place of supply in this state is intra-state, anywhere else is inter-state.',
+                'type' => 'string',
+                'max' => 2,
+                'default' => 'TG',
+            ],
+            'tax.seller_state_code' => [
+                'group' => 'commerce',
+                'owner' => 'developer',
+                'label' => 'GST state code',
+                'description' => 'The numeric GST state code, printed alongside the state name. Telangana is 36.',
+                'type' => 'string',
+                'max' => 2,
+                'default' => '36',
+            ],
+            'tax.seller_address' => [
+                'group' => 'commerce',
+                'owner' => 'developer',
+                'label' => 'Registered address for invoices',
+                'description' => 'The supplier address printed on every tax invoice.',
+                'type' => 'string',
+                'max' => 500,
+                'default' => 'H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India',
+            ],
+
             // ── Purchase offers ────────────────────────────────────────────
             // Feature-gated: invisible and 404 on update while the offers flag
             // is off, so an unlaunched programme leaves no trace.

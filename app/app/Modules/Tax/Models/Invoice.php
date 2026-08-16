@@ -9,6 +9,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $order_id
+ * @property string $invoice_no
+ * @property \Illuminate\Support\Carbon $issued_at
+ * @property string|null $seller_gstin
+ * @property string $seller_state
+ * @property string|null $buyer_gstin
+ * @property string $buyer_state
+ * @property string $place_of_supply
+ * @property int $subtotal_paise
+ * @property int $cgst_paise
+ * @property int $sgst_paise
+ * @property int $igst_paise
+ * @property int $cess_paise
+ * @property int $total_paise
+ */
 final class Invoice extends Model
 {
     protected $table = 'invoices';

@@ -167,9 +167,13 @@ Compliance · Admin.
 
 ### Still open in Commerce
 
-- **R-28 tax invoice** — GSTIN on the company side and the CGST/SGST/IGST
-  split on the order invoice. Deliberately deferred to the end of all
-  phases; now in scope.
+- ~~**R-28 tax invoice**~~ — **DONE 2026-08-17.** The order document now
+  renders the canonical Tax `Invoice` record: supplier GSTIN from settings,
+  optional recipient GSTIN captured at checkout, consecutive per-financial-year
+  numbering (`AL/2026-27/000001`) under a row lock, and tax recomputed from
+  what was actually charged so a discounted invoice foots. While the GSTIN
+  setting is blank the document is honestly labelled a receipt.
+  **Pre-launch: fill in the real GSTIN.**
 
 ---
 

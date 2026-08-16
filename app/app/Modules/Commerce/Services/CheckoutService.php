@@ -39,13 +39,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $franchiseId = null, int $redeemPoints = 0): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $franchiseId = null, int $redeemPoints = 0, ?string $buyerGstin = null, ?string $buyerLegalName = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $franchiseId, $redeemPoints) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $franchiseId, $redeemPoints, $buyerGstin, $buyerLegalName) {
             // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
             //
             // A logged-in buyer is always resolved to THEIR OWN customer row,
@@ -200,6 +200,9 @@ final class CheckoutService
                 'gst_paise' => $gstPaise,
                 'discount_paise' => $discountPaise,
                 'redeem_points_paise' => $redeemPointsPaise,
+                // Recipient's GST identity, where they are registered.
+                'buyer_gstin' => $buyerGstin,
+                'buyer_legal_name' => $buyerLegalName,
                 'shipping_paise' => $shippingPaise,
                 'total_paise' => $totalPaise,
                 'ship_name' => $shipping['name'],

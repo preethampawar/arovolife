@@ -250,6 +250,29 @@
             </div>
         @endif
 
+        {{-- Optional GST details. Only a registered buyer needs these; a
+             consumer leaves them blank and gets an ordinary tax invoice. --}}
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 class="mb-1 text-sm font-semibold text-gray-900">Buying for a registered business?</h2>
+            <p class="mb-4 text-sm text-gray-600">
+                Optional. Add your GSTIN and we will put it on the tax invoice so you can claim input credit.
+            </p>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="buyer_gstin" class="mb-1.5 block text-sm font-medium text-gray-700">GSTIN</label>
+                    <input id="buyer_gstin" name="buyer_gstin" type="text" maxlength="15"
+                           value="{{ old('buyer_gstin') }}" placeholder="36ABCDE1234F1Z5"
+                           class="w-full rounded-lg border-gray-300 font-mono text-sm uppercase focus:border-brand-500 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label for="buyer_legal_name" class="mb-1.5 block text-sm font-medium text-gray-700">Registered business name</label>
+                    <input id="buyer_legal_name" name="buyer_legal_name" type="text" maxlength="200"
+                           value="{{ old('buyer_legal_name') }}"
+                           class="w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
+                </div>
+            </div>
+        </div>
+
         {{-- Payment method (online only) --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Payment Method</h2>
