@@ -171,6 +171,12 @@ final class PurchaseOfferService
      * sequentially, so this keeps every repeated lookup free without holding
      * the whole base in memory.
      *
+     * The memo invalidates on distributor id and nothing else. No current
+     * caller writes `bv_ledger_entries` — grants do not, and the service is not
+     * bound as a singleton — but anything that accrues BV and then asks the
+     * SAME instance for a month would read a stale figure. Resolve a fresh
+     * instance after a BV write.
+     *
      * @return array<string, int> 'YYYY-MM' => net own-purchase BV in paise
      */
     private function monthBuckets(int $distributorId): array

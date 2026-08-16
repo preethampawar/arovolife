@@ -20,7 +20,9 @@ enum PurchaseOfferType: string
     public function label(): string
     {
         return match ($this) {
-            self::HalfPriceProduct => 'Half-price monthly product',
+            // Admin-only while R-49 is open, but it still names a price, so it
+            // says what the grant actually is.
+            self::HalfPriceProduct => 'Half-price monthly product (recorded, not redeemable)',
             self::RedeemPoints => 'Redeem points',
         };
     }

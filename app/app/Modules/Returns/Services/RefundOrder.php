@@ -48,6 +48,11 @@ use RuntimeException;
  *     Dr revenue.sales       [taxable]
  *     Cr liability.refund_payable [taxable]
  *
+ * Redeemed points reduce the payable in every case and are credited back to
+ * revenue.discounts, undoing the contra-revenue debit `markShipped` posted when
+ * they were spent. When they cover the whole net product value the payable is
+ * zero and its line is omitted rather than posted — see below.
+ *
  * Every case is balanced by construction (verified by LedgerPoster).
  */
 final class RefundOrder
@@ -150,7 +155,18 @@ final class RefundOrder
                 $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $redeemPointsPaise];
             }
 
-            $lines[] = ['account' => 'liability.refund_payable', 'side' => 'credit', 'amount_paise' => $netRefundPaise];
+            // No cash went out, so no cash comes back. Not a corner case:
+            // checkout caps points at the net product value and the checkout
+            // screen offers exactly that cap as the input's max, so a
+            // distributor who redeems the maximum offered pays nothing in cash
+            // and lands here. The LedgerPoster rejects a zero-amount line, so
+            // an unguarded credit rolls the whole refund back — including the
+            // points restoration — and a fully points-settled order could never
+            // be bought back at all (T&C §8, R-05). The entry still balances
+            // without it: Dr revenue.sales against Cr revenue.discounts.
+            if ($netRefundPaise > 0) {
+                $lines[] = ['account' => 'liability.refund_payable', 'side' => 'credit', 'amount_paise' => $netRefundPaise];
+            }
 
             $this->ledger->post(
                 sourceModule: 'Returns',

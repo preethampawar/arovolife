@@ -544,3 +544,35 @@ it('OFR-017: a points-paid order can still be marked shipped — the journal bal
     expect((int) $sides['debit'])->toBe((int) $sides['credit'])
         ->and((int) $sides['debit'])->toBe(1_18_000);
 });
+
+it('OFR-018: an order settled entirely in points can still be bought back', function () {
+    Event::fake();
+    $this->seed(LedgerAccountSeeder::class);
+
+    // Checkout caps points at the net product value and the checkout screen
+    // offers exactly that cap as the input's max, so this is the state of every
+    // distributor who redeems the maximum the screen offers — ₹1,000 of points
+    // against a ₹1,000 net product value, ₹180 GST, no shipping.
+    $distributor = Distributor::factory()->create(['status' => 'active']);
+    ofrPoints()->accrue($distributor->id, 1000, 'test', null, 'seed');
+    ['order' => $order, 'returnRequest' => $rq] = ofrPointsPaidOrder($distributor->id);
+    ofrPoints()->redeem($distributor->id, 1000, (int) $order->id, 'order');
+
+    // A general buy-back refunds the price less GST (T&C §8), so the cash due
+    // here is exactly zero. A zero-amount ledger line is rejected, and an
+    // unguarded credit rolled the whole refund back — the statutory buy-back
+    // failed outright and the points were not restored either.
+    app(RefundOrder::class)->execute($order, $rq, 'general_buyback', true, actorUserId: null);
+
+    $order->refresh();
+    expect($order->status)->toBe(Order::STATUS_REFUND_APPROVED)
+        // Nothing was payable, so no payable line was written.
+        ->and(DB::table('ledger_entries')
+            ->join('ledger_tx', 'ledger_tx.id', '=', 'ledger_entries.ledger_tx_id')
+            ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+            ->where('ledger_tx.idempotency_key', "refund:{$order->id}")
+            ->where('ledger_accounts.code', 'liability.refund_payable')
+            ->count())->toBe(0)
+        // But the points still come back, which is the whole point of the buy-back.
+        ->and(ofrPoints()->balance($distributor->id))->toBe(1000);
+});

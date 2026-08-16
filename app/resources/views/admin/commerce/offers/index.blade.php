@@ -10,12 +10,12 @@
 
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <p class="max-w-2xl text-sm leading-relaxed text-slate-400">
-        Two offers for distributors who hold <strong>no rank</strong>: one company-announced product at
-        {{ number_format($settings->halfPriceRateBp() / 100, 0) }}% of the distributor price for a month in
-        which they repurchased <strong>@bv($qualifyingBv) BV</strong> (after activating at
-        <strong>@bv($activationBv) BV</strong> lifetime), and
+        Two offers for distributors who hold <strong>no rank</strong>:
         {{ number_format($settings->cycleRateBp() / 100, 0) }}% of the streak's BV as redeem points for
-        {{ $settings->cycleMonths() }} consecutive qualifying months.
+        {{ $settings->cycleMonths() }} consecutive months of <strong>@bv($qualifyingBv) BV</strong>, and a
+        half-price company-announced product for a qualifying month (after activating at
+        <strong>@bv($activationBv) BV</strong> lifetime) — <strong class="text-amber-300">which is
+        recorded but not yet redeemable</strong>.
     </p>
     <form method="GET" action="{{ route('admin.commerce.offers.index') }}" class="flex items-end gap-2">
         <div>
@@ -40,6 +40,17 @@
         {{ $errors->first() }}
     </div>
 @endif
+
+{{-- R-49. Staff announce a product from this screen, so the limitation has to
+     be here and not only in the risk register: an announcement creates grants
+     the platform cannot honour. --}}
+<div class="mb-6 rounded-lg border border-amber-600/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+    <strong>The half-price offer cannot be redeemed yet (R-49).</strong>
+    Nothing applies the offer price at cart or checkout, so a grant is a record of who qualified and
+    nothing more. It has been removed from the published plan and from the distributor's My Offers page
+    rather than promising a mechanism that does not exist. Announcing a product below is safe — it does
+    not create anything a distributor can act on — but do not tell anyone the offer is live.
+</div>
 
 {{-- The announcement --}}
 <div class="mb-8 rounded-xl border border-slate-700 bg-slate-900/40 p-6">
@@ -69,7 +80,7 @@
           class="flex flex-wrap items-end gap-3"
           data-confirm="Announce this product for {{ $month->format('F Y') }}?"
           data-confirm-title="Announce the half-price product"
-          data-confirm-impact="Every unranked distributor who repurchases the qualifying volume this month becomes entitled to it at half the distributor price.">
+          data-confirm-impact="Every unranked distributor who repurchases the qualifying volume this month gets a grant RECORDED against this product. The half-price offer is not redeemable yet (R-49) — nothing applies the offer price at checkout, and the distributor is not shown the grant.">
         @csrf
         <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
         <div class="min-w-72 flex-1">

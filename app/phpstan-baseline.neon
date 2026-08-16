@@ -2427,7 +2427,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
-			count: 2
+			count: 3
 			path: tests/Modules/Commerce/PurchaseOffersTest.php
 
 		-
