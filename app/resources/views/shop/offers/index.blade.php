@@ -24,8 +24,8 @@
         <div class="mb-8 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
             <p class="font-semibold mb-1">These offers are for distributors who hold no rank.</p>
             <p>
-                You have achieved a rank, so the half-price product and the redeem-point streak no longer
-                apply to you. Any points you already earned remain yours and can still be used.
+                You have achieved a rank, so the redeem-point streak no longer applies to you. Any points
+                you already earned remain yours and can still be used.
             </p>
         </div>
     @endif
@@ -40,21 +40,11 @@
         </p>
     </div>
 
-    {{-- Half-price entitlement --}}
-    @if ($activeHalfPrice && $activeHalfPrice->variant)
-        <div class="mb-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
-            <p class="text-xs uppercase tracking-wider text-emerald-700 mb-1">Half-price product available</p>
-            <p class="text-lg font-semibold text-emerald-900">
-                {{ $activeHalfPrice->variant->product?->name ?? $activeHalfPrice->variant->variant_sku }}
-            </p>
-            <p class="mt-1 text-sm text-emerald-800">
-                Earned for {{ $activeHalfPrice->month_start->format('F Y') }}.
-                @if ($activeHalfPrice->expires_on)
-                    Use it by {{ $activeHalfPrice->expires_on->format('d M Y') }}.
-                @endif
-            </p>
-        </div>
-    @endif
+    {{-- The half-price entitlement is recorded but not yet redeemable: no
+         cart or checkout path applies the offer price. Telling a distributor
+         they may "use it by" a date the platform cannot honour would be a
+         promise the system ignores, so it is not shown until redemption is
+         built (R-49). The grant itself still records who qualified. --}}
 
     {{-- Where the streak stands --}}
     <div class="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -62,7 +52,7 @@
 
         <dl class="grid gap-4 sm:grid-cols-3 text-sm">
             <div>
-                <dt class="text-gray-500">Consecutive qualifying months</dt>
+                <dt class="text-gray-500">Consecutive qualifying months completed</dt>
                 <dd class="text-xl font-bold text-gray-900">{{ $streakMonths }}</dd>
             </div>
             <div>
@@ -76,14 +66,13 @@
         </dl>
 
         <p class="mt-4 text-sm text-gray-600">
-            A month counts towards the streak when your own purchases in it reach
-            <strong>@bv($qualifyingBv) BV</strong>. {{ $cycle }} consecutive qualifying months complete a
-            cycle. The half-price product also needs lifetime purchases of at least
-            <strong>@bv($activationBv) BV</strong>.
+            A month counts towards the streak when <strong>your own purchases</strong> in it reach
+            <strong>@bv($qualifyingBv) BV</strong> — purchases you made for yourself, not sales to other
+            people. {{ $cycle }} consecutive qualifying months complete a cycle.
         </p>
         <p class="mt-2 text-xs text-gray-500">
-            A refund reduces the month it belongs to, so a returned purchase does not keep a month
-            qualifying.
+            A refund reduces the month the returned purchase belongs to, not the month of the refund — so a
+            purchase that came back does not keep a month qualifying, and does not break a later one.
         </p>
     </div>
 

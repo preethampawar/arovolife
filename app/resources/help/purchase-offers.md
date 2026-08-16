@@ -1,7 +1,16 @@
 # Purchase Offers
 
 Two offers for distributors who hold **no rank**, specified by KP on
-2026-06-26. Both hang entirely off BV the distributor personally purchased.
+2026-06-26. Both hang entirely off BV the distributor personally purchased —
+purchases they made for themselves, not sales to other people. A month's
+qualifying volume is filtered to `orders.self_consumption`, so retail sales
+attributed to a distributor never count towards it.
+
+> **Only the redeem-points half is live.** The half-price entitlement is
+> granted and recorded, but nothing yet applies the offer price at cart or
+> checkout, so it cannot be exercised. Its paragraph was removed from the
+> published plan page and its card from My Offers rather than promise a
+> mechanism that does not exist (R-49).
 
 > **The "joining" trigger is gone.** The original description said the offers
 > applied on "joining OR purchase OR repurchase". The Product Owner dropped
@@ -47,9 +56,11 @@ future purchase.
   year**, on top of that second cycle's award.
 - One month below the threshold **resets the streak to zero.** There is no
   partial credit and no carry-over.
-- A refund reduces the month it belongs to. A returned purchase does not keep a
-  month qualifying — an offer earned on a sale that came back is an offer
-  earned on no sale at all.
+- A refund reduces **the month the returned purchase belongs to**, not the
+  month of the refund. A reversal is written with today's date, so a month
+  defined by that date would leave the earning month still qualifying on a sale
+  that came back and would break whichever later month the refund landed in.
+  The month is defined by which orders accrued in it.
 
 ### Points are not money
 
@@ -65,8 +76,11 @@ They live in their own ledger, never in the wallet:
 A wallet balance that mixed cash the company owes with a purchase discount
 would mean two things at once and reconcile as neither.
 
-If an order paid partly in points is refunded, the points come back — once.
-A retried refund cannot mint them.
+If an order paid partly in points is refunded, **the points come back in
+points and the cash refund is reduced by their value**. They are not converted
+to cash: that would make them a stored value rather than a discount, and it is
+exactly what the first implementation did before the compliance review caught
+it. The restoration is idempotent, so a retried refund cannot mint them.
 
 ---
 
@@ -105,6 +119,12 @@ checkout, no admin screens, no settings keys.
    gets for their purchases and so form part of the plan.
 2. **`/p/compensation` §11.2** must carry the effective date from that notice.
 3. **KP must confirm the two readings in R-48** — see below.
+4. **A documented GST position for points**, with the invoice, the taxable
+   value and the §15(3)(a) footnote reconciled to it.
+5. **An expiry policy** and the sweeper that writes it. `TYPE_EXPIRY` exists in
+   the ledger and nothing ever writes it, so the obligation is open-ended.
+6. **An accounting position** recognising the outstanding balance as a
+   liability (Ind AS 115).
 
 ### The two readings that need KP (R-48)
 

@@ -562,7 +562,11 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // ── Purchase offers (KP 2026-06-26) ──────────────────────────────────────
     // Feature-gated in the controller; an unlaunched offer leaves no trace.
     Route::get('/commerce/offers', [AdminOfferController::class, 'index'])->name('commerce.offers.index');
-    Route::post('/commerce/offers/announce', [AdminOfferController::class, 'announce'])->name('commerce.offers.announce');
+    // Announcing the product commits the company to an entitlement across the
+    // whole unranked base, so it carries the same permission as the franchise
+    // money routes rather than being open to every admin role.
+    Route::post('/commerce/offers/announce', [AdminOfferController::class, 'announce'])
+        ->middleware('can:compliance.discipline')->name('commerce.offers.announce');
 
     // ── Dormancy & termination (agreement §21) ───────────────────────────────
     // Read-only apart from withdrawing a notice, which is gated on the same

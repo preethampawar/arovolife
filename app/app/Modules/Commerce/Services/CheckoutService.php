@@ -176,7 +176,13 @@ final class CheckoutService
             // are GST-inclusive, so the tax has to come out of the cap before
             // it is applied — the company remits that tax in cash whatever the
             // buyer paid with, and delivery is a real third-party cost.
-            $redeemPointsPaise = min($redeemPoints * 100, max(0, $subtotalPaise - $gstPaise - $discountPaise));
+            // Zero without a distributor to debit. `place()` is a public
+            // service API, not only the HTTP path: another caller passing
+            // points with no distributor would otherwise get a free reduction
+            // with no matching ledger entry behind it.
+            $redeemPointsPaise = $buyerDistributorId === null
+                ? 0
+                : min($redeemPoints * 100, max(0, $subtotalPaise - $gstPaise - $discountPaise));
             $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $shippingPaise;
 
             $order = Order::create([

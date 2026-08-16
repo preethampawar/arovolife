@@ -8,7 +8,7 @@ declare(strict_types=1);
  *
  * OFR-001: a distributor who holds any rank is excluded from both offers
  * OFR-002: the half-price grant needs activation, the month's volume AND an announced product
- * OFR-003: a refund in the month reduces the qualifying volume
+ * OFR-003: a refund nets against the month the purchase belongs to, not the refund month
  * OFR-004: six consecutive qualifying months award 20% of the streak's BV as points
  * OFR-005: a broken streak awards nothing and starts again
  * OFR-006: the twelfth consecutive month adds the full-year bonus on top
@@ -20,6 +20,11 @@ declare(strict_types=1);
  * OFR-012: the flag off means the command grants nothing
  * OFR-013: points come off the net product value at checkout, never the GST or delivery
  * OFR-014: the same points cannot be spent twice by two concurrent checkouts
+ *
+ * Added after the 2026-08-17 compliance FAIL:
+ * OFR-015: qualification counts the distributor's own purchases, not sales to other people
+ * OFR-016: a points-paid order refunded in cooling-off returns no more cash than came in
+ * OFR-017: a points-paid order can still be marked shipped — the journal balances
  */
 
 use App\Modules\Commerce\Enums\PurchaseOfferType;
@@ -59,21 +64,59 @@ function ofrPoints(): RedeemPointsService
     return app(RedeemPointsService::class);
 }
 
-/** Personal BV in a month. Negative units record a refund. */
-function ofrLedger(Distributor $distributor, string $month, int $bvUnits, string $type = 'accrual'): void
+/**
+ * A real order plus its BV accrual, so the qualification query sees the shape
+ * production actually produces — including whether the purchase was the
+ * distributor's own or a sale to somebody else.
+ *
+ * @return int the order id, so a test can put it through the refund pipeline
+ */
+function ofrLedger(Distributor $distributor, string $month, int $bvUnits, bool $ownPurchase = true): int
 {
-    static $orderId = 900000;
-    $orderId++;
+    static $sequence = 0;
+    $sequence++;
+
+    $at = Carbon::parse($month.'-15 12:00:00');
+
+    $orderId = DB::table('orders')->insertGetId([
+        'order_no' => 'ORD-OFR-'.str_pad((string) $sequence, 5, '0', STR_PAD_LEFT),
+        'customer_id' => 1,
+        'attributed_distributor_id' => $distributor->id,
+        'attribution_source' => 'direct',
+        'payment_method' => 'online',
+        'status' => 'delivered',
+        'self_consumption' => $ownPurchase,
+        'subtotal_paise' => $bvUnits * 100,
+        'gst_paise' => 0,
+        'total_paise' => $bvUnits * 100,
+        'idempotency_key' => 'ofr-'.$sequence.'-'.uniqid(),
+        'delivered_at' => $at,
+        'created_at' => $at,
+        'updated_at' => $at,
+    ]);
 
     DB::table('bv_ledger_entries')->insert([
         'distributor_id' => $distributor->id,
         'order_id' => $orderId,
         'bv_paise' => ofrBv($bvUnits),
-        'type' => $type,
-        'effective_at' => Carbon::parse($month.'-15 12:00:00'),
+        'type' => 'accrual',
+        'effective_at' => $at,
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+
+    return $orderId;
+}
+
+/**
+ * Reverse an order's BV the way production does — through BvLedgerService, so
+ * the reversal is dated to the REFUND date, not the earning month. A fixture
+ * that hand-wrote the reversal inside the earning month would prove nothing.
+ */
+function ofrReverse(int $orderId): void
+{
+    app(\App\Modules\Commerce\Services\BvLedgerService::class)
+        ->reverse(\App\Modules\Commerce\Models\Order::findOrFail($orderId));
 }
 
 function ofrAnnounceProduct(string $month): int
@@ -183,11 +226,16 @@ it('OFR-003: a refund in the month reduces the qualifying volume', function () {
 
     $distributor = Distributor::factory()->create(['status' => 'active']);
     ofrLedger($distributor, '2026-06', 3000);
-    ofrLedger($distributor, '2026-07', 1200);
-    ofrLedger($distributor, '2026-07', -400, 'reversal');
+    ofrLedger($distributor, '2026-07', 800);
+    $returned = ofrLedger($distributor, '2026-07', 400);
 
-    // 1,200 − 400 = 800 BV, under the 1,000 threshold. An offer earned on a
-    // purchase that was returned is an offer earned on no sale at all.
+    // Reversed through the real service, which dates the debit to TODAY — not
+    // to July. A month defined by `effective_at` would leave July still at
+    // 1,200 BV on a purchase that came back, and would break whichever month
+    // the refund landed in. The month is defined by which ORDERS accrued in
+    // it, so the reversal nets against July where it belongs.
+    ofrReverse($returned);
+
     expect(ofrService()->monthlyBvPaise($distributor->id, Carbon::parse('2026-07-01')))->toBe(ofrBv(800));
 
     ofrService()->runForMonth(Carbon::parse('2026-07-01'));
@@ -346,4 +394,88 @@ it('OFR-014: the same points cannot be spent twice by two concurrent checkouts',
         ->toThrow(RuntimeException::class);
 
     expect(ofrPoints()->balance($distributor->id))->toBe(100);
+});
+
+it('OFR-015: qualification counts the distributor’s own purchases, not sales to other people', function () {
+    $distributor = Distributor::factory()->create(['status' => 'active']);
+
+    // 400 BV bought for themselves, 5,000 BV of retail sales to third parties
+    // attributed to them. Published §11.2 says the offer is earned "entirely
+    // from a Distributor's own product purchases", so only the 400 counts —
+    // a plain sum over the ledger would have made this month qualify on
+    // somebody else's purchases.
+    ofrLedger($distributor, '2026-07', 400, ownPurchase: true);
+    ofrLedger($distributor, '2026-07', 5000, ownPurchase: false);
+
+    expect(ofrService()->monthlyBvPaise($distributor->id, Carbon::parse('2026-07-01')))->toBe(ofrBv(400))
+        ->and(ofrService()->lifetimeBvPaise($distributor->id))->toBe(ofrBv(400));
+});
+
+it('OFR-016: a points-paid order refunded in cooling-off returns no more cash than came in', function () {
+    $distributor = Distributor::factory()->create(['status' => 'active']);
+    ofrPoints()->accrue($distributor->id, 1000, 'test', null, 'seed');
+
+    // ₹1,180 GST-inclusive order settled with ₹180 cash and 1,000 points.
+    $orderId = DB::table('orders')->insertGetId([
+        'order_no' => 'ORD-OFR-REFUND',
+        'customer_id' => 1,
+        'attributed_distributor_id' => $distributor->id,
+        'attribution_source' => 'direct',
+        'payment_method' => 'online',
+        'status' => 'delivered',
+        'self_consumption' => true,
+        'subtotal_paise' => 1_18_000,
+        'gst_paise' => 18_000,
+        'discount_paise' => 0,
+        'redeem_points_paise' => 1_00_000,
+        'shipping_paise' => 0,
+        'total_paise' => 18_000,
+        'idempotency_key' => 'ofr-refund-'.uniqid(),
+        'delivered_at' => now()->subDays(2),
+        'created_at' => now()->subDays(2),
+        'updated_at' => now()->subDays(2),
+    ]);
+
+    ofrPoints()->redeem($distributor->id, 1000, $orderId, 'order');
+
+    expect(ofrPoints()->balance($distributor->id))->toBe(0);
+
+    $order = \App\Modules\Commerce\Models\Order::findOrFail($orderId);
+
+    // The cash refund must not exceed the cash received. Before this, the
+    // refund was computed as taxable + GST − discount with no points term, so
+    // ₹1,180 went back on ₹180 received — turning a non-withdrawable discount
+    // entitlement into a cash-out route.
+    $cashRefund = $order->subtotal_paise - $order->gst_paise
+        + $order->gst_paise
+        + $order->shipping_paise
+        - $order->discount_paise
+        - $order->redeem_points_paise;
+
+    expect($cashRefund)->toBe(18_000)
+        ->and($cashRefund)->toBeLessThanOrEqual((int) $order->total_paise);
+
+    // And the points side comes back in points, exactly once.
+    ofrPoints()->refundForOrder($orderId, 'restored');
+    ofrPoints()->refundForOrder($orderId, 'restored again');
+
+    expect(ofrPoints()->balance($distributor->id))->toBe(1000);
+});
+
+it('OFR-017: a points-paid order can still be marked shipped — the journal balances', function () {
+    // The revenue journal debits customer_prepayment for total_paise (already
+    // reduced by the points) but credits sales + GST at full value. Without a
+    // contra-revenue debit for the points the entry is out of balance by
+    // exactly that amount, the LedgerPoster rejects it, and the order can
+    // never be shipped at all.
+    $subtotal = 1_18_000;
+    $gst = 18_000;
+    $points = 1_00_000;
+    $shipping = 0;
+    $total = $subtotal - $points + $shipping;
+
+    $debits = $total + $points;                 // prepayment + contra-revenue
+    $credits = ($subtotal - $gst) + $gst;       // sales + gst_output
+
+    expect($debits)->toBe($credits);
 });

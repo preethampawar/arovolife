@@ -16,7 +16,7 @@ namespace App\Modules\Shared\Features;
  *  1. the DSA §6.2 thirty-day written notice — the offers change what a
  *     distributor gets for their purchases and so form part of the plan;
  *  2. `/p/compensation` §11.2 carries the effective date from that notice; and
- *  3. KP confirms the two readings recorded in R-47 — what "hold no rank"
+ *  3. KP confirms the two readings recorded in R-48 — what "hold no rank"
  *     means, and what "20% of total BV" is 20% of.
  *
  * Resolved via:

@@ -105,6 +105,10 @@ final class CheckoutController extends Controller
                     $request->user()->distributor->id,
                     $cart->subtotalPaise(),
                     $cart->gstPaise(),
+                    // Include the coupon: without it the screen offers a
+                    // maximum the service will silently clamp, and the buyer
+                    // sees a number that is not honoured.
+                    $couponDiscount,
                 )
                 : 0,
         ]);

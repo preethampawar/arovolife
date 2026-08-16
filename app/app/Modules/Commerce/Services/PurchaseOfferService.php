@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\DB;
  *
  * ⚠ Two readings of KP's text are implemented as written and need his
  * confirmation before the flag is turned on. They are recorded in the risk
- * register (R-47) rather than left in someone's memory:
+ * register (R-48) rather than left in someone's memory:
  *
  *  - **"do not hold any rank"** is read as *has never qualified for a rank*.
  *    Rank achievement is permanent in this plan, so "currently unranked" and
@@ -112,27 +112,74 @@ final class PurchaseOfferService
     }
 
     /**
-     * Signed personal BV for one month. Signed because a refund in the month
-     * must reduce it: an offer earned on a purchase that was returned is an
-     * offer earned on no sale at all, which hard rule 2 forbids.
+     * The distributor's OWN purchases in one month, net of anything returned.
+     *
+     * Two things this has to get right, and a plain sum over
+     * `bv_ledger_entries` gets both wrong.
+     *
+     * **Own purchases, not attributed sales.** The ledger credits a distributor
+     * for retail sales to third parties as well as for what they bought
+     * themselves. The published §11.2 says these offers are "earned entirely
+     * from a Distributor's own product purchases", so the base is filtered to
+     * `orders.self_consumption` — otherwise the plan page and the engine
+     * describe two different systems.
+     *
+     * **Netted against the month the purchase belongs to.** A reversal is
+     * written with `effective_at = now()`, so a purchase made in August and
+     * returned in September lands its debit in September: August would keep
+     * qualifying on a sale that came back, and September's live streak would be
+     * broken by a purchase it never made. So the month is defined by which
+     * ORDERS accrued in it, and every entry for those orders — accrual and
+     * later reversal alike — is netted into that month. An offer earned on a
+     * returned purchase is an offer earned on no sale at all, which hard rule 2
+     * forbids.
      */
     public function monthlyBvPaise(int $distributorId, Carbon $monthStart): int
     {
+        $orderIds = $this->ownOrderIdsAccruedIn($distributorId, $monthStart);
+
+        if ($orderIds === []) {
+            return 0;
+        }
+
         return (int) DB::table('bv_ledger_entries')
             ->where('distributor_id', $distributorId)
-            ->whereBetween('effective_at', [
-                $monthStart->copy()->startOfMonth()->startOfDay(),
-                $monthStart->copy()->endOfMonth()->endOfDay(),
-            ])
+            ->whereIn('order_id', $orderIds)
             ->sum('bv_paise');
     }
 
-    /** Lifetime signed personal BV — what activation is measured against. */
+    /**
+     * Lifetime own-purchase BV, net of returns — what activation is measured
+     * against.
+     */
     public function lifetimeBvPaise(int $distributorId): int
     {
         return (int) DB::table('bv_ledger_entries')
-            ->where('distributor_id', $distributorId)
-            ->sum('bv_paise');
+            ->where('bv_ledger_entries.distributor_id', $distributorId)
+            ->join('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
+            ->where('orders.self_consumption', true)
+            ->sum('bv_ledger_entries.bv_paise');
+    }
+
+    /**
+     * The distributor's own orders whose BV accrued in the given month.
+     *
+     * @return array<int, int>
+     */
+    private function ownOrderIdsAccruedIn(int $distributorId, Carbon $monthStart): array
+    {
+        return DB::table('bv_ledger_entries')
+            ->join('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
+            ->where('bv_ledger_entries.distributor_id', $distributorId)
+            ->where('bv_ledger_entries.type', 'accrual')
+            ->where('orders.self_consumption', true)
+            ->whereBetween('bv_ledger_entries.effective_at', [
+                $monthStart->copy()->startOfMonth()->startOfDay(),
+                $monthStart->copy()->endOfMonth()->endOfDay(),
+            ])
+            ->pluck('bv_ledger_entries.order_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->all();
     }
 
     /**

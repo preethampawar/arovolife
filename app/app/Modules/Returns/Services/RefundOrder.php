@@ -10,6 +10,7 @@ use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Returns\Events\OrderRefundApproved;
+use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Returns\Models\ReturnRequest;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -88,15 +89,33 @@ final class RefundOrder
         $gstRefundPaise = $policy['refund_gst'] ? $order->gst_paise : 0;
         $shippingRefundPaise = $isCoolingOff ? $order->shipping_paise : 0;
         $discountPaise = $isCoolingOff ? $order->discount_paise : 0;
-        $netRefundPaise = $taxable + $gstRefundPaise + $shippingRefundPaise - $discountPaise;
+        // Redeem points were never cash, so they must never come back as cash.
+        // Without this line a buyer could pay ₹180 cash plus 1,000 points on a
+        // ₹1,180 order, cancel inside the cooling-off window and receive ₹1,180
+        // — turning a non-withdrawable discount entitlement into a cash-out
+        // route, and moving company money against consideration never received.
+        // The points side is returned in points below.
+        $redeemPointsPaise = (int) ($order->redeem_points_paise ?? 0);
+        $netRefundPaise = $taxable + $gstRefundPaise + $shippingRefundPaise - $discountPaise - $redeemPointsPaise;
 
         $idempotencyKey = "refund:{$order->id}";
 
         $this->db->transaction(function () use (
             $order, $returnRequest, $reason, $isCoolingOff,
             $taxable, $gstRefundPaise, $shippingRefundPaise, $discountPaise, $netRefundPaise,
-            $idempotencyKey, $actorUserId,
+            $redeemPointsPaise, $idempotencyKey, $actorUserId,
         ): void {
+            // Give the points back, in points, inside the same transaction that
+            // reverses the money. Idempotent, so a retried refund cannot mint
+            // them. Published §11.2 promises restoration; before this nothing
+            // called it and the points were simply destroyed.
+            if ($redeemPointsPaise > 0) {
+                app(RedeemPointsService::class)->refundForOrder(
+                    $order->id,
+                    'Restored on refund of order '.$order->order_no,
+                );
+            }
+
             // Build balanced ledger reversal lines.
             $lines = [
                 ['account' => 'revenue.sales', 'side' => 'debit', 'amount_paise' => $taxable],

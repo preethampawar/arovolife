@@ -96,6 +96,9 @@ final class AdminOfferController extends Controller
             ]);
         }
 
+        $before = MonthlyOfferProduct::whereDate('month_start', $monthStart->toDateString())
+            ->value('product_variant_id');
+
         $announcement = MonthlyOfferProduct::updateOrCreate(
             ['month_start' => $monthStart->toDateString()],
             [
@@ -110,9 +113,13 @@ final class AdminOfferController extends Controller
             'action' => 'offers.product_announced',
             'subject_type' => 'monthly_offer_product',
             'subject_id' => $announcement->id,
+            // Before AND after: an audit row that records only the new value
+            // cannot answer "what did this replace?", which is the question
+            // asked when an announcement turns out to have been wrong.
             'details' => [
                 'month' => $monthStart->format('Y-m'),
-                'product_variant_id' => $announcement->product_variant_id,
+                'before_product_variant_id' => $before,
+                'after_product_variant_id' => $announcement->product_variant_id,
             ],
         ]);
 
