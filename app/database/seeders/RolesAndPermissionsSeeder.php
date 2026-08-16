@@ -36,6 +36,20 @@ final class RolesAndPermissionsSeeder extends Seeder
         'compliance.discipline' => 'admin-compliance', // freeze / unfreeze / terminate
     ];
 
+    /**
+     * permission => the scoped roles that should hold it.
+     *
+     * Separate from SCOPED because these are shared across more than one
+     * scoped role. `grievance.handle` deliberately excludes `admin-finance`:
+     * grievances routinely name a member of staff, and the finance role has no
+     * business reading an ethics complaint about itself.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const SHARED = [
+        'grievance.handle' => ['admin-operations', 'admin-compliance'],
+    ];
+
     public function run(): void
     {
         $guard = 'web';
@@ -48,6 +62,17 @@ final class RolesAndPermissionsSeeder extends Seeder
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
 
             $role->givePermissionTo($permission);
+            $admin->givePermissionTo($permission);
+            $developer->givePermissionTo($permission);
+        }
+
+        foreach (self::SHARED as $permissionName => $roleNames) {
+            $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => $guard]);
+
+            foreach ($roleNames as $roleName) {
+                Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard])->givePermissionTo($permission);
+            }
+
             $admin->givePermissionTo($permission);
             $developer->givePermissionTo($permission);
         }

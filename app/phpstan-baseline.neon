@@ -1135,30 +1135,6 @@ parameters:
 			path: app/Modules/Genealogy/Models/Sponsorship.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Grievance\\Models\\Ticket\:\:\$sla_resolution_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Grievance/Models/Ticket.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Grievance\\Models\\Ticket\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Grievance/Models/Ticket.php
-
-		-
-			message: '#^Method App\\Modules\\Grievance\\Models\\Ticket\:\:events\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Grievance/Models/Ticket.php
-
-		-
-			message: '#^Method App\\Modules\\Grievance\\Models\\TicketEvent\:\:ticket\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Grievance/Models/TicketEvent.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Identity\\Models\\User\:\:\$login_throttle_cleared_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3419,3 +3395,63 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Admin/AdminAdcReportsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 27
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 9
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 11
+			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compliance/InactivityTerminationTest.php

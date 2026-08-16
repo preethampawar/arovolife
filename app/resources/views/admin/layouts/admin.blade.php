@@ -82,6 +82,15 @@
                     fn () => \App\Modules\Public\Models\ContactInquiry::query()->whereNull('handled_at')->count(),
                 );
 
+                // Unsettled grievances for the sidebar badge. Same 60s cache —
+                // a statutory SLA queue that nobody can see the size of is a
+                // queue that gets missed.
+                $openGrievanceCount = \Illuminate\Support\Facades\Cache::remember(
+                    'admin.grievances.unsettled_count',
+                    60,
+                    fn () => \App\Modules\Grievance\Models\Ticket::query()->unsettled()->count(),
+                );
+
                 $navItems = [
                     ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => '⬡'],
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => '◉'],
@@ -93,6 +102,17 @@
                     ['route' => 'admin.kyc.index',                'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc'],
                     ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => '⇄', 'prefix' => 'admin.line-changes'],
                     ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => '✉', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
+                    // Grievances are gated on `grievance.handle` (R-17: not
+                    // admin-finance). Hiding the item rather than letting it
+                    // 403 also keeps the open-complaint count out of view.
+                    ...(auth()->user()?->can('grievance.handle')
+                        ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => '📣', 'prefix' => 'admin.grievances', 'badge' => $openGrievanceCount]]
+                        : []),
+                    // Agreement §21 dormancy. Account discipline, so it follows
+                    // the same permission as freeze / terminate.
+                    ...(auth()->user()?->can('compliance.discipline')
+                        ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => '⏳', 'prefix' => 'admin.dormancy']]
+                        : []),
                     ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => '🛒', 'prefix' => 'admin.commerce.orders'],
                     ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => '📊', 'prefix' => 'admin.commerce.bv-ledger'],
                     ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => '💰', 'prefix' => 'admin.compensation'],

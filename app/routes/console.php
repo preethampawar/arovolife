@@ -9,6 +9,7 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -92,6 +93,22 @@ Schedule::command(AdcBonusRunCommand::class)
 // engines (GBB 2nd, Rank 8th, Fortune 9th 09:00, ADC 8th) have completed.
 Schedule::command(MonthlyPayoutCommand::class)
     ->monthlyOn(9, '10:30')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Grievance SLA sweep — hourly. Stamps acknowledgement / first-response /
+// resolution breaches the moment a published clock lapses, auto-escalates
+// tickets that have sat too long at one step of the policy §4 ladder, and
+// nudges the owning officer when a third-party-dependent grievance is due its
+// 15-day progress update.
+//
+// Hourly rather than daily because the acknowledgement promise is measured in
+// hours (48), not days: a once-a-day sweep could record a breach up to 24
+// hours after it happened, which is the one number in the monthly compliance
+// report that has to be exact.
+Schedule::command(GrievanceSlaSweepCommand::class)
+    ->hourly()
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

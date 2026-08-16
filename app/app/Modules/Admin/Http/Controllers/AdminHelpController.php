@@ -56,6 +56,16 @@ final class AdminHelpController extends Controller
             'description' => 'The statutory 30-day cancellation window, the one-click refund flow, reminders, and edge cases.',
             'file' => 'cooling-off.md',
         ],
+        'dormancy-termination' => [
+            'title' => 'Dormancy & Termination (§21)',
+            'description' => 'The twelve-month no-sale rule, the seven-day notice, the master switch that ships off, and the re-registration wait afterwards.',
+            'file' => 'dormancy-termination.md',
+        ],
+        'grievance-handling' => [
+            'title' => 'Grievance Handling',
+            'description' => 'How to work the complaint queue: the published SLA clocks, the four-step escalation ladder, third-party extensions, and the monthly compliance report.',
+            'file' => 'grievance-handling.md',
+        ],
         'status-reference' => [
             'title' => 'Status Reference',
             'description' => 'Every status / lifecycle value across the platform — accounts, KYC, genealogy, catalog, orders, payments, returns and more — with plain-English explanations.',

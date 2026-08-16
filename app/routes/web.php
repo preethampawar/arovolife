@@ -55,11 +55,17 @@ use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewControll
 use App\Modules\Compensation\Http\Controllers\IncomeController;
 use App\Modules\Compensation\Http\Controllers\MyBusinessController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
+use App\Modules\Compliance\Http\Controllers\Admin\AdminDormancyController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
+use App\Modules\Grievance\Http\Controllers\AdminGrievanceController;
+use App\Modules\Grievance\Http\Controllers\AdminGrievanceReportController;
+use App\Modules\Grievance\Http\Controllers\DistributorGrievanceController;
+use App\Modules\Grievance\Http\Controllers\PublicGrievanceController;
+use App\Modules\Grievance\Http\Controllers\SupportHubController;
 use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
@@ -522,6 +528,44 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // distributor's, not the admin's.
     Route::post('/impersonate/{userId}/start', [AdminImpersonationController::class, 'start'])
         ->whereNumber('userId')->name('impersonate.start');
+
+    // ── Dormancy & termination (agreement §21) ───────────────────────────────
+    // Read-only apart from withdrawing a notice, which is gated on the same
+    // permission as the rest of account discipline.
+    Route::get('/dormancy', [AdminDormancyController::class, 'index'])
+        ->middleware('can:compliance.discipline')->name('dormancy.index');
+    Route::post('/dormancy/{id}/withdraw-notice', [AdminDormancyController::class, 'withdrawNotice'])
+        ->whereNumber('id')->middleware('can:compliance.discipline')->name('dormancy.withdraw');
+
+    // ── Grievance redressal (DSR 2021 Rule 12 / T&C §11) ─────────────────────
+    // The single tracker every intake channel in the published policy §3 lands
+    // in. Literal paths are declared before the /{id} wildcard.
+    //
+    // `can:grievance.handle` deliberately excludes admin-finance (R-17
+    // separation of duties): grievances routinely name a member of staff, and
+    // ethics complaints are further narrowed to the compliance side by
+    // TicketPolicy — middleware cannot see the ticket's category, so the two
+    // work together rather than one replacing the other.
+    Route::middleware('can:grievance.handle')->group(function (): void {
+    Route::get('/grievances', [AdminGrievanceController::class, 'index'])->name('grievances.index');
+    Route::get('/grievances/create', [AdminGrievanceController::class, 'create'])->name('grievances.create');
+    Route::post('/grievances', [AdminGrievanceController::class, 'store'])->name('grievances.store');
+    // Monthly compliance report + its CSV, handed to the Compliance Committee
+    // quarterly and to a regulator on request.
+    Route::get('/grievances/report', [AdminGrievanceReportController::class, 'index'])->name('grievances.report');
+    Route::get('/grievances/report/export', [AdminGrievanceReportController::class, 'export'])->name('grievances.report.export');
+    Route::get('/grievances/{id}', [AdminGrievanceController::class, 'show'])->whereNumber('id')->name('grievances.show');
+    Route::get('/grievances/{id}/attachments/{attachmentId}', [AdminGrievanceController::class, 'streamAttachment'])
+        ->whereNumber('id')->whereNumber('attachmentId')->name('grievances.attachment');
+    Route::post('/grievances/{id}/respond', [AdminGrievanceController::class, 'respond'])->whereNumber('id')->name('grievances.respond');
+    Route::post('/grievances/{id}/internal-note', [AdminGrievanceController::class, 'internalNote'])->whereNumber('id')->name('grievances.internal-note');
+    Route::post('/grievances/{id}/assign', [AdminGrievanceController::class, 'assign'])->whereNumber('id')->name('grievances.assign');
+    Route::post('/grievances/{id}/escalate', [AdminGrievanceController::class, 'escalate'])->whereNumber('id')->name('grievances.escalate');
+    Route::post('/grievances/{id}/third-party', [AdminGrievanceController::class, 'markThirdParty'])->whereNumber('id')->name('grievances.third-party');
+    Route::post('/grievances/{id}/status-update', [AdminGrievanceController::class, 'publishStatusUpdate'])->whereNumber('id')->name('grievances.status-update');
+    Route::post('/grievances/{id}/resolve', [AdminGrievanceController::class, 'resolve'])->whereNumber('id')->name('grievances.resolve');
+    Route::post('/grievances/{id}/close', [AdminGrievanceController::class, 'close'])->whereNumber('id')->name('grievances.close');
+    });
 });
 
 // "Stop impersonation" must be reachable while the admin is logged in as the
@@ -560,6 +604,24 @@ Route::get('/compliance-documents/{document}/download', [PublicComplianceDocumen
 
 Route::get('/contact-us', [ContactController::class, 'show'])->name('contact.show');
 Route::post('/contact-us', [ContactController::class, 'submit'])->name('contact.submit');
+
+// ── Grievance redressal (public) ─────────────────────────────────────────────
+// `/p/grievance/form` is the exact URL the published Grievance Redressal Policy
+// §3.1 has been pointing complainants at. It is declared before the
+// `/p/{slug}` content-page route above only in name — the slug pattern is
+// [a-z0-9-]+ and cannot match a path containing a slash — but the literal
+// route is kept adjacent to the policy it implements.
+Route::get('/p/grievance/form', [PublicGrievanceController::class, 'create'])->name('grievance.create');
+Route::post('/p/grievance/form', [PublicGrievanceController::class, 'store'])->name('grievance.store');
+Route::get('/p/grievance/submitted', [PublicGrievanceController::class, 'submitted'])->name('grievance.submitted');
+// Status lookup for complainants with no account. Throttled: the complaint
+// number travels in email subject lines, so the lookup must not be a
+// convenient oracle for guessing which numbers exist.
+Route::get('/grievance/track', [PublicGrievanceController::class, 'trackForm'])->name('grievance.track');
+Route::post('/grievance/track', [PublicGrievanceController::class, 'track'])
+    ->middleware('throttle:10,10')->name('grievance.track.lookup');
+Route::post('/grievance/track/reply', [PublicGrievanceController::class, 'reply'])
+    ->middleware('throttle:10,10')->name('grievance.track.reply');
 
 // Find My ID — recover a forgotten ADN by registered name + PAN. Throttled at
 // the route on top of the controller's per-IP limiter (anti-enumeration).
@@ -616,6 +678,18 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/dashboard/profile-stats', [ProfileStatsController::class, 'show'])->name('profile-stats.show');
     Route::get('/dashboard/direct-seller-application', [DirectSellerApplicationController::class, 'show'])->name('direct-seller-application.show');
     Route::get('/dashboard/tax-statements', [TaxStatementsController::class, 'show'])->name('tax-statements.show');
+
+    // ── Help & grievances ────────────────────────────────────────────────────
+    // "Dashboard → Help → Raise a Grievance" is the in-app route the published
+    // Grievance Redressal Policy §1 and §3.1 promise distributors.
+    Route::get('/help', [SupportHubController::class, 'index'])->name('help.index');
+    Route::get('/my/grievances', [DistributorGrievanceController::class, 'index'])->name('my.grievances.index');
+    Route::get('/my/grievances/create', [DistributorGrievanceController::class, 'create'])->name('my.grievances.create');
+    Route::post('/my/grievances', [DistributorGrievanceController::class, 'store'])->name('my.grievances.store');
+    Route::get('/my/grievances/{id}', [DistributorGrievanceController::class, 'show'])->whereNumber('id')->name('my.grievances.show');
+    Route::post('/my/grievances/{id}/reply', [DistributorGrievanceController::class, 'reply'])->whereNumber('id')->name('my.grievances.reply');
+    Route::get('/my/grievances/{id}/attachments/{attachmentId}', [DistributorGrievanceController::class, 'streamAttachment'])
+        ->whereNumber('id')->whereNumber('attachmentId')->name('my.grievances.attachment');
 
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
