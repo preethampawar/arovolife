@@ -400,6 +400,10 @@ it('FRN-014: every order behind a commission is recorded, not just the total', f
 });
 
 it('FRN-015: a franchise credit is actually paid out, not just swept', function () {
+    // Runs the real monthly payout batch. The previous version of this test
+    // asserted that `franchise_credit` was in GROUP_D_TYPES — which is the
+    // CAUSE of the bug, not the fix: reverting $grossD to `adc_credit` alone
+    // left it passing while a franchise-only earner was paid nothing.
     frnEnable();
 
     $franchise = frnFranchise();
@@ -407,6 +411,7 @@ it('FRN-015: a franchise credit is actually paid out, not just swept', function 
     frnRun();
 
     $operatorId = (int) $franchise->operator_distributor_id;
+
     $credit = (int) DB::table('wallet_ledger_entries')
         ->where('distributor_id', $operatorId)
         ->where('type', 'franchise_credit')
@@ -414,11 +419,47 @@ it('FRN-015: a franchise credit is actually paid out, not just swept', function 
 
     expect($credit)->toBeGreaterThan(0);
 
-    // franchise_credit is in GROUP_D_TYPES, so the monthly batch SWEEPS it.
-    // If the gross calculation ignored it, the entry would be marked paid with
-    // no matching debit — a phantom wallet balance no later batch could clear,
-    // and a franchise-only earner who is never paid at all.
-    $groupD = \App\Modules\Compensation\Services\CompensationPlanSettingsService::GROUP_D_TYPES;
+    // The operator must clear the payout eligibility gates or the batch skips
+    // them for reasons unrelated to what this test is about.
+    DB::table('distributors')->where('id', $operatorId)->update([
+        'bank_account_enc' => 'stub',
+        'bank_ifsc' => 'SBIN0000000',
+        'status' => 'active',
+    ]);
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $operatorId,
+        'order_id' => 990001,
+        'bv_paise' => 5_000 * 100,
+        'type' => 'accrual',
+        'effective_at' => Carbon::now()->subMonths(2),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
-    expect($groupD)->toContain('franchise_credit');
+    $batch = app(\App\Modules\Compensation\Services\PayoutService::class)
+        ->runMonthlyBatch(Carbon::now()->startOfMonth());
+
+    $line = DB::table('payout_line_items')
+        ->where('payout_batch_id', $batch->id)
+        ->where('distributor_id', $operatorId)
+        ->first();
+
+    expect($line)->not->toBeNull()
+        // The credit is in the gross the batch actually pays on. Without the
+        // fix it was swept but excluded from the gross, so the entry was
+        // marked paid with no matching debit — a phantom wallet balance no
+        // later batch could clear.
+        ->and((int) $line->gross_paise)->toBe($credit)
+        // Exempt from the admin charge, like awards: it pays for fulfilment
+        // work, not for a position in the plan.
+        ->and((int) $line->admin_charge_paise)->toBe(0);
+
+    // And the ledger balances: the sweep is matched by a debit.
+    $swept = (int) DB::table('wallet_ledger_entries')
+        ->where('distributor_id', $operatorId)
+        ->where('type', 'franchise_credit')
+        ->whereNotNull('swept_by_payout_batch_id')
+        ->sum('amount_paise');
+
+    expect($swept)->toBe($credit);
 });

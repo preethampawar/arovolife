@@ -94,7 +94,7 @@ useful for a mid-month view, but nothing is owed until the row says *credited*.
 ## Before this goes live
 
 The feature ships **flag-off** and leaves no trace while off: no menu item, no
-routes, no settings keys. Four gates before switching it on in production:
+routes, no settings keys. Five gates before switching it on in production:
 
 1. **DSA §6.2 thirty-day written notice** — the commission is a new earning
    stream in the compensation plan.
@@ -109,6 +109,9 @@ routes, no settings keys. Four gates before switching it on in production:
    buyer's name, phone and order contents. That recipient category is not yet
    listed in the Privacy Policy §7 and no data-processing agreement is captured
    at approval. Both are required before any buyer data reaches an operator.
+5. **R-47 fulfilment wiring**, below — plus an income surface for the operator.
+   A wallet credit whose only explanation is a memo string is not a statement
+   anyone can check.
 
 **Two things are deliberately not built yet, and both gate the launch:**
 

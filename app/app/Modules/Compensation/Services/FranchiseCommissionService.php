@@ -180,13 +180,21 @@ final class FranchiseCommissionService
     }
 
     /**
-     * The orders whose return window closed in this month, with the net
-     * product value of each.
+     * The orders that are settled and not yet paid, with the net product value
+     * of each.
      *
-     * An order delivered on D becomes final on D + the return window, so the
-     * month's set is everything delivered between `monthStart − window` and
-     * `monthEnd − window`. A refunded order is gone from the set by then, so
-     * no clawback is ever needed.
+     * An order delivered on D becomes final on D + the return window, so it is
+     * eligible once `monthEnd − window` has passed. A refunded order has left
+     * the fulfilled set by then, so no clawback is ever needed.
+     *
+     * **Settled AND unpaid, not a date band.** A band on the settle month alone
+     * loses an order permanently in three cases nobody would notice: a return
+     * still under inspection when the run fires (excluded, then the month locks
+     * `credited` and it is never revisited), a month the run never processed —
+     * a failed run, or a franchise approved after the fact — and an order that
+     * settled before the franchise went active. The pivot table written by
+     * every run is the "already paid" index, so testing against it picks each
+     * of those up on the next run instead of dropping them.
      *
      * @return array<int, array{id: int, base_paise: int, delivered_at: string}>
      */
@@ -197,10 +205,12 @@ final class FranchiseCommissionService
         $rows = DB::table('orders')
             ->where('franchise_id', $franchiseId)
             ->whereIn('status', self::FULFILLED_STATUSES)
-            ->whereBetween('delivered_at', [
-                $monthStart->copy()->subDays($window)->startOfDay(),
-                $monthEnd->copy()->subDays($window)->endOfDay(),
-            ])
+            ->where('delivered_at', '<=', $monthEnd->copy()->subDays($window)->endOfDay())
+            ->whereNotExists(function ($query): void {
+                $query->select(DB::raw(1))
+                    ->from('franchise_commission_result_orders')
+                    ->whereColumn('franchise_commission_result_orders.order_id', 'orders.id');
+            })
             // Net product value: prices are GST-inclusive, so the tax has to
             // come out before the rate is applied.
             ->select('id', 'delivered_at')

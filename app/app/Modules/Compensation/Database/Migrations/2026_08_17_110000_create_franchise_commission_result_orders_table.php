@@ -15,8 +15,10 @@ use Illuminate\Support\Facades\Schema;
  * Hard rule 2 requires every credit to point at product sales, so the sales
  * are recorded here, once, at the moment they are paid.
  *
- * `restrictOnDelete` on both sides, deliberately. This table is evidence — a
- * cascade or a null-out would erase the proof that the payment was earned.
+ * `restrictOnDelete` on the ORDER, deliberately: this table is evidence, and a
+ * cascade or a null-out there would erase the proof that the payment was
+ * earned. The result row is this table's parent, so it cascades — deleting a
+ * commission result is meant to take its own working with it.
  */
 return new class extends Migration
 {
