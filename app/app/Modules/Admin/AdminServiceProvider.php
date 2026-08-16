@@ -7,6 +7,7 @@ namespace App\Modules\Admin;
 use App\Modules\Admin\Events\DistributorDeactivated;
 use App\Modules\Admin\Events\DistributorFrozen;
 use App\Modules\Admin\Events\DistributorReactivated;
+use App\Modules\Admin\Console\Commands\PhaseStatusCommand;
 use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Admin\Events\KycApproved;
@@ -43,5 +44,9 @@ final class AdminServiceProvider extends ServiceProvider
         Event::listen(DistributorUnfrozen::class, SendAccountUnfrozenMail::class);
         Event::listen(DistributorDeactivated::class, SendDistributorDeactivatedMail::class);
         Event::listen(DistributorReactivated::class, SendDistributorReactivatedMail::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([PhaseStatusCommand::class]);
+        }
     }
 }

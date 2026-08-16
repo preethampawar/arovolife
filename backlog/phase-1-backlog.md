@@ -117,7 +117,7 @@ runbooks, DR drill.*
 - [ ] T-5.6 Accessibility scan (Pa11y) on wizard; WCAG 2.1 AA — final sign-off gate
 - [ ] T-5.7 Backup + restore drill into a staging DB — **no evidence in repo; treat as unproven.** Folded into the final sign-off gate.
 - [x] T-5.8 Runbooks reviewed and exercised — cooling-off cancellation, placement-strategy change, Cloudways deployment, fresh install & reset
-- [ ] T-5.9 `/phase-1-status` dry-run shows readiness — slash-command skeleton exists, **PHP implementation open**
+- [x] T-5.9 `/phase-1-status` dry-run shows readiness — `php artisan phase:status` (2026-08-16); run from the host checkout, not the container
 
 Exit: staging environment matches performance budget; DR drill green.
 

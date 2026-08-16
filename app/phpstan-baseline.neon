@@ -3455,3 +3455,15 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$docsRoot\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Modules/Admin/PhaseStatusCommandTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Admin/PhaseStatusCommandTest.php

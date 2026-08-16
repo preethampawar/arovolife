@@ -130,8 +130,12 @@ Compliance · Admin.
 
 ### Still open
 
-- **T-5.9 `/phase-1-status` artisan command** — slash-command skeleton
-  exists in `.claude/commands/`, no PHP implementation
+- ~~**T-5.9 `/phase-1-status` artisan command**~~ — **DONE 2026-08-16**.
+  `php artisan phase:status` reads the backlog, the risk register, the
+  security audit checklist and the git log, and reports anything it cannot
+  verify from the repository as UNVERIFIED or NEEDS-A-HUMAN rather than
+  assuming it green. Run it from the host checkout — `docs/` and `backlog/`
+  are not mounted into the container.
 - **T-5.5 performance proof** (1M-row tree, p95 placement ≤ 250 ms) and
   **T-5.7 backup/restore drill** — no evidence in the repo; both folded
   into the final sign-off gate
