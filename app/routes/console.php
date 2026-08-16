@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
@@ -109,6 +110,16 @@ Schedule::command(MonthlyPayoutCommand::class)
 // report that has to be exact.
 Schedule::command(GrievanceSlaSweepCommand::class)
     ->hourly()
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Franchise commission runs on the 8th at 09:45 IST, after ADC at 09:30 and
+// before the monthly payout at 10:30. It depends on nothing — the base is
+// fulfilled order value, not BV or rank — so its position in the sequence is
+// about payout ordering, not data dependency.
+Schedule::command(FranchiseMonthlyRunCommand::class)
+    ->monthlyOn(8, '09:45')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

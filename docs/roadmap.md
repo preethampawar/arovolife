@@ -333,6 +333,17 @@ above = 2 years). Referenced in
   R-24 (combined binary-tree + franchise pyramid surface) stays open in
   the risk register as a launch-sign-off item.
 
+**Built 2026-08-16** behind `FranchiseFeature` (default OFF, zero-trace).
+Franchise register with an application → approval lifecycle, `FR-XXXXX` codes
+that cannot be mistaken for an ADN, a collection-point picker at checkout, and
+a monthly commission engine (`franchise:monthly-run`, 8th at 09:45 IST).
+Base is the product value of orders **delivered** through the franchise —
+subtotal less discount, excluding GST and shipping. Exempt from the admin
+charge. 11 tests. Three gates before any real payout: the DSA §6.2 notice,
+the effective date on `/p/compensation` §11.1, and R-24's counsel opinion.
+Consignment **stock tracking is not built** — see R-46; until it is, a
+franchise can only be a handover point, not a stockist.
+
 ### 4. Purchase offers (KP 2026-06-26)
 
 For distributors holding **no rank**:

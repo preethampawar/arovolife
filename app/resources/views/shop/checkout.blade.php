@@ -235,6 +235,27 @@
             </div>
         </div>
 
+        @if ($franchises->isNotEmpty())
+            {{-- Collection point. Optional: leaving it unset ships from the
+                 central warehouse exactly as before. --}}
+            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-1 text-sm font-semibold text-gray-900">Collect from a pickup point</h2>
+                <p class="mb-4 text-sm text-gray-600">
+                    Optional. Choose a nearby arovolife pickup point to collect your order from, or leave
+                    this blank and we will ship it to the address above.
+                </p>
+                <select name="franchise_id"
+                        class="w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
+                    <option value="">Ship to my address</option>
+                    @foreach ($franchises as $franchise)
+                        <option value="{{ $franchise->id }}" @selected(old('franchise_id') == $franchise->id)>
+                            {{ $franchise->name }}@if ($franchise->displayLocation()) — {{ $franchise->displayLocation() }}@endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        @endif
+
         {{-- Payment method (online only) --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Payment Method</h2>

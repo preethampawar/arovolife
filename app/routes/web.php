@@ -22,6 +22,8 @@ use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseReportController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
@@ -528,6 +530,25 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // distributor's, not the admin's.
     Route::post('/impersonate/{userId}/start', [AdminImpersonationController::class, 'start'])
         ->whereNumber('userId')->name('impersonate.start');
+
+    // ── Franchises (fulfilment network) ──────────────────────────────────────
+    // Feature-flagged in the controllers (`abort_unless(Feature::active(...))`,
+    // the convention the bonus reports already use): while the flag is off
+    // these routes 404 and the menu item is absent, leaving no trace of an
+    // unlaunched programme.
+    Route::group([], function (): void {
+        Route::get('/commerce/franchises', [AdminFranchiseController::class, 'index'])->name('commerce.franchises.index');
+        Route::get('/commerce/franchises/create', [AdminFranchiseController::class, 'create'])->name('commerce.franchises.create');
+        Route::post('/commerce/franchises', [AdminFranchiseController::class, 'store'])->name('commerce.franchises.store');
+        Route::get('/commerce/franchises/report', [AdminFranchiseReportController::class, 'index'])->name('commerce.franchises.report');
+        Route::get('/commerce/franchises/{id}/edit', [AdminFranchiseController::class, 'edit'])->whereNumber('id')->name('commerce.franchises.edit');
+        Route::patch('/commerce/franchises/{id}', [AdminFranchiseController::class, 'update'])->whereNumber('id')->name('commerce.franchises.update');
+        Route::post('/commerce/franchises/{id}/approve', [AdminFranchiseController::class, 'approve'])
+            ->whereNumber('id')->middleware('can:compliance.discipline')->name('commerce.franchises.approve');
+        Route::post('/commerce/franchises/{id}/{action}', [AdminFranchiseController::class, 'changeStatus'])
+            ->whereNumber('id')->where('action', 'suspend|close|reinstate')
+            ->middleware('can:compliance.discipline')->name('commerce.franchises.status');
+    });
 
     // ── Dormancy & termination (agreement §21) ───────────────────────────────
     // Read-only apart from withdrawing a notice, which is gated on the same

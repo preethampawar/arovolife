@@ -39,13 +39,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $franchiseId = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $franchiseId) {
             // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
             //
             // A logged-in buyer is always resolved to THEIR OWN customer row,
@@ -178,6 +178,10 @@ final class CheckoutService
                 'order_no' => $orderNo,
                 'customer_id' => $customer->id,
                 'attributed_distributor_id' => $attributedDistributorId,
+                // Collection point, chosen per order at checkout. Null means
+                // central despatch. It never affects attribution: the sale
+                // still belongs to the referring distributor.
+                'franchise_id' => $franchiseId,
                 'attribution_source' => $attributionSource,
                 'payment_method' => $paymentMethod,
                 'status' => Order::STATUS_PLACED,

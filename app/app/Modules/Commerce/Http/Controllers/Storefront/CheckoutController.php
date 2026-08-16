@@ -9,7 +9,10 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
+use App\Modules\Commerce\Models\Franchise;
 use App\Modules\Commerce\Services\CheckoutService;
+use App\Modules\Shared\Features\FranchiseFeature;
+use Laravel\Pennant\Feature;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\ShippingService;
@@ -87,6 +90,12 @@ final class CheckoutController extends Controller
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
             'buyerDistributor' => $buyerDistributor,
+            // Collection points, only while the franchise programme is live.
+            // An empty list renders nothing at all, so a buyer never sees a
+            // "choose a collection point" step with nothing to choose.
+            'franchises' => Feature::for(null)->active(FranchiseFeature::class)
+                ? Franchise::selectable()->get()
+                : collect(),
         ]);
     }
 
@@ -122,6 +131,10 @@ final class CheckoutController extends Controller
             'save_address' => ['nullable', 'boolean'],
             'address_label' => ['nullable', 'string', 'max:40'],
             'accept_terms' => ['required', 'accepted'],
+            // Collection point. Optional and only offered while the franchise
+            // programme is live — an order with no franchise ships from the
+            // central warehouse exactly as before.
+            'franchise_id' => ['nullable', 'integer', 'exists:franchises,id'],
         ]);
 
         // Guard: the buyer_email must not belong to another registered user on
@@ -200,6 +213,7 @@ final class CheckoutController extends Controller
             // to save against.
             saveShippingAddress: Auth::check() && $request->boolean('save_address'),
             shippingLabel: $validated['address_label'] ?? null,
+            franchiseId: $this->resolveFranchise($validated['franchise_id'] ?? null),
         );
 
         // Capture immediately via the gateway (Phase 2 stub auto-captures → order paid).
@@ -223,6 +237,25 @@ final class CheckoutController extends Controller
         $request->session()->forget(SharedCart::SESSION_DISTRIBUTOR_KEY);
 
         return redirect()->route('shop.confirmation', $order->order_no);
+    }
+
+    /**
+     * The chosen collection point, or null.
+     *
+     * Re-checks that the franchise is still selectable rather than trusting
+     * the posted id: `exists:franchises,id` would happily accept a suspended
+     * one, and a buyer must never be sent to collect from a franchise that
+     * cannot hand them their order. Silently drops to central despatch rather
+     * than failing the checkout — the order is valid either way, and losing a
+     * paid order over a collection preference would be the worse outcome.
+     */
+    private function resolveFranchise(int|string|null $franchiseId): ?int
+    {
+        if ($franchiseId === null || ! Feature::for(null)->active(FranchiseFeature::class)) {
+            return null;
+        }
+
+        return Franchise::selectable()->whereKey((int) $franchiseId)->value('id');
     }
 
     public function confirmation(Request $request, string $orderNo): View

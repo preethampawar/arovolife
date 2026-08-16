@@ -224,6 +224,16 @@ The Direct Seller Agreement contemplates further components — the Growth Boost
 
 The Fortune Bonus is published at §7 above and is likewise not yet operative; it becomes payable only on the effective date stated in §7.6.
 
+### 11.1 Franchise commission
+
+A **franchise** is an arovolife-owned pickup and despatch point operated by a Distributor. Stock held at a franchise remains the property of the Company on consignment; the franchise does not buy it, own it or sell it. Orders are placed online in the ordinary way and remain attributed to the referring Distributor — choosing a franchise as a collection point changes where the goods are handed over, and nothing else. A franchise code is separate from an ADN and holds no position in the Genos, so operating one does not change the operator's placement, their team, or what anyone in their team earns.
+
+Where the Company appoints a Distributor to operate a franchise, that Distributor is paid **3% of the product value of the orders that franchise physically fulfils in a calendar month**. Product value means the order subtotal less any discount. It excludes GST, which is tax collected on behalf of the government and never Company revenue, and excludes delivery charges, which are a pass-through cost. An order counts in the month it is delivered, not the month it is placed. Cancelled and refunded orders never count.
+
+This payment is consideration for fulfilment work performed on identified product sales. It is not a joining fee, a recruitment payment, or an earning derived from the appointment of any other Distributor.
+
+> **Not yet operative.** The franchise commission becomes payable on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement, and is additionally subject to written legal-counsel confirmation of the programme's structure. No franchise commission has been paid to any Distributor to date, and no franchise has been appointed.
+
 ## 12. Changes to this plan
 
 This plan may be amended only with **30 days' prior written notice** to all active Distributors, under §6.2 of the Direct Seller Agreement. An amendment takes effect from the date stated in that notice and never retrospectively: bonuses already calculated are settled at the values that applied on the day they were calculated, and are not recomputed when the plan changes.

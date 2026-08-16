@@ -3467,3 +3467,15 @@ parameters:
 			identifier: method.notFound
 			count: 4
 			path: tests/Modules/Admin/PhaseStatusCommandTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: tests/Modules/Commerce/FranchiseCommissionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/FranchiseCommissionTest.php

@@ -8,6 +8,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\FranchiseFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -122,6 +123,13 @@ final class AdminFeatureFlagController extends Controller
             ],
 
             // ── Phase 7 compensation features (default OFF) ──
+            'compensation.franchise' => [
+                'class' => FranchiseFeature::class,
+                'label' => 'Franchise programme (fulfilment network)',
+                'description' => 'Enables the franchise register, the collection-point picker at checkout, and the monthly 3% fulfilment commission. A franchise is a company-owned pickup point operated by a distributor: company consignment stock, sales still online and ADN-attributed, franchise code separate from the ADN and never in the Genos. OFF leaves no trace anywhere. Two gates before production: the DSA 6.2 thirty-day notice (it adds an earning stream to the plan), and R-24, a written counsel opinion on the combined binary-tree plus franchise surface.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
             'compensation.arete_development_center_bonus' => [
                 'class' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center Bonus (Phase 7)',

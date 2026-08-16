@@ -117,6 +117,11 @@
                     ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => '📊', 'prefix' => 'admin.commerce.bv-ledger'],
                     ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => '💰', 'prefix' => 'admin.compensation'],
                     ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => '🏷', 'prefix' => 'admin.commerce.coupons'],
+                    // Zero-trace: an unlaunched franchise programme leaves no
+                    // menu item behind for anyone to wonder about.
+                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FranchiseFeature::class)
+                        ? [['route' => 'admin.commerce.franchises.index', 'label' => 'Franchises', 'icon' => '🏪', 'prefix' => 'admin.commerce.franchises']]
+                        : []),
                     ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => '📦', 'prefix' => 'admin.catalog.products'],
                     ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => '🗂', 'prefix' => 'admin.catalog.categories'],
                     ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => '🖼', 'prefix' => 'admin.catalog.banners'],
