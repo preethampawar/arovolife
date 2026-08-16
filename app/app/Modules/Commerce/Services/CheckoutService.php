@@ -39,13 +39,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $franchiseId = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $franchiseId = null, int $redeemPoints = 0): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $franchiseId) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $franchiseId, $redeemPoints) {
             // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
             //
             // A logged-in buyer is always resolved to THEIR OWN customer row,
@@ -172,7 +172,12 @@ final class CheckoutService
             // the coupon), via the single-source ShippingService.
             $shippingPaise = $this->shipping->feePaise($subtotalPaise);
 
-            $totalPaise = max(0, $subtotalPaise - $discountPaise) + $shippingPaise;
+            // Redeem points come off the NET product value only. Prices here
+            // are GST-inclusive, so the tax has to come out of the cap before
+            // it is applied — the company remits that tax in cash whatever the
+            // buyer paid with, and delivery is a real third-party cost.
+            $redeemPointsPaise = min($redeemPoints * 100, max(0, $subtotalPaise - $gstPaise - $discountPaise));
+            $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $shippingPaise;
 
             $order = Order::create([
                 'order_no' => $orderNo,
@@ -194,6 +199,7 @@ final class CheckoutService
                 'subtotal_paise' => $subtotalPaise,
                 'gst_paise' => $gstPaise,
                 'discount_paise' => $discountPaise,
+                'redeem_points_paise' => $redeemPointsPaise,
                 'shipping_paise' => $shippingPaise,
                 'total_paise' => $totalPaise,
                 'ship_name' => $shipping['name'],
@@ -239,6 +245,19 @@ final class CheckoutService
             // 3b. Record the coupon redemption (usage tracking + per-customer caps)
             if ($appliedCoupon !== null) {
                 $this->coupons->recordRedemption($appliedCoupon, $order->id, $customer->id, $discountPaise);
+            }
+
+            // Spend the points inside the same transaction that created the
+            // order. Outside it, a failure between the two would either take
+            // points for an order that does not exist or give an order a
+            // discount nobody paid for.
+            if ($redeemPointsPaise > 0 && $buyerDistributorId !== null) {
+                app(RedeemPointsService::class)->redeem(
+                    distributorId: $buyerDistributorId,
+                    points: intdiv($redeemPointsPaise, 100),
+                    orderId: $order->id,
+                    memo: 'Redeemed against order '.$order->order_no,
+                );
             }
 
             // 4. Ledger — Dr razorpay cash (money held), Cr customer_prepayment.

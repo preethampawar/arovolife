@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $customer_id
  * @property int|null $attributed_distributor_id
  * @property int|null $franchise_id
+ * @property int $redeem_points_paise
  * @property string|null $ship_carrier
  * @property string|null $ship_tracking_no
  */
@@ -59,6 +60,7 @@ final class Order extends Model
 
     protected $fillable = [
         'order_no', 'customer_id', 'attributed_distributor_id', 'franchise_id', 'attribution_source',
+        'redeem_points_paise',
         'payment_method', 'status', 'self_consumption',
         'subtotal_paise', 'gst_paise', 'discount_paise', 'shipping_paise', 'total_paise',
         'ship_name', 'ship_phone_e164', 'ship_line1', 'ship_line2',

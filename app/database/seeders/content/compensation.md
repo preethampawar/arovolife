@@ -228,7 +228,9 @@ The Fortune Bonus is published at §7 above and is likewise not yet operative; i
 
 A **franchise** is an arovolife-owned pickup and despatch point operated by a Distributor. Stock held at a franchise remains the property of the Company on consignment; the franchise does not buy it, own it or sell it. Orders are placed online in the ordinary way and remain attributed to the referring Distributor — choosing a franchise as a collection point changes where the goods are handed over, and nothing else. A franchise code is separate from an ADN and holds no position in the Genos, so operating one does not change the operator's placement, their team, or what anyone in their team earns.
 
-Where the Company appoints a Distributor to operate a franchise, that Distributor is paid **3% of the product value of the orders that franchise physically fulfils in a calendar month**. Product value means the order subtotal less any discount. It excludes GST, which is tax collected on behalf of the government and never Company revenue, and excludes delivery charges, which are a pass-through cost. An order counts in the month it is delivered, not the month it is placed. Cancelled and refunded orders never count.
+Where the Company appoints a Distributor to operate a franchise, that Distributor is paid **3% of the net product value of the orders handed over through that franchise**. Net product value means the order subtotal less the GST included in it and less any discount. GST is excluded because it is tax collected on behalf of the government and never Company revenue; delivery charges are excluded because they are a pass-through cost.
+
+An order counts in the calendar month in which its **30-day return window closes**, not the month it was delivered. This is deliberate: it means an order that is cancelled or returned never enters the calculation at all, so no commission has to be recovered from anyone after it has been paid.
 
 This payment is consideration for fulfilment work performed on identified product sales. It is not a joining fee, a recruitment payment, or an earning derived from the appointment of any other Distributor.
 

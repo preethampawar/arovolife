@@ -93,7 +93,7 @@ final class AdminSettingsController extends Controller
                 'owner' => 'developer',
                 'feature' => FranchiseFeature::class,
                 'label' => 'Franchise commission rate (basis points)',
-                'description' => 'Share of the product value a franchise fulfilled in the month, paid to its operating distributor. 300 bp = 3% (Product Owner, 2026-08-16). Base is subtotal less discount — GST is excluded because it is tax collected for the government, and shipping because it is a pass-through cost. An individual franchise may carry its own rate on its register entry.',
+                'description' => 'Share of the net product value handed over through a franchise, paid to its operating distributor. 300 bp = 3% (Product Owner, 2026-08-16). Base is subtotal LESS the GST included in it LESS discount — catalogue prices are GST-inclusive, so the tax must come out before the rate applies, and shipping is excluded as a pass-through cost. An order counts in the month its 30-day return window closes, so a returned order never enters the calculation. An individual franchise may carry its own rate on its register entry.',
                 'impact' => 'Changes what every franchise earns from the next monthly run. Already-credited months are unaffected: the rate is snapshotted on each result row.',
                 'type' => 'int',
                 'min' => 0,

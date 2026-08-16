@@ -23,12 +23,14 @@ use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminOfferController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseReportController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyBvLedgerController;
+use App\Modules\Commerce\Http\Controllers\Storefront\MyOffersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
@@ -538,17 +540,29 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // unlaunched programme.
     Route::group([], function (): void {
         Route::get('/commerce/franchises', [AdminFranchiseController::class, 'index'])->name('commerce.franchises.index');
-        Route::get('/commerce/franchises/create', [AdminFranchiseController::class, 'create'])->name('commerce.franchises.create');
-        Route::post('/commerce/franchises', [AdminFranchiseController::class, 'store'])->name('commerce.franchises.store');
+        // Creating and editing set the payee and the commission rate, so they
+        // sit behind the same permission as approval. Without that, a role
+        // that cannot approve a franchise could still change who it pays and
+        // how much — which is the whole of the decision.
+        Route::get('/commerce/franchises/create', [AdminFranchiseController::class, 'create'])
+            ->middleware('can:compliance.discipline')->name('commerce.franchises.create');
+        Route::post('/commerce/franchises', [AdminFranchiseController::class, 'store'])
+            ->middleware('can:compliance.discipline')->name('commerce.franchises.store');
         Route::get('/commerce/franchises/report', [AdminFranchiseReportController::class, 'index'])->name('commerce.franchises.report');
         Route::get('/commerce/franchises/{id}/edit', [AdminFranchiseController::class, 'edit'])->whereNumber('id')->name('commerce.franchises.edit');
-        Route::patch('/commerce/franchises/{id}', [AdminFranchiseController::class, 'update'])->whereNumber('id')->name('commerce.franchises.update');
+        Route::patch('/commerce/franchises/{id}', [AdminFranchiseController::class, 'update'])
+            ->whereNumber('id')->middleware('can:compliance.discipline')->name('commerce.franchises.update');
         Route::post('/commerce/franchises/{id}/approve', [AdminFranchiseController::class, 'approve'])
             ->whereNumber('id')->middleware('can:compliance.discipline')->name('commerce.franchises.approve');
         Route::post('/commerce/franchises/{id}/{action}', [AdminFranchiseController::class, 'changeStatus'])
             ->whereNumber('id')->where('action', 'suspend|close|reinstate')
             ->middleware('can:compliance.discipline')->name('commerce.franchises.status');
     });
+
+    // ── Purchase offers (KP 2026-06-26) ──────────────────────────────────────
+    // Feature-gated in the controller; an unlaunched offer leaves no trace.
+    Route::get('/commerce/offers', [AdminOfferController::class, 'index'])->name('commerce.offers.index');
+    Route::post('/commerce/offers/announce', [AdminOfferController::class, 'announce'])->name('commerce.offers.announce');
 
     // ── Dormancy & termination (agreement §21) ───────────────────────────────
     // Read-only apart from withdrawing a notice, which is gated on the same
@@ -711,6 +725,9 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::post('/my/grievances/{id}/reply', [DistributorGrievanceController::class, 'reply'])->whereNumber('id')->name('my.grievances.reply');
     Route::get('/my/grievances/{id}/attachments/{attachmentId}', [DistributorGrievanceController::class, 'streamAttachment'])
         ->whereNumber('id')->whereNumber('attachmentId')->name('my.grievances.attachment');
+
+    // The distributor's own offers: point balance, streak and entitlements.
+    Route::get('/my/offers', [MyOffersController::class, 'index'])->name('my.offers.index');
 
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');

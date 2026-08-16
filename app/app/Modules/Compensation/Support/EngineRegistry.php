@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Support;
 
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
@@ -18,6 +19,7 @@ use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\FranchiseFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -200,6 +202,21 @@ final class EngineRegistry
                 featureFlagClass: AreteDevelopmentCenterBonusFeature::class,
                 reportRouteName: 'admin.compensation.adc-calculation.index',
                 scheduleText: '8th of the month, 09:30 IST',
+                defaultPeriod: 'prev-month',
+            ),
+
+            new EngineDefinition(
+                key: 'offers.monthly',
+                label: 'Purchase Offers',
+                description: "Grants the two purchase offers for distributors who hold no rank: the half-price company-announced product for a month in which they repurchased the qualifying volume, and redeem points for completing a six-month purchase streak. Impact: writes purchase offer grants and redeem-point accruals. It moves no cash — redeem points are a discount entitlement, not wallet money. Idempotent per distributor per month. Needs a product announced for the month at Admin → Offers, or no half-price grant is possible.",
+                periodType: EnginePeriodType::Month,
+                commandClass: PurchaseOffersMonthlyRunCommand::class,
+                commandSignature: 'offers:monthly-run',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: PurchaseOffersFeature::class,
+                reportRouteName: 'admin.commerce.offers.index',
+                scheduleText: '2nd of the month, 06:00 IST',
                 defaultPeriod: 'prev-month',
             ),
 

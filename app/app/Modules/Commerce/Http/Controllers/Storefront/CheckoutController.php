@@ -9,9 +9,9 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
-use App\Modules\Commerce\Models\Franchise;
 use App\Modules\Commerce\Services\CheckoutService;
-use App\Modules\Shared\Features\FranchiseFeature;
+use App\Modules\Commerce\Services\RedeemPointsService;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
 use Laravel\Pennant\Feature;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
@@ -40,6 +40,7 @@ final class CheckoutController extends Controller
         private readonly InvoiceGenerator $invoiceGenerator,
         private readonly ShippingService $shipping,
         private readonly CustomerAddressService $addressBook,
+        private readonly RedeemPointsService $redeemPoints,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -90,12 +91,6 @@ final class CheckoutController extends Controller
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
             'buyerDistributor' => $buyerDistributor,
-            // Collection points, only while the franchise programme is live.
-            // An empty list renders nothing at all, so a buyer never sees a
-            // "choose a collection point" step with nothing to choose.
-            'franchises' => Feature::for(null)->active(FranchiseFeature::class)
-                ? Franchise::selectable()->get()
-                : collect(),
         ]);
     }
 
@@ -131,10 +126,10 @@ final class CheckoutController extends Controller
             'save_address' => ['nullable', 'boolean'],
             'address_label' => ['nullable', 'string', 'max:40'],
             'accept_terms' => ['required', 'accepted'],
-            // Collection point. Optional and only offered while the franchise
-            // programme is live — an order with no franchise ships from the
-            // central warehouse exactly as before.
-            'franchise_id' => ['nullable', 'integer', 'exists:franchises,id'],
+            // Redeem points. Validated against the live balance and the
+            // product-value cap in the service, not here — the balance can
+            // move between rendering the form and submitting it.
+            'redeem_points' => ['nullable', 'integer', 'min:0'],
         ]);
 
         // Guard: the buyer_email must not belong to another registered user on
@@ -213,7 +208,7 @@ final class CheckoutController extends Controller
             // to save against.
             saveShippingAddress: Auth::check() && $request->boolean('save_address'),
             shippingLabel: $validated['address_label'] ?? null,
-            franchiseId: $this->resolveFranchise($validated['franchise_id'] ?? null),
+            redeemPoints: $this->resolveRedeemPoints($request, (int) ($validated['redeem_points'] ?? 0)),
         );
 
         // Capture immediately via the gateway (Phase 2 stub auto-captures → order paid).
@@ -240,22 +235,32 @@ final class CheckoutController extends Controller
     }
 
     /**
-     * The chosen collection point, or null.
+     * How many redeem points this buyer may actually spend on this order.
      *
-     * Re-checks that the franchise is still selectable rather than trusting
-     * the posted id: `exists:franchises,id` would happily accept a suspended
-     * one, and a buyer must never be sent to collect from a franchise that
-     * cannot hand them their order. Silently drops to central despatch rather
-     * than failing the checkout — the order is valid either way, and losing a
-     * paid order over a collection preference would be the worse outcome.
+     * Clamped rather than rejected. A buyer whose balance moved between
+     * loading the form and submitting it should get the smaller discount, not
+     * a failed checkout — losing a paid order over a stale number on a screen
+     * is the worse outcome, and the ledger is the authority either way.
      */
-    private function resolveFranchise(int|string|null $franchiseId): ?int
+    private function resolveRedeemPoints(Request $request, int $requested): int
     {
-        if ($franchiseId === null || ! Feature::for(null)->active(FranchiseFeature::class)) {
-            return null;
+        if ($requested <= 0 || ! Feature::for(null)->active(PurchaseOffersFeature::class)) {
+            return 0;
         }
 
-        return Franchise::selectable()->whereKey((int) $franchiseId)->value('id');
+        $distributorId = $request->user()?->distributor?->id;
+
+        if ($distributorId === null) {
+            return 0;
+        }
+
+        $cart = $this->cartService->currentCart($request);
+
+        return min($requested, $this->redeemPoints->maxRedeemableForOrder(
+            $distributorId,
+            $cart->subtotalPaise(),
+            $cart->gstPaise(),
+        ));
     }
 
     public function confirmation(Request $request, string $orderNo): View

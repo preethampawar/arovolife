@@ -29,10 +29,10 @@ return new class extends Migration
             $table->date('month_start');
 
             $table->unsignedInteger('order_count')->default(0);
-            // Net product value of the month's fulfilled orders: subtotal less
-            // discount. Deliberately excludes GST — that is tax collected for
-            // the government, not company revenue to share — and shipping,
-            // which is a pass-through cost.
+            // Net product value of the month's settled orders: subtotal LESS
+            // the GST included in it LESS discount. Catalogue prices are
+            // GST-inclusive, so the tax has to come out before the rate is
+            // applied; shipping is excluded as a pass-through cost.
             $table->bigInteger('base_paise')->default(0);
             $table->unsignedSmallInteger('rate_bp');
             $table->bigInteger('gross_paise')->default(0);

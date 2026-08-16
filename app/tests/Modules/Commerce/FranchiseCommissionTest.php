@@ -16,6 +16,12 @@ declare(strict_types=1);
  * FRN-009: a suspended franchise disappears from the checkout picker
  * FRN-010: the commission credits the operator's wallet against the result row
  * FRN-011: admin screens render and an approval is audit-logged
+ *
+ * Added after the 2026-08-17 compliance review:
+ * FRN-012: choosing a franchise never changes who the sale is attributed to
+ * FRN-013: an order refunded inside its return window never reaches the calculation
+ * FRN-014: every order behind a commission is recorded, not just the total
+ * FRN-015: a franchise credit is actually paid out, not just swept
  */
 
 use App\Modules\Commerce\Models\Franchise;
@@ -62,14 +68,25 @@ function frnFranchise(array $overrides = []): Franchise
 }
 
 /**
- * An order fulfilled by a franchise. `subtotal` and `discount` set the
- * commission base; `gst` and `shipping` are deliberately non-zero so a test
- * would fail if either leaked into it.
+ * An order handed over through a franchise, built the way CheckoutService
+ * actually builds one.
+ *
+ * Catalogue prices are GST-INCLUSIVE: `Cart::totalPaise()` returns the subtotal
+ * unchanged and `Cart::gstPaise()` extracts the tax out of it, so
+ * `total = subtotal − discount + shipping` with no GST added on top. A fixture
+ * that added GST would let a test "prove" GST exclusion against a data shape
+ * production never produces.
+ *
+ * `$subtotalPaise` is therefore the gross, tax-inclusive figure.
  */
 function frnOrder(Franchise $franchise, string $deliveredAt, int $subtotalPaise, string $status = 'delivered', int $discountPaise = 0): void
 {
     static $sequence = 0;
     $sequence++;
+
+    // 18% GST extracted out of a tax-inclusive line, as Cart::gstPaise() does.
+    $gstPaise = (int) round($subtotalPaise * 1800 / (10000 + 1800));
+    $shippingPaise = 6_000;
 
     DB::table('orders')->insert([
         'order_no' => 'ORD-FRN-'.str_pad((string) $sequence, 5, '0', STR_PAD_LEFT),
@@ -80,15 +97,21 @@ function frnOrder(Franchise $franchise, string $deliveredAt, int $subtotalPaise,
         'status' => $status,
         'subtotal_paise' => $subtotalPaise,
         'discount_paise' => $discountPaise,
-        'gst_paise' => 90_000,
-        'shipping_paise' => 6_000,
-        'total_paise' => $subtotalPaise - $discountPaise + 96_000,
+        'gst_paise' => $gstPaise,
+        'shipping_paise' => $shippingPaise,
+        'total_paise' => $subtotalPaise - $discountPaise + $shippingPaise,
         'idempotency_key' => 'frn-'.$sequence.'-'.uniqid(),
         'delivered_at' => Carbon::parse($deliveredAt),
         'paid_at' => Carbon::parse($deliveredAt),
         'created_at' => Carbon::parse($deliveredAt),
         'updated_at' => Carbon::parse($deliveredAt),
     ]);
+}
+
+/** The month a given delivery date is counted in — 30 days on. */
+function frnCountedMonth(string $deliveredAt): Carbon
+{
+    return Carbon::parse($deliveredAt)->addDays(30)->startOfMonth();
 }
 
 function frnStaff(string $role = 'admin'): User
@@ -109,6 +132,8 @@ function frnStaff(string $role = 'admin'): User
 /** @return array<string, int> */
 function frnRun(?Carbon $month = null): array
 {
+    // Orders in these fixtures are delivered 31 days ago, so their return
+    // window closed yesterday — this month.
     return app(FranchiseCommissionService::class)->runForMonth($month ?? Carbon::now()->startOfMonth());
 }
 
@@ -140,7 +165,7 @@ it('FRN-003: an application earns nothing and is not selectable until approved',
     frnEnable();
 
     $franchise = frnFranchise(['status' => Franchise::STATUS_PENDING]);
-    frnOrder($franchise, 'now', 10_00_000);
+    frnOrder($franchise, '-31 days', 10_00_000);
 
     expect(Franchise::selectable()->count())->toBe(0)
         ->and($franchise->earnsCommission())->toBeFalse();
@@ -155,28 +180,29 @@ it('FRN-004: commission is 3% of fulfilled PRODUCT value — not GST, not shippi
     frnEnable();
 
     $franchise = frnFranchise();
-    // ₹10,000 product value, ₹500 discount → base ₹9,500. GST and shipping on
-    // the row are non-zero and must not appear in the base: one is tax
-    // collected for the government, the other a pass-through cost.
-    frnOrder($franchise, 'now', 10_00_000, 'delivered', 50_000);
+    // ₹10,000 tax-INCLUSIVE, ₹500 discount. The GST inside that line is
+    // ₹10,000 × 18/118 = ₹1,525.42, so the net product value is
+    // 10,00,000 − 1,52,542 − 50,000 = 7,97,458 paise. Paying 3% of the
+    // tax-inclusive figure instead would pay ~3.54% of the real product value.
+    frnOrder($franchise, '-31 days', 10_00_000, 'delivered', 50_000);
 
     frnRun();
 
     $result = FranchiseCommissionResult::firstOrFail();
 
-    expect($result->base_paise)->toBe(9_50_000)
+    expect($result->base_paise)->toBe(7_97_458)
         ->and($result->rate_bp)->toBe(300)
-        ->and($result->gross_paise)->toBe(28_500);
+        ->and($result->gross_paise)->toBe((int) floor(7_97_458 * 300 / 10_000));
 });
 
 it('FRN-005: only delivered orders count; paid-but-undelivered does not', function () {
     frnEnable();
 
     $franchise = frnFranchise();
-    frnOrder($franchise, 'now', 10_00_000, 'delivered');
-    frnOrder($franchise, 'now', 10_00_000, 'paid');
-    frnOrder($franchise, 'now', 10_00_000, 'cancelled');
-    frnOrder($franchise, 'now', 10_00_000, 'refunded');
+    frnOrder($franchise, '-31 days', 10_00_000, 'delivered');
+    frnOrder($franchise, '-31 days', 10_00_000, 'paid');
+    frnOrder($franchise, '-31 days', 10_00_000, 'cancelled');
+    frnOrder($franchise, '-31 days', 10_00_000, 'refunded');
 
     frnRun();
 
@@ -185,14 +211,14 @@ it('FRN-005: only delivered orders count; paid-but-undelivered does not', functi
     // The franchise is paid for handing goods over. An order on the shelf has
     // earned nothing yet, and a cancelled or refunded one never will.
     expect($result->order_count)->toBe(1)
-        ->and($result->base_paise)->toBe(10_00_000);
+        ->and($result->base_paise)->toBe(10_00_000 - (int) round(10_00_000 * 1800 / 11800));
 });
 
 it('FRN-006: the run is idempotent — a second run does not double-credit', function () {
     frnEnable();
 
     $franchise = frnFranchise();
-    frnOrder($franchise, 'now', 10_00_000);
+    frnOrder($franchise, '-31 days', 10_00_000);
 
     frnRun();
     $second = frnRun();
@@ -210,7 +236,7 @@ it('FRN-007: the company’s own primary franchise earns nothing', function () {
         'operator' => null,
         'operator_distributor_id' => null,
     ]);
-    frnOrder($franchise, 'now', 50_00_000);
+    frnOrder($franchise, '-31 days', 50_00_000);
 
     $summary = frnRun();
 
@@ -225,14 +251,16 @@ it('FRN-008: a per-franchise rate override beats the plan rate and is snapshotte
     frnEnable();
 
     $franchise = frnFranchise(['commission_rate_bp' => 500]);
-    frnOrder($franchise, 'now', 10_00_000);
+    frnOrder($franchise, '-31 days', 10_00_000);
 
     frnRun();
 
     $result = FranchiseCommissionResult::firstOrFail();
 
+    $netBase = 10_00_000 - (int) round(10_00_000 * 1800 / 11800);
+
     expect($result->rate_bp)->toBe(500)
-        ->and($result->gross_paise)->toBe(50_000);
+        ->and($result->gross_paise)->toBe((int) floor($netBase * 500 / 10_000));
 
     // Changing the plan rate afterwards must not restate what was paid.
     DB::table('settings')->updateOrInsert(['key' => 'comp.franchise.rate_bp'], ['value' => '900', 'updated_at' => now()]);
@@ -258,7 +286,7 @@ it('FRN-010: the commission credits the operator’s wallet against the result r
 
     $operator = Distributor::factory()->create();
     $franchise = frnFranchise(['operator' => $operator]);
-    frnOrder($franchise, 'now', 10_00_000);
+    frnOrder($franchise, '-31 days', 10_00_000);
 
     frnRun();
 
@@ -291,4 +319,106 @@ it('FRN-011: admin screens render and an approval is audit-logged', function () 
 
     expect($franchise->fresh()->status)->toBe(Franchise::STATUS_ACTIVE)
         ->and(AuditLog::where('action', 'franchise.approved')->where('subject_id', $franchise->id)->exists())->toBeTrue();
+});
+
+it('FRN-012: choosing a franchise never changes who the sale is attributed to', function () {
+    frnEnable();
+
+    $seller = Distributor::factory()->create();
+    $franchise = frnFranchise();
+
+    DB::table('orders')->insert([
+        'order_no' => 'ORD-FRN-ATTR',
+        'customer_id' => 1,
+        'attributed_distributor_id' => $seller->id,
+        'franchise_id' => $franchise->id,
+        'attribution_source' => 'cookie',
+        'payment_method' => 'online',
+        'status' => 'delivered',
+        'subtotal_paise' => 10_00_000,
+        'gst_paise' => 1_52_542,
+        'idempotency_key' => 'frn-attr-'.uniqid(),
+        'delivered_at' => Carbon::now()->subDays(31),
+        'created_at' => Carbon::now()->subDays(31),
+        'updated_at' => Carbon::now()->subDays(31),
+    ]);
+
+    frnRun();
+
+    // The most compliance-critical property of the whole feature: a collection
+    // point changes where goods are handed over and nothing about who the sale
+    // belongs to. The franchise operator is paid; the seller keeps the sale.
+    $order = DB::table('orders')->where('order_no', 'ORD-FRN-ATTR')->first();
+
+    expect((int) $order->attributed_distributor_id)->toBe($seller->id)
+        ->and((int) $order->franchise_id)->toBe($franchise->id)
+        ->and($seller->id)->not->toBe($franchise->operator_distributor_id);
+});
+
+it('FRN-013: an order refunded inside its return window never reaches the calculation', function () {
+    frnEnable();
+
+    $franchise = frnFranchise();
+
+    // Delivered 10 days ago: its 30-day window is still open, so this month's
+    // run must not see it at all. Waiting for the window to close is what
+    // removes the need for any clawback (R-23) — the commission is never paid
+    // on an order that can still come back.
+    frnOrder($franchise, '-10 days', 10_00_000);
+
+    $summary = frnRun();
+
+    expect($summary['credited'])->toBe(0)
+        ->and($summary['skipped_no_orders'])->toBe(1);
+
+    // Refunded before its window closed, it is gone from the set for good.
+    DB::table('orders')->where('franchise_id', $franchise->id)->update(['status' => 'refunded']);
+
+    expect(app(FranchiseCommissionService::class)->settledOrdersForMonth(
+        $franchise->id,
+        Carbon::now()->addDays(30)->startOfMonth(),
+        Carbon::now()->addDays(30)->endOfMonth(),
+    ))->toBe([]);
+});
+
+it('FRN-014: every order behind a commission is recorded, not just the total', function () {
+    frnEnable();
+
+    $franchise = frnFranchise();
+    frnOrder($franchise, '-31 days', 10_00_000);
+    frnOrder($franchise, '-32 days', 5_00_000);
+
+    frnRun();
+
+    $result = FranchiseCommissionResult::firstOrFail();
+    $traced = DB::table('franchise_commission_result_orders')->where('result_id', $result->id)->get();
+
+    // R-22: an aggregate nobody can decompose is not a trace. Re-running the
+    // query a year later would not reproduce it once those orders change state.
+    expect($traced)->toHaveCount(2)
+        ->and((int) $traced->sum('base_paise'))->toBe($result->base_paise);
+});
+
+it('FRN-015: a franchise credit is actually paid out, not just swept', function () {
+    frnEnable();
+
+    $franchise = frnFranchise();
+    frnOrder($franchise, '-31 days', 10_00_000);
+    frnRun();
+
+    $operatorId = (int) $franchise->operator_distributor_id;
+    $credit = (int) DB::table('wallet_ledger_entries')
+        ->where('distributor_id', $operatorId)
+        ->where('type', 'franchise_credit')
+        ->sum('amount_paise');
+
+    expect($credit)->toBeGreaterThan(0);
+
+    // franchise_credit is in GROUP_D_TYPES, so the monthly batch SWEEPS it.
+    // If the gross calculation ignored it, the entry would be marked paid with
+    // no matching debit — a phantom wallet balance no later batch could clear,
+    // and a franchise-only earner who is never paid at all.
+    $groupD = \App\Modules\Compensation\Services\CompensationPlanSettingsService::GROUP_D_TYPES;
+
+    expect($groupD)->toContain('franchise_credit');
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
@@ -120,6 +121,16 @@ Schedule::command(GrievanceSlaSweepCommand::class)
 // about payout ordering, not data dependency.
 Schedule::command(FranchiseMonthlyRunCommand::class)
     ->monthlyOn(8, '09:45')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Purchase offers on the 2nd at 06:00 IST. Early in the month and ahead of
+// every bonus engine, because the offers read the previous month's BV and
+// grant nothing that any other engine depends on — running them first means a
+// distributor sees what they earned before the payout cycle starts.
+Schedule::command(PurchaseOffersMonthlyRunCommand::class)
+    ->monthlyOn(2, '06:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

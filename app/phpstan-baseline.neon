@@ -3479,3 +3479,9 @@ parameters:
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Commerce/FranchiseCommissionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/PurchaseOffersTest.php

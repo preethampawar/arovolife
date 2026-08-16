@@ -9,14 +9,17 @@
     <div class="max-w-2xl text-sm leading-relaxed text-slate-400">
         <p>
             How each franchise's commission for the month is arrived at.
-            <strong>Fulfilled value</strong> is the product value of the orders that franchise delivered —
-            subtotal less discount. GST is excluded because it is tax collected for the government, and
-            shipping because it is a pass-through cost; paying a share of either would be paying commission
-            on money the company never earned.
+            <strong>Fulfilled value</strong> is the net product value of the orders handed over through
+            that franchise — subtotal less the GST included in it less discount. Catalogue prices are
+            GST-inclusive, so the tax comes out before the rate applies; shipping is excluded as a
+            pass-through cost. Paying a share of either would be paying commission on money the company
+            never earned.
         </p>
         <p class="mt-2 text-slate-500">
-            Rows marked <em>not run</em> are a live projection of what the month currently holds. Nothing is
-            owed until the engine has run and the row says <em>credited</em>.
+            An order counts in the month its <strong>30-day return window closes</strong>, not the month it
+            was delivered — so a returned order never enters the calculation and nothing is ever clawed
+            back. Rows marked <em>not run</em> are a live projection; nothing is owed until the row says
+            <em>credited</em>.
         </p>
     </div>
     <form method="GET" action="{{ route('admin.commerce.franchises.report') }}" class="flex items-end gap-2">
