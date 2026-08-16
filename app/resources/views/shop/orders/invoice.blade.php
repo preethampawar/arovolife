@@ -201,8 +201,20 @@
 
                     @if ($isTaxInvoice)
                         <p class="text-[11px] text-gray-400 pt-1">
-                            Prices are inclusive of GST. Any discount shown above has been deducted from the
-                            taxable value under §15(3)(a) of the CGST Act.
+                            Prices are inclusive of GST.
+                            @if ($tax->discountsReduceTaxableValue())
+                                Any discount shown above has been deducted from the taxable value under
+                                §15(3)(a) of the CGST Act.
+                            @else
+                                {{-- The footnote must describe the treatment the
+                                     figures above actually received: tax is
+                                     charged and remitted on the full sale value
+                                     and the reductions come off the amount
+                                     payable, so claiming §15(3)(a) here would
+                                     certify something the invoice does not do. --}}
+                                Any discount or redeemed points shown above reduce the amount payable and
+                                have not been deducted from the taxable value.
+                            @endif
                         </p>
                         <p class="text-[11px] text-gray-400">
                             Tax payable on reverse charge: {{ $tax->reverseCharge() ? 'Yes' : 'No' }}.

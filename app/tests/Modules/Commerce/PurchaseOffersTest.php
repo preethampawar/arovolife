@@ -28,16 +28,25 @@ declare(strict_types=1);
  */
 
 use App\Modules\Commerce\Enums\PurchaseOfferType;
+use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\MonthlyOfferProduct;
+use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Models\PurchaseOfferGrant;
 use App\Modules\Commerce\Models\RedeemPointEntry;
+use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\PurchaseOfferService;
 use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Returns\Models\ReturnRequest;
+use App\Modules\Returns\Services\RefundOrder;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
+use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -115,8 +124,8 @@ function ofrLedger(Distributor $distributor, string $month, int $bvUnits, bool $
  */
 function ofrReverse(int $orderId): void
 {
-    app(\App\Modules\Commerce\Services\BvLedgerService::class)
-        ->reverse(\App\Modules\Commerce\Models\Order::findOrFail($orderId));
+    app(BvLedgerService::class)
+        ->reverse(Order::findOrFail($orderId));
 }
 
 function ofrAnnounceProduct(string $month): int
@@ -173,6 +182,61 @@ function ofrStreak(Distributor $distributor, string $lastMonth, int $months, int
     for ($back = 0; $back < $months; $back++) {
         ofrLedger($distributor, $cursor->copy()->subMonths($back)->format('Y-m'), $bvUnitsPerMonth);
     }
+}
+
+/**
+ * A ₹1,180 GST-inclusive order settled with ₹180 cash and 1,000 points, with
+ * an open cooling-off clock and a return request. Built the way the Returns
+ * suite builds one so the refund path runs for real.
+ *
+ * @return array{order: Order, returnRequest: ReturnRequest}
+ */
+function ofrPointsPaidOrder(int $distributorId, string $status = Order::STATUS_REFUND_REQUESTED): array
+{
+    $customer = Customer::create(['display_name' => 'Points Buyer']);
+
+    $orderId = DB::table('orders')->insertGetId([
+        'order_no' => 'ORD-OFR-'.random_int(100000, 999999),
+        'customer_id' => $customer->id,
+        'attributed_distributor_id' => $distributorId,
+        'attribution_source' => 'logged_in',
+        'payment_method' => 'online',
+        'status' => $status,
+        'self_consumption' => true,
+        'subtotal_paise' => 1_18_000,
+        'gst_paise' => 18_000,
+        'discount_paise' => 0,
+        'redeem_points_paise' => 1_00_000,
+        'shipping_paise' => 0,
+        // Cash due is the subtotal less the points — ₹180.
+        'total_paise' => 18_000,
+        'ship_name' => 'Buyer', 'ship_phone_e164' => '+919800000000',
+        'ship_line1' => '1 St', 'ship_city' => 'Hyd', 'ship_state' => 'TS', 'ship_pincode' => '500001',
+        'placed_at' => now()->subDays(5),
+        'paid_at' => now()->subDays(5),
+        'delivered_at' => now()->subDays(2),
+        'idempotency_key' => 'ofr-'.uniqid(),
+        'created_at' => now()->subDays(5), 'updated_at' => now()->subDays(2),
+    ]);
+
+    OrderCoolingOff::create([
+        'order_id' => $orderId,
+        'opened_at' => now()->subDays(5),
+        'ends_at' => now()->addDays(25),
+        'status' => OrderCoolingOff::STATUS_OPEN,
+    ]);
+
+    $returnRequest = ReturnRequest::create([
+        'rma_no' => 'RMA-OFR-'.random_int(10000, 99999),
+        'order_id' => $orderId,
+        'order_item_id' => null,
+        'qty' => null,
+        'reason' => ReturnRequest::REASON_COOLING_OFF,
+        'opened_by_customer_id' => $customer->id,
+        'status' => ReturnRequest::STATUS_OPENED,
+    ]);
+
+    return ['order' => Order::findOrFail($orderId), 'returnRequest' => $returnRequest];
 }
 
 // ─── tests ───────────────────────────────────────────────────────────────────
@@ -412,70 +476,71 @@ it('OFR-015: qualification counts the distributor’s own purchases, not sales t
 });
 
 it('OFR-016: a points-paid order refunded in cooling-off returns no more cash than came in', function () {
+    Event::fake();
+    $this->seed(LedgerAccountSeeder::class);
+
     $distributor = Distributor::factory()->create(['status' => 'active']);
     ofrPoints()->accrue($distributor->id, 1000, 'test', null, 'seed');
 
     // ₹1,180 GST-inclusive order settled with ₹180 cash and 1,000 points.
-    $orderId = DB::table('orders')->insertGetId([
-        'order_no' => 'ORD-OFR-REFUND',
-        'customer_id' => 1,
-        'attributed_distributor_id' => $distributor->id,
-        'attribution_source' => 'direct',
-        'payment_method' => 'online',
-        'status' => 'delivered',
-        'self_consumption' => true,
-        'subtotal_paise' => 1_18_000,
-        'gst_paise' => 18_000,
-        'discount_paise' => 0,
-        'redeem_points_paise' => 1_00_000,
-        'shipping_paise' => 0,
-        'total_paise' => 18_000,
-        'idempotency_key' => 'ofr-refund-'.uniqid(),
-        'delivered_at' => now()->subDays(2),
-        'created_at' => now()->subDays(2),
-        'updated_at' => now()->subDays(2),
-    ]);
-
-    ofrPoints()->redeem($distributor->id, 1000, $orderId, 'order');
+    ['order' => $order, 'returnRequest' => $rq] = ofrPointsPaidOrder($distributor->id);
+    ofrPoints()->redeem($distributor->id, 1000, (int) $order->id, 'order');
 
     expect(ofrPoints()->balance($distributor->id))->toBe(0);
 
-    $order = \App\Modules\Commerce\Models\Order::findOrFail($orderId);
+    // The real refund path, not a re-implementation of its arithmetic. It
+    // posts inside a transaction and the LedgerPoster throws on an unbalanced
+    // journal, so an imbalance fails here rather than in production.
+    app(RefundOrder::class)->execute($order, $rq, 'cooling_off', true, actorUserId: null);
 
-    // The cash refund must not exceed the cash received. Before this, the
-    // refund was computed as taxable + GST − discount with no points term, so
-    // ₹1,180 went back on ₹180 received — turning a non-withdrawable discount
-    // entitlement into a cash-out route.
-    $cashRefund = $order->subtotal_paise - $order->gst_paise
-        + $order->gst_paise
-        + $order->shipping_paise
-        - $order->discount_paise
-        - $order->redeem_points_paise;
+    $order->refresh();
+    expect($order->status)->toBe(Order::STATUS_REFUND_APPROVED);
 
-    expect($cashRefund)->toBe(18_000)
-        ->and($cashRefund)->toBeLessThanOrEqual((int) $order->total_paise);
+    // The cash going back is the cash that came in — ₹180, not ₹1,180.
+    // Without the points term this refunded the full order value and turned a
+    // non-withdrawable discount entitlement into a cash-out route.
+    $payable = (int) DB::table('ledger_entries')
+        ->join('ledger_tx', 'ledger_tx.id', '=', 'ledger_entries.ledger_tx_id')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->where('ledger_tx.idempotency_key', "refund:{$order->id}")
+        ->where('ledger_accounts.code', 'liability.refund_payable')
+        ->sum('ledger_entries.amount_paise');
 
-    // And the points side comes back in points, exactly once.
-    ofrPoints()->refundForOrder($orderId, 'restored');
-    ofrPoints()->refundForOrder($orderId, 'restored again');
+    expect($payable)->toBe(18_000)
+        ->and($payable)->toBeLessThanOrEqual((int) $order->total_paise);
+
+    // And the points side comes back in points, exactly once — a retried
+    // refund returns early and cannot mint them.
+    app(RefundOrder::class)->execute($order->refresh(), $rq, 'cooling_off', true, actorUserId: null);
 
     expect(ofrPoints()->balance($distributor->id))->toBe(1000);
 });
 
 it('OFR-017: a points-paid order can still be marked shipped — the journal balances', function () {
+    Event::fake();
+    $this->seed(LedgerAccountSeeder::class);
+
     // The revenue journal debits customer_prepayment for total_paise (already
     // reduced by the points) but credits sales + GST at full value. Without a
     // contra-revenue debit for the points the entry is out of balance by
     // exactly that amount, the LedgerPoster rejects it, and the order can
     // never be shipped at all.
-    $subtotal = 1_18_000;
-    $gst = 18_000;
-    $points = 1_00_000;
-    $shipping = 0;
-    $total = $subtotal - $points + $shipping;
+    $distributor = Distributor::factory()->create(['status' => 'active']);
+    ['order' => $order] = ofrPointsPaidOrder($distributor->id, Order::STATUS_PAID);
 
-    $debits = $total + $points;                 // prepayment + contra-revenue
-    $credits = ($subtotal - $gst) + $gst;       // sales + gst_output
+    app(OrderStateMachine::class)->markShipped($order, actorUserId: null);
 
-    expect($debits)->toBe($credits);
+    $order->refresh();
+    expect($order->status)->toBe(Order::STATUS_SHIPPED);
+
+    // Assert on what was actually posted, not on locals: the shipment journal
+    // exists and balances.
+    $tx = DB::table('ledger_tx')->where('idempotency_key', "order.shipped:{$order->id}")->first();
+    expect($tx)->not->toBeNull();
+
+    $sides = DB::table('ledger_entries')->where('ledger_tx_id', $tx->id)
+        ->selectRaw('side, SUM(amount_paise) as total')->groupBy('side')->pluck('total', 'side');
+
+    expect((int) $sides['debit'])->toBe((int) $sides['credit'])
+        ->and((int) $sides['debit'])->toBe(1_18_000);
 });

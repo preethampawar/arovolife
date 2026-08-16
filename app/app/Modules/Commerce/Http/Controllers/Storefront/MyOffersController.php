@@ -54,17 +54,17 @@ final class MyOffersController extends Controller
                 ->orderByDesc('created_at')
                 ->limit(25)
                 ->get(),
+            // Redeem-points grants only, until R-49 lands. The half-price
+            // entitlement is recorded in the register but nothing can redeem
+            // it and the published plan no longer describes it — showing a
+            // distributor an earned offer with no terms and no way to use it
+            // is worse than not showing it at all.
             'grants' => PurchaseOfferGrant::with('variant.product')
                 ->where('distributor_id', $distributor->id)
+                ->where('offer_type', PurchaseOfferType::RedeemPoints->value)
                 ->orderByDesc('month_start')
                 ->limit(12)
                 ->get(),
-            'activeHalfPrice' => PurchaseOfferGrant::with('variant.product')
-                ->where('distributor_id', $distributor->id)
-                ->where('offer_type', PurchaseOfferType::HalfPriceProduct->value)
-                ->usable()
-                ->orderByDesc('month_start')
-                ->first(),
             'holdsARank' => $this->offers->holdsARank($distributor->id),
             'streakMonths' => $this->offers->streakLength($distributor->id, $thisMonth->copy()->subMonth()),
             'thisMonthBvPaise' => $this->offers->monthlyBvPaise($distributor->id, $thisMonth),

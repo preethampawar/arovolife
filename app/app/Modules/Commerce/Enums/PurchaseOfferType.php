@@ -28,7 +28,10 @@ enum PurchaseOfferType: string
     public function description(): string
     {
         return match ($this) {
-            self::HalfPriceProduct => 'One company-announced product at half the distributor price, for a month in which you repurchased the qualifying volume.',
+            // Recorded, not redeemable: nothing applies the offer price at cart
+            // or checkout and the published plan no longer describes the
+            // offer, so the label must not promise one either (R-49).
+            self::HalfPriceProduct => 'Recorded for a month in which you repurchased the qualifying volume. Not yet redeemable.',
             self::RedeemPoints => 'Points earned by holding the qualifying volume for six consecutive months. One point is one rupee off a future purchase.',
         };
     }

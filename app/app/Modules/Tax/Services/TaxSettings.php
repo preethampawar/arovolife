@@ -87,6 +87,32 @@ final class TaxSettings
         return in_array(strtolower($value), ['1', 'true', 'on', 'yes'], true);
     }
 
+    /**
+     * Whether a coupon discount or redeemed points reduce the **taxable
+     * value** of the supply under CGST Act §15(3)(a), or merely reduce the
+     * amount payable after tax.
+     *
+     * Deliberately a constant and not a setting. Flipping it is not a
+     * configuration change: checkout computes `orders.gst_paise`, the shipment
+     * journal credits `liability.gst_output` from it, and the invoice is the
+     * source for GSTR-1 — all three must express the same position or the
+     * statutory records and the returns disagree. Whoever changes this must
+     * change `CheckoutService` and `OrderStateMachine` in the same commit, and
+     * only after R-48 gate (c) is answered in writing.
+     *
+     * It ships `false` — the conservative reading. The company remits GST on
+     * the full sale value and absorbs the discount out of net revenue, which
+     * is what the code has always done and what the published copy describes
+     * ("points cannot be used to pay GST"). Claiming the §15(3)(a) reduction
+     * is the more aggressive position and is not ours to take silently.
+     */
+    public function discountsReduceTaxableValue(): bool
+    {
+        return self::DISCOUNTS_REDUCE_TAXABLE_VALUE;
+    }
+
+    private const DISCOUNTS_REDUCE_TAXABLE_VALUE = false;
+
     private function scalar(string $key): ?string
     {
         if ($this->scalarCache === null) {

@@ -7,10 +7,10 @@ namespace App\Modules\Returns\Services;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Returns\Events\OrderRefundApproved;
-use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Returns\Models\ReturnRequest;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -132,6 +132,22 @@ final class RefundOrder
             if ($discountPaise > 0) {
                 // Undo the contra-revenue (reverse the debit → credit it back).
                 $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $discountPaise];
+            }
+
+            // The same reversal for points. `markShipped` debited
+            // revenue.discounts when they were spent, so the refund credits it
+            // back — and the asymmetry with $discountPaise above is deliberate:
+            // the coupon is only unwound inside the cooling-off window, while
+            // the cash reduction for points is unconditional, so its
+            // contra-reversal must be unconditional too.
+            //
+            // Without this line debits and credits differ by exactly
+            // $redeemPointsPaise, LedgerPoster throws inside the transaction,
+            // and a distributor who paid partly in points cannot cancel at all
+            // — the statutory one-click cooling-off refund would fail outright
+            // for those orders.
+            if ($redeemPointsPaise > 0) {
+                $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $redeemPointsPaise];
             }
 
             $lines[] = ['account' => 'liability.refund_payable', 'side' => 'credit', 'amount_paise' => $netRefundPaise];

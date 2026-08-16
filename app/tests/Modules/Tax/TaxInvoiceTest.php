@@ -18,12 +18,16 @@ declare(strict_types=1);
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Tax\Models\Invoice;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use App\Modules\Tax\Services\InvoiceNumberSequence;
 use App\Modules\Tax\Services\TaxSettings;
+use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
@@ -85,7 +89,7 @@ function taxOrder(int $grossPaise, string $shipState = 'TG', int $discountPaise 
     return $order->fresh(['items']);
 }
 
-function taxGenerate(Order $order): \App\Modules\Tax\Models\Invoice
+function taxGenerate(Order $order): Invoice
 {
     return app(InvoiceGenerator::class)->generate($order);
 }
@@ -158,30 +162,36 @@ it('TAX-005: an intra-state supply splits CGST and SGST; inter-state is IGST', f
         ->and($inter->igst_paise)->toBe(1_52_542);
 });
 
-it('TAX-006: a discount reduces the taxable value, and the invoice foots', function () {
+it('TAX-006: the invoice declares the tax that was actually charged and remitted', function () {
     taxSetGstin();
 
-    // ₹10,000 gross less a ₹1,000 coupon → ₹9,000 actually charged. Under CGST
-    // §15(3)(a) a discount shown on the invoice comes out of the value, so the
-    // tax is 9,00,000 × 18/118 = 1,37,288, not the 1,52,542 on the full price.
+    // ₹10,000 gross less a ₹1,000 coupon → ₹9,000 collected. The company still
+    // computes GST on the full ₹10,000 at checkout and credits
+    // liability.gst_output with that figure when the order ships, so the
+    // invoice — the source for GSTR-1 — must declare the same 1,52,542. An
+    // invoice that claimed the §15(3)(a) reduction here would put the return
+    // and the books ₹15,254 apart on this one order.
     $invoice = taxGenerate(taxOrder(10_00_000, 'TG', 1_00_000));
 
     $tax = $invoice->cgst_paise + $invoice->sgst_paise + $invoice->igst_paise;
 
-    expect($tax)->toBe(1_37_288)
-        // Taxable + tax must equal what the buyer paid. Before this, tax was
-        // computed on the undiscounted subtotal and the invoice did not foot.
-        ->and($invoice->subtotal_paise + $tax)->toBe(9_00_000);
+    expect($tax)->toBe(1_52_542)
+        ->and($invoice->subtotal_paise + $tax)->toBe(10_00_000);
 });
 
-it('TAX-007: redeemed points reduce the taxable value the same way', function () {
+it('TAX-007: redeemed points do not reduce the declared tax either', function () {
     taxSetGstin();
 
+    // Same treatment for points, which matters more: the published copy tells
+    // distributors that points "cannot be used to pay GST". If redeeming them
+    // reduced the tax charged, that sentence would be false and the ledger
+    // would still be carrying the full amount.
     $invoice = taxGenerate(taxOrder(10_00_000, 'TG', 0, 1_00_000));
 
     $tax = $invoice->cgst_paise + $invoice->sgst_paise + $invoice->igst_paise;
 
-    expect($invoice->subtotal_paise + $tax)->toBe(9_00_000);
+    expect($tax)->toBe(1_52_542)
+        ->and($invoice->subtotal_paise + $tax)->toBe(10_00_000);
 });
 
 it('TAX-008: the recipient GSTIN is carried onto the invoice', function () {
@@ -208,4 +218,32 @@ it('TAX-009: generating twice returns the same invoice and burns no number', fun
     $next = taxGenerate(taxOrder(5_00_000));
 
     expect($next->invoice_no)->toEndWith('000002');
+});
+
+it('TAX-010: the invoice, the order and the shipment journal all carry the same GST', function () {
+    taxSetGstin();
+    $this->seed(LedgerAccountSeeder::class);
+    Event::fake();
+
+    // A ₹10,000 order settled with a ₹1,000 coupon AND 1,000 points — both
+    // reductions at once, which is where the three figures previously drifted
+    // apart. The invoice is the source for GSTR-1 and the journal is the
+    // source for the books; if they disagree, one of them is wrong and nobody
+    // finds out until a return is filed.
+    $order = taxOrder(10_00_000, 'TG', 1_00_000, 1_00_000);
+
+    $invoice = taxGenerate($order);
+    $invoiceTax = $invoice->cgst_paise + $invoice->sgst_paise + $invoice->igst_paise;
+
+    app(OrderStateMachine::class)->markShipped($order);
+
+    $posted = (int) DB::table('ledger_entries')
+        ->join('ledger_tx', 'ledger_tx.id', '=', 'ledger_entries.ledger_tx_id')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->where('ledger_tx.idempotency_key', "order.shipped:{$order->id}")
+        ->where('ledger_accounts.code', 'liability.gst_output')
+        ->sum('ledger_entries.amount_paise');
+
+    expect($invoiceTax)->toBe((int) $order->gst_paise)
+        ->and($posted)->toBe((int) $order->gst_paise);
 });

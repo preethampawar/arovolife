@@ -43,6 +43,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class PurchaseOfferService
 {
+    /** @var array<string, int>|null memoised month buckets for one distributor */
+    private ?array $buckets = null;
+
+    private ?int $bucketsForDistributorId = null;
+
     public function __construct(
         private readonly PurchaseOfferSettings $settings,
         private readonly RedeemPointsService $points,
@@ -136,16 +141,7 @@ final class PurchaseOfferService
      */
     public function monthlyBvPaise(int $distributorId, Carbon $monthStart): int
     {
-        $orderIds = $this->ownOrderIdsAccruedIn($distributorId, $monthStart);
-
-        if ($orderIds === []) {
-            return 0;
-        }
-
-        return (int) DB::table('bv_ledger_entries')
-            ->where('distributor_id', $distributorId)
-            ->whereIn('order_id', $orderIds)
-            ->sum('bv_paise');
+        return $this->monthBuckets($distributorId)[$monthStart->format('Y-m')] ?? 0;
     }
 
     /**
@@ -162,24 +158,79 @@ final class PurchaseOfferService
     }
 
     /**
-     * The distributor's own orders whose BV accrued in the given month.
+     * Every month's own-purchase BV for one distributor, in two queries.
      *
-     * @return array<int, int>
+     * `streakLength()` walks back twelve months and `bvOverMonths()` walks the
+     * same ground again, so asking the database per month meant roughly fifty
+     * round trips per distributor across a run that iterates the whole active
+     * base. The month boundaries are drawn in PHP instead — the semantics are
+     * identical to the per-month version, including an order whose accrual and
+     * later reversal net to zero.
+     *
+     * Memoised for one distributor at a time. The monthly run processes them
+     * sequentially, so this keeps every repeated lookup free without holding
+     * the whole base in memory.
+     *
+     * @return array<string, int> 'YYYY-MM' => net own-purchase BV in paise
      */
-    private function ownOrderIdsAccruedIn(int $distributorId, Carbon $monthStart): array
+    private function monthBuckets(int $distributorId): array
     {
-        return DB::table('bv_ledger_entries')
+        if ($this->bucketsForDistributorId === $distributorId && $this->buckets !== null) {
+            return $this->buckets;
+        }
+
+        // Which of the distributor's own orders accrued, and when. An order
+        // with accruals in two months belongs to both, exactly as the
+        // per-month query treated it.
+        $accruals = DB::table('bv_ledger_entries')
             ->join('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
             ->where('bv_ledger_entries.distributor_id', $distributorId)
             ->where('bv_ledger_entries.type', 'accrual')
             ->where('orders.self_consumption', true)
-            ->whereBetween('bv_ledger_entries.effective_at', [
-                $monthStart->copy()->startOfMonth()->startOfDay(),
-                $monthStart->copy()->endOfMonth()->endOfDay(),
-            ])
-            ->pluck('bv_ledger_entries.order_id')
-            ->map(static fn ($id): int => (int) $id)
-            ->all();
+            ->get(['bv_ledger_entries.order_id', 'bv_ledger_entries.effective_at']);
+
+        if ($accruals->isEmpty()) {
+            $this->bucketsForDistributorId = $distributorId;
+
+            return $this->buckets = [];
+        }
+
+        /** @var array<string, array<int, true>> $monthOrders */
+        $monthOrders = [];
+        /** @var array<int, true> $allOrderIds */
+        $allOrderIds = [];
+
+        foreach ($accruals as $row) {
+            $month = Carbon::parse((string) $row->effective_at)->format('Y-m');
+            $monthOrders[$month][(int) $row->order_id] = true;
+            $allOrderIds[(int) $row->order_id] = true;
+        }
+
+        // The net of EVERY entry for those orders — a reversal is dated to the
+        // refund, so it must be pulled back to the month the purchase belongs
+        // to rather than counted where it landed.
+        $netByOrder = DB::table('bv_ledger_entries')
+            ->where('distributor_id', $distributorId)
+            ->whereIn('order_id', array_keys($allOrderIds))
+            ->groupBy('order_id')
+            ->selectRaw('order_id, SUM(bv_paise) as net_paise')
+            ->pluck('net_paise', 'order_id');
+
+        $buckets = [];
+
+        foreach ($monthOrders as $month => $orderIds) {
+            $total = 0;
+
+            foreach (array_keys($orderIds) as $orderId) {
+                $total += (int) ($netByOrder[$orderId] ?? 0);
+            }
+
+            $buckets[$month] = $total;
+        }
+
+        $this->bucketsForDistributorId = $distributorId;
+
+        return $this->buckets = $buckets;
     }
 
     /**

@@ -4,7 +4,6 @@
 @section('content')
 @php
     $qualifyingBv = $settings->qualifyingBvPaise() / 100;
-    $activationBv = $settings->activationBvPaise() / 100;
     $cycle = $settings->cycleMonths();
     $thisMonthBv = $thisMonthBvPaise / 100;
     $lifetimeBv = $lifetimeBvPaise / 100;

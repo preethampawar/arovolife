@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Tax\Services;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Tax\Models\Invoice;
 use App\Modules\Tax\Models\InvoiceLine;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -24,13 +26,15 @@ use Illuminate\Support\Facades\DB;
  * invoices raised 1,000,000 seconds apart carried the same identity. Now a
  * locked per-financial-year counter (`InvoiceNumberSequence`).
  *
- * **The value.** Tax was computed from the pre-discount subtotal, so an order
- * with a coupon or redeemed points reported more GST than the buyer was
- * charged and the invoice did not foot. Under CGST Act §15(3)(a) a discount
- * given at the time of supply and shown on the invoice is excluded from the
- * transaction value, so the reduction is apportioned across the lines and the
- * tax recomputed from what was actually charged. Catalogue prices here are
- * GST-inclusive, so each line's tax is `gross × rate / (10000 + rate)`.
+ * **The value.** Catalogue prices here are GST-inclusive, so each line's tax is
+ * `gross × rate / (10000 + rate)`. Whether a coupon or redeemed points come out
+ * of the taxable value under CGST Act §15(3)(a) — or merely off the amount
+ * payable — is `TaxSettings::discountsReduceTaxableValue()`, and it ships
+ * `false`: checkout and the shipment journal both carry GST on the full sale
+ * value, and this document is the source for GSTR-1, so declaring tax on a
+ * reduced value here would put the return and the books in disagreement. The
+ * apportionment below is what implements the other position if counsel ever
+ * settles it that way (R-48 gate (c)).
  *
  * The split itself was already right: CGST + SGST where the place of supply is
  * the supplier's own state, IGST where it is not.
@@ -54,10 +58,23 @@ final class InvoiceGenerator
         $placeOfSupply = strtoupper($order->ship_state ?? $sellerState);
         $isIntraState = $placeOfSupply === $sellerState;
 
-        // Everything that reduced what the buyer actually paid for goods. Both
-        // are §15(3)(a) discounts shown on the invoice, so both come out of the
-        // taxable value.
-        $reduction = (int) $order->discount_paise + (int) ($order->redeem_points_paise ?? 0);
+        // Everything that reduced what the buyer actually paid for goods: a
+        // coupon and any redeemed points.
+        //
+        // Whether these come out of the TAXABLE VALUE under §15(3)(a) or
+        // merely off the amount payable after tax is R-48 gate (c), which is
+        // not settled. Under the shipping default they do not: checkout
+        // computes `orders.gst_paise` on the undiscounted value and the
+        // shipment journal credits `liability.gst_output` with that same
+        // figure, so an invoice that declared tax on a reduced value would put
+        // the GSTR-1 return and the books in disagreement — on a ₹1,180 order
+        // settled with 1,000 points, ₹27 declared against ₹180 in the ledger.
+        //
+        // The invoice therefore declares the tax that was actually charged and
+        // is actually remitted, and shows the reduction below it as what it is:
+        // a reduction in the amount payable.
+        $settlementReduction = (int) $order->discount_paise + (int) ($order->redeem_points_paise ?? 0);
+        $reduction = $this->settings->discountsReduceTaxableValue() ? $settlementReduction : 0;
 
         return DB::transaction(function () use ($order, $sellerState, $placeOfSupply, $isIntraState, $reduction): Invoice {
             $issuedAt = Carbon::now();
@@ -133,7 +150,7 @@ final class InvoiceGenerator
      */
     private function apportion(Order $order, int $reduction): array
     {
-        /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Modules\Commerce\Models\OrderItem> $items */
+        /** @var Collection<int, OrderItem> $items */
         $items = $order->items;
         $grossTotal = (int) $items->sum('line_total_paise');
 

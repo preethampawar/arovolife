@@ -119,8 +119,14 @@ checkout, no admin screens, no settings keys.
    gets for their purchases and so form part of the plan.
 2. **`/p/compensation` §11.2** must carry the effective date from that notice.
 3. **KP must confirm the two readings in R-48** — see below.
-4. **A documented GST position for points**, with the invoice, the taxable
-   value and the §15(3)(a) footnote reconciled to it.
+4. **A decision from counsel on the §15(3)(a) reduction.** The code no longer
+   leaves this implicit: it takes the conservative position that a coupon and
+   redeemed points reduce the **amount payable**, not the taxable value, so the
+   invoice, `orders.gst_paise` and the ledger all carry the same GST figure.
+   That means the company remits GST on the full sale value and absorbs the
+   discount out of net revenue. Whether to claim the reduction instead is a tax
+   question, not a coding one — and it applies to coupons exactly as much as to
+   points.
 5. **An expiry policy** and the sweeper that writes it. `TYPE_EXPIRY` exists in
    the ledger and nothing ever writes it, so the obligation is open-ended.
 6. **An accounting position** recognising the outstanding balance as a
