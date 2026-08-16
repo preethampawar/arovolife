@@ -213,7 +213,7 @@ Cron Job**:
 | Time interval | `* * * * *` (every minute) |
 | Command | `php /home/master/applications/ahdhesuhty/public_html/app/artisan schedule:run >> /dev/null 2>&1` |
 
-This drives cooling-off reminders (D-20 / D-7 / D-1), audit-log
+This drives cooling-off reminders (D-7 / D-1), audit-log
 compaction, and any future scheduled jobs.
 
 ### 1.11 SSL

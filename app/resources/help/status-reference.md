@@ -182,6 +182,6 @@ Defined in: `app/app/Modules/Fulfilment/Database/Migrations/..._create_shipments
 ## Compliance (Phase 1 — live)
 
 Cooling-off is tracked as **events with reminder timestamps** (`cooling_off_events`),
-not a status enum — the D-20 / D-7 / D-1 reminder columns drive the statutory
+not a status enum — the D-7 / D-1 reminder columns drive the statutory
 30-day window. See `app/app/Modules/Compliance/Database/Migrations/2026_04_29_000001_add_reminder_columns_to_cooling_off_events.php`
 and `docs/architecture/adr-0005-order-cooling-off-clock.md`.

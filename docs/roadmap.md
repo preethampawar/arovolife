@@ -58,7 +58,7 @@ Compliance · Admin.
 
 - 30-day cooling-off from `effective_date`, one-click cancellation,
   full refund
-- D-20 / D-7 / D-1 email + SMS reminders
+- D-7 / D-1 email + SMS reminders
 - Self-cancellation cascades to spouse for couples
 - ADR-0005: distinct from the per-order cooling-off clock that lands in
   Phase 2

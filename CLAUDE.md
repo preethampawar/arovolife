@@ -31,7 +31,7 @@ No commissions, no cart, no wallet yet. Those come in later phases.
 2. **Commissions are a function of product sales only.** No credit, payout, bonus, pool entry or reward may exist without an associated `product_sale_id`. (DSR Rule 5(1)(c).)
 3. **No income projections.** The public site and the registration UI must never display or imply future earnings. Historical facts only, scoped to the logged-in distributor's own data. (DSR Rule 5(1)(d); T&C §6.)
 4. **Mandatory orientation** (watch ≥ 95% + micro-quiz) before registration can be finalised. (T&C Step 2.)
-5. **30-day cooling-off** with one-click cancellation and full refund. SMS/email reminders at D-20 / D-7 / D-1. (T&C §4.)
+5. **30-day cooling-off** with one-click cancellation and full refund. SMS/email reminders at D-7 / D-1. (T&C §4.)
 6. **One PAN = one ADN.** Couple registrations use a single ADN with a primary/secondary flag. (T&C §1.4, §7.)
 7. **No e-commerce listings, no offline retail.** Direct Sellers may only sell to end-consumers directly. (T&C §9.)
 8. **PII is encrypted at rest.** PAN stored as hash + last-4. Raw Aadhaar is NEVER stored — only a reference returned by the UIDAI-approved AUA/KUA partner plus last-4. (T&C §15; DPDP Act 2023.)

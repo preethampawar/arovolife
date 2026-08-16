@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compliance\Models\CoolingOffEvent;
+use App\Modules\Compliance\Notifications\CoolingOffReminderNotification;
 use App\Modules\Compliance\Services\SendCoolingOffReminders;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,11 +13,14 @@ use Illuminate\Support\Facades\Notification;
 uses(RefreshDatabase::class);
 
 /**
- * Statutory reminder cron: at 20, 7 and 1 day(s) before the cooling-off
+ * Statutory reminder cron: at 7 and 1 day(s) before the cooling-off
  * window expires the distributor must be reminded so they don't miss
  * their right to cancel (T&C §4 + risk register R-04). Each milestone
  * fires exactly once per distributor — driven by per-milestone columns
  * on cooling_off_events so a re-run of the cron is a no-op.
+ *
+ * The former D-20 milestone was retired on 2026-08-16; `reminder_d20_sent_at`
+ * survives only for historical rows and must never be written again.
  */
 function corSeed(int $daysFromNow, ?array $sent = null): array
 {
@@ -76,7 +80,7 @@ function corSeed(int $daysFromNow, ?array $sent = null): array
     return ['user' => $user, 'distributor_id' => $id, 'event' => $row];
 }
 
-it('COR-01: D-20 reminder fires for a distributor 10 days into the window (20 days remaining)', function () {
+it('COR-01: no reminder fires early in the window — 10 days in (20 days remaining) is silent', function () {
     Notification::fake();
 
     [$user, $id, $row] = array_values(corSeed(daysFromNow: 10));
@@ -84,23 +88,23 @@ it('COR-01: D-20 reminder fires for a distributor 10 days into the window (20 da
     app(SendCoolingOffReminders::class)();
 
     $row->refresh();
-    expect($row->reminder_d20_sent_at)->not->toBeNull()
+    expect($row->reminder_d20_sent_at)->toBeNull()
         ->and($row->reminder_d7_sent_at)->toBeNull()
         ->and($row->reminder_d1_sent_at)->toBeNull();
+    Notification::assertNothingSent();
 });
 
-it('COR-02: D-7 reminder fires at 7 days remaining; D-20 already sent stays untouched', function () {
+it('COR-02: D-7 reminder fires at 7 days remaining, and is the first mail of the window', function () {
     Notification::fake();
 
-    [$user, $id, $row] = array_values(corSeed(
-        daysFromNow: 23,
-        sent: ['d20' => now()->subDays(13)],
-    ));
+    [$user, $id, $row] = array_values(corSeed(daysFromNow: 23));
 
     app(SendCoolingOffReminders::class)();
 
     $row->refresh();
-    expect($row->reminder_d7_sent_at)->not->toBeNull();
+    expect($row->reminder_d7_sent_at)->not->toBeNull()
+        ->and($row->reminder_d20_sent_at)->toBeNull();
+    Notification::assertSentTo($user, CoolingOffReminderNotification::class);
 });
 
 it('COR-03: D-1 reminder fires at 1 day remaining', function () {
@@ -108,7 +112,7 @@ it('COR-03: D-1 reminder fires at 1 day remaining', function () {
 
     [$user, $id, $row] = array_values(corSeed(
         daysFromNow: 29,
-        sent: ['d20' => now()->subDays(19), 'd7' => now()->subDays(6)],
+        sent: ['d7' => now()->subDays(6)],
     ));
 
     app(SendCoolingOffReminders::class)();
@@ -120,13 +124,13 @@ it('COR-03: D-1 reminder fires at 1 day remaining', function () {
 it('COR-04: rerun is idempotent — second invocation does not double-send', function () {
     Notification::fake();
 
-    [$user, $id, $row] = array_values(corSeed(daysFromNow: 10));
+    [$user, $id, $row] = array_values(corSeed(daysFromNow: 23));
 
     app(SendCoolingOffReminders::class)();
-    $first = CoolingOffEvent::find($row->id)->reminder_d20_sent_at;
+    $first = CoolingOffEvent::find($row->id)->reminder_d7_sent_at;
 
     app(SendCoolingOffReminders::class)();
-    $second = CoolingOffEvent::find($row->id)->reminder_d20_sent_at;
+    $second = CoolingOffEvent::find($row->id)->reminder_d7_sent_at;
 
     // Same instant on both runs — second invocation skipped because the
     // column was already non-NULL. equalTo compares the underlying instant,
@@ -137,13 +141,13 @@ it('COR-04: rerun is idempotent — second invocation does not double-send', fun
 it('COR-05: a cancelled cooling-off does not receive any reminders', function () {
     Notification::fake();
 
-    [$user, $id, $row] = array_values(corSeed(daysFromNow: 10));
+    [$user, $id, $row] = array_values(corSeed(daysFromNow: 23));
     $row->update(['cancelled_at' => now()]);
 
     app(SendCoolingOffReminders::class)();
 
     $row->refresh();
-    expect($row->reminder_d20_sent_at)->toBeNull();
+    expect($row->reminder_d7_sent_at)->toBeNull();
 });
 
 it('COR-06: catch-up — a cron outage doesn\'t permanently lose a missed milestone', function () {

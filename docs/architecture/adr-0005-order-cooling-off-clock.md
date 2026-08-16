@@ -1,10 +1,11 @@
 # ADR-0005 — Per-order cooling-off clock is independent of the distributor-agreement cooling-off
 
-- **Status:** Accepted
+- **Status:** Accepted (amended 2026-08-16 — reminder cadence)
 - **Date:** 2026-04-24
 - **Deciders:** Laravel Architect, Compliance Officer, Legal
 - **Supersedes:** —
 - **Superseded by:** —
+- **Amendments:** 2026-08-16 — per-order reminder cadence reduced to D-7 / D-1 (see [Amendments](#amendments))
 
 ## Context
 
@@ -50,7 +51,9 @@ order.cooling_off_expired → status='expired' (fires when ends_at passes with n
 
 ### SMS reminders
 
-Per-order reminders at D-20, D-7, D-1 use the **Compliance SMS sender** built in Phase 1 for the distributor-agreement clock — but with a different template:
+Per-order reminders at ~~D-20,~~ D-7, D-1 use the **Compliance SMS sender** built in Phase 1 for the distributor-agreement clock — but with a different template:
+
+> **Amended 2026-08-16:** the D-20 milestone is dropped — two reminders, not three. See [Amendments](#amendments).
 
 ```
 Phase 1: "Dear [name], your Arovolife cooling-off period ends in [N] days. Cancel anytime at [URL]."
@@ -77,6 +80,20 @@ Phase 2: "Dear [name], your return window for order [ORD-NNNN] closes in [N] day
 - CI test `CoolingOffReconciliationTest` — scans `orders` with `status=delivered`; for every row where `delivered_at + 30d < NOW()`, asserts either `order_cooling_off.status='expired'` or an explicit reason (e.g., `cancelled` via refund). Any mismatch fails CI.
 - Daily ops cron with PagerDuty alarm for any missed expiry.
 - `commerce.cooling_off.days` setter guards against values below 30 (raises a `CoolingOffFloorException`).
+
+## Amendments
+
+### 2026-08-16 — reminder cadence reduced to D-7 / D-1
+
+**What changed.** Both clocks drop the D-20 milestone. Reminders now fire at **7 days remaining** and **1 day remaining** only — two per window, not three.
+
+**Why.** The Phase-1 distributor-agreement cron shipped with D-20/D-7/D-1. In practice D-20 lands only 10 days into a 30-day window — long before anyone is weighing a decision — and it read as noise rather than protection. Volume compounds with the distributor base: three mails per joiner, all of them statutory-sounding, trains people to ignore the two that matter.
+
+**Compliance position.** DSR 2021 Rule 5(1)(g) and T&C §4/§8 mandate the *30-day window*, the *right to cancel*, and *one-click cancellation with full refund*. Neither fixes a reminder cadence — the reminders are a self-imposed control under risk-register **R-04**, not a statutory obligation. R-04's mitigation is preserved: the distributor is still warned twice, including on the final day, and the one-click cancel path is untouched. No change to any clock duration, floor guard, or refund entitlement.
+
+**Scope.** The distributor-agreement clock is amended *in code* (`Compliance\Services\SendCoolingOffReminders`, shipped 2026-08-16). The per-order clock in this ADR is **not yet built** — this amendment is a forward instruction so it lands at two milestones from day one. `reminder_d20_sent_at` is retained on `cooling_off_events` for historical rows and must never be written again; the per-order equivalent should not create a `d20` column at all.
+
+**Also amended:** ADR-0009 build step 7 (return-window reminders).
 
 ## References
 

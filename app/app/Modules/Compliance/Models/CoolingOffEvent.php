@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $opened_at
  * @property Carbon|null $cancelled_at
  * @property string|null $refund_trigger_event_id
- * @property Carbon|null $reminder_d20_sent_at
+ * @property Carbon|null $reminder_d20_sent_at Retired 2026-08-16 — historical rows only, never written again
  * @property Carbon|null $reminder_d7_sent_at
  * @property Carbon|null $reminder_d1_sent_at
  * @property-read Distributor $distributor

@@ -164,7 +164,7 @@ php artisan repurchase:evaluate --date=2026-07-01
 
 ### `cooling-off:remind`
 
-Sends the statutory D-20 / D-7 / D-1 cooling-off reminder emails (and SMS when configured) to every distributor within their 30-day cancellation window. Idempotent — safe to re-run; a reminder is never sent twice for the same distributor-day combination.
+Sends the statutory D-7 / D-1 cooling-off reminder emails (and SMS when configured) to every distributor within their 30-day cancellation window. Idempotent — safe to re-run; a reminder is never sent twice for the same distributor-day combination.
 
 **Scheduled:** Daily at **09:00 IST**.
 
@@ -174,7 +174,7 @@ Sends the statutory D-20 / D-7 / D-1 cooling-off reminder emails (and SMS when c
 php artisan cooling-off:remind
 ```
 
-**What it checks:** For every active distributor, computes days since their registration effective date. If that value equals 10 (D-20 from the D-30 deadline), 23 (D-7), or 29 (D-1) it queues the reminder notification.
+**What it checks:** For every active distributor, computes days remaining until `cooling_off_end_at`. At 7 days remaining (D-7) and 1 day remaining (D-1) it queues the reminder notification. A milestone reached during a cron outage is caught up on the next run. The earlier D-20 milestone was retired on 2026-08-16 — two reminders, not three.
 
 ---
 
@@ -318,7 +318,7 @@ php artisan platform:reset-purchases --force
 |---|---|---|
 | `repurchase:evaluate` | Daily 00:30 | Must run before the GSB cut-off |
 | `gsb:daily-cutoff` | Daily 00:10 (processes yesterday) | Core GSB engine |
-| `cooling-off:remind` | Daily 09:00 | Statutory D-20/D-7/D-1 |
+| `cooling-off:remind` | Daily 09:00 | Statutory D-7/D-1 |
 | `gsb:weekly-payout` | Tuesday 09:00 | Aggregates credited cut-offs |
 | `payout:monthly-run` (GBB) | 2nd of month 08:00 | Growth Booster Bonus |
 | `payout:monthly-run` (Rank) | 8th of month 08:00 | Rank Bonus |

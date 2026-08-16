@@ -11,8 +11,13 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Daily reminder run for the statutory cooling-off window. Three milestones —
- * 20, 7 and 1 day(s) remaining — each fires exactly once per distributor.
+ * Daily reminder run for the statutory cooling-off window. Two milestones —
+ * 7 and 1 day(s) remaining — each fires exactly once per distributor.
+ *
+ * A third milestone at 20 days remaining was dropped (2026-08-16): it landed
+ * only 10 days into the window, long before anyone is deciding anything, and
+ * read as noise. The `reminder_d20_sent_at` column is retained so historical
+ * rows keep their audit trail; nothing writes to it any more.
  *
  * Idempotency lives on the row, not in this service: the per-milestone
  * `reminder_dN_sent_at` columns are the truth. Re-runs are no-ops once
@@ -26,9 +31,8 @@ final class SendCoolingOffReminders
 {
     /** Each entry: [milestone-name, days-remaining, column]. Order high→low. */
     private const MILESTONES = [
-        ['d20', 20, 'reminder_d20_sent_at'],
-        ['d7',   7, 'reminder_d7_sent_at'],
-        ['d1',   1, 'reminder_d1_sent_at'],
+        ['d7', 7, 'reminder_d7_sent_at'],
+        ['d1', 1, 'reminder_d1_sent_at'],
     ];
 
     public function __invoke(): int

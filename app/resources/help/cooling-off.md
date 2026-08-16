@@ -14,7 +14,7 @@
 - During the window, cancellation is a right — it is **always** honoured in full.
 
 ### Reminders
-The platform sends cancellation-window reminders at **D-20, D-7, and D-1** so no
+The platform sends cancellation-window reminders at **D-7 and D-1** so no
 one misses the window unaware. These are factual reminders, not a sales push.
 
 ---

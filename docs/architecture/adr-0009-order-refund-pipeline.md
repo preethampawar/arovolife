@@ -5,6 +5,7 @@
 - **Deciders:** Laravel Architect, Finance, Compliance Officer, Product Owner
 - **Supersedes:** —
 - **Builds on:** ADR-0004 (double-entry ledger), ADR-0005 (per-order cooling-off clock), ADR-0006 (BV ledger)
+- **Amendments:** 2026-08-16 — return-window reminder cadence reduced to D-7 / D-1 (see [Amendments](#amendments))
 
 ## Context
 
@@ -136,5 +137,15 @@ lost.
 4. `Returns\Services\InspectReturn` (admin, buyback reasons only) → `ReturnInspection` + `BuybackDecision`, order → `refund_inspection`. **Reject → re-assert `order_cooling_off.ends_at`** (don't consume remaining window).
 5. `Returns\Services\RefundOrder` → ledger reversal + BV reverse + **credit note only when `refund_gst`** (else buyback voucher) + order → **`refund_approved`** + `order.refund_approved` event; idempotent (`refund:{order_id}`).
 6. Storefront "Return this order" UI (within window) with accurate **"refund initiated"** copy + admin inspection/decision UI (gated `can:finance.record`).
-7. Per-order D-20/D-7/D-1 return-window reminders (reuse the Compliance SMS sender, Phase-2 template — ADR-0005).
+7. Per-order **D-7/D-1** return-window reminders (reuse the Compliance SMS sender, Phase-2 template — ADR-0005). Two milestones, not three — amended 2026-08-16, see [Amendments](#amendments); do not create a `d20` column.
 8. Update help docs (`cooling-off.md`, `compliance-dos-and-donts.md`) + risk register; full test pass; **re-run `compliance-officer` before merge**.
+
+## Amendments
+
+### 2026-08-16 — return-window reminder cadence reduced to D-7 / D-1
+
+Build step 7 originally specified per-order return-window reminders at D-20/D-7/D-1, mirroring the Phase-1 distributor-agreement cron. That cron was cut to **D-7 and D-1** on 2026-08-16 (three statutory-sounding mails per window read as noise and buried the two that matter). This ADR follows so the refund pipeline lands at two milestones from day one rather than shipping a cadence we would immediately have to walk back.
+
+Reminder cadence is a risk-register **R-04** control, not a statutory requirement — DSR 2021 Rule 5(1)(g) and T&C §4/§8 fix the 30-day window, the right to return, and the buyback amounts, none of which change here. The customer is still warned twice, including on the final day of the window, and the one-click cooling-off refund carve-out in build step 3 is untouched.
+
+Rationale, compliance analysis and the retained-column rule are recorded in full in ADR-0005 → Amendments.

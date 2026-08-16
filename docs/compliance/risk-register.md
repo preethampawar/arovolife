@@ -9,7 +9,7 @@ phase can close.
 | R-01 | Pyramid / money-circulation interpretation | Statutory — Critical | DSR 2021 §2(1)(j); T&C Definition "Pyramid Scheme" | Commissions only on product sales; every commission row has `product_sale_id NOT NULL` | 4 | Pending |
 | R-02 | Mis-selling & income guarantees | Statutory — High | DSR 5(1)(d); T&C §6 | No earnings calculator on public site; orientation required; all marketing copy reviewed | All | In-design |
 | R-03 | Forced purchase at joining | Statutory — High | T&C §4 | Registration cannot add SKUs; unit test asserts | 1 | In-progress |
-| R-04 | Failure of cooling-off (30 days) | Statutory — High | T&C §4, Code V | `cooling_off_end_at` stamp; one-click cancel; reminders at D-20 / D-7 / D-1 | 1 + 8 | In-progress |
+| R-04 | Failure of cooling-off (30 days) | Statutory — High | T&C §4, Code V | `cooling_off_end_at` stamp; one-click cancel; reminders at D-7 / D-1 | 1 + 8 | In-progress |
 | R-05 | Buyback / return not honoured | Statutory — Medium | T&C §8 | Workflow enforces saleable/non-saleable split and GST deduction rules | 8 | Scheduled |
 | R-06 | Duplicate PAN / duplicate ADN | Statutory — High | T&C §1.4, §7 | Unique index on PAN hash; couple rule engine; duplicate detection cron | 1 | In-progress |
 | R-07 | KYC data breach (PAN, Aadhaar) | Data protection — Critical | DPDP 2023; T&C §15 | AES-256 at rest; last-4 display; audit log; purpose-limited access | 1 | In-progress |
