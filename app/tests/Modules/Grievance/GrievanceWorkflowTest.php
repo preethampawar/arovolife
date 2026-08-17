@@ -38,21 +38,26 @@ declare(strict_types=1);
  * GRV-028: staff-authored fields reject a raw Aadhaar the same way complainant fields do
  */
 
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Grievance\DTOs\FileGrievanceData;
 use App\Modules\Grievance\Enums\EscalationLevel;
 use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Enums\TicketChannel;
 use App\Modules\Grievance\Enums\TicketStatus;
 use App\Modules\Grievance\Models\Ticket;
+use App\Modules\Grievance\Models\TicketAttachment;
 use App\Modules\Grievance\Notifications\GrievanceAcknowledgementNotification;
 use App\Modules\Grievance\Services\GrievanceComplianceReport;
 use App\Modules\Grievance\Services\GrievanceService;
 use App\Modules\Grievance\Services\GrievanceSlaCalculator;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -342,7 +347,7 @@ it('GRV-014: escalation stops at the Compliance Committee, the last internal ste
 
 it('GRV-015: every grievance screen renders — public, distributor and admin', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $staff = grvStaff();
     $staff->assignRole('admin');
@@ -414,7 +419,7 @@ it('GRV-017: a complaint carrying a full Aadhaar or PAN is rejected before it is
 
 it('GRV-018: a staff-recorded complaint runs its clocks from the receipt date, not the keying-in date', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $staff = grvStaff();
     $staff->assignRole('admin-operations');
@@ -442,7 +447,7 @@ it('GRV-018: a staff-recorded complaint runs its clocks from the receipt date, n
 
 it('GRV-019: admin-finance cannot reach the grievance queue at all', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $finance = grvStaff();
     $finance->assignRole('admin-finance');
@@ -455,7 +460,7 @@ it('GRV-019: admin-finance cannot reach the grievance queue at all', function ()
 
 it('GRV-020: an ethics complaint is invisible to operations and visible to compliance', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $operations = grvStaff();
     $operations->assignRole('admin-operations');
@@ -480,7 +485,7 @@ it('GRV-020: an ethics complaint is invisible to operations and visible to compl
 
 it('GRV-021: nobody can handle a grievance filed by their own distributor account', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $staffUser = grvDistributorUser();
     $staffUser->assignRole('admin');
@@ -519,7 +524,7 @@ it('GRV-023: a distributor cannot download another distributor’s evidence', fu
     $theirs = grvDistributorUser();
 
     $ticket = grvFile(['distributorId' => $theirs->distributor->id]);
-    $attachment = \App\Modules\Grievance\Models\TicketAttachment::create([
+    $attachment = TicketAttachment::create([
         'ticket_id' => $ticket->id,
         'disk' => 'grievance',
         'path' => $ticket->ticket_no.'/evidence.pdf',
@@ -536,7 +541,7 @@ it('GRV-023: a distributor cannot download another distributor’s evidence', fu
 
 it('GRV-024: opening a grievance writes an audit-log row', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $staff = grvStaff();
     $staff->assignRole('admin-compliance');
@@ -545,7 +550,7 @@ it('GRV-024: opening a grievance writes an audit-log row', function () {
 
     $this->actingAs($staff)->get(route('admin.grievances.show', $ticket->id))->assertOk();
 
-    expect(\App\Modules\Compliance\Models\AuditLog::where('action', 'grievance.viewed')
+    expect(AuditLog::where('action', 'grievance.viewed')
         ->where('subject_id', $ticket->id)
         ->exists())->toBeTrue();
 });
@@ -584,7 +589,7 @@ it('GRV-026: the compliance report separates acknowledgements owed from those ne
 
 it('GRV-027: the compliance report hides ethics counts from anyone who cannot open an ethics ticket', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $operations = grvStaff();
     $operations->assignRole('admin-operations');
@@ -608,7 +613,7 @@ it('GRV-027: the compliance report hides ethics counts from anyone who cannot op
 
 it('GRV-028: staff-authored fields reject a raw Aadhaar the same way complainant fields do', function () {
     Notification::fake();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $staff = grvStaff();
     $staff->assignRole('admin-compliance');
@@ -622,4 +627,53 @@ it('GRV-028: staff-authored fields reject a raw Aadhaar the same way complainant
     $this->actingAs($staff)->post(route('admin.grievances.respond', $ticket->id), [
         'note' => 'Please confirm PAN ABCDE1234F.',
     ])->assertSessionHasErrors('note');
+});
+
+it('GRV-020: an attachment whose bytes are not what it claims is rejected', function () {
+    Notification::fake();
+    Storage::fake('s3');
+
+    // A file named .pdf whose contents are not a PDF. `mimes:` reads the
+    // extension and the client-declared type and would have taken it; nothing
+    // read the bytes on the grievance paths at all until T-6.1 finding H-4.
+    $liar = UploadedFile::fake()->createWithContent('evidence.pdf', '<?php echo "not a pdf";');
+
+    $this->post(route('grievance.store'), [
+        'subject' => 'Refund not received',
+        'body' => 'Attaching the receipt.',
+        'category' => TicketCategory::Refund->value,
+        'name' => 'Ravi Kumar',
+        'email' => 'ravi@example.com',
+        'consent_privacy' => '1',
+        'attachments' => [$liar],
+    ])->assertSessionHasErrors('attachments.0');
+
+    expect(Ticket::count())->toBe(0);
+});
+
+it('GRV-021: a genuine image attachment is still accepted', function () {
+    Notification::fake();
+    Storage::fake('s3');
+
+    // The guard must not break the common case: a phone screenshot. Real PNG
+    // magic bytes, written explicitly rather than via fake()->image(), so the
+    // test exercises the signature check itself and does not depend on GD
+    // being compiled into whatever PHP runs the suite.
+    $png = UploadedFile::fake()->createWithContent(
+        'what-arrived.png',
+        "\x89PNG\r\n\x1A\n".str_repeat("\0", 64),
+    );
+
+    $this->post(route('grievance.store'), [
+        'subject' => 'Wrong item delivered',
+        'body' => 'Photo of what arrived.',
+        'category' => TicketCategory::Refund->value,
+        'name' => 'Ravi Kumar',
+        'email' => 'ravi@example.com',
+        'consent_privacy' => '1',
+        'attachments' => [$png],
+    ])->assertSessionHasNoErrors();
+
+    expect(Ticket::count())->toBe(1)
+        ->and(TicketAttachment::count())->toBe(1);
 });

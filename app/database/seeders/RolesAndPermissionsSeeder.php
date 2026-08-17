@@ -34,6 +34,16 @@ final class RolesAndPermissionsSeeder extends Seeder
         'placement.decide' => 'admin-operations',   // approve/reject line-change
         'finance.record' => 'admin-finance',        // record refunds and finance actions
         'compliance.discipline' => 'admin-compliance', // freeze / unfreeze / terminate
+
+        // Added 2026-08-17 after the T-6.1 audit found R-17 was enforced on
+        // only four routes. Everything else in the admin console was open to
+        // every admin-family role, which meant admin-finance — the role that
+        // by design cannot freeze an account — could approve a KYC submission,
+        // read Aadhaar and PAN scans, and set an arbitrary password on any
+        // distributor. That last one is account takeover by a finance clerk,
+        // against a staff login with no MFA.
+        'kyc.review' => 'admin-operations',         // approve / reject / terminate a KYC submission
+        'commerce.order.manage' => 'admin-operations', // ship / deliver / cancel an order
     ];
 
     /**
@@ -48,6 +58,26 @@ final class RolesAndPermissionsSeeder extends Seeder
      */
     private const SHARED = [
         'grievance.handle' => ['admin-operations', 'admin-compliance'],
+
+        // Reading the audit log is monitoring, not action, and every scoped
+        // role needs it to do its own job — but admin-finance reading it is
+        // also the check on admin-finance, so it stays broad deliberately.
+        'audit.read' => ['admin-operations', 'admin-finance', 'admin-compliance'],
+    ];
+
+    /**
+     * Permissions no scoped role holds: `admin` and `developer` only.
+     *
+     * These are the ones where the blast radius is the whole platform rather
+     * than one queue. Changing a distributor's credentials or identity is
+     * indistinguishable from being them; changing a setting silently changes
+     * what the platform pays or who it lets in.
+     *
+     * @var array<int, string>
+     */
+    private const SUPER_ONLY = [
+        'distributor.credentials',  // set-password, password-reset, identity, id-photo
+        'settings.write',           // any settings mutation, including the age rules
     ];
 
     public function run(): void
@@ -62,6 +92,13 @@ final class RolesAndPermissionsSeeder extends Seeder
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
 
             $role->givePermissionTo($permission);
+            $admin->givePermissionTo($permission);
+            $developer->givePermissionTo($permission);
+        }
+
+        foreach (self::SUPER_ONLY as $permissionName) {
+            $permission = Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => $guard]);
+
             $admin->givePermissionTo($permission);
             $developer->givePermissionTo($permission);
         }

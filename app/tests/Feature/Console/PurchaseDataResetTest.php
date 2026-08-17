@@ -28,7 +28,7 @@ function seedPurchaseData(): Distributor
         'effective_at' => now(),
     ]);
 
-    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit');
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
 
     DB::table('group_bv_daily')->insert([
         'distributor_id' => $dist->id,

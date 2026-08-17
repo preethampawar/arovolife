@@ -6,18 +6,26 @@
 <div class="max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-2">Mandatory Orientation</h2>
     <p class="text-gray-600 text-sm mb-6">
-        You must watch the full orientation video and pass the quiz before proceeding.
-        This is required by the Consumer Protection (Direct Selling) Rules, 2021.
+        Orientation is required by the Consumer Protection (Direct Selling) Rules, 2021.
+        The knowledge check below must be passed before you can proceed.
     </p>
 
     {{-- Video --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h3 class="font-semibold text-gray-800 mb-3">arovolife Direct Selling — Orientation Video</h3>
-        <div class="relative w-full aspect-video bg-white rounded-lg flex items-center justify-center border border-gray-200 mb-4" id="video-placeholder">
-            <div class="text-center">
-                <div class="text-4xl mb-2">▶</div>
-                <p class="text-sm text-gray-600">Orientation Video (Phase 1 placeholder)</p>
-                <p class="text-xs text-gray-400 mt-1">Duration: ~8 minutes</p>
+        {{-- No video has been produced yet. The screen must not imply one is
+             playing: the box below used to render a ▶ and "~8 minutes", and
+             the applicant was then asked to confirm they had watched it. See
+             C-03 / R-50 — the video and real playback tracking are a launch
+             blocker, and this placeholder says so out loud until they ship. --}}
+        <div class="relative w-full aspect-video bg-amber-50 rounded-lg flex items-center justify-center border border-amber-300 mb-4" id="video-placeholder">
+            <div class="text-center px-6">
+                <p class="text-sm font-semibold text-amber-800">The orientation video is not available yet.</p>
+                <p class="text-xs text-amber-700 mt-2 leading-relaxed">
+                    It is being produced. Until it is published you can still complete the knowledge
+                    check below, and we record that you have not yet watched a video — we do not
+                    record that you have.
+                </p>
             </div>
         </div>
     </div>
@@ -31,8 +39,8 @@
                 <input type="checkbox" name="confirmed_watched" value="1" required
                     class="mt-0.5 rounded text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <div>
-                    <span class="text-sm font-medium text-gray-800">I confirm I have watched the full orientation video <span class="text-red-700">*</span></span>
-                    <p class="text-xs text-gray-500 mt-0.5">Check this only after watching the complete video above</p>
+                    <span class="text-sm font-medium text-gray-800">I confirm I have read and understood the orientation material <span class="text-red-700">*</span></span>
+                    <p class="text-xs text-gray-500 mt-0.5">We record this as your own declaration. It is not a record that a video was watched.</p>
                 </div>
             </label>
             @error('confirmed_watched')<p class="mt-2 text-xs text-red-700">{{ $message }}</p>@enderror

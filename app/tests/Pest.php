@@ -121,3 +121,18 @@ function enableTestForeignKeys(): void
     }
     // SQLite: defer_foreign_keys auto-resets at the end of the txn.
 }
+
+/**
+ * A distinct wallet-ledger reference for a test fixture.
+ *
+ * `uniq_wallet_ledger_source (type, reference_type, reference_id)` is the
+ * engines' idempotency guard — a rerun cannot credit the same result row
+ * twice. Fixtures standing in for engine output therefore need a fresh
+ * reference per credit, exactly as a real engine would supply.
+ */
+function walletRef(): int
+{
+    static $sequence = 0;
+
+    return ++$sequence;
+}

@@ -26,7 +26,7 @@ it('wipes everything and rebuilds only the 31 reserved company distributors (lev
         'type' => 'accrual',
         'effective_at' => now(),
     ]);
-    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit');
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
     DB::table('customers')->insert([
         'display_name' => 'Test Buyer',
         'created_at' => now(),

@@ -67,12 +67,20 @@
                 <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">v1.0.0</span>
             </div>
             <div class="bg-white rounded-lg p-4 text-xs text-gray-600 max-h-32 overflow-y-auto leading-relaxed mb-4">
+                {{-- This summary must say what the published plan says and nothing more. It previously
+                     characterised plan amounts by reference to what the best-earning distributors had made,
+                     which is an income representation (hard rule 3, DSR Rule 5(1)(d)) — and it sat inside
+                     the document the applicant affirmatively consents to. The wording below is taken from
+                     /p/compensation §1.1–§1.2. See C-02, 2026-08-17. --}}
                 All commissions, bonuses and rewards under the arovolife compensation plan are derived exclusively
                 from the sale of products to end consumers. No commission, bonus or payout of any kind may be
                 earned solely from the act of recruiting new Direct Sellers.
-                The plan details are available in the Product Catalogue (published separately).
-                Income amounts shown in any plan illustration represent maximum achievable levels
-                based on historical top performer data — they are not guarantees of typical results.
+                The plan describes <strong>how a payment is calculated if a condition is met</strong>. It is not a
+                representation, promise, guarantee, estimate, average or illustration that you will meet that
+                condition, or will earn any amount at all. Most Distributors do not reach the higher slabs, and
+                many earn nothing. Several amounts are variable and <strong>may be zero</strong>.
+                The full plan is published at <a href="{{ url('/p/compensation') }}" target="_blank" rel="noopener"
+                   class="text-brand-600 underline">arovolife.com/p/compensation</a>.
             </div>
             <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200 hover:border-brand-500 transition-colors">
                 <input type="checkbox" name="consent_plan" value="1" required

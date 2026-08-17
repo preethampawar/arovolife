@@ -99,7 +99,12 @@
                         ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => '👥', 'prefix' => 'admin.staff']]
                         : []),
                     ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => '⌬', 'prefix' => 'admin.tree'],
-                    ['route' => 'admin.kyc.index',                'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc'],
+                    // KYC is gated on `kyc.review` (R-17). Hiding the item
+                    // rather than letting it 403 keeps admin-finance from
+                    // walking into a wall on every shift.
+                    ...(auth()->user()?->can('kyc.review')
+                        ? [['route' => 'admin.kyc.index',            'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc']]
+                        : []),
                     ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => '⇄', 'prefix' => 'admin.line-changes'],
                     ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => '✉', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
                     // Grievances are gated on `grievance.handle` (R-17: not
@@ -133,7 +138,9 @@
                     ['route' => 'admin.compliance-documents.index','label' => 'Compliance Docs', 'icon' => '🛡', 'prefix' => 'admin.compliance-documents'],
                     ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => '⚙'],
                     ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => '⚑', 'prefix' => 'admin.feature-flags'],
-                    ['route' => 'admin.audit-log',                'label' => 'Audit Log',      'icon' => '☰'],
+                    ...(auth()->user()?->can('audit.read')
+                        ? [['route' => 'admin.audit-log',            'label' => 'Audit Log',      'icon' => '☰']]
+                        : []),
                     ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => '❔', 'prefix' => 'admin.help'],
                 ];
             @endphp

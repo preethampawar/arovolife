@@ -1543,12 +1543,6 @@ parameters:
 			path: database/seeders/SettingsSeeder.php
 
 		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
-			path: tests/Feature/Compliance/CommissionHasProductSaleTest.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$opened_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1571,6 +1565,18 @@ parameters:
 			identifier: foreach.nonIterable
 			count: 1
 			path: tests/Feature/Compliance/RegistrationHasZeroOrdersTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 17
+			path: tests/Feature/Compliance/SeparationOfDutiesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Compliance/SeparationOfDutiesTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
@@ -2913,7 +2919,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
 			identifier: method.notFound
-			count: 9
+			count: 11
 			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
 
 		-
@@ -3293,6 +3299,36 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Messaging/MessageFlowTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$paid_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Payments\\Models\\PaymentIntent\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<\(Closure\)\|null\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'

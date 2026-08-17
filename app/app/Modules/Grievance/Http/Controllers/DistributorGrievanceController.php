@@ -13,6 +13,7 @@ use App\Modules\Grievance\Rules\NoRawGovernmentId;
 use App\Modules\Grievance\Services\GrievanceService;
 use App\Modules\Grievance\Services\GrievanceSettingsService;
 use App\Modules\Grievance\Support\GrievanceAttachmentStore;
+use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -88,6 +89,8 @@ final class DistributorGrievanceController extends Controller
                 'file',
                 'max:'.$this->settings->attachmentMaxKilobytes(),
                 'mimes:pdf,jpg,jpeg,png,webp,heic',
+                // The declared type is the client's claim; this reads the bytes.
+                new ValidUploadedDocumentBytes(ValidUploadedDocumentBytes::EVIDENCE),
             ],
         ], [
             'attachments.*.max' => 'Each file must be under '.($this->settings->attachmentMaxKilobytes() / 1024).' MB.',
@@ -146,6 +149,8 @@ final class DistributorGrievanceController extends Controller
                 'file',
                 'max:'.$this->settings->attachmentMaxKilobytes(),
                 'mimes:pdf,jpg,jpeg,png,webp,heic',
+                // The declared type is the client's claim; this reads the bytes.
+                new ValidUploadedDocumentBytes(ValidUploadedDocumentBytes::EVIDENCE),
             ],
         ]);
 

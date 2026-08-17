@@ -244,12 +244,19 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/distributors', [AdminDistributorCreateController::class, 'store'])->name('distributors.store');
 
     Route::get('/distributors/{id}', [AdminDistributorController::class, 'show'])->whereNumber('id')->name('distributors.show');
-    Route::get('/distributors/{id}/edit', [AdminDistributorEditController::class, 'edit'])->whereNumber('id')->name('distributors.edit');
-    Route::patch('/distributors/{id}', [AdminDistributorEditController::class, 'update'])->whereNumber('id')->name('distributors.update');
-    Route::post('/distributors/{id}/password-reset', [AdminDistributorEditController::class, 'sendPasswordReset'])->whereNumber('id')->name('distributors.password-reset');
-    Route::post('/distributors/{id}/set-password', [AdminDistributorEditController::class, 'setPassword'])->whereNumber('id')->name('distributors.set-password');
-    Route::post('/distributors/{id}/identity', [AdminDistributorEditController::class, 'updateIdentity'])->whereNumber('id')->name('distributors.identity');
-    Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
+    // Credentials and identity — `distributor.credentials`, held by `admin`
+    // and `developer` only (R-17). Setting a password on somebody's account is
+    // indistinguishable from being them, and the staff login has no MFA; a
+    // finance or operations clerk must not be one form away from taking over
+    // any distributor in the company. T-6.1 finding H-1a.
+    Route::middleware('can:distributor.credentials')->group(function (): void {
+        Route::get('/distributors/{id}/edit', [AdminDistributorEditController::class, 'edit'])->whereNumber('id')->name('distributors.edit');
+        Route::patch('/distributors/{id}', [AdminDistributorEditController::class, 'update'])->whereNumber('id')->name('distributors.update');
+        Route::post('/distributors/{id}/password-reset', [AdminDistributorEditController::class, 'sendPasswordReset'])->whereNumber('id')->name('distributors.password-reset');
+        Route::post('/distributors/{id}/set-password', [AdminDistributorEditController::class, 'setPassword'])->whereNumber('id')->name('distributors.set-password');
+        Route::post('/distributors/{id}/identity', [AdminDistributorEditController::class, 'updateIdentity'])->whereNumber('id')->name('distributors.identity');
+        Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
+    });
     // Account discipline (block / unblock / terminate) — admin-compliance (R-17).
     Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.freeze');
     Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.unfreeze');
@@ -258,15 +265,24 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/distributors/{id}/deactivate', [AdminDistributorController::class, 'deactivate'])->whereNumber('id')->name('distributors.deactivate');
 
     Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
-    Route::post('/settings/age-rules', [AdminSettingsController::class, 'updateStateAgeMinimums'])->name('settings.age-rules');
+    // Reading a setting is monitoring; writing one changes what the platform
+    // pays or who it lets in, so writes are `settings.write` — `admin` and
+    // `developer` only (T-6.1 H-1). Developer-owned keys are narrowed further
+    // inside the controller.
+    Route::post('/settings/age-rules', [AdminSettingsController::class, 'updateStateAgeMinimums'])
+        ->middleware('can:settings.write')->name('settings.age-rules');
     // Per-setting update from the friendly UI cards. The {key} param is the
     // dotted setting key (e.g. commerce.checkout.enabled). The controller
     // matches it against the registry and aborts 404 if not registered.
     Route::post('/settings/{key}', [AdminSettingsController::class, 'update'])
         ->where('key', '[a-z0-9_.-]+')
+        ->middleware('can:settings.write')
         ->name('settings.update');
 
-    Route::get('/audit-log', [AdminAuditLogController::class, 'index'])->name('audit-log');
+    // Every scoped role can read it — reading the audit log is also how each
+    // role is checked by the others, so it stays deliberately broad.
+    Route::get('/audit-log', [AdminAuditLogController::class, 'index'])
+        ->middleware('can:audit.read')->name('audit-log');
 
     // Help & Reference — in-admin rendering of curated docs/ markdown.
     Route::get('/help', [AdminHelpController::class, 'index'])->name('help.index');
@@ -290,16 +306,21 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/contact-inquiries/{id}/handle', [AdminContactController::class, 'markHandled'])->name('contact-inquiries.handle');
     Route::post('/contact-inquiries/{id}/unhandle', [AdminContactController::class, 'markUnhandled'])->name('contact-inquiries.unhandle');
 
-    // KYC manual review
-    Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
-    Route::get('/kyc/{id}', [AdminKycController::class, 'show'])->name('kyc.show');
-    Route::get('/kyc/{id}/documents/{docId}', [AdminKycController::class, 'streamDocument'])->name('kyc.document');
-    Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
-    Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
-    Route::post('/kyc/{id}/terminate', [AdminKycController::class, 'terminate'])->name('kyc.terminate');
-    Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
-    Route::post('/kyc/{id}/documents/{docId}/flag', [AdminKycController::class, 'flagDocument'])
-        ->whereNumber('id')->whereNumber('docId')->name('kyc.document.flag');
+    // KYC manual review — `kyc.review` (admin-operations, R-17). The whole
+    // queue is gated, not just the decisions: `streamDocument` serves the raw
+    // Aadhaar and PAN scans, and who may look at those is as much a DPDP
+    // question as who may approve them. T-6.1 finding H-1.
+    Route::middleware('can:kyc.review')->group(function (): void {
+        Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
+        Route::get('/kyc/{id}', [AdminKycController::class, 'show'])->name('kyc.show');
+        Route::get('/kyc/{id}/documents/{docId}', [AdminKycController::class, 'streamDocument'])->name('kyc.document');
+        Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
+        Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
+        Route::post('/kyc/{id}/terminate', [AdminKycController::class, 'terminate'])->name('kyc.terminate');
+        Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
+        Route::post('/kyc/{id}/documents/{docId}/flag', [AdminKycController::class, 'flagDocument'])
+            ->whereNumber('id')->whereNumber('docId')->name('kyc.document.flag');
+    });
 
     // Line-change requests — review queue + approve/reject
     Route::get('/line-changes', [AdminLineChangeController::class, 'index'])->name('line-changes.index');
@@ -311,9 +332,14 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');
     Route::get('/commerce/orders/{order}', [AdminOrderController::class, 'show'])->name('commerce.orders.show');
-    Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
-    Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
-    Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
+    // Moving an order's state posts to the ledger and can reverse BV, so it is
+    // `commerce.order.manage` (admin-operations, R-17). Viewing stays open to
+    // the whole admin family — support has to be able to look.
+    Route::middleware('can:commerce.order.manage')->group(function (): void {
+        Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
+        Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
+        Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
+    });
 
     // Returns — admin inspection / approve / reject (finance.record, R-17; ADR-0009).
     Route::get('/returns', [AdminReturnController::class, 'index'])->name('returns.index');
