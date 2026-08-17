@@ -2869,6 +2869,12 @@ parameters:
 			path: tests/Modules/Compliance/InactivityTerminationTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Compliance/RetentionPolicyTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 5

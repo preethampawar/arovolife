@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compliance;
 
 use App\Modules\Compliance\Console\Commands\InactivityTerminationSweepCommand;
+use App\Modules\Compliance\Console\Commands\RetentionReportCommand;
 use App\Modules\Compliance\Console\Commands\VerifyAuditLogCommand;
 use App\Modules\Compliance\Console\SendCoolingOffRemindersCommand;
 use App\Modules\Compliance\Events\CoolingOffCancelled;
@@ -28,6 +29,7 @@ final class ComplianceServiceProvider extends ServiceProvider
                 SendCoolingOffRemindersCommand::class,
                 InactivityTerminationSweepCommand::class,
                 VerifyAuditLogCommand::class,
+                RetentionReportCommand::class,
             ]);
 
             // Daily at 09:00 IST. The Docker scheduler container runs
