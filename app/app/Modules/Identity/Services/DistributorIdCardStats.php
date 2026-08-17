@@ -31,11 +31,16 @@ use Laravel\Pennant\Feature;
  * wire the placeholder fields (rank engine, BV ledger, payouts) every
  * surface picks up the new values automatically.
  *
- * Every field is now live: total_personal_bv and personal_sales_title from the
- * BV ledger and the personal-purchase title ladder, highest_rank /
- * current_rank from the rank engine, total_withdrawal_income from the settled
- * payout line items. The tree-card partials still render three of these as
- * hard-coded `—`; grep for `PHASE_LATER_PLACEHOLDER` to find them.
+ * Every field is live and every surface reads them from here:
+ * total_personal_bv and personal_sales_title from the BV ledger and the
+ * personal-purchase title ladder, highest_rank / current_rank from the rank
+ * engine, total_withdrawal_income from the settled payout line items. No
+ * placeholders remain.
+ *
+ * The compact fields are own-data-only, so a tree canvas needs {@see
+ * self::compact()} exactly once — for the viewer's own node. `_content.blade.php`
+ * resolves it there and the node partials render "—" for every other card;
+ * do not call this per node.
  */
 final class DistributorIdCardStats
 {
