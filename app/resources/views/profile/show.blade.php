@@ -106,6 +106,33 @@
         </div>
     </form>
 
+    {{-- ── Your data ────────────────────────────────────────────────────────── --}}
+    @if($distributor)
+    <div class="mt-6 bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 class="font-semibold text-gray-800 mb-1">Your data and consent</h2>
+        <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+            You consented to four documents when you registered. Under §6 of the Digital Personal Data
+            Protection Act, 2023 you can withdraw that consent at any time — it must be as easy to take
+            back as it was to give.
+        </p>
+        <div class="flex flex-wrap items-center gap-4">
+            <a href="{{ url('/p/privacy') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">
+                Read the Privacy Policy →
+            </a>
+            {{-- Deliberately a plain link and not a hidden menu item. A
+                 withdrawal route that is hard to find is a withdrawal route
+                 that does not satisfy §6(5). --}}
+            <a href="{{ route('consent.withdraw') }}" class="text-sm text-red-700 hover:text-red-800 font-medium">
+                Withdraw consent →
+            </a>
+        </div>
+        <p class="mt-3 text-xs text-gray-600">
+            Withdrawing consent closes your ADN — we cannot operate one without consent to process the
+            KYC and payment data the law requires us to hold. The next screen explains exactly what happens.
+        </p>
+    </div>
+    @endif
+
     {{-- ── Arete Development Centre ─────────────────────────────────────────── --}}
     @if($distributor)
     <div class="mt-6 bg-white rounded-2xl border border-gray-200 p-6">

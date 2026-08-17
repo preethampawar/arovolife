@@ -63,6 +63,7 @@ use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentControl
 use App\Modules\Compliance\Http\Controllers\Admin\AdminDormancyController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
+use App\Modules\Consent\Http\Controllers\ConsentWithdrawalController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
@@ -866,6 +867,15 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Profile + change-password (any logged-in user; admins included).
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+
+    // Consent withdrawal (DPDP 2023 §6(4)-(6); Privacy Policy §10.5). Sits on
+    // the distributor's own profile and needs no approval from anyone —
+    // withdrawal has to be as easy as giving, and a queue would make it
+    // harder than the checkbox that granted it.
+    Route::get('/profile/withdraw-consent', [ConsentWithdrawalController::class, 'show'])
+        ->name('consent.withdraw');
+    Route::post('/profile/withdraw-consent', [ConsentWithdrawalController::class, 'store'])
+        ->middleware('throttle:5,60')->name('consent.withdraw.store');
     // Throttled: update() issues+emails an OTP, confirm() verifies it — cap
     // both so a code can't be email-spammed or its attempt counter reset.
     Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:6,10')->name('profile.update');
