@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\Csv;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -81,14 +82,18 @@ final class AdminWeeklyPayoutController extends Controller
                 'Line#', 'ADN', 'Full Name', 'Bank Last 4', 'Net Amount (₹)', 'UTR', 'Status',
             ]);
             foreach ($lines as $i => $line) {
+                // Every free-text field goes through Csv::safe(). The name is
+                // whatever the distributor typed at registration, and this is
+                // the file that gets opened in Excel and handed to the bank —
+                // a cell beginning `=` is a formula there, not a name.
                 fputcsv($out, [
                     $i + 1,
-                    $line->distributor->adn ?? '',
-                    $line->distributor->user?->full_name ?? '',
-                    $line->bank_account_last4 ?? '',
+                    Csv::safe($line->distributor->adn ?? ''),
+                    Csv::safe($line->distributor->user?->full_name ?? ''),
+                    Csv::safe($line->bank_account_last4 ?? ''),
                     number_format($line->net_transferred_paise / 100, 2, '.', ''),
-                    $line->utr_number ?? '',
-                    $line->status,
+                    Csv::safe($line->utr_number ?? ''),
+                    Csv::safe($line->status),
                 ]);
             }
             fclose($out);

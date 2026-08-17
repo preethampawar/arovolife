@@ -7,6 +7,7 @@ namespace App\Modules\Grievance\Http\Controllers;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Services\GrievanceComplianceReport;
+use App\Modules\Shared\Support\Csv;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
@@ -69,8 +70,12 @@ final class AdminGrievanceReportController extends Controller
             fputcsv($handle, GrievanceComplianceReport::csvColumns());
 
             foreach ($rows as $row) {
+                // The report carries complaint subjects and reporter-supplied
+                // text. This file goes to the Compliance Committee and, on
+                // request, to a regulator — both of whom open it in a
+                // spreadsheet, where a cell starting `=` is a formula.
                 fputcsv($handle, array_map(
-                    static fn (string $column) => $row[$column] ?? '',
+                    static fn (string $column): string => Csv::safe($row[$column] ?? ''),
                     GrievanceComplianceReport::csvColumns()
                 ));
             }

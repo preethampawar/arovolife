@@ -169,7 +169,11 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Defaults to on outside local/testing rather than to null. `null` means
+    // the cookie is sent over plain HTTP too, so a single downgraded request
+    // leaks the session — and the key was absent from .env.example, so every
+    // environment inherited that default silently (T-6.1 finding M-3).
+    'secure' => env('SESSION_SECURE_COOKIE', ! in_array(env('APP_ENV', 'production'), ['local', 'testing'], true)),
 
     /*
     |--------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Shared\Logging\PiiScrubberProcessor;
 use App\Modules\Shared\Logging\TapPiiScrubber;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
@@ -25,6 +26,12 @@ return [
     |--------------------------------------------------------------------------
     | PII Scrubber
     |--------------------------------------------------------------------------
+    |
+    | EVERY channel carries the scrubber, not just the two that write files.
+    | It previously hung off `single` and `daily` only, so `.env` pointing
+    | LOG_STACK at stderr — which is exactly what a containerised deploy does —
+    | silently disabled the control (T-6.1 finding M-4). A PII scrubber that
+    | one environment variable can switch off is not a control.
     |
     | When true, the TapPiiScrubber attaches a Monolog processor that redacts
     | PAN/Aadhaar/credentials before any log line is written. Should always
@@ -95,6 +102,7 @@ return [
             'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
             'level' => env('LOG_LEVEL', 'critical'),
             'replace_placeholders' => true,
+            'tap' => [TapPiiScrubber::class],
         ],
 
         'papertrail' => [
@@ -106,7 +114,7 @@ return [
                 'port' => env('PAPERTRAIL_PORT'),
                 'connectionString' => 'tls://'.env('PAPERTRAIL_URL').':'.env('PAPERTRAIL_PORT'),
             ],
-            'processors' => [PsrLogMessageProcessor::class],
+            'processors' => [PsrLogMessageProcessor::class, PiiScrubberProcessor::class],
         ],
 
         'stderr' => [
@@ -117,7 +125,7 @@ return [
                 'stream' => 'php://stderr',
             ],
             'formatter' => env('LOG_STDERR_FORMATTER'),
-            'processors' => [PsrLogMessageProcessor::class],
+            'processors' => [PsrLogMessageProcessor::class, PiiScrubberProcessor::class],
         ],
 
         'syslog' => [
@@ -125,12 +133,14 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'facility' => env('LOG_SYSLOG_FACILITY', LOG_USER),
             'replace_placeholders' => true,
+            'tap' => [TapPiiScrubber::class],
         ],
 
         'errorlog' => [
             'driver' => 'errorlog',
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [TapPiiScrubber::class],
         ],
 
         'null' => [

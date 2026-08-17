@@ -6,6 +6,7 @@ namespace App\Modules\Shared\Logging;
 
 use Monolog\LogRecord;
 use Monolog\Processor\ProcessorInterface;
+use Throwable;
 
 /**
  * Scrubs PAN / Aadhaar / credentials out of the log record before it leaves
@@ -77,6 +78,23 @@ final class PiiScrubberProcessor implements ProcessorInterface
                 $array[$key] = $this->scrubArray($value);
             } elseif (is_string($value)) {
                 $array[$key] = $this->scrubString($value);
+            } elseif ($value instanceof Throwable) {
+                // Laravel puts the Throwable itself under `context.exception`,
+                // and the formatter renders its message and stack trace. A PAN
+                // passed as a function argument appears in that trace, so an
+                // object left untouched here walks straight past every string
+                // rule above (T-6.1 finding M-4).
+                //
+                // Replaced with a scrubbed array rather than mutated: a
+                // Throwable's message is read-only, and re-throwing a rewritten
+                // copy would lose the original type and its chain.
+                $array[$key] = $this->scrubArray([
+                    'class' => $value::class,
+                    'message' => $value->getMessage(),
+                    'file' => $value->getFile(),
+                    'line' => $value->getLine(),
+                    'trace' => $value->getTraceAsString(),
+                ]);
             }
         }
 

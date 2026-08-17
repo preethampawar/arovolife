@@ -22,6 +22,7 @@ use App\Modules\Analytics\Services\FunnelAnalytics;
 use App\Modules\Analytics\Services\RetentionAnalytics;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,16 @@ function anlAdmin(): User
     $admin->assignRole('admin');
 
     return $admin;
+}
+
+/** A scoped staff member with no `audit.read`. */
+function anlScopedStaff(string $role): User
+{
+    Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+    $user = User::factory()->create();
+    $user->assignRole($role);
+
+    return $user;
 }
 
 // ─── the funnels ─────────────────────────────────────────────────────────────
@@ -276,4 +287,31 @@ it('falls back to the default window when the query string is malformed', functi
     $this->actingAs(anlAdmin())
         ->get('/admin/analytics?from=not-a-date&to=2026-13-45')
         ->assertOk();
+});
+
+it('ANL-012: the page is gated on audit.read, not merely on being staff', function (): void {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    // "Highest volume in the window" is a company-wide ranked list of ADN and
+    // full name. Composing everyone's trading into one league table is a
+    // different thing from the per-distributor screens each role already
+    // reaches, so it follows the audit-log permission.
+    $this->actingAs(anlScopedStaff('admin-finance'))->get('/admin/analytics')->assertOk();
+
+    $noPermission = User::factory()->create();
+    $this->actingAs($noPermission)->get('/admin/analytics')->assertForbidden();
+});
+
+it('ANL-013: an absurd date window is clamped rather than run', function (): void {
+    $admin = anlAdmin();
+
+    // Every panel aggregates over orders and the BV ledger. An unbounded
+    // window is a table scan anyone with an admin login can trigger from the
+    // query string, repeatedly.
+    $response = $this->actingAs($admin)->get('/admin/analytics?from=1900-01-01&to=2026-08-17');
+
+    $response->assertOk();
+
+    // 730 days back from the `to` date, not 1900.
+    $response->assertSee('2024-08-17');
 });

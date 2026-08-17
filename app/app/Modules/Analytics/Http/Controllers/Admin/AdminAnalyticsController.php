@@ -23,6 +23,18 @@ final class AdminAnalyticsController extends Controller
 {
     private const RETENTION_MONTHS = 12;
 
+    /**
+     * The widest window the page will report on.
+     *
+     * Every panel runs aggregates over orders and the BV ledger, and
+     * `topByVolume` additionally issues a per-row order count and a
+     * closure-table team count. An unbounded window is a table scan anyone
+     * with an admin login can trigger by editing the query string, repeatedly
+     * (T-6.1 finding M-9). Two years covers any reporting question this page
+     * is for; anything wider belongs in a warehouse, not a request.
+     */
+    private const MAX_WINDOW_DAYS = 730;
+
     public function __construct(
         private readonly FunnelAnalytics $funnels,
         private readonly RetentionAnalytics $retention,
@@ -61,6 +73,13 @@ final class AdminAnalyticsController extends Controller
         // explanation, so swap rather than confuse.
         if ($from->greaterThan($to)) {
             [$from, $to] = [$to, $from];
+        }
+
+        // Clamp rather than reject: a too-wide window is far more often a
+        // mistyped year than an attack, and an error page teaches nobody
+        // anything. The view states the window it actually used.
+        if ($from->diffInDays($to) > self::MAX_WINDOW_DAYS) {
+            $from = $to->copy()->subDays(self::MAX_WINDOW_DAYS);
         }
 
         return [$from->startOfDay(), $to->endOfDay()];

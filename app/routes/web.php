@@ -111,7 +111,12 @@ Route::middleware('guest')->group(function (): void {
     //                                     step-1 sponsor-placement form
     Route::get('/register', [RegistrationWizardController::class, 'start'])->name('register');
     Route::get('/join', [RegistrationWizardController::class, 'showJoin'])->name('join.show');
-    Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])->name('join.submit');
+    // Account creation is unauthenticated and writes rows. Without a limit,
+    // one script can fill `users` and `distributors` with junk and burn the
+    // ADN sequence (T-6.1 finding L-7). 10/hour per IP is far above any real
+    // person and far below a useful flood.
+    Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])
+        ->middleware('throttle:10,60')->name('join.submit');
 
     // ADN-name lookup used by step 1's live name-resolution UI.
     Route::get('/join/lookup', [RegistrationWizardController::class, 'lookupAdn'])
@@ -119,7 +124,8 @@ Route::middleware('guest')->group(function (): void {
 
     // Step 2 — create account. Requires the intent from step 1.
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
-    Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])->name('register.post');
+    Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])
+        ->middleware('throttle:10,60')->name('register.post');
 
     // Real-time availability check for email + phone uniqueness — called via
     // AJAX on blur from step 2 so users see "this email is already registered"
@@ -349,9 +355,14 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/returns/{return}/reject', [AdminReturnController::class, 'reject'])->middleware('can:finance.record')->whereNumber('return')->name('returns.reject');
 
     // Analytics — read-only funnels and retention over data other modules own.
-    // Open to the whole admin family: it holds no money controls and no PII
-    // beyond an ADN and a name, both of which every admin role already sees.
-    Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->name('analytics.index');
+    //
+    // Gated on `audit.read` rather than left open. It holds no money controls,
+    // but "highest volume in the window" is a company-wide ranked list of ADN
+    // and full name, and a page that composes a league table out of everyone's
+    // trading is a different thing from the single-distributor screens each
+    // role already reaches (T-6.1 finding M-9).
+    Route::get('/analytics', [AdminAnalyticsController::class, 'index'])
+        ->middleware('can:audit.read')->name('analytics.index');
 
     // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
     // The static `export` path is declared before the {distributor} wildcard
@@ -723,7 +734,11 @@ Route::middleware('capture.attribution')->group(function (): void {
     Route::get('/shop/easy-cart/{code}', [CartController::class, 'openShared'])->name('shop.easy-cart');
 
     Route::get('/shop/checkout', [CheckoutController::class, 'show'])->name('shop.checkout');
-    Route::post('/shop/checkout', [CheckoutController::class, 'place'])->name('shop.checkout.place');
+    // Checkout posts to the ledger and consumes an invoice number, so a
+    // retry storm is expensive even when every order is legitimate. 20/hour
+    // leaves room for a genuine customer correcting a failed payment.
+    Route::post('/shop/checkout', [CheckoutController::class, 'place'])
+        ->middleware('throttle:20,60')->name('shop.checkout.place');
     Route::get('/shop/confirmation/{orderNo}', [CheckoutController::class, 'confirmation'])->name('shop.confirmation');
 });
 

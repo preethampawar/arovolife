@@ -1597,6 +1597,24 @@ parameters:
 			path: tests/Feature/Console/PurchaseDataResetTest.php
 
 		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Security/HardeningTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Security/HardeningTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Security/HardeningTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 23
@@ -2091,7 +2109,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 6
+			path: tests/Modules/Analytics/AnalyticsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
 			path: tests/Modules/Analytics/AnalyticsTest.php
 
 		-
@@ -2783,6 +2807,18 @@ parameters:
 			identifier: method.notFound
 			count: 9
 			path: tests/Modules/Compensation/MyBusinessControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Compliance/AuditLogChainTest.php
+
+		-
+			message: '#^Function alcEntry\(\) has parameter \$details with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compliance/AuditLogChainTest.php
 
 		-
 			message: '#^Function seedActiveDistributor\(\) return type has no value type specified in iterable type array\.$#'
