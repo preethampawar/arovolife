@@ -12,28 +12,8 @@
     and every trigger is permanently audit-logged with your admin ID and the reason you provide.
 </div>
 
-{{-- Success flash --}}
-@if(session('status'))
-<div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 font-medium">
-    {{ session('status') }}
-</div>
-@endif
-
-@if(session('error'))
-<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 font-medium">
-    {{ session('error') }}
-</div>
-@endif
-
-@if($errors->any())
-<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-    <ul class="list-disc list-inside">
-        @foreach($errors->all() as $error)
-        <li>{{ $error }}</li>
-        @endforeach
-    </ul>
-</div>
-@endif
+{{-- Flash messages (status / error / validation) are rendered by the admin
+     layout for every page. Do not repeat them here. --}}
 
 {{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it,
      so on any environment where it is off there is no trace of it here. --}}

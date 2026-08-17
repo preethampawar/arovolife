@@ -27,9 +27,6 @@
     <a href="{{ route('admin.returns.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to returns</a>
 </div>
 
-@if(session('status'))
-<div class="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{{ session('status') }}</div>
-@endif
 @foreach(['inspect','approve','reject'] as $field)
     @error($field)<div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ $message }}</div>@enderror
 @endforeach

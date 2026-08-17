@@ -282,3 +282,17 @@ it('queues the recompute rather than running it inline', function (): void {
 
     AuditLog::query()->where('action', 'compensation.recompute_all.queued')->firstOrFail();
 });
+
+it('renders a flash message exactly once, not once per view that thought it owned it', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $response = $this->actingAs(engineRunsUser('admin'))
+        ->withSession(['status' => 'Full recompute queued.'])
+        ->get(route('admin.compensation.engine-runs.index'));
+
+    $response->assertOk();
+
+    // The admin layout renders session('status') for every page. A view that
+    // also renders its own block shows the user the same message twice.
+    expect(substr_count($response->getContent(), 'Full recompute queued.'))->toBe(1);
+});
