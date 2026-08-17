@@ -1,5 +1,6 @@
 <?php
 
+use Database\Seeders\ContentPageSeeder;
 use Database\Seeders\FortuneBonusLevelsSeeder;
 use Database\Seeders\FortuneBonusTiersSeeder;
 use Database\Seeders\GsbSlabsSeeder;
@@ -135,4 +136,20 @@ function walletRef(): int
     static $sequence = 0;
 
     return ++$sequence;
+}
+
+/**
+ * Publish the four legal documents a registration consents to.
+ *
+ * `ConsentDocuments` refuses to record a consent when the content page is not
+ * published, deliberately — a fallback would let registration proceed while
+ * writing a consent that points at nothing, which is the defect R-51 was
+ * about. Registration therefore genuinely depends on the content seeder having
+ * run, in tests exactly as in production.
+ */
+function seedConsentDocuments(): void
+{
+    // `$this->seed()` rather than instantiating the seeder: it wires the
+    // console the seeder writes its summary to, which is null otherwise.
+    test()->seed(ContentPageSeeder::class);
 }

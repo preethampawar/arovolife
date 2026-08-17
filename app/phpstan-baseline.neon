@@ -3019,6 +3019,12 @@ parameters:
 			path: tests/Modules/Identity/DistributorIdCardStatsTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Identity/EligibilityDeclarationsTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -3521,6 +3527,12 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Tax/TaxInvoiceTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Pest.php
 
 		-
 			message: '#^Function something\(\) has no return type specified\.$#'

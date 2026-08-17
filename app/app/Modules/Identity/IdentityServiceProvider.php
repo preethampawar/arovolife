@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity;
 
+use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Genealogy\Events\DistributorRegistered;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Events\KycResubmitted;
@@ -27,6 +28,7 @@ final class IdentityServiceProvider extends ServiceProvider
             return new RegistrationService(
                 new PlacementEngine($app['db'], $app['events'], $app->make(TeamStatsService::class)),
                 $app['db'],
+                $app->make(ConsentDocuments::class),
             );
         });
     }

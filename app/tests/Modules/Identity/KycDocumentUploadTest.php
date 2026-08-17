@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 /**
  * Step 7 of the registration wizard receives the actual identity & bank
  * documents. The runtime contract these tests lock:

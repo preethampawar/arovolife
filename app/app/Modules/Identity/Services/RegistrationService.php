@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\DTOs\PlacementResult;
 use App\Modules\Genealogy\Services\PlacementEngine;
@@ -26,24 +27,20 @@ use Illuminate\Support\Str;
  */
 class RegistrationService
 {
-    private const DOCUMENT_VERSIONS = [
-        'tnc' => '1.0.0',
-        'ethics' => '1.0.0',
-        'plan' => '1.0.0',
-        'privacy' => '1.0.0',
-    ];
-
-    // Phase 1 placeholder hashes — 64-char hex (SHA-256 of versioned doc stub strings)
-    private const DOCUMENT_HASHES = [
-        'tnc' => 'ac458cd6b8f804d09ff7c4e3c15175911b506609684503b882e8df6ba73de0dc',
-        'ethics' => '67e7afb1f667aee1d5cb2e3365dc2047b22f83bd696499c517dfeecb092d3417',
-        'plan' => '8056e8532e9c864c44e71fc38fa53fbda662abe9d6882d3e4df6a16a457f8746',
-        'privacy' => '1b88b7ee934f4262e47500055424ec4a6e137b0a90500b211290999e2113bc40',
-    ];
-
+    /**
+     * Document versions and hashes are no longer declared here.
+     *
+     * They were four hardcoded hashes of Phase-1 stub strings with a version
+     * of `1.0.0` for all four, while the published documents were dated
+     * 2026-05-21 and 2026-08-07 — so `consents.doc_hash_sha256` proved neither
+     * the text nor the version, which is its only purpose (R-51, IT Act §10A).
+     * `ConsentDocuments` reads both from the content page the public URL
+     * actually serves.
+     */
     public function __construct(
         private readonly PlacementEngine $engine,
         private readonly DatabaseManager $db,
+        private readonly ConsentDocuments $documents,
     ) {}
 
     /**
@@ -172,6 +169,23 @@ class RegistrationService
                 ]);
             }
 
+            // The T&C §2.3 eligibility declarations, recorded against the
+            // distributor rather than left implicit in the agreement text.
+            // Written here rather than inside PlacementEngine because they are
+            // a fact about the person, not about where they sit in the tree.
+            $declarations = $consent['declarations'] ?? [];
+
+            $this->db->table('distributors')
+                ->where('id', $result->distributorId)
+                ->update([
+                    // Null, not false, when the wizard did not ask — a `false`
+                    // would read as "they declared they are not of sound mind".
+                    'declared_sound_mind' => isset($declarations['sound_mind']) ? (bool) $declarations['sound_mind'] : null,
+                    'declared_not_insolvent' => isset($declarations['not_insolvent']) ? (bool) $declarations['not_insolvent'] : null,
+                    'declared_no_moral_turpitude' => isset($declarations['no_moral_turpitude']) ? (bool) $declarations['no_moral_turpitude'] : null,
+                    'declarations_made_at' => $declarations === [] ? null : $now,
+                ]);
+
             // Orientation record.
             //
             // This records what actually happened, which is NOT what it used
@@ -205,8 +219,9 @@ class RegistrationService
             // Consent records (4 documents)
             $ip = $consent['ip'] ?? '0.0.0.0';
             $ua = $consent['user_agent'] ?? '';
-            foreach (self::DOCUMENT_VERSIONS as $type => $version) {
-                $hash = hex2bin(self::DOCUMENT_HASHES[$type]);
+            foreach ($this->documents->all() as $type => $document) {
+                $version = $document['version'];
+                $hash = hex2bin($document['hash']);
                 $this->db->table('consents')->insert([
                     'distributor_id' => $result->distributorId,
                     'document_type' => $type,
@@ -410,8 +425,9 @@ class RegistrationService
         // spouses accept all four documents at registration time.
         $ip = $consent['ip'] ?? '0.0.0.0';
         $ua = $consent['user_agent'] ?? '';
-        foreach (self::DOCUMENT_VERSIONS as $type => $version) {
-            $hash = hex2bin(self::DOCUMENT_HASHES[$type]);
+        foreach ($this->documents->all() as $type => $document) {
+            $version = $document['version'];
+            $hash = hex2bin($document['hash']);
             $this->db->table('consents')->insert([
                 'distributor_id' => $secondaryId,
                 'document_type' => $type,

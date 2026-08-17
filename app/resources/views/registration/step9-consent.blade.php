@@ -18,7 +18,8 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-800">Direct Seller Agreement & T&amp;C</h3>
-                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">v1.0.0</span>
+                <a href="{{ url('/p/terms') }}" target="_blank" rel="noopener"
+                   class="text-xs bg-gray-100 text-brand-700 px-2 py-1 rounded hover:bg-gray-200">Read it →</a>
             </div>
             <div class="bg-white rounded-lg p-4 text-xs text-gray-600 max-h-32 overflow-y-auto leading-relaxed mb-4">
                 This Direct Seller Agreement governs your relationship with Arovolife Private Limited (CIN U46909TS2026PTC210896).
@@ -31,7 +32,7 @@
                 <input type="checkbox" name="consent_tnc" value="1" required
                     class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
-                    I have read and accept the <strong class="text-gray-800">Direct Seller Agreement &amp; Terms and Conditions</strong> (v1.0.0)
+                    I have read and accept the <strong class="text-gray-800">Direct Seller Agreement &amp; Terms and Conditions</strong>
                 </span>
             </label>
             @error('consent_tnc')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
@@ -41,7 +42,8 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-800">Code of Ethics</h3>
-                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">v1.0.0</span>
+                <a href="{{ url('/p/ethics') }}" target="_blank" rel="noopener"
+                   class="text-xs bg-gray-100 text-brand-700 px-2 py-1 rounded hover:bg-gray-200">Read it →</a>
             </div>
             <div class="bg-white rounded-lg p-4 text-xs text-gray-600 max-h-32 overflow-y-auto leading-relaxed mb-4">
                 As a Direct Seller I will: (1) make no false or misleading claims about products or earnings;
@@ -54,7 +56,7 @@
                 <input type="checkbox" name="consent_ethics" value="1" required
                     class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
-                    I have read and accept the <strong class="text-gray-800">Code of Ethics</strong> (v1.0.0)
+                    I have read and accept the <strong class="text-gray-800">Code of Ethics</strong>
                 </span>
             </label>
             @error('consent_ethics')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
@@ -64,7 +66,8 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-800">Compensation Plan Disclosure</h3>
-                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">v1.0.0</span>
+                <a href="{{ url('/p/compensation') }}" target="_blank" rel="noopener"
+                   class="text-xs bg-gray-100 text-brand-700 px-2 py-1 rounded hover:bg-gray-200">Read it →</a>
             </div>
             <div class="bg-white rounded-lg p-4 text-xs text-gray-600 max-h-32 overflow-y-auto leading-relaxed mb-4">
                 {{-- This summary must say what the published plan says and nothing more. It previously
@@ -86,7 +89,7 @@
                 <input type="checkbox" name="consent_plan" value="1" required
                     class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
-                    I have read and understand the <strong class="text-gray-800">Compensation Plan Disclosure</strong> (v1.0.0)
+                    I have read and understand the <strong class="text-gray-800">Compensation Plan Disclosure</strong>
                 </span>
             </label>
             @error('consent_plan')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
@@ -96,7 +99,8 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-800">Privacy Notice (DPDP Act 2023)</h3>
-                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">v1.0.0</span>
+                <a href="{{ url('/p/privacy') }}" target="_blank" rel="noopener"
+                   class="text-xs bg-gray-100 text-brand-700 px-2 py-1 rounded hover:bg-gray-200">Read it →</a>
             </div>
             <div class="bg-white rounded-lg p-4 text-xs text-gray-600 max-h-32 overflow-y-auto leading-relaxed mb-4">
                 arovolife collects your personal data for the limited purpose of managing your Direct Seller account.
@@ -110,10 +114,42 @@
                 <input type="checkbox" name="consent_privacy" value="1" required
                     class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
-                    I have read and accept the <strong class="text-gray-800">Privacy Notice</strong> (v1.0.0)
+                    I have read and accept the <strong class="text-gray-800">Privacy Notice</strong>
                 </span>
             </label>
             @error('consent_privacy')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+        </div>
+
+        {{-- T&C §2.3 eligibility declarations.
+             Captured as three separate boxes rather than one "I meet the
+             eligibility criteria": each of these voids the agreement ab initio
+             on its own, so which one was false has to be answerable later.
+             Before this they existed only as a recital inside the agreement
+             text — nothing recorded that anybody had said them (C-08). --}}
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+            <h3 class="font-semibold text-gray-800 mb-1">Eligibility Declarations</h3>
+            <p class="text-xs text-gray-600 mb-4">
+                Required by §2.3 of the Direct Seller Agreement. Each is a statement you are making
+                about yourself, recorded against your account with the date.
+            </p>
+
+            @foreach ([
+                ['declared_sound_mind', 'I am of sound mind and legally competent to enter into a contract.'],
+                ['declared_not_insolvent', 'I have not been declared insolvent and am not an undischarged insolvent.'],
+                ['declared_no_moral_turpitude', 'I have not been convicted of an offence involving moral turpitude in the last five (5) years, and I am not barred from direct selling by any regulator.'],
+            ] as [$field, $statement])
+                <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200 hover:border-brand-500 transition-colors mb-2">
+                    <input type="checkbox" name="{{ $field }}" value="1" required
+                        class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                    <span class="text-sm text-gray-700">{{ $statement }} <span class="text-red-700">*</span></span>
+                </label>
+                @error($field)<p class="mb-2 text-xs text-red-700">{{ $message }}</p>@enderror
+            @endforeach
+
+            <p class="text-xs text-gray-600 mt-2">
+                If any of these stops being true, you must tell us. Continuing to trade while one of them
+                is false voids this Agreement from the outset.
+            </p>
         </div>
 
         @include('registration._draft_notice')

@@ -22,6 +22,11 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 /**
