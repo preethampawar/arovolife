@@ -8,6 +8,7 @@ use App\Modules\Commerce\Enums\PurchaseOfferType;
 use App\Modules\Commerce\Models\MonthlyOfferProduct;
 use App\Modules\Commerce\Models\PurchaseOfferGrant;
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -344,26 +345,39 @@ final class PurchaseOfferService
             return 0;
         }
 
-        DB::transaction(function () use ($distributorId, $monthStart, $streak, $cycleBv, $points): void {
-            $grant = PurchaseOfferGrant::create([
-                'distributor_id' => $distributorId,
-                'offer_type' => PurchaseOfferType::RedeemPoints,
-                'month_start' => $monthStart->toDateString(),
-                'qualifying_bv_paise' => $cycleBv,
-                'streak_months' => $streak,
-                'points_awarded' => $points,
-                'status' => PurchaseOfferGrant::STATUS_CONSUMED,
-                'consumed_at' => Carbon::now(),
-            ]);
+        // The check above is outside this transaction, so two concurrent runs
+        // can both pass it. `uniq_offer_grant` is the real guard and stops the
+        // duplicate — but the resulting QueryException used to escape the
+        // chunkById loop and abort the rest of the monthly run, leaving every
+        // distributor after this one ungranted with no marker to retry from.
+        // Catching it turns a race into a no-op for one distributor instead of
+        // a silent outage for everyone behind them (T-6.1 finding M-7).
+        try {
+            DB::transaction(function () use ($distributorId, $monthStart, $streak, $cycleBv, $points): void {
+                $grant = PurchaseOfferGrant::create([
+                    'distributor_id' => $distributorId,
+                    'offer_type' => PurchaseOfferType::RedeemPoints,
+                    'month_start' => $monthStart->toDateString(),
+                    'qualifying_bv_paise' => $cycleBv,
+                    'streak_months' => $streak,
+                    'points_awarded' => $points,
+                    'status' => PurchaseOfferGrant::STATUS_CONSUMED,
+                    'consumed_at' => Carbon::now(),
+                ]);
 
-            $this->points->accrue(
-                distributorId: $distributorId,
-                points: $points,
-                referenceType: 'purchase_offer_grant',
-                referenceId: $grant->id,
-                memo: $streak.'-month purchase streak to '.$monthStart->format('M Y'),
-            );
-        });
+                $this->points->accrue(
+                    distributorId: $distributorId,
+                    points: $points,
+                    referenceType: 'purchase_offer_grant',
+                    referenceId: $grant->id,
+                    memo: $streak.'-month purchase streak to '.$monthStart->format('M Y'),
+                );
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Another run got there first. The points exist and were awarded
+            // exactly once, which is the outcome that matters.
+            return 0;
+        }
 
         return $points;
     }

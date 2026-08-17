@@ -6,6 +6,7 @@ namespace App\Modules\Tax\Services;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Consecutive invoice numbers, one series per financial year (CGST Rule 46(b)).
@@ -44,21 +45,38 @@ final class InvoiceNumberSequence
                 ->first();
 
             if ($row === null) {
-                DB::table('invoice_number_sequences')->insert([
+                // First invoice of a financial year: there is no row to lock,
+                // so two concurrent callers both read null and both insert.
+                // `insertOrIgnore` lets the loser proceed instead of throwing,
+                // and the re-read below — now under a real row lock — gives it
+                // the next number rather than a duplicate 1. Once per year,
+                // and only under concurrency, but the failure mode is two
+                // invoices sharing a statutory number (T-6.1 finding L-4).
+                DB::table('invoice_number_sequences')->insertOrIgnore([
                     'financial_year' => $financialYear,
-                    'last_number' => 1,
+                    'last_number' => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
 
-                $number = 1;
-            } else {
-                $number = (int) $row->last_number + 1;
-
-                DB::table('invoice_number_sequences')
+                $row = DB::table('invoice_number_sequences')
                     ->where('financial_year', $financialYear)
-                    ->update(['last_number' => $number, 'updated_at' => now()]);
+                    ->lockForUpdate()
+                    ->first();
             }
+
+            if ($row === null) {
+                // Cannot happen: the row was just inserted or already existed.
+                // Refusing loudly rather than defaulting to 1, because a
+                // silent 1 here is a duplicate invoice number.
+                throw new RuntimeException("Could not reserve an invoice number for {$financialYear}.");
+            }
+
+            $number = (int) $row->last_number + 1;
+
+            DB::table('invoice_number_sequences')
+                ->where('financial_year', $financialYear)
+                ->update(['last_number' => $number, 'updated_at' => now()]);
 
             return sprintf('%s/%s/%06d', self::PREFIX, $financialYear, $number);
         });
