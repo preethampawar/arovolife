@@ -40,18 +40,41 @@ final readonly class EngineDefinition
         public array $dependencies,
         public ?string $featureFlagClass,
         public ?string $reportRouteName,
-        public string $scheduleText,
+        public EngineCadence $cadence,
         public string $defaultPeriod,
         public bool $manuallyTriggerable = true,
     ) {}
 
+    /**
+     * Human sentence for the admin console. Generated from {@see $cadence} so
+     * the schedule is described in exactly one place.
+     */
+    public function scheduleText(): string
+    {
+        return $this->cadence->describe();
+    }
+
     /** The period an operator most likely wants, matching the command's own default. */
     public function defaultPeriodDate(): Carbon
     {
+        return $this->periodRelativeTo(Carbon::today());
+    }
+
+    /**
+     * Which period this engine works on when it fires on a given calendar day.
+     *
+     * `defaultPeriod` already declares the relationship — "the monthly payout
+     * run on the 9th settles the current month, the rank bonus settles the
+     * previous one" — so the replay reads that declaration instead of
+     * re-deciding it. Same mapping, two reference points: today for an
+     * operator's default, the replayed date for a historical replay.
+     */
+    public function periodRelativeTo(Carbon $reference): Carbon
+    {
         return match ($this->defaultPeriod) {
-            'today' => Carbon::today(),
-            'current-month' => Carbon::today()->startOfMonth(),
-            'prev-month' => Carbon::today()->startOfMonth()->subMonthNoOverflow(),
+            'today' => $reference->copy()->startOfDay(),
+            'current-month' => $reference->copy()->startOfMonth(),
+            'prev-month' => $reference->copy()->startOfMonth()->subMonthNoOverflow(),
             default => throw new InvalidArgumentException("Unknown default period [{$this->defaultPeriod}]."),
         };
     }

@@ -32,6 +32,11 @@
         $level === 4 => 'px-3',
         default      => 'px-4',
     };
+
+    // Own-data-only stats (hard rule #3), resolved once in _content.blade.php.
+    // Set on the authenticated viewer's own card; null on every other card,
+    // where the rank and BV rows render "—".
+    $ownStats = (isset($ownCardId) && $ownCardId === $node->id) ? ($ownCardStats ?? null) : null;
 @endphp
 
 <div class="flex flex-col items-center {{ $showLeafHoverEmpties ? 'relative' : '' }}"
@@ -182,7 +187,8 @@
 
         {{-- Compact 6-field summary (Name + ID already shown above as
              the card header; the panel here is the remaining 6 from the
-             8-field spec). Phase-2+ placeholders render as `—`. --}}
+             8-field spec). The last three are own-data-only and render
+             `—` on everyone else's card. --}}
         <dl class="mt-2 pt-2 border-t border-gray-300 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-left">
             <dt class="text-gray-800 font-medium">Region</dt>
             <dd class="text-gray-800 text-right">India</dd>
@@ -204,13 +210,31 @@
             </dd>
 
             <dt class="text-gray-800 font-medium">Highest Rank</dt>
-            <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
+            <dd class="text-right text-gray-800">
+                @if($ownStats['highest_rank'] ?? null)
+                    {{ $ownStats['highest_rank'] }}
+                @else
+                    <span class="text-gray-600">—</span>
+                @endif
+            </dd>
 
             <dt class="text-gray-800 font-medium">Current Rank</dt>
-            <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
+            <dd class="text-right text-gray-800">
+                @if($ownStats['current_rank'] ?? null)
+                    {{ $ownStats['current_rank'] }}
+                @else
+                    <span class="text-gray-600">—</span>
+                @endif
+            </dd>
 
             <dt class="text-gray-800 font-medium">Personal BV</dt>
-            <dd class="text-right text-gray-600">—{{-- PHASE_LATER_PLACEHOLDER --}}</dd>
+            <dd class="text-right text-gray-800">
+                @if($ownStats['total_personal_bv'] ?? null)
+                    {{ $ownStats['total_personal_bv'] }}
+                @else
+                    <span class="text-gray-600">—</span>
+                @endif
+            </dd>
         </dl>
 
         @if($adminContext)

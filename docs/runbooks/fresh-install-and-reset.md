@@ -182,6 +182,16 @@ audit_log:           1
 root adn:            444555666
 ```
 
+### Related: recomputing compensation without losing the orders
+
+`platform:reset` and `platform:reset-purchases` both destroy purchase data. When
+you only want the *bonuses* recalculated against the orders you already have,
+use `compensation:recompute-all` instead — see
+[`artisan-commands.md`](./artisan-commands.md#compensationrecompute-all). It is a
+testing-only tool, gated behind `COMP_RECOMPUTE_ENABLED`, refuses to run in
+production, and is scheduled for deletion once the compensation plan is signed
+off.
+
 ### When to run it
 
 | Scenario | Use `platform:reset` |

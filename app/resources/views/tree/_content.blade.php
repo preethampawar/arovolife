@@ -33,6 +33,19 @@
     $rerootBase          = $rerootBase  ?? url('/tree');
     $rerootKey           = $rerootKey   ?? 'adn';
     $isSponsorshipModeTop = ($mode ?? 'binary') === 'sponsorship';
+
+    // Highest Rank / Current Rank / Personal BV are own-data-only (hard rule
+    // #3 — a distributor never sees another distributor's figures), so at most
+    // ONE card on this canvas can carry them: the viewer's own. Resolve that
+    // single card here, through the same service the dashboard and the Details
+    // popup read, rather than querying once per node. Null for admins (no
+    // distributor row) and whenever the viewer's own node isn't on screen —
+    // every other card renders "—".
+    $viewerDistributor = auth()->user()?->distributor;
+    $ownCardId         = $viewerDistributor?->id;
+    $ownCardStats      = $viewerDistributor
+        ? app(\App\Modules\Identity\Services\DistributorIdCardStats::class)->compact($viewerDistributor)
+        : null;
 @endphp
 
 @if($contextNote)

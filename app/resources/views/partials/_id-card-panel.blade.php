@@ -28,7 +28,7 @@
                 ['label' => 'Region',                  'value' => $idCardStats['region']],
                 ['label' => 'Status',                  'value' => $idCardStats['verification_label'], 'render' => 'pill', 'pill_class' => $idCardStats['verification_class']],
                 ['label' => 'Activation Date',         'value' => $idCardStats['activation_date']?->format('d M Y')],
-                ['label' => 'Personal Sales Position', 'value' => $idCardStats['personal_sales_position']],
+                ['label' => 'Personal Sales Position', 'value' => $idCardStats['personal_sales_title']],
                 ['label' => 'Left Team',               'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['left_team'])],
                 ['label' => 'Right Team',              'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['right_team'])],
                 ['label' => 'Total Team',              'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['total_team'])],

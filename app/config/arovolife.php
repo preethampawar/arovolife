@@ -67,4 +67,28 @@ return [
     'analytics' => [
         'google_id' => env('GOOGLE_ANALYTICS_ID'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Compensation recompute (TESTING ONLY — remove after client sign-off)
+    |--------------------------------------------------------------------------
+    |
+    | The compensation engines are write-once by design: a period's pool,
+    | denominator and point value are frozen before the first credit and are
+    | never recomputed, so nobody's rate can move after they were paid.
+    |
+    | While the client validates the plan end to end they need the opposite:
+    | every run computed against live data. Setting this to true unlocks
+    | `compensation:recompute-all` and its admin button, which WIPE every
+    | BV-derived row (bonuses, pools, carry-forwards, cycles, wallet credits,
+    | payout batches) and replay the engines from the first BV date.
+    |
+    | NEVER set this in production. RecomputeGuard refuses there regardless,
+    | but the env var should not exist in a production .env at all. The whole
+    | feature is scheduled for deletion once the plan is signed off — see
+    | docs/runbooks/artisan-commands.md → compensation:recompute-all.
+    */
+    'recompute' => [
+        'enabled' => (bool) env('COMP_RECOMPUTE_ENABLED', false),
+    ],
 ];

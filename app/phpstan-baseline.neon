@@ -2523,6 +2523,30 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 19
+			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Compensation/CompensationRecomputeTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/CompensationRecomputeTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Compensation/AdminDailyCutoffTest.php
 
@@ -2543,18 +2567,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Compensation/AdminDistributorCompTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 13
-			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -2849,6 +2861,12 @@ parameters:
 			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Genealogy/LineChangeSchemaTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Genealogy/TreeCardOwnStatsTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'

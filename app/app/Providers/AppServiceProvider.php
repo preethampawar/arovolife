@@ -14,6 +14,7 @@ use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
+use App\Modules\Compensation\Console\Commands\CompensationRecomputeAllCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
@@ -123,6 +124,8 @@ class AppServiceProvider extends ServiceProvider
                 PurchaseOffersMonthlyRunCommand::class,
                 MonthlyPayoutCommand::class,
                 RepurchaseEvaluateCommand::class,
+                // TESTING ONLY — removed with the recompute scaffold at sign-off.
+                CompensationRecomputeAllCommand::class,
             ]);
         }
 

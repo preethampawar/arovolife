@@ -13,12 +13,6 @@
 </div>
 
 {{-- Success flash --}}
-@if(session('status'))
-<div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 font-medium">
-    {{ session('status') }}
-</div>
-@endif
-
 {{-- Action selector grid --}}
 <div class="grid grid-cols-3 gap-3 mb-6">
     @foreach([
