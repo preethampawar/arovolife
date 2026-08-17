@@ -40,12 +40,6 @@
 </div>
 @endif
 
-@if(session('error'))
-<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-    {{ session('error') }}
-</div>
-@endif
-
 {{-- Batch summary --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">

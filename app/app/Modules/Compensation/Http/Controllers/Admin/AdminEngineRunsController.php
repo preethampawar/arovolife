@@ -4,19 +4,25 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Services\EngineChainResolver;
 use App\Modules\Compensation\Services\EngineStatusService;
+use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
+use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
+use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -37,6 +43,9 @@ final class AdminEngineRunsController extends Controller
     public function __construct(
         private readonly EngineStatusService $status,
         private readonly EngineChainResolver $resolver,
+        private readonly RecomputeGuard $recomputeGuard,
+        private readonly CompensationStateWiper $wiper,
+        private readonly RecomputeProgress $recomputeProgress,
     ) {}
 
     public function index(): View
@@ -82,7 +91,67 @@ final class AdminEngineRunsController extends Controller
             ];
         }
 
-        return view('admin.compensation.engine-runs.index', ['engines' => $engines]);
+        return view('admin.compensation.engine-runs.index', [
+            'engines' => $engines,
+            // TESTING-ONLY recompute. The view asks the guard rather than
+            // re-deciding; when it refuses, the card is not rendered at all.
+            'recomputeAllowed' => $this->recomputeGuard->isPermitted(),
+            'recomputeTargetDatabase' => $this->recomputeGuard->targetDatabase(),
+            'recomputeRowCounts' => $this->recomputeGuard->isPermitted() ? $this->wiper->preview() : [],
+        ]);
+    }
+
+    /**
+     * TESTING ONLY — queue a full wipe-and-replay of every BV-derived row.
+     *
+     * Dispatches rather than running inline: the replay takes minutes, and a
+     * request timeout halfway through would leave the database wiped and only
+     * partly rebuilt. Removed with the recompute scaffold at client sign-off.
+     */
+    public function recomputeAll(): RedirectResponse
+    {
+        abort_unless($this->recomputeGuard->isPermitted(), 404);
+
+        if (Cache::lock(RecomputeAllJob::LOCK_KEY)->get() === false) {
+            return redirect()->route('admin.compensation.engine-runs.index')
+                ->with('error', 'A compensation recompute is already running. Wait for it to finish.');
+        }
+
+        // The probe above only tested availability; the job takes the real lock
+        // for its own lifetime, so release this one immediately.
+        Cache::lock(RecomputeAllJob::LOCK_KEY)->forceRelease();
+
+        // Publish the queued state before dispatching, so the redirected page
+        // shows this run instead of the previous run's finished summary.
+        $this->recomputeProgress->queued();
+
+        $actorId = auth()->id();
+        RecomputeAllJob::dispatch(is_numeric($actorId) ? (int) $actorId : null);
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'compensation.recompute_all.queued',
+            'subject_type' => 'platform',
+            'subject_id' => 0,
+            'details' => ['note' => 'Testing-only full compensation recompute queued from the admin console.'],
+        ]);
+
+        return redirect()->route('admin.compensation.engine-runs.index')
+            ->with('status', 'Full recompute queued. Every BV-derived row is being wiped and rebuilt — '
+                .'the runs below will repopulate as the replay progresses.');
+    }
+
+    /**
+     * Live progress for a running recompute, polled by the Engine Runs page.
+     *
+     * Read-only and cheap — it reads one cache key, never the database, which
+     * matters because the replay is mid-truncation for part of its life.
+     */
+    public function recomputeProgress(): JsonResponse
+    {
+        abort_unless($this->recomputeGuard->isPermitted(), 404);
+
+        return response()->json($this->recomputeProgress->read() ?? ['state' => 'idle']);
     }
 
     public function events(Request $request): View

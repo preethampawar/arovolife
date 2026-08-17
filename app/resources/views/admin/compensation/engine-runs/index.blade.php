@@ -12,21 +12,212 @@
     and every trigger is permanently audit-logged with your admin ID and the reason you provide.
 </div>
 
-{{-- Success flash --}}
-@if(session('status'))
-<div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 font-medium">
-    {{ session('status') }}
-</div>
-@endif
+{{-- Flash messages (status / error / validation) are rendered by the admin
+     layout for every page. Do not repeat them here. --}}
 
-@if($errors->any())
-<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-    <ul class="list-disc list-inside">
-        @foreach($errors->all() as $error)
-        <li>{{ $error }}</li>
-        @endforeach
-    </ul>
+{{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it,
+     so on any environment where it is off there is no trace of it here. --}}
+@if($recomputeAllowed)
+@php $recomputeTotal = array_sum($recomputeRowCounts); @endphp
+<div class="mb-6 rounded-xl border-2 border-red-300 bg-red-50 p-4">
+    <p class="text-sm font-bold text-red-900">Testing tool — recompute everything from scratch</p>
+    <p class="mt-1 text-xs text-red-800 max-w-4xl">
+        Deletes <strong>every</strong> bonus result, frozen pool, carry-forward, rank qualification, repurchase cycle,
+        wallet credit and payout batch
+        (<strong>{{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }}</strong> rows on
+        <code class="font-mono bg-red-100 px-1 rounded">{{ $recomputeTargetDatabase }}</code>)
+        and replays every engine from the first BV date up to right now — including today's cut-off, this week's
+        payout and this month's bonuses, computed as at this moment. Orders, the BV ledger, distributors, the Genos
+        and the plan settings are kept.
+    </p>
+    <p class="mt-1 text-xs text-red-700 max-w-4xl">
+        The daily and monthly schedulers are unaffected — they keep running normally and each run still freezes its
+        period as usual. This button is the only thing that throws those snapshots away. Wallet credits are deleted
+        outright, not reversed, so any figure a distributor has already seen will change.
+    </p>
+
+    @if($recomputeRowCounts !== [])
+    <details class="mt-3">
+        <summary class="cursor-pointer text-xs font-medium text-red-800">What would be destroyed</summary>
+        <div class="mt-2 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-white p-3">
+            <table class="w-full text-xs">
+                @foreach($recomputeRowCounts as $table => $count)
+                <tr>
+                    <td class="py-0.5 font-mono text-gray-600">{{ $table }}</td>
+                    <td class="py-0.5 text-right font-medium text-gray-900">
+                        {{ \App\Modules\Shared\Support\IndianNumber::format($count) }}
+                    </td>
+                </tr>
+                @endforeach
+            </table>
+        </div>
+    </details>
+    @endif
+
+    {{-- Live progress. Hidden until the poller sees a run; the whole panel is
+         driven by the recompute-progress endpoint, which reads one cache key. --}}
+    <div id="recompute-progress" class="mt-4 hidden rounded-lg border border-red-200 bg-white p-4">
+        <div class="flex items-center justify-between gap-3">
+            <p class="text-sm font-semibold text-gray-900">
+                <span id="rp-phase">Starting</span>
+                <span id="rp-detail" class="font-normal text-gray-500"></span>
+            </p>
+            <span id="rp-percent" class="text-sm font-bold tabular-nums text-red-700">0%</span>
+        </div>
+
+        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+            <div id="rp-bar" class="h-full rounded-full bg-red-600 transition-all duration-500" style="width:0%"></div>
+        </div>
+
+        <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
+            <div><dt class="text-gray-500">Replaying</dt><dd id="rp-date" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+            <div><dt class="text-gray-500">Days</dt><dd id="rp-days" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+            <div><dt class="text-gray-500">Orders re-propagated</dt><dd id="rp-orders" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+            <div><dt class="text-gray-500">Engine runs</dt><dd id="rp-runs" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+        </dl>
+
+        <p class="mt-2 text-xs text-gray-500">
+            Engines on this date: <span id="rp-engines" class="font-mono text-gray-700">—</span>
+        </p>
+
+        <p id="rp-error" class="mt-3 hidden rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800"></p>
+        <p id="rp-done" class="mt-3 hidden rounded-lg border border-green-300 bg-green-50 p-3 text-xs text-green-800"></p>
+    </div>
+
+    <form method="POST" action="{{ route('admin.compensation.engine-runs.recompute-all') }}"
+          class="mt-4 flex flex-wrap items-end gap-3"
+          data-confirm="Wipe every bonus, payout and wallet credit, then replay all engines?"
+          data-confirm-title="Destroy and rebuild all compensation data?"
+          data-confirm-impact="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes.">
+        @csrf
+        <div>
+            <label for="recompute-confirm-db" class="block text-xs font-medium text-red-900 mb-1">
+                Type <span class="font-mono">{{ $recomputeTargetDatabase }}</span> to unlock
+            </label>
+            <input type="text" id="recompute-confirm-db" autocomplete="off"
+                   data-expected="{{ $recomputeTargetDatabase }}"
+                   class="rounded-lg border-red-300 text-sm font-mono focus:border-red-500 focus:ring-red-500">
+        </div>
+        <button type="submit" id="recompute-submit" disabled
+                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Recompute everything
+        </button>
+    </form>
 </div>
+
+<script>
+// Typed-database gate. Deliberately a second lock in front of the shared
+// confirm modal: this action is irreversible and the staging database carries
+// real distributor data, so the operator must name the target before the
+// button is even clickable.
+(function () {
+    var input = document.getElementById('recompute-confirm-db');
+    var button = document.getElementById('recompute-submit');
+    if (!input || !button) { return; }
+
+    // Chrome restores the typed value across the post-run reload, which would
+    // hand back an armed button nobody re-authorised. Clear it on every load so
+    // the lock always has to be opened deliberately.
+    input.value = '';
+    button.disabled = true;
+
+    input.addEventListener('input', function () {
+        button.disabled = input.value.trim() !== input.dataset.expected;
+    });
+})();
+
+// Live progress poller. The replay runs on the queue for minutes, so without
+// this the page gives no sign anything is happening.
+(function () {
+    var panel = document.getElementById('recompute-progress');
+    if (!panel) { return; }
+
+    var url = @json(route('admin.compensation.engine-runs.recompute-progress'));
+    var el = function (id) { return document.getElementById(id); };
+    var timer = null;
+
+    // Set once this page instance has actually watched a run in flight, so the
+    // completion reload happens exactly once. Without it the reloaded page —
+    // which reads the same 'complete' state back out of the cache — would
+    // reload itself again, forever.
+    var watchedARun = false;
+
+    function text(id, value) { var n = el(id); if (n) { n.textContent = value; } }
+
+    function render(state) {
+        if (!state || state.state === 'idle') { panel.classList.add('hidden'); return; }
+
+        panel.classList.remove('hidden');
+        text('rp-phase', state.phase || '—');
+        text('rp-detail', state.detail ? ' — ' + state.detail : '');
+        text('rp-percent', (state.percent || 0) + '%');
+        el('rp-bar').style.width = (state.percent || 0) + '%';
+        text('rp-date', state.current_date || '—');
+        text('rp-days', state.days_total ? state.days_done + ' / ' + state.days_total : (state.days_done || '—'));
+        text('rp-orders', state.orders_total ? state.orders_done + ' / ' + state.orders_total : (state.orders_done || '—'));
+        text('rp-runs', state.engine_runs || 0);
+        text('rp-engines', (state.current_engines && state.current_engines.length)
+            ? state.current_engines.join(', ')
+            : '—');
+
+        var err = el('rp-error');
+        var done = el('rp-done');
+
+        // A fresh run must not inherit the previous run's green summary or red
+        // failure box — the panel is reused, so reset it whenever one starts.
+        if (state.state === 'running') {
+            watchedARun = true;
+            err.classList.add('hidden');
+            done.classList.add('hidden');
+            el('rp-bar').classList.remove('bg-green-600', 'bg-red-800');
+            el('rp-bar').classList.add('bg-red-600');
+        }
+
+        if (state.state === 'failed') {
+            el('rp-bar').classList.remove('bg-red-600');
+            el('rp-bar').classList.add('bg-red-800');
+            err.textContent = 'Replay failed: ' + (state.error || 'unknown error')
+                + ' — the data is wiped and only partly rebuilt. Run it again to start clean.';
+            err.classList.remove('hidden');
+            stop();
+            return;
+        }
+
+        if (state.state === 'complete' && state.summary) {
+            el('rp-bar').classList.remove('bg-red-600');
+            el('rp-bar').classList.add('bg-green-600');
+            done.textContent = 'Complete — ' + state.summary.days + ' days, '
+                + state.summary.orders + ' orders, ' + state.summary.engine_runs + ' engine runs, '
+                + state.summary.rows_removed.toLocaleString() + ' rows replaced in '
+                + state.summary.duration_seconds + 's.'
+                + (watchedARun ? ' Refreshing the runs below…' : '');
+            done.classList.remove('hidden');
+            stop();
+
+            // Every card below is server-rendered from engine_runs, which the
+            // replay has just rewritten — reload so they show the new run
+            // instead of the pre-wipe timestamps. The completed state stays in
+            // the cache, so this panel renders the same summary afterwards.
+            if (watchedARun) {
+                watchedARun = false;
+                setTimeout(function () { window.location.reload(); }, 1200);
+            }
+        }
+    }
+
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    function poll() {
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(render)
+            .catch(function () { /* transient: keep polling */ });
+    }
+
+    poll();
+    timer = setInterval(poll, 2000);
+})();
+</script>
 @endif
 
 <div class="space-y-4">
@@ -37,7 +228,7 @@
         /** @var \App\Modules\Compensation\Models\EngineRun|null $lastRun */
         $lastRun = $engine['lastRun'];
         $isMonth = $definition->periodType === \App\Modules\Compensation\Support\EnginePeriodType::Month;
-        $notScheduled = str_starts_with($definition->scheduleText, 'Not scheduled');
+        $notScheduled = ! $definition->cadence->isScheduled();
     @endphp
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -59,7 +250,7 @@
                     @endif
                 </div>
 
-                <p class="text-xs text-gray-500 mb-2">Schedule: {{ $definition->scheduleText }}</p>
+                <p class="text-xs text-gray-500 mb-2">Schedule: {{ $definition->scheduleText() }}</p>
 
                 {{-- Last run --}}
                 <p class="text-xs text-gray-600 mb-2">

@@ -607,6 +607,21 @@ final class PayoutService
     }
 
     /**
+     * Lifetime money actually settled to a distributor's bank: the sum of every
+     * transferred line item's net, after repurchase, admin charge and TDS.
+     * Pending and failed lines are excluded — nothing left the company for them.
+     *
+     * The wallet page's "Total paid out" and the ID card's "Total Withdrawal
+     * Income" both read this, so the status filter lives in one place.
+     */
+    public function totalTransferredPaise(int $distributorId): int
+    {
+        return (int) PayoutLineItem::where('distributor_id', $distributorId)
+            ->where('status', PayoutLineItem::STATUS_TRANSFERRED)
+            ->sum('net_transferred_paise');
+    }
+
+    /**
      * Admin charge for a set of bonus streams: the rate is levied only on the
      * grosses whose per-bonus `applies_to` toggle is ON (admins can exempt a
      * stream from the admin charge), then the total is capped.

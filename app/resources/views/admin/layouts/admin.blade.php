@@ -174,9 +174,18 @@
         </div>
 
         <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-w-0 max-w-full">
+            {{-- Flash messages are rendered here for every admin page. Views must
+                 NOT repeat these blocks — a page that renders its own
+                 session('status') shows the message twice. --}}
             @if(session('status'))
             <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
                 {{ session('status') }}
+            </div>
+            @endif
+
+            @if(session('error'))
+            <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 font-medium">
+                {{ session('error') }}
             </div>
             @endif
 

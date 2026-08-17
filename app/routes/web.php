@@ -438,6 +438,11 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::get('/', [AdminEngineRunsController::class, 'index'])->name('index');
             Route::get('events', [AdminEngineRunsController::class, 'events'])->name('events');
             Route::post('trigger', [AdminEngineRunsController::class, 'trigger'])->name('trigger')->middleware('can:finance.record');
+            // TESTING ONLY — gated by RecomputeGuard (never production, requires
+            // COMP_RECOMPUTE_ENABLED). Removed with the recompute scaffold at
+            // client sign-off.
+            Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all');
+            Route::get('recompute-progress', [AdminEngineRunsController::class, 'recomputeProgress'])->name('recompute-progress');
         });
     });
 

@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Services\PayoutService;
+use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
 
@@ -30,10 +31,16 @@ use Laravel\Pennant\Feature;
  * wire the placeholder fields (rank engine, BV ledger, payouts) every
  * surface picks up the new values automatically.
  *
- * One field is still a later-phase placeholder that resolves to `null`
- * (total_withdrawal_income); personal_sales_position and total_personal_bv are
- * wired to the BV ledger, and highest_rank / current_rank to the rank engine.
- * Grep for `PHASE_LATER_PLACEHOLDER` to find every remaining wire-up site.
+ * Every field is live and every surface reads them from here:
+ * total_personal_bv and personal_sales_title from the BV ledger and the
+ * personal-purchase title ladder, highest_rank / current_rank from the rank
+ * engine, total_withdrawal_income from the settled payout line items. No
+ * placeholders remain.
+ *
+ * The compact fields are own-data-only, so a tree canvas needs {@see
+ * self::compact()} exactly once — for the viewer's own node. `_content.blade.php`
+ * resolves it there and the node partials render "—" for every other card;
+ * do not call this per node.
  */
 final class DistributorIdCardStats
 {
@@ -114,35 +121,47 @@ final class DistributorIdCardStats
     }
 
     /**
-     * The distributor's 1-based standing among all distributors ranked by
-     * lifetime personal purchase BV (net of reversals — the same basis as
-     * {@see BvLedgerService::totalPersonalBvPaise()}), highest first. Shown only
-     * to the authenticated owner (hard rule #3 — own data only), and only once
-     * they have any personal BV (returns null → "—" before their first sale).
-     * Ties share a position (standard competition ranking).
+     * The title the distributor currently holds on the personal-purchase ladder
+     * — Retailer, Dealer, Wholesaler and up — resolved from their lifetime
+     * personal BV by {@see PersonalBvTitleService}, the same service My Business
+     * and the admin cut-off reports read. Null (renders "—") below the first
+     * rung, and for any card that is not the authenticated viewer's own (hard
+     * rule #3 — own data only).
      */
-    private function personalSalesPosition(Distributor $distributor): ?string
+    private function ownPersonalTitle(Distributor $distributor): ?string
     {
         if (auth()->id() !== $distributor->user_id) {
             return null;
         }
 
-        $myBvPaise = $this->bvLedger->totalPersonalBvPaise($distributor->id);
-        if ($myBvPaise <= 0) {
+        try {
+            return app(PersonalBvTitleService::class)
+                ->forBvPaise($this->bvLedger->totalPersonalBvPaise($distributor->id))
+                ->title;
+        } catch (QueryException) {
+            return null;
+        }
+    }
+
+    /**
+     * Lifetime money actually settled to the distributor's bank, net of every
+     * deduction — the same figure the wallet page shows as "Total paid out",
+     * from the same service. Own data only; null (renders "—") before the
+     * first transfer clears.
+     */
+    private function ownTotalWithdrawalIncome(Distributor $distributor): ?string
+    {
+        if (auth()->id() !== $distributor->user_id) {
             return null;
         }
 
-        // Number of distributors whose net personal BV is strictly higher than
-        // mine; my position is that count + 1.
-        $higherCount = DB::query()->fromSub(
-            DB::table('bv_ledger_entries')
-                ->select('distributor_id')
-                ->groupBy('distributor_id')
-                ->havingRaw('SUM(bv_paise) > ?', [$myBvPaise]),
-            'ranked',
-        )->count();
+        try {
+            $paise = app(PayoutService::class)->totalTransferredPaise((int) $distributor->id);
+        } catch (QueryException) {
+            return null;
+        }
 
-        return '#'.Number::format($higherCount + 1);
+        return $paise > 0 ? '₹'.Number::format($paise / 100, 2) : null;
     }
 
     /**
@@ -160,11 +179,11 @@ final class DistributorIdCardStats
         return array_merge($compact, [
             'registration_date' => $distributor->effective_date,
             'franchise' => 'Arovolife Private Limited',
-            'personal_sales_position' => $this->personalSalesPosition($distributor),
+            'personal_sales_title' => $this->ownPersonalTitle($distributor),
             'left_team' => $teamCounts['left_team'],
             'right_team' => $teamCounts['right_team'],
             'total_team' => $teamCounts['total_team'],
-            'total_withdrawal_income' => null, // PHASE_LATER_PLACEHOLDER (Phase 5 — payouts)
+            'total_withdrawal_income' => $this->ownTotalWithdrawalIncome($distributor),
         ]);
     }
 
