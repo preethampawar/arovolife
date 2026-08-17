@@ -15,7 +15,7 @@
         <a href="{{ route('admin.content.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to Content Pages</a>
         @if($page->status === 'published')
         <a href="{{ route('content.show', $page->slug) }}" target="_blank"
-           class="text-sm text-brand-600 hover:text-brand-700">View live ↗</a>
+           class="text-sm text-brand-700 hover:text-brand-800">View live ↗</a>
         @endif
     </div>
 

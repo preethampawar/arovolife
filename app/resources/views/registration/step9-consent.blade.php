@@ -29,7 +29,7 @@
             </div>
             <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200 hover:border-brand-500 transition-colors">
                 <input type="checkbox" name="consent_tnc" value="1" required
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
                     I have read and accept the <strong class="text-gray-800">Direct Seller Agreement &amp; Terms and Conditions</strong> (v1.0.0)
                 </span>
@@ -52,7 +52,7 @@
             </div>
             <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200 hover:border-brand-500 transition-colors">
                 <input type="checkbox" name="consent_ethics" value="1" required
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
                     I have read and accept the <strong class="text-gray-800">Code of Ethics</strong> (v1.0.0)
                 </span>
@@ -80,11 +80,11 @@
                 condition, or will earn any amount at all. Most Distributors do not reach the higher slabs, and
                 many earn nothing. Several amounts are variable and <strong>may be zero</strong>.
                 The full plan is published at <a href="{{ url('/p/compensation') }}" target="_blank" rel="noopener"
-                   class="text-brand-600 underline">arovolife.com/p/compensation</a>.
+                   class="text-brand-700 underline">arovolife.com/p/compensation</a>.
             </div>
             <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200 hover:border-brand-500 transition-colors">
                 <input type="checkbox" name="consent_plan" value="1" required
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
                     I have read and understand the <strong class="text-gray-800">Compensation Plan Disclosure</strong> (v1.0.0)
                 </span>
@@ -108,7 +108,7 @@
             </div>
             <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200 hover:border-brand-500 transition-colors">
                 <input type="checkbox" name="consent_privacy" value="1" required
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
                     I have read and accept the <strong class="text-gray-800">Privacy Notice</strong> (v1.0.0)
                 </span>
@@ -124,7 +124,7 @@
                 ← Back
             </a>
             <button type="submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Accept All & Continue →
             </button>
         </div>

@@ -28,7 +28,7 @@
         </div>
 
         <div>
-            <label for="description" class="block text-xs font-medium text-gray-700 mb-1">Description <span class="text-gray-400">(optional)</span> <x-help-tip text="A short note shown beneath the title to explain what the document is." /></label>
+            <label for="description" class="block text-xs font-medium text-gray-700 mb-1">Description <span class="text-gray-600">(optional)</span> <x-help-tip text="A short note shown beneath the title to explain what the document is." /></label>
             <input id="description" name="description" type="text" maxlength="512" value="{{ old('description') }}"
                 placeholder="Short note shown beneath the title"
                 class="w-full rounded-lg border px-3 py-2 text-sm focus:ring-brand-500 focus:border-brand-500 {{ $errors->has('description') ? 'border-red-400' : 'border-gray-300' }}">
@@ -39,11 +39,11 @@
             <input id="document" name="document" type="file" required
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                 class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100">
-            <p class="text-xs text-gray-500 mt-1">PDF, Word, Excel or image (JPG/PNG). Max 20 MB.</p>
+            <p class="text-xs text-gray-600 mt-1">PDF, Word, Excel or image (JPG/PNG). Max 20 MB.</p>
         </div>
 
         <button type="submit"
-            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
             Upload &amp; publish
         </button>
     </form>
@@ -63,11 +63,11 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($documents as $doc)
                 <tr class="hover:bg-gray-50/40 transition-colors">
-                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3">
                         <p class="font-medium text-gray-900">{{ $doc->title }}</p>
                         @if($doc->description)<p class="text-xs text-gray-600 mt-0.5">{{ $doc->description }}</p>@endif
-                        <p class="text-[11px] text-gray-400 mt-0.5">{{ $doc->created_at->format('d M Y') }}@if($doc->uploader) · {{ $doc->uploader->full_name ?: $doc->uploader->email }}@endif</p>
+                        <p class="text-[11px] text-gray-600 mt-0.5">{{ $doc->created_at->format('d M Y') }}@if($doc->uploader) · {{ $doc->uploader->full_name ?: $doc->uploader->email }}@endif</p>
                     </td>
                     <td class="px-4 py-3 text-gray-700 text-xs">
                         {{ strtoupper(pathinfo($doc->original_name, PATHINFO_EXTENSION)) }} · {{ $doc->humanSize() }}
@@ -82,7 +82,7 @@
                     <td class="px-4 py-3">
                         <div class="flex items-center justify-end gap-2">
                             @if($doc->is_published)
-                            <a href="{{ route('compliance-documents.download', $doc->id) }}" class="text-xs text-brand-600 hover:text-brand-700">Download</a>
+                            <a href="{{ route('compliance-documents.download', $doc->id) }}" class="text-xs text-brand-700 hover:text-brand-800">Download</a>
                             @endif
                             <form method="POST" action="{{ route('admin.compliance-documents.toggle', $doc->id) }}"
                                   data-confirm="{{ $doc->is_published ? 'Hide this document from the public?' : 'Publish this document publicly?' }}"

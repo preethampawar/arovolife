@@ -33,7 +33,7 @@
                         <option value="{{ $cat->id }}" @selected((int) old('category_id', $banner->category_id) === $cat->id)>Category: {{ $cat->name }}</option>
                     @endforeach
                 </select>
-                <span class="block text-xs text-gray-500 mt-1">Where this banner shows. Banners for the same category slide together on that category's page.</span>
+                <span class="block text-xs text-gray-600 mt-1">Where this banner shows. Banners for the same category slide together on that category's page.</span>
             </label>
             <label class="block sm:col-span-2">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Title (optional) <x-help-tip text="Optional heading text overlaid on the banner." /></span>
@@ -58,13 +58,13 @@
                 @endif
                 <input type="file" name="image" accept="image/jpeg,image/png"
                     class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
-                <span class="block text-xs text-gray-500 mt-1">Upload to S3. Leave empty to keep the current image or use the URL below.</span>
+                <span class="block text-xs text-gray-600 mt-1">Upload to S3. Leave empty to keep the current image or use the URL below.</span>
             </div>
             <label class="block sm:col-span-2">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">…or image URL <x-help-tip text="A hosted image URL for the banner. Ignored if a file is uploaded above." /></span>
                 <input type="url" name="external_url" value="{{ old('external_url', $banner->external_url) }}" maxlength="500" placeholder="https://cdn…/banner.jpg"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                <span class="block text-xs text-gray-500 mt-1">A hosted/CDN image URL. Ignored if a file is uploaded above.</span>
+                <span class="block text-xs text-gray-600 mt-1">A hosted/CDN image URL. Ignored if a file is uploaded above.</span>
             </label>
 
             <label class="block">

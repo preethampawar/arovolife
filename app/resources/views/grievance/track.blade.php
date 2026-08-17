@@ -47,7 +47,7 @@
                            class="w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
                 </div>
             </div>
-            <button type="submit" class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600">
+            <button type="submit" class="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
                 Look up
             </button>
         </form>
@@ -63,7 +63,7 @@
             <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                 <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
-                        <p class="font-mono text-sm font-semibold text-gray-500">{{ $ticket->ticket_no }}</p>
+                        <p class="font-mono text-sm font-semibold text-gray-600">{{ $ticket->ticket_no }}</p>
                         <h2 class="text-lg font-semibold text-gray-900">{{ $ticket->subject }}</h2>
                     </div>
                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $ticket->status->badgeClasses() }}">
@@ -73,19 +73,19 @@
 
                 <dl class="grid gap-3 sm:grid-cols-2 text-sm mb-6">
                     <div>
-                        <dt class="text-gray-500">Category</dt>
+                        <dt class="text-gray-600">Category</dt>
                         <dd class="text-gray-900">{{ $ticket->category->label() }}</dd>
                     </div>
                     <div>
-                        <dt class="text-gray-500">Filed on</dt>
+                        <dt class="text-gray-600">Filed on</dt>
                         <dd class="text-gray-900">{{ $ticket->created_at->format('d M Y') }}</dd>
                     </div>
                     <div>
-                        <dt class="text-gray-500">Currently with</dt>
+                        <dt class="text-gray-600">Currently with</dt>
                         <dd class="text-gray-900">{{ $ticket->escalation_level->label() }}</dd>
                     </div>
                     <div>
-                        <dt class="text-gray-500">Resolution due</dt>
+                        <dt class="text-gray-600">Resolution due</dt>
                         <dd class="text-gray-900">{{ $ticket->sla_resolution_at?->format('d M Y') ?? '—' }}</dd>
                     </div>
                 </dl>
@@ -98,7 +98,7 @@
                             @if ($event->note)
                                 <p class="text-gray-700">{{ $event->note }}</p>
                             @endif
-                            <p class="text-xs text-gray-500">{{ $event->created_at->format('d M Y, H:i') }}</p>
+                            <p class="text-xs text-gray-600">{{ $event->created_at->format('d M Y, H:i') }}</p>
                         </li>
                     @endforeach
                 </ol>
@@ -115,7 +115,7 @@
                         @if ($ticket->escalation_level->next())
                             <label class="flex items-start gap-2.5 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
                                 <input type="checkbox" name="request_escalation" value="1"
-                                       class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500">
+                                       class="mt-0.5 rounded border-amber-300 text-amber-700 focus:ring-amber-500">
                                 <span>
                                     <span class="font-medium">Escalate this to the {{ $ticket->escalation_level->next()->label() }}.</span>
                                     Use this if you are not satisfied with how it is being handled.

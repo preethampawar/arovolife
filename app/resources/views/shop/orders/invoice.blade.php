@@ -30,12 +30,12 @@
                 <h1 class="text-base sm:text-lg font-bold text-gray-900 truncate">{{ $isTaxInvoice ? 'Tax invoice' : 'Order summary' }}</h1>
             </div>
             <button type="button" onclick="window.print()"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-sm font-medium text-white transition-colors">
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-sm font-medium text-white transition-colors">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
                 Download / Print
             </button>
         </div>
-        <p class="max-w-3xl mx-auto px-4 sm:px-6 pb-3 text-xs text-gray-500">
+        <p class="max-w-3xl mx-auto px-4 sm:px-6 pb-3 text-xs text-gray-600">
             The button opens your browser's print dialog — choose <span class="font-medium">Save as PDF</span> to download.
         </p>
     </div>
@@ -48,15 +48,15 @@
                 <div class="flex items-center gap-4 min-w-0">
                     <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-12 w-auto object-contain">
                     <div class="min-w-0">
-                        <p class="text-lg sm:text-xl font-bold text-brand-600 leading-tight">Arovolife Private Limited</p>
-                        <p class="text-xs text-gray-500">CIN U46909TS2026PTC210896</p>
+                        <p class="text-lg sm:text-xl font-bold text-brand-700 leading-tight">Arovolife Private Limited</p>
+                        <p class="text-xs text-gray-600">CIN U46909TS2026PTC210896</p>
                     </div>
                 </div>
                 <div class="text-right shrink-0">
                     <p class="text-sm font-bold text-gray-900 uppercase tracking-wider">Order Summary</p>
                     <p class="text-xs text-gray-600 mt-1 font-mono">{{ $order->order_no }}</p>
                     @if($order->placed_at)
-                        <p class="text-xs text-gray-500 mt-0.5">{{ $order->placed_at->format('d M Y') }}</p>
+                        <p class="text-xs text-gray-600 mt-0.5">{{ $order->placed_at->format('d M Y') }}</p>
                     @endif
                 </div>
             </div>
@@ -64,7 +64,7 @@
             {{-- Bill to + (when attributed) the direct seller --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
                 <div>
-                    <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-500 mb-1.5">Billed to</p>
+                    <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600 mb-1.5">Billed to</p>
                     <p class="text-sm font-semibold text-gray-900">{{ $order->customer->display_name }}</p>
                     <p class="text-sm text-gray-700 leading-relaxed mt-1">
                         {{ $order->ship_name }}<br>
@@ -75,7 +75,7 @@
                 </div>
                 @if($order->distributor)
                 <div class="sm:text-right">
-                    <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-500 mb-1.5">Your arovolife distributor</p>
+                    <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600 mb-1.5">Your arovolife distributor</p>
                     <p class="text-sm font-semibold text-gray-900">{{ $order->distributor->user?->full_name ?? '—' }}</p>
                     <p class="text-sm text-gray-700 mt-1">ADN <span class="font-mono text-brand-700">{{ $order->distributor->adn }}</span></p>
                 </div>
@@ -85,7 +85,7 @@
             {{-- Line items --}}
             <table class="w-full text-sm border-t border-gray-200">
                 <thead>
-                    <tr class="text-[11px] uppercase tracking-wider text-gray-500">
+                    <tr class="text-[11px] uppercase tracking-wider text-gray-600">
                         <th class="text-left font-semibold py-2">Item</th>
                         <th class="text-left font-semibold py-2">HSN</th>
                         <th class="text-right font-semibold py-2">Qty</th>
@@ -99,7 +99,7 @@
                     <tr>
                         <td class="py-2 pr-2 text-gray-900">
                             {{ $item->product_name_snapshot }}
-                            <span class="block text-[11px] text-gray-400 font-mono">{{ $item->variant_sku_snapshot }}</span>
+                            <span class="block text-[11px] text-gray-600 font-mono">{{ $item->variant_sku_snapshot }}</span>
                         </td>
                         <td class="py-2 text-gray-600 font-mono text-xs">{{ $item->hsn_code_snapshot ?: '—' }}</td>
                         <td class="py-2 text-right text-gray-700">{{ $item->qty }}</td>
@@ -119,15 +119,15 @@
                     <div>
                         <p class="font-semibold text-gray-900">{{ $tax->sellerLegalName() }}</p>
                         <p class="text-gray-600 leading-snug">{{ $tax->sellerAddress() }}</p>
-                        <p class="mt-1"><span class="text-gray-500">GSTIN</span> <span class="font-mono font-semibold">{{ $invoice->seller_gstin }}</span></p>
-                        <p><span class="text-gray-500">State</span> {{ $invoice->seller_state }} ({{ $tax->sellerStateCode() }})</p>
+                        <p class="mt-1"><span class="text-gray-600">GSTIN</span> <span class="font-mono font-semibold">{{ $invoice->seller_gstin }}</span></p>
+                        <p><span class="text-gray-600">State</span> {{ $invoice->seller_state }} ({{ $tax->sellerStateCode() }})</p>
                     </div>
                     <div class="sm:text-right">
-                        <p><span class="text-gray-500">Invoice no.</span> <span class="font-mono font-semibold">{{ $invoice->invoice_no }}</span></p>
-                        <p><span class="text-gray-500">Date</span> {{ $invoice->issued_at->format('d M Y') }}</p>
-                        <p><span class="text-gray-500">Place of supply</span> {{ $invoice->place_of_supply }}</p>
+                        <p><span class="text-gray-600">Invoice no.</span> <span class="font-mono font-semibold">{{ $invoice->invoice_no }}</span></p>
+                        <p><span class="text-gray-600">Date</span> {{ $invoice->issued_at->format('d M Y') }}</p>
+                        <p><span class="text-gray-600">Place of supply</span> {{ $invoice->place_of_supply }}</p>
                         @if ($invoice->buyer_gstin)
-                            <p class="mt-1"><span class="text-gray-500">Recipient GSTIN</span> <span class="font-mono font-semibold">{{ $invoice->buyer_gstin }}</span></p>
+                            <p class="mt-1"><span class="text-gray-600">Recipient GSTIN</span> <span class="font-mono font-semibold">{{ $invoice->buyer_gstin }}</span></p>
                             <p>{{ $order->buyer_legal_name }}</p>
                         @endif
                     </div>
@@ -200,7 +200,7 @@
                     </div>
 
                     @if ($isTaxInvoice)
-                        <p class="text-[11px] text-gray-400 pt-1">
+                        <p class="text-[11px] text-gray-600 pt-1">
                             Prices are inclusive of GST.
                             @if ($tax->discountsReduceTaxableValue())
                                 Any discount shown above has been deducted from the taxable value under
@@ -216,30 +216,30 @@
                                 have not been deducted from the taxable value.
                             @endif
                         </p>
-                        <p class="text-[11px] text-gray-400">
+                        <p class="text-[11px] text-gray-600">
                             Tax payable on reverse charge: {{ $tax->reverseCharge() ? 'Yes' : 'No' }}.
                         </p>
-                        <p class="text-[11px] text-gray-500 pt-1">
+                        <p class="text-[11px] text-gray-600 pt-1">
                             Certified that the particulars given above are true and correct.
                         </p>
                     @else
-                        <p class="text-[11px] text-gray-400 pt-1">Amounts are inclusive of GST. Payment: {{ strtoupper($order->payment_method) }}.</p>
-                        <p class="text-[11px] text-gray-400">This is an order summary / payment receipt, not a GST tax invoice.</p>
+                        <p class="text-[11px] text-gray-600 pt-1">Amounts are inclusive of GST. Payment: {{ strtoupper($order->payment_method) }}.</p>
+                        <p class="text-[11px] text-gray-600">This is an order summary / payment receipt, not a GST tax invoice.</p>
                     @endif
                 </div>
             </div>
 
             {{-- Contact footer (printable-page convention) --}}
             <div class="mt-8 pt-4 border-t border-gray-200 text-center">
-                <p class="text-[11px] text-gray-500 leading-snug">
+                <p class="text-[11px] text-gray-600 leading-snug">
                     <span class="font-semibold text-gray-700">Arovolife Private Limited</span> · CIN U46909TS2026PTC210896
                 </p>
                 <p class="text-[11px] text-gray-600 mt-1 leading-snug">
-                    <a href="tel:+918886662949" class="hover:text-brand-600">+91 88866 62949</a>
-                    <span class="text-gray-400">|</span>
-                    <a href="mailto:support@arovolife.com" class="hover:text-brand-600">support@arovolife.com</a>
-                    <span class="text-gray-400">|</span>
-                    <a href="https://www.arovolife.com" class="hover:text-brand-600">www.arovolife.com</a>
+                    <a href="tel:+918886662949" class="hover:text-brand-800">+91 88866 62949</a>
+                    <span class="text-gray-600">|</span>
+                    <a href="mailto:support@arovolife.com" class="hover:text-brand-800">support@arovolife.com</a>
+                    <span class="text-gray-600">|</span>
+                    <a href="https://www.arovolife.com" class="hover:text-brand-800">www.arovolife.com</a>
                 </p>
             </div>
 

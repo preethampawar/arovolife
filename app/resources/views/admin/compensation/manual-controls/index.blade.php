@@ -35,7 +35,7 @@
                   ? 'border-brand-500 bg-brand-50'
                   : ($card['danger'] ? 'border-red-200 bg-white' : 'border-gray-200 bg-white') }}">
         <h4 class="text-sm font-semibold {{ $card['danger'] ? 'text-red-700' : 'text-gray-900' }} mb-1">{{ $card['label'] }}</h4>
-        <p class="text-xs text-gray-500 leading-snug">{{ $card['desc'] }}</p>
+        <p class="text-xs text-gray-600 leading-snug">{{ $card['desc'] }}</p>
     </a>
     @endforeach
 </div>
@@ -50,7 +50,7 @@
     @include('admin.compensation.manual-controls._form-'.$safeAction)
 </div>
 @else
-<div class="bg-gray-50 rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-500 mb-6">
+<div class="bg-gray-50 rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-600 mb-6">
     Select an action above to get started.
 </div>
 @endif
@@ -61,7 +61,7 @@
         <span class="text-sm font-semibold text-gray-900">Recent manual actions</span>
     </div>
     @if($recentActions->isEmpty())
-    <p class="px-5 py-6 text-sm text-gray-400 text-center">No manual actions recorded yet.</p>
+    <p class="px-5 py-6 text-sm text-gray-600 text-center">No manual actions recorded yet.</p>
     @else
     <div class="divide-y divide-gray-50">
         @foreach($recentActions as $log)

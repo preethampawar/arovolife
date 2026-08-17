@@ -16,12 +16,12 @@
     </p>
     <form method="GET" action="{{ route('admin.analytics.index') }}" class="flex flex-wrap items-end gap-2">
         <div>
-            <label for="from" class="mb-1 block text-xs font-medium text-gray-500">From</label>
+            <label for="from" class="mb-1 block text-xs font-medium text-gray-600">From</label>
             <input id="from" name="from" type="date" value="{{ $from->toDateString() }}"
                    class="rounded-lg border-gray-300 text-sm">
         </div>
         <div>
-            <label for="to" class="mb-1 block text-xs font-medium text-gray-500">To</label>
+            <label for="to" class="mb-1 block text-xs font-medium text-gray-600">To</label>
             <input id="to" name="to" type="date" value="{{ $to->toDateString() }}"
                    class="rounded-lg border-gray-300 text-sm">
         </div>
@@ -34,23 +34,23 @@
 {{-- ── Headline numbers (window-scoped) ─────────────────────────────── --}}
 <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Paid orders</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Paid orders</p>
         <p class="mt-1 text-lg font-bold text-gray-900">{{ IndianNumber::format($totals['orders']) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Gross value</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Gross value</p>
         <p class="mt-1 text-lg font-bold text-brand-700 whitespace-nowrap">₹{{ IndianNumber::format($totals['gross_paise'] / 100, 2) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Average order</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Average order</p>
         <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">₹{{ IndianNumber::format($totals['average_order_paise'] / 100, 2) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">BV generated</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">BV generated</p>
         <p class="mt-1 text-lg font-bold text-green-700 whitespace-nowrap">@bv($totals['bv_paise'] / 100)</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Cancelled / refunded</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Cancelled / refunded</p>
         <p class="mt-1 text-lg font-bold text-red-600">
             {{ IndianNumber::format($totals['cancelled']) }} / {{ IndianNumber::format($totals['refunded']) }}
         </p>
@@ -61,7 +61,7 @@
 <div class="grid gap-4 lg:grid-cols-2 mb-6">
     @foreach ([['Registration funnel', $registrationFunnel], ['Commerce funnel', $commerceFunnel]] as [$funnelTitle, $stages])
         <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">{{ $funnelTitle }}</h2>
+            <h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-600">{{ $funnelTitle }}</h2>
 
             <ol class="space-y-3">
                 @foreach ($stages as $stage)
@@ -74,13 +74,13 @@
                         {{-- Bar width is the share of the FIRST stage, so the
                              shape of the whole funnel reads at a glance. --}}
                         <div class="mt-1 h-1.5 w-full rounded-full bg-gray-100">
-                            <div class="h-1.5 rounded-full bg-brand-500" style="width: {{ min(100, $stage->shareOfFirst ?? 0) }}%"></div>
+                            <div class="h-1.5 rounded-full bg-brand-700" style="width: {{ min(100, $stage->shareOfFirst ?? 0) }}%"></div>
                         </div>
 
-                        <p class="mt-1 text-xs text-gray-500">
+                        <p class="mt-1 text-xs text-gray-600">
                             {{ $stage->note }}
                             @if ($stage->dropFromPrevious() !== null)
-                                <span class="{{ $stage->dropFromPrevious() > 50 ? 'text-red-600 font-medium' : 'text-gray-500' }}">
+                                <span class="{{ $stage->dropFromPrevious() > 50 ? 'text-red-600 font-medium' : 'text-gray-600' }}">
                                     — {{ $stage->dropFromPrevious() }}% lost from the step before.
                                 </span>
                             @endif
@@ -89,7 +89,7 @@
                 @endforeach
             </ol>
 
-            <p class="mt-4 text-xs text-gray-400 leading-relaxed">
+            <p class="mt-4 text-xs text-gray-600 leading-relaxed">
                 Counts are of distinct people reaching each milestone inside the window. Somebody who
                 started before it and finished inside it appears only where they finished, so a short
                 window can show a later step ahead of an earlier one.
@@ -100,7 +100,7 @@
 
 {{-- ── The base ─────────────────────────────────────────────────────── --}}
 <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
-    <h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">The distributor base (as of today)</h2>
+    <h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-600">The distributor base (as of today)</h2>
 
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
         @foreach ([
@@ -111,15 +111,15 @@
             'Never bought' => $baseShape['never_bought'],
         ] as $label => $value)
             <div>
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $label }}</p>
-                <p class="mt-1 text-lg font-bold {{ $label === 'Never bought' && $value > 0 ? 'text-amber-600' : 'text-gray-900' }}">
+                <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">{{ $label }}</p>
+                <p class="mt-1 text-lg font-bold {{ $label === 'Never bought' && $value > 0 ? 'text-amber-700' : 'text-gray-900' }}">
                     {{ IndianNumber::format($value) }}
                 </p>
             </div>
         @endforeach
     </div>
 
-    <p class="mt-4 text-xs text-gray-400 leading-relaxed">
+    <p class="mt-4 text-xs text-gray-600 leading-relaxed">
         "Never bought" is the number worth watching. A distributor who has never placed an order has
         nothing the compensation plan can pay on, and twelve months of it makes them liable to the
         Agreement §21 dormancy rule.
@@ -128,8 +128,8 @@
 
 {{-- ── Retention ────────────────────────────────────────────────────── --}}
 <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
-    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500">Monthly buyer retention</h2>
-    <p class="mt-1 mb-4 text-xs text-gray-500 leading-relaxed">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-600">Monthly buyer retention</h2>
+    <p class="mt-1 mb-4 text-xs text-gray-600 leading-relaxed">
         Measured on purchases, not logins — a distributor who signs in every month and never buys is not
         retained in any sense the business cares about. The percentage is the share of <em>last</em>
         month's buyers who bought again, so new buyers are never counted as retained.
@@ -138,7 +138,7 @@
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead>
-                <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600">
                     <th class="py-2 pr-4">Month</th>
                     <th class="py-2 pr-4">Buyers</th>
                     <th class="py-2 pr-4">Returning</th>
@@ -160,26 +160,26 @@
         </table>
     </div>
 
-    <p class="mt-3 text-xs text-gray-400">
+    <p class="mt-3 text-xs text-gray-600">
         A dash means nobody bought in the month before, so there was nothing to retain.
     </p>
 </div>
 
 {{-- ── Top by volume ────────────────────────────────────────────────── --}}
 <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500">Highest volume in the window</h2>
-    <p class="mt-1 mb-4 text-xs text-gray-500 leading-relaxed">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-600">Highest volume in the window</h2>
+    <p class="mt-1 mb-4 text-xs text-gray-600 leading-relaxed">
         BV attributed in the selected window. No rank and no earnings — this is an operational view of
         where volume came from, and it must not become a league table anybody shows a prospect.
     </p>
 
     @if ($topByVolume === [])
-        <p class="text-sm text-gray-500">No BV in this window.</p>
+        <p class="text-sm text-gray-600">No BV in this window.</p>
     @else
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead>
-                    <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600">
                         <th class="py-2 pr-4">ADN</th>
                         <th class="py-2 pr-4">Name</th>
                         <th class="py-2 pr-4">BV</th>

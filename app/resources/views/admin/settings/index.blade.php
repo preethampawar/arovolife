@@ -16,7 +16,7 @@
     {{-- Placement rule (see also the Placement settings group below) --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="font-semibold text-gray-900">Placement rule</h2>
-        <p class="text-sm text-gray-500 mt-1">
+        <p class="text-sm text-gray-600 mt-1">
             Every new registrant arrives via a referral link carrying
             <code class="bg-gray-100 px-1 rounded text-xs">sponsor</code>,
             <code class="bg-gray-100 px-1 rounded text-xs">placement</code>, and an optional
@@ -34,7 +34,7 @@
         <header class="px-1">
             <h2 class="text-lg font-semibold text-gray-900">{{ $group['meta']['label'] }}</h2>
             @if(!empty($group['meta']['description']))
-            <p class="text-sm text-gray-500 mt-0.5">{{ $group['meta']['description'] }}</p>
+            <p class="text-sm text-gray-600 mt-0.5">{{ $group['meta']['description'] }}</p>
             @endif
         </header>
 
@@ -60,7 +60,7 @@
                                 @if($readOnly)
                                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Read-only</span>
                                 @endif
-                                <code class="text-[11px] text-gray-400 font-mono break-all">{{ $key }}</code>
+                                <code class="text-[11px] text-gray-600 font-mono break-all">{{ $key }}</code>
                             </div>
                             <p class="text-sm text-gray-600 mt-1.5">{{ $meta['description'] }}</p>
 
@@ -98,10 +98,10 @@
                                            max="{{ $meta['max'] ?? '' }}"
                                            step="1"
                                            {{ $readOnly ? 'disabled' : '' }}
-                                           class="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-right focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-500">
+                                           class="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-right focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-600">
                                     <button type="submit"
                                             {{ $readOnly ? 'disabled' : '' }}
-                                            class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
                                         Save
                                     </button>
                                 </form>
@@ -120,10 +120,10 @@
                                            value="{{ old('value', $value) }}"
                                            maxlength="{{ $meta['max'] ?? 255 }}"
                                            {{ $readOnly ? 'disabled' : '' }}
-                                           class="w-72 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-500">
+                                           class="w-72 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-600">
                                     <button type="submit"
                                             {{ $readOnly ? 'disabled' : '' }}
-                                            class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
                                         Save
                                     </button>
                                 </form>
@@ -145,14 +145,14 @@
                                     </select>
                                     <button type="submit"
                                             {{ $readOnly ? 'disabled' : '' }}
-                                            class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
                                         Save
                                     </button>
                                 </form>
 
                                 {{-- Per-option behaviour notes, so the admin sees what each choice does. --}}
                                 @if(collect($meta['options'] ?? [])->contains(fn ($o) => ! empty($o['note'])))
-                                <ul class="mt-2 space-y-1 text-xs text-gray-500 max-w-prose">
+                                <ul class="mt-2 space-y-1 text-xs text-gray-600 max-w-prose">
                                     @foreach($meta['options'] ?? [] as $opt)
                                         @if(! empty($opt['note']))
                                         <li class="{{ $opt['value'] === $value ? 'text-gray-700' : '' }}">
@@ -178,7 +178,7 @@
                                               class="w-full font-mono text-sm rounded-lg border border-gray-300 px-3 py-2 focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100">{{ old('state_age_minimums', $value) }}</textarea>
                                     <button type="submit"
                                             {{ $readOnly ? 'disabled' : '' }}
-                                            class="mt-2 w-full px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            class="mt-2 w-full px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
                                         Save
                                     </button>
                                 </form>
@@ -206,7 +206,7 @@
         <summary class="font-semibold text-gray-800 cursor-pointer select-none">
             Show advanced settings (engineer view)
         </summary>
-        <p class="text-xs text-gray-500 mt-2 mb-4">
+        <p class="text-xs text-gray-600 mt-2 mb-4">
             Raw <code class="bg-gray-100 px-1 rounded">settings</code> table contents.
             All edits flow through the friendly cards above; this view is read-only.
         </p>
@@ -214,17 +214,17 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 text-xs text-gray-500">Key</th>
-                        <th class="text-left py-2 text-xs text-gray-500">Value</th>
-                        <th class="text-left py-2 text-xs text-gray-500">Version</th>
+                        <th class="text-left py-2 text-xs text-gray-600">Key</th>
+                        <th class="text-left py-2 text-xs text-gray-600">Value</th>
+                        <th class="text-left py-2 text-xs text-gray-600">Version</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($settings as $setting)
                     <tr>
                         <td class="py-2 pr-3 font-mono text-xs text-gray-600 break-all">{{ $setting->key }}</td>
-                        <td class="py-2 pr-3 font-mono text-xs text-brand-600 break-all">{{ $setting->value }}</td>
-                        <td class="py-2 text-xs text-gray-400">v{{ $setting->version }}</td>
+                        <td class="py-2 pr-3 font-mono text-xs text-brand-700 break-all">{{ $setting->value }}</td>
+                        <td class="py-2 text-xs text-gray-600">v{{ $setting->version }}</td>
                     </tr>
                     @endforeach
                 </tbody>

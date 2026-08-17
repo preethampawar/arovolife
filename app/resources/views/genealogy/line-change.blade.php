@@ -25,7 +25,7 @@
     <div class="rounded-2xl border border-gray-200 bg-white p-6 mb-6">
         <dl class="text-sm grid grid-cols-2 gap-y-2">
             <dt class="text-gray-600">Your ADN</dt>
-            <dd class="font-mono font-bold text-brand-600 tracking-widest">{{ $self->adn }}</dd>
+            <dd class="font-mono font-bold text-brand-700 tracking-widest">{{ $self->adn }}</dd>
 
             <dt class="text-gray-600">Effective date</dt>
             <dd class="text-gray-900 font-medium">{{ $self->effective_date->format('d M Y') }}</dd>
@@ -53,19 +53,19 @@
     <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
         <p class="font-semibold mb-1">You've already used your one line change</p>
         <p>Each distributor may change their placement once. For anything further, contact
-            <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
+            <a class="text-brand-700 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
     </div>
     @elseif($hasDownline)
     <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
         <p class="font-semibold mb-1">Line-change is no longer available</p>
         <p>You already have referrals placed in your tree, so your placement can't be moved. For help, contact
-            <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
+            <a class="text-brand-700 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
     </div>
     @elseif($hasCommerceActivity)
     <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
         <p class="font-semibold mb-1">Line-change is no longer available</p>
         <p>You have order or BV activity on your account. To keep everyone's volumes fair, your placement can't be moved once you've started buying. For help, contact
-            <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
+            <a class="text-brand-700 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
     </div>
     @elseif($existing && $existing->status === 'pending')
     <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
@@ -109,7 +109,7 @@
         </div>
 
         <button type="submit"
-            class="w-full inline-flex justify-center items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-3 text-sm transition-colors">
+            class="w-full inline-flex justify-center items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-6 py-3 text-sm transition-colors">
             Submit request
         </button>
     </form>
@@ -117,11 +117,11 @@
     <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
         <p class="font-semibold mb-2">The 5-working-day window has ended.</p>
         <p>For account changes outside this window, please contact
-            <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
+            <a class="text-brand-700 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.</p>
     </div>
     @endif
 
-    <a href="{{ route('dashboard') }}" class="block text-center text-sm text-gray-500 hover:text-gray-700 mt-6">
+    <a href="{{ route('dashboard') }}" class="block text-center text-sm text-gray-600 hover:text-gray-700 mt-6">
         Back to dashboard
     </a>
 </div>

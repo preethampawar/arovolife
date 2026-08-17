@@ -80,18 +80,18 @@
 
         <div>
             <label for="attachments" class="block text-sm font-medium text-gray-700 mb-1.5">
-                Evidence <span class="font-normal text-gray-500">(optional)</span>
+                Evidence <span class="font-normal text-gray-600">(optional)</span>
             </label>
             <input id="attachments" name="attachments[]" type="file" multiple
                    accept=".pdf,.jpg,.jpeg,.png,.webp,.heic"
                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-700">
-            <p class="mt-1.5 text-xs text-gray-500">
+            <p class="mt-1.5 text-xs text-gray-600">
                 Up to {{ $maxAttachments }} files, {{ $maxKilobytes / 1024 }} MB each.
             </p>
         </div>
 
         <button type="submit"
-                class="w-full rounded-lg bg-brand-500 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-600">
+                class="w-full rounded-lg bg-brand-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-800">
             Submit grievance
         </button>
     </form>

@@ -10,24 +10,24 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($batches->isEmpty())
-    <p class="px-6 py-10 text-sm text-gray-400 text-center">No payout batches yet — weekly payout not yet active.</p>
+    <p class="px-6 py-10 text-sm text-gray-600 text-center">No payout batches yet — weekly payout not yet active.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-500">Batch date</th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-left text-gray-600">Batch date</th>
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Distributors <x-help-tip text="Number of distributors included in this payout batch (wallet ≥ ₹{{ $minPayout }})." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Total gross <x-help-tip text="Sum of all wallet balances included in the batch before deductions." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Deductions <x-help-tip text="Repurchase deduction (10% of last month's cash bonuses, capped ₹10,000) + admin charge (3%) + TDS (5%)." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">Net transferred</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Status</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Net transferred</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Status</th>
                     <th class="px-4 py-2"></th>
                 </tr>
             </thead>
@@ -45,7 +45,7 @@
                     <td class="px-4 py-2 font-medium">{{ $b->batch_date->format('d M Y') }} (Tue)</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($b->distributor_count) }}</td>
                     <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_deductions_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_deductions_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_net_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $bc[$b->status] ?? 'bg-gray-100 text-gray-600' }}">
@@ -54,7 +54,7 @@
                     </td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.weekly-payouts.show', $b) }}"
-                           class="text-brand-600 text-xs hover:underline">View →</a>
+                           class="text-brand-700 text-xs hover:underline">View →</a>
                     </td>
                 </tr>
                 @endforeach

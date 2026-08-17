@@ -38,8 +38,8 @@
                 @foreach($steps as $n => $meta)
                     <div class="flex-1 text-center">
                         <div class="h-1 rounded-full mb-1
-                            {{ $n < $current ? 'bg-brand-500' : ($n === $current ? 'bg-brand-400' : 'bg-gray-100') }}"></div>
-                        <span class="text-[11px] {{ $n === $current ? 'text-brand-600 font-semibold' : 'text-gray-600' }}">
+                            {{ $n < $current ? 'bg-brand-700' : ($n === $current ? 'bg-brand-400' : 'bg-gray-100') }}"></div>
+                        <span class="text-[11px] {{ $n === $current ? 'text-brand-700 font-semibold' : 'text-gray-600' }}">
                             {{ $meta['label'] }}
                         </span>
                     </div>
@@ -88,7 +88,7 @@
                                 $caption = $isDone ? 'Complete' : ($isActive ? 'In progress' : 'Pending');
                                 $captionClass = $isDone
                                     ? 'text-leaf-600'
-                                    : ($isActive ? 'text-brand-600' : 'text-slate-400');
+                                    : ($isActive ? 'text-brand-700' : 'text-slate-600');
                                 $delay = ($n * 40) + 80;
                             @endphp
                             <li class="lift-in" style="animation-delay: {{ $delay }}ms;">
@@ -111,7 +111,7 @@
                                             </span>
                                         @elseif($isActive)
                                             <span class="absolute inset-0 rounded-full bg-white ring-2 ring-brand-500 glow-pulse"></span>
-                                            <span class="step-numeral relative text-brand-600 text-[15px]" style="font-weight: 500;">{{ str_pad((string) $n, 2, '0', STR_PAD_LEFT) }}</span>
+                                            <span class="step-numeral relative text-brand-700 text-[15px]" style="font-weight: 500;">{{ str_pad((string) $n, 2, '0', STR_PAD_LEFT) }}</span>
                                         @else
                                             <span class="step-numeral text-slate-300 text-[18px]" style="font-weight: 350;">{{ str_pad((string) $n, 2, '0', STR_PAD_LEFT) }}</span>
                                         @endif
@@ -122,7 +122,7 @@
                                         <p class="text-[10px] uppercase tracking-[0.18em] {{ $captionClass }} font-semibold leading-none mb-0.5">{{ $caption }}</p>
                                         <p class="text-sm leading-tight
                                             {{ $isActive ? 'text-slate-900 font-semibold' :
-                                               ($isDone ? 'text-slate-700 group-hover:text-brand-700' : 'text-slate-400') }}">
+                                               ($isDone ? 'text-slate-700 group-hover:text-brand-800' : 'text-slate-600') }}">
                                             {{ $meta['label'] }}
                                         </p>
                                     </div>
@@ -139,12 +139,12 @@
 
                 {{-- Trust panel — editorial footer --}}
                 <div class="mt-8 lift-in p-4 rounded-xl border border-slate-200/70 bg-white/60 backdrop-blur-sm" style="animation-delay: 600ms;">
-                    <p class="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-semibold mb-3">A note on signing up</p>
+                    <p class="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-semibold mb-3">A note on signing up</p>
                     <ul class="space-y-2.5 text-[12px] text-slate-600 leading-snug">
                         <li class="flex gap-2"><span class="text-leaf-500 font-bold">·</span><span>Registration is <strong class="text-slate-800">free of charge</strong>.</span></li>
                         <li class="flex gap-2"><span class="text-brand-500 font-bold">·</span><span>30-day cooling-off, one-click cancel.</span></li>
                         <li class="flex gap-2"><span class="text-sunrise-500 font-bold">·</span><span>PAN/Aadhaar are encrypted at rest.</span></li>
-                        <li class="flex gap-2"><span class="text-slate-400 font-bold">·</span><span>Backed by India's DSR&nbsp;2021.</span></li>
+                        <li class="flex gap-2"><span class="text-slate-600 font-bold">·</span><span>Backed by India's DSR&nbsp;2021.</span></li>
                     </ul>
                 </div>
             </div>

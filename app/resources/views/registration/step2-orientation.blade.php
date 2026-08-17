@@ -37,10 +37,10 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <label class="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" name="confirmed_watched" value="1" required
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <div>
                     <span class="text-sm font-medium text-gray-800">I confirm I have read and understood the orientation material <span class="text-red-700">*</span></span>
-                    <p class="text-xs text-gray-500 mt-0.5">We record this as your own declaration. It is not a record that a video was watched.</p>
+                    <p class="text-xs text-gray-600 mt-0.5">We record this as your own declaration. It is not a record that a video was watched.</p>
                 </div>
             </label>
             @error('confirmed_watched')<p class="mt-2 text-xs text-red-700">{{ $message }}</p>@enderror
@@ -56,7 +56,7 @@
                     <div class="space-y-2">
                         @foreach(['A' => 'arovolife Distributor Number', 'B' => 'Annual Distribution Network', 'C' => 'Agent Development Number'] as $val => $label)
                         <label class="flex items-center gap-3 p-3 rounded-lg bg-white border border-gray-200 cursor-pointer hover:border-brand-500 transition-colors">
-                            <input type="radio" name="quiz_q1" value="{{ $val }}" class="text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                            <input type="radio" name="quiz_q1" value="{{ $val }}" class="text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                             <span class="text-sm text-gray-700">{{ $label }}</span>
                         </label>
                         @endforeach
@@ -70,7 +70,7 @@
                     <div class="space-y-2">
                         @foreach(['A' => '7 days', 'B' => '30 days', 'C' => '60 days'] as $val => $label)
                         <label class="flex items-center gap-3 p-3 rounded-lg bg-white border border-gray-200 cursor-pointer hover:border-brand-500 transition-colors">
-                            <input type="radio" name="quiz_q2" value="{{ $val }}" class="text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                            <input type="radio" name="quiz_q2" value="{{ $val }}" class="text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                             <span class="text-sm text-gray-700">{{ $label }}</span>
                         </label>
                         @endforeach
@@ -84,7 +84,7 @@
                     <div class="space-y-2">
                         @foreach(['A' => 'Recruiting new members only', 'B' => 'Membership fees', 'C' => 'Retail product sales to end consumers'] as $val => $label)
                         <label class="flex items-center gap-3 p-3 rounded-lg bg-white border border-gray-200 cursor-pointer hover:border-brand-500 transition-colors">
-                            <input type="radio" name="quiz_q3" value="{{ $val }}" class="text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                            <input type="radio" name="quiz_q3" value="{{ $val }}" class="text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                             <span class="text-sm text-gray-700">{{ $label }}</span>
                         </label>
                         @endforeach
@@ -97,7 +97,7 @@
         @include('registration._draft_notice')
 
         <button type="submit"
-            class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+            class="w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
             Continue to Consent →
         </button>
     </form>

@@ -39,7 +39,7 @@
     $badgeTipSuffix = ' The badge shows whether this is currently your power side (the higher of the two) or your weaker side — only the weaker side is matched against the slab table at the 23:59 cut-off.';
 
     $cardClasses = 'bg-white rounded-2xl border border-gray-200 p-5';
-    $statLabelClasses = 'text-xs text-gray-500 font-medium';
+    $statLabelClasses = 'text-xs text-gray-600 font-medium';
     $statValueClasses = 'text-2xl font-bold text-gray-900';
 @endphp
 <div class="max-w-5xl mx-auto px-4 py-8">
@@ -90,9 +90,9 @@
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($leftCarryForwardBv, 0) }}</p>
             @if($lastMatch !== null)
-                <p class="text-xs text-gray-400 mt-1">{{ $leftCarryForwardBv > 0 ? 'Remaining after your last slab match' : 'Reset at your last slab match' }} ({{ $lastMatch->cutoff_date->format('d M Y') }})</p>
+                <p class="text-xs text-gray-600 mt-1">{{ $leftCarryForwardBv > 0 ? 'Remaining after your last slab match' : 'Reset at your last slab match' }} ({{ $lastMatch->cutoff_date->format('d M Y') }})</p>
             @else
-                <p class="text-xs text-gray-400 mt-1">No slab matched yet</p>
+                <p class="text-xs text-gray-600 mt-1">No slab matched yet</p>
             @endif
         </div>
         <div class="{{ $cardClasses }}">
@@ -104,9 +104,9 @@
             <p class="mt-1">
                 <span class="{{ $powerSideIsLeft ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $powerSideIsLeft ? 'Power side' : 'Weaker side' }}</span>
             </p>
-            <p class="text-xs text-gray-400 mt-1">{{ Number::format($leftTodayBv, 0) }} today + {{ Number::format($leftEffectiveBv - $leftTodayBv, 0) }} carried over</p>
+            <p class="text-xs text-gray-600 mt-1">{{ Number::format($leftTodayBv, 0) }} today + {{ Number::format($leftEffectiveBv - $leftTodayBv, 0) }} carried over</p>
             @if($slabProgress !== null && $slabProgress->weakerSide() === 'L' && $slabProgress->slab1WeakerCfPaise > 0)
-                <p class="text-xs text-gray-500 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
+                <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
             @endif
         </div>
         <div class="{{ $cardClasses }}">
@@ -118,9 +118,9 @@
             <p class="mt-1">
                 <span class="{{ $powerSideIsLeft ? $weakerBadgeClasses : $powerBadgeClasses }}">{{ $powerSideIsLeft ? 'Weaker side' : 'Power side' }}</span>
             </p>
-            <p class="text-xs text-gray-400 mt-1">{{ Number::format($rightTodayBv, 0) }} today + {{ Number::format($rightEffectiveBv - $rightTodayBv, 0) }} carried over</p>
+            <p class="text-xs text-gray-600 mt-1">{{ Number::format($rightTodayBv, 0) }} today + {{ Number::format($rightEffectiveBv - $rightTodayBv, 0) }} carried over</p>
             @if($slabProgress !== null && $slabProgress->weakerSide() === 'R' && $slabProgress->slab1WeakerCfPaise > 0)
-                <p class="text-xs text-gray-500 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
+                <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
             @endif
         </div>
         <div class="{{ $cardClasses }}">
@@ -130,9 +130,9 @@
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($rightCarryForwardBv, 0) }}</p>
             @if($lastMatch !== null)
-                <p class="text-xs text-gray-400 mt-1">{{ $rightCarryForwardBv > 0 ? 'Remaining after your last slab match' : 'Reset at your last slab match' }} ({{ $lastMatch->cutoff_date->format('d M Y') }})</p>
+                <p class="text-xs text-gray-600 mt-1">{{ $rightCarryForwardBv > 0 ? 'Remaining after your last slab match' : 'Reset at your last slab match' }} ({{ $lastMatch->cutoff_date->format('d M Y') }})</p>
             @else
-                <p class="text-xs text-gray-400 mt-1">No slab matched yet</p>
+                <p class="text-xs text-gray-600 mt-1">No slab matched yet</p>
             @endif
         </div>
     </div>
@@ -146,7 +146,7 @@
                 <x-help-tip text="Everyone placed anywhere in the Left side of your Genos, at any depth below you. It counts placements, not purchases." />
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($teamCounts['left_team'] ?? 0, 0) }}</p>
-            <p class="text-xs text-gray-400 mt-1">Left side, all depths</p>
+            <p class="text-xs text-gray-600 mt-1">Left side, all depths</p>
         </div>
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
@@ -154,7 +154,7 @@
                 <x-help-tip text="Business Volume generated by your Left Genos side today{{ $todayBvTipSuffix }}.{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($leftTodayBv, 0) }}</p>
-            <p class="text-xs text-gray-400 mt-1">{{ $eligibilityNote }}</p>
+            <p class="text-xs text-gray-600 mt-1">{{ $eligibilityNote }}</p>
         </div>
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
@@ -162,7 +162,7 @@
                 <x-help-tip text="Business Volume generated by your Right Genos side today{{ $todayBvTipSuffix }}.{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($rightTodayBv, 0) }}</p>
-            <p class="text-xs text-gray-400 mt-1">{{ $eligibilityNote }}</p>
+            <p class="text-xs text-gray-600 mt-1">{{ $eligibilityNote }}</p>
         </div>
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
@@ -170,7 +170,7 @@
                 <x-help-tip text="Everyone placed anywhere in the Right side of your Genos, at any depth below you. It counts placements, not purchases." />
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($teamCounts['right_team'] ?? 0, 0) }}</p>
-            <p class="text-xs text-gray-400 mt-1">Right side, all depths</p>
+            <p class="text-xs text-gray-600 mt-1">Right side, all depths</p>
         </div>
     </div>
 
@@ -180,7 +180,7 @@
         <p class="text-sm font-semibold text-gray-700 mb-3">Note</p>
         <p class="text-sm text-gray-600 mb-2"><span class="font-semibold text-gray-800">Carry over:</span> Business that occurs before matching is called carry over.</p>
         <p class="text-sm text-gray-600"><span class="font-semibold text-gray-800">Carry forward:</span> The remaining BVs after matching are called carry forward.</p>
-        <p class="text-xs text-gray-500 mt-2">Carry over is never lost — it keeps accumulating as that side's opening balance until a slab is matched. After a match, the weaker side resets to 0 and the power side's carry forward is capped at 4,50,000 BV.</p>
+        <p class="text-xs text-gray-600 mt-2">Carry over is never lost — it keeps accumulating as that side's opening balance until a slab is matched. After a match, the weaker side resets to 0 and the power side's carry forward is capped at 4,50,000 BV.</p>
     </div>
     @endif
 </div>

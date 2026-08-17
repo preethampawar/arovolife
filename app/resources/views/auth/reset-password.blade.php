@@ -16,9 +16,9 @@
     <div class="max-w-md mx-auto px-6 py-12 sm:py-16">
 
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Account recovery</p>
+            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Account recovery</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
-                Choose a <span class="text-brand-600">new password</span>.
+                Choose a <span class="text-brand-700">new password</span>.
             </h1>
             <p class="mt-4 text-base text-gray-600 max-w-prose mx-auto">
                 You'll be signed in automatically once the new password is saved.
@@ -73,7 +73,7 @@
                 </div>
 
                 <button type="submit"
-                    class="btn-cta group w-full rounded-full bg-brand-500 hover:bg-brand-600 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
+                    class="btn-cta group w-full rounded-full bg-brand-700 hover:bg-brand-800 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                     style="animation-delay: 500ms;">
                     <span class="inline-flex items-center justify-center gap-2.5">
                         Reset password &amp; sign in
@@ -85,9 +85,9 @@
             </form>
         </div>
 
-        <p class="mt-8 text-center text-[11px] text-slate-400 lift-in" style="animation-delay: 580ms;">
+        <p class="mt-8 text-center text-[11px] text-slate-600 lift-in" style="animation-delay: 580ms;">
             Reset link expires 60 minutes after it's sent. If yours has expired,
-            <a href="{{ route('password.request') }}" class="text-brand-600 hover:text-brand-700 underline-offset-4 hover:underline">request a new one</a>.
+            <a href="{{ route('password.request') }}" class="text-brand-700 hover:text-brand-800 underline-offset-4 hover:underline">request a new one</a>.
         </p>
     </div>
 

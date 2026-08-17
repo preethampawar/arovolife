@@ -452,7 +452,7 @@ want per-phase sign-offs.
 |---|---|
 | T-6.1 security-auditor 10-point pass | `security-auditor` |
 | T-6.2 compliance-officer sign-off C-01…C-09 | `compliance-officer` |
-| T-5.6 WCAG 2.1 AA scan + evidence | engineering — **spec written**, `tests/Browser/accessibility.spec.js`; needs `npm i -D @axe-core/playwright` (dependency approval) then one run |
+| T-5.6 WCAG 2.1 AA scan + evidence | ✅ **0 violations on 16 of 24 pages, 2026-08-17** — all 9 public and all 7 admin pages clean; 254 contrast failures and 4 structural issues fixed. The 8 distributor pages are **unscanned** (the fixture ADN no longer exists in dev) — one command away, see the evidence file. `docs/compliance/evidence/t-5.6-wcag-2.1-aa-2026-08-17.md` |
 | T-5.5 performance proof — 1M-row tree, p95 placement ≤ 250 ms | ✅ **PASS 2026-08-17** — 1M distributors, 18.95M closure rows, depth 19, p95 **1.8 ms**. `docs/compliance/evidence/t-5.5-placement-performance-2026-08-17.md` |
 | T-5.7 backup + restore drill into staging | engineering — **procedure written**, `docs/runbooks/backup-restore-drill.md`; the drill itself overwrites the staging database and needs a scheduled window |
 | T-6.3 UAT with PO sign-off | Product Owner |

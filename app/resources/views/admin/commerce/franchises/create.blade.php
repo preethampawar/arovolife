@@ -37,7 +37,7 @@
 
     @include('admin.commerce.franchises._form', ['franchise' => null, 'planRateBp' => $planRateBp])
 
-    <button type="submit" class="rounded-lg bg-sunrise-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sunrise-600">
+    <button type="submit" class="rounded-lg bg-sunrise-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sunrise-900">
         Record application
     </button>
 </form>

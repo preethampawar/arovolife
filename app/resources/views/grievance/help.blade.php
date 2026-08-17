@@ -57,15 +57,15 @@
             @foreach ($officers as $role => $mailbox)
                 <div class="flex flex-wrap justify-between gap-2">
                     <dt class="text-gray-600">{{ $role }}</dt>
-                    <dd><a href="mailto:{{ $mailbox }}" class="font-medium text-brand-600 underline">{{ $mailbox }}</a></dd>
+                    <dd><a href="mailto:{{ $mailbox }}" class="font-medium text-brand-700 underline">{{ $mailbox }}</a></dd>
                 </div>
             @endforeach
             <div class="flex flex-wrap justify-between gap-2 pt-2 border-t border-gray-200">
                 <dt class="text-gray-600">Helpline (10:00–18:00 IST, Mon–Sat)</dt>
-                <dd><a href="tel:+918886662949" class="font-medium text-brand-600 underline">+91 88866 62949</a></dd>
+                <dd><a href="tel:+918886662949" class="font-medium text-brand-700 underline">+91 88866 62949</a></dd>
             </div>
         </dl>
-        <p class="mt-4 text-xs text-gray-500 leading-relaxed">
+        <p class="mt-4 text-xs text-gray-600 leading-relaxed">
             You may approach the National Consumer Helpline (1800-11-4000 / 1915), the Central Consumer
             Protection Authority or a Consumer Disputes Redressal Commission directly. You do not have to
             exhaust our internal steps first.

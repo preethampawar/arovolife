@@ -30,7 +30,7 @@
             @forelse($products as $product)
                 @php $v = $product->variants->sortBy('id')->first(); @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-medium text-gray-900">{{ $product->name }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $product->sku }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $product->productCategory?->name ?? '—' }}</td>
@@ -48,11 +48,11 @@
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $cls }}">{{ ucfirst($product->status) }}</span>
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <a href="{{ route('admin.catalog.products.edit', $product) }}" class="text-brand-600 hover:text-brand-700 font-medium">Edit</a>
+                        <a href="{{ route('admin.catalog.products.edit', $product) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">No products yet. <a href="{{ route('admin.catalog.products.create') }}" class="text-brand-600 underline">Create the first one</a>.</td></tr>
+                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-600">No products yet. <a href="{{ route('admin.catalog.products.create') }}" class="text-brand-700 underline">Create the first one</a>.</td></tr>
             @endforelse
         </tbody>
     </table>

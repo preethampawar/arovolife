@@ -42,33 +42,33 @@
         @if ($gsbOn)
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500 font-medium">Tonight's cut-off</p>
+                <p class="text-xs text-gray-600 font-medium">Tonight's cut-off</p>
                 <x-help-tip text="Every day at 23:59 IST your Left and Right Genos BV is locked and the lower (weaker) side is matched against the Genos Sales Bonus slabs. See the slab ladder on the Genos BV page for exactly where you stand." />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextCutoff']->format('d M') }} · 23:59</p>
             @if ($matchedSoFarBv !== null)
-                <p class="text-xs text-gray-500 mt-1">Matched BV so far today: {{ \App\Modules\Shared\Support\IndianNumber::format($matchedSoFarBv, 0) }}</p>
+                <p class="text-xs text-gray-600 mt-1">Matched BV so far today: {{ \App\Modules\Shared\Support\IndianNumber::format($matchedSoFarBv, 0) }}</p>
             @else
-                <p class="text-xs text-gray-400 mt-1">Locks today's Genos BV</p>
+                <p class="text-xs text-gray-600 mt-1">Locks today's Genos BV</p>
             @endif
         </div>
         @endif
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500 font-medium">Next weekly payout</p>
+                <p class="text-xs text-gray-600 font-medium">Next weekly payout</p>
                 <x-help-tip text="Your weekly bonus income{{ $gsbOn ? ' — Genos Sales Bonus and other weekly credits —' : '' }} transfers to your bank every Tuesday, after deductions and provided your balance meets the minimum. See Wallet &amp; Payouts for the exact rules." />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextWeeklyPayout']->format('D, d M') }}</p>
-            <p class="text-xs text-gray-400 mt-1">Weekly bonus income</p>
+            <p class="text-xs text-gray-600 mt-1">Weekly bonus income</p>
         </div>
         @if ($keyDates['hasMonthlyBonuses'] ?? false)
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500 font-medium">Next monthly payout</p>
+                <p class="text-xs text-gray-600 font-medium">Next monthly payout</p>
                 <x-help-tip text="Monthly bonus income for the previous month is calculated at the start of each month and transfers to your bank in the monthly payout on the 9th." />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextMonthlyPayout']->format('D, d M') }}</p>
-            <p class="text-xs text-gray-400 mt-1">Monthly bonuses for the previous month</p>
+            <p class="text-xs text-gray-600 mt-1">Monthly bonuses for the previous month</p>
         </div>
         @endif
     </div>
@@ -86,10 +86,10 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 {{ $bonusGridClass }} gap-3">
             @foreach ($bonusSummary as $bonus)
             <a href="{{ route($bonus['route']) }}" class="block bg-gray-50 rounded-xl px-4 py-3 hover:bg-gray-100 transition-colors">
-                <p class="text-xs text-gray-500 flex items-center gap-1 mb-1">{{ $bonus['label'] }} <x-help-tip :text="$bonus['tip']" /></p>
-                <p class="text-lg font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($bonus['monthPaise'] / 100, 0) }} <span class="text-xs font-normal text-gray-400">this month</span></p>
-                <p class="text-xs text-gray-500 mt-0.5">₹{{ \App\Modules\Shared\Support\IndianNumber::format($bonus['lifetimePaise'] / 100, 0) }} lifetime</p>
-                <p class="text-xs text-brand-600 mt-1 font-medium">View details →</p>
+                <p class="text-xs text-gray-600 flex items-center gap-1 mb-1">{{ $bonus['label'] }} <x-help-tip :text="$bonus['tip']" /></p>
+                <p class="text-lg font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($bonus['monthPaise'] / 100, 0) }} <span class="text-xs font-normal text-gray-600">this month</span></p>
+                <p class="text-xs text-gray-600 mt-0.5">₹{{ \App\Modules\Shared\Support\IndianNumber::format($bonus['lifetimePaise'] / 100, 0) }} lifetime</p>
+                <p class="text-xs text-brand-700 mt-1 font-medium">View details →</p>
             </a>
             @endforeach
         </div>
@@ -100,15 +100,15 @@
     <div class="grid grid-cols-1 {{ $gsbOn ? 'sm:grid-cols-3' : 'sm:grid-cols-1' }} gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500 font-medium">Personal BV (Lifetime)</p>
+                <p class="text-xs text-gray-600 font-medium">Personal BV (Lifetime)</p>
                 <x-help-tip text="The total Business Volume you have accumulated from your own personal purchases since joining. This is a lifetime running total and never resets. It determines your personal purchase title (Retailer, Dealer, Wholesaler, etc.)." />
             </div>
             @if ($personalBvPaise !== null)
                 <p class="text-2xl font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($personalBvPaise / 100, 0) }}</p>
-                <p class="text-xs text-gray-400 mt-1">{{ $title?->title ?? 'No title yet' }}</p>
+                <p class="text-xs text-gray-600 mt-1">{{ $title?->title ?? 'No title yet' }}</p>
             @else
                 <p class="text-2xl font-bold text-gray-900">—</p>
-                <p class="text-xs text-gray-400 mt-1">No title yet</p>
+                <p class="text-xs text-gray-600 mt-1">No title yet</p>
             @endif
         </div>
         @php
@@ -161,7 +161,7 @@
         @if ($gsbOn)
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500 font-medium">Left Genos BV (Today)</p>
+                <p class="text-xs text-gray-600 font-medium">Left Genos BV (Today)</p>
                 <x-help-tip text="Business Volume generated by your Left Genos group today, plus any BV carried over on your Left side from earlier days. This is the figure tonight's 23:59 cut-off will use.{{ $groupBvTipSuffix }}" />
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ $genosBvEligible ? ($slabProgress ? \App\Modules\Shared\Support\IndianNumber::format($leftEffectiveBv, 0) : '—') : '0' }}</p>
@@ -169,16 +169,16 @@
                 <p class="mt-1">
                     <span class="{{ $powerSideIsLeft ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $powerSideIsLeft ? 'Power side' : 'Weaker side' }}</span>
                 </p>
-                <p class="text-xs text-gray-500 mt-1">{{ $leftBreakdown }}</p>
+                <p class="text-xs text-gray-600 mt-1">{{ $leftBreakdown }}</p>
                 @if ($slab1WeakerCfHint !== null && $weakerSideIsLeft)
-                    <p class="text-xs text-gray-400 mt-1">{{ $slab1WeakerCfHint }}</p>
+                    <p class="text-xs text-gray-600 mt-1">{{ $slab1WeakerCfHint }}</p>
                 @endif
             @endif
-            <p class="text-xs text-gray-400 mt-1">{{ $groupBvNote }}</p>
+            <p class="text-xs text-gray-600 mt-1">{{ $groupBvNote }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500 font-medium">Right Genos BV (Today)</p>
+                <p class="text-xs text-gray-600 font-medium">Right Genos BV (Today)</p>
                 <x-help-tip text="Business Volume generated by your Right Genos group today, plus any BV carried over on your Right side from earlier days. This is the figure tonight's 23:59 cut-off will use.{{ $groupBvTipSuffix }}" />
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ $genosBvEligible ? ($slabProgress ? \App\Modules\Shared\Support\IndianNumber::format($rightEffectiveBv, 0) : '—') : '0' }}</p>
@@ -186,12 +186,12 @@
                 <p class="mt-1">
                     <span class="{{ $powerSideIsLeft ? $weakerBadgeClasses : $powerBadgeClasses }}">{{ $powerSideIsLeft ? 'Weaker side' : 'Power side' }}</span>
                 </p>
-                <p class="text-xs text-gray-500 mt-1">{{ $rightBreakdown }}</p>
+                <p class="text-xs text-gray-600 mt-1">{{ $rightBreakdown }}</p>
                 @if ($slab1WeakerCfHint !== null && ! $weakerSideIsLeft)
-                    <p class="text-xs text-gray-400 mt-1">{{ $slab1WeakerCfHint }}</p>
+                    <p class="text-xs text-gray-600 mt-1">{{ $slab1WeakerCfHint }}</p>
                 @endif
             @endif
-            <p class="text-xs text-gray-400 mt-1">{{ $groupBvNote }}</p>
+            <p class="text-xs text-gray-600 mt-1">{{ $groupBvNote }}</p>
         </div>
         @endif
     </div>
@@ -213,12 +213,12 @@
                 <p class="text-sm font-semibold text-gray-700">Power-side carry over (opening balance)</p>
                 <x-help-tip text="BV on your stronger (higher) Genos side is never lost. At every cut-off it carries over and is added straight back to the same side the next day — it is that side's opening balance, not a deduction. Business that occurs before matching is carry over; before your first slab matches it simply keeps accumulating. Only after a slab pays is the matched amount deducted — the weaker side resets to 0 and the power side's remaining BV (the carry forward) continues to the next day. Capped at 4,50,000 BV — any BV above this cap is flushed at each cut-off." />
             </div>
-            <p class="text-xl font-bold text-gray-900 mb-2">{{ \App\Modules\Shared\Support\IndianNumber::format($powerCfBv, 0) }} BV <span class="text-sm font-normal text-gray-400">/ 4,50,000 BV cap</span></p>
+            <p class="text-xl font-bold text-gray-900 mb-2">{{ \App\Modules\Shared\Support\IndianNumber::format($powerCfBv, 0) }} BV <span class="text-sm font-normal text-gray-600">/ 4,50,000 BV cap</span></p>
             <div class="w-full bg-gray-100 rounded-full h-2">
                 <div class="bg-indigo-500 h-2 rounded-full" style="width: {{ $powerPct }}%"></div>
             </div>
             @if ($cf && $cf->power_side)
-                <p class="text-xs text-gray-400 mt-2">On {{ $cf->power_side === 'L' ? 'Left' : 'Right' }} side</p>
+                <p class="text-xs text-gray-600 mt-2">On {{ $cf->power_side === 'L' ? 'Left' : 'Right' }} side</p>
             @endif
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
@@ -226,14 +226,14 @@
                 <p class="text-sm font-semibold text-gray-700">Slab-1 weaker carry over</p>
                 <x-help-tip text="For the first slab only (15,000 BV match), your weaker side BV carries over indefinitely — there is no time limit. It accumulates day by day until 15,000 BV is matched on both sides, which is when Slab 1 (₹2,000) pays. This bucket is not pinned to Left or Right: it counts toward whichever side is the weaker one at each cut-off, which is why it is held here instead of inside a side's Genos BV total." />
             </div>
-            <p class="text-xl font-bold text-gray-900 mb-2">{{ \App\Modules\Shared\Support\IndianNumber::format($slab1CfBv, 0) }} BV <span class="text-sm font-normal text-gray-400">/ 15,000 BV target</span></p>
+            <p class="text-xl font-bold text-gray-900 mb-2">{{ \App\Modules\Shared\Support\IndianNumber::format($slab1CfBv, 0) }} BV <span class="text-sm font-normal text-gray-600">/ 15,000 BV target</span></p>
             <div class="w-full bg-gray-100 rounded-full h-2">
                 <div class="bg-green-500 h-2 rounded-full" style="width: {{ $slab1Pct }}%"></div>
             </div>
             @if ($genosBvEligible && $slabProgress)
-                <p class="text-xs text-gray-400 mt-2">Currently accumulating from your {{ $weakerSideLabel }} (weaker) side</p>
+                <p class="text-xs text-gray-600 mt-2">Currently accumulating from your {{ $weakerSideLabel }} (weaker) side</p>
             @endif
-            <p class="text-xs text-gray-400 mt-2">No time limit</p>
+            <p class="text-xs text-gray-600 mt-2">No time limit</p>
         </div>
     </div>
     @endif

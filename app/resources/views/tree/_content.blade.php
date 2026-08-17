@@ -48,7 +48,7 @@
             {{ $contextSubtitlePre }}{{ $maxDepth }} {{ $maxDepth === 1 ? 'level' : 'levels' }} deep.
             @if($showSponsorshipLink)
                 Direct referrals (sponsorship) are on a
-                <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 underline underline-offset-2">separate page</a>.
+                <a href="{{ route('tree.sponsorship') }}" class="text-brand-700 underline underline-offset-2">separate page</a>.
             @endif
         </p>
     </div>
@@ -61,7 +61,7 @@
             @endif
         @endforeach
         <div>
-            <label for="levels" class="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Depth</label>
+            <label for="levels" class="block text-[11px] uppercase tracking-wider text-gray-600 font-semibold mb-1">Depth</label>
             @if($isSponsorshipMode)
                 {{-- In direct-referral mode the depth is structurally fixed at 1
                      (the literal meaning of "direct"). The input is rendered
@@ -72,7 +72,7 @@
                 <input id="levels" name="levels" type="number" min="1" step="1"
                     value="{{ $maxDepth }}"
                     readonly aria-readonly="true" title="Direct referrals is always 1 level deep"
-                    class="w-16 sm:w-20 rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500 bg-gray-100 text-gray-500 cursor-not-allowed">
+                    class="w-16 sm:w-20 rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500 bg-gray-100 text-gray-600 cursor-not-allowed">
             @else
                 {{-- Explicit −/+ steppers flank the input. Some users can't reach
                      the browser's tiny native number spinner (touch, zoom,
@@ -82,17 +82,17 @@
                      the native spinner. --}}
                 <div class="inline-flex items-stretch rounded-lg border border-gray-300 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-brand-500">
                     <button type="button" onclick="treeStepDepth(-1)" aria-label="Decrease depth"
-                        class="px-2.5 text-gray-600 hover:bg-gray-50 hover:text-brand-700 text-base font-semibold leading-none inline-flex items-center transition-colors">−</button>
+                        class="px-2.5 text-gray-600 hover:bg-gray-50 hover:text-brand-800 text-base font-semibold leading-none inline-flex items-center transition-colors">−</button>
                     <input id="levels" name="levels" type="number" min="1" step="1"
                         value="{{ $maxDepth }}"
                         class="w-12 sm:w-14 border-x border-gray-200 px-1 py-2 text-sm font-mono text-center focus:outline-none">
                     <button type="button" onclick="treeStepDepth(1)" aria-label="Increase depth"
-                        class="px-2.5 text-gray-600 hover:bg-gray-50 hover:text-brand-700 text-base font-semibold leading-none inline-flex items-center transition-colors">+</button>
+                        class="px-2.5 text-gray-600 hover:bg-gray-50 hover:text-brand-800 text-base font-semibold leading-none inline-flex items-center transition-colors">+</button>
                 </div>
             @endif
         </div>
         @unless($isSponsorshipMode)
-            <button type="submit" class="px-3 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Apply</button>
+            <button type="submit" class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Apply</button>
         @endunless
     </form>
 </div>
@@ -141,13 +141,13 @@
     data-reroot-key="{{ $rerootKey }}"
     data-admin-context="{{ $adminContext ? '1' : '0' }}">
     <div class="min-w-0 flex-1 max-w-md">
-        <label for="treeSearchInput" class="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1 inline-flex items-center gap-1">
+        <label for="treeSearchInput" class="block text-[11px] uppercase tracking-wider text-gray-600 font-semibold mb-1 inline-flex items-center gap-1">
             Find a distributor
             <x-help-tip text="Search your tree by ADN, full name, email or phone. The match is centred on screen; deeper matches re-root the tree at that person." />
         </label>
         <div class="flex items-stretch gap-2">
             <div class="relative flex-1 min-w-0">
-                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
                 <input type="search" id="treeSearchInput" autocomplete="off"
                     placeholder="Find by ADN, name, email or phone"
                     class="w-full rounded-lg border border-gray-300 bg-white pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -155,9 +155,9 @@
                 <ul id="treeSearchResults" class="absolute z-30 left-0 right-0 mt-1 max-h-72 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm hidden" role="listbox"></ul>
             </div>
             <button type="button" id="treeSearchBtn"
-                class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors whitespace-nowrap">Find</button>
+                class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors whitespace-nowrap">Find</button>
         </div>
-        <p id="treeSearchStatus" class="mt-1 text-[11px] text-gray-500 min-h-[1rem]" role="status" aria-live="polite"></p>
+        <p id="treeSearchStatus" class="mt-1 text-[11px] text-gray-600 min-h-[1rem]" role="status" aria-live="polite"></p>
     </div>
 </div>
 @endunless
@@ -201,10 +201,10 @@
     @endphp
     <span class="inline-flex items-center rounded-lg border border-gray-300 bg-white p-0.5 text-[11px] font-semibold">
         <a href="{{ $binaryHref }}"
-            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ ! $isSponsorshipView ? 'bg-brand-500 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
+            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ ! $isSponsorshipView ? 'bg-brand-700 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
             title="Genos placement tree (L/R)">Genos</a>
         <a href="{{ $directHref }}"
-            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ $isSponsorshipView ? 'bg-brand-500 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
+            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ $isSponsorshipView ? 'bg-brand-700 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
             title="Sponsorship tree — distributors you directly introduced">Direct</a>
     </span>
 
@@ -229,7 +229,7 @@
         <span id="treeFullscreenLabel">Full Screen</span>
     </button>
 
-    <span class="hidden md:inline ml-auto text-gray-400 text-[11px]">Drag to pan · Cmd/Ctrl + scroll to zoom</span>
+    <span class="hidden md:inline ml-auto text-gray-600 text-[11px]">Drag to pan · Cmd/Ctrl + scroll to zoom</span>
 </div>
 
 <div id="treeFrame" class="relative">
@@ -273,7 +273,7 @@
         <div class="absolute inset-0 overflow-hidden">
             <div id="minimapContent" class="absolute top-0 left-0 origin-top-left pointer-events-none"></div>
             <div id="minimapViewport"
-                class="absolute border-2 border-brand-500 bg-brand-500/20 rounded-sm cursor-grab hover:bg-brand-500/30 transition-colors shadow-[0_0_0_1px_rgba(255,255,255,0.6)]"
+                class="absolute border-2 border-brand-500 bg-brand-700/20 rounded-sm cursor-grab hover:bg-brand-700/30 transition-colors shadow-[0_0_0_1px_rgba(255,255,255,0.6)]"
                 style="left:0; top:0; width:50px; height:40px; min-width:24px; min-height:24px; touch-action:none;"
                 aria-label="Drag to pan, or click anywhere on the minimap to jump"></div>
         </div>
@@ -305,7 +305,7 @@
                 <p class="text-[10px] uppercase tracking-wider text-brand-700 font-semibold mb-0.5">Referral link</p>
                 <h3 id="inviteHeader" class="text-base font-bold text-gray-900">Invite someone</h3>
             </div>
-            <button type="button" onclick="closeInviteModal()" class="text-gray-400 hover:text-gray-700 transition-colors text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100" aria-label="Close">×</button>
+            <button type="button" onclick="closeInviteModal()" class="text-gray-600 hover:text-gray-700 transition-colors text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100" aria-label="Close">×</button>
         </div>
         <div class="p-5">
             <p class="text-sm text-slate-600 mb-4 leading-relaxed">
@@ -316,7 +316,7 @@
             </p>
             <div class="flex items-stretch gap-2 mb-3">
                 <input id="inviteUrl" type="text" readonly value="" class="flex-1 min-w-0 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500" onclick="this.select()">
-                <button type="button" id="inviteCopyBtn" onclick="copyInviteUrl()" class="px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Copy</button>
+                <button type="button" id="inviteCopyBtn" onclick="copyInviteUrl()" class="px-4 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Copy</button>
             </div>
             <p class="text-[11px] text-slate-500 leading-relaxed">If the slot fills before they register, the link will redirect them to Contact Us.</p>
         </div>
@@ -719,7 +719,7 @@ window.copyAdn = (btn) => {
         statusEl.textContent = msg || '';
         statusEl.className = 'mt-1 text-[11px] min-h-[1rem] ' + (
             tone === 'error' ? 'text-red-600' :
-            tone === 'ok'    ? 'text-leaf-700' : 'text-gray-500'
+            tone === 'ok'    ? 'text-leaf-700' : 'text-gray-600'
         );
     };
 
@@ -795,7 +795,7 @@ window.copyAdn = (btn) => {
         resultsEl.innerHTML = '';
         if (items.length === 0) {
             const li = document.createElement('li');
-            li.className = 'px-3 py-2 text-gray-400';
+            li.className = 'px-3 py-2 text-gray-600';
             li.textContent = 'No matches';
             resultsEl.appendChild(li);
             resultsEl.classList.remove('hidden');
@@ -819,13 +819,13 @@ window.copyAdn = (btn) => {
             const contact = [m.email, m.phone].filter(Boolean).join(' · ');
             if (contact) {
                 const sub = document.createElement('div');
-                sub.className = 'text-[11px] text-gray-500 truncate';
+                sub.className = 'text-[11px] text-gray-600 truncate';
                 sub.textContent = contact;
                 info.appendChild(sub);
             }
 
             const adn = document.createElement('span');
-            adn.className = 'font-mono text-[11px] text-gray-500 shrink-0';
+            adn.className = 'font-mono text-[11px] text-gray-600 shrink-0';
             adn.textContent = m.adn;
 
             li.appendChild(info);

@@ -27,7 +27,7 @@
     {{-- Stat cards --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div class="rounded-xl border border-gray-200 p-3">
-            <p class="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
+            <p class="text-[10px] uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 Personal BV
                 <x-help-tip text="Lifetime total BV from all personal purchases. Determines your title and max GSB slab." />
             </p>
@@ -38,24 +38,24 @@
             $gsbMinBvLabel = \App\Modules\Shared\Support\IndianNumber::format($gsbMinBvPaise / 100, 0);
         @endphp
         <div class="rounded-xl border border-gray-200 p-3">
-            <p class="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
+            <p class="text-[10px] uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 Left Genos BV today
                 <x-help-tip text="Total BV from left Genos subtree today. Raw accumulator — if the distributor's personal BV is below {{ $gsbMinBvLabel }} BV, the daily cut-off discards it (status BELOW_600BV) instead of crediting it." />
             </p>
-            <p class="text-lg font-bold {{ $genosBvEligible ? 'text-green-700' : 'text-gray-400 line-through' }} mt-1">@bv($todayBv?->left_bv_paise ?? 0)</p>
+            <p class="text-lg font-bold {{ $genosBvEligible ? 'text-green-700' : 'text-gray-600 line-through' }} mt-1">@bv($todayBv?->left_bv_paise ?? 0)</p>
             @unless ($genosBvEligible)
                 <span class="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-medium">Not credited — personal BV below {{ $gsbMinBvLabel }}</span>
             @endunless
         </div>
         <div class="rounded-xl border border-gray-200 p-3">
-            <p class="text-[10px] uppercase tracking-wider text-gray-500">Right Genos BV today</p>
-            <p class="text-lg font-bold {{ $genosBvEligible ? 'text-green-700' : 'text-gray-400 line-through' }} mt-1">@bv($todayBv?->right_bv_paise ?? 0)</p>
+            <p class="text-[10px] uppercase tracking-wider text-gray-600">Right Genos BV today</p>
+            <p class="text-lg font-bold {{ $genosBvEligible ? 'text-green-700' : 'text-gray-600 line-through' }} mt-1">@bv($todayBv?->right_bv_paise ?? 0)</p>
             @unless ($genosBvEligible)
                 <span class="inline-block mt-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-medium">Not credited — personal BV below {{ $gsbMinBvLabel }}</span>
             @endunless
         </div>
         <div class="rounded-xl border border-gray-200 p-3">
-            <p class="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1">
+            <p class="text-[10px] uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 Wallet balance
                 <x-help-tip text="{{ $gsbOn ? 'Net GSB and MB credits not yet paid out.' : 'Net bonus credits not yet paid out.' }}" />
             </p>
@@ -73,7 +73,7 @@
             </p>
             <p class="text-base font-bold text-purple-700 mt-1">
                 @bv($cf?->power_side_bv_paise ?? 0)
-                <span class="text-xs text-gray-400 font-normal">/ 4,50,000 cap</span>
+                <span class="text-xs text-gray-600 font-normal">/ 4,50,000 cap</span>
             </p>
             @php $pctPower = $cf ? min(100, round($cf->power_side_bv_paise / 45_000_000 * 100, 1)) : 0; @endphp
             <div class="w-full bg-purple-100 rounded-full h-1.5 mt-1.5">
@@ -87,7 +87,7 @@
             </p>
             <p class="text-base font-bold text-green-700 mt-1">
                 @bv($cf?->slab1_weaker_bv_paise ?? 0)
-                <span class="text-xs text-gray-400 font-normal">/ 15,000 target</span>
+                <span class="text-xs text-gray-600 font-normal">/ 15,000 target</span>
             </p>
             @php $pctSlab1 = $cf ? min(100, round($cf->slab1_weaker_bv_paise / 1_500_000 * 100, 1)) : 0; @endphp
             <div class="w-full bg-green-100 rounded-full h-1.5 mt-1.5">
@@ -112,7 +112,7 @@
     @foreach($visibleTabs as $key => $label)
     <a href="{{ route('admin.compensation.distributors.show', [$distributor, 'tab' => $key]) }}"
        class="px-4 py-2 text-sm font-medium border-b-2 -mb-px
-              {{ $tab === $key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+              {{ $tab === $key ? 'border-brand-500 text-brand-700' : 'border-transparent text-gray-600 hover:text-gray-700' }}">
         {{ $label }}
     </a>
     @endforeach

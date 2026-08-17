@@ -72,9 +72,9 @@
     ];
 
     $tones = [
-        'brand'  => ['bg' => 'bg-brand-50',  'fg' => 'text-brand-600'],
+        'brand'  => ['bg' => 'bg-brand-50',  'fg' => 'text-brand-700'],
         'green'  => ['bg' => 'bg-green-50',  'fg' => 'text-green-600'],
-        'amber'  => ['bg' => 'bg-amber-50',  'fg' => 'text-amber-600'],
+        'amber'  => ['bg' => 'bg-amber-50',  'fg' => 'text-amber-700'],
         'sky'    => ['bg' => 'bg-sky-50',    'fg' => 'text-sky-600'],
         'red'    => ['bg' => 'bg-red-50',    'fg' => 'text-red-600'],
         'slate'  => ['bg' => 'bg-slate-100', 'fg' => 'text-slate-600'],
@@ -93,7 +93,7 @@
                     {!! $card['icon'] !!}
                 </svg>
             </div>
-            <span class="text-gray-500 group-hover:text-brand-500 transition-colors text-lg leading-none" aria-hidden="true">→</span>
+            <span class="text-gray-600 group-hover:text-brand-800 transition-colors text-lg leading-none" aria-hidden="true">→</span>
         </div>
         <p class="text-xs uppercase tracking-wider text-gray-700 font-medium mb-1">{{ $card['label'] }}</p>
         <p class="text-3xl font-bold text-gray-900 leading-none mb-2">{{ \App\Modules\Shared\Support\IndianNumber::format($card['value']) }}</p>
@@ -108,14 +108,14 @@
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="font-semibold text-gray-800">Recent Registrations</h3>
-            <a href="{{ route('admin.distributors.index') }}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">View all →</a>
+            <a href="{{ route('admin.distributors.index') }}" class="text-xs text-brand-700 hover:text-brand-800 font-medium">View all →</a>
         </div>
         <div class="divide-y divide-gray-100">
             @forelse($recentDistributors as $d)
             <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
                 <div>
                     <a href="{{ route('admin.distributors.show', $d->id) }}"
-                       class="text-sm font-mono font-medium text-brand-600 hover:text-brand-700">{{ $d->adn }}</a>
+                       class="text-sm font-mono font-medium text-brand-700 hover:text-brand-800">{{ $d->adn }}</a>
                     <p class="text-xs text-gray-700">{{ $d->full_name ?? $d->email }}</p>
                 </div>
                 <div class="text-right">
@@ -138,7 +138,7 @@
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="font-semibold text-gray-800">Recent Audit Events</h3>
-            <a href="{{ route('admin.audit-log') }}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">View all →</a>
+            <a href="{{ route('admin.audit-log') }}" class="text-xs text-brand-700 hover:text-brand-800 font-medium">View all →</a>
         </div>
         <div class="divide-y divide-gray-100">
             @forelse($recentAudit as $log)

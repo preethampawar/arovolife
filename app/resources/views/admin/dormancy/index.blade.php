@@ -11,7 +11,7 @@
     ];
 @endphp
 
-<div class="mb-6 max-w-3xl text-sm leading-relaxed text-slate-400">
+<div class="mb-6 max-w-3xl text-sm leading-relaxed text-slate-600">
     <p>
         Agreement §21 closes an account after <strong>{{ $inactivityMonths }} continuous months</strong>
         without a sale, following <strong>{{ $noticeDays }} days</strong> of written notice. The clock runs
@@ -49,20 +49,20 @@
     @foreach ($filters as $value => $label)
         <a href="{{ route('admin.dormancy.index', ['filter' => $value]) }}"
            class="rounded-full px-3.5 py-1.5 text-xs font-semibold transition
-                  {{ $filter === $value ? 'bg-sunrise-500 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700' }}">
+                  {{ $filter === $value ? 'bg-sunrise-800 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700' }}">
             {{ $label }}
         </a>
     @endforeach
 </div>
 
 @if ($distributors->isEmpty())
-    <div class="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-400">
+    <div class="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-600">
         Nobody in this state.
     </div>
 @else
     <div class="overflow-x-auto rounded-xl border border-slate-700">
         <table class="min-w-full divide-y divide-slate-700 text-sm">
-            <thead class="bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-400">
+            <thead class="bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-600">
                 <tr>
                     <th class="px-4 py-3">ADN</th>
                     <th class="px-4 py-3">Name</th>
@@ -87,10 +87,10 @@
                                class="font-semibold text-sunrise-400 underline">{{ $distributor->adn }}</a>
                         </td>
                         <td class="px-4 py-3 text-slate-200">{{ $distributor->user?->full_name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-slate-400">
+                        <td class="px-4 py-3 text-slate-600">
                             {{ $assessment->lastSaleAt?->format('d M Y') ?? 'Never sold' }}
                         </td>
-                        <td class="px-4 py-3 text-slate-400">{{ $assessment->clockRunningFrom->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-slate-600">{{ $assessment->clockRunningFrom->format('d M Y') }}</td>
 
                         @if ($filter === 'terminated')
                             <td class="px-4 py-3 text-slate-300">{{ $distributor->terminated_at?->format('d M Y') ?? '—' }}</td>
@@ -98,7 +98,7 @@
                                 {{ $distributor->reregistration_allowed_from?->format('d M Y') ?? 'No wait' }}
                             </td>
                         @else
-                            <td class="px-4 py-3 {{ $assessment->isDormant ? 'text-rose-300' : 'text-slate-400' }}">
+                            <td class="px-4 py-3 {{ $assessment->isDormant ? 'text-rose-300' : 'text-slate-600' }}">
                                 {{ $assessment->dormantFrom->format('d M Y') }}
                             </td>
                             <td class="px-4 py-3 text-slate-300">
@@ -123,7 +123,7 @@
                                                placeholder="Reason"
                                                class="w-40 rounded-lg border-slate-600 bg-slate-800 text-xs text-slate-100 placeholder-slate-500">
                                         <button type="submit"
-                                                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800">
+                                                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-800">
                                             Withdraw
                                         </button>
                                     </form>

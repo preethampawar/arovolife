@@ -15,13 +15,13 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">Net Fortune Bonus earned (page)</p>
+            <p class="text-xs text-gray-600 mb-1">Net Fortune Bonus earned (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">Months participated</p>
+            <p class="text-xs text-gray-600 mb-1">Months participated</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}
             </p>
@@ -31,14 +31,14 @@
     {{-- Filter --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">From (YYYY-MM)</label>
+            <label class="block text-xs text-gray-600 mb-1">From (YYYY-MM)</label>
             <input type="month" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">To (YYYY-MM)</label>
+            <label class="block text-xs text-gray-600 mb-1">To (YYYY-MM)</label>
             <input type="month" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
         @if(request('from') || request('to'))
             <a href="{{ route('income.fortune-bonus') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
@@ -46,8 +46,8 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">No Fortune Bonus yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Earn GSB slabs and meet the BV repurchase requirement to participate in the monthly matrix.</p>
+            <p class="text-gray-600 font-medium">No Fortune Bonus yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Earn GSB slabs and meet the BV repurchase requirement to participate in the monthly matrix.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -70,7 +70,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($rows as $row)
                     @php
-                    $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-500', 'pending' => 'bg-amber-100 text-amber-700'];
+                    $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-600', 'pending' => 'bg-amber-100 text-amber-700'];
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 font-medium text-gray-800">
@@ -88,12 +88,12 @@
                             @if($row->points !== null && $row->point_value_paise !== null)
                                 {{ \App\Modules\Shared\Support\IndianNumber::format($row->points) }} × ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) }}
                             @else
-                                <span class="text-gray-400">—</span>
+                                <span class="text-gray-600">—</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">
+                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
                             {{ $row->net_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) : '—' }}
                         </td>
                         <td class="px-4 py-3 text-center">

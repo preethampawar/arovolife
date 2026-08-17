@@ -30,10 +30,10 @@
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="failed" {{ $status === 'failed' ? 'selected' : '' }}>Failed</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $from || $to || $status || $slab)
     <a href="{{ route('admin.compensation.msb-calculation.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.msb-calculation.export', array_filter(['q' => $q, 'from' => $from, 'to' => $to, 'status' => $status, 'slab' => $slab])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -43,29 +43,29 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No MSB records found.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No MSB records found.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Sponsor ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Sponsor Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Date</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Sponsee ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Sponsee Name</th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium w-10">#</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Sponsor ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Sponsor Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Date</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Sponsee ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Sponsee Name</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         MSB Points
                         <x-help-tip text="Points credited to the sponsor for the sponsee's matched slab (snapshotted at credit time). Income = points × value. Legacy rate-ladder rows show —." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         Value
                         <x-help-tip text="Rupee value of one MSB point on the day it was credited: the day's 3% MSB pool ÷ the day's total MSB points, floored to whole rupees. Snapshotted per credit, so it never changes afterwards." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Received Income</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Received Income</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -75,10 +75,10 @@
                     $rowNumber = ($rows->currentPage() - 1) * $rows->perPage() + $i + 1;
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
+                    <td class="px-3 py-2 text-gray-600">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', [$row->sponsor_id, 'tab' => 'mb']) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->sponsor_adn }}
                         </a>
                     </td>
@@ -89,7 +89,7 @@
                             {{ $titleObj->title }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
@@ -101,17 +101,17 @@
                         @if($row->msb_points !== null)
                         {{ (int) $row->msb_points }}
                         @if($row->slab !== null)
-                        <span class="block text-[10px] text-gray-400 font-normal">slab {{ $row->slab }}</span>
+                        <span class="block text-[10px] text-gray-600 font-normal">slab {{ $row->slab }}</span>
                         @endif
                         @else
-                        <span class="text-gray-400 font-normal">—</span>
+                        <span class="text-gray-600 font-normal">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-right text-gray-800">
                         @if($row->msb_point_value_paise !== null)
                         ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 2) }}
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-right">

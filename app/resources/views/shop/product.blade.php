@@ -21,7 +21,7 @@
 @endphp
 
 <div class="mb-4">
-    <a href="{{ route('shop.index') }}" class="text-sm text-brand-600 hover:text-brand-700">← Back to shop</a>
+    <a href="{{ route('shop.index') }}" class="text-sm text-brand-700 hover:text-brand-800">← Back to shop</a>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -104,7 +104,7 @@
     <div>
         @if($catLabel)
         <a href="{{ route('shop.index', ['category' => $product->productCategory?->slug ?? $product->category]) }}"
-           class="text-xs text-brand-600 uppercase tracking-wider font-semibold hover:text-brand-700">{{ $catLabel }}</a>
+           class="text-xs text-brand-700 uppercase tracking-wider font-semibold hover:text-brand-800">{{ $catLabel }}</a>
         @endif
         <h1 class="text-3xl font-bold text-gray-900 mt-2 mb-3 flex items-center gap-2">
             <x-veg-mark :type="$product->food_type" />
@@ -119,7 +119,7 @@
         <div class="flex items-baseline flex-wrap gap-3 mb-3">
             <span class="text-3xl font-bold text-gray-900">{{ $variant->displayPrice() }}</span>
             @if($variant->hasDiscount())
-            <span class="text-lg text-gray-400 line-through">{{ $variant->displayMrp() }}</span>
+            <span class="text-lg text-gray-600 line-through">{{ $variant->displayMrp() }}</span>
             <span class="text-sm font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded">{{ $variant->discountPercent() }}% off</span>
             @endif
             @if($variant->bv_paise > 0 && $distributor)
@@ -142,14 +142,14 @@
         </div>
         @endif
 
-        <p class="text-xs text-gray-500 mb-6">Inclusive of all taxes. HSN: {{ $product->hsn_code }}</p>
+        <p class="text-xs text-gray-600 mb-6">Inclusive of all taxes. HSN: {{ $product->hsn_code }}</p>
 
         <form method="POST" action="{{ route('shop.cart.add') }}" class="mb-8">
             @csrf
             <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
             <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2">
-                    <label class="text-xs text-gray-500">Qty</label>
+                    <label class="text-xs text-gray-600">Qty</label>
                     {{-- −/＋ stepper: buttons adjust the field client-side (clamped
                          1–10); the value submits with Add to Cart. --}}
                     <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
@@ -164,7 +164,7 @@
                     </div>
                 </div>
                 <button type="submit"
-                    class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-md shadow-brand-500/20">
+                    class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors shadow-md shadow-brand-500/20">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75"/></svg>
                     Add to Cart
                 </button>
@@ -180,10 +180,10 @@
         @php $shareUrl = route('shop.product', ['slug' => $product->slug]).'?ref='.$myAdn; @endphp
         <div class="mb-8 p-4 rounded-xl border border-dashed border-brand-300 bg-brand-50/40">
             <div class="flex items-center gap-2 mb-2">
-                <svg class="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"/></svg>
+                <svg class="w-4 h-4 text-brand-700" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"/></svg>
                 <span class="text-sm font-semibold text-gray-800">Easy Purchase — share with a customer</span>
             </div>
-            <p class="text-xs text-gray-500 mb-3">Send this link. Purchases made through it for the next 30 days are attributed to you (ADN {{ $myAdn }}).</p>
+            <p class="text-xs text-gray-600 mb-3">Send this link. Purchases made through it for the next 30 days are attributed to you (ADN {{ $myAdn }}).</p>
             <div class="flex items-center gap-2">
                 <input type="text" readonly value="{{ $shareUrl }}" id="shareUrlInput"
                     class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-mono text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500">
@@ -196,12 +196,12 @@
 
         <div class="grid grid-cols-2 gap-3 text-xs">
             <div class="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
-                <svg class="w-5 h-5 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                <span><strong class="text-gray-900 block">30-day returns</strong><span class="text-gray-500">Cooling-off window on every order.</span></span>
+                <svg class="w-5 h-5 text-brand-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                <span><strong class="text-gray-900 block">30-day returns</strong><span class="text-gray-600">Cooling-off window on every order.</span></span>
             </div>
             <div class="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
-                <svg class="w-5 h-5 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                <span><strong class="text-gray-900 block">GST invoice</strong><span class="text-gray-500">Issued for every order.</span></span>
+                <svg class="w-5 h-5 text-brand-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                <span><strong class="text-gray-900 block">GST invoice</strong><span class="text-gray-600">Issued for every order.</span></span>
             </div>
         </div>
 
@@ -211,13 +211,13 @@
             <table class="w-full text-sm">
                 <tbody class="divide-y divide-gray-100">
                     @if($product->manufacturer)
-                    <tr><td class="py-2 pr-4 text-gray-500 font-medium">Manufacturer</td><td class="py-2 text-gray-900">{{ $product->manufacturer }}</td></tr>
+                    <tr><td class="py-2 pr-4 text-gray-600 font-medium">Manufacturer</td><td class="py-2 text-gray-900">{{ $product->manufacturer }}</td></tr>
                     @endif
                     @if($product->country_of_origin)
-                    <tr><td class="py-2 pr-4 text-gray-500 font-medium">Country of origin</td><td class="py-2 text-gray-900">{{ $product->country_of_origin }}</td></tr>
+                    <tr><td class="py-2 pr-4 text-gray-600 font-medium">Country of origin</td><td class="py-2 text-gray-900">{{ $product->country_of_origin }}</td></tr>
                     @endif
                     @if($product->hasFoodMark())
-                    <tr><td class="py-2 pr-4 text-gray-500 font-medium">Food type</td><td class="py-2 text-gray-900">
+                    <tr><td class="py-2 pr-4 text-gray-600 font-medium">Food type</td><td class="py-2 text-gray-900">
                         <span class="inline-flex items-center gap-1.5">
                             <x-veg-mark :type="$product->food_type" size="sm" />
                             {{ $product->isVeg() ? 'Vegetarian' : 'Non-vegetarian' }}
@@ -225,9 +225,9 @@
                     </td></tr>
                     @endif
                     @if($variant && $variant->weight_g > 0)
-                    <tr><td class="py-2 pr-4 text-gray-500 font-medium">Net weight</td><td class="py-2 text-gray-900">{{ $variant->weight_g }} g</td></tr>
+                    <tr><td class="py-2 pr-4 text-gray-600 font-medium">Net weight</td><td class="py-2 text-gray-900">{{ $variant->weight_g }} g</td></tr>
                     @endif
-                    <tr><td class="py-2 pr-4 text-gray-500 font-medium">HSN code</td><td class="py-2 text-gray-900 font-mono">{{ $product->hsn_code }}</td></tr>
+                    <tr><td class="py-2 pr-4 text-gray-600 font-medium">HSN code</td><td class="py-2 text-gray-900 font-mono">{{ $product->hsn_code }}</td></tr>
                 </tbody>
             </table>
         </div>

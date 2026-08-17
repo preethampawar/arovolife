@@ -19,8 +19,8 @@
             You don't have any TDS certificates or tax statements on file yet. Statements are issued
             quarterly once commission payouts begin — they'll show up here automatically when ready.
         </p>
-        <p class="text-xs text-gray-500 mt-4">
-            Questions? Email <a href="mailto:support@arovolife.com" class="text-brand-600 hover:underline">support@arovolife.com</a>.
+        <p class="text-xs text-gray-600 mt-4">
+            Questions? Email <a href="mailto:support@arovolife.com" class="text-brand-700 hover:underline">support@arovolife.com</a>.
         </p>
     </div>
 </div>

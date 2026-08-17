@@ -6,7 +6,7 @@
 <a href="{{ route('admin.commerce.franchises.index') }}" class="text-sm text-sunrise-400 underline">← Franchises</a>
 
 <div class="mt-4 mb-6 flex flex-wrap items-end justify-between gap-4">
-    <div class="max-w-2xl text-sm leading-relaxed text-slate-400">
+    <div class="max-w-2xl text-sm leading-relaxed text-slate-600">
         <p>
             How each franchise's commission for the month is arrived at.
             <strong>Fulfilled value</strong> is the net product value of the orders handed over through
@@ -24,11 +24,11 @@
     </div>
     <form method="GET" action="{{ route('admin.commerce.franchises.report') }}" class="flex items-end gap-2">
         <div>
-            <label for="month" class="mb-1 block text-xs font-medium text-slate-400">Month</label>
+            <label for="month" class="mb-1 block text-xs font-medium text-slate-600">Month</label>
             <input id="month" name="month" type="month" value="{{ $month->format('Y-m') }}"
                    class="rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100">
         </div>
-        <button type="submit" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+        <button type="submit" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
             View
         </button>
     </form>
@@ -41,13 +41,13 @@
 </div>
 
 @if ($rows === [])
-    <div class="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-400">
+    <div class="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-600">
         No franchises on the register yet.
     </div>
 @else
     <div class="overflow-x-auto rounded-xl border border-slate-700">
         <table class="min-w-full divide-y divide-slate-700 text-sm">
-            <thead class="bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-400">
+            <thead class="bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-600">
                 <tr>
                     <th class="px-4 py-3">Code</th>
                     <th class="px-4 py-3">Operator</th>
@@ -65,12 +65,12 @@
                             <a href="{{ route('admin.commerce.franchises.edit', $row['franchise']->id) }}"
                                class="font-semibold text-sunrise-400 underline">{{ $row['franchise']->code }}</a>
                         </td>
-                        <td class="px-4 py-3 text-slate-400">
+                        <td class="px-4 py-3 text-slate-600">
                             {{ $row['franchise']->operator?->user?->full_name ?? ($row['franchise']->is_company_primary ? 'Company' : '—') }}
                         </td>
-                        <td class="px-4 py-3 text-slate-400">{{ $row['order_count'] }}</td>
-                        <td class="px-4 py-3 text-slate-400">₹@bv($row['base_paise'] / 100)</td>
-                        <td class="px-4 py-3 text-slate-400">{{ number_format($row['rate_bp'] / 100, 2) }}%</td>
+                        <td class="px-4 py-3 text-slate-600">{{ $row['order_count'] }}</td>
+                        <td class="px-4 py-3 text-slate-600">₹@bv($row['base_paise'] / 100)</td>
+                        <td class="px-4 py-3 text-slate-600">{{ number_format($row['rate_bp'] / 100, 2) }}%</td>
                         <td class="px-4 py-3 font-semibold {{ $row['state'] === 'credited' ? 'text-emerald-300' : 'text-slate-300' }}">
                             ₹@bv($row['gross_paise'] / 100)
                         </td>

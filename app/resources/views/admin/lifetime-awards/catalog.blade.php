@@ -30,7 +30,7 @@
 <section class="mb-8">
     <div class="flex items-center justify-between mb-2">
         <h2 class="text-base font-semibold text-gray-800">{{ $rankNames[$rank] ?? 'Rank '.$rank }}</h2>
-        <span class="text-xs {{ $reconciles ? 'text-gray-500' : 'text-red-600 font-medium' }}">
+        <span class="text-xs {{ $reconciles ? 'text-gray-600' : 'text-red-600 font-medium' }}">
             items {{ $rupees($sum) }} / budget {{ $rupees($budget) }}{{ $reconciles ? '' : ' — does not reconcile' }}
         </span>
     </div>
@@ -46,13 +46,13 @@
             <div class="flex-1">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Item</label>
                 <input type="text" name="item" data-field-label="Item" value="{{ $reward->item }}" required maxlength="255"
-                       class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                       class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
             </div>
             <div class="w-48">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Worth (paise)</label>
                 <input type="number" name="worth_paise" data-field-label="Worth (paise)" value="{{ $reward->worth_paise }}" required min="0"
-                       class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                <span class="text-[11px] text-gray-400">{{ $rupees($reward->worth_paise) }}</span>
+                       class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                <span class="text-[11px] text-gray-600">{{ $rupees($reward->worth_paise) }}</span>
             </div>
             <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
         </form>

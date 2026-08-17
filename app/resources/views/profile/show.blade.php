@@ -4,14 +4,14 @@
 @section('content')
 @php
     // Shared classes for the locked (read-only) identity fields.
-    $lockedInput = 'w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500';
+    $lockedInput = 'w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-600';
     $editLabel = 'block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5';
     $editInput = 'w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
     $lockTip = 'this is part of your verified identity and can only be changed by arovolife after KYC review.';
 @endphp
 <div class="max-w-2xl mx-auto">
     <h1 class="text-2xl font-bold text-gray-900 mb-1">My profile</h1>
-    <p class="text-sm text-gray-500 mb-6">Your verified identity is shown for reference; update the contact details we use to reach you below.</p>
+    <p class="text-sm text-gray-600 mb-6">Your verified identity is shown for reference; update the contact details we use to reach you below.</p>
 
     <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
         <p class="font-semibold mb-1">Your profile</p>
@@ -102,7 +102,7 @@
 
         <div class="flex items-center justify-between pt-2">
             <a href="{{ route('profile.password.show') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Change password →</a>
-            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-sm transition-colors">Save changes</button>
+            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-sm transition-colors">Save changes</button>
         </div>
     </form>
 
@@ -115,10 +115,10 @@
                 @if($areteCenter)
                     <p class="text-sm font-semibold text-gray-900">{{ $areteCenter->name }}</p>
                     @if($areteCenter->location)
-                        <p class="text-xs text-gray-500 mt-0.5">{{ $areteCenter->location }}</p>
+                        <p class="text-xs text-gray-600 mt-0.5">{{ $areteCenter->location }}</p>
                     @endif
                 @else
-                    <p class="text-sm text-gray-500">Not assigned yet</p>
+                    <p class="text-sm text-gray-600">Not assigned yet</p>
                 @endif
             </div>
             @if($availableCenters->count() > 1)
@@ -153,11 +153,11 @@
                     <div>
                         <p class="text-sm font-medium text-gray-900">{{ $center->name }}
                             @if($center->is_company_default)
-                                <span class="ml-1 text-[10px] font-medium text-brand-600">(default)</span>
+                                <span class="ml-1 text-[10px] font-medium text-brand-700">(default)</span>
                             @endif
                         </p>
                         @if($center->location)
-                            <p class="text-xs text-gray-500">{{ $center->location }}</p>
+                            <p class="text-xs text-gray-600">{{ $center->location }}</p>
                         @endif
                     </div>
                 </label>
@@ -165,8 +165,8 @@
             </div>
             <div class="flex items-center justify-between gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('areteCentreModal').classList.add('hidden')"
-                        class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
-                <button type="submit" class="px-5 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Send verification code</button>
+                        class="text-sm text-gray-600 hover:text-gray-700">Cancel</button>
+                <button type="submit" class="px-5 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Send verification code</button>
             </div>
         </form>
     </div>
@@ -194,7 +194,7 @@
                        placeholder="••••••">
             </div>
             <div class="flex items-center justify-between gap-3">
-                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Confirm change</button>
+                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Confirm change</button>
             </div>
         </form>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm">
@@ -202,7 +202,7 @@
                 @csrf
                 <button type="submit" id="areteOtpResendBtn" class="text-brand-700 hover:text-brand-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed">Resend code</button>
             </form>
-            <a href="{{ route('profile.show') }}" class="text-gray-500 hover:text-gray-700">Cancel</a>
+            <a href="{{ route('profile.show') }}" class="text-gray-600 hover:text-gray-700">Cancel</a>
         </div>
     </div>
 </div>
@@ -245,7 +245,7 @@
                        placeholder="••••••">
             </div>
             <div class="flex items-center justify-between gap-3">
-                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Confirm</button>
+                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Confirm</button>
             </div>
         </form>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm">
@@ -253,7 +253,7 @@
                 @csrf
                 <button type="submit" id="otpResendBtn" class="text-brand-700 hover:text-brand-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed">Resend code</button>
             </form>
-            <a href="{{ route('profile.show') }}" class="text-gray-500 hover:text-gray-700">Cancel</a>
+            <a href="{{ route('profile.show') }}" class="text-gray-600 hover:text-gray-700">Cancel</a>
         </div>
     </div>
 </div>

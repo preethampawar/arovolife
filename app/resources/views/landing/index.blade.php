@@ -74,17 +74,17 @@
                      role="group" aria-roledescription="slide" aria-label="Slide {{ $i + 1 }} of {{ count($slides) }}"
                      @if($i !== 0) inert @endif
                      class="hero-slide-text">
-                    <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">{{ $s['eyebrow'] }}</p>
+                    <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">{{ $s['eyebrow'] }}</p>
                     <h1 class="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
                         {{ $s['title_plain'] }}
                         @if($s['title_accent'])
-                        <span class="text-brand-600">{{ $s['title_accent'] }}</span>
+                        <span class="text-brand-700">{{ $s['title_accent'] }}</span>
                         @endif
                     </h1>
                     <p class="text-lg text-gray-800 mb-8 max-w-lg">{{ $s['body'] }}</p>
                     <div class="flex flex-wrap items-center gap-4">
                         <a href="{{ $s['cta_primary']['url'] }}"
-                           class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-lg shadow-brand-500/30">
+                           class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors shadow-lg shadow-brand-500/30">
                             {{ $s['cta_primary']['label'] }}
                         </a>
                         <a href="{{ $s['cta_secondary']['url'] }}"
@@ -269,7 +269,7 @@
                 <button type="button" data-hero-dot data-goto="{{ $i }}"
                         data-active="{{ $i === 0 ? 'true' : 'false' }}"
                         aria-label="Go to slide {{ $i + 1 }}"
-                        class="hero-dot h-1.5 rounded-full transition-all {{ $i === 0 ? 'w-8 bg-brand-500' : 'w-2 bg-brand-300 hover:bg-brand-400' }}"></button>
+                        class="hero-dot h-1.5 rounded-full transition-all {{ $i === 0 ? 'w-8 bg-brand-700' : 'w-2 bg-brand-300 hover:bg-brand-400' }}"></button>
                 @endforeach
             </div>
         </div>
@@ -309,7 +309,7 @@
                 const active = k === idx;
                 dot.setAttribute('data-active', active ? 'true' : 'false');
                 dot.className = 'hero-dot h-1.5 rounded-full transition-all ' +
-                    (active ? 'w-8 bg-brand-500' : 'w-2 bg-brand-300 hover:bg-brand-400');
+                    (active ? 'w-8 bg-brand-700' : 'w-2 bg-brand-300 hover:bg-brand-400');
             });
 
             if (counter) counter.textContent = (idx + 1) + '/' + total;
@@ -379,11 +379,11 @@
                         ['label' => 'Direct Selling Only','tone' => 'brand',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12 5.25 9m-3 3 3 3m-3-3h19.5m-3-3 3 3m-3 3 3-3" />'],
                     ];
                     $tones = [
-                        'brand'  => 'bg-brand-50 text-brand-600',
+                        'brand'  => 'bg-brand-50 text-brand-700',
                         'sky'    => 'bg-sky-50 text-sky-600',
                         'violet' => 'bg-violet-50 text-violet-600',
                         'green'  => 'bg-green-50 text-green-600',
-                        'amber'  => 'bg-amber-50 text-amber-600',
+                        'amber'  => 'bg-amber-50 text-amber-700',
                         'slate'  => 'bg-slate-100 text-slate-600',
                         'red'    => 'bg-red-50 text-red-600',
                     ];
@@ -408,8 +408,8 @@
         <div class="absolute -bottom-24 -right-24 w-[400px] h-[400px] bg-sunrise-200/40 rounded-full blur-3xl pointer-events-none"></div>
         <div class="max-w-7xl mx-auto px-6 relative">
             <div class="text-center mb-10">
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-2">Why arovolife</p>
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Compliant by design — <span class="text-brand-600">customer-first</span> by belief.</h2>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-2">Why arovolife</p>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Compliant by design — <span class="text-brand-700">customer-first</span> by belief.</h2>
                 <p class="text-gray-800">Four promises, every transaction, every day.</p>
             </div>
 
@@ -450,7 +450,7 @@
         <div class="absolute top-1/2 -right-32 -translate-y-1/2 w-[300px] h-[300px] bg-leaf-100/60 rounded-full blur-3xl pointer-events-none"></div>
         <div class="max-w-7xl mx-auto px-6 relative">
             <div class="text-center mb-12">
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-2">How to register</p>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-2">How to register</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Five quick steps. <span class="text-leaf-600">Fifteen minutes</span> start to finish.</h2>
                 <p class="text-gray-800">From referral link to live ADN — no surprises along the way.</p>
             </div>
@@ -465,7 +465,7 @@
                 $iconBadge    = '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>';
 
                 $steps = [
-                    ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + group.',        'bg' => 'bg-brand-500',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
+                    ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + group.',        'bg' => 'bg-brand-700',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
                     ['n' => '2', 'title' => 'Create Account', 'body' => 'Name, email, phone, password.',        'bg' => 'bg-leaf-500',    'shadow' => 'shadow-leaf-500/30',    'icon' => $iconUserPlus],
                     ['n' => '3', 'title' => 'Orientation',    'body' => 'Watch the video, pass the quiz.',      'bg' => 'bg-sunrise-500', 'shadow' => 'shadow-sunrise-500/30', 'icon' => $iconPlay],
                     ['n' => '4', 'title' => 'KYC',            'body' => 'PAN + Aadhaar (verified gateway).',    'bg' => 'bg-violet-500',  'shadow' => 'shadow-violet-500/30',  'icon' => $iconId],
@@ -477,7 +477,7 @@
                 <div class="relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     {{-- Step-number badge sits in the top-right corner so
                          the sequence stays visible alongside the icon. --}}
-                    <span class="absolute top-3 right-3 text-sm font-semibold text-gray-400">{{ $step['n'] }}</span>
+                    <span class="absolute top-3 right-3 text-sm font-semibold text-gray-600">{{ $step['n'] }}</span>
                     <div class="w-10 h-10 rounded-full {{ $step['bg'] }} text-white flex items-center justify-center mb-3 shadow-lg {{ $step['shadow'] }}">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5" aria-hidden="true">
                             {!! $step['icon'] !!}
@@ -507,7 +507,7 @@
         <div class="max-w-7xl mx-auto px-6 relative">
             <div class="text-center mb-10 max-w-2xl mx-auto">
                 <p class="text-sm font-medium text-leaf-600 uppercase tracking-wider mb-2">Our products</p>
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2"><span class="text-brand-600">Best-in-class.</span> <span class="text-leaf-600">Best for life.</span></h2>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2"><span class="text-brand-700">Best-in-class.</span> <span class="text-leaf-600">Best for life.</span></h2>
                 <p class="text-gray-800">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
             </div>
 
@@ -554,7 +554,7 @@
                             'subtitle' => 'Daily essentials, done honestly',
                             'body' => 'Toothpaste, soaps, deodorants, and body wash — clean ingredient lists, no hidden fragrances, no surprise SLS.',
                             'card' => 'bg-brand-50 border-brand-100 hover:border-brand-200',
-                            'iconChip' => 'bg-brand-100 text-brand-600',
+                            'iconChip' => 'bg-brand-100 text-brand-700',
                             'accent' => 'text-brand-700',
                             'icon' => $iconComb,
                         ],
@@ -572,7 +572,7 @@
                             'subtitle' => 'Rooted in healthier soil',
                             'body' => 'Organic fertilisers, bio-pesticides, and soil conditioners for stronger crops. Plant nutrition that works with the land, not against it.',
                             'card' => 'bg-amber-50 border-amber-100 hover:border-amber-200',
-                            'iconChip' => 'bg-amber-100 text-amber-600',
+                            'iconChip' => 'bg-amber-100 text-amber-700',
                             'accent' => 'text-amber-700',
                             'icon' => $iconLeaf,
                         ],
@@ -645,7 +645,7 @@
     </section>
 
     {{-- Footer --}}
-    <footer class="bg-gray-900 text-gray-400 py-12">
+    <footer class="bg-gray-900 text-gray-600 py-12">
         <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                 <div>
@@ -662,7 +662,7 @@
                         <li>
                             <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a>
                         </li>
-                        <li class="text-gray-500 leading-relaxed">
+                        <li class="text-gray-600 leading-relaxed">
                             9:30 am – 5:30 pm, every day<br>
                             except Sundays &amp; public holidays
                         </li>
@@ -695,8 +695,8 @@
             </div>
             <div class="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm">
                 <p>&copy; {{ date('Y') }} Arovolife Private Limited. All rights reserved.</p>
-                <p class="text-gray-500">
-                    <strong class="text-gray-400">Registration is free.</strong> No payment required at signup.
+                <p class="text-gray-600">
+                    <strong class="text-gray-600">Registration is free.</strong> No payment required at signup.
                 </p>
             </div>
         </div>

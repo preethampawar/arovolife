@@ -18,7 +18,7 @@
     <div class="max-w-2xl mx-auto px-6 py-12 sm:py-16">
 
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Grievance redressal</p>
+            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Grievance redressal</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
                 Raise a grievance
             </h1>
@@ -93,20 +93,20 @@
                 </label>
                 <textarea id="body" name="body" rows="7" maxlength="5000" required
                           class="w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">{{ old('body') }}</textarea>
-                <p class="mt-1.5 text-xs text-gray-500">
+                <p class="mt-1.5 text-xs text-gray-600">
                     Never include passwords, OTPs or your full Aadhaar number. We will never ask for them.
                 </p>
             </div>
 
             <div>
                 <label for="attachments" class="block text-sm font-medium text-gray-700 mb-1.5">
-                    Evidence <span class="font-normal text-gray-500">(optional)</span>
+                    Evidence <span class="font-normal text-gray-600">(optional)</span>
                     <x-help-tip text="Screenshots, statements or PDFs that show the problem. Stored privately and visible only to the officers handling your complaint." />
                 </label>
                 <input id="attachments" name="attachments[]" type="file" multiple
                        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic"
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-700">
-                <p class="mt-1.5 text-xs text-gray-500">
+                <p class="mt-1.5 text-xs text-gray-600">
                     Up to {{ $maxAttachments }} files, {{ $maxKilobytes / 1024 }} MB each. PDF or image.
                 </p>
             </div>
@@ -121,7 +121,7 @@
                 <input type="hidden" name="is_anonymous" value="0">
                 <label class="flex items-start gap-2.5 text-sm text-gray-700">
                     <input type="checkbox" name="is_anonymous" value="1" @checked(old('is_anonymous'))
-                           class="mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                           class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-500"
                            onchange="document.getElementById('identity-fields').classList.toggle('opacity-40', this.checked)">
                     <span>
                         <span class="font-medium">File this anonymously.</span>
@@ -150,7 +150,7 @@
 
                 <div>
                     <label for="phone" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        Mobile <span class="font-normal text-gray-500">(optional)</span>
+                        Mobile <span class="font-normal text-gray-600">(optional)</span>
                     </label>
                     <input id="phone" name="phone" type="tel" value="{{ old('phone') }}"
                            class="w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
@@ -179,20 +179,20 @@
                 </p>
                 <label class="mt-2.5 flex items-start gap-2.5 text-gray-700">
                     <input type="checkbox" name="privacy_notice_read" value="1" @checked(old('privacy_notice_read'))
-                           class="mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
-                    <span>I have read this notice. <span class="text-gray-500">(Optional — your complaint is accepted either way.)</span></span>
+                           class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-500">
+                    <span>I have read this notice. <span class="text-gray-600">(Optional — your complaint is accepted either way.)</span></span>
                 </label>
             </div>
 
             <button type="submit"
-                    class="w-full rounded-lg bg-brand-500 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    class="w-full rounded-lg bg-brand-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400">
                 Submit grievance
             </button>
         </form>
 
         <p class="mt-6 text-center text-sm text-gray-600">
             Already filed one?
-            <a href="{{ route('grievance.track') }}" class="font-medium text-brand-600 underline">Track your grievance</a>.
+            <a href="{{ route('grievance.track') }}" class="font-medium text-brand-700 underline">Track your grievance</a>.
         </p>
 
         <div class="mt-10 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700">

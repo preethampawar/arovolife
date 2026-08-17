@@ -36,10 +36,10 @@
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
         <option value="requalification_held" {{ $status === 'requalification_held' ? 'selected' : '' }}>Requalification held</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $rank || $status)
     <a href="{{ route('admin.compensation.rb-calculation.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.rb-calculation.export', array_filter(['q' => $q, 'month' => $month, 'rank' => $rank, 'status' => $status])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -51,23 +51,23 @@
 <h2 class="text-sm font-semibold text-gray-800 mb-2">Rank 1 — Silver (RAP &amp; AO-GO points)</h2>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
     @if($rank1Rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No Rank-1 records found.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Rank-1 records found.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    @if($adcOn)<th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>@endif
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Month</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">RAP</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">AO-GO Points</th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Point Value</th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Total Income</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium w-10">#</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">ADN</th>
+                    @if($adcOn)<th class="px-3 py-2 text-left text-gray-600 font-medium">Arete Center</th>@endif
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Month</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">RAP</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">AO-GO Points</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Point Value</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Total Income</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -77,10 +77,10 @@
                     $rowNumber = ($rank1Rows->currentPage() - 1) * $rank1Rows->perPage() + $i + 1;
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
+                    <td class="px-3 py-2 text-gray-600">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', [$row->distributor_id, 'tab' => 'rank-bonus']) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->adn }}
                         </a>
                     </td>
@@ -92,7 +92,7 @@
                             {{ $titleObj->title }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
@@ -108,7 +108,7 @@
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
                         @if($row->tds_paise > 0)
-                        <span class="block text-[10px] text-gray-400 font-normal">
+                        <span class="block text-[10px] text-gray-600 font-normal">
                             gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }} · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
                         </span>
                         @endif
@@ -131,21 +131,21 @@
 <h2 class="text-sm font-semibold text-gray-800 mb-2">Ranks 2–9 — equal split per rank pool</h2>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rankRows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No Rank 2–9 records found.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Rank 2–9 records found.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    @if($adcOn)<th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>@endif
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Month</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Rank</th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium w-10">#</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">ADN</th>
+                    @if($adcOn)<th class="px-3 py-2 text-left text-gray-600 font-medium">Arete Center</th>@endif
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Month</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Rank</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -155,10 +155,10 @@
                     $rowNumber = ($rankRows->currentPage() - 1) * $rankRows->perPage() + $i + 1;
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
+                    <td class="px-3 py-2 text-gray-600">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', [$row->distributor_id, 'tab' => 'rank-bonus']) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->adn }}
                         </a>
                     </td>
@@ -170,7 +170,7 @@
                             {{ $titleObj->title }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
@@ -186,7 +186,7 @@
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
                         @if($row->tds_paise > 0)
-                        <span class="block text-[10px] text-gray-400 font-normal">
+                        <span class="block text-[10px] text-gray-600 font-normal">
                             gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }} · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
                         </span>
                         @endif

@@ -46,7 +46,7 @@
                     <div class="max-w-[75%] sm:max-w-[60%]">
                         <div class="rounded-2xl px-3.5 py-2 text-sm shadow-sm
                             {{ $isMine
-                                ? 'bg-brand-500 text-white rounded-br-md'
+                                ? 'bg-brand-700 text-white rounded-br-md'
                                 : 'bg-gray-100 text-gray-900 rounded-bl-md' }}">
                             <p class="whitespace-pre-wrap break-words">{{ $msg->body }}</p>
                         </div>
@@ -74,7 +74,7 @@
             class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
             onkeydown="if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { this.form.submit(); }"></textarea>
         <button type="submit"
-            class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
+            class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
             Send
             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/>

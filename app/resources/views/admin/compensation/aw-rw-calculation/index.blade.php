@@ -29,10 +29,10 @@
         <option value="delivered" {{ $status === 'delivered' ? 'selected' : '' }}>Delivered</option>
         <option value="cancelled" {{ $status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $type || $status)
     <a href="{{ route('admin.compensation.aw-rw-calculation.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.aw-rw-calculation.export', array_filter(['q' => $q, 'month' => $month, 'type' => $type, 'status' => $status])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -42,27 +42,27 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No award or reward records found.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No award or reward records found.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Rank</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Month</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium w-10">#</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Rank</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Month</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">
                         Award
                         <x-help-tip text="Physical goods awarded (e.g. iPhone, Royal Enfield). Shown when disbursement type is 'goods'." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         Reward
                         <x-help-tip text="Cash disbursement in lieu of goods. Shown when disbursement type is 'cash'." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -78,10 +78,10 @@
                     ];
                 @endphp
                 <tr class="hover:bg-gray-50 {{ $isCash ? 'bg-emerald-50/30' : '' }}">
-                    <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
+                    <td class="px-3 py-2 text-gray-600">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.lifetime-awards.index') }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->adn }}
                         </a>
                     </td>
@@ -92,7 +92,7 @@
                             {{ $titleObj->title }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2">
@@ -116,7 +116,7 @@
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
                         @if($row->gross_paise && $row->gross_paise !== $row->net_paise)
-                        <span class="block text-[10px] text-gray-400 font-normal">
+                        <span class="block text-[10px] text-gray-600 font-normal">
                             gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}
                         </span>
                         @endif

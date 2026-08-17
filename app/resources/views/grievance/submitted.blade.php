@@ -45,13 +45,13 @@
                 </div>
 
                 <a href="{{ route('grievance.track') }}"
-                   class="inline-block rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600">
+                   class="inline-block rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
                     Track this grievance
                 </a>
             @endif
         </div>
 
-        <p class="mt-6 text-center text-sm text-gray-500">
+        <p class="mt-6 text-center text-sm text-gray-600">
             Not satisfied at any stage? The full escalation route is in the
             <a href="{{ route('content.show', 'grievance') }}" class="underline">Grievance Redressal Policy</a>.
         </p>

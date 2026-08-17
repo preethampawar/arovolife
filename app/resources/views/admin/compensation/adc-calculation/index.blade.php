@@ -28,10 +28,10 @@
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $area || $month || $status)
     <a href="{{ route('admin.compensation.adc-calculation.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.adc-calculation.export', array_filter(['q' => $q, 'area' => $area, 'month' => $month, 'status' => $status])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -41,33 +41,33 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No ADC Bonus records found.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No ADC Bonus records found.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Rank</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Month</th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium w-10">#</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Arete Center</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Rank</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Month</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         Monthly Turnover BV
                         <x-help-tip text="Total BV contributed by all members of this Arete centre in the month." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">
                         Rate %
                         <x-help-tip text="Gross ADC ÷ Turnover BV × 100. Reflects the effective payout rate after admin charge." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Income (Net ADC)</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income (Net ADC)</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">
                         Pincode / District / State
                         <x-help-tip text="Centre address as registered. Use the Pincode / District / State search box to narrow down by area." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -89,10 +89,10 @@
                         : ($row->center_location ?: null);
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
+                    <td class="px-3 py-2 text-gray-600">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', [$row->distributor_id, 'tab' => 'adc-bonus']) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->adn }}
                         </a>
                     </td>
@@ -104,14 +104,14 @@
                             {{ $titleObj->title }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2">
                         @if($row->rank_name)
                         <span class="font-medium text-purple-700">{{ $row->rank_name }}</span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
@@ -120,7 +120,7 @@
                     <td class="px-3 py-2 text-right">
                         <span class="font-medium text-gray-800">@bv($row->total_member_bv_paise)</span>
                         @if($row->member_count > 0)
-                        <span class="block text-[10px] text-gray-400">{{ $row->member_count }} members</span>
+                        <span class="block text-[10px] text-gray-600">{{ $row->member_count }} members</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-center">
@@ -133,7 +133,7 @@
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
                         @if($row->tds_paise > 0 || $row->admin_charge_paise > 0)
-                        <span class="block text-[10px] text-gray-400 font-normal">
+                        <span class="block text-[10px] text-gray-600 font-normal">
                             gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}
                             @if($row->admin_charge_paise > 0)
                             · adm ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}
@@ -148,7 +148,7 @@
                         @if($addressLine !== null)
                         <span class="text-gray-700">{{ $addressLine }}</span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-center">

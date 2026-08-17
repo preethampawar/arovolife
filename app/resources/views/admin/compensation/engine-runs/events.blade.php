@@ -28,11 +28,11 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
     @if($runs->isEmpty())
-    <p class="px-5 py-8 text-sm text-gray-400 text-center">No engine runs recorded yet. Runs appear here from the moment an engine starts.</p>
+    <p class="px-5 py-8 text-sm text-gray-600 text-center">No engine runs recorded yet. Runs appear here from the moment an engine starts.</p>
     @else
     <table class="min-w-full text-xs">
         <thead>
-            <tr class="border-b border-gray-100 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            <tr class="border-b border-gray-100 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-600">
                 <th class="px-4 py-3">Engine</th>
                 <th class="px-4 py-3">Period</th>
                 <th class="px-4 py-3">Status</th>
@@ -67,7 +67,7 @@
                 <td class="px-4 py-3 whitespace-nowrap">
                     @if($duration === null) — @elseif($duration < 60) {{ $duration }}s @else {{ intdiv($duration, 60) }}m {{ $duration % 60 }}s @endif
                 </td>
-                <td class="px-4 py-3 font-mono text-[10px] text-gray-400">{{ $run->chain_id ? substr($run->chain_id, 0, 8) : '—' }}</td>
+                <td class="px-4 py-3 font-mono text-[10px] text-gray-600">{{ $run->chain_id ? substr($run->chain_id, 0, 8) : '—' }}</td>
                 <td class="px-4 py-3 max-w-xs">
                     @if(! empty($run->summary))
                     <details>

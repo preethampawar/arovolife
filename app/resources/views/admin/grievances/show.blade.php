@@ -32,7 +32,7 @@
             <p class="whitespace-pre-line text-sm leading-relaxed text-slate-300">{{ $ticket->body }}</p>
 
             @if ($ticket->attachments->isNotEmpty())
-                <h3 class="mt-5 text-xs font-semibold uppercase tracking-wider text-slate-400">Evidence</h3>
+                <h3 class="mt-5 text-xs font-semibold uppercase tracking-wider text-slate-600">Evidence</h3>
                 <ul class="mt-2 space-y-1.5 text-sm">
                     @foreach ($ticket->attachments as $attachment)
                         <li>
@@ -46,7 +46,7 @@
         </div>
 
         <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-6">
-            <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">Timeline</h2>
+            <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-600">Timeline</h2>
             <ol class="space-y-4 border-l-2 border-slate-800 pl-4">
                 @foreach ($timeline as $event)
                     <li class="text-sm">
@@ -57,7 +57,7 @@
                             @endif
                         </p>
                         @if ($event->note)
-                            <p class="whitespace-pre-line text-slate-400">{{ $event->note }}</p>
+                            <p class="whitespace-pre-line text-slate-600">{{ $event->note }}</p>
                         @endif
                         <p class="text-xs text-slate-500">
                             {{ $event->created_at->format('d M Y, H:i') }}
@@ -80,7 +80,7 @@
                 <label for="note" class="block text-sm font-medium text-slate-300">Respond</label>
                 <textarea id="note" name="note" rows="4" maxlength="5000" required
                           class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100"></textarea>
-                <button type="submit" class="rounded-lg bg-sunrise-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sunrise-600">
+                <button type="submit" class="rounded-lg bg-sunrise-800 px-4 py-2 text-sm font-semibold text-white hover:bg-sunrise-900">
                     Record response
                 </button>
             </form>
@@ -98,7 +98,7 @@
             <textarea id="internal_note" name="note" rows="3" maxlength="5000" required
                       placeholder="What you found, who you spoke to, what is still open"
                       class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500"></textarea>
-            <button type="submit" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+            <button type="submit" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
                 Add internal note
             </button>
         </form>
@@ -108,7 +108,7 @@
     <div class="space-y-6">
 
         <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-5 text-sm">
-            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Complaint</h2>
+            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">Complaint</h2>
             <dl class="space-y-2.5">
                 <div class="flex justify-between gap-3">
                     <dt class="text-slate-500">Complainant</dt>
@@ -173,7 +173,7 @@
         </div>
 
         <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-5 text-sm">
-            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">SLA clocks</h2>
+            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">SLA clocks</h2>
             <dl class="space-y-2.5">
                 <div class="flex justify-between gap-3">
                     <dt class="text-slate-500">Acknowledged</dt>
@@ -210,7 +210,7 @@
 
         @if (! $ticket->status->isSettled())
             <div class="space-y-4 rounded-xl border border-slate-700 bg-slate-900/40 p-5">
-                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Actions</h2>
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-600">Actions</h2>
 
                 @if ($nextLevel)
                     <form method="POST" action="{{ route('admin.grievances.escalate', $ticket->id) }}" class="space-y-2"
@@ -220,7 +220,7 @@
                         @csrf
                         <input type="text" name="reason" maxlength="1000" placeholder="Reason (optional)"
                                class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500">
-                        <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                        <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
                             Escalate to {{ $nextLevel->label() }}
                         </button>
                     </form>
@@ -240,7 +240,7 @@
                         <input type="text" name="reason" maxlength="1000" required
                                placeholder="Which third party, and why"
                                class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500">
-                        <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                        <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
                             Waiting on a third party
                         </button>
                     </form>
@@ -252,7 +252,7 @@
                         @csrf
                         <textarea name="note" rows="3" maxlength="2000" required placeholder="Where the matter stands"
                                   class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500"></textarea>
-                        <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                        <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
                             Send progress update
                         </button>
                     </form>
@@ -278,10 +278,10 @@
                   data-confirm-title="Final closure"
                   data-confirm-impact="Starts the 7-year retention clock. The complainant can no longer reply on this complaint.">
                 @csrf
-                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Close</h2>
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-600">Close</h2>
                 <input type="text" name="note" maxlength="1000" placeholder="Closing note (optional)"
                        class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500">
-                <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
                     Close grievance
                 </button>
             </form>

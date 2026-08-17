@@ -29,13 +29,13 @@
 
             @include('admin.commerce.franchises._form', ['franchise' => $franchise, 'planRateBp' => $planRateBp])
 
-            <button type="submit" class="rounded-lg bg-sunrise-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sunrise-600">
+            <button type="submit" class="rounded-lg bg-sunrise-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sunrise-900">
                 Save changes
             </button>
         </form>
 
         <div class="mt-6 rounded-xl border border-slate-700 bg-slate-900/40 p-6">
-            <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-400">
+            <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-600">
                 Commission history
             </h2>
 
@@ -58,11 +58,11 @@
                             @foreach ($results as $result)
                                 <tr>
                                     <td class="py-2 pr-4 text-slate-200">{{ $result->month_start->format('M Y') }}</td>
-                                    <td class="py-2 pr-4 text-slate-400">{{ $result->order_count }}</td>
-                                    <td class="py-2 pr-4 text-slate-400">₹@bv($result->base_paise / 100)</td>
-                                    <td class="py-2 pr-4 text-slate-400">{{ number_format($result->rate_bp / 100, 2) }}%</td>
+                                    <td class="py-2 pr-4 text-slate-600">{{ $result->order_count }}</td>
+                                    <td class="py-2 pr-4 text-slate-600">₹@bv($result->base_paise / 100)</td>
+                                    <td class="py-2 pr-4 text-slate-600">{{ number_format($result->rate_bp / 100, 2) }}%</td>
                                     <td class="py-2 pr-4 font-semibold text-slate-100">₹@bv($result->gross_paise / 100)</td>
-                                    <td class="py-2 text-slate-400">{{ ucfirst($result->status) }}</td>
+                                    <td class="py-2 text-slate-600">{{ ucfirst($result->status) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -74,7 +74,7 @@
 
     <div class="space-y-6">
         <div class="rounded-xl border border-slate-700 bg-slate-900/40 p-5 text-sm">
-            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Register</h2>
+            <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">Register</h2>
             <dl class="space-y-2.5">
                 <div class="flex justify-between gap-3">
                     <dt class="text-slate-500">Code</dt>
@@ -108,7 +108,7 @@
         </div>
 
         <div class="space-y-4 rounded-xl border border-slate-700 bg-slate-900/40 p-5">
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Lifecycle</h2>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-600">Lifecycle</h2>
 
             @if ($franchise->status === \App\Modules\Commerce\Models\Franchise::STATUS_PENDING)
                 <form method="POST" action="{{ route('admin.commerce.franchises.approve', $franchise->id) }}"
@@ -131,7 +131,7 @@
                     @csrf
                     <input type="text" name="reason" maxlength="500" required placeholder="Reason"
                            class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500">
-                    <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                    <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
                         Suspend
                     </button>
                 </form>
@@ -146,7 +146,7 @@
                     @csrf
                     <input type="text" name="reason" maxlength="500" required placeholder="Reason"
                            class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500">
-                    <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                    <button type="submit" class="w-full rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
                         Reinstate
                     </button>
                 </form>

@@ -157,22 +157,22 @@
                     @if($active)
                     <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-sunrise-500"></span>
                     @endif
-                    <span class="text-base {{ $active ? 'text-sunrise-400' : 'text-slate-400' }}">{{ $item['icon'] }}</span>
+                    <span class="text-base {{ $active ? 'text-sunrise-400' : 'text-slate-600' }}">{{ $item['icon'] }}</span>
                     <span class="flex-1">{{ $item['label'] }}</span>
                     @if(!empty($item['badge']))
-                        <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-500 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
+                        <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
                     @endif
                 </a>
             @endforeach
         </nav>
 
             <div class="mt-auto px-3 py-4 border-t border-slate-800">
-                <p class="text-xs text-slate-400 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
+                <p class="text-xs text-slate-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
                         class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 font-medium hover:bg-slate-800 hover:text-red-400 transition-colors">
-                        <span class="text-slate-400">⏻</span> Sign out
+                        <span class="text-slate-600">⏻</span> Sign out
                     </button>
                 </form>
             </div>
@@ -193,7 +193,7 @@
         <div class="sticky top-0 z-20">
         <header class="bg-slate-800 border-b border-slate-900 pl-16 pr-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sunrise-500 text-white shrink-0">Admin</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sunrise-800 text-white shrink-0">Admin</span>
                 <h1 class="text-sm sm:text-base font-semibold text-white tracking-tight truncate">@yield('heading', 'Admin Console')</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">

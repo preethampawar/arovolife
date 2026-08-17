@@ -4,11 +4,11 @@
 @section('content')
 <div class="max-w-3xl mx-auto">
 
-    <a href="{{ route('my.grievances.index') }}" class="text-sm text-brand-600 underline">← All grievances</a>
+    <a href="{{ route('my.grievances.index') }}" class="text-sm text-brand-700 underline">← All grievances</a>
 
     <div class="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-            <p class="font-mono text-sm font-semibold text-gray-500">{{ $ticket->ticket_no }}</p>
+            <p class="font-mono text-sm font-semibold text-gray-600">{{ $ticket->ticket_no }}</p>
             <h1 class="text-2xl font-bold text-gray-900">{{ $ticket->subject }}</h1>
         </div>
         <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $ticket->status->badgeClasses() }}">
@@ -28,19 +28,19 @@
 
     <dl class="mt-6 grid gap-4 sm:grid-cols-4 rounded-2xl border border-gray-200 bg-white p-5 text-sm shadow-sm">
         <div>
-            <dt class="text-gray-500">Category</dt>
+            <dt class="text-gray-600">Category</dt>
             <dd class="font-medium text-gray-900">{{ $ticket->category->label() }}</dd>
         </div>
         <div>
-            <dt class="text-gray-500">Raised</dt>
+            <dt class="text-gray-600">Raised</dt>
             <dd class="font-medium text-gray-900">{{ $ticket->created_at->format('d M Y') }}</dd>
         </div>
         <div>
-            <dt class="text-gray-500">Currently with</dt>
+            <dt class="text-gray-600">Currently with</dt>
             <dd class="font-medium text-gray-900">{{ $ticket->escalation_level->label() }}</dd>
         </div>
         <div>
-            <dt class="text-gray-500">Resolve by</dt>
+            <dt class="text-gray-600">Resolve by</dt>
             <dd class="font-medium text-gray-900">{{ $ticket->sla_resolution_at?->format('d M Y') ?? '—' }}</dd>
         </div>
     </dl>
@@ -62,8 +62,8 @@
                 @foreach ($ticket->attachments as $attachment)
                     <li>
                         <a href="{{ route('my.grievances.attachment', [$ticket->id, $attachment->id]) }}"
-                           class="text-brand-600 underline">{{ $attachment->original_name }}</a>
-                        <span class="text-gray-500">({{ $attachment->humanSize() }})</span>
+                           class="text-brand-700 underline">{{ $attachment->original_name }}</a>
+                        <span class="text-gray-600">({{ $attachment->humanSize() }})</span>
                     </li>
                 @endforeach
             </ul>
@@ -91,7 +91,7 @@
                     @if ($event->note)
                         <p class="whitespace-pre-line text-gray-700">{{ $event->note }}</p>
                     @endif
-                    <p class="text-xs text-gray-500">{{ $event->created_at->format('d M Y, H:i') }}</p>
+                    <p class="text-xs text-gray-600">{{ $event->created_at->format('d M Y, H:i') }}</p>
                 </li>
             @endforeach
         </ol>
@@ -112,7 +112,7 @@
                      escalate. This is that promise, made explicit. --}}
                 <label class="flex items-start gap-2.5 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     <input type="checkbox" name="request_escalation" value="1"
-                           class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500">
+                           class="mt-0.5 rounded border-amber-300 text-amber-700 focus:ring-amber-500">
                     <span>
                         <span class="font-medium">Escalate this to the {{ $ticket->escalation_level->next()->label() }}.</span>
                         Use this if you are not satisfied with how it is being handled.

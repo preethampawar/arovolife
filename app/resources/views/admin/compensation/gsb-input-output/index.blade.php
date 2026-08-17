@@ -22,10 +22,10 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <input type="date" name="to" value="{{ $to ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($day || $week || $from || $to)
     <a href="{{ route('admin.compensation.gsb-input-output.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.gsb-input-output.export', array_filter(['day' => $day, 'week' => $week, 'from' => $from, 'to' => $to])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -35,7 +35,7 @@
 
 @if($pools->isEmpty())
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">
         No pooled cut-off days yet — rows appear once the GSB daily pool pricing runs its first cut-off.
     </p>
 </div>
@@ -59,26 +59,26 @@
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
             <span class="font-semibold text-gray-800">{{ $pool->cutoff_date->format('d/m/Y') }}</span>
-            <span class="text-gray-500">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
-            <span class="text-gray-500">Week <strong class="text-gray-700">{{ $weekNo ?? '—' }}</strong></span>
-            <span class="text-gray-500">Day total BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
-            <span class="text-gray-500">GSB pool ({{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%)
+            <span class="text-gray-600">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
+            <span class="text-gray-600">Week <strong class="text-gray-700">{{ $weekNo ?? '—' }}</strong></span>
+            <span class="text-gray-600">Day total BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
+            <span class="text-gray-600">GSB pool ({{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%)
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) }}</strong></span>
-            <span class="text-gray-500">Variable score value
+            <span class="text-gray-600">Variable score value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_paise / 100, 2) }}</strong>
-                <span class="text-gray-400">(cap ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_cap_paise / 100, 2) }})</span></span>
+                <span class="text-gray-600">(cap ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_cap_paise / 100, 2) }})</span></span>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Slab</th>
-                        <th class="px-3 py-2 text-center text-gray-500 font-medium">Section</th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Achievers</th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Total score</th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Score value <x-help-tip text="Rupees per score point used on this day. Slabs 1–2: the fixed value. Slabs 3–7: the day's pro-rated pool value (never above the cap)." /></th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Variance <x-help-tip text="Variable score value minus the fixed cap: 0 when the pool covered the full value, negative when the day was pro-rated down. Fixed slabs always 0." /></th>
+                        <th class="px-3 py-2 text-left text-gray-600 font-medium">Slab</th>
+                        <th class="px-3 py-2 text-center text-gray-600 font-medium">Section</th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Achievers</th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Total score</th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Score value <x-help-tip text="Rupees per score point used on this day. Slabs 1–2: the fixed value. Slabs 3–7: the day's pro-rated pool value (never above the cap)." /></th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Variance <x-help-tip text="Variable score value minus the fixed cap: 0 when the pool covered the full value, negative when the day was pro-rated down. Fixed slabs always 0." /></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -103,12 +103,12 @@
                         <td class="px-3 py-2 text-right font-semibold text-gray-800">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $agg->total_score) }}</td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($value / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($agg->income_paise / 100, 2) }}</td>
-                        <td class="px-3 py-2 text-right {{ $variance < 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
+                        <td class="px-3 py-2 text-right {{ $variance < 0 ? 'text-red-600 font-medium' : 'text-gray-600' }}">
                             {{ $variance === 0 ? '0' : '−₹'.\App\Modules\Shared\Support\IndianNumber::format(abs($variance) / 100, 2) }}
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="px-3 py-4 text-center text-gray-400">No slab achievers this day.</td></tr>
+                    <tr><td colspan="7" class="px-3 py-4 text-center text-gray-600">No slab achievers this day.</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
@@ -125,7 +125,7 @@
                     <tr class="font-semibold">
                         <td class="px-3 py-2 text-right text-xs" colspan="5">Grand total income</td>
                         <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($fixedIncome + $variableIncome) / 100, 2) }}</td>
-                        <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-500' }} text-[11px]">
+                        <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-600' }} text-[11px]">
                             leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($pool->leftover_paise) / 100, 2) }}
                         </td>
                     </tr>

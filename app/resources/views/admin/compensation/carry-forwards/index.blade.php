@@ -16,12 +16,12 @@
                {{ request('filter') === 'near_cap' ? 'checked' : '' }}>
         Near cap (&gt;80%)
     </label>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-10 text-sm text-gray-400 text-center">
+    <p class="px-6 py-10 text-sm text-gray-600 text-center">
         No carry-forward data yet — GSB engine not yet active.
     </p>
     @else
@@ -29,20 +29,20 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500">ADN</th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-left text-gray-600">ADN</th>
+                    <th class="px-3 py-2 text-right text-gray-600">
                         Power-side CF
                         <x-help-tip text="BV on the stronger leg carried forward into tomorrow. Capped at 4,50,000 BV." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500">
+                    <th class="px-3 py-2 text-center text-gray-600">
                         % of cap
                         <x-help-tip text="Power CF as a percentage of the 4,50,000 BV hard cap." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500">
+                    <th class="px-3 py-2 text-center text-gray-600">
                         Power side
                         <x-help-tip text="Which leg (L or R) the carry-forward belongs to." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-right text-gray-600">
                         Slab-1 weaker CF
                         <x-help-tip text="Accumulated weaker-side BV counting toward the first 15,000 BV match. No time limit." />
                     </th>
@@ -58,7 +58,7 @@
                 <tr class="{{ $atCap ? 'bg-red-50' : '' }}">
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->distributor->adn ?? '—' }}
                         </a>
                     </td>
@@ -68,7 +68,7 @@
                     <td class="px-3 py-2 text-center">
                         <div class="flex items-center justify-center gap-2">
                             <div class="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full {{ $pct >= 80 ? 'bg-red-500' : 'bg-brand-500' }}"
+                                <div class="h-full rounded-full {{ $pct >= 80 ? 'bg-red-500' : 'bg-brand-700' }}"
                                      style="width: {{ min(100, $pct) }}%"></div>
                             </div>
                             <span class="{{ $pct >= 80 ? 'text-red-700 font-medium' : 'text-gray-600' }}">{{ $pct }}%</span>
@@ -78,7 +78,7 @@
                     <td class="px-3 py-2 text-right">@bv($row->slab1_weaker_bv_paise)</td>
                     <td class="px-3 py-2 text-right">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
-                           class="text-brand-600 text-[10px] hover:underline">Detail →</a>
+                           class="text-brand-700 text-[10px] hover:underline">Detail →</a>
                     </td>
                 </tr>
                 @endforeach

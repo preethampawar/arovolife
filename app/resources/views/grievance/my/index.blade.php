@@ -10,7 +10,7 @@
             <p class="text-sm text-gray-600">Everything you have raised, and where each one stands.</p>
         </div>
         <a href="{{ route('my.grievances.create') }}"
-           class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600">
+           class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
             Raise a grievance
         </a>
     </div>
@@ -31,7 +31,7 @@
     @else
         <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
-                <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
+                <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                     <tr>
                         <th class="px-4 py-3">Number</th>
                         <th class="px-4 py-3">Subject</th>
@@ -45,7 +45,7 @@
                     @foreach ($tickets as $ticket)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 font-mono text-xs">
-                                <a href="{{ route('my.grievances.show', $ticket->id) }}" class="font-semibold text-brand-600 underline">
+                                <a href="{{ route('my.grievances.show', $ticket->id) }}" class="font-semibold text-brand-700 underline">
                                     {{ $ticket->ticket_no }}
                                 </a>
                             </td>

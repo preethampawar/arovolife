@@ -114,7 +114,7 @@
                     <div class="absolute left-0 top-full mt-1 z-30 w-72 rounded-xl border border-gray-200 bg-white shadow-lg py-2">
                         @foreach($group['items'] as $item)
                             @if(isset($item['heading']))
-                                <p class="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap">{{ $item['heading'] }}</p>
+                                <p class="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600 whitespace-nowrap">{{ $item['heading'] }}</p>
                             @else
                                 @php $active = $compNavIsActive($item); @endphp
                                 <a href="{{ route($item['route']) }}"

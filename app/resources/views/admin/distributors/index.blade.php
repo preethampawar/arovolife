@@ -40,7 +40,7 @@
     @endif
     <div class="ml-auto flex items-center gap-2">
         <a href="{{ route('admin.distributors.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm">
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors shadow-sm">
             + Add Distributor
         </a>
         <a href="{{ route('admin.distributors.export') }}"
@@ -58,7 +58,7 @@
     <input name="q" type="text" value="{{ request()->query('q') }}"
         placeholder="Search ADN, email, name…"
         class="flex-1 max-w-sm rounded-lg bg-white border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
         Search
     </button>
     @if(request()->query('q'))
@@ -92,7 +92,7 @@
                     <td class="px-4 py-3 text-gray-600 tabular-nums">{{ ($distributors->firstItem() ?? 1) + $loop->index }}</td>
                     <td class="px-4 py-3 font-mono font-medium">
                         <a href="{{ route('admin.distributors.show', $d->id) }}"
-                           class="text-brand-600 hover:text-brand-700 hover:underline transition-colors">{{ $d->adn }}</a>
+                           class="text-brand-700 hover:text-brand-800 hover:underline transition-colors">{{ $d->adn }}</a>
                     </td>
                     <td class="px-4 py-3">
                         <p class="text-gray-800">{{ $d->full_name ?: '—' }}</p>
@@ -120,14 +120,14 @@
                         <span class="px-2 py-0.5 rounded-full text-xs border
                             {{ $d->status === 'active'     ? 'bg-green-50 text-green-700 border-green-200'
                              : ($d->status === 'frozen'    ? 'bg-red-50 text-red-700 border-red-200'
-                             : ($d->status === 'terminated'? 'bg-white text-gray-500 border-gray-200'
+                             : ($d->status === 'terminated'? 'bg-white text-gray-600 border-gray-200'
                              : 'bg-amber-50 text-amber-700 border-amber-200')) }}">
                             {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$d->status] ?? ucfirst((string) $d->status) }}
                         </span>
                     </td>
                     <td class="px-4 py-3">
                         <a href="{{ route('admin.distributors.show', $d->id) }}"
-                           class="text-xs text-brand-600 hover:text-brand-500">View →</a>
+                           class="text-xs text-brand-700 hover:text-brand-800">View →</a>
                     </td>
                 </tr>
                 @empty

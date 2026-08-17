@@ -44,13 +44,13 @@
                     Download PDF
                 </button>
                 <button type="button" onclick="window.print()"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-sm font-medium text-white transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-sm font-medium text-white transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z"/></svg>
                     Print
                 </button>
             </div>
         </div>
-        <p class="max-w-4xl mx-auto px-4 sm:px-6 pb-3 text-xs text-gray-500">
+        <p class="max-w-4xl mx-auto px-4 sm:px-6 pb-3 text-xs text-gray-600">
             Both buttons open your browser's print dialog — choose <span class="font-medium">Save as PDF</span> to download.
             The front prints on page 1 and the back on page 2.
         </p>
@@ -99,29 +99,29 @@
                         <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="max-h-20 w-auto object-contain">
                     </div>
                     <div class="flex-1 min-w-0">
-                        <h2 class="text-lg sm:text-xl font-bold text-brand-600 border-b-2 border-brand-200 pb-1 mb-3">arovolife Direct Seller</h2>
+                        <h2 class="text-lg sm:text-xl font-bold text-brand-700 border-b-2 border-brand-200 pb-1 mb-3">arovolife Direct Seller</h2>
                         <dl class="space-y-1.5 text-sm">
                             <div class="flex gap-2">
-                                <dt class="text-brand-600 font-semibold shrink-0">ID :</dt>
+                                <dt class="text-brand-700 font-semibold shrink-0">ID :</dt>
                                 <dd class="font-mono font-medium text-gray-900 tracking-wide">{{ $adn }}</dd>
                             </div>
                             <div class="flex gap-2">
-                                <dt class="text-brand-600 font-semibold shrink-0">Name :</dt>
+                                <dt class="text-brand-700 font-semibold shrink-0">Name :</dt>
                                 <dd class="font-medium text-gray-900 uppercase leading-tight">{{ $name }}</dd>
                             </div>
                             <div class="flex gap-2">
-                                <dt class="text-brand-600 font-semibold shrink-0">Join Date :</dt>
+                                <dt class="text-brand-700 font-semibold shrink-0">Join Date :</dt>
                                 <dd class="font-medium text-gray-900">{{ $joinDate ?: '—' }}</dd>
                             </div>
                         </dl>
                     </div>
                 </div>
                 <div class="relative pt-2 border-t border-brand-200/40 text-center">
-                    <p class="text-[10px] sm:text-[11px] text-brand-600/80 font-medium tracking-wide">
+                    <p class="text-[10px] sm:text-[11px] text-brand-700/80 font-medium tracking-wide">
                         Quality you can trust · Value that returns · Service that listens
                     </p>
                     <p class="text-[10px] text-gray-600 mt-1 leading-snug">
-                        +91 88866 62949 <span class="text-gray-400">|</span> support@arovolife.com<br>
+                        +91 88866 62949 <span class="text-gray-600">|</span> support@arovolife.com<br>
                         www.arovolife.com
                     </p>
                 </div>
@@ -153,7 +153,7 @@
                     <path d="M-40,0 L580,0 L580,22 C450,6 330,30 260,18 C190,6 80,30 -40,22 Z"
                           fill="var(--color-leaf-300)" opacity="0.42"/>
                 </svg>
-                <p class="relative text-[11px] uppercase tracking-wider text-brand-600 font-semibold mb-2">Cardholder instructions</p>
+                <p class="relative text-[11px] uppercase tracking-wider text-brand-700 font-semibold mb-2">Cardholder instructions</p>
                 <ul class="relative space-y-1.5 text-[12px] sm:text-[13px] text-gray-700 leading-snug list-disc pl-4 flex-1">
                     <li>This ID card must be displayed at all times while in office and on customer premises.</li>
                     <li>This card must not be used for any other purpose.</li>
@@ -161,12 +161,12 @@
                     <li>If found, please return it to the office address below or hand it over to the building security.</li>
                 </ul>
                 <div class="relative pt-2 mt-2 border-t border-brand-200/40 text-center">
-                    <p class="text-[10px] text-gray-500 leading-snug">
+                    <p class="text-[10px] text-gray-600 leading-snug">
                         <span class="font-semibold text-gray-700">Arovolife Private Limited</span> · CIN U46909TS2026PTC210896<br>
                         H. No. 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India.
                     </p>
                     <p class="text-[10px] text-gray-600 mt-1 leading-snug">
-                        +91 88866 62949 <span class="text-gray-400">|</span> support@arovolife.com<br>
+                        +91 88866 62949 <span class="text-gray-600">|</span> support@arovolife.com<br>
                         www.arovolife.com
                     </p>
                 </div>

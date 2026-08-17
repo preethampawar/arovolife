@@ -19,14 +19,14 @@
     </select>
     <input type="text" name="q" value="{{ $q }}" placeholder="Search ADN…"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-40">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     <a href="{{ route('admin.compensation.personal-bv-topups.export', array_filter(['date' => $date->toDateString(), 'type' => $type, 'q' => $q])) }}"
        class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">⬇ CSV</a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-10 text-sm text-gray-400 text-center">
+    <p class="px-6 py-10 text-sm text-gray-600 text-center">
         No personal BV topups recorded for {{ $date->format('d M Y') }}.
     </p>
     @else
@@ -34,17 +34,17 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500">Name</th>
-                    <th class="px-3 py-2 text-right text-gray-500">Order</th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-left text-gray-600">ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600">Name</th>
+                    <th class="px-3 py-2 text-right text-gray-600">Order</th>
+                    <th class="px-3 py-2 text-right text-gray-600">
                         BV Injected <x-help-tip text="Personal order BV added to the weaker Genos leg before the nightly cut-off." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500">
+                    <th class="px-3 py-2 text-center text-gray-600">
                         Side <x-help-tip text="The Genos leg (Left / Right) that received the injection — whichever had lower BV at the time." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500">Type</th>
-                    <th class="px-3 py-2 text-left text-gray-500">Reversed At</th>
+                    <th class="px-3 py-2 text-center text-gray-600">Type</th>
+                    <th class="px-3 py-2 text-left text-gray-600">Reversed At</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
@@ -52,14 +52,14 @@
                 <tr class="{{ $row->reversed_at ? 'bg-red-50/40' : '' }}">
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->distributor->adn ?? '—' }}
                         </a>
                     </td>
                     <td class="px-3 py-2 text-gray-700 truncate max-w-[120px]">
                         {{ $row->distributor->user?->full_name ?? '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right font-mono text-gray-500">#{{ $row->order_id }}</td>
+                    <td class="px-3 py-2 text-right font-mono text-gray-600">#{{ $row->order_id }}</td>
                     <td class="px-3 py-2 text-right font-medium">@bv($row->bv_paise)</td>
                     <td class="px-3 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium
@@ -74,7 +74,7 @@
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Topup</span>
                         @endif
                     </td>
-                    <td class="px-3 py-2 text-gray-400 text-[11px]">
+                    <td class="px-3 py-2 text-gray-600 text-[11px]">
                         {{ $row->reversed_at?->format('d M Y, H:i') ?? '—' }}
                     </td>
                 </tr>

@@ -19,22 +19,22 @@
 
 {{-- Distributor header --}}
 <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm mb-6">
-    <p class="text-2xl font-mono font-bold text-brand-600">{{ $distributor->adn }}</p>
+    <p class="text-2xl font-mono font-bold text-brand-700">{{ $distributor->adn }}</p>
     <p class="text-sm text-gray-800 mt-1">{{ $distributor->user->full_name ?: 'No name recorded' }}</p>
 </div>
 
 {{-- Summary cards --}}
 <div class="grid grid-cols-3 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Lifetime Net BV</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Lifetime Net BV</p>
         <p class="mt-1 text-lg font-bold text-brand-700 whitespace-nowrap">@bv($lifetimeNet)</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Accrued{{ $ranged ? ' (range)' : '' }}</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Accrued{{ $ranged ? ' (range)' : '' }}</p>
         <p class="mt-1 text-lg font-bold text-green-700 whitespace-nowrap">@bv($breakdown->accruedPaise)</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Reversed{{ $ranged ? ' (range)' : '' }}</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Reversed{{ $ranged ? ' (range)' : '' }}</p>
         <p class="mt-1 text-lg font-bold text-red-600 whitespace-nowrap">@bv(abs($breakdown->reversedPaise))</p>
     </div>
 </div>
@@ -42,13 +42,13 @@
 {{-- Date filter + export --}}
 <div class="flex items-center gap-3 mb-4 flex-wrap">
     <form method="GET" action="{{ route('admin.commerce.bv-ledger.show', $distributor->id) }}" class="flex items-center gap-2 flex-wrap">
-        <label class="text-xs text-gray-500">From
+        <label class="text-xs text-gray-600">From
             <input type="date" name="from" value="{{ $from }}" class="ml-1 rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
         </label>
-        <label class="text-xs text-gray-500">To
+        <label class="text-xs text-gray-600">To
             <input type="date" name="to" value="{{ $to }}" class="ml-1 rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
         </label>
-        <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">Apply</button>
+        <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">Apply</button>
         @if($ranged)<a href="{{ route('admin.commerce.bv-ledger.show', $distributor->id) }}" class="text-xs text-gray-600 hover:text-gray-900">✕ Clear</a>@endif
     </form>
     <a href="{{ route('admin.commerce.bv-ledger.show.export', array_merge($dateQuery, ['distributor' => $distributor->id])) }}"
@@ -62,11 +62,11 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50">
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">When</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
-                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">BV</th>
-                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Running balance</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">When</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Order #</th>
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
+                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">BV</th>
+                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Running balance</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -74,11 +74,11 @@
                 @forelse($entries as $e)
                 @php $running += $e->bv_paise; @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{{ $e->effective_at?->format('d M Y H:i') ?? '—' }}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{{ $e->effective_at?->format('d M Y H:i') ?? '—' }}</td>
                     <td class="px-4 py-3 font-mono text-xs">
                         @if($e->order)
-                        <a href="{{ route('admin.commerce.orders.show', $e->order) }}" class="text-brand-600 hover:text-brand-700 hover:underline">{{ $e->order->order_no }}</a>
-                        @else <span class="text-gray-400">—</span> @endif
+                        <a href="{{ route('admin.commerce.orders.show', $e->order) }}" class="text-brand-700 hover:text-brand-800 hover:underline">{{ $e->order->order_no }}</a>
+                        @else <span class="text-gray-600">—</span> @endif
                     </td>
                     <td class="px-4 py-3">
                         @if($e->type === \App\Modules\Commerce\Models\BvLedgerEntry::TYPE_ACCRUAL)
@@ -93,7 +93,7 @@
                     <td class="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">@bv($running)</td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">No BV entries for this distributor{{ $ranged ? ' in this range' : '' }}.</td></tr>
+                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-600">No BV entries for this distributor{{ $ranged ? ' in this range' : '' }}.</td></tr>
                 @endforelse
             </tbody>
         </table>

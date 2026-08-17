@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.compensation.adc-bonus.index') }}" class="text-sm text-gray-500 hover:text-gray-700">← All months</a>
+    <a href="{{ route('admin.compensation.adc-bonus.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← All months</a>
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -13,20 +13,20 @@
         <span class="text-sm font-semibold text-gray-900">Center results for {{ $date->format('F Y') }}</span>
     </div>
     @if($results->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-400 text-center">No ADC Bonus results for this month.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No ADC Bonus results for this month.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-500">Center</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Assigned distributor</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Members</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Total member BV</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Gross (3%)</th>
-                    <th class="px-4 py-2 text-right text-gray-500">TDS (5%)</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Net</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Status</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Center</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Assigned distributor</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Members</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Total member BV</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Gross (3%)</th>
+                    <th class="px-4 py-2 text-right text-gray-600">TDS (5%)</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Net</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
@@ -40,8 +40,8 @@
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($row->member_count) }}</td>
                     <td class="px-4 py-2 text-right">@bv($row->total_member_bv_paise)</td>
                     <td class="px-4 py-2 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">
+                    <td class="px-4 py-2 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                    <td class="px-4 py-2 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
                         ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                     </td>
                     <td class="px-4 py-2 text-center">

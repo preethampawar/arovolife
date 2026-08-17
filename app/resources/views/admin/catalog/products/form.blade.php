@@ -75,7 +75,7 @@
                         <option value="{{ $val }}" @selected((string) old('food_type', $product->food_type) === $val)>{{ $lbl }}</option>
                     @endforeach
                 </select>
-                <span class="block text-[11px] text-gray-500 mt-1">FSSAI mark shown on the storefront for food items. Leave as “Not applicable” for personal-care / agri products.</span>
+                <span class="block text-[11px] text-gray-600 mt-1">FSSAI mark shown on the storefront for food items. Leave as “Not applicable” for personal-care / agri products.</span>
             </label>
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Status <x-help-tip text="Draft hides the product; Active shows it on the shop; Archived removes it from sale." /></span>
@@ -94,14 +94,14 @@
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Primary image URL <x-help-tip text="Optional hosted image URL shown when no gallery image is uploaded." /></span>
                 <input type="url" name="image_url" value="{{ old('image_url', $product->image_url) }}" maxlength="1000" placeholder="https://… (used when no gallery image is uploaded)"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                <span class="block text-xs text-gray-500 mt-1">Optional. A hosted/CDN image URL shown when no gallery image is uploaded.</span>
+                <span class="block text-xs text-gray-600 mt-1">Optional. A hosted/CDN image URL shown when no gallery image is uploaded.</span>
             </label>
         </div>
     </div>
 
     {{-- ── Pricing & BV (single default variant) ──────────────────────── --}}
     <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Pricing &amp; BV <span class="text-gray-400 normal-case font-normal">(₹)</span></h2>
+        <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Pricing &amp; BV <span class="text-gray-600 normal-case font-normal">(₹)</span></h2>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             @foreach([
                 'cost_price' => ['Cost price', $variant->cost_paise ?? 0],
@@ -155,7 +155,7 @@
     {{-- ── Product attributes (rich, sortable) ────────────────────────── --}}
     <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Product information <x-help-tip text="Add labelled sections (e.g. Ingredients, Storage) shown on the product page. Sort sets the order, lowest first." /></h2>
-        <p class="text-xs text-gray-500">
+        <p class="text-xs text-gray-600">
             Descriptive sections shown on the product detail page — e.g. Ingredients,
             Nutritional information, Storage, Caution. Each value supports tables and
             inline images (paste or insert a nutritional-facts table / image). Set
@@ -181,13 +181,13 @@
                         class="w-16 rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <input type="text" name="attr_labels[]" value="{{ $row['label'] }}" placeholder="Section label (e.g. Ingredients)" maxlength="150"
                         class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    <button type="button" onclick="removeAttrRow(this)" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100" title="Remove section">×</button>
+                    <button type="button" onclick="removeAttrRow(this)" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100" title="Remove section">×</button>
                 </div>
                 <textarea name="attr_values_html[]" class="attr-wysiwyg">{{ $row['value_html'] }}</textarea>
             </div>
             @endforeach
         </div>
-        <button type="button" id="addAttrRow" class="text-sm text-brand-600 hover:text-brand-700 font-medium">+ Add section</button>
+        <button type="button" id="addAttrRow" class="text-sm text-brand-700 hover:text-brand-800 font-medium">+ Add section</button>
 
         {{-- Template for new rows (textarea is initialised on demand). --}}
         <template id="attrRowTemplate">
@@ -197,7 +197,7 @@
                         class="w-16 rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <input type="text" name="attr_labels[]" value="" placeholder="Section label (e.g. Ingredients)" maxlength="150"
                         class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    <button type="button" onclick="removeAttrRow(this)" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100" title="Remove section">×</button>
+                    <button type="button" onclick="removeAttrRow(this)" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100" title="Remove section">×</button>
                 </div>
                 <textarea name="attr_values_html[]" class="attr-wysiwyg"></textarea>
             </div>
@@ -224,13 +224,13 @@
         @endif
         <input type="file" name="images[]" accept="image/jpeg,image/png" multiple
             class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
-        <p class="text-xs text-gray-500">JPG or PNG, up to 5 MB each. Stored on S3. <x-help-tip text="Upload one or more gallery images shown on the product page. JPG or PNG, up to 5 MB each." /></p>
+        <p class="text-xs text-gray-600">JPG or PNG, up to 5 MB each. Stored on S3. <x-help-tip text="Upload one or more gallery images shown on the product page. JPG or PNG, up to 5 MB each." /></p>
 
         <label class="block pt-2 border-t border-gray-100">
             <span class="block text-xs text-gray-700 mb-1 font-medium">…or add image URLs <x-help-tip text="Hosted image URLs, one per line, added to the gallery alongside any uploads." /></span>
             <textarea name="gallery_image_urls" rows="3" placeholder="One image URL per line — https://…"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">{{ is_array(old('gallery_image_urls')) ? implode("\n", old('gallery_image_urls')) : old('gallery_image_urls') }}</textarea>
-            <span class="block text-xs text-gray-500 mt-1">Hosted/CDN image URLs, one per line. Added to the gallery alongside any uploads.</span>
+            <span class="block text-xs text-gray-600 mt-1">Hosted/CDN image URLs, one per line. Added to the gallery alongside any uploads.</span>
         </label>
     </div>
 

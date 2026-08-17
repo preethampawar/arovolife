@@ -8,7 +8,7 @@
     $statusBadges = [
         'credited' => 'bg-green-100 text-green-700',
         'pending'  => 'bg-amber-100 text-amber-700',
-        'skipped'  => 'bg-gray-100 text-gray-500',
+        'skipped'  => 'bg-gray-100 text-gray-600',
     ];
 @endphp
 
@@ -35,10 +35,10 @@
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="skipped" {{ $status === 'skipped' ? 'selected' : '' }}>Skipped</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $status)
     <a href="{{ route('admin.compensation.fb-calculation.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.fb-calculation.export', array_filter(['q' => $q, 'month' => $month, 'status' => $status])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -48,36 +48,36 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No Fortune Bonus records found.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Fortune Bonus records found.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">S.No</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Arete Center</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Rank</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium w-10">S.No</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Arete Center</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Rank</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">
                         Date
                         <x-help-tip text="The first GSB credit of the month that enrolled this distributor in the matrix — their place in the first-come, first-served order." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">
                         Level
                         <x-help-tip text="Matrix depth — 0 is the top position." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         FB Points
                         <x-help-tip text="Points earned from the enrolled distributors below them in the month's matrix." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         Value
                         <x-help-tip text="The whole-rupee point value applied at this distributor's matrix level in the month's cascade. Income = the guaranteed minimum + points × this value, capped per level." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -87,10 +87,10 @@
                     $rowNumber = ($rows->currentPage() - 1) * $rows->perPage() + $i + 1;
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
+                    <td class="px-3 py-2 text-gray-600">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', [$row->distributor_id, 'tab' => 'fortune-bonus']) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->adn }}
                         </a>
                     </td>
@@ -104,7 +104,7 @@
                             {{ $titleObj->title }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-center">
@@ -113,7 +113,7 @@
                             {{ $row->rank_name }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
@@ -131,7 +131,7 @@
                         {{ $row->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-3 py-2 text-right">
-                        <span class="font-semibold {{ $row->status === 'skipped' ? 'text-gray-400' : 'text-green-700' }}">
+                        <span class="font-semibold {{ $row->status === 'skipped' ? 'text-gray-600' : 'text-green-700' }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}
                         </span>
                     </td>

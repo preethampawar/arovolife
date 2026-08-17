@@ -4,7 +4,7 @@
 @section('content')
 <div class="max-w-md mx-auto">
     <h1 class="text-2xl font-bold text-gray-900 mb-1">Change password</h1>
-    <p class="text-sm text-gray-500 mb-6">Pick a strong, unique password — we check it against the public breach list.</p>
+    <p class="text-sm text-gray-600 mb-6">Pick a strong, unique password — we check it against the public breach list.</p>
 
     <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
         <p class="font-semibold mb-1">Change password</p>
@@ -35,7 +35,7 @@
             <label for="new_password" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">New password <x-help-tip text="use at least 8 characters; arovolife rejects passwords found in known public data breaches." /></label>
             <input type="password" id="new_password" name="new_password" required autocomplete="new-password"
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-            <p class="mt-1.5 text-xs text-gray-500">Minimum 8 characters; we also block passwords that have appeared in known breaches.</p>
+            <p class="mt-1.5 text-xs text-gray-600">Minimum 8 characters; we also block passwords that have appeared in known breaches.</p>
         </div>
 
         <div>
@@ -46,7 +46,7 @@
 
         <div class="flex items-center justify-between pt-2">
             <a href="{{ route('profile.show') }}" class="text-sm text-gray-600 hover:text-gray-800">← Back to profile</a>
-            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-sm transition-colors">Change password</button>
+            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-sm transition-colors">Change password</button>
         </div>
     </form>
 </div>

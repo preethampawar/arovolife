@@ -37,10 +37,10 @@
         <option value="repurchase_held" {{ $status === 'repurchase_held' ? 'selected' : '' }}>Repurchase held</option>
         <option value="repurchase_suspended" {{ $status === 'repurchase_suspended' ? 'selected' : '' }}>Repurchase suspended</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $status)
     <a href="{{ route('admin.compensation.gbb-calculation.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.gbb-calculation.export', array_filter(['q' => $q, 'month' => $month, 'status' => $status])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -50,31 +50,31 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No GBB records found.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No GBB records found.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium w-10">#</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Title</th>
-                    <th class="px-3 py-2 text-left text-gray-500 font-medium">Month</th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium w-10">#</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
+                    <th class="px-3 py-2 text-left text-gray-600 font-medium">Month</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         AGP Points
                         <x-help-tip text="Total slab occurrences (AGP) earned by this distributor in the month." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         Point Value
                         <x-help-tip text="The month's frozen point value: GBB pool ÷ total payable AGP, floored to the rupee. Blank (—) on rows recorded before this snapshot existed." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         AGP Value
                         <x-help-tip text="Per-point pool share actually realised on this row = gross GBB ÷ AGP points earned." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500 font-medium">Income (Net GBB)</th>
-                    <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income (Net GBB)</th>
+                    <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -87,10 +87,10 @@
                         : 0;
                 @endphp
                 <tr class="hover:bg-gray-50">
-                    <td class="px-3 py-2 text-gray-400">{{ $rowNumber }}</td>
+                    <td class="px-3 py-2 text-gray-600">{{ $rowNumber }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', [$row->distributor_id, 'tab' => 'gbb']) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->adn }}
                         </a>
                     </td>
@@ -101,7 +101,7 @@
                             {{ $titleObj->title }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
@@ -123,7 +123,7 @@
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}
                         </span>
                         @if($row->tds_paise > 0)
-                        <span class="block text-[10px] text-gray-400 font-normal">
+                        <span class="block text-[10px] text-gray-600 font-normal">
                             gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_gross_paise / 100, 2) }} · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
                         </span>
                         @endif

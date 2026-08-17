@@ -59,7 +59,7 @@
                     @endif
                 </div>
 
-                <p class="text-xs text-gray-500 mb-2">Schedule: {{ $definition->scheduleText }}</p>
+                <p class="text-xs text-gray-600 mb-2">Schedule: {{ $definition->scheduleText }}</p>
 
                 {{-- Last run --}}
                 <p class="text-xs text-gray-600 mb-2">
@@ -80,19 +80,19 @@
                         · {{ $lastRun->trigger }}
                     @elseif($engine['derivedPeriod'] !== null)
                         latest results found for {{ $definition->displayPeriod($engine['derivedPeriod']) }}
-                        <span class="text-gray-400">(derived from result tables — no run log yet)</span>
+                        <span class="text-gray-600">(derived from result tables — no run log yet)</span>
                     @else
-                        <span class="text-gray-400">never recorded</span>
+                        <span class="text-gray-600">never recorded</span>
                     @endif
                 </p>
 
                 {{-- Dependencies --}}
                 <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Runs first:</span>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-600">Runs first:</span>
                     @forelse($engine['dependencyLabels'] as $label)
                     <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">{{ $label }}</span>
                     @empty
-                    <span class="text-[10px] text-gray-400">none — runs on its own</span>
+                    <span class="text-[10px] text-gray-600">none — runs on its own</span>
                     @endforelse
                 </div>
 
@@ -107,7 +107,7 @@
 
             {{-- Run form --}}
             @if(! $definition->manuallyTriggerable)
-            <div class="w-full lg:w-80 shrink-0 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
+            <div class="w-full lg:w-80 shrink-0 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
                 <span class="font-semibold text-gray-700">Scheduler-only.</span>
                 Payout batches are created by the scheduler and approved separately on the Payouts page,
                 so the same person never both creates and approves a batch.
@@ -135,7 +135,7 @@
                     <textarea name="reason" rows="2" required placeholder="e.g. Scheduled run on the 2nd failed — re-running after fix"
                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">{{ old('engine') === $definition->key ? old('reason') : '' }}</textarea>
                 </div>
-                <button type="submit" class="w-full px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600">
+                <button type="submit" class="w-full px-4 py-2 rounded-lg bg-brand-700 text-white text-sm font-medium hover:bg-brand-800">
                     Preview &amp; Confirm &rarr;
                 </button>
             </form>

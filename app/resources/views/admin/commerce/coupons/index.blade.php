@@ -28,12 +28,12 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($coupons as $coupon)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-mono font-semibold text-gray-900">{{ $coupon->code }}</td>
                     <td class="px-4 py-3 text-gray-700">
                         {{ $coupon->displayValue() }}
                         @if($coupon->type === 'percent' && $coupon->max_discount_paise)
-                            <span class="text-xs text-gray-400">(max ₹{{ \App\Modules\Shared\Support\IndianNumber::format($coupon->max_discount_paise / 100, 0) }})</span>
+                            <span class="text-xs text-gray-600">(max ₹{{ \App\Modules\Shared\Support\IndianNumber::format($coupon->max_discount_paise / 100, 0) }})</span>
                         @endif
                     </td>
                     <td class="px-4 py-3 text-gray-700 capitalize">{{ $coupon->scope }}</td>
@@ -45,11 +45,11 @@
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $coupon->status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200' }}">{{ ucfirst($coupon->status) }}</span>
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <a href="{{ route('admin.commerce.coupons.edit', $coupon) }}" class="text-brand-600 hover:text-brand-700 font-medium">Edit</a>
+                        <a href="{{ route('admin.commerce.coupons.edit', $coupon) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">No coupons yet. <a href="{{ route('admin.commerce.coupons.create') }}" class="text-brand-600 underline">Create one</a>.</td></tr>
+                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-600">No coupons yet. <a href="{{ route('admin.commerce.coupons.create') }}" class="text-brand-700 underline">Create one</a>.</td></tr>
             @endforelse
         </tbody>
     </table>

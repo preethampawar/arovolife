@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-xl mx-auto">
-    <h2 class="text-2xl font-bold mb-2">Bank Account Details <span class="text-gray-500 text-base font-normal">(optional)</span></h2>
+    <h2 class="text-2xl font-bold mb-2">Bank Account Details <span class="text-gray-600 text-base font-normal">(optional)</span></h2>
     <p class="text-gray-600 text-sm mb-6">
         Bank details are used for commission payouts (Phase 2+). You can
         add them now or later from your dashboard — registration completes
@@ -31,7 +31,7 @@
                 minlength="9"
                 maxlength="18"
                 class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-            <p class="mt-1 text-xs text-gray-500">9–18 digits, numbers only. Leave blank to skip.</p>
+            <p class="mt-1 text-xs text-gray-600">9–18 digits, numbers only. Leave blank to skip.</p>
             @error('account_number')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
@@ -44,7 +44,7 @@
                 maxlength="11"
                 class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 oninput="this.value=this.value.toUpperCase()">
-            <p class="mt-1 text-xs text-gray-500">11-character IFSC code on your cheque book. Leave blank to skip.</p>
+            <p class="mt-1 text-xs text-gray-600">11-character IFSC code on your cheque book. Leave blank to skip.</p>
             @error('ifsc')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
@@ -64,11 +64,11 @@
                 ← Back
             </a>
             <button type="submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Continue →
             </button>
         </div>
-        <p class="text-xs text-center text-gray-500">
+        <p class="text-xs text-center text-gray-600">
             Submitting with both fields blank skips this step. Add bank details from your dashboard whenever you're ready.
         </p>
     </form>

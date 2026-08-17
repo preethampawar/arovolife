@@ -10,21 +10,21 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($months->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-400 text-center">No GBB batches yet — engine has not yet run.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No GBB batches yet — engine has not yet run.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-500">Month</th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-left text-gray-600">Month</th>
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Distributors <x-help-tip text="Number of eligible distributors who earned at least 1 AGP." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Total AGP <x-help-tip text="Sum of all AGP earned by eligible distributors for this month (each capped at 120)." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">Net GBB credited</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Credited at</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Net GBB credited</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Credited at</th>
                     <th class="px-4 py-2"></th>
                 </tr>
             </thead>
@@ -35,10 +35,10 @@
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->distributor_count) }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_agp) }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_net_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right text-gray-500">{{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">{{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}</td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.gbb.show', \Illuminate\Support\Carbon::parse($m->year_month)->format('Y-m')) }}"
-                           class="text-brand-600 text-xs hover:underline">View →</a>
+                           class="text-brand-700 text-xs hover:underline">View →</a>
                     </td>
                 </tr>
                 @endforeach

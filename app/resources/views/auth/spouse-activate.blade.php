@@ -26,7 +26,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1.5">New password</label>
             <input type="password" name="password" required minlength="8" autocomplete="new-password"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500">
-            <p class="mt-1 text-xs text-gray-500">At least 8 characters. Long phrases of unrelated words work best.</p>
+            <p class="mt-1 text-xs text-gray-600">At least 8 characters. Long phrases of unrelated words work best.</p>
         </div>
 
         <div>
@@ -36,7 +36,7 @@
         </div>
 
         <button type="submit"
-            class="w-full inline-flex justify-center items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-4 py-2.5 text-sm transition-colors">
+            class="w-full inline-flex justify-center items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-4 py-2.5 text-sm transition-colors">
             Activate account
         </button>
     </form>

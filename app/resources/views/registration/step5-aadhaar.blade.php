@@ -24,7 +24,7 @@
                 maxlength="14"
                 class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 oninput="this.value=this.value.replace(/[^0-9 ]/g,'').replace(/(\d{4})(?=\d)/g,'$1 ').slice(0,14)">
-            <p class="mt-1 text-xs text-gray-500">12 digits. Spaces are added automatically for readability.</p>
+            <p class="mt-1 text-xs text-gray-600">12 digits. Spaces are added automatically for readability.</p>
             @error('aadhaar_number')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
@@ -39,7 +39,7 @@
         <div>
             <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white border border-gray-200">
                 <input type="checkbox" name="consent_aadhaar" value="1" required
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 bg-gray-100 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 bg-gray-100 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
                     I consent to arovolife storing my Aadhaar number for KYC verification, and to its purge after my documents are verified.
                 </span>
@@ -55,7 +55,7 @@
                 ← Back
             </a>
             <button type="submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Continue →
             </button>
         </div>
