@@ -18,6 +18,7 @@ use App\Modules\Compensation\Services\AogoOfferService;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\GsbSlabProgressService;
+use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Services\WalletService;
@@ -491,9 +492,7 @@ final class IncomeController extends Controller
 
         $walletBalancePaise = $walletService->balancePaise($distributor->id);
 
-        $totalPaidOutPaise = (int) PayoutLineItem::where('distributor_id', $distributor->id)
-            ->where('status', 'transferred')
-            ->sum('net_transferred_paise');
+        $totalPaidOutPaise = app(PayoutService::class)->totalTransferredPaise((int) $distributor->id);
 
         // Next Tuesday (or today if it is Tuesday).
         $today = now()->timezone('Asia/Kolkata');

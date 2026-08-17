@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Services\DistributorIdCardStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,6 +12,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // The title ladder is read from gsb_slabs, not a constant.
+    seedCompensationPlanTables();
 });
 
 /** Give a distributor a net personal BV via a ledger accrual (BV × 100 paise). */
@@ -26,61 +29,79 @@ function seedIdCardPersonalBv(Distributor $distributor, int $bvPaise): void
     ]);
 }
 
-it('ranks the viewer by personal BV among all distributors', function (): void {
-    $me = Distributor::factory()->create();   // 1,000 BV → 2nd
-    $ahead = Distributor::factory()->create(); // 2,000 BV → 1st
-    $behind = Distributor::factory()->create(); // 500 BV → 3rd
+/** Settle money to a distributor's bank via a transferred payout line item. */
+function seedIdCardPayout(Distributor $distributor, int $netPaise, string $status): void
+{
+    static $batchId = 900000;
+    PayoutLineItem::create([
+        'payout_batch_id' => $batchId++,
+        'distributor_id' => $distributor->id,
+        'gross_paise' => $netPaise,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_transferred_paise' => $netPaise,
+        'status' => $status,
+    ]);
+}
 
-    seedIdCardPersonalBv($me, 100_000);
-    seedIdCardPersonalBv($ahead, 200_000);
-    seedIdCardPersonalBv($behind, 50_000);
-
-    $this->actingAs($me->user);
-    $stats = app(DistributorIdCardStats::class)->full($me);
-
-    expect($stats['personal_sales_position'])->toBe('#2');
-});
-
-it('shows position #1 for the top distributor', function (): void {
-    $top = Distributor::factory()->create();
-    $other = Distributor::factory()->create();
-    seedIdCardPersonalBv($top, 500_000);
-    seedIdCardPersonalBv($other, 100_000);
-
-    $this->actingAs($top->user);
-    expect(app(DistributorIdCardStats::class)->full($top)['personal_sales_position'])->toBe('#1');
-});
-
-it('shows no position (—/null) before the distributor has any personal BV', function (): void {
-    $me = Distributor::factory()->create();      // no personal BV
-    $other = Distributor::factory()->create();
-    seedIdCardPersonalBv($other, 100_000);       // someone else has sales
+it('shows the title the viewer holds on the personal purchase ladder', function (): void {
+    $me = Distributor::factory()->create();
+    seedIdCardPersonalBv($me, 1_600_000);   // 16,000 BV → Wholesaler (15,000 rung)
 
     $this->actingAs($me->user);
-    expect(app(DistributorIdCardStats::class)->full($me)['personal_sales_position'])->toBeNull();
+
+    expect(app(DistributorIdCardStats::class)->full($me)['personal_sales_title'])
+        ->toBe('Wholesaler');
 });
 
-it('never exposes another distributor\'s position (own data only)', function (): void {
+it('shows no title (—/null) below the first rung of the ladder', function (): void {
+    $me = Distributor::factory()->create();
+    seedIdCardPersonalBv($me, 100_000);     // 1,000 BV → below the 3,000 BV Retailer rung
+
+    $this->actingAs($me->user);
+
+    expect(app(DistributorIdCardStats::class)->full($me)['personal_sales_title'])->toBeNull();
+});
+
+it('never exposes another distributor\'s title (own data only)', function (): void {
     $me = Distributor::factory()->create();
     $other = Distributor::factory()->create();
-    seedIdCardPersonalBv($other, 100_000);
+    seedIdCardPersonalBv($other, 1_600_000);
 
-    // Authenticated as $me but requesting $other's card → position hidden.
+    // Authenticated as $me but requesting $other's card → title hidden.
     $this->actingAs($me->user);
-    expect(app(DistributorIdCardStats::class)->full($other)['personal_sales_position'])->toBeNull();
+    expect(app(DistributorIdCardStats::class)->full($other)['personal_sales_title'])->toBeNull();
 });
 
-it('gives tied distributors the same competition-ranked position', function (): void {
-    $a = Distributor::factory()->create();
-    $b = Distributor::factory()->create();
-    $ahead = Distributor::factory()->create();
+it('totals only the payouts that actually reached the bank', function (): void {
+    $me = Distributor::factory()->create();
+    seedIdCardPayout($me, 120_000, PayoutLineItem::STATUS_TRANSFERRED);   // ₹1,200.00
+    seedIdCardPayout($me, 45_050, PayoutLineItem::STATUS_TRANSFERRED);    // ₹450.50
+    seedIdCardPayout($me, 999_999, PayoutLineItem::STATUS_PENDING);       // not settled
+    seedIdCardPayout($me, 999_999, PayoutLineItem::STATUS_FAILED);        // never left
 
-    seedIdCardPersonalBv($a, 100_000);      // tied
-    seedIdCardPersonalBv($b, 100_000);      // tied
-    seedIdCardPersonalBv($ahead, 300_000);  // clearly ahead
+    $this->actingAs($me->user);
 
-    $this->actingAs($a->user);
-    expect(app(DistributorIdCardStats::class)->full($a)['personal_sales_position'])->toBe('#2');
-    $this->actingAs($b->user);
-    expect(app(DistributorIdCardStats::class)->full($b)['personal_sales_position'])->toBe('#2');
+    expect(app(DistributorIdCardStats::class)->full($me)['total_withdrawal_income'])
+        ->toBe('₹1,650.50');
+});
+
+it('shows no withdrawal income before the first transfer clears', function (): void {
+    $me = Distributor::factory()->create();
+    seedIdCardPayout($me, 500_000, PayoutLineItem::STATUS_PENDING);
+
+    $this->actingAs($me->user);
+
+    expect(app(DistributorIdCardStats::class)->full($me)['total_withdrawal_income'])->toBeNull();
+});
+
+it('never exposes another distributor\'s withdrawal income (own data only)', function (): void {
+    $me = Distributor::factory()->create();
+    $other = Distributor::factory()->create();
+    seedIdCardPayout($other, 500_000, PayoutLineItem::STATUS_TRANSFERRED);
+
+    $this->actingAs($me->user);
+    expect(app(DistributorIdCardStats::class)->full($other)['total_withdrawal_income'])->toBeNull();
 });
