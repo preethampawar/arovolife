@@ -325,12 +325,6 @@ parameters:
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CartController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
-
-		-
 			message: '#^Parameter \#1 \$coupon of method App\\Modules\\Commerce\\Services\\CouponService\:\:discountFor\(\) expects App\\Modules\\Commerce\\Models\\Coupon, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
@@ -541,12 +535,6 @@ parameters:
 			path: app/Modules/Commerce/Models/Order.php
 
 		-
-			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:customer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Commerce/Models/Order.php
-
-		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -743,18 +731,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email_enc\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Support/OrderBuyerNotifier.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Support/OrderBuyerNotifier.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -1617,6 +1593,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Security/PolicyBackstopTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 23
 			path: tests/Modules/Admin/AdminAdcReportsTest.php
 
@@ -2221,12 +2203,6 @@ parameters:
 			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: tests/Modules/Commerce/CheckoutPaymentTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2251,18 +2227,6 @@ parameters:
 			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$display_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2277,7 +2241,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 6
+			count: 4
 			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
 
 		-
@@ -2335,24 +2299,6 @@ parameters:
 			path: tests/Modules/Commerce/MyOrdersTest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$claimed_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$distributor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 9
@@ -2372,12 +2318,6 @@ parameters:
 
 		-
 			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 3
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Commerce/MyOrdersTest.php

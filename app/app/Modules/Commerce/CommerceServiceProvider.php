@@ -9,6 +9,8 @@ use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Listeners\SendAdminNewOrderMail;
 use App\Modules\Commerce\Listeners\SendOrderPlacedMail;
 use App\Modules\Commerce\Listeners\SendOrderStatusChangedMail;
+use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Policies\OrderPolicy;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Commerce\Services\CartService;
@@ -19,6 +21,7 @@ use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Commerce\Support\Bv;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -37,6 +40,8 @@ final class CommerceServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(Order::class, OrderPolicy::class);
+
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
         // Order notifications are event-driven (CLAUDE.md). Listeners are

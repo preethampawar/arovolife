@@ -6,6 +6,8 @@ namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Tax\Models\Invoice;
+use App\Modules\Tax\Services\TaxSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -84,11 +86,19 @@ final class MyOrdersController extends Controller
     {
         $order = Order::query()
             ->where('order_no', $orderNo)
-            ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
             ->with(['items.variant.product', 'coolingOff', 'bvLedgerEntries'])
             ->first();
 
         if ($order === null) {
+            throw new NotFoundHttpException;
+        }
+
+        // The query scope was the only thing standing between one customer and
+        // another's order. It still is on the happy path — but the policy is
+        // the backstop, so a future edit that loosens the query cannot quietly
+        // open an IDOR (T-6.1 M-6). 404 rather than 403: telling a stranger
+        // that an order number exists is itself a disclosure.
+        if ($request->user()->cannot('view', $order)) {
             throw new NotFoundHttpException;
         }
 
@@ -109,11 +119,10 @@ final class MyOrdersController extends Controller
     {
         $order = Order::query()
             ->where('order_no', $orderNo)
-            ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
             ->with(['items', 'customer', 'distributor.user'])
             ->first();
 
-        if ($order === null) {
+        if ($order === null || $request->user()->cannot('downloadInvoice', $order)) {
             throw new NotFoundHttpException;
         }
 
@@ -121,8 +130,8 @@ final class MyOrdersController extends Controller
         // split and the supplier identity on it are what make it one. Render
         // the record, not a recomputation of the order — the two must never be
         // able to disagree.
-        $invoice = \App\Modules\Tax\Models\Invoice::with('lines')->where('order_id', $order->id)->first();
-        $tax = app(\App\Modules\Tax\Services\TaxSettings::class);
+        $invoice = Invoice::with('lines')->where('order_id', $order->id)->first();
+        $tax = app(TaxSettings::class);
 
         return view('shop.orders.invoice', [
             'order' => $order,
@@ -144,9 +153,12 @@ final class MyOrdersController extends Controller
     {
         $order = Order::query()
             ->where('order_no', $orderNo)
-            ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
-            ->with('items.variant.inventory')
+            ->with(['items.variant.inventory', 'customer'])
             ->first();
+
+        if ($order !== null && $request->user()->cannot('cancel', $order)) {
+            throw new NotFoundHttpException;
+        }
 
         if ($order === null) {
             throw new NotFoundHttpException;

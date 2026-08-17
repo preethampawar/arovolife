@@ -59,6 +59,18 @@ final class RedeemPointsService
      * see the same balance and both spend it — the classic double-spend, and
      * one that would be invisible afterwards because the ledger would simply
      * show a negative balance nobody could explain.
+     *
+     * **This depends on the isolation level, and that dependency is not
+     * obvious.** `lockForUpdate()` over an aggregate locks the rows it reads;
+     * it does not by itself stop a concurrent INSERT that would change the
+     * sum. What stops that here is MySQL's default REPEATABLE READ, whose
+     * next-key locks cover the gap in `idx_redeem_points_dist_time`. Under
+     * READ COMMITTED there are no gap locks and the double-spend reopens.
+     *
+     * `config/database.php` sets no isolation override, so the default holds —
+     * and `RedeemPointsIsolationTest` fails if that ever changes, because
+     * nothing else would notice until the balances stopped adding up
+     * (T-6.1 finding L-5).
      */
     public function redeem(int $distributorId, int $points, int $orderId, string $memo): RedeemPointEntry
     {
