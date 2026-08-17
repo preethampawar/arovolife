@@ -50,7 +50,13 @@ final class GrievanceAttachmentStore
 
     public function store(Ticket $ticket, UploadedFile $file, ?int $uploadedByUserId): TicketAttachment
     {
-        $extension = strtolower($file->getClientOriginalExtension() ?: 'bin');
+        // Derived from the bytes, not from the client's filename. The
+        // validator has already established the content is a PDF or an image,
+        // so `guessExtension()` cannot disagree with reality — whereas the
+        // client extension could store a verified JPEG as `.php` or `.svg`.
+        // Harmless while the bucket is private and never web-served, and one
+        // misconfiguration away from not being (T-6.1 finding L-1).
+        $extension = strtolower($file->guessExtension() ?: 'bin');
         $path = sprintf('%s/%s.%s', $ticket->ticket_no, Str::random(32), $extension);
 
         Storage::disk(self::DISK)->put($path, $file->getContent(), 'private');

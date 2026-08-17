@@ -13,6 +13,7 @@ use App\Modules\Grievance\Services\GrievanceService;
 use App\Modules\Grievance\Services\GrievanceSettingsService;
 use App\Modules\Grievance\Support\GrievanceAttachmentStore;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
+use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -86,6 +87,7 @@ final class PublicGrievanceController extends Controller
                 'mimes:pdf,jpg,jpeg,png,webp,heic',
                 // The declared type is the client's claim; this reads the bytes.
                 new ValidUploadedDocumentBytes(ValidUploadedDocumentBytes::EVIDENCE),
+                new ScannedForMalware,
             ],
             // An acknowledgement, not a gate. DSR 2021 Rule 12 gives an
             // unconditional right to complain, and grievance handling is a

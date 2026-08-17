@@ -19,6 +19,7 @@ use App\Modules\Grievance\Services\GrievanceSettingsService;
 use App\Modules\Grievance\Support\GrievanceAttachmentStore;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -164,6 +165,7 @@ final class AdminGrievanceController extends Controller
                 'mimes:pdf,jpg,jpeg,png,webp,heic',
                 // The declared type is the client's claim; this reads the bytes.
                 new ValidUploadedDocumentBytes(ValidUploadedDocumentBytes::EVIDENCE),
+                new ScannedForMalware,
             ],
         ]);
 
@@ -367,7 +369,11 @@ final class AdminGrievanceController extends Controller
             'action' => 'grievance.attachment_viewed',
             'subject_type' => 'ticket_attachment',
             'subject_id' => $attachment->id,
-            'details' => ['ticket_no' => $ticket->ticket_no, 'file' => $attachment->original_name],
+            // The attachment id, not the filename. The store's own docblock
+            // argues that "aadhaar-card-scan.pdf" should not survive upload —
+            // and then the audit row kept it forever, which is where a
+            // retention sweep would never think to look (T-6.1 finding L-3).
+            'details' => ['ticket_no' => $ticket->ticket_no, 'attachment_id' => $attachment->id],
         ]);
 
         return $this->attachments->downloadResponse($attachment);
