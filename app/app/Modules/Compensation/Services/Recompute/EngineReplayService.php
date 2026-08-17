@@ -39,6 +39,8 @@ use RuntimeException;
  */
 final class EngineReplayService
 {
+    public function __construct(private readonly RecomputeProgress $progress) {}
+
     /**
      * @param  Closure(string): void|null  $progress
      * @return array{days: int, engines: array<string, int>}
@@ -50,6 +52,8 @@ final class EngineReplayService
         $engineRuns = [];
         $ranPrerequisites = [];
         $days = 0;
+
+        $this->progress->daysTotal((int) $from->diffInDays($to) + 1);
 
         for ($day = $from->copy()->startOfDay(); $day->lte($to); $day->addDay()) {
             $due = $this->enginesDueOn($day);
@@ -82,6 +86,13 @@ final class EngineReplayService
             }
 
             $days++;
+
+            $this->progress->dayReplayed(
+                $day->toDateString(),
+                array_map(static fn (EngineDefinition $d): string => $d->commandSignature, $due),
+                $days,
+                array_sum($engineRuns),
+            );
         }
 
         Carbon::setTestNow();

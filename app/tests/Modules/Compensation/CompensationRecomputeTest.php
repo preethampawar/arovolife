@@ -7,9 +7,11 @@ use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
+use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\DerivedTables;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -21,8 +23,24 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
     config(['arovolife.recompute.enabled' => true]);
 });
+
+function recomputeAdmin(): User
+{
+    $user = User::create([
+        'full_name' => 'Recompute Admin',
+        'email' => 'recompute-admin-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.str_pad((string) random_int(7000000000, 9999999999), 10, '0'),
+        'password_hash' => bcrypt('x'),
+        'status' => 'active',
+        'email_verified_at' => now(),
+    ]);
+    $user->assignRole('admin');
+
+    return $user;
+}
 
 /**
  * A paid order with matching BV — the minimum a replay needs in order to have
@@ -343,4 +361,110 @@ it('really invokes the engines rather than passing vacuously', function (): void
 
     // engine_runs repopulates as the replay goes, which is what the admin page reads.
     expect(DB::table('engine_runs')->count())->toBeGreaterThan(0);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Live progress
+|--------------------------------------------------------------------------
+*/
+
+it('publishes progress through every phase of a replay', function (): void {
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
+
+    $progress = app(RecomputeProgress::class);
+
+    expect($progress->read())->toBeNull();
+
+    app(CompensationRecomputeRunner::class)->run(
+        from: Carbon::parse('2026-06-05'),
+        to: Carbon::parse('2026-06-08'),
+    );
+
+    $state = $progress->read();
+
+    expect($state['state'])->toBe(RecomputeProgress::STATE_COMPLETE);
+    expect($state['percent'])->toBe(100);
+    expect($state['days_total'])->toBe(4);
+    expect($state['days_done'])->toBe(4);
+    expect($state['orders_done'])->toBe(1);
+    expect($state['summary']['days'])->toBe(4);
+    expect($state['summary']['engine_runs'])->toBeGreaterThan(0);
+    expect($state['rows_removed'])->toBeGreaterThanOrEqual(0);
+});
+
+it('records the failure on the progress state when a replay throws', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $progress = app(RecomputeProgress::class);
+    $progress->start();
+
+    // Guard passes, then the window resolution finds nothing and the day loop
+    // aborts on a command that cannot run — simulate by failing directly.
+    $progress->fail('gsb:daily-cutoff for 05 Jun 2026 exited with code 1');
+
+    $state = $progress->read();
+
+    expect($state['state'])->toBe(RecomputeProgress::STATE_FAILED);
+    expect($state['error'])->toContain('exited with code 1');
+    expect($state['finished_at'])->not->toBeNull();
+});
+
+it('reports idle before any recompute has run', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $response = $this->actingAs(recomputeAdmin())
+        ->getJson(route('admin.compensation.engine-runs.recompute-progress'));
+
+    $response->assertOk()->assertJson(['state' => 'idle']);
+});
+
+it('404s the progress endpoint when the gate is closed', function (): void {
+    config(['arovolife.recompute.enabled' => false]);
+
+    $this->actingAs(recomputeAdmin())
+        ->getJson(route('admin.compensation.engine-runs.recompute-progress'))
+        ->assertNotFound();
+});
+
+it('serves live progress to the poller while a replay is in flight', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $progress = app(RecomputeProgress::class);
+    $progress->start();
+    $progress->daysTotal(44);
+    $progress->dayReplayed('2026-07-15', ['gsb:daily-cutoff', 'repurchase:evaluate'], 12, 24);
+
+    $response = $this->actingAs(recomputeAdmin())
+        ->getJson(route('admin.compensation.engine-runs.recompute-progress'));
+
+    $response->assertOk()
+        ->assertJson([
+            'state' => RecomputeProgress::STATE_RUNNING,
+            'current_date' => '2026-07-15',
+            'days_done' => 12,
+            'days_total' => 44,
+            'engine_runs' => 24,
+        ]);
+
+    // 5 (wipe) + 15 (propagate) + 75 * 12/44 ≈ 40
+    expect($response->json('percent'))->toBeGreaterThan(20)->toBeLessThan(60);
+});
+it('keeps progress alive across the replay clock travel', function (): void {
+    // Regression: progress updates are published from inside the travelled
+    // clock section. A cache TTL computed against a back-dated Carbon::now()
+    // expires the instant the real clock is restored, wiping the progress the
+    // user is watching.
+    $progress = app(RecomputeProgress::class);
+    $progress->start();
+
+    Carbon::setTestNow(Carbon::parse('2026-06-05 10:00:00'));
+    $progress->dayReplayed('2026-06-05', ['gsb:daily-cutoff'], 1, 1);
+    Carbon::setTestNow();
+
+    expect($progress->read())->not->toBeNull();
+    expect($progress->read()['current_date'])->toBe('2026-06-05');
 });

@@ -29,6 +29,8 @@ use Illuminate\Support\Carbon;
  */
 final class GroupBvReplayService
 {
+    public function __construct(private readonly RecomputeProgress $progress) {}
+
     /**
      * @param  Closure(string): void|null  $progress
      * @return int  orders propagated
@@ -38,6 +40,15 @@ final class GroupBvReplayService
         $log = $progress ?? static fn (string $_m): null => null;
 
         $propagated = 0;
+
+        $eligible = Order::query()
+            ->where('status', Order::STATUS_PAID)
+            ->whereNotNull('attributed_distributor_id')
+            ->whereNotNull('paid_at')
+            ->count();
+
+        $this->progress->ordersTotal($eligible);
+        $this->progress->ordersProgressed(0);
 
         Order::query()
             ->where('status', Order::STATUS_PAID)
@@ -73,6 +84,7 @@ final class GroupBvReplayService
                     $propagated++;
                 }
 
+                $this->progress->ordersProgressed($propagated);
                 $log(sprintf('  %d order(s) propagated', $propagated));
             });
 

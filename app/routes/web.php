@@ -442,6 +442,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             // COMP_RECOMPUTE_ENABLED). Removed with the recompute scaffold at
             // client sign-off.
             Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all');
+            Route::get('recompute-progress', [AdminEngineRunsController::class, 'recomputeProgress'])->name('recompute-progress');
         });
     });
 

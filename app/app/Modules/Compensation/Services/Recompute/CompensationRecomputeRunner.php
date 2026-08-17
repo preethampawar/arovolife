@@ -11,6 +11,7 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;
+use Throwable;
 
 /**
  * The one sequence a full compensation recompute follows. The artisan command
@@ -29,6 +30,7 @@ final class CompensationRecomputeRunner
         private readonly GroupBvReplayService $groupBv,
         private readonly EngineReplayService $engines,
         private readonly DatabaseManager $db,
+        private readonly RecomputeProgress $progress,
     ) {}
 
     /**
@@ -48,6 +50,8 @@ final class CompensationRecomputeRunner
         $startedAt = microtime(true);
         $warnings = [];
 
+        $this->progress->start();
+
         // Back-dated transitions would otherwise mail every distributor about
         // repurchase cycles that opened weeks ago. The event bus stays live —
         // listeners like ReleaseHeldGsbOnReactivation are part of a correct
@@ -57,7 +61,9 @@ final class CompensationRecomputeRunner
 
         try {
             $log('Wiping BV-derived state...');
+            $this->progress->phase('Wiping BV-derived state');
             $rowsRemoved = $this->wiper->wipe($log);
+            $this->progress->wiped(array_sum($rowsRemoved));
 
             [$from, $to, $windowWarnings] = $this->resolveWindow($from, $to);
             $warnings = [...$warnings, ...$windowWarnings];
@@ -74,6 +80,7 @@ final class CompensationRecomputeRunner
             // dashboards and the next scheduled cut-off will read.
             Carbon::setTestNow();
             $log('Rebuilding current repurchase state...');
+            $this->progress->phase('Rebuilding current repurchase state');
             Artisan::call('repurchase:evaluate');
 
             $report = new RecomputeReport(
@@ -88,8 +95,13 @@ final class CompensationRecomputeRunner
             );
 
             $this->audit($report, $actorUserId);
+            $this->progress->complete($report);
 
             return $report;
+        } catch (Throwable $e) {
+            $this->progress->fail($e->getMessage());
+
+            throw $e;
         } finally {
             // A replay that dies mid-flight must never leave the process — or a
             // queue worker reusing it — on a fake clock.

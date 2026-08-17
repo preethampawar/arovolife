@@ -11,11 +11,13 @@ use App\Modules\Compensation\Services\EngineChainResolver;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
+use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -43,6 +45,7 @@ final class AdminEngineRunsController extends Controller
         private readonly EngineChainResolver $resolver,
         private readonly RecomputeGuard $recomputeGuard,
         private readonly CompensationStateWiper $wiper,
+        private readonly RecomputeProgress $recomputeProgress,
     ) {}
 
     public function index(): View
@@ -132,6 +135,19 @@ final class AdminEngineRunsController extends Controller
         return redirect()->route('admin.compensation.engine-runs.index')
             ->with('status', 'Full recompute queued. Every BV-derived row is being wiped and rebuilt — '
                 .'the runs below will repopulate as the replay progresses.');
+    }
+
+    /**
+     * Live progress for a running recompute, polled by the Engine Runs page.
+     *
+     * Read-only and cheap — it reads one cache key, never the database, which
+     * matters because the replay is mid-truncation for part of its life.
+     */
+    public function recomputeProgress(): JsonResponse
+    {
+        abort_unless($this->recomputeGuard->isPermitted(), 404);
+
+        return response()->json($this->recomputeProgress->read() ?? ['state' => 'idle']);
     }
 
     public function events(Request $request): View

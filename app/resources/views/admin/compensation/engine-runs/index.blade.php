@@ -53,6 +53,36 @@
     </details>
     @endif
 
+    {{-- Live progress. Hidden until the poller sees a run; the whole panel is
+         driven by the recompute-progress endpoint, which reads one cache key. --}}
+    <div id="recompute-progress" class="mt-4 hidden rounded-lg border border-red-200 bg-white p-4">
+        <div class="flex items-center justify-between gap-3">
+            <p class="text-sm font-semibold text-gray-900">
+                <span id="rp-phase">Starting</span>
+                <span id="rp-detail" class="font-normal text-gray-500"></span>
+            </p>
+            <span id="rp-percent" class="text-sm font-bold tabular-nums text-red-700">0%</span>
+        </div>
+
+        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+            <div id="rp-bar" class="h-full rounded-full bg-red-600 transition-all duration-500" style="width:0%"></div>
+        </div>
+
+        <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
+            <div><dt class="text-gray-500">Replaying</dt><dd id="rp-date" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+            <div><dt class="text-gray-500">Days</dt><dd id="rp-days" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+            <div><dt class="text-gray-500">Orders re-propagated</dt><dd id="rp-orders" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+            <div><dt class="text-gray-500">Engine runs</dt><dd id="rp-runs" class="font-medium text-gray-900 tabular-nums">—</dd></div>
+        </dl>
+
+        <p class="mt-2 text-xs text-gray-500">
+            Engines on this date: <span id="rp-engines" class="font-mono text-gray-700">—</span>
+        </p>
+
+        <p id="rp-error" class="mt-3 hidden rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800"></p>
+        <p id="rp-done" class="mt-3 hidden rounded-lg border border-green-300 bg-green-50 p-3 text-xs text-green-800"></p>
+    </div>
+
     <form method="POST" action="{{ route('admin.compensation.engine-runs.recompute-all') }}"
           class="mt-4 flex flex-wrap items-end gap-3"
           data-confirm="Wipe every bonus, payout and wallet credit, then replay all engines?"
@@ -86,6 +116,72 @@
     input.addEventListener('input', function () {
         button.disabled = input.value.trim() !== input.dataset.expected;
     });
+})();
+
+// Live progress poller. The replay runs on the queue for minutes, so without
+// this the page gives no sign anything is happening.
+(function () {
+    var panel = document.getElementById('recompute-progress');
+    if (!panel) { return; }
+
+    var url = @json(route('admin.compensation.engine-runs.recompute-progress'));
+    var el = function (id) { return document.getElementById(id); };
+    var timer = null;
+
+    function text(id, value) { var n = el(id); if (n) { n.textContent = value; } }
+
+    function render(state) {
+        if (!state || state.state === 'idle') { panel.classList.add('hidden'); return; }
+
+        panel.classList.remove('hidden');
+        text('rp-phase', state.phase || '—');
+        text('rp-detail', state.detail ? ' — ' + state.detail : '');
+        text('rp-percent', (state.percent || 0) + '%');
+        el('rp-bar').style.width = (state.percent || 0) + '%';
+        text('rp-date', state.current_date || '—');
+        text('rp-days', state.days_total ? state.days_done + ' / ' + state.days_total : (state.days_done || '—'));
+        text('rp-orders', state.orders_total ? state.orders_done + ' / ' + state.orders_total : (state.orders_done || '—'));
+        text('rp-runs', state.engine_runs || 0);
+        text('rp-engines', (state.current_engines && state.current_engines.length)
+            ? state.current_engines.join(', ')
+            : '—');
+
+        var err = el('rp-error');
+        var done = el('rp-done');
+
+        if (state.state === 'failed') {
+            el('rp-bar').classList.remove('bg-red-600');
+            el('rp-bar').classList.add('bg-red-800');
+            err.textContent = 'Replay failed: ' + (state.error || 'unknown error')
+                + ' — the data is wiped and only partly rebuilt. Run it again to start clean.';
+            err.classList.remove('hidden');
+            stop();
+            return;
+        }
+
+        if (state.state === 'complete' && state.summary) {
+            el('rp-bar').classList.remove('bg-red-600');
+            el('rp-bar').classList.add('bg-green-600');
+            done.textContent = 'Complete — ' + state.summary.days + ' days, '
+                + state.summary.orders + ' orders, ' + state.summary.engine_runs + ' engine runs, '
+                + state.summary.rows_removed.toLocaleString() + ' rows replaced in '
+                + state.summary.duration_seconds + 's. Reload to see the runs below.';
+            done.classList.remove('hidden');
+            stop();
+        }
+    }
+
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    function poll() {
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(render)
+            .catch(function () { /* transient: keep polling */ });
+    }
+
+    poll();
+    timer = setInterval(poll, 2000);
 })();
 </script>
 @endif

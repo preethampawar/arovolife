@@ -358,6 +358,21 @@ rendered only when the gate is open, so on any environment where the flag is
 unset there is no trace of it. The `queue` container must be running or the
 click appears to do nothing.
 
+**Live progress.** Once a run starts, the page shows a progress bar that polls
+every two seconds: the current phase, percentage, which date is being replayed,
+the engines firing on that date, days done / total, orders re-propagated and a
+running engine-run count. It ends on a green summary or a red failure with the
+error. The bar is driven by a single cache key
+(`compensation:recompute:progress`), not the database — the replay truncates
+`engine_runs` as its first act, so progress cannot be stored anywhere it would
+wipe.
+
+Reading it from the CLI while a run is in flight:
+
+```bash
+php artisan tinker --execute 'echo json_encode(Cache::get("compensation:recompute:progress"), JSON_PRETTY_PRINT);'
+```
+
 **The schedulers are unaffected.** `routes/console.php` is untouched: the daily
 00:10 cut-off, the Tuesday payout and the 2nd/8th/9th monthly runs keep running
 normally and each still freezes its period. This command is the only thing that
