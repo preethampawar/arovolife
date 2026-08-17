@@ -25,7 +25,7 @@ use Throwable;
 /**
  * One-shot full platform reset: wipes transactional data — including
  * every purchase-derived table (orders, BV, bonuses, wallets, payouts;
- * see PurchaseDataResetAction::WIPE_TABLES) — scrubs S3 KYC files, then
+ * see PurchaseDataResetAction::wipeTables()) — scrubs S3 KYC files, then
  * re-seeds the canonical bootstrap state (roles, admin, settings,
  * content pages, ledger COA, feature flags, product catalog, and the
  * 31 company-blocked reserved distributors occupying tree levels 0-4).
@@ -44,10 +44,7 @@ final class PlatformResetAction
      *
      * @var list<string>
      */
-    private const WIPE_TABLES = [
-        // Purchase-derived data (orders, BV, bonuses, wallets, payouts,
-        // returns) — the full Phase 2-6 list lives on the narrower action.
-        ...PurchaseDataResetAction::WIPE_TABLES,
+    private const PLATFORM_TABLES = [
         // Commerce identities + their trail
         'customer_addresses',
         'customers',
@@ -87,6 +84,19 @@ final class PlatformResetAction
     ) {}
 
     /**
+     * The full nuke list, in FK-safe order: everything the purchase reset
+     * removes (which in turn single-sources its compensation half from
+     * {@see \App\Modules\Compensation\Support\DerivedTables}), then the
+     * platform's own identity, tree, consent and audit tables.
+     *
+     * @return list<string>
+     */
+    public static function wipeTables(): array
+    {
+        return [...PurchaseDataResetAction::wipeTables(), ...self::PLATFORM_TABLES];
+    }
+
+    /**
      * @param  Closure(string): void|null  $progress  optional callback for CLI output
      */
     public function execute(?Closure $progress = null): void
@@ -97,7 +107,7 @@ final class PlatformResetAction
         $this->wipeS3Files($log);
 
         $log('Truncating transactional tables...');
-        $this->wipeTables();
+        $this->truncateAll();
 
         $log('Resetting derived counters (coupons.used_count, inventory reserved)...');
         $this->purchaseReset->resetDerivedColumns();
@@ -162,12 +172,12 @@ final class PlatformResetAction
         }
     }
 
-    private function wipeTables(): void
+    private function truncateAll(): void
     {
         Schema::disableForeignKeyConstraints();
 
         try {
-            foreach (self::WIPE_TABLES as $table) {
+            foreach (self::wipeTables() as $table) {
                 if ($this->db->getSchemaBuilder()->hasTable($table)) {
                     $this->db->table($table)->truncate();
                 }

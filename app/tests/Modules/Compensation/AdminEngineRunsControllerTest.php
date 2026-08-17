@@ -232,3 +232,53 @@ it('rejects invalid engine keys, malformed periods, future periods and short rea
 
     Queue::assertNothingPushed();
 });
+
+/*
+|--------------------------------------------------------------------------
+| TESTING-ONLY full recompute — removed with the scaffold at client sign-off
+|--------------------------------------------------------------------------
+*/
+
+it('hides the recompute card entirely when the gate is closed', function (): void {
+    config(['arovolife.recompute.enabled' => false]);
+
+    $response = $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'));
+
+    $response->assertOk();
+    // Zero-trace gating: not a disabled button, not a tooltip — no mention at all.
+    $response->assertDontSee('Recompute everything');
+    $response->assertDontSee('recompute-all');
+});
+
+it('shows the recompute card to an admin when the gate is open', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $response = $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'));
+
+    $response->assertOk();
+    $response->assertSee('Recompute everything');
+});
+
+it('404s the recompute endpoint when the gate is closed', function (): void {
+    config(['arovolife.recompute.enabled' => false]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->assertNotFound();
+});
+
+it('queues the recompute rather than running it inline', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('status');
+
+    Queue::assertPushed(\App\Modules\Compensation\Jobs\RecomputeAllJob::class);
+
+    AuditLog::query()->where('action', 'compensation.recompute_all.queued')->firstOrFail();
+});

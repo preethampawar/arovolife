@@ -310,6 +310,98 @@ php artisan platform:reset-purchases
 php artisan platform:reset-purchases --force
 ```
 
+**Not the same as [`compensation:recompute-all`](#compensationrecompute-all).**
+This one deletes the orders too — you start selling again from nothing. That one
+keeps every order and BV row and recomputes the same history. Both take their
+compensation table list from the single `DerivedTables` registry, so neither can
+drift out of date when a new bonus table is added.
+
+---
+
+### `compensation:recompute-all`
+
+> **⚠️ TESTING ONLY — scheduled for deletion.** This exists so the compensation
+> plan can be validated end to end against live data. Once the client signs off,
+> it is removed and the engines go back to freeze-once for good. See the revert
+> checklist at the end of this section.
+
+Wipes **every row computed from BV** and replays all engines from the first BV
+date to yesterday, in the order the scheduler would have run them.
+
+**What it destroys:** bonus results (GSB, MSB, GBB, Rank, Fortune, ADC), every
+frozen pool, carry-forwards, personal-BV top-ups, rank qualifications and AO/GO
+grants, lifetime-award milestones, repurchase cycles, the group-BV projection,
+wallet credits, payout batches and the engine-run log.
+
+**What it keeps:** orders, the BV ledger, distributors, users, the Genos tree,
+sponsorship, KYC, consents, settings and all plan configuration (`gsb_slabs`,
+`rank_tiers`, Fortune levels/tiers, lifetime award rewards).
+
+**Why it has to exist.** Every engine is write-once by design: a period's pool,
+denominator and point value are frozen before the first credit and never
+recomputed, so nobody's rate can move after they were paid. That is right for
+production and wrong for testing — it means a single mistaken run permanently
+fixes a month's economics.
+
+```bash
+# Enable it first — it refuses without this, and always refuses in production
+COMP_RECOMPUTE_ENABLED=true
+
+php artisan compensation:recompute-all              # confirms, naming the target DB
+php artisan compensation:recompute-all --force      # scripted, no prompt
+php artisan compensation:recompute-all --from=2026-07-01 --to=2026-07-31
+```
+
+There is also a button on **Admin → Compensation → Engine Runs**, visible to
+`admin` and `developer`, which queues the same work in the background. It is
+rendered only when the gate is open, so on any environment where the flag is
+unset there is no trace of it. The `queue` container must be running or the
+click appears to do nothing.
+
+**The schedulers are unaffected.** `routes/console.php` is untouched: the daily
+00:10 cut-off, the Tuesday payout and the 2nd/8th/9th monthly runs keep running
+normally and each still freezes its period. This command is the only thing that
+throws those snapshots away.
+
+#### What it cannot reproduce faithfully
+
+1. **Today's tree, today's plan.** Placement and every plan setting are read
+   live, not as of the historical date. The replay answers "what would the
+   *current* plan pay over this history" — it will not reproduce the original
+   runs if the plan or the tree has changed since.
+2. **Cut-offs with no BV behind them vanish.** The replay window starts at the
+   first BV date; any older cut-off rows are deleted and not regenerated. On the
+   dev database this removed a month of June rows that had no BV behind them.
+3. **Repurchase history is obligation-periods, not calendar months** — the
+   rebuild rolls forward through completed cycles and parks on the first missed
+   one.
+4. **Wallet credits are deleted, not reversed.** Any figure a distributor has
+   already seen can change.
+
+Timestamps are back-dated during the replay (`Carbon::setTestNow` per replayed
+day) so the monthly income cap and repurchase deduction, which window on
+`wallet_ledger_entries.created_at`, fall in the right months. Outbound mail and
+notifications are muted for the duration; domain events still fire, because
+listeners like `ReleaseHeldGsbOnReactivation` are part of a correct
+recomputation.
+
+#### Reverting it after sign-off
+
+1. Delete `app/Modules/Compensation/Services/Recompute/`,
+   `Services/DTOs/RecomputeReport.php`, `Jobs/RecomputeAllJob.php`,
+   `Console/Commands/CompensationRecomputeAllCommand.php` and
+   `tests/Modules/Compensation/CompensationRecomputeTest.php`
+2. Remove the `recompute` block from `config/arovolife.php`, the
+   `COMP_RECOMPUTE_ENABLED` line from `.env.example` and every `.env`, and the
+   command from `AppServiceProvider`
+3. Remove the `recompute-all` route, `AdminEngineRunsController::recomputeAll()`,
+   the danger-zone card in the Engine Runs view, and the recompute tests in
+   `AdminEngineRunsControllerTest`
+4. Remove the `notEngines` exclusion in `EngineRegistryTest`
+5. **Keep** `Support/DerivedTables.php` and the `EngineCadence` work — those are
+   genuine single-source fixes, not part of the testing scaffold
+6. Delete this runbook section
+
 ---
 
 ## Scheduled command summary

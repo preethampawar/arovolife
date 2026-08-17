@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Compensation\Jobs;
+
+use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+/**
+ * Runs a full compensation recompute off the admin button.
+ *
+ * Queued because the replay takes minutes — far longer than a web request
+ * should hold open, and a request timeout mid-replay is the one genuinely
+ * dangerous failure mode (wiped, half-replayed).
+ *
+ * `$tries = 1` on purpose: a retry would resume against a database the first
+ * attempt had already wiped and partly rebuilt, double-applying propagation and
+ * corrupting the carry-forward chain. One attempt, fail loudly. Recovery is to
+ * click the button again — every run begins with a full wipe, so a re-run is a
+ * clean start rather than a resume.
+ *
+ * TESTING ONLY. Deleted with the rest of the recompute scaffold at sign-off.
+ */
+final class RecomputeAllJob implements ShouldQueue
+{
+    use InteractsWithQueue, Queueable, SerializesModels;
+
+    public const LOCK_KEY = 'compensation:recompute:all';
+
+    public int $tries = 1;
+
+    public int $timeout = 7200;
+
+    public function __construct(private readonly ?int $actorUserId = null) {}
+
+    public function handle(CompensationRecomputeRunner $runner): void
+    {
+        // Two concurrent replays would interleave their day loops and destroy
+        // the carry-forward chain. The controller takes the same lock before
+        // dispatching, so a second click is refused rather than queued.
+        $lock = Cache::lock(self::LOCK_KEY, $this->timeout);
+
+        if (! $lock->get()) {
+            Log::warning('compensation.recompute.skipped', ['reason' => 'already running']);
+
+            return;
+        }
+
+        try {
+            $report = $runner->run(
+                actorUserId: $this->actorUserId,
+                progress: static function (string $message): void {
+                    Log::info('compensation.recompute', ['message' => $message]);
+                },
+            );
+
+            Log::info('compensation.recompute.complete', [
+                'from' => $report->from->toDateString(),
+                'to' => $report->to->toDateString(),
+                'days' => $report->daysReplayed,
+                'rows_removed' => $report->totalRowsRemoved(),
+                'engine_runs' => $report->totalEngineRuns(),
+                'duration_seconds' => $report->durationSeconds,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('compensation.recompute.failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        } finally {
+            $lock->release();
+        }
+    }
+}

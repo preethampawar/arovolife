@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Actions;
 
+use App\Modules\Compensation\Support\DerivedTables;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Closure;
@@ -30,44 +31,14 @@ use Illuminate\Support\Facades\Schema;
 final class PurchaseDataResetAction
 {
     /**
-     * Tables wiped in FK-safe order (children before parents). Anything
-     * not listed here is left alone.
+     * Commerce tables wiped after the compensation-derived ones — the purchase
+     * flow itself and its BV trail. This is what separates this reset from
+     * {@see \App\Modules\Compensation\Services\Recompute\CompensationStateWiper},
+     * which keeps every one of these so the same history can be recomputed.
      *
      * @var list<string>
      */
-    public const WIPE_TABLES = [
-        // Compensation — engine results, ledgers, payouts
-        'group_bv_credits',
-        'group_bv_reversals',
-        'group_bv_debts',
-        'bv_propagation_log',
-        'payout_line_items',
-        'payout_batches',
-        'wallet_ledger_entries',
-        'mentorship_bonus_results',
-        'gsb_cutoff_results',
-        'gsb_carryforward',
-        // The frozen daily pool economics must go too: the freeze is idempotent
-        // and the rows are immutable, so a surviving row would price every
-        // re-run of that date against the pre-reset company BV forever.
-        'gsb_daily_pools',
-        'msb_daily_pools',
-        'group_bv_daily',
-        'gbb_monthly_results',
-        // Same rule for the monthly frozen pools (GBB + Fortune): a surviving
-        // row would price the month against pre-reset BV, and the Fortune
-        // post-freeze enrolment guard would permanently refuse re-enrolment.
-        'gbb_monthly_pools',
-        'rank_bonus_results',
-        'rank_qualifications',
-        'lifetime_award_milestones',
-        'fortune_bonus_results',
-        'fortune_bonus_participants',
-        'fortune_monthly_pool_levels',
-        'fortune_monthly_pools',
-        'adc_bonus_results',
-        'repurchase_cycles',
-        // Commerce — the purchase flow and its BV trail
+    private const COMMERCE_TABLES = [
         'bv_ledger_entries',
         'coupon_redemptions',
         'return_inspections',
@@ -89,6 +60,19 @@ final class PurchaseDataResetAction
     public function __construct(private readonly DatabaseManager $db) {}
 
     /**
+     * Everything this reset truncates, in FK-safe order: the compensation-derived
+     * tables first (single-sourced from {@see DerivedTables}, so a new bonus table
+     * can never be added to one reset and forgotten in the other), then the
+     * commerce tables.
+     *
+     * @return list<string>
+     */
+    public static function wipeTables(): array
+    {
+        return [...DerivedTables::inTruncationOrder(), ...self::COMMERCE_TABLES];
+    }
+
+    /**
      * @param  Closure(string): void|null  $progress  optional callback for CLI output
      */
     public function execute(?Closure $progress = null): void
@@ -96,7 +80,7 @@ final class PurchaseDataResetAction
         $log = $progress ?? static fn (string $_m): null => null;
 
         $log('Truncating purchase-derived tables...');
-        $this->wipeTables($log);
+        $this->truncateAll($log);
 
         $log('Resetting derived counters (gsb_frozen_at, coupons.used_count, inventory reserved)...');
         $this->resetDerivedColumns();
@@ -114,7 +98,7 @@ final class PurchaseDataResetAction
             'subject_type' => 'platform',
             'subject_id' => 0,
             'details' => [
-                'tables_wiped' => self::WIPE_TABLES,
+                'tables_wiped' => self::wipeTables(),
                 'note' => 'Purchase + compensation data reset via php artisan platform:reset-purchases',
             ],
         ]);
@@ -123,12 +107,12 @@ final class PurchaseDataResetAction
     }
 
     /** @param Closure(string): void $log */
-    private function wipeTables(Closure $log): void
+    private function truncateAll(Closure $log): void
     {
         Schema::disableForeignKeyConstraints();
 
         try {
-            foreach (self::WIPE_TABLES as $table) {
+            foreach (self::wipeTables() as $table) {
                 if (! $this->db->getSchemaBuilder()->hasTable($table)) {
                     continue;
                 }

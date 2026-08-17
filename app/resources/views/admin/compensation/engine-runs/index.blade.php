@@ -19,6 +19,12 @@
 </div>
 @endif
 
+@if(session('error'))
+<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 font-medium">
+    {{ session('error') }}
+</div>
+@endif
+
 @if($errors->any())
 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
     <ul class="list-disc list-inside">
@@ -29,6 +35,81 @@
 </div>
 @endif
 
+{{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it,
+     so on any environment where it is off there is no trace of it here. --}}
+@if($recomputeAllowed)
+@php $recomputeTotal = array_sum($recomputeRowCounts); @endphp
+<div class="mb-6 rounded-xl border-2 border-red-300 bg-red-50 p-4">
+    <p class="text-sm font-bold text-red-900">Testing tool — recompute everything from scratch</p>
+    <p class="mt-1 text-xs text-red-800 max-w-4xl">
+        Deletes <strong>every</strong> bonus result, frozen pool, carry-forward, rank qualification, repurchase cycle,
+        wallet credit and payout batch
+        (<strong>{{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }}</strong> rows on
+        <code class="font-mono bg-red-100 px-1 rounded">{{ $recomputeTargetDatabase }}</code>)
+        and replays every engine from the first BV date to yesterday. Orders, the BV ledger, distributors, the Genos
+        and the plan settings are kept.
+    </p>
+    <p class="mt-1 text-xs text-red-700 max-w-4xl">
+        The daily and monthly schedulers are unaffected — they keep running normally and each run still freezes its
+        period as usual. This button is the only thing that throws those snapshots away. Wallet credits are deleted
+        outright, not reversed, so any figure a distributor has already seen will change.
+    </p>
+
+    @if($recomputeRowCounts !== [])
+    <details class="mt-3">
+        <summary class="cursor-pointer text-xs font-medium text-red-800">What would be destroyed</summary>
+        <div class="mt-2 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-white p-3">
+            <table class="w-full text-xs">
+                @foreach($recomputeRowCounts as $table => $count)
+                <tr>
+                    <td class="py-0.5 font-mono text-gray-600">{{ $table }}</td>
+                    <td class="py-0.5 text-right font-medium text-gray-900">
+                        {{ \App\Modules\Shared\Support\IndianNumber::format($count) }}
+                    </td>
+                </tr>
+                @endforeach
+            </table>
+        </div>
+    </details>
+    @endif
+
+    <form method="POST" action="{{ route('admin.compensation.engine-runs.recompute-all') }}"
+          class="mt-4 flex flex-wrap items-end gap-3"
+          data-confirm="Wipe every bonus, payout and wallet credit, then replay all engines?"
+          data-confirm-title="Destroy and rebuild all compensation data?"
+          data-confirm-impact="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes.">
+        @csrf
+        <div>
+            <label for="recompute-confirm-db" class="block text-xs font-medium text-red-900 mb-1">
+                Type <span class="font-mono">{{ $recomputeTargetDatabase }}</span> to unlock
+            </label>
+            <input type="text" id="recompute-confirm-db" autocomplete="off"
+                   data-expected="{{ $recomputeTargetDatabase }}"
+                   class="rounded-lg border-red-300 text-sm font-mono focus:border-red-500 focus:ring-red-500">
+        </div>
+        <button type="submit" id="recompute-submit" disabled
+                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Recompute everything
+        </button>
+    </form>
+</div>
+
+<script>
+// Typed-database gate. Deliberately a second lock in front of the shared
+// confirm modal: this action is irreversible and the staging database carries
+// real distributor data, so the operator must name the target before the
+// button is even clickable.
+(function () {
+    var input = document.getElementById('recompute-confirm-db');
+    var button = document.getElementById('recompute-submit');
+    if (!input || !button) { return; }
+    input.addEventListener('input', function () {
+        button.disabled = input.value.trim() !== input.dataset.expected;
+    });
+})();
+</script>
+@endif
+
 <div class="space-y-4">
     @foreach($engines as $engine)
     @php
@@ -37,7 +118,7 @@
         /** @var \App\Modules\Compensation\Models\EngineRun|null $lastRun */
         $lastRun = $engine['lastRun'];
         $isMonth = $definition->periodType === \App\Modules\Compensation\Support\EnginePeriodType::Month;
-        $notScheduled = str_starts_with($definition->scheduleText, 'Not scheduled');
+        $notScheduled = ! $definition->cadence->isScheduled();
     @endphp
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -59,7 +140,7 @@
                     @endif
                 </div>
 
-                <p class="text-xs text-gray-500 mb-2">Schedule: {{ $definition->scheduleText }}</p>
+                <p class="text-xs text-gray-500 mb-2">Schedule: {{ $definition->scheduleText() }}</p>
 
                 {{-- Last run --}}
                 <p class="text-xs text-gray-600 mb-2">

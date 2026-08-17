@@ -30,7 +30,7 @@ final class PurchaseDataResetCommand extends Command
             $this->warn('THIS WILL WIPE ALL PURCHASE-DERIVED DATA (orders, BV, bonuses, wallets, payouts).');
             $this->line(sprintf('Database: %s', (string) DB::connection()->getDatabaseName()));
             $this->line('Current row counts:');
-            foreach (PurchaseDataResetAction::WIPE_TABLES as $table) {
+            foreach (PurchaseDataResetAction::wipeTables() as $table) {
                 if (! DB::getSchemaBuilder()->hasTable($table)) {
                     continue;
                 }
