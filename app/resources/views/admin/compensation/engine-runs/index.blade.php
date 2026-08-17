@@ -26,7 +26,8 @@
         wallet credit and payout batch
         (<strong>{{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }}</strong> rows on
         <code class="font-mono bg-red-100 px-1 rounded">{{ $recomputeTargetDatabase }}</code>)
-        and replays every engine from the first BV date to yesterday. Orders, the BV ledger, distributors, the Genos
+        and replays every engine from the first BV date up to right now — including today's cut-off, this week's
+        payout and this month's bonuses, computed as at this moment. Orders, the BV ledger, distributors, the Genos
         and the plan settings are kept.
     </p>
     <p class="mt-1 text-xs text-red-700 max-w-4xl">

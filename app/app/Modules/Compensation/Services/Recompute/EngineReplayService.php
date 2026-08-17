@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services\Recompute;
 
 use App\Modules\Compensation\Support\EngineDefinition;
+use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use Closure;
 use Illuminate\Support\Carbon;
@@ -39,6 +40,18 @@ use RuntimeException;
  */
 final class EngineReplayService
 {
+    /** @var array<string, int> command signature => times invoked this replay */
+    private array $engineRuns = [];
+
+    /**
+     * "engine.key|period" pairs already invoked this replay. Stops an engine
+     * being run twice for one period — as a prerequisite of two different
+     * engines, or by the catch-up pass for a period the day loop covered.
+     *
+     * @var array<string, true>
+     */
+    private array $invoked = [];
+
     public function __construct(private readonly RecomputeProgress $progress) {}
 
     /**
@@ -49,9 +62,15 @@ final class EngineReplayService
     {
         $log = $progress ?? static fn (string $_m): null => null;
 
-        $engineRuns = [];
-        $ranPrerequisites = [];
+        $this->engineRuns = [];
+        $this->invoked = [];
         $days = 0;
+
+        // Read before the first travel. The window now ends today, so the last
+        // day's engines are routinely due at an hour that has not arrived yet —
+        // 00:10 when it is 00:04 — and a scheduled instant beyond this point
+        // would stamp rows into the future.
+        $realNow = Carbon::now();
 
         $this->progress->daysTotal((int) $from->diffInDays($to) + 1);
 
@@ -72,17 +91,17 @@ final class EngineReplayService
             foreach ($due as $definition) {
                 $period = $definition->periodRelativeTo($day);
                 $at = $definition->cadence->atOn($day);
+                $at = $at->gt($realNow) ? $realNow->copy() : $at;
 
                 foreach ($this->unscheduledPrerequisites($definition, $period) as $key => $prerequisite) {
-                    if (isset($ranPrerequisites[$key])) {
+                    if (isset($this->invoked[$key])) {
                         continue;
                     }
 
-                    $this->invoke($prerequisite['definition'], $prerequisite['period'], $at, $engineRuns);
-                    $ranPrerequisites[$key] = true;
+                    $this->invoke($prerequisite['definition'], $prerequisite['period'], $at);
                 }
 
-                $this->invoke($definition, $period, $at, $engineRuns);
+                $this->invoke($definition, $period, $at);
             }
 
             $days++;
@@ -91,13 +110,102 @@ final class EngineReplayService
                 $day->toDateString(),
                 array_map(static fn (EngineDefinition $d): string => $d->commandSignature, $due),
                 $days,
-                array_sum($engineRuns),
+                array_sum($this->engineRuns),
             );
+        }
+
+        if ($to->isSameDay($realNow)) {
+            $this->catchUpCurrentPeriods($realNow, $log);
         }
 
         Carbon::setTestNow();
 
-        return ['days' => $days, 'engines' => $engineRuns];
+        return ['days' => $days, 'engines' => $this->engineRuns];
+    }
+
+    /**
+     * Bring every engine up to the period that is still in flight — testing
+     * only, and only when the replay runs right up to today.
+     *
+     * The day loop fires an engine on the calendar day the scheduler would have
+     * fired it, which leaves the current period uncomputed: on a Thursday the
+     * weekly payout last ran on Tuesday, and this month's bonuses are not due
+     * until next month. That is correct in production — you cannot pay out a
+     * period that has not closed, and a frozen result is never recomputed. It is
+     * useless in a replay, where the whole point is to see what the plan pays on
+     * the data as it stands right now.
+     *
+     * So each scheduled engine runs once more for the period in flight — today
+     * for the date engines, this month for the month engines — unless the day
+     * loop already covered that exact period. The results are partial by
+     * construction and freeze exactly like any other run, which is only safe
+     * because this tool wipes and rebuilds every derived row on each use. The
+     * scheduler itself is untouched: nothing here changes when or for which
+     * period a production run fires.
+     *
+     * @param  Closure(string): void  $log
+     */
+    private function catchUpCurrentPeriods(Carbon $now, Closure $log): void
+    {
+        $pending = [];
+
+        foreach (EngineRegistry::all() as $definition) {
+            // Manual-only engines have no period of their own to catch up; they
+            // ride along below as prerequisites of the engines that need them.
+            if (! $definition->cadence->isScheduled()) {
+                continue;
+            }
+
+            $period = $definition->periodType === EnginePeriodType::Month
+                ? $now->copy()->startOfMonth()
+                : $now->copy()->startOfDay();
+
+            if (isset($this->invoked[$this->invocationKey($definition, $period)])) {
+                continue;
+            }
+
+            $pending[] = ['definition' => $definition, 'period' => $period];
+        }
+
+        if ($pending === []) {
+            return;
+        }
+
+        // Ordered as the calendar orders them — the 2nd's engine before the
+        // 8th's before the 9th's — because that sequence is the dependency
+        // order the month was designed around: rank gate, GBB, rank bonus, ADC,
+        // fortune, then the payout batch that settles what they credited.
+        usort(
+            $pending,
+            static fn (array $a, array $b): int => self::monthPosition($a['definition'])
+                <=> self::monthPosition($b['definition']),
+        );
+
+        $signatures = implode(', ', array_map(
+            static fn (array $entry): string => $entry['definition']->commandSignature,
+            $pending,
+        ));
+
+        $log('  Catching up the period in flight: '.$signatures);
+        $this->progress->phase('Catching up the period in flight', $signatures);
+
+        foreach ($pending as $entry) {
+            foreach ($this->unscheduledPrerequisites($entry['definition'], $entry['period']) as $key => $prerequisite) {
+                if (isset($this->invoked[$key])) {
+                    continue;
+                }
+
+                $this->invoke($prerequisite['definition'], $prerequisite['period'], $now);
+            }
+
+            $this->invoke($entry['definition'], $entry['period'], $now);
+        }
+    }
+
+    /** Where in a calendar month an engine sits; daily and weekly engines lead. */
+    private static function monthPosition(EngineDefinition $definition): string
+    {
+        return sprintf('%02d|%s', $definition->cadence->dayOfMonth ?? 0, $definition->cadence->time ?? '');
     }
 
     /**
@@ -152,7 +260,7 @@ final class EngineReplayService
                 ? $period->copy()->startOfMonth()->subMonthNoOverflow()
                 : $prerequisite->periodStart($period);
 
-            $prerequisites[$prerequisite->key.'|'.$prerequisitePeriod->toDateString()] = [
+            $prerequisites[$this->invocationKey($prerequisite, $prerequisitePeriod)] = [
                 'definition' => $prerequisite,
                 'period' => $prerequisitePeriod,
             ];
@@ -161,10 +269,13 @@ final class EngineReplayService
         return $prerequisites;
     }
 
-    /**
-     * @param  array<string, int>  $engineRuns
-     */
-    private function invoke(EngineDefinition $definition, Carbon $period, Carbon $at, array &$engineRuns): void
+    /** Identifies one engine run for one period, so it can happen only once. */
+    private function invocationKey(EngineDefinition $definition, Carbon $period): string
+    {
+        return $definition->key.'|'.$definition->formatPeriod($period);
+    }
+
+    private function invoke(EngineDefinition $definition, Carbon $period, Carbon $at): void
     {
         Carbon::setTestNow($at);
 
@@ -187,6 +298,7 @@ final class EngineReplayService
             ));
         }
 
-        $engineRuns[$definition->commandSignature] = ($engineRuns[$definition->commandSignature] ?? 0) + 1;
+        $this->engineRuns[$definition->commandSignature] = ($this->engineRuns[$definition->commandSignature] ?? 0) + 1;
+        $this->invoked[$this->invocationKey($definition, $period)] = true;
     }
 }

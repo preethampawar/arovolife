@@ -112,8 +112,14 @@ final class CompensationRecomputeRunner
     /**
      * The window to replay: from the first BV or first paid order (whichever is
      * earlier, since propagation keys on paid_at while the pools key on
-     * effective_at), to yesterday. A cut-off for today would freeze a partial
-     * day, and credited results are never recomputed.
+     * effective_at), through today.
+     *
+     * Today is included even though it is a partial day. Production stops at
+     * yesterday because a frozen result is never recomputed, so freezing half a
+     * day would underpay it permanently — but here every run begins by wiping
+     * the lot, so "partial" only ever means "as at the moment you clicked", and
+     * the next click supersedes it. Testing the plan on data up to and including
+     * today is the entire point of the tool.
      *
      * @return array{0: Carbon, 1: Carbon, 2: list<string>}
      */
@@ -129,13 +135,13 @@ final class CompensationRecomputeRunner
 
             if ($candidates === []) {
                 $warnings[] = 'No BV and no paid orders — there is nothing to replay.';
-                $from = Carbon::yesterday();
+                $from = Carbon::today();
             } else {
                 $from = Carbon::parse(min($candidates))->startOfDay();
             }
         }
 
-        $to ??= Carbon::yesterday()->startOfDay();
+        $to ??= Carbon::today()->startOfDay();
 
         if ($to->lt($from)) {
             $warnings[] = sprintf(

@@ -326,7 +326,7 @@ drift out of date when a new bonus table is added.
 > checklist at the end of this section.
 
 Wipes **every row computed from BV** and replays all engines from the first BV
-date to yesterday, in the order the scheduler would have run them.
+date up to right now, in the order the scheduler would have run them.
 
 **What it destroys:** bonus results (GSB, MSB, GBB, Rank, Fortune, ADC), every
 frozen pool, carry-forwards, personal-BV top-ups, rank qualifications and AO/GO
@@ -351,6 +351,51 @@ php artisan compensation:recompute-all              # confirms, naming the targe
 php artisan compensation:recompute-all --force      # scripted, no prompt
 php artisan compensation:recompute-all --from=2026-07-01 --to=2026-07-31
 ```
+
+#### The period in flight is included — testing only
+
+A replay that ends today would still leave the current period uncomputed if it
+only fired each engine on the calendar day the scheduler fires it. On a Thursday
+the weekly payout last ran on Tuesday; August's bonuses are not due until
+September. You would click Recompute and see nothing at all for the days since
+the last scheduled run — which is useless when the point is to check what the
+plan pays on the data as it stands.
+
+So after the day loop, and **only when the window runs right up to today**, each
+scheduled engine runs once more for the period still open:
+
+| Engine | Period the catch-up runs |
+|---|---|
+| GSB daily cut-off (incl. MSB), Repurchase evaluation | today |
+| GSB weekly payout | today — i.e. this week so far, not last Tuesday |
+| GBB, Rank Bonus, ADC, Fortune (enrol + payout), Monthly payout | this month so far |
+
+Skipped when the day loop already covered that exact period, so nothing runs
+twice: on a Tuesday the weekly payout is not re-run, and August's payout batch
+created on the 9th is not duplicated. Unscheduled prerequisites (the rank
+qualification check) are pulled in ahead of whichever engine declares them, as
+everywhere else in the replay.
+
+Two consequences worth knowing:
+
+- **These results are partial and they freeze like any other run.** That is only
+  safe because this tool wipes everything before each replay — "partial" means
+  "as at the moment you clicked", and the next click supersedes it.
+- **The next real scheduled run for that period will find it already computed
+  and skip.** After a replay, tomorrow's 00:10 cut-off has nothing to do for
+  today, and the 9th's payout batch already exists. On a testing database that is
+  fine; recompute again to move the picture forward. It is one more reason this
+  command never runs anywhere real.
+
+`--to` fixes the window explicitly and turns the catch-up off, so
+`--from=2026-07-01 --to=2026-07-31` replays July exactly as the scheduler ran it
+and touches nothing in the current period.
+
+**None of this changes the schedule.** `routes/console.php` is untouched: the
+00:10 cut-off still processes the previous day, the payout still lands on
+Tuesday, the monthly engines still fire on the 2nd, 8th and 9th for the month
+that closed, and every production run still freezes its period permanently. The
+catch-up exists inside the replay and nowhere else.
 
 There is also a button on **Admin → Compensation → Engine Runs**, visible to
 `admin` and `developer`, which queues the same work in the background. It is

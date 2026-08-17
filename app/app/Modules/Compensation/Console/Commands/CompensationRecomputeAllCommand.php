@@ -22,7 +22,7 @@ final class CompensationRecomputeAllCommand extends Command
 {
     protected $signature = 'compensation:recompute-all
                             {--from= : First date to replay (YYYY-MM-DD, defaults to the first BV date)}
-                            {--to= : Last date to replay (YYYY-MM-DD, defaults to yesterday)}
+                            {--to= : Last date to replay (YYYY-MM-DD, defaults to today)}
                             {--force : Skip the interactive confirmation}';
 
     protected $description = 'TESTING ONLY: wipe all BV-derived compensation state and replay every engine from scratch';

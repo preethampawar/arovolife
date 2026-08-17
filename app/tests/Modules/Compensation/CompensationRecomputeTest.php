@@ -310,6 +310,77 @@ it('does not double-count group BV across repeated replays', function (): void {
 
 /*
 |--------------------------------------------------------------------------
+| The period in flight — testing-only catch-up
+|--------------------------------------------------------------------------
+*/
+
+it('replays through today rather than stopping at yesterday', function (): void {
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, Carbon::today()->subDay()->setTime(10, 0)->toDateTimeString(), 100_000);
+
+    $report = app(CompensationRecomputeRunner::class)->run();
+
+    expect($report->to->toDateString())->toBe(Carbon::today()->toDateString());
+});
+
+it('leaves no scheduled engine uncomputed for the period in flight', function (): void {
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, Carbon::today()->subDay()->setTime(10, 0)->toDateTimeString(), 100_000);
+
+    $report = app(CompensationRecomputeRunner::class)->run(from: Carbon::today()->subDay());
+
+    // The day loop alone cannot produce these: the weekly payout only fires on
+    // Tuesdays and the monthly engines only on the 2nd, 8th and 9th, so a
+    // two-day window reaches them only through the catch-up pass.
+    foreach (EngineRegistry::all() as $definition) {
+        if ($definition->cadence->isScheduled()) {
+            expect($report->enginesRun)->toHaveKey($definition->commandSignature);
+        }
+    }
+});
+
+it('computes the month in flight, not only the months that have closed', function (): void {
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(10, 0)->toDateTimeString(), 100_000);
+
+    app(CompensationRecomputeRunner::class)->run(from: Carbon::today());
+
+    // GBB fires on the 2nd for the *previous* month, so a run whose period is
+    // the current month can only have come from the catch-up.
+    expect(DB::table('engine_runs')
+        ->where('engine_key', 'gbb.monthly')
+        ->whereDate('period_start', Carbon::today()->startOfMonth())
+        ->exists())->toBeTrue();
+});
+
+it('does not catch up the current period when replaying a historical window', function (): void {
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
+
+    $report = app(CompensationRecomputeRunner::class)->run(
+        from: Carbon::parse('2026-06-05'),
+        to: Carbon::parse('2026-06-08'),
+    );
+
+    // 5–8 June contains no 2nd, 8th or 9th and the window does not reach today,
+    // so no monthly engine should have run at all.
+    expect($report->enginesRun)->not->toHaveKey('gbb:monthly-run');
+    expect($report->enginesRun)->not->toHaveKey('payout:monthly-run');
+});
+
+it('never stamps a replayed run in the future', function (): void {
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(0, 1)->toDateTimeString(), 100_000);
+
+    app(CompensationRecomputeRunner::class)->run(from: Carbon::today());
+
+    // Today's engines are due at scheduled times that may not have arrived yet
+    // (the cut-off at 00:10, the payout at 09:00); those are clamped to now.
+    expect(DB::table('engine_runs')->where('started_at', '>', Carbon::now()->addMinute())->count())->toBe(0);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Cadence — the replay follows the registry, not a second copy of the schedule
 |--------------------------------------------------------------------------
 */
