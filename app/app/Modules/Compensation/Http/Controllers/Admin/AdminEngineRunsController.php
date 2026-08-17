@@ -121,6 +121,10 @@ final class AdminEngineRunsController extends Controller
         // for its own lifetime, so release this one immediately.
         Cache::lock(RecomputeAllJob::LOCK_KEY)->forceRelease();
 
+        // Publish the queued state before dispatching, so the redirected page
+        // shows this run instead of the previous run's finished summary.
+        $this->recomputeProgress->queued();
+
         $actorId = auth()->id();
         RecomputeAllJob::dispatch(is_numeric($actorId) ? (int) $actorId : null);
 

@@ -113,6 +113,13 @@
     var input = document.getElementById('recompute-confirm-db');
     var button = document.getElementById('recompute-submit');
     if (!input || !button) { return; }
+
+    // Chrome restores the typed value across the post-run reload, which would
+    // hand back an armed button nobody re-authorised. Clear it on every load so
+    // the lock always has to be opened deliberately.
+    input.value = '';
+    button.disabled = true;
+
     input.addEventListener('input', function () {
         button.disabled = input.value.trim() !== input.dataset.expected;
     });
@@ -127,6 +134,12 @@
     var url = @json(route('admin.compensation.engine-runs.recompute-progress'));
     var el = function (id) { return document.getElementById(id); };
     var timer = null;
+
+    // Set once this page instance has actually watched a run in flight, so the
+    // completion reload happens exactly once. Without it the reloaded page —
+    // which reads the same 'complete' state back out of the cache — would
+    // reload itself again, forever.
+    var watchedARun = false;
 
     function text(id, value) { var n = el(id); if (n) { n.textContent = value; } }
 
@@ -149,6 +162,16 @@
         var err = el('rp-error');
         var done = el('rp-done');
 
+        // A fresh run must not inherit the previous run's green summary or red
+        // failure box — the panel is reused, so reset it whenever one starts.
+        if (state.state === 'running') {
+            watchedARun = true;
+            err.classList.add('hidden');
+            done.classList.add('hidden');
+            el('rp-bar').classList.remove('bg-green-600', 'bg-red-800');
+            el('rp-bar').classList.add('bg-red-600');
+        }
+
         if (state.state === 'failed') {
             el('rp-bar').classList.remove('bg-red-600');
             el('rp-bar').classList.add('bg-red-800');
@@ -165,9 +188,19 @@
             done.textContent = 'Complete — ' + state.summary.days + ' days, '
                 + state.summary.orders + ' orders, ' + state.summary.engine_runs + ' engine runs, '
                 + state.summary.rows_removed.toLocaleString() + ' rows replaced in '
-                + state.summary.duration_seconds + 's. Reload to see the runs below.';
+                + state.summary.duration_seconds + 's.'
+                + (watchedARun ? ' Refreshing the runs below…' : '');
             done.classList.remove('hidden');
             stop();
+
+            // Every card below is server-rendered from engine_runs, which the
+            // replay has just rewritten — reload so they show the new run
+            // instead of the pre-wipe timestamps. The completed state stays in
+            // the cache, so this panel renders the same summary afterwards.
+            if (watchedARun) {
+                watchedARun = false;
+                setTimeout(function () { window.location.reload(); }, 1200);
+            }
         }
     }
 

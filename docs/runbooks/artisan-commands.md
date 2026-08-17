@@ -373,6 +373,19 @@ Reading it from the CLI while a run is in flight:
 php artisan tinker --execute 'echo json_encode(Cache::get("compensation:recompute:progress"), JSON_PRETTY_PRINT);'
 ```
 
+**Restart the queue worker after touching this code.** The worker holds the
+application in memory, so a running worker replays with whatever version of the
+runner it booted with. The symptom is specific and misleading: the bar sits on
+"Queued", the worker log shows `RecomputeAllJob ... DONE`, and the data *is*
+rebuilt — only the progress writes came from stale code.
+
+```bash
+docker compose -f docker/docker-compose.yml restart queue
+```
+
+If the bar sits on "Queued" and the worker log shows nothing at all, the worker
+is simply down — start it, and the queued job runs.
+
 **The schedulers are unaffected.** `routes/console.php` is untouched: the daily
 00:10 cut-off, the Tuesday payout and the 2nd/8th/9th monthly runs keep running
 normally and each still freezes its period. This command is the only thing that

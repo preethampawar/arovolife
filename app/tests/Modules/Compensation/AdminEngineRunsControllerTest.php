@@ -283,6 +283,35 @@ it('queues the recompute rather than running it inline', function (): void {
     AuditLog::query()->where('action', 'compensation.recompute_all.queued')->firstOrFail();
 });
 
+it('replaces the previous run summary with a queued state the moment a new run is dispatched', function (): void {
+    // Regression: the poller read the stale 'complete' state on the redirected
+    // page, rendered the old summary and stopped polling — so the new run never
+    // appeared. Dispatching must publish this run's state synchronously.
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+
+    $progress = app(\App\Modules\Compensation\Services\Recompute\RecomputeProgress::class);
+    $progress->complete(new \App\Modules\Compensation\Services\DTOs\RecomputeReport(
+        from: \Illuminate\Support\Carbon::parse('2026-07-04'),
+        to: \Illuminate\Support\Carbon::parse('2026-08-16'),
+        rowsRemoved: ['gbb_monthly_pools' => 3],
+        ordersPropagated: 315,
+        daysReplayed: 44,
+        enginesRun: ['gsb:daily-cutoff' => 44],
+        warnings: [],
+        durationSeconds: 32.5,
+    ));
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'));
+
+    $state = $progress->read();
+
+    expect($state['state'])->toBe(\App\Modules\Compensation\Services\Recompute\RecomputeProgress::STATE_RUNNING);
+    expect($state['summary'])->toBeNull();
+    expect($state['percent'])->toBe(0);
+});
+
 it('renders a flash message exactly once, not once per view that thought it owned it', function (): void {
     config(['arovolife.recompute.enabled' => true]);
 

@@ -47,12 +47,32 @@ final class RecomputeProgress
 
     public function __construct(private readonly Cache $cache) {}
 
+    /**
+     * Published by the controller the moment the job is dispatched, so the page
+     * the operator lands on after the redirect shows *this* run rather than the
+     * finished summary of the previous one. Without it the poller reads the
+     * stale 'complete' state, renders it, and stops — the new run then never
+     * appears, because nothing is polling by the time the worker picks it up.
+     */
+    public function queued(): void
+    {
+        $this->write($this->initialState('Queued', 'waiting for the queue worker to pick it up'));
+    }
+
     public function start(): void
     {
-        $this->write([
+        $this->write($this->initialState('Starting'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function initialState(string $phase, ?string $detail = null): array
+    {
+        return [
             'state' => self::STATE_RUNNING,
-            'phase' => 'Starting',
-            'detail' => null,
+            'phase' => $phase,
+            'detail' => $detail,
             'percent' => 0,
             'days_total' => 0,
             'days_done' => 0,
@@ -66,7 +86,7 @@ final class RecomputeProgress
             'finished_at' => null,
             'error' => null,
             'summary' => null,
-        ]);
+        ];
     }
 
     public function phase(string $phase, ?string $detail = null): void

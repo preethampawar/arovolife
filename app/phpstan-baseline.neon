@@ -2565,7 +2565,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 18
+			count: 19
 			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
 
 		-
