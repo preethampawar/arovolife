@@ -30,6 +30,23 @@ final class RecomputeProgress
     private const TTL_SECONDS = 7200;
 
     /**
+     * How long a 'running' state may go without a heartbeat before the reader
+     * treats it as dead.
+     *
+     * A replay killed from outside the process — `queue:listen` enforcing its
+     * 60s child-process timeout, an OOM, a deploy restarting the worker — never
+     * reaches fail(), so the last state it wrote stays 'running' until the TTL
+     * expires two hours later. The bar sits frozen and the operator cannot tell
+     * a dead run from a slow one.
+     *
+     * Generous on purpose. Every step of the replay publishes, and the longest
+     * legitimate gap is one day of engines, but calling a live run dead is the
+     * expensive mistake: the console unblocks the button off this, and two
+     * concurrent replays would interleave their day loops.
+     */
+    private const STALE_AFTER_SECONDS = 900;
+
+    /**
      * Share of the bar each phase owns. The day loop dominates the wall clock,
      * so it gets most of the bar; the wipe is near-instant but visible.
      */
@@ -82,7 +99,7 @@ final class RecomputeProgress
             'current_engines' => [],
             'engine_runs' => 0,
             'rows_removed' => 0,
-            'started_at' => Carbon::now()->toIso8601String(),
+            'started_at' => $this->realNow()->toIso8601String(),
             'finished_at' => null,
             'error' => null,
             'summary' => null,
@@ -159,7 +176,7 @@ final class RecomputeProgress
             'percent' => 100,
             'current_date' => null,
             'current_engines' => [],
-            'finished_at' => Carbon::now()->toIso8601String(),
+            'finished_at' => $this->realNow()->toIso8601String(),
             'summary' => [
                 'from' => $report->from->toDateString(),
                 'to' => $report->to->toDateString(),
@@ -180,18 +197,73 @@ final class RecomputeProgress
             'phase' => 'Failed',
             'detail' => null,
             'error' => $error,
-            'finished_at' => Carbon::now()->toIso8601String(),
+            'finished_at' => $this->realNow()->toIso8601String(),
         ]);
     }
 
     /**
+     * The published state, with a stalled run reported as a failed one.
+     *
      * @return array<string, mixed>|null
      */
     public function read(): ?array
     {
+        $state = $this->readRaw();
+
+        return $state === null ? null : $this->failIfStalled($state);
+    }
+
+    /**
+     * Exactly what is in the cache, with no stall detection. Only merge()
+     * should use this: folding a downgraded state back into the cache would
+     * make the failure permanent for a run that is merely between heartbeats.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function readRaw(): ?array
+    {
         $state = $this->cache->get(self::KEY);
 
         return is_array($state) ? $state : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function failIfStalled(array $state): array
+    {
+        if (($state['state'] ?? null) !== self::STATE_RUNNING) {
+            return $state;
+        }
+
+        $heartbeat = $state['heartbeat_at'] ?? null;
+
+        if (! is_string($heartbeat)) {
+            return $state;
+        }
+
+        $silentFor = Carbon::parse($heartbeat)->diffInSeconds($this->realNow(), absolute: false);
+
+        if ($silentFor <= self::STALE_AFTER_SECONDS) {
+            return $state;
+        }
+
+        return [
+            ...$state,
+            'state' => self::STATE_FAILED,
+            'phase' => 'Failed',
+            'detail' => null,
+            'finished_at' => $heartbeat,
+            'error' => sprintf(
+                'the replay stopped reporting %d minutes ago during "%s" and the worker process is gone. '
+                .'It was almost certainly killed from outside — `queue:listen` kills each job at 60s, so this '
+                .'job needs `queue:work` or the artisan command. The database is wiped and only partly rebuilt; '
+                .'run the recompute again to finish it.',
+                (int) round($silentFor / 60),
+                $state['phase'] ?? 'unknown phase',
+            ),
+        ];
     }
 
     public function isRunning(): bool
@@ -219,7 +291,25 @@ final class RecomputeProgress
 
         try {
             Carbon::setTestNow();
+            $state['heartbeat_at'] = Carbon::now()->toIso8601String();
             $this->cache->put(self::KEY, $state, self::TTL_SECONDS);
+        } finally {
+            Carbon::setTestNow($travelled);
+        }
+    }
+
+    /**
+     * The wall clock, never the one the replay has travelled to. Heartbeats and
+     * staleness are about how long a process has really been silent.
+     */
+    private function realNow(): Carbon
+    {
+        $travelled = Carbon::getTestNow();
+
+        try {
+            Carbon::setTestNow();
+
+            return Carbon::now();
         } finally {
             Carbon::setTestNow($travelled);
         }
@@ -230,6 +320,6 @@ final class RecomputeProgress
      */
     private function merge(array $changes): void
     {
-        $this->write([...($this->read() ?? []), ...$changes]);
+        $this->write([...($this->readRaw() ?? []), ...$changes]);
     }
 }

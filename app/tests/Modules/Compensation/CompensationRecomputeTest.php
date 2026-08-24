@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Console\Actions\PurchaseDataResetAction;
+use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
+use App\Modules\Compensation\Services\Recompute\GroupBvReplayService;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
@@ -13,9 +15,14 @@ use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Pennant\Feature;
 
@@ -23,7 +30,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
     config(['arovolife.recompute.enabled' => true]);
 });
 
@@ -92,6 +99,22 @@ function recomputeSeedPaidOrder(int $distributorId, string $paidAt, int $bvPaise
     ]);
 
     return $orderId;
+}
+
+/**
+ * Ages the running run's heartbeat so it reads as abandoned.
+ *
+ * Written straight to the cache rather than by travelling Carbon: heartbeats
+ * are deliberately stamped against the wall clock, because the replay itself
+ * travels the clock and a travelled heartbeat would read as weeks stale the
+ * moment it was written. Moving the test clock therefore moves nothing here.
+ */
+function recomputeAgeHeartbeat(int $minutes): void
+{
+    $key = 'compensation:recompute:progress';
+    $state = Cache::get($key);
+    $state['heartbeat_at'] = Carbon::now()->subMinutes($minutes)->toIso8601String();
+    Cache::put($key, $state, 7200);
 }
 
 /*
@@ -538,4 +561,122 @@ it('keeps progress alive across the replay clock travel', function (): void {
 
     expect($progress->read())->not->toBeNull();
     expect($progress->read()['current_date'])->toBe('2026-06-05');
+});
+
+it('reports a run that stopped reporting as failed rather than as still running', function (): void {
+    // A worker killed from outside — queue:listen enforcing its 60s child-process
+    // timeout, an OOM, a deploy — never reaches fail(). Without a heartbeat the
+    // last 'running' state it wrote sits there for the full two-hour TTL and the
+    // console shows a frozen bar that is indistinguishable from a slow replay.
+    $progress = app(RecomputeProgress::class);
+    $progress->start();
+    $progress->ordersTotal(330);
+    $progress->ordersProgressed(0);
+    recomputeAgeHeartbeat(20);
+
+    $state = $progress->read();
+
+    expect($state['state'])->toBe(RecomputeProgress::STATE_FAILED);
+    expect($state['error'])->toContain('stopped reporting');
+    expect($state['error'])->toContain('Re-deriving group BV from paid orders');
+    expect($progress->isRunning())->toBeFalse();
+});
+
+it('leaves a run that is merely between heartbeats alone', function (): void {
+    $progress = app(RecomputeProgress::class);
+    $progress->start();
+    recomputeAgeHeartbeat(5);
+
+    expect($progress->read()['state'])->toBe(RecomputeProgress::STATE_RUNNING);
+    expect($progress->isRunning())->toBeTrue();
+});
+
+it('heartbeats against the real clock, not the clock the replay travelled to', function (): void {
+    // Every day-loop update is published from inside the travelled section. A
+    // heartbeat stamped with the back-dated clock reads as weeks stale the
+    // moment it is written, and would fail a perfectly healthy replay.
+    $progress = app(RecomputeProgress::class);
+    $progress->start();
+
+    Carbon::setTestNow(Carbon::parse('2026-06-05 10:00:00'));
+    $progress->dayReplayed('2026-06-05', ['gsb:daily-cutoff'], 1, 1);
+    Carbon::setTestNow();
+
+    $heartbeat = Carbon::parse(Cache::get('compensation:recompute:progress')['heartbeat_at']);
+
+    expect($heartbeat->toDateString())->not->toBe('2026-06-05');
+    expect($heartbeat->diffInMinutes(Carbon::now(), absolute: true))->toBeLessThan(1);
+    expect($progress->read()['state'])->toBe(RecomputeProgress::STATE_RUNNING);
+});
+
+it('does not resurrect a stalled state once the replay reports again', function (): void {
+    // read() downgrades a stalled run for the reader only. If merge() folded
+    // that downgrade back into the cache, a run that was briefly quiet would be
+    // marked failed permanently and its own completion would never show.
+    $progress = app(RecomputeProgress::class);
+    $progress->start();
+    recomputeAgeHeartbeat(20);
+
+    expect($progress->read()['state'])->toBe(RecomputeProgress::STATE_FAILED);
+
+    $progress->dayReplayed('2026-06-05', ['gsb:daily-cutoff'], 1, 1);
+
+    expect($progress->read()['state'])->toBe(RecomputeProgress::STATE_RUNNING);
+});
+
+it('lets the console start a new run once the previous one is confirmed dead', function (): void {
+    // The killed worker never released its lock, so the lock alone would refuse
+    // every retry for two hours — precisely when a retry is the only way to
+    // finish rebuilding a half-wiped database.
+    config(['arovolife.recompute.enabled' => true]);
+
+    app(RecomputeProgress::class)->start();
+    recomputeAgeHeartbeat(20);
+    Cache::lock(RecomputeAllJob::LOCK_KEY, 7200)->get();
+
+    Queue::fake();
+
+    $this->actingAs(recomputeAdmin())
+        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('status');
+
+    Queue::assertPushed(RecomputeAllJob::class);
+});
+
+it('still refuses to start a second run while the first is reporting', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    app(RecomputeProgress::class)->start();
+    Cache::lock(RecomputeAllJob::LOCK_KEY, 7200)->get();
+
+    Queue::fake();
+
+    $this->actingAs(recomputeAdmin())
+        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->assertSessionHas('error');
+
+    Queue::assertNothingPushed();
+});
+
+it('publishes propagation progress often enough to show a stall as a stall', function (): void {
+    // The bar only moves when a chunk closes, so the chunk size is the bar's
+    // resolution. At 200 orders per chunk a real-world replay reported twice and
+    // looked frozen for minutes; the operator could not tell it from a dead one.
+    // One customer per distributor — customers.distributor_id is unique.
+    for ($i = 0; $i < 30; $i++) {
+        recomputeSeedPaidOrder(Distributor::factory()->create()->id, '2026-06-05 10:00:00', 100_000);
+    }
+
+    $published = [];
+    Event::listen(KeyWritten::class, function (KeyWritten $event) use (&$published): void {
+        if ($event->key === 'compensation:recompute:progress' && is_array($event->value)) {
+            $published[] = $event->value['orders_done'] ?? null;
+        }
+    });
+
+    app(GroupBvReplayService::class)->replay();
+
+    // Not just the opening 0 and the closing 30 — at least one tick in between.
+    expect(array_filter($published, fn ($done) => $done > 0 && $done < 30))->not->toBeEmpty();
 });

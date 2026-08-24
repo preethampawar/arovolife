@@ -352,6 +352,37 @@ php artisan compensation:recompute-all --force      # scripted, no prompt
 php artisan compensation:recompute-all --from=2026-07-01 --to=2026-07-31
 ```
 
+#### The admin button needs a worker that tolerates a long job
+
+The Engine Runs page queues `RecomputeAllJob` instead of running it inline — a
+request timeout halfway through leaves the database wiped and half-rebuilt. The
+replay takes minutes, so the worker draining that queue has to allow it:
+
+```bash
+php artisan queue:work --timeout=7200 --tries=1 --memory=512
+```
+
+**`php artisan queue:listen` cannot run this job.** It does not execute jobs
+itself; it spawns a child `queue:work --once` wrapped in a process with the
+listener's own `--timeout`, default **60 seconds**
+(`Illuminate\Queue\Listener::makeProcess()`). The child is killed from outside
+at 60s regardless of the job's `$timeout = 7200`, mid-replay, with the wipe
+already committed. That is how staging was left empty on 2026-08-24.
+
+A killed worker never reaches `fail()`, so the progress cache would keep saying
+"running" until its two-hour TTL. Every published update now carries a
+heartbeat, and a run silent for more than 15 minutes reads as failed — the
+console shows the error and the button unblocks, rather than refusing the retry
+that is the only way to finish the rebuild.
+
+On a box with no long-running worker at all, skip the queue and run the command
+under `nohup` so a dropped SSH session does not take the replay with it. It
+publishes the same progress, so the admin page's bar still tracks it:
+
+```bash
+nohup php artisan compensation:recompute-all --force > storage/logs/recompute.log 2>&1 &
+```
+
 #### The period in flight is included — testing only
 
 A replay that ends today would still leave the current period uncomputed if it

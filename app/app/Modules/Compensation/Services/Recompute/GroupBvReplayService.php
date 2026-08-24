@@ -29,11 +29,17 @@ use Illuminate\Support\Carbon;
  */
 final class GroupBvReplayService
 {
+    /**
+     * Orders per chunk. Doubles as the progress-bar resolution — see the
+     * comment on the chunkById() call below before raising it.
+     */
+    private const PROGRESS_CHUNK = 25;
+
     public function __construct(private readonly RecomputeProgress $progress) {}
 
     /**
      * @param  Closure(string): void|null  $progress
-     * @return int  orders propagated
+     * @return int orders propagated
      */
     public function replay(?Closure $progress = null): int
     {
@@ -56,7 +62,11 @@ final class GroupBvReplayService
             ->whereNotNull('paid_at')
             ->orderBy('paid_at')
             ->orderBy('id')
-            ->chunkById(200, function ($orders) use (&$propagated, $log): void {
+            // Small chunks on purpose: progress is published once per chunk, so
+            // the chunk size *is* the resolution of the progress bar. At 200 a
+            // 330-order replay reports twice and looks frozen for minutes; at 25
+            // it ticks often enough that a genuine stall is visible as a stall.
+            ->chunkById(self::PROGRESS_CHUNK, function ($orders) use (&$propagated, $log): void {
                 foreach ($orders as $order) {
                     $bvPaise = (int) BvLedgerEntry::where('order_id', $order->id)
                         ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
