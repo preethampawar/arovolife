@@ -10,7 +10,11 @@
 > was replaced by a points model (2026-07-25) and then by the **daily 3% pool
 > engine (KP 2026-07-30)** — the day's pool ÷ the day's total MSB points. GSB
 > was likewise superseded by the 2026-07-21 "New Engine" and the 2026-07-29
-> pool pricing. For the current rules see
+> pool pricing. The **Rank 1–2 Genos-BV matches quoted below (3L/3L, 5L/5L) are also
+> superseded**: raised to 3L/8L on 2026-08-05, then lowered by the client on **2026-08-13**
+> to **R1 2,50,000 and R2 6,00,000 per side** (seeded in `RankTiersSeeder`, admin-editable on
+> `/admin/compensation/plan-settings?tab=ranks`). A1's corrected 20% pool split still stands.
+> For the current rules see
 > `.claude/skills/arovolife-compensation-plan/SKILL.md` and
 > `app/resources/help/compensation.md`.
 
