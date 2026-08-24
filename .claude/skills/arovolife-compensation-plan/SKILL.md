@@ -17,7 +17,7 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 >
 > ⚠️ **FORTUNE BONUS SUPERSEDED by KP's 2026-08-09 level cascade** (which itself supersedes the 2026-08-07 single-point-value rework) — see the "5th Benefit" section below. The monthly pool is **5% of the month's company BV** (the signed BV-ledger sum); depth points are now **9/8/7/6/5/4/3/2/1** per downline member at relative levels 1–9 (1L-9P … 9L-1P, admin-editable). Distribution: every qualifier gets a **₹30 minimum** (`comp.fortune.min_commission_paise`), reserved off the pool first; **capped levels 0–6** then settle top-down, each at `floor-to-whole-rupee(remaining pool ÷ ALL remaining points)` with per-member caps **₹30k/₹30k/₹30k/₹30k/₹20k/₹10k/₹5k INCLUDING the ₹30**; **levels 7–8 share ONE residual value** over their combined points, uncapped; **level 9 gets the ₹30 only**. Income = `min(₹30 + points × level value, cap)`. Sparse months keep the **absolute-level** treatment, and if the pool can't cover the guarantees everyone gets `floor-to-rupee(pool ÷ N)` (both user-confirmed 2026-08-09). Per-level modes/caps live on `fortune_bonus_levels` (`payout_mode`, `cap_paise`); economics freeze per month as `fortune_monthly_pools` (+`fortune_monthly_pool_levels`) before any credit, no manual override, re-runs reconstruct from the snapshot (`FortuneDistributionCalculator` is the pure allocator, regression-locked to KP's ₹36cr example). Gates unchanged: 8/11/14/17/20 slab-achievements + 1,000–1,400 BV for ranks 1–5; ranks 6–9 excluded. Fortune stays behind its feature flag, OFF, until the plan change is published with the DSA §6.2 notice period (see R-37 in `docs/compliance/risk-register.md`).
 >
-> ⚠️ **GBB + RANK BONUS SUPERSEDED by the Product Owner's 2026-08-05 confirmations** — see the "3rd Benefit" and "4th Benefit" sections below. **GBB:** the monthly pool is 5% of the month's company **BV** (the signed BV-ledger sum), **not** turnover / order sales value; only distributors who held **no rank in the previous month** are eligible (a first-time rank achiever in the current month stays eligible); the month's pool economics are **frozen** in a `gbb_monthly_pools` row before any credit and never recomputed, so re-runs and retries price against the same snapshot; the point value is `floor-to-whole-rupee(pool ÷ the total AGP of all eligible distributors)` and the flooring remainder stays unspent. **Rank Bonus:** each rank's `pool %` is a share of the **20% Rank-Bonus envelope of company BV**, not of turnover directly — 10,00,000 BV in a month → envelope ₹2,00,000 → Rank 1's 7% share = ₹14,000. GBB stays behind its feature flag, OFF, until the plan change is published with the DSA §6.2 notice period (see R-36 in `docs/compliance/risk-register.md`).
+> ⚠️ **GBB + RANK BONUS SUPERSEDED by the Product Owner's 2026-08-05 confirmations** — see the "3rd Benefit" and "4th Benefit" sections below. **GBB:** the monthly pool is 5% of the month's company **BV** (the signed BV-ledger sum), **not** turnover / order sales value; only distributors who held **no rank in the previous month** are eligible (a first-time rank achiever in the current month stays eligible); the month's pool economics are **frozen** in a `gbb_monthly_pools` row before any credit and never recomputed, so re-runs and retries price against the same snapshot; the point value is `floor-to-whole-rupee(pool ÷ the total AGP of all eligible distributors)` and the flooring remainder stays unspent. **Rank Bonus:** each rank's `pool %` is a share of the **20% Rank-Bonus envelope of company BV**, not of turnover directly — 10,00,000 BV in a month → envelope ₹2,00,000 → Rank 1's 7% share = ₹14,000. **Ranks 1–2 Genos-BV matches were revised again on 2026-08-13 (the client): R1 2,50,000 and R2 6,00,000 per side** — the "4th Benefit" table below has been rewritten and is current. GBB stays behind its feature flag, OFF, until the plan change is published with the DSA §6.2 notice period (see R-36 in `docs/compliance/risk-register.md`).
 
 **Source document (this file):** "Arovolife Is Our New Life" dated 2026-06-19.
 **Phase note:** No compensation is calculated in Phases 1–3. This skill exists so that the data model, events and audit trails are *forward-compatible* with the engines that arrive in Phases 4+.
@@ -32,7 +32,7 @@ description: Reference for the Arovolife compensation plan — slabs, ranks, For
 | Genos Sales Bonus (GSB) | 40% | Daily cut-off 23:59; weekly Tuesday payout | Phase 4 |
 | Mentorship Bonus | 3% daily pool ÷ the day's MSB points (KP 2026-07-30) | With GSB | Phase 4 |
 | Growth Booster Bonus | 5% of monthly turnover | Monthly | Phase 4 |
-| Rank Bonus | 21% (see pool table) | Monthly 8th | Phase 5 |
+| Rank Bonus | **20%** envelope of the month's company BV (see pool table) | Monthly 8th | Phase 5 |
 | Fortune Bonus | 3×9 matrix, participation-based | Monthly reset | Phase 6 |
 | Lifetime Awards & Rewards | 32% (non-cash) | On rank achievement | Phase 5 |
 | Arete Development Center Bonus | 3%, cap ₹1 L/month | Monthly 8th | Phase 7 |
@@ -192,25 +192,51 @@ Distributors can earn these slabs multiple times in a month; each occurrence add
 
 ---
 
-## 4th Benefit: Rank Bonus — 21% pool (across 9 ranks)
+## 4th Benefit: Rank Bonus — 20% envelope (across 9 ranks)
 
-> ⚠️ **SUPERSEDED by the Product Owner's 2026-08-05 confirmation** — each rank's `Pool %` below is a share of the **20% Rank-Bonus envelope of the month's company BV**, not a percentage of turnover. Worked example: 10,00,000 BV → envelope ₹2,00,000 → Rank 1's 7% share = ₹14,000.
+> ✅ **The table below is CURRENT** — reconciled 2026-08-24 against `RankTiersSeeder`.
+> The live `rank_tiers` rows are admin-editable at
+> `/admin/compensation/plan-settings?tab=ranks` and always win over this file.
+> Three revisions replaced the June 2026 plan text:
+>
+> - **2026-06-27 (the client, Round-2 answers)** — the envelope totals **20%, not 21%** (R2/R3/R4 shares
+>   restated), and the personal-BV ladder was revised: R1 7,000 · R3 32,000 · R4 68,000 ·
+>   R5 1,44,000 BV lifetime.
+> - **2026-08-05 (Product Owner)** — each rank's `Pool %` is a share of the **20% envelope
+>   of the month's company BV**, not a percentage of turnover. Worked example: 10,00,000 BV
+>   in a month → envelope ₹2,00,000 → Rank 1's 7% share = ₹14,000.
+> - **2026-08-13 (the client)** — Ranks 1–2 Genos-BV matches **lowered**: R1 **2,50,000 per
+>   side** (was 3L) and R2 **6,00,000 per side** (was 8L on 2026-08-05, itself raised from
+>   the June plan's 5L).
 
-Pool split across 9 ranks, paid monthly on 8th:
+Pool split across 9 ranks, credited by the monthly run on the 8th:
 
-| Rank | Name | Personal title required | Qualification criteria | Pool % | Months (1+2 rule) |
-|---|---|---|---|---|---|
-| 1 | Silver Partner | Dealer (15,000 BV lifetime) | 3L / 3L Genos BV in a calendar month | 7% | 1 + 2 |
-| 2 | Pearl Partner | Wholesaler (15,000 BV lifetime) | 5L / 5L Genos BV in a calendar month | 4% | 1 + 2 |
-| 3 | Emerald Partner | Distributor (50,000 BV lifetime) | 2 Pearl Partners each Genos side | 3% | — |
-| 4 | Gold Partner | Regional Distributor (1,00,000 BV) | 2 Emerald Partners each side | 2.3% | — |
-| 5 | Diamond Partner | National Distributor (2,00,000 BV) | 2 Gold Partners each side | 1.7% | — |
-| 6 | Blue Diamond Partner | Global Distributor (3,00,000 BV) | 2 Diamond Partners each side | 1.2% | — |
-| 7 | Royal Diamond Partner | Global Distributor | 2 Blue Diamond Partners each side | 0.9% | — |
-| 8 | Crown Diamond Partner | Global Distributor | 2 Royal Diamond Partners each side | 0.6% | — |
-| 9 | Elite Diamond Partner | Global Distributor | 2 Crown Diamond Partners each side | 0.3% | — |
+| Rank | Name | Personal BV required (lifetime) | Qualification criteria | Pool % | Q-Period (PYP) | Monthly repurchase |
+|---|---|---|---|---|---|---|
+| 1 | Silver Partner | 7,000 (Dealer) | 2,50,000 / 2,50,000 Genos BV in a calendar month | 7% | 1 | 1,000 BV |
+| 2 | Pearl Partner | 15,000 (Wholesaler) | 6,00,000 / 6,00,000 Genos BV in a calendar month | 3.4% | 1 | 1,100 BV |
+| 3 | Emerald Partner | 32,000 (Distributor) | 2 Pearl Partners each Genos side | 2.7% | 2 | 1,200 BV |
+| 4 | Gold Partner | 68,000 (Regional Distributor) | 2 Emerald Partners each side | 2.2% | 2 | 1,300 BV |
+| 5 | Diamond Partner | 1,44,000 (National Distributor) | 2 Gold Partners each side | 1.7% | 2 | 1,400 BV |
+| 6 | Blue Diamond Partner | 3,00,000 (Global Distributor) | 2 Diamond Partners each side | 1.2% | 3 | 1,600 BV |
+| 7 | Royal Diamond Partner | 3,00,000 (Global Distributor) | 2 Blue Diamond Partners each side | 0.9% | 3 | 1,800 BV |
+| 8 | Crown Diamond Partner | 3,00,000 (Global Distributor) | 2 Royal Diamond Partners each side | 0.6% | 3 | 2,000 BV |
+| 9 | Elite Diamond Partner | 3,00,000 (Global Distributor) | 2 Crown Diamond Partners each side | 0.3% | 3 | 2,300 BV |
 
-**Total pool = 7+4+3+2.3+1.7+1.2+0.9+0.6+0.3 = 21%**
+**Total envelope = 7 + 3.4 + 2.7 + 2.2 + 1.7 + 1.2 + 0.9 + 0.6 + 0.3 = 20%**
+
+- **Ranks 1–2 are BV matches; ranks 3–9 are structural.** `RankQualificationService::checkRanks1And2()`
+  sums `group_bv_daily` across the calendar month and requires **both** sides to reach the
+  threshold; ranks 3+ carry a null group-BV requirement and use
+  `structural_qualifiers_per_side = 2` instead. Rank 1 may be skipped — Rank 2 is attainable directly.
+- **Weaker-leg top-up (ranks 1–2 only).** Up to 15,000 BV (R1) / 30,000 BV (R2) of *that month's*
+  personal purchase BV supplements whichever side is lower, for the qualification test only. The
+  raw Left/Right BV is what the `rank_qualifications` row records.
+- **Rank 1 is points-based**: 10 RAP per achiever plus 5 points per AO-GO grantee; point value =
+  Rank-1 pool ÷ total points, floored to the whole rupee. Ranks 2–9 split their share equally
+  (`rap_points` is null for them).
+- **Lifetime Awards budget per rank** (`lifetime_award_budget_paise`): ₹15,000 · ₹30,000 · ₹90,000 ·
+  ₹3,65,000 · ₹10,00,000 · ₹3,00,00,000 · ₹9,00,00,000 · ₹14,00,00,000 · ₹22,50,00,000.
 
 ### 1+2 Rule (Ranks 1 and 2 only) — RETIRED
 
