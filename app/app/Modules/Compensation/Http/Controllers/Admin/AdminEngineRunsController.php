@@ -112,13 +112,19 @@ final class AdminEngineRunsController extends Controller
     {
         abort_unless($this->recomputeGuard->isPermitted(), 404);
 
-        if (Cache::lock(RecomputeAllJob::LOCK_KEY)->get() === false) {
+        // The lock alone cannot tell a live run from one that died holding it: a
+        // worker killed mid-replay never reaches its finally, so the lock sits
+        // there for its full two-hour TTL and refuses every retry — exactly when
+        // a retry is the only way to finish rebuilding the wiped database. The
+        // heartbeat is the tiebreaker; a run that has stopped reporting is dead,
+        // and its lock is debris to clear rather than an owner to wait for.
+        if (Cache::lock(RecomputeAllJob::LOCK_KEY)->get() === false && $this->recomputeProgress->isRunning()) {
             return redirect()->route('admin.compensation.engine-runs.index')
                 ->with('error', 'A compensation recompute is already running. Wait for it to finish.');
         }
 
-        // The probe above only tested availability; the job takes the real lock
-        // for its own lifetime, so release this one immediately.
+        // Either the probe above acquired the lock or it found abandoned debris.
+        // The job takes the real lock for its own lifetime, so clear this one.
         Cache::lock(RecomputeAllJob::LOCK_KEY)->forceRelease();
 
         // Publish the queued state before dispatching, so the redirected page
