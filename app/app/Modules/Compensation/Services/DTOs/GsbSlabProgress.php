@@ -7,9 +7,12 @@ namespace App\Modules\Compensation\Services\DTOs;
 /**
  * Snapshot of a distributor's position on the GSB slab ladder: today's
  * effective Left/Right group BV (daily accumulator + carry-forward on its
- * side) plus one GsbSlabRow per active slab. Left/right figures are zero when
- * the distributor is below the personal-BV minimum — the cut-off would discard
- * them, so the ladder must not display them either.
+ * side) plus one GsbSlabRow per active slab. Personal-purchase BV that the
+ * 23:59 cut-off has yet to credit is carried separately in
+ * pendingPersonalBvTopupPaise and is never folded into these figures.
+ * Left/right figures are zero when the distributor is below the personal-BV
+ * minimum — the cut-off would discard them, so the ladder must not display
+ * them either.
  */
 final readonly class GsbSlabProgress
 {
@@ -29,6 +32,14 @@ final readonly class GsbSlabProgress
         public int $personalBvTopupPaise = 0,
         /** Which side the topup was applied to ('L', 'R', or null if none). */
         public ?string $topupSide = null,
+        /**
+         * Personal BV waiting for tonight's cut-off (paise). Deliberately NOT part of
+         * left/right effective: personal purchases join the weaker leg only when the
+         * 23:59 cut-off credits them, never at purchase time.
+         */
+        public int $pendingPersonalBvTopupPaise = 0,
+        /** Side the pending topup is expected to land on ('L', 'R', or null). */
+        public ?string $pendingTopupSide = null,
         /** Lifetime weaker-side BV accumulating toward slab 1 (paise); side-less by design. */
         public int $slab1WeakerCfPaise = 0,
         /** Power-side carry-forward already folded into the effective figures (paise). */
