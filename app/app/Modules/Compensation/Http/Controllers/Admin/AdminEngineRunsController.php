@@ -89,6 +89,7 @@ final class AdminEngineRunsController extends Controller
                     ),
                 )),
                 'defaultPeriodValue' => $this->periodInputValue($definition),
+                'maxPeriodValue' => $this->periodInputMax($definition),
             ];
         }
 
@@ -402,14 +403,29 @@ final class AdminEngineRunsController extends Controller
         return redirect()->route('admin.compensation.engine-runs.index')->with('status', $message);
     }
 
-    /** The value pre-filled into the <input type=date|month>, matching the command's own default period. */
+    /**
+     * The value pre-filled into the <input type=date|month>: the command's own
+     * default period, clamped to the latest period a manual run may target —
+     * the cut-off's CLI default is "today", which a manual run must never use
+     * (it would freeze a day still in flight), so its form pre-fills yesterday.
+     */
     private function periodInputValue(EngineDefinition $definition): string
     {
-        $default = $definition->defaultPeriodDate();
+        $default = $definition->defaultPeriodDate()->min($definition->latestManualPeriod());
 
         return $definition->periodType === EnginePeriodType::Month
             ? $default->format('Y-m')
             : $default->format('Y-m-d');
+    }
+
+    /** The <input max> attribute — the browser-side twin of {@see parsePeriodOrFail()}'s limit. */
+    private function periodInputMax(EngineDefinition $definition): string
+    {
+        $limit = $definition->latestManualPeriod();
+
+        return $definition->periodType === EnginePeriodType::Month
+            ? $limit->format('Y-m')
+            : $limit->format('Y-m-d');
     }
 
     private function parsePeriodOrFail(EngineDefinition $engine, string $input): Carbon
@@ -424,16 +440,29 @@ final class AdminEngineRunsController extends Controller
             ]);
         }
 
-        // A future period has no sales data; a cut-off for today would freeze a
-        // partial day. Months are accepted for the current month because the
-        // monthly engines legitimately run mid-month for the month so far.
-        $limit = $engine->periodType === EnginePeriodType::Month
-            ? Carbon::today()->startOfMonth()
-            : Carbon::today();
+        // A future period has no sales data — and an economics-freezing engine
+        // may not run for a period still in flight at all: on 24 Aug 2026 a
+        // manual cut-off at 23:27 froze that day's pool at ₹0 before the
+        // evening's BV had landed, and the scheduled 00:10 run then priced the
+        // day's real achievers against the empty snapshot. The latest allowed
+        // period comes from the definition, so the rule lives in one place.
+        $limit = $engine->latestManualPeriod();
 
         if ($engine->periodStart($period)->gt($limit)) {
+            if (! $engine->requiresClosedPeriod) {
+                throw ValidationException::withMessages([
+                    'period' => 'The period cannot be in the future.',
+                ]);
+            }
+
             throw ValidationException::withMessages([
-                'period' => 'The period cannot be in the future.',
+                'period' => sprintf(
+                    '%s freezes the %s\'s pool economics permanently, so it can only run once the %s has ended — the scheduled run will process it. The latest period you can run it for is %s.',
+                    $engine->label,
+                    $engine->periodType === EnginePeriodType::Month ? 'month' : 'day',
+                    $engine->periodType === EnginePeriodType::Month ? 'month' : 'day',
+                    $engine->displayPeriod($limit),
+                ),
             ]);
         }
 

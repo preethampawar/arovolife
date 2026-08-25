@@ -15,6 +15,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -239,6 +240,69 @@ it('rejects invalid engine keys, malformed periods, future periods and short rea
         ])->assertSessionHasErrors('reason');
 
     Queue::assertNothingPushed();
+});
+
+it('refuses to run an economics-freezing engine for a period still in flight', function (): void {
+    // Staging, 24 Aug 2026: a manual cut-off at 23:27 froze that day's pool at
+    // ₹0 before the evening's BV landed, and the scheduled 00:10 run then paid
+    // the day's real achievers out of the empty snapshot. A day is only
+    // runnable once it has ended; a month once it has ended.
+    Queue::fake();
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(GrowthBoosterBonusFeature::class);
+    $admin = engineRunsUser('admin');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => now()->toDateString(),
+            'reason' => 'Trying to see today\'s results early.',
+        ])->assertSessionHasErrors('period');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gbb.monthly',
+            'period' => now()->format('Y-m'),
+            'reason' => 'Trying to run the current month early.',
+        ])->assertSessionHasErrors('period');
+
+    Queue::assertNothingPushed();
+
+    // Yesterday is closed, so the cut-off may run for it.
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => now()->subDay()->toDateString(),
+            'reason' => 'Scheduled run failed — re-running yesterday.',
+        ])->assertSessionHasNoErrors();
+
+    Queue::assertPushed(RunEngineChainJob::class);
+});
+
+it('still allows in-flight periods for engines that do not freeze economics', function (): void {
+    // Repurchase evaluation is DESIGNED to run for today (an as-of-morning
+    // view), and the rank check is monotone over the month — neither freezes
+    // a pool, so the closed-period rule must not block them.
+    Queue::fake();
+    Feature::activate(RepurchaseEngineFeature::class);
+    Feature::activate(RankBonusFeature::class);
+    $admin = engineRunsUser('admin');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'repurchase.evaluate',
+            'period' => now()->toDateString(),
+            'reason' => 'Refreshing repurchase cycles for today.',
+        ])->assertSessionHasNoErrors();
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'rank.check',
+            'period' => now()->format('Y-m'),
+            'reason' => 'Mid-month rank qualification check.',
+        ])->assertSessionHasNoErrors();
+
+    Queue::assertPushed(RunEngineChainJob::class, 2);
 });
 
 /*

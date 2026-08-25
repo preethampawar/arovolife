@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
@@ -66,7 +67,7 @@ final class MsbDailyPoolService
     public function freezePoolForDate(Carbon $date, int $totalPoints): MsbDailyPool
     {
         $existing = $this->poolForDate($date);
-        if ($existing !== null) {
+        if ($existing !== null && ! $this->replacePrematureFreeze($existing)) {
             return $existing;
         }
 
@@ -116,5 +117,58 @@ final class MsbDailyPoolService
         ]);
 
         return $pool;
+    }
+
+    /**
+     * Delete a pool row that was PROVABLY frozen too early, so the caller can
+     * freeze the day afresh. Returns true when the row was removed. Same rule,
+     * rationale and staging incident as
+     * {@see GsbDailyPoolService::replacePrematureFreeze()} — for MSB the harm
+     * is a ₹0 point value frozen mid-day (zero points accrued yet), which the
+     * scheduled run would then pay every real mentor with.
+     *
+     * Only safe while no MSB was credited for the date; once money moved at
+     * the frozen value, the row is kept and surfaced loudly instead.
+     */
+    private function replacePrematureFreeze(MsbDailyPool $existing): bool
+    {
+        $dayEnd = $existing->cutoff_date->copy()->addDay()->startOfDay();
+        if ($existing->created_at === null || $existing->created_at->gte($dayEnd)) {
+            return false; // Frozen after the day closed — the normal, final row.
+        }
+
+        $details = [
+            'cutoff_date' => $existing->cutoff_date->toDateString(),
+            'frozen_at' => $existing->created_at->toDateTimeString(),
+            'company_bv_paise' => $existing->company_bv_paise,
+            'pool_paise' => $existing->pool_paise,
+            'total_points' => $existing->total_points,
+            'point_value_paise' => $existing->point_value_paise,
+        ];
+
+        if (MentorshipBonusResult::whereDate('cutoff_date', $existing->cutoff_date->toDateString())
+            ->where('status', MentorshipBonusResult::STATUS_CREDITED)
+            ->exists()) {
+            Log::warning('msb.pool.premature_freeze_kept', $details + [
+                'reason' => 'mentors were already credited at this point value; re-freezing would change economics money moved on',
+            ]);
+
+            return false;
+        }
+
+        Log::warning('msb.pool.premature_freeze_replaced', $details);
+
+        AuditLog::create([
+            'action' => 'msb.pool.refrozen',
+            'subject_type' => 'msb_daily_pool',
+            'subject_id' => $existing->id,
+            'details' => $details + [
+                'reason' => 'pool was frozen before the day ended and nothing was credited against it',
+            ],
+        ]);
+
+        $existing->delete();
+
+        return true;
     }
 }

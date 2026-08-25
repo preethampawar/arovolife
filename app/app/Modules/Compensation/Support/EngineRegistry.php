@@ -114,6 +114,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.daily-cutoffs.index',
                 cadence: EngineCadence::daily('00:10', 'runs the previous day'),
                 defaultPeriod: 'today',
+                requiresClosedPeriod: true,
             ),
 
             new EngineDefinition(
@@ -150,6 +151,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.gbb-calculation.index',
                 cadence: EngineCadence::monthlyOn(2, '08:00'),
                 defaultPeriod: 'prev-month',
+                requiresClosedPeriod: true,
             ),
 
             new EngineDefinition(
@@ -184,6 +186,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.rb-calculation.index',
                 cadence: EngineCadence::monthlyOn(8, '08:00'),
                 defaultPeriod: 'prev-month',
+                requiresClosedPeriod: true,
             ),
 
             new EngineDefinition(
@@ -199,6 +202,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.adc-calculation.index',
                 cadence: EngineCadence::monthlyOn(8, '09:30'),
                 defaultPeriod: 'prev-month',
+                requiresClosedPeriod: true,
             ),
 
             new EngineDefinition(
@@ -216,6 +220,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.fb-calculation.index',
                 cadence: EngineCadence::monthlyOn(9, '08:45'),
                 defaultPeriod: 'prev-month',
+                requiresClosedPeriod: true,
             ),
 
             new EngineDefinition(
@@ -233,6 +238,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.fb-calculation.index',
                 cadence: EngineCadence::monthlyOn(9, '09:00'),
                 defaultPeriod: 'prev-month',
+                requiresClosedPeriod: true,
             ),
 
             new EngineDefinition(

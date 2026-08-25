@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -37,7 +38,7 @@ final class AdminGsbInputOutputController extends Controller
 {
     private const DAYS_PER_PAGE = 10;
 
-    private const FUNDED_STATUSES = ['credited', 'frozen', 'repurchase_held', 'repurchase_suspended', 'reversed'];
+    private const FUNDED_STATUSES = GsbCutoffResult::POOL_FUNDED_STATUSES;
 
     public function index(Request $request): View
     {

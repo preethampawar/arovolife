@@ -27,15 +27,24 @@ Evaluates each active distributor's Genos BV for the day, determines which GSB s
 **Examples:**
 
 ```bash
-# Normal manual run for today (what a human ops trigger looks like)
+# Normal manual run for a CLOSED day (yesterday or earlier)
 php artisan gsb:daily-cutoff --date=2026-07-09
 
 # Backfill a single distributor for a past date
 php artisan gsb:daily-cutoff --date=2026-07-04 --distributor=59
-
-# Re-run today for all distributors (idempotent: CREDITED rows are skipped)
-php artisan gsb:daily-cutoff
 ```
+
+> ⚠️ **Never run the full cut-off for a day still in flight** (today, or the
+> bare no-`--date` form, which defaults to today). The run freezes the day's
+> GSB and MSB pool economics permanently at that instant — on staging
+> (24 Aug 2026) a 23:27 manual run froze the day at ₹0 company BV / cap score
+> value before the evening's orders landed, and the scheduled 00:10 run then
+> paid the day's real achievers out of the empty pool. The admin Engine Runs
+> page refuses in-flight dates for exactly this reason; the CLI cannot
+> (the recompute replay legitimately runs under a back-dated clock). A
+> premature pool that nothing was credited against is self-healed by the next
+> full run (`gsb.pool.refrozen` / `msb.pool.refrozen` audit entries); once
+> money moved against it, only a windowed recompute repairs the day.
 
 **Admin UI:** `admin/compensation/daily-cutoffs` — view, export, retry failed rows, or manually reverse a credited row.
 

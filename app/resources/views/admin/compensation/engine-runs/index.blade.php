@@ -540,9 +540,11 @@
                 <div class="mb-2">
                     <label class="block text-xs font-medium text-gray-700 mb-1">
                         {{ $isMonth ? 'Month' : 'Date' }}
-                        <x-help-tip :text="$isMonth ? 'The month this engine should process. Pre-filled with the month the scheduler would use.' : 'The day this engine should process. Pre-filled with the day the scheduler would use.'" />
+                        <x-help-tip :text="$definition->requiresClosedPeriod
+                            ? ($isMonth ? 'The month this engine should process. Only a month that has already ended can be chosen — this engine freezes the month\'s pool economics permanently, so running it mid-month would price the month on partial sales.' : 'The day this engine should process. Only a day that has already ended can be chosen — this engine freezes the day\'s pool economics permanently, so running it before the day closes would price the day on partial sales.')
+                            : ($isMonth ? 'The month this engine should process. Pre-filled with the month the scheduler would use.' : 'The day this engine should process. Pre-filled with the day the scheduler would use.')" />
                     </label>
-                    <input type="{{ $isMonth ? 'month' : 'date' }}" name="period" value="{{ old('engine') === $definition->key ? old('period') : $engine['defaultPeriodValue'] }}" required
+                    <input type="{{ $isMonth ? 'month' : 'date' }}" name="period" value="{{ old('engine') === $definition->key ? old('period') : $engine['defaultPeriodValue'] }}" max="{{ $engine['maxPeriodValue'] }}" required
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">
                 </div>
                 <div class="mb-3">

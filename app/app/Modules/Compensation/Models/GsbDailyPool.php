@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property int $variable_score_value_paise
  * @property int $variable_payout_paise
  * @property int $leftover_paise
+ * @property Carbon|null $created_at
  */
 final class GsbDailyPool extends Model
 {

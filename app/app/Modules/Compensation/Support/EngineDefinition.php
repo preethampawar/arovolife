@@ -28,6 +28,16 @@ final readonly class EngineDefinition
      *                                     that approves the batch, so allowing a manual trigger would
      *                                     let one admin both create and approve a payout
      *                                     (maker-checker). Those engines stay scheduler-only.
+     * @param  bool  $requiresClosedPeriod  True for engines that freeze their period's economics
+     *                                      (daily/monthly pools) or pay in arrears. Their period must
+     *                                      have ENDED before a manual run may target it: running the
+     *                                      GSB cut-off for a day still in flight freezes that day's
+     *                                      pool at whatever partial BV exists at that instant, and the
+     *                                      later scheduled run then prices the day's real achievers
+     *                                      against the stale snapshot (staging incident, 24 Aug 2026).
+     *                                      The chain resolver already caps DEPENDENCY cut-offs at
+     *                                      yesterday for the same reason — this flag closes the same
+     *                                      hole for the directly requested engine.
      */
     public function __construct(
         public string $key,
@@ -43,7 +53,24 @@ final readonly class EngineDefinition
         public EngineCadence $cadence,
         public string $defaultPeriod,
         public bool $manuallyTriggerable = true,
+        public bool $requiresClosedPeriod = false,
     ) {}
+
+    /**
+     * The latest period a MANUAL run may target: the most recent CLOSED period
+     * for economics-freezing engines, otherwise the period in flight (a future
+     * period has no sales data for anybody).
+     */
+    public function latestManualPeriod(): Carbon
+    {
+        if ($this->periodType === EnginePeriodType::Month) {
+            $current = Carbon::today()->startOfMonth();
+
+            return $this->requiresClosedPeriod ? $current->subMonthNoOverflow() : $current;
+        }
+
+        return $this->requiresClosedPeriod ? Carbon::yesterday() : Carbon::today();
+    }
 
     /**
      * Human sentence for the admin console. Generated from {@see $cadence} so

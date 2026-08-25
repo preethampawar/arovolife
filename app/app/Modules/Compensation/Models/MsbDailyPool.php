@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int $point_value_paise
  * @property int $payout_paise
  * @property int $leftover_paise
+ * @property Carbon|null $created_at
  */
 final class MsbDailyPool extends Model
 {
