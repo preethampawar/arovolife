@@ -429,6 +429,10 @@ final class GsbCutoffService
             ['power_side_bv_paise' => 0, 'power_side' => null, 'slab1_weaker_bv_paise' => 0],
         );
 
+        // PARITY PARTNER: GsbIdleCutoffBatch::row() bulk-writes this exact branch
+        // for distributors it has proven inert, skipping the compute entirely.
+        // Any change to the columns, the defaults or the 'L' tie-break below
+        // must be mirrored there, or a replay and a live run stop agreeing.
         if ($computation->outcome === GsbCutoffComputation::OUTCOME_NO_MATCH) {
             $cf->update([
                 'power_side_bv_paise' => $computation->newPowerCf,

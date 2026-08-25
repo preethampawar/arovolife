@@ -27,6 +27,7 @@ final class CompensationRecomputeRunner
     public function __construct(
         private readonly RecomputeGuard $guard,
         private readonly CompensationStateWiper $wiper,
+        private readonly WindowedStateWiper $windowedWiper,
         private readonly GroupBvReplayService $groupBv,
         private readonly EngineReplayService $engines,
         private readonly DatabaseManager $db,
@@ -34,6 +35,16 @@ final class CompensationRecomputeRunner
     ) {}
 
     /**
+     * @param  Carbon|null  $from  first date to replay; null starts at the first
+     *                             BV date
+     * @param  list<string>|null  $onlyEngineKeys  replay only these engines
+     * @param  bool  $windowed  keep the history before $from instead of wiping
+     *                          it — only the derived rows from $from onwards are
+     *                          destroyed and rebuilt. Requires $from. The mode
+     *                          is explicit and never inferred: "replay from
+     *                          Tuesday" and "rebuild only Tuesday onwards" are
+     *                          different operations and one silently becoming
+     *                          the other would corrupt the carry-forward chain.
      * @param  Closure(string): void|null  $progress
      *
      * @throws RecomputeNotPermitted
@@ -43,6 +54,8 @@ final class CompensationRecomputeRunner
         ?Carbon $to = null,
         ?int $actorUserId = null,
         ?Closure $progress = null,
+        ?array $onlyEngineKeys = null,
+        bool $windowed = false,
     ): RecomputeReport {
         $this->guard->ensurePermitted();
 
@@ -60,9 +73,34 @@ final class CompensationRecomputeRunner
         config(['mail.default' => 'array']);
 
         try {
-            $log('Wiping BV-derived state...');
-            $this->progress->phase('Wiping BV-derived state');
-            $rowsRemoved = $this->wiper->wipe($log);
+            $windowed = $windowed && $from !== null;
+
+            if ($windowed) {
+                // A monthly engine's period is a whole month, so a window that
+                // opens mid-month can only be rebuilt from that month's first
+                // day — unless the month is still in flight, where the replay's
+                // catch-up pass recomputes it regardless of the start day.
+                $requestedFrom = $from->copy()->startOfDay();
+                $from = $requestedFrom->isSameMonth(Carbon::today())
+                    ? $requestedFrom
+                    : $requestedFrom->copy()->startOfMonth();
+
+                if (! $from->equalTo($requestedFrom)) {
+                    $warnings[] = sprintf(
+                        'Window widened to %s: %s falls in a closed month, whose monthly bonuses can only be rebuilt whole.',
+                        $from->toDateString(),
+                        $requestedFrom->toDateString(),
+                    );
+                }
+            }
+
+            $log($windowed
+                ? sprintf('Removing BV-derived state from %s...', $from->toDateString())
+                : 'Wiping BV-derived state...');
+            $this->progress->phase($windowed ? 'Removing BV-derived state in the window' : 'Wiping BV-derived state');
+            $rowsRemoved = $windowed
+                ? $this->windowedWiper->wipe($from, $log)
+                : $this->wiper->wipe($log);
             $this->progress->wiped(array_sum($rowsRemoved));
 
             [$from, $to, $windowWarnings] = $this->resolveWindow($from, $to);
@@ -71,10 +109,15 @@ final class CompensationRecomputeRunner
             $log(sprintf('Replaying %s → %s', $from->toDateString(), $to->toDateString()));
 
             $log('Re-deriving group BV from paid orders...');
-            $ordersPropagated = $this->groupBv->replay($log);
+            $ordersPropagated = $this->groupBv->replay($log, $windowed ? $from : null);
 
             $log('Replaying engines day by day...');
-            $replay = $this->engines->replay($from, $to, $log);
+            $replay = $this->engines->replay($from, $to, $log, $onlyEngineKeys);
+
+            if ($replay['skipped'] !== []) {
+                $warnings[] = 'Engines not replayed: '.implode(', ', $replay['skipped'])
+                    .'. Their results for this window are now missing, not merely stale.';
+            }
 
             // Land on the real clock: today's repurchase status is what the
             // dashboards and the next scheduled cut-off will read.
@@ -84,6 +127,7 @@ final class CompensationRecomputeRunner
             Artisan::call('repurchase:evaluate');
 
             $report = new RecomputeReport(
+                mode: $windowed ? RecomputeReport::MODE_WINDOWED : RecomputeReport::MODE_FULL,
                 from: $from,
                 to: $to,
                 rowsRemoved: $rowsRemoved,
@@ -171,8 +215,13 @@ final class CompensationRecomputeRunner
                 'engines_run' => $report->enginesRun,
                 'warnings' => $report->warnings,
                 'duration_seconds' => $report->durationSeconds,
-                'note' => 'TESTING-ONLY full compensation recompute — every BV-derived row was '
-                    .'destroyed and rebuilt from the surviving orders and BV ledger.',
+                'mode' => $report->mode,
+                'note' => $report->mode === RecomputeReport::MODE_WINDOWED
+                    ? 'TESTING-ONLY windowed compensation recompute — BV-derived rows from the '
+                        .'window start onwards were destroyed and rebuilt from the surviving '
+                        .'orders and BV ledger; earlier history was left intact.'
+                    : 'TESTING-ONLY full compensation recompute — every BV-derived row was '
+                        .'destroyed and rebuilt from the surviving orders and BV ledger.',
             ],
         ]);
     }

@@ -8,6 +8,7 @@ use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
+use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -23,6 +24,8 @@ final class CompensationRecomputeAllCommand extends Command
     protected $signature = 'compensation:recompute-all
                             {--from= : First date to replay (YYYY-MM-DD, defaults to the first BV date)}
                             {--to= : Last date to replay (YYYY-MM-DD, defaults to today)}
+                            {--only=* : Replay only these engine keys (e.g. --only=gsb.daily-cutoff)}
+                            {--windowed : Keep everything before --from; rebuild only the window (needs --from)}
                             {--force : Skip the interactive confirmation}';
 
     protected $description = 'TESTING ONLY: wipe all BV-derived compensation state and replay every engine from scratch';
@@ -40,6 +43,24 @@ final class CompensationRecomputeAllCommand extends Command
             return self::FAILURE;
         }
 
+        if ($this->option('windowed') && ! $this->option('from')) {
+            $this->error('--windowed needs --from: it is the date everything from is rebuilt.');
+
+            return self::FAILURE;
+        }
+
+        /** @var list<string> $only */
+        $only = array_values(array_filter((array) $this->option('only')));
+
+        foreach ($only as $key) {
+            if (! EngineRegistry::has($key)) {
+                $this->error("Unknown engine key: {$key}. Known keys: "
+                    .implode(', ', array_map(static fn ($d): string => $d->key, EngineRegistry::all())));
+
+                return self::FAILURE;
+            }
+        }
+
         if (! $this->option('force') && ! $this->confirmDestruction($guard, $wiper)) {
             $this->info('Aborted.');
 
@@ -52,11 +73,13 @@ final class CompensationRecomputeAllCommand extends Command
             progress: function (string $message): void {
                 $this->line($message);
             },
+            onlyEngineKeys: $only === [] ? null : $only,
+            windowed: (bool) $this->option('windowed'),
         );
 
         $this->newLine();
         $this->table(['Metric', 'Value'], [
-            ['Window replayed', $report->from->format('d M Y').' → '.$report->to->format('d M Y')],
+            ['Window replayed', $report->windowLabel()],
             ['Days', Number::format($report->daysReplayed)],
             ['Rows destroyed', Number::format($report->totalRowsRemoved())],
             ['Orders propagated', Number::format($report->ordersPropagated)],

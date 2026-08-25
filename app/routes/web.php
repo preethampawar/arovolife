@@ -441,8 +441,11 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             // TESTING ONLY — gated by RecomputeGuard (never production, requires
             // COMP_RECOMPUTE_ENABLED). Removed with the recompute scaffold at
             // client sign-off.
-            Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all');
+            Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all')->middleware('can:finance.record');
             Route::get('recompute-progress', [AdminEngineRunsController::class, 'recomputeProgress'])->name('recompute-progress');
+            // TESTING ONLY — wipes the purchases as well, for a clean-slate test
+            // cycle. Same guard, same scaffold, removed at the same sign-off.
+            Route::post('reset-purchase-data', [AdminEngineRunsController::class, 'resetPurchaseData'])->name('reset-purchase-data')->middleware('can:finance.record');
         });
     });
 

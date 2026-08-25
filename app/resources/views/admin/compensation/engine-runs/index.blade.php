@@ -15,6 +15,83 @@
 {{-- Flash messages (status / error / validation) are rendered by the admin
      layout for every page. Do not repeat them here. --}}
 
+{{-- TESTING-ONLY purchase-data reset. Same guard as the recompute above: when
+     it refuses, nothing here is rendered at all. --}}
+@if($recomputeAllowed)
+@php $purchaseResetTotal = array_sum($purchaseResetRowCounts); @endphp
+<div class="mb-6 rounded-xl border-2 border-red-300 bg-red-50 p-4">
+    <p class="text-sm font-bold text-red-900">Testing tool — reset purchase data (start a fresh test cycle)</p>
+    <p class="mt-1 text-xs text-red-800 max-w-4xl">
+        Deletes the <strong>orders themselves</strong> along with everything derived from them — the BV ledger, every
+        bonus result and frozen pool, carry-forwards, repurchase cycles, wallet credits, payout batches, returns and
+        carts (<strong>{{ \App\Modules\Shared\Support\IndianNumber::format($purchaseResetTotal) }}</strong> rows on
+        <code class="font-mono bg-red-100 px-1 rounded">{{ $recomputeTargetDatabase }}</code>).
+    </p>
+    <p class="mt-1 text-xs text-red-800 max-w-4xl">
+        <strong>Kept:</strong> users, distributors, the Genos tree and sponsorship, KYC, consents, settings, the whole
+        compensation plan configuration, arete centers, the product catalog, coupons, customers and the audit log.
+        This is the difference from a recompute: a recompute rebuilds the same history, this leaves no history to
+        rebuild. Afterwards a recompute finishes in seconds, because there is nothing to replay until you place new
+        orders.
+    </p>
+
+    @if($purchaseResetRowCounts !== [])
+    <details class="mt-3">
+        <summary class="cursor-pointer text-xs font-medium text-red-800">What would be destroyed</summary>
+        <div class="mt-2 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-white p-3">
+            <table class="w-full text-xs">
+                @foreach($purchaseResetRowCounts as $table => $count)
+                <tr>
+                    <td class="py-0.5 font-mono text-gray-600">{{ $table }}</td>
+                    <td class="py-0.5 text-right font-medium text-gray-900">
+                        {{ \App\Modules\Shared\Support\IndianNumber::format($count) }}
+                    </td>
+                </tr>
+                @endforeach
+            </table>
+        </div>
+    </details>
+    @endif
+
+    <form method="POST" action="{{ route('admin.compensation.engine-runs.reset-purchase-data') }}"
+          class="mt-4 flex flex-wrap items-end gap-3"
+          data-confirm="Delete every order and everything derived from it?"
+          data-confirm-title="Reset all purchase data?"
+          data-confirm-impact="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($purchaseResetTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted, including the orders themselves. Distributors, the Genos tree and the plan settings are kept.">
+        @csrf
+        <div>
+            <label for="purchase-reset-confirm-db" class="block text-xs font-medium text-red-900 mb-1">
+                Type <span class="font-mono">{{ $recomputeTargetDatabase }}</span> to unlock
+            </label>
+            <input type="text" name="confirm_database" id="purchase-reset-confirm-db" autocomplete="off"
+                   data-expected="{{ $recomputeTargetDatabase }}"
+                   class="rounded-lg border-red-300 text-sm font-mono focus:border-red-500 focus:ring-red-500">
+        </div>
+        <button type="submit" id="purchase-reset-submit" disabled
+                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Reset purchase data
+        </button>
+    </form>
+</div>
+
+<script>
+// Same typed-database lock as the recompute button, for the same reason: this
+// one destroys the orders too, and staging carries real distributor data.
+(function () {
+    var input = document.getElementById('purchase-reset-confirm-db');
+    var button = document.getElementById('purchase-reset-submit');
+    if (!input || !button) { return; }
+
+    input.value = '';
+    button.disabled = true;
+
+    input.addEventListener('input', function () {
+        button.disabled = input.value.trim() !== input.dataset.expected;
+    });
+})();
+</script>
+@endif
+
 {{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it,
      so on any environment where it is off there is no trace of it here. --}}
 @if($recomputeAllowed)
@@ -29,6 +106,12 @@
         and replays every engine from the first BV date up to right now — including today's cut-off, this week's
         payout and this month's bonuses, computed as at this moment. Orders, the BV ledger, distributors, the Genos
         and the plan settings are kept.
+    </p>
+    <p class="mt-1 text-xs text-red-800 max-w-4xl">
+        <strong>Replaying everything takes the longest possible time.</strong> To check only what today or this month
+        pays, set a start date and tick <em>keep earlier history</em>: only the derived rows from that date onwards are
+        removed and rebuilt. A start date inside a closed month is widened to that month's first day, because a
+        monthly bonus can only be rebuilt for a whole month.
     </p>
     <p class="mt-1 text-xs text-red-700 max-w-4xl">
         The daily and monthly schedulers are unaffected — they keep running normally and each run still freezes its
@@ -91,12 +174,76 @@
         <p id="rp-done" class="mt-3 hidden rounded-lg border border-green-300 bg-green-50 p-3 text-xs text-green-800"></p>
     </div>
 
+    {{-- The impact line is rewritten by the script below whenever the window
+         changes: a modal that says "every bonus" while the form is set to
+         rebuild one month is worse than no modal at all. --}}
     <form method="POST" action="{{ route('admin.compensation.engine-runs.recompute-all') }}"
+          id="recompute-form"
           class="mt-4 flex flex-wrap items-end gap-3"
           data-confirm="Wipe every bonus, payout and wallet credit, then replay all engines?"
           data-confirm-title="Destroy and rebuild all compensation data?"
-          data-confirm-impact="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes.">
+          data-confirm-impact="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes."
+          data-confirm-full="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes."
+          data-confirm-full-title="Destroy and rebuild all compensation data?"
+          data-confirm-full-body="Wipe every bonus, payout and wallet credit, then replay all engines?">
         @csrf
+
+        <div class="w-full rounded-lg border border-red-200 bg-white p-3">
+            <div class="flex flex-wrap items-end gap-3">
+                <div>
+                    <label for="recompute-from" class="block text-xs font-medium text-gray-700 mb-1">From</label>
+                    <input type="date" name="from" id="recompute-from" value="{{ old('from') }}"
+                           class="rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500">
+                </div>
+                <div>
+                    <label for="recompute-to" class="block text-xs font-medium text-gray-700 mb-1">To</label>
+                    <input type="date" name="to" id="recompute-to" value="{{ old('to') }}"
+                           class="rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500">
+                </div>
+                <label class="flex items-center gap-2 pb-2 text-xs text-gray-700">
+                    <input type="checkbox" name="windowed" value="1" id="recompute-windowed" checked
+                           class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+                    Keep earlier history (rebuild only the window)
+                </label>
+                <div class="flex flex-wrap gap-2 pb-1">
+                    <button type="button" data-preset-from="{{ $recomputePresets['today'] }}"
+                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Today</button>
+                    <button type="button" data-preset-from="{{ $recomputePresets['month_start'] }}"
+                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">This month</button>
+                    <button type="button" data-preset-from=""
+                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Everything (slow)</button>
+                </div>
+            </div>
+
+            <details class="mt-3">
+                <summary class="cursor-pointer text-xs font-medium text-gray-700">
+                    Engines to replay <span class="font-normal text-gray-500">(none ticked = all of them)</span>
+                </summary>
+                <div class="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-3">
+                    @foreach($recomputeEngines as $key => $definition)
+                    <label class="flex items-center gap-2 text-xs text-gray-700">
+                        <input type="checkbox" name="engines[]" value="{{ $key }}"
+                               class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+                        <span class="font-mono">{{ $definition->commandSignature }}</span>
+                    </label>
+                    @endforeach
+                </div>
+                <p class="mt-2 text-xs text-gray-500">
+                    An engine you leave out is not replayed at all, so its results for the window will be missing
+                    rather than merely stale. The run summary names every engine it skipped.
+                </p>
+                <label class="mt-2 flex items-start gap-2 text-xs text-red-900">
+                    <input type="checkbox" name="accept_missing_engines" id="recompute-accept-missing" value="1"
+                           class="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                    <span>
+                        I understand that the bonuses, wallet credits and payouts of every engine I did
+                        <strong>not</strong> tick are deleted for this window and never rebuilt. Required
+                        before the run will start with a partial selection.
+                    </span>
+                </label>
+            </details>
+        </div>
+
         <div>
             <label for="recompute-confirm-db" class="block text-xs font-medium text-red-900 mb-1">
                 Type <span class="font-mono">{{ $recomputeTargetDatabase }}</span> to unlock
@@ -107,7 +254,7 @@
         </div>
         <button type="submit" id="recompute-submit" disabled
                 class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
-            Recompute everything
+            Run recompute
         </button>
     </form>
 </div>
@@ -131,6 +278,77 @@
     input.addEventListener('input', function () {
         button.disabled = input.value.trim() !== input.dataset.expected;
     });
+})();
+
+// Window presets. "Everything" clears the start date, which is what makes the
+// run a full wipe — keeping earlier history is meaningless without one.
+(function () {
+    var from = document.getElementById('recompute-from');
+    var to = document.getElementById('recompute-to');
+    var windowed = document.getElementById('recompute-windowed');
+    if (!from || !to || !windowed) { return; }
+
+    document.querySelectorAll('[data-preset-from]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            from.value = btn.dataset.presetFrom;
+            to.value = '';
+            windowed.checked = from.value !== '';
+        });
+    });
+
+    windowed.addEventListener('change', function () {
+        if (windowed.checked && from.value === '') {
+            from.value = @json($recomputePresets['month_start']);
+        }
+        describe();
+    });
+
+    // Keep the confirmation modal honest about what THIS run will destroy.
+    var form = document.getElementById('recompute-form');
+
+    // Ticking any engine turns the run into a partial replay: the wipe still
+    // covers every derived table, but only the ticked engines rebuild. That is
+    // the one combination whose damage the modal must name BEFORE the delete —
+    // the run summary's skipped-engine warning arrives after the rows are gone.
+    function missingEngineWarning() {
+        var ticked = document.querySelectorAll('input[name="engines[]"]:checked').length;
+        var total = document.querySelectorAll('input[name="engines[]"]').length;
+
+        if (ticked === 0 || ticked === total) { return ''; }
+
+        return ' ' + (total - ticked) + ' engine(s) are NOT selected: their bonuses, wallet credits '
+            + 'and payouts inside this window are deleted and NOT rebuilt.';
+    }
+
+    function describe() {
+        if (!form) { return; }
+
+        if (windowed.checked && from.value !== '') {
+            form.dataset.confirmTitle = 'Rebuild compensation data from ' + from.value + '?';
+            form.dataset.confirm = 'Delete and rebuild every bonus, payout and wallet credit dated '
+                + from.value + ' onwards?';
+            form.dataset.confirmImpact = 'This cannot be undone, but it is limited to the window: '
+                + 'anything before ' + from.value + ' is left exactly as it is. A start date inside a '
+                + 'closed month is widened to that month\u2019s first day. The replay runs in the background.'
+                + missingEngineWarning();
+
+            return;
+        }
+
+        form.dataset.confirmTitle = form.dataset.confirmFullTitle;
+        form.dataset.confirm = form.dataset.confirmFullBody;
+        form.dataset.confirmImpact = form.dataset.confirmFull + missingEngineWarning();
+    }
+
+    from.addEventListener('change', describe);
+    document.querySelectorAll('[data-preset-from]').forEach(function (btn) {
+        btn.addEventListener('click', describe);
+    });
+    document.querySelectorAll('input[name="engines[]"]').forEach(function (box) {
+        box.addEventListener('change', describe);
+    });
+
+    describe();
 })();
 
 // Live progress poller. The replay runs on the queue for minutes, so without
@@ -276,6 +494,7 @@
                         {{ $lastRun->started_at->format('d M Y H:i') }}
                         · period {{ $definition->displayPeriod($lastRun->period_start) }}
                         · {{ $lastRun->trigger }}
+                        · took {{ $lastRun->durationForHumans() }}
                     @elseif($engine['derivedPeriod'] !== null)
                         latest results found for {{ $definition->displayPeriod($engine['derivedPeriod']) }}
                         <span class="text-gray-400">(derived from result tables — no run log yet)</span>

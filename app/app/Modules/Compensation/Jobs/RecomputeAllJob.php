@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -23,8 +24,8 @@ use Throwable;
  * `$tries = 1` on purpose: a retry would resume against a database the first
  * attempt had already wiped and partly rebuilt, double-applying propagation and
  * corrupting the carry-forward chain. One attempt, fail loudly. Recovery is to
- * click the button again — every run begins with a full wipe, so a re-run is a
- * clean start rather than a resume.
+ * click the button again — every run begins by removing the rows it is about to
+ * rebuild, so a re-run is a clean start rather than a resume.
  *
  * TESTING ONLY. Deleted with the rest of the recompute scaffold at sign-off.
  */
@@ -38,7 +39,19 @@ final class RecomputeAllJob implements ShouldQueue
 
     public int $timeout = 7200;
 
-    public function __construct(private readonly ?int $actorUserId = null) {}
+    /**
+     * @param  string|null  $from  first date to replay (Y-m-d)
+     * @param  string|null  $to  last date to replay (Y-m-d)
+     * @param  list<string>|null  $onlyEngineKeys  replay only these engines
+     * @param  bool  $windowed  keep the history before $from rather than wiping it
+     */
+    public function __construct(
+        private readonly ?int $actorUserId = null,
+        private readonly ?string $from = null,
+        private readonly ?string $to = null,
+        private readonly ?array $onlyEngineKeys = null,
+        private readonly bool $windowed = false,
+    ) {}
 
     public function handle(CompensationRecomputeRunner $runner): void
     {
@@ -55,10 +68,14 @@ final class RecomputeAllJob implements ShouldQueue
 
         try {
             $report = $runner->run(
+                from: $this->from === null ? null : Carbon::parse($this->from),
+                to: $this->to === null ? null : Carbon::parse($this->to),
                 actorUserId: $this->actorUserId,
                 progress: static function (string $message): void {
                     Log::info('compensation.recompute', ['message' => $message]);
                 },
+                onlyEngineKeys: $this->onlyEngineKeys,
+                windowed: $this->windowed,
             );
 
             Log::info('compensation.recompute.complete', [
@@ -68,6 +85,7 @@ final class RecomputeAllJob implements ShouldQueue
                 'rows_removed' => $report->totalRowsRemoved(),
                 'engine_runs' => $report->totalEngineRuns(),
                 'duration_seconds' => $report->durationSeconds,
+                'mode' => $report->mode,
             ]);
         } catch (Throwable $e) {
             Log::error('compensation.recompute.failed', [

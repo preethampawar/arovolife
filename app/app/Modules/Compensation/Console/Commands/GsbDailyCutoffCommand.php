@@ -9,6 +9,7 @@ use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\DTOs\MsbAccrual;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
+use App\Modules\Compensation\Services\GsbIdleCutoffBatch;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Compensation\Services\MsbDailyPoolService;
 use App\Modules\Identity\Models\Distributor;
@@ -33,6 +34,7 @@ final class GsbDailyCutoffCommand extends Command
         private readonly MentorshipBonusService $mentorship,
         private readonly GsbDailyPoolService $poolService,
         private readonly MsbDailyPoolService $msbPoolService,
+        private readonly GsbIdleCutoffBatch $idleBatch,
     ) {
         parent::__construct();
     }
@@ -85,6 +87,22 @@ final class GsbDailyCutoffCommand extends Command
         // repurchase cycles, and frozen status — replaces ~3 N+1 queries with
         // 2–3 bulk queries regardless of distributor count.
         $this->cutoff->warmBatch($distributors);
+
+        // Distributors who cannot match today (below the personal-BV minimum,
+        // or eligible but with no group BV, no carry-forward and no row for the
+        // date) get their rows written in one batched INSERT instead of a
+        // compute+settle cycle each. On the reference dataset that is ~98% of
+        // the day's rows. Single-distributor retries never take the shortcut.
+        $skipped = 0;
+        if ($singleId === null) {
+            $partition = $this->idleBatch->partition($distributors, $date);
+            $skipped = $this->idleBatch->write($partition['below_min'], $partition['idle'], $date);
+            $distributors = $partition['engine'];
+
+            if ($skipped > 0) {
+                $this->line("  {$skipped} distributor(s) with no possible match — rows written in bulk.");
+            }
+        }
 
         $poolPricingActive = Feature::for(null)->active(GsbDailyPoolPricingFeature::class);
 
@@ -217,7 +235,7 @@ final class GsbDailyCutoffCommand extends Command
         }
 
         $msbValue = number_format($msbPointValuePaise / 100, 2);
-        $this->info("Done — total: {$total}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
+        $this->info("Done — total: {$total}, engine: ".$distributors->count().", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
 
         return ($failed > 0 || $mbFailed > 0) ? self::FAILURE : self::SUCCESS;
     }

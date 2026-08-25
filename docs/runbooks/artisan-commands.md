@@ -343,14 +343,104 @@ recomputed, so nobody's rate can move after they were paid. That is right for
 production and wrong for testing — it means a single mistaken run permanently
 fixes a month's economics.
 
+**Four gates, all of which must open.** Never in production;
+`COMP_RECOMPUTE_ENABLED`; the connected database named in
+`COMP_RECOMPUTE_ALLOWED_DATABASES`; and the typed database name on the
+confirmation. The third exists because the first two describe the *build* —
+`APP_ENV` is a label an operator sets, and it cannot tell you the database
+behind it holds real cooling-off windows, invoices and a TDS trail. Staging's
+does. Naming the permitted databases makes the gate answerable from the data, so
+a correctly-flagged build pointed at the wrong database still refuses, and the
+refusal prints which database it read.
+
+The name is read off the LIVE connection (`getDatabaseName()`), not from
+`DB_DATABASE` — `DB_URL`, if set, silently overrides the configured name at
+connect time, and a stale `DB_DATABASE` would otherwise defeat both this gate
+and the typed confirmation at once. Staging's value is `arovolife_staging`;
+until that line is in staging's `.env`, the Engine Runs testing cards are
+hidden and both endpoints 404, which is the intended fail-closed behaviour.
+
 ```bash
-# Enable it first — it refuses without this, and always refuses in production
+# Enable it first — it refuses without BOTH of these, and always in production
 COMP_RECOMPUTE_ENABLED=true
+COMP_RECOMPUTE_ALLOWED_DATABASES=arovolife_staging   # comma-separated; empty = nowhere
 
 php artisan compensation:recompute-all              # confirms, naming the target DB
 php artisan compensation:recompute-all --force      # scripted, no prompt
 php artisan compensation:recompute-all --from=2026-07-01 --to=2026-07-31
 ```
+
+#### Replay only what you need — `--windowed` and `--only`
+
+A full replay costs the same whatever you actually want to look at, and on a
+remote database (staging talks to RDS) that is dominated by round trips rather
+than computation. Two knobs cut it down; both are also on the admin panel as
+date inputs, `Today` / `This month` presets and engine checkboxes.
+
+```bash
+# Rebuild ONLY this month; everything before 1 August is left untouched
+php artisan compensation:recompute-all --from=2026-08-01 --windowed --force
+
+# Just the daily cut-off and its prerequisites — no rank, GBB, Fortune or payouts
+php artisan compensation:recompute-all --from=2026-08-01 --windowed \
+    --only=gsb.daily-cutoff --force
+```
+
+`--from` on its own still wipes everything and replays from that date; adding
+`--windowed` is what makes the earlier history survive. The two are deliberately
+separate: "replay from Tuesday" and "rebuild only Tuesday onwards" are different
+operations, and one silently becoming the other would corrupt the
+carry-forward chain.
+
+Three rules make a windowed run reproduce a full one exactly:
+
+- **Carry-forward is rewound, not kept.** `gsb_carryforward` holds one rolling
+  row per distributor with no history, but every `gsb_cutoff_results` row records
+  the `power_cf_before_paise` / `power_side_before` /
+  `slab1_weaker_cf_before_paise` it started from. The wiper restores each
+  distributor's earliest in-window row's before-state. Rows that never advanced
+  the carry-forward (`below_600bv`) are ignored — they record zeros because the
+  engine returns before it reads the store.
+- **Monthly rows go from their month's first day.** A monthly bonus cannot be
+  rebuilt for half a month, so a start date inside a *closed* month is widened to
+  that month's 1st (with a warning). A start date in the current month is kept as
+  given: the replay's catch-up pass recomputes the month in flight anyway.
+- **A wallet credit survives if its source row does.** Monthly engines run in
+  arrears — July's Growth Booster is credited on 2 August — so deleting wallet
+  entries purely by date would remove credits whose result row sits before the
+  window and is never recomputed. Entries are removed only when the row that
+  produced them is being rebuilt.
+
+Verified on the reference dataset (288 distributors, 53 days): a windowed
+`--from` = 1st-of-month run produces a byte-identical database to a full replay —
+same 15,264 cut-off rows, same ₹67,62,369.54 of wallet credits, same
+carry-forwards, payout lines, mentorship results and group-BV projection.
+
+Engines you leave out with `--only` are **not replayed at all**, so their results
+for the window are missing rather than stale. The run report names every one it
+skipped.
+
+#### Why a replay is no longer slow
+
+The nightly cut-off is O(distributors × days) but its outcome is O(distributors
+with business). On the reference dataset a full replay wrote 13,248 cut-off rows
+to produce 187 credits — 5,796 of them for 126 distributors who have never
+purchased anything, each costing a `firstOrCreate` + `update` + `insert`.
+
+{@see \App\Modules\Compensation\Services\GsbIdleCutoffBatch} now partitions the
+day's distributors first and writes the provably-inert ones in one batched
+`INSERT` per day: below the personal-BV minimum, or eligible with no group BV, no
+carry-forward and no existing row. It is a filter, never a second copy of the
+matching rules — anything with any state goes down the normal compute/settle
+path. `repurchase:evaluate` is narrowed the same way, to distributors who have a
+BV row or an open cycle.
+
+`engine_runs.duration_ms` records the real wall-clock time of each run.
+`started_at`/`finished_at` deliberately carry the *replayed* instant (the replay
+travels the clock so rows land on the date the scheduler would have written
+them), which made every replayed run read as 0 seconds — there was no way to see
+where a slow replay spent its time. The Engine Runs page shows the measured
+duration per engine.
 
 #### The admin button needs a worker that tolerates a long job
 
@@ -491,20 +581,28 @@ recomputation.
 
 #### Reverting it after sign-off
 
-1. Delete `app/Modules/Compensation/Services/Recompute/`,
-   `Services/DTOs/RecomputeReport.php`, `Jobs/RecomputeAllJob.php`,
-   `Console/Commands/CompensationRecomputeAllCommand.php` and
-   `tests/Modules/Compensation/CompensationRecomputeTest.php`
+1. Delete `app/Modules/Compensation/Services/Recompute/` (including
+   `WindowedStateWiper.php`), `Services/DTOs/RecomputeReport.php`,
+   `Jobs/RecomputeAllJob.php`,
+   `Console/Commands/CompensationRecomputeAllCommand.php`,
+   `tests/Modules/Compensation/CompensationRecomputeTest.php` and
+   `tests/Modules/Compensation/WindowedRecomputeTest.php`
 2. Remove the `recompute` block from `config/arovolife.php`, the
-   `COMP_RECOMPUTE_ENABLED` line from `.env.example` and every `.env`, and the
+   `COMP_RECOMPUTE_ENABLED` and `COMP_RECOMPUTE_ALLOWED_DATABASES` lines from
+   `.env.example` and every `.env`, and the
    command from `AppServiceProvider`
-3. Remove the `recompute-all` route, `AdminEngineRunsController::recomputeAll()`,
-   the danger-zone card in the Engine Runs view, and the recompute tests in
+3. Remove the `recompute-all` and `reset-purchase-data` routes,
+   `AdminEngineRunsController::recomputeAll()` and `::resetPurchaseData()`, both
+   danger-zone cards in the Engine Runs view, and the recompute + reset tests in
    `AdminEngineRunsControllerTest`
 4. Remove the `notEngines` exclusion in `EngineRegistryTest`
-5. **Keep** `Support/DerivedTables.php` and the `EngineCadence` work — those are
-   genuine single-source fixes, not part of the testing scaffold
-6. Delete this runbook section
+5. **Keep** `Support/DerivedTables.php` (including its `dateFilter()` map) and
+   the `EngineCadence` work — genuine single-source fixes, not scaffold
+6. **Keep** `Services/GsbIdleCutoffBatch.php` + its test, the
+   `repurchase:evaluate` narrowing, and `engine_runs.duration_ms`: they speed up
+   and instrument the *production* engines and have nothing to do with replaying
+7. **Keep** `PurchaseDataResetAction::preview()` — the CLI confirmation uses it
+8. Delete this runbook section
 
 ---
 

@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $error
  * @property Carbon $started_at
  * @property Carbon|null $finished_at
+ * @property int|null $duration_ms
  */
 final class EngineRun extends Model
 {
@@ -66,6 +67,7 @@ final class EngineRun extends Model
         'error',
         'started_at',
         'finished_at',
+        'duration_ms',
     ];
 
     /**
@@ -96,11 +98,39 @@ final class EngineRun extends Model
             && $this->started_at->lt(Carbon::now()->subMinutes(self::STALE_AFTER_MINUTES));
     }
 
-    /** Wall-clock seconds the run took, or null while it is still in flight. */
+    /**
+     * Wall-clock seconds the run took, or null while it is still in flight.
+     *
+     * Prefers the measured duration_ms: started_at/finished_at carry the
+     * replayed instant during a compensation replay, so their difference is 0
+     * for every run the replay makes.
+     */
     public function durationSeconds(): ?int
     {
+        if ($this->duration_ms !== null) {
+            return (int) round($this->duration_ms / 1000);
+        }
+
         return $this->finished_at === null
             ? null
             : (int) max(0, $this->started_at->diffInSeconds($this->finished_at, absolute: true));
+    }
+
+    /** Human-readable duration for the admin table ("—", "820ms", "1m 12s"). */
+    public function durationForHumans(): string
+    {
+        if ($this->duration_ms === null) {
+            $seconds = $this->durationSeconds();
+
+            return $seconds === null ? '—' : $seconds.'s';
+        }
+
+        if ($this->duration_ms < 1000) {
+            return $this->duration_ms.'ms';
+        }
+
+        $seconds = (int) round($this->duration_ms / 1000);
+
+        return $seconds < 60 ? $seconds.'s' : intdiv($seconds, 60).'m '.($seconds % 60).'s';
     }
 }

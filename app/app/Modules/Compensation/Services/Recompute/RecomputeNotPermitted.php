@@ -31,6 +31,19 @@ final class RecomputeNotPermitted extends RuntimeException
         );
     }
 
+    /** @param  list<string>  $allowed */
+    public static function databaseNotAllowed(string $database, array $allowed): self
+    {
+        return new self(
+            "Refusing to recompute: the connected database is '{$database}', which is not "
+            .'in COMP_RECOMPUTE_ALLOWED_DATABASES ('
+            .($allowed === [] ? 'empty — no database is permitted' : implode(', ', $allowed))
+            .'). This tool destroys cooling-off windows, invoices, buyback evidence and the '
+            .'TDS trail, so the database itself must be named — an environment label is not '
+            .'enough to prove nobody real is in there.'
+        );
+    }
+
     public static function alreadyRunning(): self
     {
         return new self(

@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compensation\Jobs\PropagateGroupBvJob;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -39,27 +40,23 @@ final class GroupBvReplayService
 
     /**
      * @param  Closure(string): void|null  $progress
+     * @param  Carbon|null  $from  windowed replay: only orders paid on or after
+     *                             this date, because the projection rows before
+     *                             it were never deleted
      * @return int orders propagated
      */
-    public function replay(?Closure $progress = null): int
+    public function replay(?Closure $progress = null, ?Carbon $from = null): int
     {
         $log = $progress ?? static fn (string $_m): null => null;
 
         $propagated = 0;
 
-        $eligible = Order::query()
-            ->where('status', Order::STATUS_PAID)
-            ->whereNotNull('attributed_distributor_id')
-            ->whereNotNull('paid_at')
-            ->count();
+        $eligible = $this->eligibleOrders($from)->count();
 
         $this->progress->ordersTotal($eligible);
         $this->progress->ordersProgressed(0);
 
-        Order::query()
-            ->where('status', Order::STATUS_PAID)
-            ->whereNotNull('attributed_distributor_id')
-            ->whereNotNull('paid_at')
+        $this->eligibleOrders($from)
             ->orderBy('paid_at')
             ->orderBy('id')
             // Small chunks on purpose: progress is published once per chunk, so
@@ -101,5 +98,19 @@ final class GroupBvReplayService
         Carbon::setTestNow();
 
         return $propagated;
+    }
+
+    /**
+     * The orders whose BV this replay is responsible for re-propagating.
+     *
+     * @return Builder<Order>
+     */
+    private function eligibleOrders(?Carbon $from): Builder
+    {
+        return Order::query()
+            ->where('status', Order::STATUS_PAID)
+            ->whereNotNull('attributed_distributor_id')
+            ->whereNotNull('paid_at')
+            ->when($from !== null, fn ($q) => $q->where('paid_at', '>=', $from->copy()->startOfDay()));
     }
 }

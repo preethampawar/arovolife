@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Console\Actions\PurchaseDataResetAction;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
@@ -98,6 +99,16 @@ final class AdminEngineRunsController extends Controller
             'recomputeAllowed' => $this->recomputeGuard->isPermitted(),
             'recomputeTargetDatabase' => $this->recomputeGuard->targetDatabase(),
             'recomputeRowCounts' => $this->recomputeGuard->isPermitted() ? $this->wiper->preview() : [],
+            // Engine checkboxes for a partial replay, and the purchase-reset
+            // card's own preview — both only when the guard permits.
+            'recomputeEngines' => $this->recomputeGuard->isPermitted() ? EngineRegistry::all() : [],
+            'purchaseResetRowCounts' => $this->recomputeGuard->isPermitted()
+                ? app(PurchaseDataResetAction::class)->preview()
+                : [],
+            'recomputePresets' => [
+                'today' => Carbon::today()->toDateString(),
+                'month_start' => Carbon::today()->startOfMonth()->toDateString(),
+            ],
         ]);
     }
 
@@ -108,9 +119,35 @@ final class AdminEngineRunsController extends Controller
      * request timeout halfway through would leave the database wiped and only
      * partly rebuilt. Removed with the recompute scaffold at client sign-off.
      */
-    public function recomputeAll(): RedirectResponse
+    public function recomputeAll(Request $request): RedirectResponse
     {
         abort_unless($this->recomputeGuard->isPermitted(), 404);
+
+        $validated = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'windowed' => ['nullable', 'boolean'],
+            'engines' => ['nullable', 'array'],
+            'engines.*' => ['string', Rule::in(array_keys(EngineRegistry::all()))],
+
+            // A partial selection wipes every derived table for the window but
+            // rebuilds only the ticked engines, so the rest are left MISSING
+            // rather than stale. The run summary names them, but that arrives
+            // after the delete — this is the acknowledgement that arrives before.
+            'accept_missing_engines' => ['exclude_without:engines', 'accepted'],
+        ], [
+            'accept_missing_engines.accepted' => 'Replaying only some engines deletes the other engines\' '
+                .'results for this window without rebuilding them. Tick the acknowledgement to proceed.',
+        ]);
+
+        $from = $validated['from'] ?? null;
+        $to = $validated['to'] ?? null;
+        /** @var list<string> $engines */
+        $engines = array_values($validated['engines'] ?? []);
+
+        // Keeping the earlier history is only meaningful with a start date;
+        // without one there is nothing to keep.
+        $windowed = (bool) ($validated['windowed'] ?? false) && $from !== null;
 
         // The lock alone cannot tell a live run from one that died holding it: a
         // worker killed mid-replay never reaches its finally, so the lock sits
@@ -132,19 +169,118 @@ final class AdminEngineRunsController extends Controller
         $this->recomputeProgress->queued();
 
         $actorId = auth()->id();
-        RecomputeAllJob::dispatch(is_numeric($actorId) ? (int) $actorId : null);
+        RecomputeAllJob::dispatch(
+            actorUserId: is_numeric($actorId) ? (int) $actorId : null,
+            from: $from,
+            to: $to,
+            onlyEngineKeys: $engines === [] ? null : $engines,
+            windowed: $windowed,
+        );
 
         AuditLog::create([
             'actor_id' => auth()->id(),
             'action' => 'compensation.recompute_all.queued',
             'subject_type' => 'platform',
             'subject_id' => 0,
-            'details' => ['note' => 'Testing-only full compensation recompute queued from the admin console.'],
+            'details' => [
+                'note' => 'Testing-only compensation recompute queued from the admin console.',
+                'from' => $from,
+                'to' => $to,
+                'mode' => $windowed ? 'windowed' : 'full',
+                'engines' => $engines === [] ? 'all' : $engines,
+            ],
         ]);
 
         return redirect()->route('admin.compensation.engine-runs.index')
-            ->with('status', 'Full recompute queued. Every BV-derived row is being wiped and rebuilt — '
-                .'the runs below will repopulate as the replay progresses.');
+            ->with('status', $windowed
+                ? 'Windowed recompute queued from '.$from.'. Only the derived rows from that date '
+                    .'onwards are being rebuilt — earlier history is left as it is.'
+                : 'Full recompute queued. Every BV-derived row is being wiped and rebuilt — '
+                    .'the runs below will repopulate as the replay progresses.');
+    }
+
+    /**
+     * TESTING ONLY — wipe the purchases themselves along with everything
+     * derived from them, so a plan can be tested from an empty slate.
+     *
+     * Distinct from a recompute in exactly one way that matters: this removes
+     * the orders, so there is nothing left to recompute FROM. Users,
+     * distributors, the Genos tree, KYC, consents, the catalog and every plan
+     * setting survive — see PurchaseDataResetAction for the full list.
+     *
+     * Runs inline: it is a series of truncates, not a replay, and finishes well
+     * inside a request. Removed with the recompute scaffold at sign-off.
+     */
+    public function resetPurchaseData(Request $request, PurchaseDataResetAction $reset): RedirectResponse
+    {
+        abort_unless($this->recomputeGuard->isPermitted(), 404);
+
+        $validated = $request->validate([
+            'confirm_database' => ['required', 'string', Rule::in([$this->recomputeGuard->targetDatabase()])],
+        ], [
+            'confirm_database.in' => 'Type the database name exactly to confirm.',
+        ]);
+
+        // Unlike a recompute, this one must NOT steal a lock it cannot get. A
+        // recompute that trips over a stale lock is recoverable by re-running;
+        // truncating the orders out from under a live replay is not, because
+        // the source rows it was rebuilding from are gone for good. So take the
+        // lock properly and refuse if it is held — a genuinely abandoned lock is
+        // cleared by the recompute button, which is safe to force.
+        $lock = Cache::lock(RecomputeAllJob::LOCK_KEY, 900);
+
+        if (! $lock->get()) {
+            return redirect()->route('admin.compensation.engine-runs.index')
+                ->with('error', 'A compensation recompute holds the replay lock. Wait for it to finish '
+                    .'(or clear a dead run by starting a recompute) before resetting purchase data.');
+        }
+
+        $removed = $reset->preview();
+        $actorId = auth()->id();
+        $actorId = is_numeric($actorId) ? (int) $actorId : null;
+
+        // Written BEFORE the truncation, and deliberately not inside the action:
+        // this destroys cooling-off windows, invoices, buyback evidence and the
+        // TDS trail, so the record of WHO ordered it and WHAT was standing at the
+        // time has to survive even if the truncation dies half-way through.
+        // `audit_log` is not in the wipe list, so this entry outlives the data.
+        AuditLog::create([
+            'actor_id' => $actorId,
+            'action' => 'platform.purchase_reset.requested',
+            'subject_type' => 'platform',
+            'subject_id' => 0,
+            'details' => [
+                'note' => 'Testing-only purchase-data reset requested from the admin console.',
+                'database' => $this->recomputeGuard->targetDatabase(),
+                'connection' => $this->recomputeGuard->targetConnection(),
+                'confirmed_database' => $validated['confirm_database'],
+                'rows_standing' => $removed,
+                'rows_standing_total' => array_sum($removed),
+            ],
+        ]);
+
+        try {
+            $reset->execute(
+                progress: static function (string $message): void {
+                    Log::info('platform.purchase_reset', ['message' => $message]);
+                },
+                actorId: $actorId,
+                provenance: 'the admin Engine Runs console',
+            );
+        } finally {
+            $lock->release();
+        }
+
+        // The old run's summary describes rows that no longer exist.
+        $this->recomputeProgress->clear();
+
+        return redirect()->route('admin.compensation.engine-runs.index')
+            ->with('status', sprintf(
+                'Purchase data reset — %s row(s) removed across %d table(s). Distributors, the Genos '
+                .'tree and every plan setting are untouched; place new orders to start a fresh test.',
+                number_format(array_sum($removed)),
+                count($removed),
+            ));
     }
 
     /**

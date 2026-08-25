@@ -90,5 +90,15 @@ return [
     */
     'recompute' => [
         'enabled' => (bool) env('COMP_RECOMPUTE_ENABLED', false),
+
+        // Data-shaped gate. APP_ENV names the build; it says nothing about
+        // which database is attached to it, and staging holds real distributor
+        // PII. A recompute or purchase-data reset therefore also requires the
+        // connected database to be named here, so a permitted build pointed at
+        // a real database still refuses. Empty means "nowhere" on purpose.
+        'allowed_databases' => array_values(array_filter(array_map(
+            trim(...),
+            explode(',', (string) env('COMP_RECOMPUTE_ALLOWED_DATABASES', '')),
+        ), static fn (string $name): bool => $name !== '')),
     ],
 ];
