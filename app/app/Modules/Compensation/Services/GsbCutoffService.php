@@ -323,7 +323,7 @@ final class GsbCutoffService
             cfBeforePower: $cfPower,
             cfBeforeSlab1: $cfSlab1,
             newPowerCf: min(
-                max(0, $strongerEffective - $matchedSlab['matched_bv_paise']),
+                max(0, $strongerEffective - $weakerTotal),
                 $this->plan->gsbPowerCfCapPaise(),
             ),
             newSlab1Cf: 0,
