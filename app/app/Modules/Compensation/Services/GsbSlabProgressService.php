@@ -25,7 +25,9 @@ use Illuminate\Support\Carbon;
  *  - power CF joins today's BV on its own side;
  *  - slab 1 progress = lifetime weaker CF + today's matched BV, capped by the
  *    other side (15K/15K requires both sides);
- *  - slabs 2-7 progress = today's fresh matched BV only (no carry-forward).
+ *  - slabs 2-7 progress = today's fresh matched BV only (no carry-forward);
+ *  - personal-purchase BV is NOT part of any side until the cut-off actually
+ *    credits it (it is exposed separately as a pending figure).
  */
 final class GsbSlabProgressService
 {
@@ -48,6 +50,8 @@ final class GsbSlabProgressService
         $slab1Cf = 0;
         $personalBvTopupPaise = 0;
         $topupSide = null;
+        $pendingPersonalBvTopupPaise = 0;
+        $pendingTopupSide = null;
         $powerCfPaise = 0;
         $powerCfSide = null;
 
@@ -77,22 +81,18 @@ final class GsbSlabProgressService
                 $personalBvTopupPaise = (int) $appliedTopups->sum('bv_paise');
                 $topupSide = $appliedTopups->first()->side;
             } else {
-                // Not yet applied. The cut-off will credit the full pending pool to
-                // the weaker leg ONLY if a leg has touched the smallest slab (incl.
-                // CF). Preview only when that trigger is met; tie ⇒ weaker = Right.
+                // Not yet applied. Personal-purchase BV must NOT join the carry over
+                // before the cut-off (client, 2026-08-25): GsbCutoffService credits it
+                // to the weaker leg at 23:59, and only when a leg has touched the
+                // smallest slab (incl. CF). So it is surfaced as a separate *pending*
+                // figure and deliberately left out of the effective side totals, the
+                // matched BV and the ladder progress. Tie ⇒ weaker = Right.
                 $minSlabMatched = $this->plan->gsbMinSlabMatchedBvPaise();
                 if ($minSlabMatched > 0 && max($leftEffective, $rightEffective) >= $minSlabMatched) {
                     $pendingBv = $this->topup->pendingBvPaise($distributorId, Carbon::parse($today));
                     if ($pendingBv > 0) {
-                        $topupSide = $leftEffective < $rightEffective ? 'L' : 'R';
-                        $personalBvTopupPaise = $pendingBv;
-                        // Reflect the imminent credit in the effective weaker side so
-                        // the ladder progress/next-target mirror tonight's measurement.
-                        if ($topupSide === 'L') {
-                            $leftEffective += $pendingBv;
-                        } else {
-                            $rightEffective += $pendingBv;
-                        }
+                        $pendingPersonalBvTopupPaise = $pendingBv;
+                        $pendingTopupSide = $leftEffective < $rightEffective ? 'L' : 'R';
                     }
                 }
             }
@@ -166,6 +166,8 @@ final class GsbSlabProgressService
             highestEarnedSlab: $highestEarnedSlab,
             personalBvTopupPaise: $personalBvTopupPaise,
             topupSide: $topupSide,
+            pendingPersonalBvTopupPaise: $pendingPersonalBvTopupPaise,
+            pendingTopupSide: $pendingTopupSide,
             // Zero on the ineligible path, exactly like left/right effective:
             // below the personal-BV minimum nothing is counted for the ladder.
             slab1WeakerCfPaise: $slab1Cf,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services\Recompute;
 
+use App\Modules\Compensation\Support\EngineCadence;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
@@ -16,7 +17,7 @@ use RuntimeException;
  * Replays the scheduler day by day over a historical window.
  *
  * The loop does not know the schedule: it asks each engine's
- * {@see \App\Modules\Compensation\Support\EngineCadence} whether it would have
+ * {@see EngineCadence} whether it would have
  * fired on the day in question, and asks {@see EngineDefinition::periodRelativeTo()}
  * which period it would have worked on. Both live in the registry, which
  * EngineRegistryTest pins against routes/console.php — so the replay follows
@@ -52,19 +53,39 @@ final class EngineReplayService
      */
     private array $invoked = [];
 
+    /**
+     * Engine keys this replay is limited to, or null for every engine. A
+     * partial replay is a deliberate testing shortcut ("just show me GSB"), so
+     * the runner reports what was left out rather than letting the gap pass as
+     * a complete rebuild.
+     *
+     * @var list<string>|null
+     */
+    private ?array $onlyKeys = null;
+
     public function __construct(private readonly RecomputeProgress $progress) {}
 
     /**
      * @param  Closure(string): void|null  $progress
-     * @return array{days: int, engines: array<string, int>}
+     * @param  list<string>|null  $onlyKeys  replay only these engine keys (their
+     *                                       unscheduled prerequisites still run);
+     *                                       null replays every engine
+     * @return array{days: int, engines: array<string, int>, skipped: list<string>}
      */
-    public function replay(Carbon $from, Carbon $to, ?Closure $progress = null): array
+    public function replay(Carbon $from, Carbon $to, ?Closure $progress = null, ?array $onlyKeys = null): array
     {
         $log = $progress ?? static fn (string $_m): null => null;
 
         $this->engineRuns = [];
         $this->invoked = [];
+        $this->onlyKeys = $onlyKeys === null || $onlyKeys === [] ? null : array_values($onlyKeys);
         $days = 0;
+
+        $skipped = $this->skippedKeys();
+
+        if ($skipped !== []) {
+            $log('  Skipping (not selected): '.implode(', ', $skipped));
+        }
 
         // Read before the first travel. The window now ends today, so the last
         // day's engines are routinely due at an hour that has not arrived yet —
@@ -120,7 +141,7 @@ final class EngineReplayService
 
         Carbon::setTestNow();
 
-        return ['days' => $days, 'engines' => $this->engineRuns];
+        return ['days' => $days, 'engines' => $this->engineRuns, 'skipped' => $skipped];
     }
 
     /**
@@ -152,7 +173,7 @@ final class EngineReplayService
         foreach (EngineRegistry::all() as $definition) {
             // Manual-only engines have no period of their own to catch up; they
             // ride along below as prerequisites of the engines that need them.
-            if (! $definition->cadence->isScheduled()) {
+            if (! $definition->cadence->isScheduled() || ! $this->isSelected($definition)) {
                 continue;
             }
 
@@ -202,6 +223,34 @@ final class EngineReplayService
         }
     }
 
+    /** Is this engine part of the replay the caller asked for? */
+    private function isSelected(EngineDefinition $definition): bool
+    {
+        return $this->onlyKeys === null || in_array($definition->key, $this->onlyKeys, true);
+    }
+
+    /**
+     * Scheduled engines the caller left out — reported, never silent.
+     *
+     * @return list<string>
+     */
+    private function skippedKeys(): array
+    {
+        if ($this->onlyKeys === null) {
+            return [];
+        }
+
+        $skipped = [];
+
+        foreach (EngineRegistry::all() as $definition) {
+            if ($definition->cadence->isScheduled() && ! $this->isSelected($definition)) {
+                $skipped[] = $definition->key;
+            }
+        }
+
+        return $skipped;
+    }
+
     /** Where in a calendar month an engine sits; daily and weekly engines lead. */
     private static function monthPosition(EngineDefinition $definition): string
     {
@@ -219,7 +268,9 @@ final class EngineReplayService
         $due = [];
 
         foreach (EngineRegistry::all() as $definition) {
-            if ($definition->cadence->isScheduled() && $definition->cadence->runsOn($day)) {
+            if ($definition->cadence->isScheduled()
+                && $definition->cadence->runsOn($day)
+                && $this->isSelected($definition)) {
                 $due[] = $definition;
             }
         }

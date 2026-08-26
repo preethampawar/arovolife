@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compensation\Services\MsbDailyPoolService;
 use App\Modules\Identity\Models\Distributor;
@@ -13,6 +14,10 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+});
+
+afterEach(function (): void {
+    Illuminate\Support\Carbon::setTestNow();
 });
 
 /** Put $bvPaise of company-wide BV on the given date. */
@@ -93,14 +98,17 @@ it('freezes a ₹0 value on a day nobody accrued points, leaving the pool unspen
 });
 
 it('is idempotent — a re-run returns the original row untouched', function () {
-    seedCompanyBv(10_000_000);
+    // Freeze a CLOSED day (yesterday), as the scheduled 00:10 run does. A row
+    // frozen before its day ends is premature and replaceable instead — see
+    // the premature-freeze tests below.
+    seedCompanyBv(10_000_000, today()->subDay());
     $svc = app(MsbDailyPoolService::class);
 
-    $first = $svc->freezePoolForDate(today(), 60);
+    $first = $svc->freezePoolForDate(today()->subDay(), 60);
 
-    // More BV lands and more points accrue afterwards: neither may move the day.
-    seedCompanyBv(90_000_000);
-    $second = $svc->freezePoolForDate(today(), 600);
+    // A late reversal lands and more points accrue afterwards: neither may move the day.
+    seedCompanyBv(90_000_000, today()->subDay());
+    $second = $svc->freezePoolForDate(today()->subDay(), 600);
 
     expect($second->id)->toBe($first->id);
     expect($second->point_value_paise)->toBe(5_000);
@@ -137,4 +145,60 @@ it('honours an admin change to the pool rate on the next unfrozen day', function
     expect($pool->pool_rate_bp)->toBe(600);
     expect($pool->pool_paise)->toBe(600_000);        // 6% of 1,00,000 BV
     expect($pool->point_value_paise)->toBe(10_000);  // ₹100
+});
+
+// Same premature-freeze rule as the GSB pool (staging incident, 24 Aug 2026):
+// a cut-off run while the day was still in flight froze a ₹0 point value
+// (zero points accrued yet), and the scheduled run would then pay every real
+// mentor ₹0. A row frozen before its day ended, with nobody credited against
+// it, is replaced by the next full run's freeze.
+it('replaces a pool frozen before the day ended when nobody was credited against it', function () {
+    $date = Illuminate\Support\Carbon::parse('2026-08-24');
+    $service = app(MsbDailyPoolService::class);
+
+    Illuminate\Support\Carbon::setTestNow($date->copy()->setTime(23, 27));
+    $premature = $service->freezePoolForDate($date, 0);
+
+    expect($premature->point_value_paise)->toBe(0);
+
+    seedCompanyBv(10_000_000, $date);
+
+    Illuminate\Support\Carbon::setTestNow($date->copy()->addDay()->setTime(0, 10));
+    $healed = $service->freezePoolForDate($date, 60);
+
+    expect($healed->id)->not->toBe($premature->id);
+    expect($healed->company_bv_paise)->toBe(10_000_000);
+    expect($healed->point_value_paise)->toBe(5_000);
+    expect(MsbDailyPool::count())->toBe(1);
+    expect(DB::table('audit_log')->where('action', 'msb.pool.refrozen')->exists())->toBeTrue();
+});
+
+it('keeps a premature pool once a mentor was credited against it', function () {
+    $date = Illuminate\Support\Carbon::parse('2026-08-24');
+    $service = app(MsbDailyPoolService::class);
+
+    Illuminate\Support\Carbon::setTestNow($date->copy()->setTime(23, 27));
+    $premature = $service->freezePoolForDate($date, 0);
+
+    MentorshipBonusResult::create([
+        'sponsor_id' => Distributor::factory()->create()->id,
+        'sponsee_id' => Distributor::factory()->create()->id,
+        'cutoff_date' => $date->toDateString(),
+        'sponsee_gsb_paise' => 200_000,
+        'slab' => 1,
+        'msb_points' => 21,
+        'msb_point_value_paise' => 0,
+        'mb_gross_paise' => 0,
+        'mb_admin_charge_paise' => 0,
+        'mb_tds_paise' => 0,
+        'status' => MentorshipBonusResult::STATUS_CREDITED,
+    ]);
+    seedCompanyBv(10_000_000, $date);
+
+    Illuminate\Support\Carbon::setTestNow($date->copy()->addDay()->setTime(0, 10));
+    $kept = $service->freezePoolForDate($date, 60);
+
+    expect($kept->id)->toBe($premature->id);
+    expect($kept->point_value_paise)->toBe(0);
+    expect(DB::table('audit_log')->where('action', 'msb.pool.refrozen')->exists())->toBeFalse();
 });

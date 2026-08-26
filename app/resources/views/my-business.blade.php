@@ -21,6 +21,12 @@
     $leftCarryForwardBv = $lastMatch?->power_side_after === 'L' ? (int) round($lastMatch->power_cf_after_paise / 100) : 0;
     $rightCarryForwardBv = $lastMatch?->power_side_after === 'R' ? (int) round($lastMatch->power_cf_after_paise / 100) : 0;
 
+    // Personal purchase BV is not part of either side until the 23:59 cut-off
+    // credits it to the weaker group — shown as a separate pending line, never
+    // added into the carried-over totals.
+    $pendingPersonalBv = (int) round(($slabProgress?->pendingPersonalBvTopupPaise ?? 0) / 100);
+    $pendingPersonalBvTip = 'Your own purchase BV is not added to either side when you buy. At tonight\'s 23:59 cut-off it is added to whichever Genos side is weaker, and only if a side has reached the first slab.';
+
     $powerSideIsLeft = ($slabProgress?->powerSide() ?? 'L') === 'L';
     $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
     $powerBadgeClasses = $sideBadgeClasses.' bg-indigo-100 text-indigo-700';
@@ -98,13 +104,19 @@
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Left Genos BV</p>
-                <x-help-tip text="Your Left Genos BV today plus the BV carried over on your Left side from earlier days — business that occurs before matching is carry over, and this is the figure tonight's 23:59 cut-off will use for the Left side. Carry over is never lost; it keeps accumulating until a slab is matched.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="Your Left Genos BV today plus the BV carried over on your Left side from earlier days — business that occurs before matching is carry over, and this is the figure tonight's 23:59 cut-off will use for the Left side. Carry over is never lost; it keeps accumulating until a slab is matched. Your own purchase BV is not included here — the 23:59 cut-off adds it to the weaker side.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($leftEffectiveBv, 0) }}</p>
             <p class="mt-1">
                 <span class="{{ $powerSideIsLeft ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $powerSideIsLeft ? 'Power side' : 'Weaker side' }}</span>
             </p>
             <p class="text-xs text-gray-600 mt-1">{{ Number::format($leftTodayBv, 0) }} today + {{ Number::format($leftEffectiveBv - $leftTodayBv, 0) }} carried over</p>
+            @if($pendingPersonalBv > 0 && $slabProgress->pendingTopupSide === 'L')
+                <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">
+                    + {{ Number::format($pendingPersonalBv, 0) }} BV personal purchase — pending tonight's cut-off
+                    <x-help-tip :text="$pendingPersonalBvTip" />
+                </p>
+            @endif
             @if($slabProgress !== null && $slabProgress->weakerSide() === 'L' && $slabProgress->slab1WeakerCfPaise > 0)
                 <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
             @endif
@@ -112,13 +124,19 @@
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Right Genos BV</p>
-                <x-help-tip text="Your Right Genos BV today plus the BV carried over on your Right side from earlier days — business that occurs before matching is carry over, and this is the figure tonight's 23:59 cut-off will use for the Right side. Carry over is never lost; it keeps accumulating until a slab is matched.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="Your Right Genos BV today plus the BV carried over on your Right side from earlier days — business that occurs before matching is carry over, and this is the figure tonight's 23:59 cut-off will use for the Right side. Carry over is never lost; it keeps accumulating until a slab is matched. Your own purchase BV is not included here — the 23:59 cut-off adds it to the weaker side.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ Number::format($rightEffectiveBv, 0) }}</p>
             <p class="mt-1">
                 <span class="{{ $powerSideIsLeft ? $weakerBadgeClasses : $powerBadgeClasses }}">{{ $powerSideIsLeft ? 'Weaker side' : 'Power side' }}</span>
             </p>
             <p class="text-xs text-gray-600 mt-1">{{ Number::format($rightTodayBv, 0) }} today + {{ Number::format($rightEffectiveBv - $rightTodayBv, 0) }} carried over</p>
+            @if($pendingPersonalBv > 0 && $slabProgress->pendingTopupSide === 'R')
+                <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">
+                    + {{ Number::format($pendingPersonalBv, 0) }} BV personal purchase — pending tonight's cut-off
+                    <x-help-tip :text="$pendingPersonalBvTip" />
+                </p>
+            @endif
             @if($slabProgress !== null && $slabProgress->weakerSide() === 'R' && $slabProgress->slab1WeakerCfPaise > 0)
                 <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
             @endif
@@ -181,6 +199,7 @@
         <p class="text-sm text-gray-600 mb-2"><span class="font-semibold text-gray-800">Carry over:</span> Business that occurs before matching is called carry over.</p>
         <p class="text-sm text-gray-600"><span class="font-semibold text-gray-800">Carry forward:</span> The remaining BVs after matching are called carry forward.</p>
         <p class="text-xs text-gray-600 mt-2">Carry over is never lost — it keeps accumulating as that side's opening balance until a slab is matched. After a match, the weaker side resets to 0 and the power side's carry forward is capped at 4,50,000 BV.</p>
+        <p class="text-xs text-gray-600 mt-2">Your own purchase BV never joins the carry over at the time of purchase. It is added at the 23:59 cut-off, to whichever Genos side is weaker at that moment, and only if a side has reached the first slab that day.</p>
     </div>
     @endif
 </div>

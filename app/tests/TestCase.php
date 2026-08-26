@@ -34,7 +34,15 @@ abstract class TestCase extends BaseTestCase
         $app->make(Kernel::class)->bootstrap();
 
         $default = config('database.default');
-        $database = (string) config("database.connections.{$default}.database");
+
+        // Read the name off the LIVE connection, not out of config. Every
+        // connection carries `'url' => env('DB_URL')`, and when DB_URL is set
+        // Laravel's ConfigurationUrlParser overrides the database at connect
+        // time while config() still returns the stale DB_DATABASE — so a
+        // config-only check can read `arovolife_test` while the handle it
+        // hands RefreshDatabase is pointed at `arovolife`. That is precisely
+        // the wipe this guard exists to prevent.
+        $database = (string) $app->make('db')->connection()->getDatabaseName();
         $isolated = $database === ':memory:' || str_ends_with($database, '_test');
 
         if (! $isolated) {
@@ -55,6 +63,12 @@ abstract class TestCase extends BaseTestCase
         // assertions for freeze/unfreeze/(de)activate/terminate mails fail.
         config(['queue.default' => 'sync']);
 
+        // The recompute/reset tooling refuses unless the CONNECTED database is
+        // named as destroyable. The guard above has just proven this one is an
+        // isolated test database, so declaring it here is honest — and it keeps
+        // the gate itself under test rather than bypassed.
+        config(['arovolife.recompute.allowed_databases' => [$database]]);
+
         // Restore the intended `testing` environment. phpunit.xml sets
         // APP_ENV=testing, but the container's OS env (APP_ENV=local) wins —
         // even PHPUnit's force="true" does not stick here (see the DB_* entries
@@ -64,6 +78,14 @@ abstract class TestCase extends BaseTestCase
         // binding makes runningUnitTests() true again.
         $app->instance('env', 'testing');
         config(['app.env' => 'testing']);
+
+        // Laravel skips rerouteSymfonyCommandEvents() when runningUnitTests(),
+        // so CommandStarting/CommandFinished never fire under PHPUnit and the
+        // RecordEngineRun listener — the ONLY writer of `engine_runs` — records
+        // nothing. Every engine-run assertion would then be vacuously false
+        // while the same code works in production. Re-bridge the events so the
+        // run log behaves under test exactly as it does under cron.
+        $app->make(Kernel::class)->rerouteSymfonyCommandEvents();
 
         return $app;
     }

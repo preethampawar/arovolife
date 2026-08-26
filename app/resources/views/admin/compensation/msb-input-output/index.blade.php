@@ -61,6 +61,9 @@
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) }}</strong></span>
             <span class="text-gray-600">Point value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) }}</strong></span>
+            <span class="text-gray-500 ml-auto">Computed
+                <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
+                <x-help-tip text="When this day's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the original cut-off run." /></span>
         </div>
 
         @if($pool->total_points === 0 && $pool->pool_paise > 0)

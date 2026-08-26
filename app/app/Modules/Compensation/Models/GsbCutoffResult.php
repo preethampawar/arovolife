@@ -53,6 +53,21 @@ final class GsbCutoffResult extends Model
     /** Repurchase grace lapsed — calculated but suspended (not credited). */
     public const STATUS_REPURCHASE_SUSPENDED = 'repurchase_suspended';
 
+    /**
+     * Statuses whose gross was priced against (and funded by) the day's frozen
+     * GSB pool. Suspended income is later forfeited and reversed income was
+     * debited back, but their gross still consumed the pool on the day. Used by
+     * the Input & Output report and by GsbDailyPoolService to decide whether a
+     * prematurely frozen pool row can still be safely replaced.
+     */
+    public const POOL_FUNDED_STATUSES = [
+        self::STATUS_CREDITED,
+        self::STATUS_FROZEN,
+        self::STATUS_REPURCHASE_HELD,
+        self::STATUS_REPURCHASE_SUSPENDED,
+        self::STATUS_REVERSED,
+    ];
+
     protected $table = 'gsb_cutoff_results';
 
     protected $fillable = [

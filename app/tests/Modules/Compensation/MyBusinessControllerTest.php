@@ -222,6 +222,32 @@ it('shows the carry-forward decomposition, todays genos bv and team counts', fun
         ->and($counts['right_team'])->toBe(1);
 });
 
+it('keeps personal purchase BV out of the carried-over figures until the cut-off', function (): void {
+    ['user' => $user, 'distributorId' => $rootId] = myBusinessDistributor();
+    $this->actingAs($user);
+
+    // 1,000 BV of personal purchases, none of it topped up yet.
+    myBusinessGivePersonalBv($rootId, 100_000, 888_010);
+
+    // Left has touched the 15,000 BV first slab, so tonight's cut-off will add
+    // the personal BV to the weaker (Right) side — but not a moment sooner.
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => $rootId,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 2_000_000, // 20,000 BV
+        'right_bv_paise' => 1_600_000, // 16,000 BV
+    ]);
+
+    $this->get(route('my-business'))
+        ->assertOk()
+        // Right stays at 16,000 — the 1,000 BV personal purchase is not in it.
+        ->assertSee('16,000')
+        ->assertSee('16,000 today + 0 carried over')
+        ->assertDontSee('17,000')
+        // ...it is announced separately as pending tonight's cut-off.
+        ->assertSee("+ 1,000 BV personal purchase — pending tonight's cut-off", false);
+});
+
 it('shows carry forward as the remainder of the last slab match only', function (): void {
     ['user' => $user, 'distributorId' => $rootId] = myBusinessDistributor();
     $this->actingAs($user);

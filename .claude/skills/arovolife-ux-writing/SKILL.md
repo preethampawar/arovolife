@@ -68,7 +68,14 @@ Pattern: *what happened* → *why* → *what to do next*.
 > Choose which leg of `<placement_id>` to place the new joiner under. This decision affects the structure of your team and cannot easily be changed after registration.
 > ( ) Left leg   ( ) Right leg
 
-Never use the words "stronger" or "weaker" for legs in the public UI.
+Never use the words "stronger" or "weaker" for legs in **public or registration** copy — there they read
+as a judgement on a prospect's team and invite a comparison we do not want made before anyone joins.
+
+Accepted deviation (2026-08-25, on compliance review): the authenticated distributor income surfaces —
+My Business, /income, the Genos BV page — do use "Power side" and "Weaker side", because the client
+endorsed those badges and the compensation plan itself is written in those terms. A distributor reading
+their own settled figures needs the plan's vocabulary, not a euphemism for it. The prohibition still
+stands everywhere a non-distributor can read.
 
 ## Email subjects (sample)
 

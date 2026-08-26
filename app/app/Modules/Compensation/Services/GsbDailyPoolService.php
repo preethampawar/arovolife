@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
@@ -94,7 +95,7 @@ final class GsbDailyPoolService
     public function freezePoolForDate(Carbon $date, int $fixedPayoutPaise, int $variableTotalScore): GsbDailyPool
     {
         $existing = $this->poolForDate($date);
-        if ($existing !== null) {
+        if ($existing !== null && ! $this->replacePrematureFreeze($existing)) {
             return $existing;
         }
 
@@ -151,6 +152,67 @@ final class GsbDailyPoolService
         ]);
 
         return $pool;
+    }
+
+    /**
+     * Delete a pool row that was PROVABLY frozen too early, so the caller can
+     * freeze the day afresh. Returns true when the row was removed.
+     *
+     * "Frozen economics" assumes the freeze happened once the day's BV was
+     * final — the scheduler guarantees that by running at 00:10 the next day.
+     * A freeze whose created_at falls BEFORE the day ended broke that
+     * assumption (a mid-day manual run, or the recompute tool's catch-up of
+     * the period in flight): it snapshotted partial company BV and a partial
+     * achiever count, and every later run for the date would silently price
+     * against it. Staging, 24 Aug 2026: a 23:27 manual cut-off froze the day
+     * at ₹0 / zero achievers, and the scheduled run then paid 7 achievers the
+     * capped value out of an empty pool.
+     *
+     * Replacement is only safe while NOTHING was funded by the row: once any
+     * result for the date carries pool-priced gross, re-freezing would change
+     * economics that money already moved on, so the row is kept and the
+     * inconsistency surfaced loudly instead.
+     */
+    private function replacePrematureFreeze(GsbDailyPool $existing): bool
+    {
+        $dayEnd = $existing->cutoff_date->copy()->addDay()->startOfDay();
+        if ($existing->created_at === null || $existing->created_at->gte($dayEnd)) {
+            return false; // Frozen after the day closed — the normal, final row.
+        }
+
+        $details = [
+            'cutoff_date' => $existing->cutoff_date->toDateString(),
+            'frozen_at' => $existing->created_at->toDateTimeString(),
+            'company_bv_paise' => $existing->company_bv_paise,
+            'pool_paise' => $existing->pool_paise,
+            'variable_total_score' => $existing->variable_total_score,
+            'variable_score_value_paise' => $existing->variable_score_value_paise,
+        ];
+
+        if (GsbCutoffResult::whereDate('cutoff_date', $existing->cutoff_date->toDateString())
+            ->whereIn('status', GsbCutoffResult::POOL_FUNDED_STATUSES)
+            ->exists()) {
+            Log::warning('gsb.pool.premature_freeze_kept', $details + [
+                'reason' => 'results were already priced against this pool; re-freezing would change economics money moved on',
+            ]);
+
+            return false;
+        }
+
+        Log::warning('gsb.pool.premature_freeze_replaced', $details);
+
+        AuditLog::create([
+            'action' => 'gsb.pool.refrozen',
+            'subject_type' => 'gsb_daily_pool',
+            'subject_id' => $existing->id,
+            'details' => $details + [
+                'reason' => 'pool was frozen before the day ended and nothing was priced against it',
+            ],
+        ]);
+
+        $existing->delete();
+
+        return true;
     }
 
     /**

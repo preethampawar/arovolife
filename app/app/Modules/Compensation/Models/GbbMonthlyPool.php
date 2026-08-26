@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Frozen per-month economics of the Growth Booster Bonus pool.
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $point_value_paise
  * @property int $payout_paise
  * @property int $leftover_paise
+ * @property Carbon|null $created_at
  */
 final class GbbMonthlyPool extends Model
 {

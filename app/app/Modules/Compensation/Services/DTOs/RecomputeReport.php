@@ -12,6 +12,12 @@ use Illuminate\Support\Carbon;
  */
 final readonly class RecomputeReport
 {
+    /** Every derived row was truncated and rebuilt from the first BV date. */
+    public const MODE_FULL = 'full';
+
+    /** Only the rows from the window start onwards were removed and rebuilt. */
+    public const MODE_WINDOWED = 'windowed';
+
     /**
      * @param  array<string, int>  $rowsRemoved  table => rows truncated
      * @param  array<string, int>  $enginesRun  artisan signature => times invoked
@@ -26,6 +32,7 @@ final readonly class RecomputeReport
         public array $enginesRun,
         public array $warnings,
         public float $durationSeconds,
+        public string $mode = self::MODE_FULL,
     ) {}
 
     public function totalRowsRemoved(): int
@@ -36,5 +43,17 @@ final readonly class RecomputeReport
     public function totalEngineRuns(): int
     {
         return array_sum($this->enginesRun);
+    }
+
+    public function isWindowed(): bool
+    {
+        return $this->mode === self::MODE_WINDOWED;
+    }
+
+    /** "Everything" or "25 Aug 2026 → 25 Aug 2026" — for the report header. */
+    public function windowLabel(): string
+    {
+        return $this->from->format('d M Y').' → '.$this->to->format('d M Y')
+            .($this->isWindowed() ? ' (windowed)' : ' (full)');
     }
 }

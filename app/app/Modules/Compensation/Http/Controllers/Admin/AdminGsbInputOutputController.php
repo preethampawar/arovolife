@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -37,7 +38,7 @@ final class AdminGsbInputOutputController extends Controller
 {
     private const DAYS_PER_PAGE = 10;
 
-    private const FUNDED_STATUSES = ['credited', 'frozen', 'repurchase_held', 'repurchase_suspended', 'reversed'];
+    private const FUNDED_STATUSES = GsbCutoffResult::POOL_FUNDED_STATUSES;
 
     public function index(Request $request): View
     {
@@ -79,10 +80,11 @@ final class AdminGsbInputOutputController extends Controller
             $pools->map(fn (GsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Variance (Rs)\n";
+        $csv = "Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Variance (Rs),Computed At\n";
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
+            $computedAt = $pool->created_at?->format('Y-m-d H:i:s') ?? '';
             $dayNo = $this->dayNumber($anchor, $pool->cutoff_date);
             $weekNo = $dayNo === null ? null : intdiv($dayNo - 1, 7) + 1;
             $grandTotal = 0;
@@ -106,6 +108,7 @@ final class AdminGsbInputOutputController extends Controller
                     number_format($valuePaise / 100, 2, '.', ''),
                     number_format($agg->income_paise / 100, 2, '.', ''),
                     number_format($variancePaise / 100, 2, '.', ''),
+                    $computedAt,
                 ])."\n";
             }
 
@@ -122,6 +125,7 @@ final class AdminGsbInputOutputController extends Controller
                 '',
                 number_format($grandTotal / 100, 2, '.', ''),
                 $this->csvStr('leftover '.number_format($pool->leftover_paise / 100, 2, '.', '')),
+                $computedAt,
             ])."\n";
         }
 

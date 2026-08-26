@@ -49,6 +49,18 @@ final class RecordEngineRun
      */
     private array $flagOff = [];
 
+    /**
+     * Run id => hrtime(true) at CommandStarting.
+     *
+     * Wall-clock duration cannot be derived from started_at/finished_at: the
+     * compensation replay travels the clock (Carbon::setTestNow) so every
+     * replayed run stamps the same instant twice and reads as 0 seconds. hrtime
+     * is monotonic and unaffected by the travelled clock.
+     *
+     * @var array<int, float>
+     */
+    private array $startedHrtime = [];
+
     public function starting(CommandStarting $event): void
     {
         $definition = $this->definitionFor($event->command);
@@ -78,6 +90,7 @@ final class RecordEngineRun
         }
 
         $this->inFlight[$definition->commandSignature][] = $run->id;
+        $this->startedHrtime[$run->id] = hrtime(true);
         $context->recordRunId($run->id);
 
         if ($this->featureFlagIsOff($definition)) {
@@ -111,6 +124,8 @@ final class RecordEngineRun
         $wasFlagOff = isset($this->flagOff[$runId]);
         unset($this->flagOff[$runId]);
 
+        $durationMs = $this->elapsedMs($runId);
+
         try {
             if ($wasFlagOff && $event->exitCode === 0) {
                 // The command no-opped because its feature flag is off. Recorded
@@ -120,6 +135,7 @@ final class RecordEngineRun
                     'status' => EngineRun::STATUS_SKIPPED,
                     'summary' => json_encode(['reason' => 'feature_flag_off']),
                     'finished_at' => Carbon::now(),
+                    'duration_ms' => $durationMs,
                     'updated_at' => Carbon::now(),
                 ]);
 
@@ -129,11 +145,23 @@ final class RecordEngineRun
             EngineRun::where('id', $runId)->update([
                 'status' => $event->exitCode === 0 ? EngineRun::STATUS_SUCCEEDED : EngineRun::STATUS_FAILED,
                 'finished_at' => Carbon::now(),
+                'duration_ms' => $durationMs,
                 'updated_at' => Carbon::now(),
             ]);
         } catch (Throwable $e) {
             $this->logFailure('engine_run.record.finish_failed', $definition->key, $e);
         }
+    }
+
+    /** Monotonic milliseconds since this run's CommandStarting, if we saw it. */
+    private function elapsedMs(int $runId): ?int
+    {
+        $startedAt = $this->startedHrtime[$runId] ?? null;
+        unset($this->startedHrtime[$runId]);
+
+        return $startedAt === null
+            ? null
+            : (int) round((hrtime(true) - $startedAt) / 1_000_000);
     }
 
     private function featureFlagIsOff(EngineDefinition $definition): bool

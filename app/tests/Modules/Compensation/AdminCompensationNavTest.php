@@ -54,6 +54,17 @@ it('renders the compensation sub-nav inside a report page so there is a way back
         ->assertSee(route('admin.compensation.engine-runs.index'), false);
 });
 
+it('links the monthly Input & Output reports when their engines are on', function (): void {
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    $this->actingAs(compNavAdmin())
+        ->get(route('admin.compensation.overview'))
+        ->assertOk()
+        ->assertSee(route('admin.compensation.gbb-input-output.index'), false)
+        ->assertSee(route('admin.compensation.rb-input-output.index'), false);
+});
+
 it('renders the sub-nav on the compensation overview too', function (): void {
     $this->actingAs(compNavAdmin())
         ->get(route('admin.compensation.overview'))

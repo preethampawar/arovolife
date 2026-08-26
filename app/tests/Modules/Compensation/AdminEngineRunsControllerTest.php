@@ -2,15 +2,24 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Services\DTOs\RecomputeReport;
+use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
+use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
+use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Pennant\Feature;
 
@@ -233,6 +242,69 @@ it('rejects invalid engine keys, malformed periods, future periods and short rea
     Queue::assertNothingPushed();
 });
 
+it('refuses to run an economics-freezing engine for a period still in flight', function (): void {
+    // Staging, 24 Aug 2026: a manual cut-off at 23:27 froze that day's pool at
+    // ₹0 before the evening's BV landed, and the scheduled 00:10 run then paid
+    // the day's real achievers out of the empty snapshot. A day is only
+    // runnable once it has ended; a month once it has ended.
+    Queue::fake();
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(GrowthBoosterBonusFeature::class);
+    $admin = engineRunsUser('admin');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => now()->toDateString(),
+            'reason' => 'Trying to see today\'s results early.',
+        ])->assertSessionHasErrors('period');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gbb.monthly',
+            'period' => now()->format('Y-m'),
+            'reason' => 'Trying to run the current month early.',
+        ])->assertSessionHasErrors('period');
+
+    Queue::assertNothingPushed();
+
+    // Yesterday is closed, so the cut-off may run for it.
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => now()->subDay()->toDateString(),
+            'reason' => 'Scheduled run failed — re-running yesterday.',
+        ])->assertSessionHasNoErrors();
+
+    Queue::assertPushed(RunEngineChainJob::class);
+});
+
+it('still allows in-flight periods for engines that do not freeze economics', function (): void {
+    // Repurchase evaluation is DESIGNED to run for today (an as-of-morning
+    // view), and the rank check is monotone over the month — neither freezes
+    // a pool, so the closed-period rule must not block them.
+    Queue::fake();
+    Feature::activate(RepurchaseEngineFeature::class);
+    Feature::activate(RankBonusFeature::class);
+    $admin = engineRunsUser('admin');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'repurchase.evaluate',
+            'period' => now()->toDateString(),
+            'reason' => 'Refreshing repurchase cycles for today.',
+        ])->assertSessionHasNoErrors();
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'rank.check',
+            'period' => now()->format('Y-m'),
+            'reason' => 'Mid-month rank qualification check.',
+        ])->assertSessionHasNoErrors();
+
+    Queue::assertPushed(RunEngineChainJob::class, 2);
+});
+
 /*
 |--------------------------------------------------------------------------
 | TESTING-ONLY full recompute — removed with the scaffold at client sign-off
@@ -258,7 +330,68 @@ it('shows the recompute card to an admin when the gate is open', function (): vo
         ->get(route('admin.compensation.engine-runs.index'));
 
     $response->assertOk();
-    $response->assertSee('Recompute everything');
+    $response->assertSee('Testing tool — recompute everything from scratch', false);
+    $response->assertSee('Run recompute');
+    // The window controls and the engine picker are what make a partial
+    // replay reachable from the page at all.
+    $response->assertSee('Keep earlier history (rebuild only the window)');
+    $response->assertSee('name="engines[]"', false);
+    // ...and the purchase-data reset lives behind the same gate.
+    $response->assertSee('Testing tool — reset purchase data (start a fresh test cycle)', false);
+});
+
+it('hides the purchase-data reset when the gate is closed', function (): void {
+    config(['arovolife.recompute.enabled' => false]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('Testing tool — reset purchase data (start a fresh test cycle)', false)
+        ->assertDontSee('purchase-reset-confirm-db');
+});
+
+it('404s the purchase-data reset when the gate is closed', function (): void {
+    config(['arovolife.recompute.enabled' => false]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => 'x'])
+        ->assertNotFound();
+});
+
+it('refuses a purchase-data reset unless the database name is typed exactly', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->from(route('admin.compensation.engine-runs.index'))
+        ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => 'not-the-db'])
+        ->assertSessionHasErrors('confirm_database');
+});
+
+it('wipes orders on a confirmed purchase-data reset but keeps the distributors', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $distributor = Distributor::factory()->create();
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributor->id,
+        'order_id' => 4242,
+        'bv_paise' => 100_000,
+        'type' => 'accrual',
+        'effective_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $database = app(RecomputeGuard::class)->targetDatabase();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => $database])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('status');
+
+    expect(DB::table('bv_ledger_entries')->count())->toBe(0)
+        ->and(DB::table('distributors')->where('id', $distributor->id)->exists())->toBeTrue();
+
+    expect(DB::table('audit_log')->where('action', 'platform.purchase_reset')->exists())->toBeTrue();
 });
 
 it('404s the recompute endpoint when the gate is closed', function (): void {
@@ -278,7 +411,7 @@ it('queues the recompute rather than running it inline', function (): void {
         ->assertRedirect(route('admin.compensation.engine-runs.index'))
         ->assertSessionHas('status');
 
-    Queue::assertPushed(\App\Modules\Compensation\Jobs\RecomputeAllJob::class);
+    Queue::assertPushed(RecomputeAllJob::class);
 
     AuditLog::query()->where('action', 'compensation.recompute_all.queued')->firstOrFail();
 });
@@ -290,10 +423,10 @@ it('replaces the previous run summary with a queued state the moment a new run i
     config(['arovolife.recompute.enabled' => true]);
     Queue::fake();
 
-    $progress = app(\App\Modules\Compensation\Services\Recompute\RecomputeProgress::class);
-    $progress->complete(new \App\Modules\Compensation\Services\DTOs\RecomputeReport(
-        from: \Illuminate\Support\Carbon::parse('2026-07-04'),
-        to: \Illuminate\Support\Carbon::parse('2026-08-16'),
+    $progress = app(RecomputeProgress::class);
+    $progress->complete(new RecomputeReport(
+        from: Carbon::parse('2026-07-04'),
+        to: Carbon::parse('2026-08-16'),
         rowsRemoved: ['gbb_monthly_pools' => 3],
         ordersPropagated: 315,
         daysReplayed: 44,
@@ -307,7 +440,7 @@ it('replaces the previous run summary with a queued state the moment a new run i
 
     $state = $progress->read();
 
-    expect($state['state'])->toBe(\App\Modules\Compensation\Services\Recompute\RecomputeProgress::STATE_RUNNING);
+    expect($state['state'])->toBe(RecomputeProgress::STATE_RUNNING);
     expect($state['summary'])->toBeNull();
     expect($state['percent'])->toBe(0);
 });
@@ -324,4 +457,145 @@ it('renders a flash message exactly once, not once per view that thought it owne
     // The admin layout renders session('status') for every page. A view that
     // also renders its own block shows the user the same message twice.
     expect(substr_count($response->getContent(), 'Full recompute queued.'))->toBe(1);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Guards on the testing-only tooling (compliance review, 2026-08-25)
+|--------------------------------------------------------------------------
+*/
+
+it('refuses the whole scaffold when the connected database is not on the allow-list', function (): void {
+    config([
+        'arovolife.recompute.enabled' => true,
+        // The flag is on and this is not production — the only thing standing
+        // between the operator and the data is the database's own name.
+        'arovolife.recompute.allowed_databases' => ['some-other-database'],
+    ]);
+
+    expect(app(RecomputeGuard::class)->isPermitted())->toBeFalse();
+
+    $admin = engineRunsUser('admin');
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('recompute-all');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->assertNotFound();
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.reset-purchase-data'), [
+            'confirm_database' => app(RecomputeGuard::class)->targetDatabase(),
+        ])
+        ->assertNotFound();
+
+    expect(DB::table('audit_log')->where('action', 'like', 'platform.purchase_reset%')->count())->toBe(0);
+});
+
+it('names the database in the refusal so the operator sees which one it read', function (): void {
+    config([
+        'arovolife.recompute.enabled' => true,
+        'arovolife.recompute.allowed_databases' => [],
+    ]);
+
+    expect(fn () => app(RecomputeGuard::class)->ensurePermitted())
+        ->toThrow(RecomputeNotPermitted::class, app(RecomputeGuard::class)->targetDatabase());
+});
+
+it('records who ordered a purchase reset and what was standing before it ran', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $admin = engineRunsUser('admin');
+    $distributor = Distributor::factory()->create();
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributor->id,
+        'order_id' => 909,
+        'bv_paise' => 250_000,
+        'type' => 'accrual',
+        'effective_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.engine-runs.reset-purchase-data'), [
+            'confirm_database' => app(RecomputeGuard::class)->targetDatabase(),
+        ])
+        ->assertSessionHas('status');
+
+    // Written before the truncation, so it survives even a half-finished wipe.
+    $requested = DB::table('audit_log')->where('action', 'platform.purchase_reset.requested')->first();
+    expect($requested)->not->toBeNull()
+        ->and((int) $requested->actor_id)->toBe($admin->id);
+
+    $details = json_decode((string) $requested->details, true);
+    expect($details['rows_standing']['bv_ledger_entries'])->toBe(1)
+        ->and($details['database'])->toBe(app(RecomputeGuard::class)->targetDatabase());
+
+    // And the action's own entry is attributed to the real operator rather than
+    // the seeded admin address, with the counts it actually destroyed.
+    $done = DB::table('audit_log')->where('action', 'platform.purchase_reset')->first();
+    $doneDetails = json_decode((string) $done->details, true);
+    expect((int) $done->actor_id)->toBe($admin->id)
+        ->and($doneDetails['rows_removed']['bv_ledger_entries'])->toBe(1)
+        ->and($doneDetails['note'])->toContain('the admin Engine Runs console');
+});
+
+it('refuses a purchase reset while the replay lock is held rather than stealing it', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    $distributor = Distributor::factory()->create();
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributor->id,
+        'order_id' => 555,
+        'bv_paise' => 100_000,
+        'type' => 'accrual',
+        'effective_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // A replay is genuinely in flight. Truncating its source orders is the one
+    // thing a re-run cannot recover from, so the reset must stand down.
+    Cache::lock(RecomputeAllJob::LOCK_KEY, 900)->get();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->from(route('admin.compensation.engine-runs.index'))
+        ->post(route('admin.compensation.engine-runs.reset-purchase-data'), [
+            'confirm_database' => app(RecomputeGuard::class)->targetDatabase(),
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('error');
+
+    expect(DB::table('bv_ledger_entries')->count())->toBe(1);
+});
+
+it('requires the operator to acknowledge the engines a partial replay will not rebuild', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->from(route('admin.compensation.engine-runs.index'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), [
+            'from' => today()->toDateString(),
+            'windowed' => '1',
+            'engines' => ['gsb.daily-cutoff'],
+        ])
+        ->assertSessionHasErrors('accept_missing_engines');
+
+    Queue::assertNothingPushed();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), [
+            'from' => today()->toDateString(),
+            'windowed' => '1',
+            'engines' => ['gsb.daily-cutoff'],
+            'accept_missing_engines' => '1',
+        ])
+        ->assertSessionHas('status');
+
+    Queue::assertPushed(RecomputeAllJob::class);
 });

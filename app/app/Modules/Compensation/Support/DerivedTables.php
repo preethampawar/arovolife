@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Support;
 
+use App\Console\Actions\PurchaseDataResetAction;
+use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
+
 /**
  * The single source of truth for which tables hold state COMPUTED from BV, and
  * the order they must be truncated in.
@@ -14,9 +17,9 @@ namespace App\Modules\Compensation\Support;
  * safe to keep when the intent is to recompute from scratch.
  *
  * Two callers consume it and there must never be a third copy:
- *   • {@see \App\Console\Actions\PurchaseDataResetAction} — wipes these PLUS
+ *   • {@see PurchaseDataResetAction} — wipes these PLUS
  *     the commerce source tables ("start selling again").
- *   • {@see \App\Modules\Compensation\Services\Recompute\CompensationStateWiper}
+ *   • {@see CompensationStateWiper}
  *     — wipes only these, keeping the purchases ("recompute the same history").
  *
  * The list drifting out of date is not hypothetical: rank_aogo_grants,
@@ -88,11 +91,64 @@ final class DerivedTables
     ];
 
     /**
+     * The column that dates each derived row, per table — what makes a
+     * *windowed* recompute possible at all: with it a replay can delete only
+     * the rows on or after a date instead of truncating the history.
+     *
+     * `period` tables are keyed by the first day of the month the engine ran
+     * for, so a window that starts mid-month must delete from that month's
+     * first day (see WindowedStateWiper).
+     *
+     * Three tables are deliberately absent because they carry no date:
+     *   • gsb_carryforward — one rolling row per distributor, rewound from the
+     *     `*_before` columns already stored on gsb_cutoff_results;
+     *   • group_bv_debts — rolling reversal debt, rewound arithmetically;
+     *   • payout_line_items — deleted by parent payout_batches id.
+     *
+     * @var array<string, array{column: string, granularity: 'day'|'month'}>
+     */
+    private const DATE_COLUMNS = [
+        'group_bv_credits' => ['column' => 'date', 'granularity' => 'day'],
+        'group_bv_reversals' => ['column' => 'date', 'granularity' => 'day'],
+        'bv_propagation_log' => ['column' => 'date', 'granularity' => 'day'],
+        'group_bv_daily' => ['column' => 'date', 'granularity' => 'day'],
+        'wallet_ledger_entries' => ['column' => 'created_at', 'granularity' => 'day'],
+        'payout_batches' => ['column' => 'batch_date', 'granularity' => 'day'],
+        'gsb_cutoff_results' => ['column' => 'cutoff_date', 'granularity' => 'day'],
+        'gsb_personal_bv_topups' => ['column' => 'date', 'granularity' => 'day'],
+        'gsb_daily_pools' => ['column' => 'cutoff_date', 'granularity' => 'day'],
+        'msb_daily_pools' => ['column' => 'cutoff_date', 'granularity' => 'day'],
+        'mentorship_bonus_results' => ['column' => 'cutoff_date', 'granularity' => 'day'],
+        'repurchase_cycles' => ['column' => 'cycle_start_date', 'granularity' => 'day'],
+        'engine_runs' => ['column' => 'period_start', 'granularity' => 'day'],
+        'gbb_monthly_results' => ['column' => 'year_month', 'granularity' => 'month'],
+        'gbb_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
+        'rank_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
+        'rank_aogo_grants' => ['column' => 'month_start', 'granularity' => 'month'],
+        'rank_qualifications' => ['column' => 'month_start', 'granularity' => 'month'],
+        'lifetime_award_milestones' => ['column' => 'triggered_month', 'granularity' => 'month'],
+        'fortune_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
+        'fortune_bonus_participants' => ['column' => 'month_start', 'granularity' => 'month'],
+        'fortune_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
+        'adc_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
+    ];
+
+    /**
      * @return list<string>
      */
     public static function inTruncationOrder(): array
     {
         return self::TABLES;
+    }
+
+    /**
+     * How to date-filter one derived table, or null when it carries no date.
+     *
+     * @return array{column: string, granularity: 'day'|'month'}|null
+     */
+    public static function dateFilter(string $table): ?array
+    {
+        return self::DATE_COLUMNS[$table] ?? null;
     }
 
     public static function contains(string $table): bool
