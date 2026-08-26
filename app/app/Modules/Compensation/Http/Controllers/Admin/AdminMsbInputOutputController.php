@@ -76,10 +76,11 @@ final class AdminMsbInputOutputController extends Controller
             $pools->map(fn (MsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total Received BV,MSB Pool (Rs),Sponsor ADN,Sponsor Name,MSB Points,Point Value (Rs),Income (Rs)\n";
+        $csv = "Day,Week,Date,Day Total Received BV,MSB Pool (Rs),Sponsor ADN,Sponsor Name,MSB Points,Point Value (Rs),Income (Rs),Computed At\n";
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
+            $computedAt = $pool->created_at?->format('Y-m-d H:i:s') ?? '';
             $dayNo = $this->dayNumber($anchor, $pool->cutoff_date);
             $weekNo = $dayNo === null ? null : intdiv($dayNo - 1, 7) + 1;
             $totalPoints = 0;
@@ -100,6 +101,7 @@ final class AdminMsbInputOutputController extends Controller
                     (int) $row->msb_points,
                     number_format(((int) $row->point_value_paise) / 100, 2, '.', ''),
                     number_format($row->income_paise / 100, 2, '.', ''),
+                    $computedAt,
                 ])."\n";
             }
 
@@ -114,6 +116,7 @@ final class AdminMsbInputOutputController extends Controller
                 $totalPoints,
                 number_format($pool->point_value_paise / 100, 2, '.', ''),
                 number_format($totalIncome / 100, 2, '.', ''),
+                $computedAt,
             ])."\n";
         }
 

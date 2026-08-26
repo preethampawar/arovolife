@@ -80,10 +80,11 @@ final class AdminGsbInputOutputController extends Controller
             $pools->map(fn (GsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Variance (Rs)\n";
+        $csv = "Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Variance (Rs),Computed At\n";
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
+            $computedAt = $pool->created_at?->format('Y-m-d H:i:s') ?? '';
             $dayNo = $this->dayNumber($anchor, $pool->cutoff_date);
             $weekNo = $dayNo === null ? null : intdiv($dayNo - 1, 7) + 1;
             $grandTotal = 0;
@@ -107,6 +108,7 @@ final class AdminGsbInputOutputController extends Controller
                     number_format($valuePaise / 100, 2, '.', ''),
                     number_format($agg->income_paise / 100, 2, '.', ''),
                     number_format($variancePaise / 100, 2, '.', ''),
+                    $computedAt,
                 ])."\n";
             }
 
@@ -123,6 +125,7 @@ final class AdminGsbInputOutputController extends Controller
                 '',
                 number_format($grandTotal / 100, 2, '.', ''),
                 $this->csvStr('leftover '.number_format($pool->leftover_paise / 100, 2, '.', '')),
+                $computedAt,
             ])."\n";
         }
 

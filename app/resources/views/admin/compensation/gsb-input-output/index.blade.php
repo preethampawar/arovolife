@@ -67,6 +67,9 @@
             <span class="text-gray-500">Variable score value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_paise / 100, 2) }}</strong>
                 <span class="text-gray-400">(cap ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_cap_paise / 100, 2) }})</span></span>
+            <span class="text-gray-500 ml-auto">Computed
+                <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
+                <x-help-tip text="When this day's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the original cut-off run." /></span>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
