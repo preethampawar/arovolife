@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property int $tds_paise
  * @property int $net_gsb_paise
  * @property int $power_cf_before_paise
+ * @property string|null $power_side_before
  * @property int $power_cf_after_paise
  * @property string|null $power_side_after
  * @property int $slab1_weaker_cf_before_paise

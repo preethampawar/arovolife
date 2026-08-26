@@ -42,7 +42,7 @@
                     ];
                 @endphp
                 <tr>
-                    <td class="px-4 py-2 font-medium">{{ $b->batch_date->format('d M Y') }} (Tue)</td>
+                    <td class="px-4 py-2 font-medium">{{ $b->batch_date->format('d M Y') }} ({{ $b->batch_date->format('D') }})</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($b->distributor_count) }}</td>
                     <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_gross_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_deductions_paise / 100, 2) }}</td>
