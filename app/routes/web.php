@@ -40,6 +40,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusCalculation
 use App\Modules\Compensation\Http\Controllers\Admin\AdminFortuneBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminGbbInputOutputController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGenosTransactionsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbInputOutputController;
@@ -50,6 +51,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbInputOutputControlle
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusInputOutputController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
 use App\Modules\Compensation\Http\Controllers\IncomeController;
@@ -382,8 +384,14 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::get('gbb-calculation', [AdminGbbCalculationController::class, 'index'])->name('gbb-calculation.index');
         Route::get('gbb-calculation/export', [AdminGbbCalculationController::class, 'export'])->name('gbb-calculation.export');
 
+        Route::get('gbb-input-output', [AdminGbbInputOutputController::class, 'index'])->name('gbb-input-output.index');
+        Route::get('gbb-input-output/export', [AdminGbbInputOutputController::class, 'export'])->name('gbb-input-output.export');
+
         Route::get('rb-calculation', [AdminRankBonusCalculationController::class, 'index'])->name('rb-calculation.index');
         Route::get('rb-calculation/export', [AdminRankBonusCalculationController::class, 'export'])->name('rb-calculation.export');
+
+        Route::get('rb-input-output', [AdminRankBonusInputOutputController::class, 'index'])->name('rb-input-output.index');
+        Route::get('rb-input-output/export', [AdminRankBonusInputOutputController::class, 'export'])->name('rb-input-output.export');
 
         Route::get('fb-calculation', [AdminFortuneBonusCalculationController::class, 'index'])->name('fb-calculation.index');
         Route::get('fb-calculation/export', [AdminFortuneBonusCalculationController::class, 'export'])->name('fb-calculation.export');
