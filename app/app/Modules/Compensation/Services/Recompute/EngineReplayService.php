@@ -93,6 +93,14 @@ final class EngineReplayService
         // would stamp rows into the future.
         $realNow = Carbon::now();
 
+        // When the window runs right up to today, the catch-up pass below owns
+        // every period still in flight: it computes them on the real clock, so
+        // their frozen rows say when they were actually frozen. The day loop
+        // stepping onto one of those periods would freeze it hours early, at
+        // the simulated schedule instant, and the catch-up would then skip it
+        // as already covered.
+        $catchUpWillRun = $to->isSameDay($realNow);
+
         $this->progress->daysTotal((int) $from->diffInDays($to) + 1);
 
         for ($day = $from->copy()->startOfDay(); $day->lte($to); $day->addDay()) {
@@ -111,6 +119,11 @@ final class EngineReplayService
 
             foreach ($due as $definition) {
                 $period = $definition->periodRelativeTo($day);
+
+                if ($catchUpWillRun && $this->isInFlight($definition, $period, $realNow)) {
+                    continue;
+                }
+
                 $at = $definition->cadence->atOn($day);
                 $at = $at->gt($realNow) ? $realNow->copy() : $at;
 
@@ -157,10 +170,14 @@ final class EngineReplayService
      * the data as it stands right now.
      *
      * So each scheduled engine runs once more for the period in flight — today
-     * for the date engines, this month for the month engines — unless the day
-     * loop already covered that exact period. The results are partial by
-     * construction and freeze exactly like any other run, which is only safe
-     * because this tool wipes and rebuilds every derived row on each use. The
+     * for the date engines, this month for the month engines. The day loop
+     * deliberately steps around those periods (see replay()), so this pass owns
+     * them outright and stamps their rows with the real clock: a frozen row for
+     * an unfinished period must say when it was actually frozen, not the
+     * simulated schedule instant the replay was pretending it was. The results
+     * are partial by construction and freeze exactly like any other run, which
+     * is only safe because this tool wipes and rebuilds every derived row on
+     * each use. The
      * scheduler itself is untouched: nothing here changes when or for which
      * period a production run fires.
      *
@@ -318,6 +335,18 @@ final class EngineReplayService
         }
 
         return $prerequisites;
+    }
+
+    /**
+     * Is this the period the engine has not finished living through — today for
+     * a date engine, the current month for a month engine? Those periods belong
+     * to the catch-up pass whenever the window ends today.
+     */
+    private function isInFlight(EngineDefinition $definition, Carbon $period, Carbon $realNow): bool
+    {
+        return $definition->periodType === EnginePeriodType::Month
+            ? $period->isSameMonth($realNow)
+            : $period->isSameDay($realNow);
     }
 
     /** Identifies one engine run for one period, so it can happen only once. */
