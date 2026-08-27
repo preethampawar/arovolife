@@ -391,6 +391,28 @@ it('does not catch up the current period when replaying a historical window', fu
     expect($report->enginesRun)->not->toHaveKey('payout:monthly-run');
 });
 
+it('freezes the period in flight at the real clock, not the simulated schedule instant', function (): void {
+    // The runner lands the clock on real time itself, so the test cannot pin
+    // "now" — instead it brackets the run with the wall clock. The day loop
+    // used to stamp today's cut-off at its simulated 00:10 schedule instant,
+    // which lies before this bracket for any test started after 00:10; the
+    // rare just-after-midnight run is covered too, because the day loop's
+    // future-clamp would then also collapse onto the wall clock.
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(0, 1)->toDateTimeString(), 100_000);
+
+    $before = Carbon::now()->subSecond();
+    app(CompensationRecomputeRunner::class)->run(from: Carbon::today());
+
+    $run = DB::table('engine_runs')
+        ->where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', Carbon::today())
+        ->first();
+    expect($run)->not->toBeNull();
+    expect(Carbon::parse($run->started_at)->gte($before))->toBeTrue();
+    expect(Carbon::parse($run->started_at)->lte(Carbon::now()))->toBeTrue();
+});
+
 it('never stamps a replayed run in the future', function (): void {
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(0, 1)->toDateTimeString(), 100_000);

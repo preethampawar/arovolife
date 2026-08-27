@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GroupBvDaily;
+use App\Modules\Compensation\Models\GsbCarryforward;
+use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbSlabProgressService;
@@ -96,6 +98,75 @@ it('counts personal purchase BV only once the cut-off has credited it', function
         ->and($progress->topupSide)->toBe('R')
         ->and($progress->pendingPersonalBvTopupPaise)->toBe(0)
         ->and($progress->pendingTopupSide)->toBeNull();
+});
+
+it('uses the opening carry-forward once today\'s cut-off has already run', function (): void {
+    $dist = slabProgressDistributor();
+    $today = Carbon::today('Asia/Kolkata')->toDateString();
+
+    // Today's BV, already consumed by an (in-flight recomputed) cut-off whose
+    // closing state now sits in the rolling carry-forward store.
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => $today,
+        'left_bv_paise' => 61_259_900,
+        'right_bv_paise' => 60_360_000,
+    ]);
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 899_900,
+        'power_side' => 'L',
+        'slab1_weaker_bv_paise' => 0,
+    ]);
+    GsbCutoffResult::create([
+        'distributor_id' => $dist->id,
+        'cutoff_date' => $today,
+        'left_bv_paise' => 61_259_900,
+        'right_bv_paise' => 60_360_000,
+        'weaker_bv_paise' => 60_360_000,
+        'slab' => 2,
+        'gross_gsb_paise' => 400_000,
+        'net_gsb_paise' => 400_000,
+        'power_cf_before_paise' => 0,
+        'power_side_before' => null,
+        'power_cf_after_paise' => 899_900,
+        'power_side_after' => 'L',
+        'slab1_weaker_cf_before_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 0,
+        'status' => GsbCutoffResult::STATUS_CREDITED,
+    ]);
+
+    $progress = app(GsbSlabProgressService::class)->forDistributor($dist->id);
+
+    // Effective sides mirror what that cut-off actually used (opening CF was
+    // zero) — not daily BV + closing CF, which would double-count 8,999 BV.
+    expect($progress->leftEffectivePaise)->toBe(61_259_900)
+        ->and($progress->rightEffectivePaise)->toBe(60_360_000)
+        // The carry-forward cards still show the rolling store (post-match).
+        ->and($progress->powerCfPaise)->toBe(899_900)
+        ->and($progress->powerCfSide)->toBe('L');
+});
+
+it('adds the rolling carry-forward while today\'s cut-off has not run yet', function (): void {
+    $dist = slabProgressDistributor();
+
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => Carbon::today('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 100_000,
+        'right_bv_paise' => 50_000,
+    ]);
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 899_900,
+        'power_side' => 'L',
+        'slab1_weaker_bv_paise' => 0,
+    ]);
+
+    $progress = app(GsbSlabProgressService::class)->forDistributor($dist->id);
+
+    expect($progress->leftEffectivePaise)->toBe(999_900)
+        ->and($progress->rightEffectivePaise)->toBe(50_000);
 });
 
 it('does not preview a top-up while no leg has touched the first slab', function (): void {

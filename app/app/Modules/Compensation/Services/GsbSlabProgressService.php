@@ -62,11 +62,37 @@ final class GsbSlabProgressService
                 ->first();
             $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
 
+            // Opening balances for today's cut-off. Normally that is the rolling
+            // gsb_carryforward store (last night's closing state). But when
+            // today's cut-off has already run — the recompute catch-up owns the
+            // in-flight period — the store already holds today's *closing*
+            // state: adding it to today's daily BV would double-count the BV
+            // that cut-off consumed. Rebuild the day's opening state from the
+            // cut-off row's own *_before snapshot instead.
+            $openingPowerCfPaise = $cf->power_side_bv_paise ?? 0;
+            $openingPowerSide = $cf->power_side ?? null;
+            $openingSlab1CfPaise = $cf->slab1_weaker_bv_paise ?? 0;
+
+            $todayCutoff = GsbCutoffResult::query()
+                ->where('distributor_id', $distributorId)
+                ->whereDate('cutoff_date', $today)
+                ->orderBy('id')
+                ->get()
+                ->first(fn (GsbCutoffResult $result): bool => $result->advancedCarryForward());
+
+            if ($todayCutoff !== null) {
+                $openingPowerCfPaise = $todayCutoff->power_cf_before_paise;
+                $openingPowerSide = $todayCutoff->power_side_before;
+                $openingSlab1CfPaise = $todayCutoff->slab1_weaker_cf_before_paise;
+            }
+
             $leftEffective = ($daily->left_bv_paise ?? 0)
-                + ($cf !== null && $cf->power_side === 'L' ? $cf->power_side_bv_paise : 0);
+                + ($openingPowerSide === 'L' ? $openingPowerCfPaise : 0);
             $rightEffective = ($daily->right_bv_paise ?? 0)
-                + ($cf !== null && $cf->power_side === 'R' ? $cf->power_side_bv_paise : 0);
-            $slab1Cf = $cf->slab1_weaker_bv_paise ?? 0;
+                + ($openingPowerSide === 'R' ? $openingPowerCfPaise : 0);
+            $slab1Cf = $openingSlab1CfPaise;
+            // The carry-forward cards ("remaining after your last slab match" /
+            // tomorrow's opening balance) always show the rolling store.
             $powerCfPaise = $cf->power_side_bv_paise ?? 0;
             $powerCfSide = $cf->power_side ?? null;
 
