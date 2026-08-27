@@ -7,6 +7,8 @@ namespace App\Modules\Kyc\Http\Controllers;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Kyc\Models\KycDocument;
+use App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification;
+use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -19,7 +21,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Distributor-facing page reached via a signed URL from
- * {@see \App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification}. Lets
+ * {@see KycDocumentFlaggedNotification}. Lets
  * the applicant re-upload only the flagged document — not the whole KYC.
  *
  * GET is gated by the 'signed' middleware (the URL itself is the auth for
@@ -47,7 +49,7 @@ final class KycDocumentReuploadController extends Controller
             'document' => [
                 'required', 'file', 'max:5120',
                 'mimetypes:image/jpeg,image/png,application/pdf',
-                new ValidUploadedDocumentBytes(),
+                new ValidUploadedDocumentBytes, new ScannedForMalware,
             ],
         ], [
             'document.required' => 'Please choose a file to upload.',
@@ -59,7 +61,7 @@ final class KycDocumentReuploadController extends Controller
         $disk = Storage::disk('kyc');
         $sha256 = hash_file('sha256', $file->getRealPath());
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
-        $newPath = "distributor_{$document->distributor_id}/{$document->type}_" . substr($sha256, 0, 12) . ".{$extension}";
+        $newPath = "distributor_{$document->distributor_id}/{$document->type}_".substr($sha256, 0, 12).".{$extension}";
 
         $oldPath = $document->object_storage_key;
 

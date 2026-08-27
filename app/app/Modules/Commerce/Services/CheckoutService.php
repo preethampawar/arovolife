@@ -39,13 +39,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $franchiseId = null, int $redeemPoints = 0, ?string $buyerGstin = null, ?string $buyerLegalName = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $franchiseId, $redeemPoints, $buyerGstin, $buyerLegalName) {
             // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
             //
             // A logged-in buyer is always resolved to THEIR OWN customer row,
@@ -172,12 +172,27 @@ final class CheckoutService
             // the coupon), via the single-source ShippingService.
             $shippingPaise = $this->shipping->feePaise($subtotalPaise);
 
-            $totalPaise = max(0, $subtotalPaise - $discountPaise) + $shippingPaise;
+            // Redeem points come off the NET product value only. Prices here
+            // are GST-inclusive, so the tax has to come out of the cap before
+            // it is applied — the company remits that tax in cash whatever the
+            // buyer paid with, and delivery is a real third-party cost.
+            // Zero without a distributor to debit. `place()` is a public
+            // service API, not only the HTTP path: another caller passing
+            // points with no distributor would otherwise get a free reduction
+            // with no matching ledger entry behind it.
+            $redeemPointsPaise = $buyerDistributorId === null
+                ? 0
+                : min($redeemPoints * 100, max(0, $subtotalPaise - $gstPaise - $discountPaise));
+            $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $shippingPaise;
 
             $order = Order::create([
                 'order_no' => $orderNo,
                 'customer_id' => $customer->id,
                 'attributed_distributor_id' => $attributedDistributorId,
+                // Collection point, chosen per order at checkout. Null means
+                // central despatch. It never affects attribution: the sale
+                // still belongs to the referring distributor.
+                'franchise_id' => $franchiseId,
                 'attribution_source' => $attributionSource,
                 'payment_method' => $paymentMethod,
                 'status' => Order::STATUS_PLACED,
@@ -190,6 +205,10 @@ final class CheckoutService
                 'subtotal_paise' => $subtotalPaise,
                 'gst_paise' => $gstPaise,
                 'discount_paise' => $discountPaise,
+                'redeem_points_paise' => $redeemPointsPaise,
+                // Recipient's GST identity, where they are registered.
+                'buyer_gstin' => $buyerGstin,
+                'buyer_legal_name' => $buyerLegalName,
                 'shipping_paise' => $shippingPaise,
                 'total_paise' => $totalPaise,
                 'ship_name' => $shipping['name'],
@@ -235,6 +254,19 @@ final class CheckoutService
             // 3b. Record the coupon redemption (usage tracking + per-customer caps)
             if ($appliedCoupon !== null) {
                 $this->coupons->recordRedemption($appliedCoupon, $order->id, $customer->id, $discountPaise);
+            }
+
+            // Spend the points inside the same transaction that created the
+            // order. Outside it, a failure between the two would either take
+            // points for an order that does not exist or give an order a
+            // discount nobody paid for.
+            if ($redeemPointsPaise > 0 && $buyerDistributorId !== null) {
+                app(RedeemPointsService::class)->redeem(
+                    distributorId: $buyerDistributorId,
+                    points: intdiv($redeemPointsPaise, 100),
+                    orderId: $order->id,
+                    memo: 'Redeemed against order '.$order->order_no,
+                );
             }
 
             // 4. Ledger — Dr razorpay cash (money held), Cr customer_prepayment.

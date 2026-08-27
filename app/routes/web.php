@@ -17,16 +17,21 @@ use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
+use App\Modules\Analytics\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminBannerController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseReportController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminOfferController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyBvLedgerController;
+use App\Modules\Commerce\Http\Controllers\Storefront\MyOffersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
@@ -57,12 +62,19 @@ use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewControll
 use App\Modules\Compensation\Http\Controllers\IncomeController;
 use App\Modules\Compensation\Http\Controllers\MyBusinessController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
+use App\Modules\Compliance\Http\Controllers\Admin\AdminDormancyController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
+use App\Modules\Consent\Http\Controllers\ConsentWithdrawalController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
 use App\Modules\Genealogy\Http\Controllers\TreeController;
+use App\Modules\Grievance\Http\Controllers\AdminGrievanceController;
+use App\Modules\Grievance\Http\Controllers\AdminGrievanceReportController;
+use App\Modules\Grievance\Http\Controllers\DistributorGrievanceController;
+use App\Modules\Grievance\Http\Controllers\PublicGrievanceController;
+use App\Modules\Grievance\Http\Controllers\SupportHubController;
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
@@ -102,7 +114,12 @@ Route::middleware('guest')->group(function (): void {
     //                                     step-1 sponsor-placement form
     Route::get('/register', [RegistrationWizardController::class, 'start'])->name('register');
     Route::get('/join', [RegistrationWizardController::class, 'showJoin'])->name('join.show');
-    Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])->name('join.submit');
+    // Account creation is unauthenticated and writes rows. Without a limit,
+    // one script can fill `users` and `distributors` with junk and burn the
+    // ADN sequence (T-6.1 finding L-7). 10/hour per IP is far above any real
+    // person and far below a useful flood.
+    Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])
+        ->middleware('throttle:10,60')->name('join.submit');
 
     // ADN-name lookup used by step 1's live name-resolution UI.
     Route::get('/join/lookup', [RegistrationWizardController::class, 'lookupAdn'])
@@ -110,7 +127,8 @@ Route::middleware('guest')->group(function (): void {
 
     // Step 2 — create account. Requires the intent from step 1.
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
-    Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])->name('register.post');
+    Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])
+        ->middleware('throttle:10,60')->name('register.post');
 
     // Real-time availability check for email + phone uniqueness — called via
     // AJAX on blur from step 2 so users see "this email is already registered"
@@ -235,12 +253,19 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/distributors', [AdminDistributorCreateController::class, 'store'])->name('distributors.store');
 
     Route::get('/distributors/{id}', [AdminDistributorController::class, 'show'])->whereNumber('id')->name('distributors.show');
-    Route::get('/distributors/{id}/edit', [AdminDistributorEditController::class, 'edit'])->whereNumber('id')->name('distributors.edit');
-    Route::patch('/distributors/{id}', [AdminDistributorEditController::class, 'update'])->whereNumber('id')->name('distributors.update');
-    Route::post('/distributors/{id}/password-reset', [AdminDistributorEditController::class, 'sendPasswordReset'])->whereNumber('id')->name('distributors.password-reset');
-    Route::post('/distributors/{id}/set-password', [AdminDistributorEditController::class, 'setPassword'])->whereNumber('id')->name('distributors.set-password');
-    Route::post('/distributors/{id}/identity', [AdminDistributorEditController::class, 'updateIdentity'])->whereNumber('id')->name('distributors.identity');
-    Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
+    // Credentials and identity — `distributor.credentials`, held by `admin`
+    // and `developer` only (R-17). Setting a password on somebody's account is
+    // indistinguishable from being them, and the staff login has no MFA; a
+    // finance or operations clerk must not be one form away from taking over
+    // any distributor in the company. T-6.1 finding H-1a.
+    Route::middleware('can:distributor.credentials')->group(function (): void {
+        Route::get('/distributors/{id}/edit', [AdminDistributorEditController::class, 'edit'])->whereNumber('id')->name('distributors.edit');
+        Route::patch('/distributors/{id}', [AdminDistributorEditController::class, 'update'])->whereNumber('id')->name('distributors.update');
+        Route::post('/distributors/{id}/password-reset', [AdminDistributorEditController::class, 'sendPasswordReset'])->whereNumber('id')->name('distributors.password-reset');
+        Route::post('/distributors/{id}/set-password', [AdminDistributorEditController::class, 'setPassword'])->whereNumber('id')->name('distributors.set-password');
+        Route::post('/distributors/{id}/identity', [AdminDistributorEditController::class, 'updateIdentity'])->whereNumber('id')->name('distributors.identity');
+        Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
+    });
     // Account discipline (block / unblock / terminate) — admin-compliance (R-17).
     Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.freeze');
     Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.unfreeze');
@@ -249,15 +274,24 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/distributors/{id}/deactivate', [AdminDistributorController::class, 'deactivate'])->whereNumber('id')->name('distributors.deactivate');
 
     Route::get('/settings', [AdminSettingsController::class, 'index'])->name('settings');
-    Route::post('/settings/age-rules', [AdminSettingsController::class, 'updateStateAgeMinimums'])->name('settings.age-rules');
+    // Reading a setting is monitoring; writing one changes what the platform
+    // pays or who it lets in, so writes are `settings.write` — `admin` and
+    // `developer` only (T-6.1 H-1). Developer-owned keys are narrowed further
+    // inside the controller.
+    Route::post('/settings/age-rules', [AdminSettingsController::class, 'updateStateAgeMinimums'])
+        ->middleware('can:settings.write')->name('settings.age-rules');
     // Per-setting update from the friendly UI cards. The {key} param is the
     // dotted setting key (e.g. commerce.checkout.enabled). The controller
     // matches it against the registry and aborts 404 if not registered.
     Route::post('/settings/{key}', [AdminSettingsController::class, 'update'])
         ->where('key', '[a-z0-9_.-]+')
+        ->middleware('can:settings.write')
         ->name('settings.update');
 
-    Route::get('/audit-log', [AdminAuditLogController::class, 'index'])->name('audit-log');
+    // Every scoped role can read it — reading the audit log is also how each
+    // role is checked by the others, so it stays deliberately broad.
+    Route::get('/audit-log', [AdminAuditLogController::class, 'index'])
+        ->middleware('can:audit.read')->name('audit-log');
 
     // Help & Reference — in-admin rendering of curated docs/ markdown.
     Route::get('/help', [AdminHelpController::class, 'index'])->name('help.index');
@@ -281,16 +315,21 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/contact-inquiries/{id}/handle', [AdminContactController::class, 'markHandled'])->name('contact-inquiries.handle');
     Route::post('/contact-inquiries/{id}/unhandle', [AdminContactController::class, 'markUnhandled'])->name('contact-inquiries.unhandle');
 
-    // KYC manual review
-    Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
-    Route::get('/kyc/{id}', [AdminKycController::class, 'show'])->name('kyc.show');
-    Route::get('/kyc/{id}/documents/{docId}', [AdminKycController::class, 'streamDocument'])->name('kyc.document');
-    Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
-    Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
-    Route::post('/kyc/{id}/terminate', [AdminKycController::class, 'terminate'])->name('kyc.terminate');
-    Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
-    Route::post('/kyc/{id}/documents/{docId}/flag', [AdminKycController::class, 'flagDocument'])
-        ->whereNumber('id')->whereNumber('docId')->name('kyc.document.flag');
+    // KYC manual review — `kyc.review` (admin-operations, R-17). The whole
+    // queue is gated, not just the decisions: `streamDocument` serves the raw
+    // Aadhaar and PAN scans, and who may look at those is as much a DPDP
+    // question as who may approve them. T-6.1 finding H-1.
+    Route::middleware('can:kyc.review')->group(function (): void {
+        Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc.index');
+        Route::get('/kyc/{id}', [AdminKycController::class, 'show'])->name('kyc.show');
+        Route::get('/kyc/{id}/documents/{docId}', [AdminKycController::class, 'streamDocument'])->name('kyc.document');
+        Route::post('/kyc/{id}/approve', [AdminKycController::class, 'approve'])->name('kyc.approve');
+        Route::post('/kyc/{id}/reject', [AdminKycController::class, 'reject'])->name('kyc.reject');
+        Route::post('/kyc/{id}/terminate', [AdminKycController::class, 'terminate'])->name('kyc.terminate');
+        Route::post('/kyc/{id}/document', [AdminKycController::class, 'uploadDocument'])->whereNumber('id')->name('kyc.document.upload');
+        Route::post('/kyc/{id}/documents/{docId}/flag', [AdminKycController::class, 'flagDocument'])
+            ->whereNumber('id')->whereNumber('docId')->name('kyc.document.flag');
+    });
 
     // Line-change requests — review queue + approve/reject
     Route::get('/line-changes', [AdminLineChangeController::class, 'index'])->name('line-changes.index');
@@ -302,9 +341,14 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');
     Route::get('/commerce/orders/{order}', [AdminOrderController::class, 'show'])->name('commerce.orders.show');
-    Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
-    Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
-    Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
+    // Moving an order's state posts to the ledger and can reverse BV, so it is
+    // `commerce.order.manage` (admin-operations, R-17). Viewing stays open to
+    // the whole admin family — support has to be able to look.
+    Route::middleware('can:commerce.order.manage')->group(function (): void {
+        Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
+        Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
+        Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
+    });
 
     // Returns — admin inspection / approve / reject (finance.record, R-17; ADR-0009).
     Route::get('/returns', [AdminReturnController::class, 'index'])->name('returns.index');
@@ -312,6 +356,16 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/returns/{return}/inspect', [AdminReturnController::class, 'inspect'])->middleware('can:finance.record')->whereNumber('return')->name('returns.inspect');
     Route::post('/returns/{return}/approve', [AdminReturnController::class, 'approve'])->middleware('can:finance.record')->whereNumber('return')->name('returns.approve');
     Route::post('/returns/{return}/reject', [AdminReturnController::class, 'reject'])->middleware('can:finance.record')->whereNumber('return')->name('returns.reject');
+
+    // Analytics — read-only funnels and retention over data other modules own.
+    //
+    // Gated on `audit.read` rather than left open. It holds no money controls,
+    // but "highest volume in the window" is a company-wide ranked list of ADN
+    // and full name, and a page that composes a league table out of everyone's
+    // trading is a different thing from the single-distributor screens each
+    // role already reaches (T-6.1 finding M-9).
+    Route::get('/analytics', [AdminAnalyticsController::class, 'index'])
+        ->middleware('can:audit.read')->name('analytics.index');
 
     // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
     // The static `export` path is declared before the {distributor} wildcard
@@ -538,6 +592,79 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // distributor's, not the admin's.
     Route::post('/impersonate/{userId}/start', [AdminImpersonationController::class, 'start'])
         ->whereNumber('userId')->name('impersonate.start');
+
+    // ── Franchises (fulfilment network) ──────────────────────────────────────
+    // Feature-flagged in the controllers (`abort_unless(Feature::active(...))`,
+    // the convention the bonus reports already use): while the flag is off
+    // these routes 404 and the menu item is absent, leaving no trace of an
+    // unlaunched programme.
+    Route::group([], function (): void {
+        Route::get('/commerce/franchises', [AdminFranchiseController::class, 'index'])->name('commerce.franchises.index');
+        // Creating and editing set the payee and the commission rate, so they
+        // sit behind the same permission as approval. Without that, a role
+        // that cannot approve a franchise could still change who it pays and
+        // how much — which is the whole of the decision.
+        Route::get('/commerce/franchises/create', [AdminFranchiseController::class, 'create'])
+            ->middleware('can:compliance.discipline')->name('commerce.franchises.create');
+        Route::post('/commerce/franchises', [AdminFranchiseController::class, 'store'])
+            ->middleware('can:compliance.discipline')->name('commerce.franchises.store');
+        Route::get('/commerce/franchises/report', [AdminFranchiseReportController::class, 'index'])->name('commerce.franchises.report');
+        Route::get('/commerce/franchises/{id}/edit', [AdminFranchiseController::class, 'edit'])->whereNumber('id')->name('commerce.franchises.edit');
+        Route::patch('/commerce/franchises/{id}', [AdminFranchiseController::class, 'update'])
+            ->whereNumber('id')->middleware('can:compliance.discipline')->name('commerce.franchises.update');
+        Route::post('/commerce/franchises/{id}/approve', [AdminFranchiseController::class, 'approve'])
+            ->whereNumber('id')->middleware('can:compliance.discipline')->name('commerce.franchises.approve');
+        Route::post('/commerce/franchises/{id}/{action}', [AdminFranchiseController::class, 'changeStatus'])
+            ->whereNumber('id')->where('action', 'suspend|close|reinstate')
+            ->middleware('can:compliance.discipline')->name('commerce.franchises.status');
+    });
+
+    // ── Purchase offers (KP 2026-06-26) ──────────────────────────────────────
+    // Feature-gated in the controller; an unlaunched offer leaves no trace.
+    Route::get('/commerce/offers', [AdminOfferController::class, 'index'])->name('commerce.offers.index');
+    // Announcing the product commits the company to an entitlement across the
+    // whole unranked base, so it carries the same permission as the franchise
+    // money routes rather than being open to every admin role.
+    Route::post('/commerce/offers/announce', [AdminOfferController::class, 'announce'])
+        ->middleware('can:compliance.discipline')->name('commerce.offers.announce');
+
+    // ── Dormancy & termination (agreement §21) ───────────────────────────────
+    // Read-only apart from withdrawing a notice, which is gated on the same
+    // permission as the rest of account discipline.
+    Route::get('/dormancy', [AdminDormancyController::class, 'index'])
+        ->middleware('can:compliance.discipline')->name('dormancy.index');
+    Route::post('/dormancy/{id}/withdraw-notice', [AdminDormancyController::class, 'withdrawNotice'])
+        ->whereNumber('id')->middleware('can:compliance.discipline')->name('dormancy.withdraw');
+
+    // ── Grievance redressal (DSR 2021 Rule 12 / T&C §11) ─────────────────────
+    // The single tracker every intake channel in the published policy §3 lands
+    // in. Literal paths are declared before the /{id} wildcard.
+    //
+    // `can:grievance.handle` deliberately excludes admin-finance (R-17
+    // separation of duties): grievances routinely name a member of staff, and
+    // ethics complaints are further narrowed to the compliance side by
+    // TicketPolicy — middleware cannot see the ticket's category, so the two
+    // work together rather than one replacing the other.
+    Route::middleware('can:grievance.handle')->group(function (): void {
+        Route::get('/grievances', [AdminGrievanceController::class, 'index'])->name('grievances.index');
+        Route::get('/grievances/create', [AdminGrievanceController::class, 'create'])->name('grievances.create');
+        Route::post('/grievances', [AdminGrievanceController::class, 'store'])->name('grievances.store');
+        // Monthly compliance report + its CSV, handed to the Compliance Committee
+        // quarterly and to a regulator on request.
+        Route::get('/grievances/report', [AdminGrievanceReportController::class, 'index'])->name('grievances.report');
+        Route::get('/grievances/report/export', [AdminGrievanceReportController::class, 'export'])->name('grievances.report.export');
+        Route::get('/grievances/{id}', [AdminGrievanceController::class, 'show'])->whereNumber('id')->name('grievances.show');
+        Route::get('/grievances/{id}/attachments/{attachmentId}', [AdminGrievanceController::class, 'streamAttachment'])
+            ->whereNumber('id')->whereNumber('attachmentId')->name('grievances.attachment');
+        Route::post('/grievances/{id}/respond', [AdminGrievanceController::class, 'respond'])->whereNumber('id')->name('grievances.respond');
+        Route::post('/grievances/{id}/internal-note', [AdminGrievanceController::class, 'internalNote'])->whereNumber('id')->name('grievances.internal-note');
+        Route::post('/grievances/{id}/assign', [AdminGrievanceController::class, 'assign'])->whereNumber('id')->name('grievances.assign');
+        Route::post('/grievances/{id}/escalate', [AdminGrievanceController::class, 'escalate'])->whereNumber('id')->name('grievances.escalate');
+        Route::post('/grievances/{id}/third-party', [AdminGrievanceController::class, 'markThirdParty'])->whereNumber('id')->name('grievances.third-party');
+        Route::post('/grievances/{id}/status-update', [AdminGrievanceController::class, 'publishStatusUpdate'])->whereNumber('id')->name('grievances.status-update');
+        Route::post('/grievances/{id}/resolve', [AdminGrievanceController::class, 'resolve'])->whereNumber('id')->name('grievances.resolve');
+        Route::post('/grievances/{id}/close', [AdminGrievanceController::class, 'close'])->whereNumber('id')->name('grievances.close');
+    });
 });
 
 // "Stop impersonation" must be reachable while the admin is logged in as the
@@ -577,6 +704,24 @@ Route::get('/compliance-documents/{document}/download', [PublicComplianceDocumen
 Route::get('/contact-us', [ContactController::class, 'show'])->name('contact.show');
 Route::post('/contact-us', [ContactController::class, 'submit'])->name('contact.submit');
 
+// ── Grievance redressal (public) ─────────────────────────────────────────────
+// `/p/grievance/form` is the exact URL the published Grievance Redressal Policy
+// §3.1 has been pointing complainants at. It is declared before the
+// `/p/{slug}` content-page route above only in name — the slug pattern is
+// [a-z0-9-]+ and cannot match a path containing a slash — but the literal
+// route is kept adjacent to the policy it implements.
+Route::get('/p/grievance/form', [PublicGrievanceController::class, 'create'])->name('grievance.create');
+Route::post('/p/grievance/form', [PublicGrievanceController::class, 'store'])->name('grievance.store');
+Route::get('/p/grievance/submitted', [PublicGrievanceController::class, 'submitted'])->name('grievance.submitted');
+// Status lookup for complainants with no account. Throttled: the complaint
+// number travels in email subject lines, so the lookup must not be a
+// convenient oracle for guessing which numbers exist.
+Route::get('/grievance/track', [PublicGrievanceController::class, 'trackForm'])->name('grievance.track');
+Route::post('/grievance/track', [PublicGrievanceController::class, 'track'])
+    ->middleware('throttle:10,10')->name('grievance.track.lookup');
+Route::post('/grievance/track/reply', [PublicGrievanceController::class, 'reply'])
+    ->middleware('throttle:10,10')->name('grievance.track.reply');
+
 // Find My ID — recover a forgotten ADN by registered name + PAN. Throttled at
 // the route on top of the controller's per-IP limiter (anti-enumeration).
 Route::get('/find-my-id', [FindMyIdController::class, 'show'])->name('find-my-id.show');
@@ -606,7 +751,11 @@ Route::middleware('capture.attribution')->group(function (): void {
     Route::get('/shop/easy-cart/{code}', [CartController::class, 'openShared'])->name('shop.easy-cart');
 
     Route::get('/shop/checkout', [CheckoutController::class, 'show'])->name('shop.checkout');
-    Route::post('/shop/checkout', [CheckoutController::class, 'place'])->name('shop.checkout.place');
+    // Checkout posts to the ledger and consumes an invoice number, so a
+    // retry storm is expensive even when every order is legitimate. 20/hour
+    // leaves room for a genuine customer correcting a failed payment.
+    Route::post('/shop/checkout', [CheckoutController::class, 'place'])
+        ->middleware('throttle:20,60')->name('shop.checkout.place');
     Route::get('/shop/confirmation/{orderNo}', [CheckoutController::class, 'confirmation'])->name('shop.confirmation');
 });
 
@@ -632,6 +781,21 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/dashboard/profile-stats', [ProfileStatsController::class, 'show'])->name('profile-stats.show');
     Route::get('/dashboard/direct-seller-application', [DirectSellerApplicationController::class, 'show'])->name('direct-seller-application.show');
     Route::get('/dashboard/tax-statements', [TaxStatementsController::class, 'show'])->name('tax-statements.show');
+
+    // ── Help & grievances ────────────────────────────────────────────────────
+    // "Dashboard → Help → Raise a Grievance" is the in-app route the published
+    // Grievance Redressal Policy §1 and §3.1 promise distributors.
+    Route::get('/help', [SupportHubController::class, 'index'])->name('help.index');
+    Route::get('/my/grievances', [DistributorGrievanceController::class, 'index'])->name('my.grievances.index');
+    Route::get('/my/grievances/create', [DistributorGrievanceController::class, 'create'])->name('my.grievances.create');
+    Route::post('/my/grievances', [DistributorGrievanceController::class, 'store'])->name('my.grievances.store');
+    Route::get('/my/grievances/{id}', [DistributorGrievanceController::class, 'show'])->whereNumber('id')->name('my.grievances.show');
+    Route::post('/my/grievances/{id}/reply', [DistributorGrievanceController::class, 'reply'])->whereNumber('id')->name('my.grievances.reply');
+    Route::get('/my/grievances/{id}/attachments/{attachmentId}', [DistributorGrievanceController::class, 'streamAttachment'])
+        ->whereNumber('id')->whereNumber('attachmentId')->name('my.grievances.attachment');
+
+    // The distributor's own offers: point balance, streak and entitlements.
+    Route::get('/my/offers', [MyOffersController::class, 'index'])->name('my.offers.index');
 
     // The distributor's own order history (BV accumulation + cooling-off status).
     Route::get('/orders', [MyOrdersController::class, 'index'])->name('orders.index');
@@ -719,6 +883,15 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Profile + change-password (any logged-in user; admins included).
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+
+    // Consent withdrawal (DPDP 2023 §6(4)-(6); Privacy Policy §10.5). Sits on
+    // the distributor's own profile and needs no approval from anyone —
+    // withdrawal has to be as easy as giving, and a queue would make it
+    // harder than the checkbox that granted it.
+    Route::get('/profile/withdraw-consent', [ConsentWithdrawalController::class, 'show'])
+        ->name('consent.withdraw');
+    Route::post('/profile/withdraw-consent', [ConsentWithdrawalController::class, 'store'])
+        ->middleware('throttle:5,60')->name('consent.withdraw.store');
     // Throttled: update() issues+emails an OTP, confirm() verifies it — cap
     // both so a code can't be email-spammed or its attempt counter reset.
     Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:6,10')->name('profile.update');

@@ -15,15 +15,15 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">MB Earned This Month</p>
+            <p class="text-xs text-gray-600 mb-1">MB Earned This Month</p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">MB Earned Lifetime</p>
+            <p class="text-xs text-gray-600 mb-1">MB Earned Lifetime</p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbLifetimePaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">Active Sponsees Contributing</p>
+            <p class="text-xs text-gray-600 mb-1">Active Sponsees Contributing</p>
             <p class="text-2xl font-bold text-gray-900">{{ $activeSponsees ?? 0 }}</p>
         </div>
     </div>
@@ -31,14 +31,14 @@
     {{-- Filter form --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">From</label>
+            <label class="block text-xs text-gray-600 mb-1">From</label>
             <input type="date" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">To</label>
+            <label class="block text-xs text-gray-600 mb-1">To</label>
             <input type="date" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
         @if(request('from') || request('to'))
             <a href="{{ route('income.mentorship') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
@@ -46,8 +46,8 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">No Mentorship Bonus yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Your bonus will appear here once one of the distributors you directly sponsored earns their first Genos Sales Bonus.</p>
+            <p class="text-gray-600 font-medium">No Mentorship Bonus yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Your bonus will appear here once one of the distributors you directly sponsored earns their first Genos Sales Bonus.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -79,14 +79,14 @@
                             @if($row->slab !== null)
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Slab {{ $row->slab }}</span>
                             @else
-                            <span class="text-gray-400">—</span>
+                            <span class="text-gray-600">—</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono font-semibold">
-                            @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-400 font-normal">—</span>@endif
+                            @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-600 font-normal">—</span>@endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
-                            @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 0) }}@else<span class="text-gray-400">—</span>@endif
+                            @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 0) }}@else<span class="text-gray-600">—</span>@endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->mb_gross_paise / 100, 0) }}</td>
                     </tr>

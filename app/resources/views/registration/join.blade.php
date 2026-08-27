@@ -42,7 +42,7 @@
                    data-adn-input="sponsor"
                    @if($sponsorLocked) readonly tabindex="-1" @endif
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 @if($sponsorLocked) bg-gray-50 text-gray-700 cursor-not-allowed @endif">
-            <p data-adn-name="sponsor" class="mt-1.5 text-xs text-gray-500 min-h-[1.25rem]">
+            <p data-adn-name="sponsor" class="mt-1.5 text-xs text-gray-600 min-h-[1.25rem]">
                 @if($sponsorLocked)
                     Looking up sponsor name…
                 @else
@@ -63,18 +63,18 @@
                    spellcheck="false"
                    data-adn-input="placement"
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-            <p data-adn-name="placement" class="mt-1.5 text-xs text-gray-500 min-h-[1.25rem]">
+            <p data-adn-name="placement" class="mt-1.5 text-xs text-gray-600 min-h-[1.25rem]">
                 Often the same as the Sponsor ADN. Ask your sponsor if you're unsure.
             </p>
         </div>
 
         <button type="submit" id="join-submit"
-            class="w-full rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-lg shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-brand-500">
+            class="w-full rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-lg shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-brand-700">
             Continue to Orientation →
         </button>
     </form>
 
-    <p class="mt-6 text-center text-xs text-gray-500">
+    <p class="mt-6 text-center text-xs text-gray-600">
         Don't have a sponsor's ADN?
         <a href="{{ route('contact.show', ['reason' => 'join_us']) }}" class="text-brand-700 hover:text-brand-800 font-medium">Contact us</a>
         and we'll connect you with one.
@@ -124,12 +124,12 @@
         valid[key] = (state === 'ok' || state === 'warn');
         refreshSubmit();
         if (!el) return;
-        el.classList.remove('text-gray-500', 'text-green-700', 'text-red-600', 'text-amber-700');
+        el.classList.remove('text-gray-600', 'text-green-700', 'text-red-600', 'text-amber-700');
         el.classList.add(
             state === 'ok'       ? 'text-green-700'
             : state === 'bad'    ? 'text-red-600'
             : state === 'warn'   ? 'text-amber-700'
-            : 'text-gray-500'
+            : 'text-gray-600'
         );
         el.textContent = text;
     }

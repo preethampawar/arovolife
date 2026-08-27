@@ -8,8 +8,10 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
+use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -98,7 +100,7 @@ final class KycDocumentSelfServiceController extends Controller
             'document' => [
                 'required', 'file', 'max:5120',
                 'mimetypes:image/jpeg,image/png,application/pdf',
-                new ValidUploadedDocumentBytes(),
+                new ValidUploadedDocumentBytes, new ScannedForMalware,
             ],
         ], [
             'type.required' => 'Please pick which document you\'re uploading.',
@@ -124,7 +126,7 @@ final class KycDocumentSelfServiceController extends Controller
             ]);
         }
 
-        /** @var \Illuminate\Http\UploadedFile $file */
+        /** @var UploadedFile $file */
         $file = $request->file('document');
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
         $sha256 = (string) hash_file('sha256', $file->getRealPath());

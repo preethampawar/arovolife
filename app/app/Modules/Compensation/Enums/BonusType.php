@@ -19,6 +19,10 @@ enum BonusType: string
     case GrowthBooster = 'gbb';
     case Fortune = 'fortune';
     case Arete = 'adc';
+    // Fulfilment commission, not a downline earning. Exempt from the admin
+    // charge by the same rule that exempts awards (T&C / compliance skill),
+    // so `comp.admin_charge.applies_to_franchise` defaults to false.
+    case Franchise = 'franchise';
     // No payout engine yet (Lifetime Awards ships in a later phase). The case
     // and its `applies_to_awards` toggle exist for forward-config only and have
     // no runtime effect until that engine reads BonusType::LifetimeAwards.

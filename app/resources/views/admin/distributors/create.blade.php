@@ -112,7 +112,7 @@
     {{-- Bank (optional — server-side rule is nullable + required_with;
          leave both fields blank to skip, or fill both to record bank). --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-1">Bank <span class="text-gray-500 text-sm font-normal">(optional)</span></h3>
+        <h3 class="font-semibold text-gray-800 mb-1">Bank <span class="text-gray-600 text-sm font-normal">(optional)</span></h3>
         <p class="text-xs text-gray-600 mb-4">
             Leave both fields blank if the distributor hasn't shared bank
             details yet — they can be added later from the edit page.
@@ -163,7 +163,7 @@
     </div>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
+        <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
             Create distributor
         </button>
         <a href="{{ route('admin.distributors.index') }}"

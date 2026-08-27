@@ -16,9 +16,9 @@
     <div class="max-w-md mx-auto px-6 py-12 sm:py-16">
 
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Account recovery</p>
+            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Account recovery</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
-                Reset your <span class="text-brand-600">arovolife</span> password.
+                Reset your <span class="text-brand-700">arovolife</span> password.
             </h1>
             <p class="mt-4 text-base text-gray-600 max-w-prose mx-auto">
                 Enter the email associated with your account. We'll send you a link to choose a new password.
@@ -57,7 +57,7 @@
                 </div>
 
                 <button type="submit"
-                    class="btn-cta group w-full rounded-full bg-brand-500 hover:bg-brand-600 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
+                    class="btn-cta group w-full rounded-full bg-brand-700 hover:bg-brand-800 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                     style="animation-delay: 380ms;">
                     <span class="inline-flex items-center justify-center gap-2.5">
                         Send reset link
@@ -72,13 +72,13 @@
                 <span class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></span>
                 <p class="text-[12px] text-slate-500">
                     Remembered it?
-                    <a href="{{ route('login') }}" class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">Back to sign in →</a>
+                    <a href="{{ route('login') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Back to sign in →</a>
                 </p>
                 <span class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></span>
             </div>
         </div>
 
-        <p class="mt-8 text-center text-[11px] text-slate-400 lift-in" style="animation-delay: 540ms;">
+        <p class="mt-8 text-center text-[11px] text-slate-600 lift-in" style="animation-delay: 540ms;">
             Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
         </p>
     </div>

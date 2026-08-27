@@ -33,7 +33,7 @@
     @include('partials._toast-container')
 
     {{-- Footer --}}
-    <footer class="bg-gray-900 text-gray-400 mt-16 py-10">
+    <footer class="bg-gray-900 text-gray-600 mt-16 py-10">
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
             <p>&copy; {{ date('Y') }} Arovolife Private Limited. CIN U46909TS2026PTC210896.</p>
             <div class="flex flex-wrap gap-4">
@@ -43,7 +43,7 @@
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
             </div>
         </div>
-        <div class="max-w-7xl mx-auto px-6 mt-4 text-xs text-gray-500">
+        <div class="max-w-7xl mx-auto px-6 mt-4 text-xs text-gray-600">
             Customer Care:
             <a href="tel:+918886662949" class="hover:text-white">+91 88866 62949</a> ·
             <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·

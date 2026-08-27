@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\DTOs\PlacementResult;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Notifications\SpouseActivationNotification;
+use App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
@@ -25,24 +27,20 @@ use Illuminate\Support\Str;
  */
 class RegistrationService
 {
-    private const DOCUMENT_VERSIONS = [
-        'tnc' => '1.0.0',
-        'ethics' => '1.0.0',
-        'plan' => '1.0.0',
-        'privacy' => '1.0.0',
-    ];
-
-    // Phase 1 placeholder hashes — 64-char hex (SHA-256 of versioned doc stub strings)
-    private const DOCUMENT_HASHES = [
-        'tnc' => 'ac458cd6b8f804d09ff7c4e3c15175911b506609684503b882e8df6ba73de0dc',
-        'ethics' => '67e7afb1f667aee1d5cb2e3365dc2047b22f83bd696499c517dfeecb092d3417',
-        'plan' => '8056e8532e9c864c44e71fc38fa53fbda662abe9d6882d3e4df6a16a457f8746',
-        'privacy' => '1b88b7ee934f4262e47500055424ec4a6e137b0a90500b211290999e2113bc40',
-    ];
-
+    /**
+     * Document versions and hashes are no longer declared here.
+     *
+     * They were four hardcoded hashes of Phase-1 stub strings with a version
+     * of `1.0.0` for all four, while the published documents were dated
+     * 2026-05-21 and 2026-08-07 — so `consents.doc_hash_sha256` proved neither
+     * the text nor the version, which is its only purpose (R-51, IT Act §10A).
+     * `ConsentDocuments` reads both from the content page the public URL
+     * actually serves.
+     */
     public function __construct(
         private readonly PlacementEngine $engine,
         private readonly DatabaseManager $db,
+        private readonly ConsentDocuments $documents,
     ) {}
 
     /**
@@ -72,10 +70,10 @@ class RegistrationService
         // created with bank_account_enc + bank_ifsc = NULL. The distributor
         // can add bank later from their dashboard before any payout.
         $bankAccountRaw = trim((string) ($bank['account_number'] ?? ''));
-        $bankIfscRaw    = strtoupper(trim((string) ($bank['ifsc'] ?? '')));
-        $bankProvided   = $bankAccountRaw !== '' && $bankIfscRaw !== '';
+        $bankIfscRaw = strtoupper(trim((string) ($bank['ifsc'] ?? '')));
+        $bankProvided = $bankAccountRaw !== '' && $bankIfscRaw !== '';
         $bankAccountEnc = $bankProvided ? $this->encryptBankAccount($bankAccountRaw) : null;
-        $bankIfscFinal  = $bankProvided ? $bankIfscRaw : null;
+        $bankIfscFinal = $bankProvided ? $bankIfscRaw : null;
 
         // Full PAN + Aadhaar are encrypted at rest pending KYC review. After
         // ApproveKycSubmission flips verified_at NOT NULL, those columns are
@@ -106,9 +104,9 @@ class RegistrationService
 
                 // Validate required account data exists
                 if (empty($account['email']) || empty($account['phone_e164']) || empty($account['password_hash'])) {
-                    throw new \App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError(
+                    throw new IncompleteRegistrationDataError(
                         'Registration incomplete: missing required account data (email, phone, or password). '
-                        . 'Please return to the registration wizard and complete all steps.'
+                        .'Please return to the registration wizard and complete all steps.'
                     );
                 }
 
@@ -171,22 +169,59 @@ class RegistrationService
                 ]);
             }
 
-            // Orientation record
+            // The T&C §2.3 eligibility declarations, recorded against the
+            // distributor rather than left implicit in the agreement text.
+            // Written here rather than inside PlacementEngine because they are
+            // a fact about the person, not about where they sit in the tree.
+            $declarations = $consent['declarations'] ?? [];
+
+            $this->db->table('distributors')
+                ->where('id', $result->distributorId)
+                ->update([
+                    // Null, not false, when the wizard did not ask — a `false`
+                    // would read as "they declared they are not of sound mind".
+                    'declared_sound_mind' => isset($declarations['sound_mind']) ? (bool) $declarations['sound_mind'] : null,
+                    'declared_not_insolvent' => isset($declarations['not_insolvent']) ? (bool) $declarations['not_insolvent'] : null,
+                    'declared_no_moral_turpitude' => isset($declarations['no_moral_turpitude']) ? (bool) $declarations['no_moral_turpitude'] : null,
+                    'declarations_made_at' => $declarations === [] ? null : $now,
+                ]);
+
+            // Orientation record.
+            //
+            // This records what actually happened, which is NOT what it used
+            // to claim. There is no orientation video yet — step 2 renders a
+            // placeholder and the only gate is a checkbox the applicant ticks
+            // themselves. Writing `watch_percent => 100` with `started_at` and
+            // `completed_at` in the same instant certified 95%-plus playback
+            // of a video that does not exist, for every distributor. At a DSR
+            // audit `orientation_views` is exactly the table that gets
+            // produced, and a false certificate is worse to be caught holding
+            // than an honest gap.
+            //
+            // So: watch_percent stays 0 because nothing was measured,
+            // completed_at stays null because nothing was completed, and the
+            // fingerprint says what the evidence really is. `quiz_passed_at`
+            // IS legitimate — the micro-quiz is real, server-validated, and
+            // wrong answers are rejected (RegistrationWizardController).
+            //
+            // Hard rule 4 is not satisfied by this and cannot be until the
+            // video and playback tracking ship. See C-03 / R-50.
             $this->db->table('orientation_views')->insert([
                 'distributor_id' => $result->distributorId,
                 'video_id' => 'PHASE1_ORIENTATION_V1',
                 'started_at' => $now,
-                'completed_at' => $now,
-                'watch_percent' => 100,
+                'completed_at' => null,
+                'watch_percent' => 0,
                 'quiz_passed_at' => $now,
-                'playback_fingerprint' => 'stub',
+                'playback_fingerprint' => 'self-declared:no-playback-measurement',
             ]);
 
             // Consent records (4 documents)
             $ip = $consent['ip'] ?? '0.0.0.0';
             $ua = $consent['user_agent'] ?? '';
-            foreach (self::DOCUMENT_VERSIONS as $type => $version) {
-                $hash = hex2bin(self::DOCUMENT_HASHES[$type]);
+            foreach ($this->documents->all() as $type => $document) {
+                $version = $document['version'];
+                $hash = hex2bin($document['hash']);
                 $this->db->table('consents')->insert([
                     'distributor_id' => $result->distributorId,
                     'document_type' => $type,
@@ -365,24 +400,34 @@ class RegistrationService
             ]);
         }
 
-        // Spouse orientation — same video as primary; the spouse legally
-        // co-signs the agreement so they must complete the same orientation.
+        // Spouse orientation — the spouse legally co-signs the agreement, so
+        // they owe the same orientation as the primary.
+        //
+        // `quiz_passed_at` is null here and that is the point: the spouse
+        // never sat the quiz. Only the primary answers it, once, during the
+        // wizard. Stamping a pass on the spouse recorded them as having
+        // demonstrated understanding they were never asked to demonstrate —
+        // which is the one thing the micro-quiz exists to evidence.
+        //
+        // Their own orientation and quiz is part of closing C-03; until then
+        // this row says plainly that neither happened.
         $this->db->table('orientation_views')->insert([
             'distributor_id' => $secondaryId,
             'video_id' => 'PHASE1_ORIENTATION_V1',
             'started_at' => $now,
-            'completed_at' => $now,
-            'watch_percent' => 100,
-            'quiz_passed_at' => $now,
-            'playback_fingerprint' => 'spouse-stub',
+            'completed_at' => null,
+            'watch_percent' => 0,
+            'quiz_passed_at' => null,
+            'playback_fingerprint' => 'spouse:not-yet-taken',
         ]);
 
         // Spouse consent rows — DPDP §6 requires per-adult consent. Both
         // spouses accept all four documents at registration time.
         $ip = $consent['ip'] ?? '0.0.0.0';
         $ua = $consent['user_agent'] ?? '';
-        foreach (self::DOCUMENT_VERSIONS as $type => $version) {
-            $hash = hex2bin(self::DOCUMENT_HASHES[$type]);
+        foreach ($this->documents->all() as $type => $document) {
+            $version = $document['version'];
+            $hash = hex2bin($document['hash']);
             $this->db->table('consents')->insert([
                 'distributor_id' => $secondaryId,
                 'document_type' => $type,

@@ -31,10 +31,10 @@ export async function loginAsAdmin(page) {
     await page.waitForURL('**/admin**');
 }
 
-export async function loginAsDistributor(page, adn) {
+export async function loginAsDistributor(page, adn, password = 'Test1234!') {
     await page.goto('/login');
     await page.fill('input[placeholder="9-digit ADN"]', adn);
-    await page.fill('input[type="password"]', 'Test1234!');
+    await page.fill('input[type="password"]', password);
     await page.locator('form').evaluate(f => f.submit());
     await page.waitForURL('**/dashboard**');
 }
@@ -46,8 +46,14 @@ export const test = base.extend({
         await use(page);
     },
     distributorPage: async ({ page }, use) => {
-        // ADN 394325128 = K RAMAKRISHNA (D#59) — the distributor used in dev seeding
-        await loginAsDistributor(page, '394325128');
+        // The dev database is reseeded from time to time, so the ADN is an env
+        // override rather than a constant: a hard-coded one that no longer
+        // exists fails as a login timeout, which reads like a broken page
+        // instead of a missing fixture. Set A11Y_ADN / A11Y_PASSWORD to point
+        // at whichever distributor your dev database actually has.
+        const adn = process.env.A11Y_ADN ?? '394325128';
+        const password = process.env.A11Y_PASSWORD ?? 'Test1234!';
+        await loginAsDistributor(page, adn, password);
         await use(page);
     },
 });

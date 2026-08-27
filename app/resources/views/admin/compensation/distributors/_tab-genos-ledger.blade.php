@@ -26,25 +26,25 @@
         <option value="credits" {{ ($entryType ?? null) === 'credits' ? 'selected' : '' }}>Credits only</option>
         <option value="reversals" {{ ($entryType ?? null) === 'reversals' ? 'selected' : '' }}>Reversals only</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($from || $to || ($entryType ?? null))
     <a href="{{ route('admin.compensation.distributors.show', [$distributor, 'tab' => 'genos-ledger']) }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($days->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No Genos BV activity yet.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Genos BV activity yet.</p>
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-3 py-2 text-left text-gray-500">Entry</th>
-                <th class="px-3 py-2 text-left text-gray-500">Order</th>
-                <th class="px-3 py-2 text-left text-gray-500">Buyer</th>
-                <th class="px-3 py-2 text-right text-gray-500">Left BV</th>
-                <th class="px-3 py-2 text-right text-gray-500">Right BV</th>
+                <th class="px-3 py-2 text-left text-gray-600">Entry</th>
+                <th class="px-3 py-2 text-left text-gray-600">Order</th>
+                <th class="px-3 py-2 text-left text-gray-600">Buyer</th>
+                <th class="px-3 py-2 text-right text-gray-600">Left BV</th>
+                <th class="px-3 py-2 text-right text-gray-600">Right BV</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -61,25 +61,25 @@
             @endphp
             @if($visibleCount === 0)
             <tr>
-                <td colspan="5" class="px-3 py-2 text-gray-400 italic">No {{ ($entryType ?? null) === 'credits' ? 'credit' : (($entryType ?? null) === 'reversals' ? 'reversal' : 'Genos BV') }} entries this day.</td>
+                <td colspan="5" class="px-3 py-2 text-gray-600 italic">No {{ ($entryType ?? null) === 'credits' ? 'credit' : (($entryType ?? null) === 'reversals' ? 'reversal' : 'Genos BV') }} entries this day.</td>
             </tr>
             @endif
             @if($showCredits)
             @foreach($day->credits as $credit)
             <tr>
-                <td class="px-3 py-2 text-gray-500">
+                <td class="px-3 py-2 text-gray-600">
                     Order BV credit
                     @if($credit->debt_consumed_paise > 0)
-                    <span class="block text-[10px] text-gray-400">after @bv($credit->debt_consumed_paise) consumed by a cancelled-order adjustment</span>
+                    <span class="block text-[10px] text-gray-600">after @bv($credit->debt_consumed_paise) consumed by a cancelled-order adjustment</span>
                     @endif
                 </td>
                 <td class="px-3 py-2">
-                    <a href="{{ route('admin.commerce.orders.show', $credit->order_id) }}" class="text-brand-600 hover:underline font-mono">#{{ $credit->order_id }}</a>
+                    <a href="{{ route('admin.commerce.orders.show', $credit->order_id) }}" class="text-brand-700 hover:underline font-mono">#{{ $credit->order_id }}</a>
                 </td>
                 <td class="px-3 py-2">
                     <span class="font-mono">{{ $credit->buyer_adn }}</span>
                     @if($credit->buyer_name)
-                    <span class="text-gray-400">— {{ $credit->buyer_name }}</span>
+                    <span class="text-gray-600">— {{ $credit->buyer_name }}</span>
                     @endif
                 </td>
                 <td class="px-3 py-2 text-right font-medium {{ $credit->side === 'L' ? 'text-green-700' : 'text-gray-300' }}">
@@ -101,12 +101,12 @@
                     @endif
                 </td>
                 <td class="px-3 py-2">
-                    <a href="{{ route('admin.commerce.orders.show', $reversal->order_id) }}" class="text-brand-600 hover:underline font-mono">#{{ $reversal->order_id }}</a>
+                    <a href="{{ route('admin.commerce.orders.show', $reversal->order_id) }}" class="text-brand-700 hover:underline font-mono">#{{ $reversal->order_id }}</a>
                 </td>
                 <td class="px-3 py-2">
                     <span class="font-mono">{{ $reversal->buyer_adn }}</span>
                     @if($reversal->buyer_name)
-                    <span class="text-gray-400">— {{ $reversal->buyer_name }}</span>
+                    <span class="text-gray-600">— {{ $reversal->buyer_name }}</span>
                     @endif
                 </td>
                 <td class="px-3 py-2 text-right font-medium {{ $reversal->side === 'L' ? 'text-red-700' : 'text-gray-300' }}">
@@ -121,12 +121,12 @@
             @if($day->cutoff)
             @php
                 $c = $day->cutoff;
-                $b = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'failed' => 'bg-red-100 text-red-700', 'no_match' => 'bg-gray-100 text-gray-500', 'frozen' => 'bg-blue-100 text-blue-700', 'below_600bv' => 'bg-amber-100 text-amber-700'];
+                $b = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'failed' => 'bg-red-100 text-red-700', 'no_match' => 'bg-gray-100 text-gray-600', 'frozen' => 'bg-blue-100 text-blue-700', 'below_600bv' => 'bg-amber-100 text-amber-700'];
             @endphp
             <tr class="bg-purple-50/60">
                 <td colspan="3" class="px-3 py-2 text-purple-800">
                     <span class="font-semibold">Cut-off settlement</span>
-                    <span class="inline-flex ml-2 px-2 py-0.5 rounded text-[10px] font-medium {{ $b[$c->status] ?? 'bg-gray-100 text-gray-500' }}">{{ str_replace('_', ' ', $c->status) }}</span>
+                    <span class="inline-flex ml-2 px-2 py-0.5 rounded text-[10px] font-medium {{ $b[$c->status] ?? 'bg-gray-100 text-gray-600' }}">{{ str_replace('_', ' ', $c->status) }}</span>
                     @if($c->slab)
                     · slab {{ $c->slab }} matched, gross GSB ₹{{ \App\Modules\Shared\Support\IndianNumber::format($c->gross_gsb_paise / 100, 2) }}
                     @endif

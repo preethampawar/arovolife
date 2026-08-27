@@ -22,14 +22,14 @@
     </select>
     <input type="text" name="q" value="{{ $q }}" placeholder="Search ADN…"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-40">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     <a href="{{ route('admin.compensation.daily-cutoffs.export', array_filter(['date' => $date->toDateString(), 'status' => $status, 'q' => $q])) }}"
        class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">⬇ CSV</a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
-    <p class="px-6 py-10 text-sm text-gray-400 text-center">
+    <p class="px-6 py-10 text-sm text-gray-600 text-center">
         No cut-off data for {{ $date->format('d M Y') }}. GSB engine not yet active.
     </p>
     @else
@@ -37,33 +37,33 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-3 py-2 text-left text-gray-500">ADN</th>
-                    <th class="px-3 py-2 text-left text-gray-500">Name</th>
-                    <th class="px-3 py-2 text-left text-gray-500">
+                    <th class="px-3 py-2 text-left text-gray-600">ADN</th>
+                    <th class="px-3 py-2 text-left text-gray-600">Name</th>
+                    <th class="px-3 py-2 text-left text-gray-600">
                         Title <x-help-tip text="Personal purchase title based on lifetime BV. The GSB slab is capped at the title's max slab — e.g. a distributor without the Retailer title (3,000 BV) is capped at Slab 1." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-right text-gray-600">
                         Left BV <x-help-tip text="Left Genos BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-right text-gray-600">
                         Right BV <x-help-tip text="Right Genos BV accumulated today (fresh, excluding carry-forward)." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500">
+                    <th class="px-3 py-2 text-center text-gray-600">
                         Slab <x-help-tip :text="$slabThresholdTip" />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-right text-gray-600">
                         Gross GSB <x-help-tip text="Before admin charge and TDS." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-right text-gray-600">
                         Admin 3% <x-help-tip text="3% of gross or ₹25,000 per weekly batch — whichever is lower." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-right text-gray-600">
                         TDS 5% <x-help-tip text="5% of (gross − admin charge)." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-500">
+                    <th class="px-3 py-2 text-right text-gray-600">
                         Net GSB <x-help-tip text="Amount credited to wallet." />
                     </th>
-                    <th class="px-3 py-2 text-center text-gray-500">Status</th>
+                    <th class="px-3 py-2 text-center text-gray-600">Status</th>
                     <th class="px-3 py-2"></th>
                 </tr>
             </thead>
@@ -74,7 +74,7 @@
                         'credited'    => 'bg-green-100 text-green-700',
                         'reversed'    => 'bg-red-100 text-red-700',
                         'failed'      => 'bg-red-100 text-red-700',
-                        'no_match'    => 'bg-gray-100 text-gray-500',
+                        'no_match'    => 'bg-gray-100 text-gray-600',
                         'frozen'      => 'bg-blue-100 text-blue-700',
                         'below_600bv' => 'bg-amber-100 text-amber-700',
                         'calculated'  => 'bg-purple-100 text-purple-700',
@@ -83,7 +83,7 @@
                 <tr class="{{ $row->status === 'failed' ? 'bg-red-50' : '' }}">
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
-                           class="text-brand-600 hover:underline">
+                           class="text-brand-700 hover:underline">
                             {{ $row->distributor->adn ?? '—' }}
                         </a>
                     </td>
@@ -99,17 +99,17 @@
                     <td class="px-3 py-2 text-right">
                         {{ $row->gross_gsb_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->gross_gsb_paise / 100, 2) : '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right text-gray-500">
+                    <td class="px-3 py-2 text-right text-gray-600">
                         {{ $row->admin_charge_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) : '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right text-gray-500">
+                    <td class="px-3 py-2 text-right text-gray-600">
                         {{ $row->tds_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) : '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">
+                    <td class="px-3 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
                         {{ $row->net_gsb_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->net_gsb_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-3 py-2 text-center">
-                        <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badges[$row->status] ?? 'bg-gray-100 text-gray-500' }}">
+                        <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ str_replace('_', ' ', $row->status) }}
                         </span>
                     </td>

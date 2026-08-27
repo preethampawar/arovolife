@@ -9,6 +9,8 @@ use App\Console\Commands\ResetAdnsCommand;
 use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
+use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
@@ -118,6 +120,8 @@ class AppServiceProvider extends ServiceProvider
                 FortuneBonusRunCommand::class,
                 FortuneBonusEnrollCommand::class,
                 AdcBonusRunCommand::class,
+                FranchiseMonthlyRunCommand::class,
+                PurchaseOffersMonthlyRunCommand::class,
                 MonthlyPayoutCommand::class,
                 RepurchaseEvaluateCommand::class,
                 // TESTING ONLY — removed with the recompute scaffold at sign-off.

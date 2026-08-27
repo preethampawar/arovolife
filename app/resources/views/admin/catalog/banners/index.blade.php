@@ -26,12 +26,12 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($banners as $banner)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3">
                         @if($banner->hasImage())
                             <img src="{{ $banner->url() }}" alt="" class="w-40 aspect-[1520/350] object-cover rounded border border-gray-200">
                         @else
-                            <span class="text-gray-400">—</span>
+                            <span class="text-gray-600">—</span>
                         @endif
                     </td>
                     <td class="px-4 py-3 text-gray-900">{{ $banner->title ?: '—' }}</td>
@@ -39,7 +39,7 @@
                         @if($banner->category)
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200">{{ $banner->category->name }}</span>
                         @else
-                            <span class="text-gray-500">Shopping Mall</span>
+                            <span class="text-gray-600">Shopping Mall</span>
                         @endif
                     </td>
                     <td class="px-4 py-3 text-gray-600 text-xs">{{ $banner->external_url ? 'URL' : ($banner->s3_key ? 'Uploaded' : '—') }}</td>
@@ -48,11 +48,11 @@
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $banner->status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200' }}">{{ ucfirst($banner->status) }}</span>
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <a href="{{ route('admin.catalog.banners.edit', $banner) }}" class="text-brand-600 hover:text-brand-700 font-medium">Edit</a>
+                        <a href="{{ route('admin.catalog.banners.edit', $banner) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">No banners yet. <a href="{{ route('admin.catalog.banners.create') }}" class="text-brand-600 underline">Create one</a>.</td></tr>
+                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-600">No banners yet. <a href="{{ route('admin.catalog.banners.create') }}" class="text-brand-700 underline">Create one</a>.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -17,7 +17,7 @@
     {{-- Saved addresses --}}
     @if($addresses->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
-            <p class="text-gray-500">You haven't saved any addresses yet. Add one below.</p>
+            <p class="text-gray-600">You haven't saved any addresses yet. Add one below.</p>
         </div>
     @else
         <div class="space-y-3 mb-8">
@@ -40,7 +40,7 @@
                         @unless($address->is_default)
                         <form method="POST" action="{{ route('addresses.set-default', $address) }}">
                             @csrf
-                            <button type="submit" class="text-brand-600 hover:text-brand-700 font-medium whitespace-nowrap">Set default</button>
+                            <button type="submit" class="text-brand-700 hover:text-brand-800 font-medium whitespace-nowrap">Set default</button>
                         </form>
                         @endunless
                         <button type="button" data-addr-edit="{{ $address->id }}" class="text-gray-600 hover:text-gray-800">Edit</button>

@@ -94,6 +94,14 @@ final class LoginController extends Controller
         // stuffing without making honest typos painful.
         $key = 'login:'.Str::lower($email).'|'.$request->ip();
 
+        // A second bucket keyed on the IP alone. The per-account key above
+        // stops five guesses at ONE account, and does nothing to stop one
+        // guess against five hundred accounts from the same source — which is
+        // password spraying, and is how a weak password on any one of a
+        // thousand distributors gets found (T-6.1 finding M-5). Set well above
+        // a shared office or mobile-carrier NAT so honest users never meet it.
+        $ipKey = 'login-ip:'.$request->ip();
+
         // If an admin recently reset this user's password, drop any stale
         // lockout BEFORE the throttle check so the user isn't blocked by
         // attempts they made against their old password. Consumed once: the
@@ -106,6 +114,17 @@ final class LoginController extends Controller
         if (RateLimiter::tooManyAttempts($key, maxAttempts: 5)) {
             $seconds = RateLimiter::availableIn($key);
 
+            return back()
+                ->withInput($request->only('login'))
+                ->withErrors(['login' => "Too many failed login attempts. Try again in {$seconds} seconds."]);
+        }
+
+        if (RateLimiter::tooManyAttempts($ipKey, maxAttempts: 30)) {
+            $seconds = RateLimiter::availableIn($ipKey);
+
+            // Deliberately the same wording as the per-account message: telling
+            // a sprayer which limit they hit tells them how to pace the next
+            // run.
             return back()
                 ->withInput($request->only('login'))
                 ->withErrors(['login' => "Too many failed login attempts. Try again in {$seconds} seconds."]);
@@ -164,6 +183,7 @@ final class LoginController extends Controller
         // Failed attempt: charge the bucket. 15-minute decay matches the
         // master plan's policy.
         RateLimiter::hit($key, decaySeconds: 900);
+        RateLimiter::hit($ipKey, decaySeconds: 900);
 
         // Defence-in-depth: rotate the session ID on every state change,
         // including failed credentials. Mitigates session-fixation where

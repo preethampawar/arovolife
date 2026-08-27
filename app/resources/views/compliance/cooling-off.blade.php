@@ -12,8 +12,8 @@
     </p>
 
     <div class="rounded-2xl border border-gray-200 bg-white p-6 mb-8">
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Your registration</p>
-        <p class="font-mono font-bold text-brand-600 tracking-widest text-lg mb-4">{{ $distributor->adn }}</p>
+        <p class="text-xs text-gray-600 uppercase tracking-wider mb-2">Your registration</p>
+        <p class="font-mono font-bold text-brand-700 tracking-widest text-lg mb-4">{{ $distributor->adn }}</p>
 
         <dl class="text-sm grid grid-cols-2 gap-y-2">
             <dt class="text-gray-600">Effective date</dt>
@@ -55,7 +55,7 @@
         </button>
     </form>
 
-    <a href="{{ route('dashboard') }}" class="block text-center text-sm text-gray-500 hover:text-gray-700 mt-4">
+    <a href="{{ route('dashboard') }}" class="block text-center text-sm text-gray-600 hover:text-gray-700 mt-4">
         Back to dashboard
     </a>
     @else
@@ -64,11 +64,11 @@
         <p>
             The 30-day window expired on {{ $distributor->cooling_off_end_at->format('d M Y') }}.
             For account closure outside this window, please contact
-            <a class="text-brand-600 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.
+            <a class="text-brand-700 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.
         </p>
     </div>
 
-    <a href="{{ route('dashboard') }}" class="block text-center text-sm text-gray-500 hover:text-gray-700 mt-4">
+    <a href="{{ route('dashboard') }}" class="block text-center text-sm text-gray-600 hover:text-gray-700 mt-4">
         Back to dashboard
     </a>
     @endif

@@ -6,16 +6,16 @@
 </div>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($ledger) || $ledger->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No wallet transactions yet.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No wallet transactions yet.</p>
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-3 py-2 text-left text-gray-500">Date</th>
-                <th class="px-3 py-2 text-left text-gray-500">Type <x-help-tip text="gsb_credit, mb_credit = bonus credits; payout_debit = Tuesday transfer; reversal = admin correction." /></th>
-                <th class="px-3 py-2 text-right text-gray-500">Amount</th>
-                <th class="px-3 py-2 text-right text-gray-500">Running balance <x-help-tip text="Wallet balance immediately after this entry." /></th>
-                <th class="px-3 py-2 text-left text-gray-500">Memo</th>
+                <th class="px-3 py-2 text-left text-gray-600">Date</th>
+                <th class="px-3 py-2 text-left text-gray-600">Type <x-help-tip text="gsb_credit, mb_credit = bonus credits; payout_debit = Tuesday transfer; reversal = admin correction." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">Amount</th>
+                <th class="px-3 py-2 text-right text-gray-600">Running balance <x-help-tip text="Wallet balance immediately after this entry." /></th>
+                <th class="px-3 py-2 text-left text-gray-600">Memo</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -30,7 +30,7 @@
                 <td class="px-3 py-2 text-right font-semibold text-blue-700">
                     ₹{{ \App\Modules\Shared\Support\IndianNumber::format($runningBalance / 100, 2) }}
                 </td>
-                <td class="px-3 py-2 text-gray-500">{{ $entry->memo ?? '—' }}</td>
+                <td class="px-3 py-2 text-gray-600">{{ $entry->memo ?? '—' }}</td>
             </tr>
             @endforeach
         </tbody>

@@ -73,7 +73,7 @@
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h3 class="font-semibold text-gray-800 mb-1">Roles</h3>
-        <p class="text-xs text-gray-500 mb-4">
+        <p class="text-xs text-gray-600 mb-4">
             Pick at least one. Separation of duties (R-17) is enforced in code: finance staff cannot freeze
             accounts and compliance staff cannot record payments.
         </p>

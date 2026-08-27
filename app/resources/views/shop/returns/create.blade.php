@@ -3,9 +3,9 @@
 
 @section('content')
 <div class="max-w-2xl mx-auto px-4 py-8">
-    <a href="{{ route('orders.show', $order->order_no) }}" class="text-sm text-brand-600 hover:text-brand-700">← Back to order</a>
+    <a href="{{ route('orders.show', $order->order_no) }}" class="text-sm text-brand-700 hover:text-brand-800">← Back to order</a>
 
-    <h1 class="text-2xl font-bold text-gray-900 mt-3 mb-2">Return order <span class="font-mono text-brand-600">{{ $order->order_no }}</span></h1>
+    <h1 class="text-2xl font-bold text-gray-900 mt-3 mb-2">Return order <span class="font-mono text-brand-700">{{ $order->order_no }}</span></h1>
 
     {{-- Context note --}}
     <p class="text-sm text-gray-600 mb-6">

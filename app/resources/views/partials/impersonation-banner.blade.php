@@ -1,5 +1,5 @@
 @if(session('impersonator_id'))
-    <div class="bg-sunrise-500 text-white text-sm">
+    <div class="bg-sunrise-800 text-white text-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
             <p class="font-medium">
                 <span class="inline-flex items-center gap-1.5">

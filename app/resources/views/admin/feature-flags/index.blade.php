@@ -30,7 +30,7 @@
             <div class="rounded-2xl border border-gray-200 bg-white p-5 flex items-start justify-between">
                 <div class="pr-4">
                     <div class="flex items-center gap-2 mb-1">
-                        <code class="text-xs text-gray-500">{{ $key }}</code>
+                        <code class="text-xs text-gray-600">{{ $key }}</code>
                         @if ($flag['active'])
                             <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">Active</span>
                         @else
@@ -41,7 +41,7 @@
                     <div class="text-sm text-gray-600 mt-1">{{ $flag['description'] }}</div>
                     @if (! empty($flag['requires']))
                         <div class="text-xs mt-2 flex flex-wrap items-center gap-1.5">
-                            <span class="text-gray-500 font-medium">Requires:</span>
+                            <span class="text-gray-600 font-medium">Requires:</span>
                             @foreach ($flag['requires'] as $reqKey)
                                 @php $req = $flags[$reqKey] ?? null; @endphp
                                 @if ($req !== null)

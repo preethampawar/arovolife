@@ -31,13 +31,13 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-                <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">RMA</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Order</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Reason</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Opened</th>
-                <th class="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Net Refund</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">RMA</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Order</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Customer</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Reason</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Status</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Opened</th>
+                <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase">Net Refund</th>
                 <th></th>
             </tr>
         </thead>
@@ -63,7 +63,7 @@
                 <td class="px-4 py-3 font-mono text-xs">{{ $rtn->rma_no }}</td>
                 <td class="px-4 py-3">
                     <a href="{{ route('admin.commerce.orders.show', $rtn->order) }}"
-                       class="text-brand-600 hover:text-brand-700 font-mono text-xs">{{ $rtn->order->order_no }}</a>
+                       class="text-brand-700 hover:text-brand-800 font-mono text-xs">{{ $rtn->order->order_no }}</a>
                 </td>
                 <td class="px-4 py-3 text-gray-700">{{ $rtn->order->customer->display_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-gray-700">{{ $reasonLabel }}</td>
@@ -72,22 +72,22 @@
                         {{ ucfirst($rtn->status) }}
                     </span>
                 </td>
-                <td class="px-4 py-3 text-gray-500 text-xs">{{ $rtn->created_at->format('d M Y H:i') }}</td>
+                <td class="px-4 py-3 text-gray-600 text-xs">{{ $rtn->created_at->format('d M Y H:i') }}</td>
                 <td class="px-4 py-3 text-right font-semibold">
                     @if($rtn->buybackDecision)
                     ₹{{ \App\Modules\Shared\Support\IndianNumber::format($rtn->buybackDecision->net_refund_paise / 100, 2) }}
                     @else
-                    <span class="text-gray-400">—</span>
+                    <span class="text-gray-600">—</span>
                     @endif
                 </td>
                 <td class="px-4 py-3 text-right">
                     <a href="{{ route('admin.returns.show', $rtn) }}"
-                       class="text-sm text-brand-600 hover:text-brand-700 font-medium">Review →</a>
+                       class="text-sm text-brand-700 hover:text-brand-800 font-medium">Review →</a>
                 </td>
             </tr>
             @empty
             <tr>
-                <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No return requests found.</td>
+                <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">No return requests found.</td>
             </tr>
             @endforelse
         </tbody>

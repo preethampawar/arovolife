@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Support;
 
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
+use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
@@ -16,6 +18,8 @@ use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\FranchiseFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -203,6 +207,36 @@ final class EngineRegistry
                 cadence: EngineCadence::monthlyOn(8, '09:30'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
+            ),
+
+            new EngineDefinition(
+                key: 'offers.monthly',
+                label: 'Purchase Offers',
+                description: "Grants the two purchase offers for distributors who hold no rank: the half-price company-announced product for a month in which they repurchased the qualifying volume, and redeem points for completing a six-month purchase streak. Impact: writes purchase offer grants and redeem-point accruals. It moves no cash — redeem points are a discount entitlement, not wallet money. Idempotent per distributor per month. Needs a product announced for the month at Admin → Offers, or no half-price grant is possible.",
+                periodType: EnginePeriodType::Month,
+                commandClass: PurchaseOffersMonthlyRunCommand::class,
+                commandSignature: 'offers:monthly-run',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: PurchaseOffersFeature::class,
+                reportRouteName: 'admin.commerce.offers.index',
+                cadence: EngineCadence::monthlyOn(2, '06:00'),
+                defaultPeriod: 'prev-month',
+            ),
+
+            new EngineDefinition(
+                key: 'franchise.commission',
+                label: 'Franchise Commission',
+                description: "Credits each active franchise's operator 3% of the product value of the orders that franchise fulfilled in the month (subtotal less discount — GST and shipping are excluded, being tax collected for the government and a pass-through cost). Dated on delivery, so a franchise is paid in the month it did the work. Impact: writes franchise commission results and wallet credits. Idempotent — franchises already credited for the month are skipped. The company's own primary franchise has no operator and earns nothing. No dependency on ranks or BV: this is fulfilment work, not a downline earning.",
+                periodType: EnginePeriodType::Month,
+                commandClass: FranchiseMonthlyRunCommand::class,
+                commandSignature: 'franchise:monthly-run',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: FranchiseFeature::class,
+                reportRouteName: 'admin.commerce.franchises.report',
+                cadence: EngineCadence::monthlyOn(8, '09:45'),
+                defaultPeriod: 'prev-month',
             ),
 
             new EngineDefinition(

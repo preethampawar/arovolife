@@ -41,10 +41,10 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
     <div class="rounded-2xl border border-gray-200 bg-white p-6 lg:col-span-2">
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Applicant</p>
+        <p class="text-xs text-gray-600 uppercase tracking-wider mb-3">Applicant</p>
         <dl class="text-sm grid grid-cols-2 gap-y-2">
             <dt class="text-gray-600">ADN</dt>
-            <dd class="font-mono font-bold text-brand-600 tracking-widest">{{ $distributor->adn }}</dd>
+            <dd class="font-mono font-bold text-brand-700 tracking-widest">{{ $distributor->adn }}</dd>
 
             <dt class="text-gray-600">Email</dt>
             <dd class="text-gray-900">{{ $distributor->user->email }}</dd>
@@ -70,9 +70,9 @@
     </div>
 
     <div class="rounded-2xl border border-gray-200 bg-white p-6">
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Documents</p>
+        <p class="text-xs text-gray-600 uppercase tracking-wider mb-3">Documents</p>
         @if($distributor->kycDocuments->isEmpty())
-        <p class="text-sm text-gray-500">No documents uploaded.</p>
+        <p class="text-sm text-gray-600">No documents uploaded.</p>
         @else
         @php
             // Pre-sign one URL per document up front, valid for 30 minutes,
@@ -103,7 +103,7 @@
                     <div class="flex justify-between items-center px-3 py-2 bg-gray-50">
                         <span class="text-gray-700 text-xs font-medium">{{ str_replace('_', ' ', $doc->type) }}</span>
                         <a href="{{ $auditedUrl }}" target="_blank"
-                            class="text-[11px] text-brand-600 hover:text-brand-700 underline">Open full size →</a>
+                            class="text-[11px] text-brand-700 hover:text-brand-800 underline">Open full size →</a>
                     </div>
                     @if($isImage)
                         <a href="{{ $auditedUrl }}" target="_blank" class="block bg-gray-100">
@@ -112,7 +112,7 @@
                                  onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'text-xs text-red-600 p-3',textContent:'Image could not be loaded — file may be missing on disk.'}))">
                         </a>
                     @else
-                        <div class="p-3 text-xs text-gray-500 bg-white">
+                        <div class="p-3 text-xs text-gray-600 bg-white">
                             {{ strtoupper($ext) ?: 'File' }} document — open in new tab
                         </div>
                     @endif
@@ -128,7 +128,7 @@
                                     on {{ $doc->flagged_at->format('d M Y H:i') }}
                                 </p>
                                 <p class="text-[11px] text-gray-600 italic">"{{ $doc->flagged_reason }}"</p>
-                                <p class="text-[10px] text-gray-500 mt-1">Awaiting applicant re-upload.</p>
+                                <p class="text-[10px] text-gray-600 mt-1">Awaiting applicant re-upload.</p>
                             @else
                                 <details class="text-[11px]">
                                     <summary class="cursor-pointer text-amber-700 hover:text-amber-800 font-medium select-none">Flag this document for re-upload <x-help-tip text="Your reason is emailed verbatim to the applicant with a signed link to re-upload only this document; the rest of the KYC submission is untouched." /></summary>
@@ -230,7 +230,7 @@
 {{-- Admin document upload --}}
 <div class="mt-6 rounded-2xl border border-gray-200 bg-white p-6">
     <p class="text-base font-semibold text-gray-800 mb-1">Upload document on behalf of distributor</p>
-    <p class="text-xs text-gray-500 mb-4">
+    <p class="text-xs text-gray-600 mb-4">
         Use this for manually-created accounts or when a resubmission is needed.
         Uploading replaces any existing <em>unverified</em> document of the same type.
         Verified documents cannot be replaced — reject KYC first.
@@ -280,7 +280,7 @@
     </form>
 </div>
 
-<a href="{{ route('admin.kyc.index') }}" class="inline-block mt-6 text-sm text-gray-500 hover:text-gray-700">
+<a href="{{ route('admin.kyc.index') }}" class="inline-block mt-6 text-sm text-gray-600 hover:text-gray-700">
     ← Back to queue
 </a>
 

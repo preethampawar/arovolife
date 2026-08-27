@@ -16,11 +16,11 @@
     <div class="absolute inset-0 flex items-start justify-center p-4 sm:p-8 overflow-y-auto pointer-events-none">
         <div class="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl pointer-events-auto">
             <div class="px-6 pt-5 pb-3 border-b border-gray-100 flex items-center justify-between">
-                <h2 id="distributorDetailsModalTitle" class="text-sm uppercase tracking-wider font-semibold text-gray-500">
+                <h2 id="distributorDetailsModalTitle" class="text-sm uppercase tracking-wider font-semibold text-gray-600">
                     Distributor Details
                 </h2>
                 <button type="button" data-modal-close
-                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     aria-label="Close">
                     <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>

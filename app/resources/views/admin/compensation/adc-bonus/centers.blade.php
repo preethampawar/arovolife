@@ -10,32 +10,32 @@
 
 <div class="flex justify-end mb-4">
     <a href="{{ route('admin.compensation.adc-bonus.centers.create') }}"
-       class="px-4 py-1.5 rounded-lg bg-brand-500 text-white text-sm hover:bg-brand-600 transition-colors">+ Add Center</a>
+       class="px-4 py-1.5 rounded-lg bg-brand-700 text-white text-sm hover:bg-brand-800 transition-colors">+ Add Center</a>
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($centers->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-400 text-center">No centers yet — add one above.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No centers yet — add one above.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-500">Name</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Location</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Pincode / District / State</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Assigned distributor</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Status</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Phase</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Members</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Approved</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Actions</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Name</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Location</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Pincode / District / State</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Assigned distributor</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Status</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Phase</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Members</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Approved</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
                 @foreach($centers as $center)
                 @php
-                    $sc = ['active' => 'bg-green-100 text-green-700', 'inactive' => 'bg-gray-100 text-gray-500'];
+                    $sc = ['active' => 'bg-green-100 text-green-700', 'inactive' => 'bg-gray-100 text-gray-600'];
                     $addressParts = [$center->pincode, $center->district, $center->state];
                     $hasAddress = array_filter($addressParts, fn ($part) => filled($part)) !== [];
                 @endphp
@@ -65,7 +65,7 @@
                         {{ $center->approved_at ? \Illuminate\Support\Carbon::parse($center->approved_at)->format('d M Y') : '—' }}
                     </td>
                     <td class="px-4 py-2 text-right">
-                        <a href="{{ route('admin.compensation.adc-bonus.centers.edit', $center) }}" class="text-brand-600 hover:text-brand-700 font-medium">Edit</a>
+                        <a href="{{ route('admin.compensation.adc-bonus.centers.edit', $center) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
                     </td>
                 </tr>
                 @endforeach

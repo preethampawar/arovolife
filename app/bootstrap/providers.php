@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\AdminServiceProvider;
+use App\Modules\Analytics\AnalyticsServiceProvider;
 use App\Modules\Catalog\CatalogServiceProvider;
 use App\Modules\Commerce\CommerceServiceProvider;
 use App\Modules\Compensation\CompensationServiceProvider;
@@ -44,4 +45,5 @@ return [
     GrievanceServiceProvider::class,
     PublicServiceProvider::class,
     MessagingServiceProvider::class,
+    AnalyticsServiceProvider::class,
 ];

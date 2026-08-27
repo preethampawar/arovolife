@@ -22,12 +22,12 @@
         <div class="px-5 pt-5 pb-4 flex flex-wrap items-baseline justify-between gap-2">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">Slab ladder</h2>
-                <p class="text-sm text-gray-500">Where you stand on the {{ count($slabProgress->rows) }} Genos Sales Bonus slabs.</p>
+                <p class="text-sm text-gray-600">Where you stand on the {{ count($slabProgress->rows) }} Genos Sales Bonus slabs.</p>
             </div>
             @if($slabProgress->highestEarnedSlab !== null)
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Highest slab earned: Slab {{ $slabProgress->highestEarnedSlab }}</span>
             @else
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">No slab earned yet</span>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">No slab earned yet</span>
             @endif
         </div>
 
@@ -62,7 +62,7 @@
             @endphp
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-5">
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
-                    <p class="text-xs text-gray-500 flex items-center gap-1">Left Genos BV today <x-help-tip text="Today's Left Genos BV plus any BV carried over on your Left side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
+                    <p class="text-xs text-gray-600 flex items-center gap-1">Left Genos BV today <x-help-tip text="Today's Left Genos BV plus any BV carried over on your Left side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->leftEffectivePaise / 100, 0) }}</p>
                     <p class="mt-1">
                         <span class="{{ $powerSideIsLeft ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $powerSideIsLeft ? 'Power side' : 'Weaker side' }}</span>
@@ -74,14 +74,14 @@
                         </p>
                     @endif
                     @if ($slab1WeakerCfHint !== null && $weakerSideIsLeft)
-                        <p class="text-xs text-gray-400 mt-1 flex items-start gap-1">
+                        <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">
                             {{ $slab1WeakerCfHint }}
                             <x-help-tip :text="$slab1WeakerCfTip" />
                         </p>
                     @endif
                 </div>
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
-                    <p class="text-xs text-gray-500 flex items-center gap-1">Right Genos BV today <x-help-tip text="Today's Right Genos BV plus any BV carried over on your Right side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
+                    <p class="text-xs text-gray-600 flex items-center gap-1">Right Genos BV today <x-help-tip text="Today's Right Genos BV plus any BV carried over on your Right side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
                     <p class="mt-1">
                         <span class="{{ $powerSideIsLeft ? $weakerBadgeClasses : $powerBadgeClasses }}">{{ $powerSideIsLeft ? 'Weaker side' : 'Power side' }}</span>
@@ -93,14 +93,14 @@
                         </p>
                     @endif
                     @if ($slab1WeakerCfHint !== null && ! $weakerSideIsLeft)
-                        <p class="text-xs text-gray-400 mt-1 flex items-start gap-1">
+                        <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">
                             {{ $slab1WeakerCfHint }}
                             <x-help-tip :text="$slab1WeakerCfTip" />
                         </p>
                     @endif
                 </div>
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
-                    <p class="text-xs text-gray-500 flex items-center gap-1">Matched BV so far <x-help-tip text="The lower of your Left and Right Genos BV. The slabs below are matched against this figure at the 23:59 cut-off." /></p>
+                    <p class="text-xs text-gray-600 flex items-center gap-1">Matched BV so far <x-help-tip text="The lower of your Left and Right Genos BV. The slabs below are matched against this figure at the 23:59 cut-off." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format(min($slabProgress->leftEffectivePaise, $slabProgress->rightEffectivePaise) / 100, 0) }}</p>
                 </div>
             </div>
@@ -134,7 +134,7 @@
                         <td class="px-4 py-3 text-gray-600">
                             {{ $row->titleRequired }}
                             @if($row->lockedByTitle)
-                                <span class="block text-xs text-gray-400">unlocks at {{ \App\Modules\Shared\Support\IndianNumber::format($row->titleMinBvPaise / 100, 0) }} BV of personal purchases</span>
+                                <span class="block text-xs text-gray-600">unlocks at {{ \App\Modules\Shared\Support\IndianNumber::format($row->titleMinBvPaise / 100, 0) }} BV of personal purchases</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">
@@ -144,13 +144,13 @@
                                     $leftMet = $row->leftProgressPaise >= $row->matchedBvPaise;
                                     $rightMet = $row->rightProgressPaise >= $row->matchedBvPaise;
                                 @endphp
-                                <div class="{{ $leftMet ? 'text-green-700 font-medium' : 'text-gray-500' }}">
+                                <div class="{{ $leftMet ? 'text-green-700 font-medium' : 'text-gray-600' }}">
                                     L {{ \App\Modules\Shared\Support\IndianNumber::format($row->leftProgressPaise / 100, 0) }} / {{ $slabRequiredBv }}
                                     @if($leftMet)
                                         <span aria-label="met">&check;</span>
                                     @endif
                                 </div>
-                                <div class="{{ $rightMet ? 'text-green-700 font-medium' : 'text-gray-500' }}">
+                                <div class="{{ $rightMet ? 'text-green-700 font-medium' : 'text-gray-600' }}">
                                     R {{ \App\Modules\Shared\Support\IndianNumber::format($row->rightProgressPaise / 100, 0) }} / {{ $slabRequiredBv }}
                                     @if($rightMet)
                                         <span aria-label="met">&check;</span>
@@ -186,14 +186,14 @@
     {{-- Filter form --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">From</label>
+            <label class="block text-xs text-gray-600 mb-1">From</label>
             <input type="date" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">To</label>
+            <label class="block text-xs text-gray-600 mb-1">To</label>
             <input type="date" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
         @if(request('from') || request('to'))
             <a href="{{ route('income.genos-bv') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
@@ -201,8 +201,8 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">No Genos BV data yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Your daily BV log will appear here once the 23:59 cut-off engine is active and your Genos members begin purchasing.</p>
+            <p class="text-gray-600 font-medium">No Genos BV data yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Your daily BV log will appear here once the 23:59 cut-off engine is active and your Genos members begin purchasing.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -237,12 +237,12 @@
                         <td class="px-4 py-3 text-gray-700">{{ $row->cutoff_date->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::format($row->left_bv_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::format($row->right_bv_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-center text-gray-500">{{ $row->left_bv_paise <= $row->right_bv_paise ? 'Left' : 'Right' }}</td>
+                        <td class="px-4 py-3 text-center text-gray-600">{{ $row->left_bv_paise <= $row->right_bv_paise ? 'Left' : 'Right' }}</td>
                         <td class="px-4 py-3 text-center">
                             @if($row->slab)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Slab {{ $row->slab }}</span>
                             @else
-                                <span class="text-gray-400 text-xs">—</span>
+                                <span class="text-gray-600 text-xs">—</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($row->power_cf_after_paise / 100, 0) }}</td>
@@ -251,7 +251,7 @@
                             @if($row->slab)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">GSB earned</span>
                             @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">No match</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">No match</span>
                             @endif
                         </td>
                     </tr>

@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 /**
  * RUQ-01 .. RUQ-04 — phone + email uniqueness on the public
  * registration wizard's step-2 (Account) submission. Catches the

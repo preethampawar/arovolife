@@ -20,21 +20,21 @@
 @if($current)
 <div class="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
     <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <div class="text-[11px] uppercase tracking-wide text-gray-400">Current status</div>
-        <span class="inline-flex mt-1 px-2 py-0.5 rounded text-xs font-semibold {{ $statusClass[$current->status] ?? 'bg-gray-100 text-gray-500' }}">
+        <div class="text-[11px] uppercase tracking-wide text-gray-600">Current status</div>
+        <span class="inline-flex mt-1 px-2 py-0.5 rounded text-xs font-semibold {{ $statusClass[$current->status] ?? 'bg-gray-100 text-gray-600' }}">
             {{ ucfirst($current->status) }}
         </span>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <div class="text-[11px] uppercase tracking-wide text-gray-400">Completed / required</div>
+        <div class="text-[11px] uppercase tracking-wide text-gray-600">Completed / required</div>
         <div class="mt-1 text-sm font-semibold text-gray-800">{{ $bv($current->completed_bv_paise) }} / {{ $bv($current->required_bv_paise) }}</div>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <div class="text-[11px] uppercase tracking-wide text-gray-400">Due date</div>
+        <div class="text-[11px] uppercase tracking-wide text-gray-600">Due date</div>
         <div class="mt-1 text-sm font-semibold text-gray-800">{{ $current->due_date?->format('d M Y') ?? '—' }}</div>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <div class="text-[11px] uppercase tracking-wide text-gray-400">Grace ends</div>
+        <div class="text-[11px] uppercase tracking-wide text-gray-600">Grace ends</div>
         <div class="mt-1 text-sm font-semibold text-gray-800">{{ $current->grace_end_date?->format('d M Y') ?? '—' }}</div>
     </div>
 </div>
@@ -42,17 +42,17 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No repurchase cycles yet (the distributor has not reached Retailer, or the engine has not been run).</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No repurchase cycles yet (the distributor has not reached Retailer, or the engine has not been run).</p>
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-3 py-2 text-left text-gray-500">Cycle</th>
-                <th class="px-3 py-2 text-left text-gray-500">Due</th>
-                <th class="px-3 py-2 text-left text-gray-500">Grace ends</th>
-                <th class="px-3 py-2 text-right text-gray-500">Required</th>
-                <th class="px-3 py-2 text-right text-gray-500">Completed</th>
-                <th class="px-3 py-2 text-center text-gray-500">Status</th>
+                <th class="px-3 py-2 text-left text-gray-600">Cycle</th>
+                <th class="px-3 py-2 text-left text-gray-600">Due</th>
+                <th class="px-3 py-2 text-left text-gray-600">Grace ends</th>
+                <th class="px-3 py-2 text-right text-gray-600">Required</th>
+                <th class="px-3 py-2 text-right text-gray-600">Completed</th>
+                <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -60,11 +60,11 @@
             <tr>
                 <td class="px-3 py-2 font-medium">{{ $cycle->cycle_start_date?->format('d M Y') ?? '—' }}</td>
                 <td class="px-3 py-2">{{ $cycle->due_date?->format('d M Y') ?? '—' }}</td>
-                <td class="px-3 py-2 text-gray-500">{{ $cycle->grace_end_date?->format('d M Y') ?? '—' }}</td>
+                <td class="px-3 py-2 text-gray-600">{{ $cycle->grace_end_date?->format('d M Y') ?? '—' }}</td>
                 <td class="px-3 py-2 text-right">{{ $bv($cycle->required_bv_paise) }}</td>
                 <td class="px-3 py-2 text-right font-semibold {{ $cycle->completed_bv_paise >= $cycle->required_bv_paise ? 'text-green-700' : 'text-gray-700' }}">{{ $bv($cycle->completed_bv_paise) }}</td>
                 <td class="px-3 py-2 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusClass[$cycle->status] ?? 'bg-gray-100 text-gray-500' }}">
+                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusClass[$cycle->status] ?? 'bg-gray-100 text-gray-600' }}">
                         {{ ucfirst($cycle->status) }}
                     </span>
                 </td>

@@ -20,8 +20,12 @@ simultaneously as:
 - UI/UX Designer
 - **Compliance Officer** — India Direct Selling Rules, 2021 (highest priority)
 
-Current phase: **Phase 1** — Registration, Authentication, Authorization, Genealogy.
-No commissions, no cart, no wallet yet. Those come in later phases.
+Current phase: **Operations build-out** — grievance redressal, termination,
+franchise, purchase offers, analytics. Phases 1–7 are shipped (registration and
+genealogy, commerce, wallet, and the full compensation engine set: GSB, Mentorship,
+Growth Booster, Rank Bonus, Fortune Bonus, Arete Development Center).
+`docs/roadmap.md` is the canonical phase index — read it before assuming what
+exists. Phase 12 production hardening (MFA, observability, Redis) is deferred.
 
 ---
 

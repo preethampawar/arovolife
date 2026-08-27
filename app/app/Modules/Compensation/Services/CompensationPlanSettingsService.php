@@ -36,7 +36,7 @@ final class CompensationPlanSettingsService
 
     public const GROUP_C_TYPES = ['awards_credit'];
 
-    public const GROUP_D_TYPES = ['adc_credit'];
+    public const GROUP_D_TYPES = ['adc_credit', 'franchise_credit'];
 
     /**
      * All five cash-bonus types that count toward the ₹50L monthly gross cap
@@ -91,6 +91,12 @@ final class CompensationPlanSettingsService
         'comp.gbb.pool_rate_bp' => 500,
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
+        // Franchise fulfilment commission — 3% of the month's fulfilled
+        // product value (subtotal less discount, excluding GST and shipping).
+        'comp.franchise.rate_bp' => 300,
+        // Exempt from the admin charge, like awards: it pays for fulfilment
+        // work rather than for a position in the plan.
+        'comp.admin_charge.applies_to_franchise' => false,
         'comp.adc.cap_paise' => 10_000_000,
         // Rank Bonus envelope (KP 2026-08-05): share of company BV set aside for
         // ALL nine rank pools together. 2000 bp = 20%.
@@ -264,6 +270,15 @@ final class CompensationPlanSettingsService
     public function adcRateBp(): int
     {
         return $this->scalarInt('comp.adc.rate_bp');
+    }
+
+    /**
+     * Franchise fulfilment commission, in basis points of the month's
+     * fulfilled product value. 300 bp = 3% (Product Owner, 2026-08-16).
+     */
+    public function franchiseRateBp(): int
+    {
+        return $this->scalarInt('comp.franchise.rate_bp');
     }
 
     public function adcCapPaise(): int

@@ -106,6 +106,17 @@ final class OrderStateMachine
                     $lines[] = ['account' => 'revenue.discounts', 'side' => 'debit', 'amount_paise' => $order->discount_paise];
                 }
 
+                // Redeem points settle part of the sale without cash, exactly
+                // as a coupon does, so they need the same contra-revenue debit.
+                // They also sit inside total_paise on the debit side, so without
+                // this the entry is out of balance by the points amount, the
+                // LedgerPoster rejects it, and a points-paid order can never be
+                // marked shipped at all — the same failure the shipping-revenue
+                // note above records having already happened once.
+                if (($order->redeem_points_paise ?? 0) > 0) {
+                    $lines[] = ['account' => 'revenue.discounts', 'side' => 'debit', 'amount_paise' => $order->redeem_points_paise];
+                }
+
                 $this->ledger->post(
                     sourceModule: 'Commerce',
                     sourceType: 'order.shipped',

@@ -20,7 +20,7 @@
         class="rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
     <input name="to" type="date" value="{{ request()->query('to') }}"
         class="rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
         Filter
     </button>
     @if(request()->hasAny(['action','subject_type','from','to']))
@@ -35,7 +35,7 @@
 <div class="flex flex-wrap gap-2 mb-6">
     @foreach($actionGroups as $grp => $cnt)
     <a href="{{ route('admin.audit-log', ['action' => $grp]) }}"
-       class="px-2.5 py-1 rounded-full text-xs border border-gray-200 bg-white text-gray-800 hover:border-brand-500 hover:text-brand-600 transition-colors">
+       class="px-2.5 py-1 rounded-full text-xs border border-gray-200 bg-white text-gray-800 hover:border-brand-500 hover:text-brand-800 transition-colors">
         {{ $grp }} <span class="text-gray-600">({{ $cnt }})</span>
     </a>
     @endforeach
@@ -60,7 +60,7 @@
             <tbody class="divide-y divide-gray-200">
                 @forelse($logs as $log)
                 <tr class="hover:bg-gray-50/50 transition-colors align-top">
-                    <td class="px-4 py-4 text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-4 py-4 text-gray-600">{{ $loop->iteration }}</td>
                     <td class="px-4 py-4 text-xs text-gray-700 whitespace-nowrap">
                         <p class="text-gray-800 font-medium">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y') }}</p>
                         <p class="text-gray-600">{{ \Carbon\Carbon::parse($log->created_at)->format('H:i:s') }}</p>
@@ -75,7 +75,7 @@
                              subjects show only the friendly title. --}}
                         @if($log->subject_type === 'distributor' && $log->subject_id)
                             <a href="{{ route('admin.distributors.show', $log->subject_id) }}"
-                               class="text-xs text-brand-600 hover:underline mt-1 inline-block">
+                               class="text-xs text-brand-700 hover:underline mt-1 inline-block">
                                 Open distributor →
                             </a>
                         @endif
@@ -88,20 +88,20 @@
                             </summary>
                             <div class="mt-2 space-y-2 max-w-xs">
                                 <div class="text-gray-700">
-                                    <span class="font-semibold text-gray-500">Event key:</span>
+                                    <span class="font-semibold text-gray-600">Event key:</span>
                                     <code class="font-mono text-[11px] text-gray-800 break-all">{{ $log->action }}</code>
                                 </div>
                                 <div class="text-gray-700">
-                                    <span class="font-semibold text-gray-500">Subject:</span>
+                                    <span class="font-semibold text-gray-600">Subject:</span>
                                     <code class="font-mono text-[11px] text-gray-800">{{ $log->subject_type }}{{ $log->subject_id ? '#'.$log->subject_id : '' }}</code>
                                 </div>
                                 <div class="text-gray-700">
-                                    <span class="font-semibold text-gray-500">Actor:</span>
+                                    <span class="font-semibold text-gray-600">Actor:</span>
                                     <code class="font-mono text-[11px] text-gray-800">{{ $log->actor_email ?? 'system' }}</code>
                                 </div>
                                 @if($log->details)
                                     <div class="text-gray-700">
-                                        <span class="font-semibold text-gray-500 block mb-1">Payload:</span>
+                                        <span class="font-semibold text-gray-600 block mb-1">Payload:</span>
                                         <pre class="text-gray-800 bg-gray-50 rounded p-2 text-[11px] overflow-x-auto">{{ json_encode(json_decode($log->details), JSON_PRETTY_PRINT) }}</pre>
                                     </div>
                                 @endif

@@ -8,6 +8,11 @@ use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 it('FF-01: registration is open by default — /register does not 503', function (): void {
     // With no sponsor/placement query params, start() redirects to /contact-us
     // (referral_link_required). The KEY assertion is that we don't return 503;

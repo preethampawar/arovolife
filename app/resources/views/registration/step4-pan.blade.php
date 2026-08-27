@@ -23,7 +23,7 @@
                 maxlength="10"
                 class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 oninput="this.value=this.value.toUpperCase()">
-            <p class="mt-1 text-xs text-gray-500">Format: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)</p>
+            <p class="mt-1 text-xs text-gray-600">Format: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)</p>
             @error('pan_number')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
@@ -37,7 +37,7 @@
                 maxlength="10"
                 class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 oninput="this.value=this.value.toUpperCase()">
-            <p class="mt-1 text-xs text-gray-500">Spouse's PAN. Must differ from yours.</p>
+            <p class="mt-1 text-xs text-gray-600">Spouse's PAN. Must differ from yours.</p>
             @error('spouse_pan_number')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
         @endif
@@ -58,7 +58,7 @@
                 ← Back
             </a>
             <button type="submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Verify PAN & Continue →
             </button>
         </div>

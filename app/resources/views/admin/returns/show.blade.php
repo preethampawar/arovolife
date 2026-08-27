@@ -41,23 +41,23 @@
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <h3 class="font-semibold text-gray-900">Return request</h3>
-                    <p class="text-sm text-gray-500 font-mono mt-0.5">{{ $return->rma_no }}</p>
+                    <p class="text-sm text-gray-600 font-mono mt-0.5">{{ $return->rma_no }}</p>
                 </div>
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border {{ $statusBadge }}">
                     {{ ucfirst($return->status) }}
                 </span>
             </div>
             <dl class="grid grid-cols-2 gap-3 text-sm">
-                <div><dt class="text-xs text-gray-500 uppercase font-medium">Order</dt>
-                    <dd><a href="{{ route('admin.commerce.orders.show', $order) }}" class="text-brand-600 hover:text-brand-700 font-mono">{{ $order->order_no }}</a></dd></div>
-                <div><dt class="text-xs text-gray-500 uppercase font-medium">Customer</dt>
+                <div><dt class="text-xs text-gray-600 uppercase font-medium">Order</dt>
+                    <dd><a href="{{ route('admin.commerce.orders.show', $order) }}" class="text-brand-700 hover:text-brand-800 font-mono">{{ $order->order_no }}</a></dd></div>
+                <div><dt class="text-xs text-gray-600 uppercase font-medium">Customer</dt>
                     <dd class="text-gray-900">{{ $return->openedByCustomer?->display_name ?? '—' }}</dd></div>
-                <div><dt class="text-xs text-gray-500 uppercase font-medium">Reason</dt>
+                <div><dt class="text-xs text-gray-600 uppercase font-medium">Reason</dt>
                     <dd class="text-gray-900">{{ $reasonLabel }}</dd></div>
-                <div><dt class="text-xs text-gray-500 uppercase font-medium">Opened</dt>
+                <div><dt class="text-xs text-gray-600 uppercase font-medium">Opened</dt>
                     <dd class="text-gray-900">{{ $return->created_at->format('d M Y H:i') }}</dd></div>
                 @if($return->notes)
-                <div class="col-span-2"><dt class="text-xs text-gray-500 uppercase font-medium">Customer notes</dt>
+                <div class="col-span-2"><dt class="text-xs text-gray-600 uppercase font-medium">Customer notes</dt>
                     <dd class="text-gray-700 mt-0.5">{{ $return->notes }}</dd></div>
                 @endif
             </dl>
@@ -68,16 +68,16 @@
             <h3 class="font-semibold text-gray-900 mb-3">Order items ({{ $order->order_no }})</h3>
             <table class="w-full text-sm">
                 <thead><tr class="border-b border-gray-100">
-                    <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Qty</th>
-                    <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Total</th>
+                    <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase">Product</th>
+                    <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Qty</th>
+                    <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Total</th>
                 </tr></thead>
                 <tbody class="divide-y divide-gray-50">
                     @foreach($order->items as $it)
                     <tr>
                         <td class="py-2">
                             <p class="text-gray-900 font-medium">{{ $it->product_name_snapshot }}</p>
-                            <p class="text-xs text-gray-400 font-mono">{{ $it->variant_sku_snapshot }}</p>
+                            <p class="text-xs text-gray-600 font-mono">{{ $it->variant_sku_snapshot }}</p>
                         </td>
                         <td class="py-2 text-right">{{ $it->qty }}</td>
                         <td class="py-2 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($it->line_total_paise / 100, 2) }}</td>
@@ -86,11 +86,11 @@
                 </tbody>
             </table>
             <div class="mt-3 pt-3 border-t border-gray-100 flex flex-col items-end text-sm space-y-1">
-                <div class="flex gap-8"><span class="text-gray-500">Subtotal (incl. GST)</span><span class="w-28 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->subtotal_paise / 100, 2) }}</span></div>
+                <div class="flex gap-8"><span class="text-gray-600">Subtotal (incl. GST)</span><span class="w-28 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->subtotal_paise / 100, 2) }}</span></div>
                 @if($order->discount_paise > 0)
                 <div class="flex gap-8 text-green-700"><span>Discount</span><span class="w-28 text-right">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
                 @endif
-                <div class="flex gap-8"><span class="text-gray-500">Shipping</span><span class="w-28 text-right">@if($order->shipping_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}@else Free @endif</span></div>
+                <div class="flex gap-8"><span class="text-gray-600">Shipping</span><span class="w-28 text-right">@if($order->shipping_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}@else Free @endif</span></div>
                 <div class="flex gap-8 font-semibold pt-1 border-t border-gray-100 mt-1"><span>Total paid</span><span class="w-28 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
         </div>
@@ -101,11 +101,11 @@
             <h3 class="font-semibold text-gray-900 mb-4">Inspection</h3>
             @if($inspection)
             <dl class="grid grid-cols-2 gap-3 text-sm mb-3">
-                <div><dt class="text-xs text-gray-500 uppercase font-medium">Condition</dt>
+                <div><dt class="text-xs text-gray-600 uppercase font-medium">Condition</dt>
                     <dd class="font-medium text-gray-900">{{ ucfirst(str_replace('_', ' ', $inspection->condition)) }}</dd></div>
-                <div><dt class="text-xs text-gray-500 uppercase font-medium">Inspected at</dt>
+                <div><dt class="text-xs text-gray-600 uppercase font-medium">Inspected at</dt>
                     <dd class="text-gray-900">{{ $inspection->received_at->format('d M Y H:i') }}</dd></div>
-                @if($inspection->notes)<div class="col-span-2"><dt class="text-xs text-gray-500 uppercase font-medium">Notes</dt><dd class="text-gray-700">{{ $inspection->notes }}</dd></div>@endif
+                @if($inspection->notes)<div class="col-span-2"><dt class="text-xs text-gray-600 uppercase font-medium">Notes</dt><dd class="text-gray-700">{{ $inspection->notes }}</dd></div>@endif
             </dl>
             @else
             @if(in_array($return->status, ['opened'], true) && $order->status === 'refund_requested')
@@ -130,7 +130,7 @@
                 <button type="submit" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium">Record inspection</button>
             </form>
             @else
-            <p class="text-sm text-gray-500">No inspection recorded yet.</p>
+            <p class="text-sm text-gray-600">No inspection recorded yet.</p>
             @endif
             @endif
         </div>
@@ -146,14 +146,14 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
             <h3 class="font-semibold text-gray-900 mb-3">Computed refund (T&amp;C §8 matrix)</h3>
             <dl class="text-sm space-y-1.5">
-                <div class="flex justify-between"><dt class="text-gray-500">Base (ex-GST)</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->refund_base_paise / 100, 2) }}</dd></div>
-                <div class="flex justify-between"><dt class="text-gray-500">GST refund</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->gst_adjustment_paise / 100, 2) }}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-600">Base (ex-GST)</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->refund_base_paise / 100, 2) }}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-600">GST refund</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->gst_adjustment_paise / 100, 2) }}</dd></div>
                 @if($decision->admin_deduction_paise > 0)
                 <div class="flex justify-between text-red-700"><dt>Admin deduction</dt><dd>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->admin_deduction_paise / 100, 2) }}</dd></div>
                 @endif
                 <div class="flex justify-between font-semibold border-t border-gray-100 pt-1.5 mt-1"><dt>Net refund</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->net_refund_paise / 100, 2) }}</dd></div>
             </dl>
-            <p class="text-xs text-gray-400 mt-3">Matrix version {{ $decision->decision_matrix_version }} · ADR-0009 §8</p>
+            <p class="text-xs text-gray-600 mt-3">Matrix version {{ $decision->decision_matrix_version }} · ADR-0009 §8</p>
         </div>
         @elseif($return->isCoolingOff())
         <div class="bg-blue-50 rounded-2xl border border-blue-200 p-5">
@@ -185,7 +185,7 @@
         </div>
         @else
         @if(! $return->isCoolingOff() && $return->status === 'opened' && $order->status === 'refund_inspection' && $decision)
-        <p class="text-sm text-gray-500 bg-gray-50 rounded-2xl border border-gray-200 p-4">You need the <strong>finance.record</strong> permission to approve or reject returns.</p>
+        <p class="text-sm text-gray-600 bg-gray-50 rounded-2xl border border-gray-200 p-4">You need the <strong>finance.record</strong> permission to approve or reject returns.</p>
         @endif
         @endcan
         @endif

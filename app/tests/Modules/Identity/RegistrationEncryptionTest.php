@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\RegistrationService;
@@ -13,6 +14,11 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
 
 /**
  * Locks the contract that PII written by RegistrationService is actually
@@ -89,6 +95,7 @@ function makeService(): RegistrationService
             app(TeamStatsService::class),
         ),
         app(DatabaseManager::class),
+        app(ConsentDocuments::class),
     );
 }
 

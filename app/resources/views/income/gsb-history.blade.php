@@ -15,14 +15,14 @@
     {{-- Filter + CSV --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">From</label>
+            <label class="block text-xs text-gray-600 mb-1">From</label>
             <input type="date" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">To</label>
+            <label class="block text-xs text-gray-600 mb-1">To</label>
             <input type="date" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
         @if(request('from') || request('to'))
             <a href="{{ route('income.gsb-history') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
@@ -31,8 +31,8 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">No GSB history yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Your Genos Sales Bonus will appear here after the first 23:59 cut-off calculates a match in your Genos groups.</p>
+            <p class="text-gray-600 font-medium">No GSB history yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Your Genos Sales Bonus will appear here after the first 23:59 cut-off calculates a match in your Genos groups.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -92,7 +92,7 @@
                             @elseif($row->status === 'failed')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Failed</span>
                             @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">{{ ucfirst($row->status) }}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ ucfirst($row->status) }}</span>
                             @endif
                         </td>
                     </tr>

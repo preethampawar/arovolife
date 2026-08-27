@@ -26,7 +26,7 @@
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Mobile number *</label>
         <div class="flex">
-            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-sm text-gray-500">+91</span>
+            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-sm text-gray-600">+91</span>
             <input name="phone" type="tel" required pattern="[6-9]\d{9}" maxlength="10" inputmode="numeric"
                    value="{{ old('phone', $phone10) }}"
                    class="w-full rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
@@ -35,7 +35,7 @@
     <div class="flex items-end">
         <label class="inline-flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" name="is_default" value="1" {{ old('is_default', $a->is_default ?? false) ? 'checked' : '' }}
-                   class="rounded text-brand-600 focus:ring-brand-500">
+                   class="rounded text-brand-700 focus:ring-brand-500">
             Set as my default delivery address
         </label>
     </div>
@@ -68,11 +68,11 @@
                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
     </div>
     <div class="md:col-span-2 flex items-center gap-3 pt-1">
-        <button type="submit" class="px-5 py-2.5 rounded-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
+        <button type="submit" class="px-5 py-2.5 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
             {{ $submitLabel ?? 'Save address' }}
         </button>
         @if(isset($cancelTarget))
-        <button type="button" data-addr-cancel="{{ $cancelTarget }}" class="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+        <button type="button" data-addr-cancel="{{ $cancelTarget }}" class="text-sm text-gray-600 hover:text-gray-700">Cancel</button>
         @endif
     </div>
 </form>

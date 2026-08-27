@@ -10,6 +10,9 @@ use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
+use App\Modules\Commerce\Services\RedeemPointsService;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
+use Laravel\Pennant\Feature;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\ShippingService;
@@ -37,6 +40,7 @@ final class CheckoutController extends Controller
         private readonly InvoiceGenerator $invoiceGenerator,
         private readonly ShippingService $shipping,
         private readonly CustomerAddressService $addressBook,
+        private readonly RedeemPointsService $redeemPoints,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -87,6 +91,26 @@ final class CheckoutController extends Controller
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
             'buyerDistributor' => $buyerDistributor,
+            // Redeem points the buyer could spend on this cart. Zero — and so
+            // no field at all — unless the offers are live, they are signed in
+            // as a distributor, and they actually hold points.
+            //
+            // Read from the authenticated user rather than `$buyerDistributor`,
+            // which is a display array describing whose sale it is (it can
+            // name a referrer who is not the buyer). Points belong to the
+            // person paying, not to whoever gets the commission.
+            'redeemablePoints' => Feature::for(null)->active(PurchaseOffersFeature::class)
+                && $request->user()?->distributor !== null
+                ? $this->redeemPoints->maxRedeemableForOrder(
+                    $request->user()->distributor->id,
+                    $cart->subtotalPaise(),
+                    $cart->gstPaise(),
+                    // Include the coupon: without it the screen offers a
+                    // maximum the service will silently clamp, and the buyer
+                    // sees a number that is not honoured.
+                    $couponDiscount,
+                )
+                : 0,
         ]);
     }
 
@@ -122,6 +146,18 @@ final class CheckoutController extends Controller
             'save_address' => ['nullable', 'boolean'],
             'address_label' => ['nullable', 'string', 'max:40'],
             'accept_terms' => ['required', 'accepted'],
+            // Redeem points. Validated against the live balance and the
+            // product-value cap in the service, not here — the balance can
+            // move between rendering the form and submitting it.
+            'redeem_points' => ['nullable', 'integer', 'min:0'],
+            // A registered buyer's GSTIN, so they can claim input credit
+            // (CGST Rule 46(e)). Optional — most buyers are consumers.
+            // Format: 2 state digits, 10-char PAN, entity digit, 'Z', checksum.
+            'buyer_gstin' => ['nullable', 'string', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i'],
+            'buyer_legal_name' => ['nullable', 'string', 'max:200', 'required_with:buyer_gstin'],
+        ], [
+            'buyer_gstin.regex' => 'That does not look like a GSTIN. It is 15 characters, e.g. 36ABCDE1234F1Z5.',
+            'buyer_legal_name.required_with' => 'A GSTIN needs the registered business name it belongs to.',
         ]);
 
         // Guard: the buyer_email must not belong to another registered user on
@@ -200,6 +236,11 @@ final class CheckoutController extends Controller
             // to save against.
             saveShippingAddress: Auth::check() && $request->boolean('save_address'),
             shippingLabel: $validated['address_label'] ?? null,
+            redeemPoints: $this->resolveRedeemPoints($request, (int) ($validated['redeem_points'] ?? 0)),
+            buyerGstin: isset($validated['buyer_gstin']) && $validated['buyer_gstin'] !== ''
+                ? strtoupper($validated['buyer_gstin'])
+                : null,
+            buyerLegalName: $validated['buyer_legal_name'] ?? null,
         );
 
         // Capture immediately via the gateway (Phase 2 stub auto-captures → order paid).
@@ -223,6 +264,35 @@ final class CheckoutController extends Controller
         $request->session()->forget(SharedCart::SESSION_DISTRIBUTOR_KEY);
 
         return redirect()->route('shop.confirmation', $order->order_no);
+    }
+
+    /**
+     * How many redeem points this buyer may actually spend on this order.
+     *
+     * Clamped rather than rejected. A buyer whose balance moved between
+     * loading the form and submitting it should get the smaller discount, not
+     * a failed checkout — losing a paid order over a stale number on a screen
+     * is the worse outcome, and the ledger is the authority either way.
+     */
+    private function resolveRedeemPoints(Request $request, int $requested): int
+    {
+        if ($requested <= 0 || ! Feature::for(null)->active(PurchaseOffersFeature::class)) {
+            return 0;
+        }
+
+        $distributorId = $request->user()?->distributor?->id;
+
+        if ($distributorId === null) {
+            return 0;
+        }
+
+        $cart = $this->cartService->currentCart($request);
+
+        return min($requested, $this->redeemPoints->maxRedeemableForOrder(
+            $distributorId,
+            $cart->subtotalPaise(),
+            $cart->gstPaise(),
+        ));
     }
 
     public function confirmation(Request $request, string $orderNo): View

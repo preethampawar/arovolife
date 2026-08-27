@@ -32,7 +32,7 @@
                 @endforeach
             </select>
             @error('state')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
-            <p class="mt-1 text-xs text-gray-500" id="state-note"></p>
+            <p class="mt-1 text-xs text-gray-600" id="state-note"></p>
         </div>
 
         <div>
@@ -59,7 +59,7 @@
                 ← Back
             </a>
             <button type="submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Continue to Documents →
             </button>
         </div>

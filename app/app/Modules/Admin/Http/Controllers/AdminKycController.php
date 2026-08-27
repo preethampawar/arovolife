@@ -12,6 +12,8 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
+use App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification;
+use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -209,7 +211,7 @@ final class AdminKycController extends Controller
             'document' => [
                 'required', 'file', 'max:5120',
                 'mimetypes:image/jpeg,image/png,application/pdf',
-                new ValidUploadedDocumentBytes(),
+                new ValidUploadedDocumentBytes, new ScannedForMalware,
             ],
         ]);
 
@@ -219,7 +221,7 @@ final class AdminKycController extends Controller
         $disk = Storage::disk('kyc');
         $sha256 = hash_file('sha256', $file->getRealPath());
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
-        $path = "admin_{$distributor->id}/{$type}_" . substr($sha256, 0, 12) . ".{$extension}";
+        $path = "admin_{$distributor->id}/{$type}_".substr($sha256, 0, 12).".{$extension}";
 
         DB::transaction(function () use ($distributor, $disk, $file, $type, $path, $sha256, $request): void {
             $existing = KycDocument::query()
@@ -267,7 +269,7 @@ final class AdminKycController extends Controller
             ]);
         });
 
-        return back()->with('status', ucfirst(str_replace('_', ' ', $type)) . ' uploaded successfully.');
+        return back()->with('status', ucfirst(str_replace('_', ' ', $type)).' uploaded successfully.');
     }
 
     /**
@@ -316,7 +318,7 @@ final class AdminKycController extends Controller
 
             $user = $distributor->user;
             if ($user !== null) {
-                $user->notify(new \App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification(
+                $user->notify(new KycDocumentFlaggedNotification(
                     documentId: $document->id,
                     documentType: $document->type,
                     reason: $validated['reason'],

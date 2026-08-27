@@ -16,7 +16,7 @@
     @else
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200 text-left text-[11px] uppercase tracking-wider text-gray-500">
+                <thead class="bg-gray-50 border-b border-gray-200 text-left text-[11px] uppercase tracking-wider text-gray-600">
                     <tr>
                         <th class="px-4 py-3 w-12">S.No</th>
                         <th class="px-4 py-3">From</th>
@@ -37,12 +37,12 @@
                             $adn = $adnByUser[$otherId] ?? null;
                         @endphp
                         <tr class="hover:bg-gray-50/60">
-                            <td class="px-4 py-3 align-top text-gray-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-3 align-top text-gray-600">{{ $i + 1 }}</td>
                             <td class="px-4 py-3 align-top">
                                 <div class="flex items-center gap-2">
                                     <span class="font-semibold text-gray-900">{{ $name }}</span>
                                     @if($unread > 0)
-                                        <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold bg-brand-500 text-white" title="{{ $unread }} unread">{{ $unread }}</span>
+                                        <span class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold bg-brand-700 text-white" title="{{ $unread }} unread">{{ $unread }}</span>
                                     @endif
                                 </div>
                                 <div class="text-[11px] font-mono text-brand-700 mt-0.5">ADN {{ $adn ?? '—' }}</div>
@@ -50,10 +50,10 @@
                             <td class="px-4 py-3 align-top">
                                 @if($preview)
                                     <p class="text-gray-700 line-clamp-2 max-w-md {{ $unread > 0 ? 'font-medium text-gray-900' : '' }}">
-                                        @if($preview->from_user_id === auth()->id())<span class="text-gray-500">You:</span> @endif{{ $preview->body }}
+                                        @if($preview->from_user_id === auth()->id())<span class="text-gray-600">You:</span> @endif{{ $preview->body }}
                                     </p>
                                 @else
-                                    <span class="text-gray-400">—</span>
+                                    <span class="text-gray-600">—</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 align-top whitespace-nowrap text-xs text-gray-600">
@@ -61,7 +61,7 @@
                             </td>
                             <td class="px-4 py-3 align-top text-right">
                                 <a href="{{ route('messages.show', ['user' => $otherId]) }}"
-                                   class="inline-flex items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-3 py-1.5 text-xs transition-colors">
+                                   class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-3 py-1.5 text-xs transition-colors">
                                     Reply →
                                 </a>
                             </td>

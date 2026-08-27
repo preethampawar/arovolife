@@ -8,6 +8,8 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\FranchiseFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -122,6 +124,20 @@ final class AdminFeatureFlagController extends Controller
             ],
 
             // ── Phase 7 compensation features (default OFF) ──
+            'commerce.purchase_offers' => [
+                'class' => PurchaseOffersFeature::class,
+                'label' => 'Purchase offers (half-price product + redeem points)',
+                'description' => 'Enables the two offers for distributors who hold no rank: one company-announced product at half the distributor price in a month they repurchased the qualifying volume, and redeem points for a six-month purchase streak (one point = one rupee off a future purchase). Both hang entirely off the distributor\'s own purchases — the "joining" trigger in the original spec was dropped, since an offer earned by joining would break hard rules 1 and 2. OFF leaves no trace. Gates: the DSA 6.2 notice, the effective date on /p/compensation 11.2, and KP confirming the two readings in R-47.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+            'compensation.franchise' => [
+                'class' => FranchiseFeature::class,
+                'label' => 'Franchise programme (fulfilment network)',
+                'description' => 'Enables the franchise register, the collection-point picker at checkout, and the monthly 3% fulfilment commission. A franchise is a company-owned pickup point operated by a distributor: company consignment stock, sales still online and ADN-attributed, franchise code separate from the ADN and never in the Genos. OFF leaves no trace anywhere. Two gates before production: the DSA 6.2 thirty-day notice (it adds an earning stream to the plan), and R-24, a written counsel opinion on the combined binary-tree plus franchise surface.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
             'compensation.arete_development_center_bonus' => [
                 'class' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center Bonus (Phase 7)',

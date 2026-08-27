@@ -48,20 +48,20 @@
             </div>
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <div class="flex justify-between sm:block">
-                    <dt class="text-gray-500">Distributor (ADN)</dt>
+                    <dt class="text-gray-600">Distributor (ADN)</dt>
                     <dd class="font-mono font-semibold text-gray-900">{{ $buyerDistributor['adn'] }}</dd>
                 </div>
                 <div class="flex justify-between sm:block">
-                    <dt class="text-gray-500">Name</dt>
+                    <dt class="text-gray-600">Name</dt>
                     <dd class="font-medium text-gray-900">{{ $buyerDistributor['name'] }}</dd>
                 </div>
                 @unless($isReferral)
                 <div class="flex justify-between sm:block">
-                    <dt class="text-gray-500">Email</dt>
+                    <dt class="text-gray-600">Email</dt>
                     <dd class="font-medium text-gray-900 break-all">{{ $buyerDistributor['email'] }}</dd>
                 </div>
                 <div class="flex justify-between sm:block">
-                    <dt class="text-gray-500">Mobile</dt>
+                    <dt class="text-gray-600">Mobile</dt>
                     <dd class="font-medium text-gray-900">{{ $buyerDistributor['phone_e164'] }}</dd>
                 </div>
                 @endunless
@@ -79,7 +79,7 @@
                 <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                     <input type="checkbox" name="same_as_distributor" id="sameAsDistributor" value="1"
                         {{ old('same_as_distributor') ? 'checked' : '' }}
-                        class="rounded text-brand-600 border-gray-300 focus:ring-brand-500">
+                        class="rounded text-brand-700 border-gray-300 focus:ring-brand-500">
                     Same as distributor
                 </label>
                 @endif
@@ -88,21 +88,21 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name *</label>
                     <input name="buyer_name" id="buyerName" type="text" required value="{{ old('buyer_name') }}"
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-500">
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
                     <input name="buyer_email" id="buyerEmail" type="email" required value="{{ old('buyer_email') }}"
                         placeholder="you@example.com"
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-500">
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-600">
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Mobile *</label>
                     <div class="flex">
-                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">+91</span>
+                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-600 text-sm">+91</span>
                         <input name="buyer_phone" id="buyerPhone" type="tel" required value="{{ old('buyer_phone') }}"
                             maxlength="10" pattern="[6-9][0-9]{9}" placeholder="9876543210"
-                            class="flex-1 rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-500">
+                            class="flex-1 rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent read-only:bg-gray-100 read-only:text-gray-600">
                     </div>
                 </div>
             </div>
@@ -119,7 +119,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     @foreach($savedAddresses as $sa)
                     <label class="flex items-start gap-2 rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-brand-400 has-[:checked]:border-brand-500 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
-                        <input type="radio" name="__saved_address" value="{{ $sa->id }}" class="mt-1 text-brand-600 focus:ring-brand-500"
+                        <input type="radio" name="__saved_address" value="{{ $sa->id }}" class="mt-1 text-brand-700 focus:ring-brand-500"
                             data-name="{{ $sa->name }}" data-phone="{{ preg_replace('/^\+91/', '', $sa->phone_e164) }}"
                             data-line1="{{ $sa->line1 }}" data-line2="{{ $sa->line2 }}" data-city="{{ $sa->city }}"
                             data-state="{{ $sa->state }}" data-pincode="{{ $sa->pincode }}"
@@ -132,12 +132,12 @@
                                 @if($sa->label)<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700">{{ $sa->label }}</span>@endif
                                 {{ $sa->name }}
                             </span>
-                            <span class="block text-xs text-gray-500 mt-0.5">{{ $sa->city }}{{ $sa->pincode ? ' · '.$sa->pincode : '' }}</span>
+                            <span class="block text-xs text-gray-600 mt-0.5">{{ $sa->city }}{{ $sa->pincode ? ' · '.$sa->pincode : '' }}</span>
                         </span>
                     </label>
                     @endforeach
                     <label class="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 p-3 cursor-pointer hover:border-brand-400 has-[:checked]:border-brand-500 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
-                        <input type="radio" name="__saved_address" value="" class="text-brand-600 focus:ring-brand-500">
+                        <input type="radio" name="__saved_address" value="" class="text-brand-700 focus:ring-brand-500">
                         <span class="text-sm font-medium text-gray-900">＋ Use a new address</span>
                     </label>
                 </div>
@@ -182,7 +182,7 @@
             <div class="mt-4 pt-4 border-t border-gray-100">
                 <label class="flex items-center gap-2 text-sm text-gray-700">
                     <input type="checkbox" name="save_address" value="1" checked
-                        class="rounded text-brand-600 border-gray-300 focus:ring-brand-500" data-save-address-toggle>
+                        class="rounded text-brand-700 border-gray-300 focus:ring-brand-500" data-save-address-toggle>
                     Save this delivery address for next time
                 </label>
                 <div class="mt-2" data-save-address-label>
@@ -202,7 +202,7 @@
                 <h2 class="font-semibold text-gray-900">Billing Address</h2>
                 <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                     <input type="checkbox" name="billing_same" id="billingSame" value="1" {{ old('billing_same', '1') ? 'checked' : '' }}
-                        class="rounded text-brand-600 border-gray-300 focus:ring-brand-500">
+                        class="rounded text-brand-700 border-gray-300 focus:ring-brand-500">
                     Same as shipping
                 </label>
             </div>
@@ -235,13 +235,51 @@
             </div>
         </div>
 
+        @if ($redeemablePoints > 0)
+            {{-- Redeem points. Capped at the net product value, so they can
+                 never pay the GST or the delivery charge. --}}
+            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 class="mb-1 text-sm font-semibold text-gray-900">Use your redeem points</h2>
+                <p class="mb-4 text-sm text-gray-600">
+                    You can use up to <strong>{{ number_format($redeemablePoints) }}</strong> points on this
+                    order — ₹1 off per point. Points cannot be used for GST or delivery.
+                </p>
+                <input type="number" name="redeem_points" min="0" max="{{ $redeemablePoints }}"
+                       value="{{ old('redeem_points', 0) }}"
+                       class="w-40 rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
+            </div>
+        @endif
+
+        {{-- Optional GST details. Only a registered buyer needs these; a
+             consumer leaves them blank and gets an ordinary tax invoice. --}}
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 class="mb-1 text-sm font-semibold text-gray-900">Buying for a registered business?</h2>
+            <p class="mb-4 text-sm text-gray-600">
+                Optional. Add your GSTIN and we will put it on the tax invoice so you can claim input credit.
+            </p>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="buyer_gstin" class="mb-1.5 block text-sm font-medium text-gray-700">GSTIN</label>
+                    <input id="buyer_gstin" name="buyer_gstin" type="text" maxlength="15"
+                           value="{{ old('buyer_gstin') }}" placeholder="36ABCDE1234F1Z5"
+                           class="w-full rounded-lg border-gray-300 font-mono text-sm uppercase focus:border-brand-500 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label for="buyer_legal_name" class="mb-1.5 block text-sm font-medium text-gray-700">Registered business name</label>
+                    <input id="buyer_legal_name" name="buyer_legal_name" type="text" maxlength="200"
+                           value="{{ old('buyer_legal_name') }}"
+                           class="w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
+                </div>
+            </div>
+        </div>
+
         {{-- Payment method (online only) --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Payment Method</h2>
             <div>
                 <label class="flex items-center gap-3 p-3 rounded-lg border border-brand-500 bg-brand-50">
-                    <input type="radio" name="payment_method" value="online" checked class="text-brand-600 focus:ring-brand-500">
-                    <span class="text-sm"><strong class="text-gray-900">Pay online</strong> <span class="text-gray-500">— card / UPI / netbanking</span></span>
+                    <input type="radio" name="payment_method" value="online" checked class="text-brand-700 focus:ring-brand-500">
+                    <span class="text-sm"><strong class="text-gray-900">Pay online</strong> <span class="text-gray-600">— card / UPI / netbanking</span></span>
                 </label>
             </div>
         </div>
@@ -250,16 +288,16 @@
             <h2 class="font-semibold text-gray-900 mb-4">Consent</h2>
             <label class="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" name="accept_terms" value="1" required
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
-                    I accept the <a href="{{ route('content.show', 'terms') }}" target="_blank" class="text-brand-600 hover:underline">Terms of Sale</a>
-                    and <a href="{{ route('content.show', 'privacy') }}" target="_blank" class="text-brand-600 hover:underline">Privacy Policy</a>,
+                    I accept the <a href="{{ route('content.show', 'terms') }}" target="_blank" class="text-brand-700 hover:underline">Terms of Sale</a>
+                    and <a href="{{ route('content.show', 'privacy') }}" target="_blank" class="text-brand-700 hover:underline">Privacy Policy</a>,
                     and understand I have a 30-day cooling-off window per DSR 2021.
                 </span>
             </label>
             <label class="flex items-start gap-3 cursor-pointer mt-3">
                 <input type="checkbox" name="marketing_opt_in" value="1"
-                    class="mt-0.5 rounded text-brand-600 border-gray-300 focus:ring-brand-500">
+                    class="mt-0.5 rounded text-brand-700 border-gray-300 focus:ring-brand-500">
                 <span class="text-sm text-gray-600">Email me about new products and offers (optional).</span>
             </label>
         </div>
@@ -312,10 +350,10 @@
         </div>
 
         <button type="submit"
-           class="block w-full text-center py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm transition-colors">
+           class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
             Place Order
         </button>
-        <p class="text-xs text-gray-500 mt-3 text-center">Test gateway — no real money moves.</p>
+        <p class="text-xs text-gray-600 mt-3 text-center">Test gateway — no real money moves.</p>
     </div>
 </form>
 

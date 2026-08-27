@@ -51,7 +51,7 @@ it('generates a PENDING batch after run — wallets debited, awaiting admin appr
     $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹1,000
 
     $svc = app(PayoutService::class);
     $batch = $svc->runWeeklyBatch(Carbon::today());
@@ -76,7 +76,7 @@ it('approve() marks batch COMPLETED and line items TRANSFERRED', function () {
     $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
 
     $svc = app(PayoutService::class);
     $batch = $svc->runWeeklyBatch(Carbon::today());
@@ -95,7 +95,7 @@ it('skips wallet below minimum payout threshold', function () {
     $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 8_000, 'gsb_credit'); // ₹80 — net ₹73.72, below ₹100 minimum (KP)
+    $walletSvc->credit($dist->id, 8_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹80 — net ₹73.72, below ₹100 minimum (KP)
 
     $svc = app(PayoutService::class);
     $batch = $svc->runWeeklyBatch(Carbon::today());
@@ -111,7 +111,7 @@ it('is idempotent — running twice returns the same batch without double-debiti
     $dist = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
 
     $svc = app(PayoutService::class);
     $batch1 = $svc->runWeeklyBatch(Carbon::today());
@@ -135,11 +135,11 @@ it('applies repurchase deduction from prior month gsb and mb credits', function 
 
     // Credit prior-month GSB: ₹2,000 → 10% deduction = 20,000 paise.
     Carbon::setTestNow($priorMonthMid);
-    $walletSvc->credit($dist->id, 200_000, 'gsb_credit');
+    $walletSvc->credit($dist->id, 200_000, 'gsb_credit', walletRef(), 'test_reference');
 
     // Credit current-month GSB: ₹1,000 (not included in deduction).
     Carbon::setTestNow($today);
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
 
     $svc = app(PayoutService::class);
     $batch = $svc->runWeeklyBatch($today);
@@ -168,7 +168,7 @@ it('does not deduct repurchase against its own credits when the batch runs on a 
 
     $dist = makePayoutEligibleDistributor();
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000, this month
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹1,000, this month
 
     app(PayoutService::class)->runWeeklyBatch($monthEnd);
 
@@ -196,8 +196,8 @@ it('accumulates totals correctly across multiple distributors', function () {
     $dist2 = makePayoutEligibleDistributor();
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist1->id, 100_000, 'gsb_credit');
-    $walletSvc->credit($dist2->id, 200_000, 'gsb_credit');
+    $walletSvc->credit($dist1->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+    $walletSvc->credit($dist2->id, 200_000, 'gsb_credit', walletRef(), 'test_reference');
 
     $svc = app(PayoutService::class);
     $batch = $svc->runWeeklyBatch(Carbon::today());
@@ -222,7 +222,7 @@ it('marks web_only for distributor with personal BV below 3,000 BV Retailer thre
     ]);
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit');
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
 
     $svc = app(PayoutService::class);
     $svc->runWeeklyBatch(Carbon::today());
@@ -239,8 +239,8 @@ it('weekly batch: admin charge covers every Group-A stream when all toggles are 
     $dist = makePayoutEligibleDistributor();
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 1_000_000, 'gsb_credit'); // ₹10,000
-    $wallet->credit($dist->id, 1_000_000, 'mb_credit');  // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'mb_credit', walletRef(), 'test_reference');  // ₹10,000
 
     $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 14));
 
@@ -253,8 +253,8 @@ it('weekly batch: admin charge skips a Group-A stream whose applies_to toggle is
     $dist = makePayoutEligibleDistributor();
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 1_000_000, 'gsb_credit'); // ₹10,000
-    $wallet->credit($dist->id, 1_000_000, 'mb_credit');  // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'mb_credit', walletRef(), 'test_reference');  // ₹10,000
 
     // Exempt Mentorship from the admin charge — the toggle must take effect.
     setPayoutSetting('comp.admin_charge.applies_to_mb', 'false');
@@ -272,9 +272,9 @@ it('monthly batch: Group-B admin charge excludes a stream whose applies_to toggl
     $dist = makePayoutEligibleDistributor();
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 1_000_000, 'gbb_credit');     // ₹10,000
-    $wallet->credit($dist->id, 1_000_000, 'rank_credit');    // ₹10,000
-    $wallet->credit($dist->id, 1_000_000, 'fortune_credit'); // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'gbb_credit', walletRef(), 'test_reference');     // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'rank_credit', walletRef(), 'test_reference');    // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'fortune_credit', walletRef(), 'test_reference'); // ₹10,000
 
     setPayoutSetting('comp.admin_charge.applies_to_fortune', 'false');
 
@@ -291,10 +291,10 @@ it('weekly batches: repurchase deduction is collected once per month, not every 
 
     // Prior-month GSB ₹2,000 → monthly repurchase target = 10% = 20,000 paise.
     Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
-    $wallet->credit($dist->id, 200_000, 'gsb_credit');
+    $wallet->credit($dist->id, 200_000, 'gsb_credit', walletRef(), 'test_reference');
 
     Carbon::setTestNow(Carbon::create(2026, 7, 7, 9));
-    $wallet->credit($dist->id, 100_000, 'gsb_credit');
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
     $b1 = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
     $l1 = PayoutLineItem::where('payout_batch_id', $b1->id)->where('distributor_id', $dist->id)->first();
     expect($l1->repurchase_deduction_paise)->toBe(20_000);
@@ -302,7 +302,7 @@ it('weekly batches: repurchase deduction is collected once per month, not every 
     // Second Tuesday of the same month: the target was already collected —
     // deducting it again would take 10% per week instead of 10% per month.
     Carbon::setTestNow(Carbon::create(2026, 7, 14, 9));
-    $wallet->credit($dist->id, 100_000, 'gsb_credit');
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
     $b2 = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 14));
     $l2 = PayoutLineItem::where('payout_batch_id', $b2->id)->where('distributor_id', $dist->id)->first();
     expect($l2->repurchase_deduction_paise)->toBe(0);
@@ -315,7 +315,7 @@ it('monthly batch: rank credits above the income cap are forfeited with a ledger
     setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 800_000, 'rank_credit'); // ₹8,000 — ₹3,000 above cap
+    $wallet->credit($dist->id, 800_000, 'rank_credit', walletRef(), 'test_reference'); // ₹8,000 — ₹3,000 above cap
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
@@ -337,8 +337,8 @@ it('weekly batch: crash-resume neither duplicates line items nor loses batch tot
     $d1 = makePayoutEligibleDistributor();
     $d2 = makePayoutEligibleDistributor();
     $wallet = app(WalletService::class);
-    $wallet->credit($d1->id, 100_000, 'gsb_credit');
-    $wallet->credit($d2->id, 200_000, 'gsb_credit');
+    $wallet->credit($d1->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+    $wallet->credit($d2->id, 200_000, 'gsb_credit', walletRef(), 'test_reference');
 
     // Simulate a run that crashed after fully committing d1 (line item written,
     // entries swept, wallet debited) but before batch totals were finalized.
@@ -378,7 +378,7 @@ it('monthly batch: a fully-exempt group is charged nothing', function () {
     $dist = makePayoutEligibleDistributor();
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 1_000_000, 'adc_credit'); // ₹10,000 — Group D
+    $wallet->credit($dist->id, 1_000_000, 'adc_credit', walletRef(), 'test_reference'); // ₹10,000 — Group D
 
     setPayoutSetting('comp.admin_charge.applies_to_adc', 'false');
 
@@ -393,7 +393,7 @@ it('weekly batch: holds payout as no_bank_account when no bank details are on fi
     $dist->update(['bank_account_enc' => null]);  // skipped the optional bank step
 
     $walletSvc = app(WalletService::class);
-    $walletSvc->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹1,000
 
     // Pin both batches inside one calendar month: run this near month-end and
     // "+1 week" lands in the next month, where the ₹1,000 becomes prior-month
@@ -425,7 +425,7 @@ it('weekly batch: GSB above the monthly income cap is trimmed and forfeited', fu
     setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 800_000, 'gsb_credit'); // ₹8,000 — ₹3,000 above cap
+    $wallet->credit($dist->id, 800_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹8,000 — ₹3,000 above cap
 
     $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
 
@@ -446,11 +446,11 @@ it('monthly income cap is shared across all five cash bonuses and across batches
     $wallet = app(WalletService::class);
 
     // Weekly batch consumes ₹3,000 of the month's ₹5,000 room.
-    $wallet->credit($dist->id, 300_000, 'gsb_credit');
+    $wallet->credit($dist->id, 300_000, 'gsb_credit', walletRef(), 'test_reference');
     app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
 
     // Monthly batch in the same month: rank ₹4,000 against ₹2,000 remaining room.
-    $wallet->credit($dist->id, 400_000, 'rank_credit');
+    $wallet->credit($dist->id, 400_000, 'rank_credit', walletRef(), 'test_reference');
     $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
     $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
@@ -468,7 +468,7 @@ it('monthly income cap is shared across all five cash bonuses and across batches
 it('holds the weekly payout as kyc_pending when the distributor KYC is not verified', function () {
     $dist = makePayoutEligibleDistributor();       // active + bank on file by factory
     $dist->user->update(['status' => 'pending']);  // KYC not yet approved
-    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit'); // ₹1,000
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹1,000
 
     app(PayoutService::class)->runWeeklyBatch(Carbon::today());
 
@@ -482,7 +482,7 @@ it('holds the weekly payout as kyc_pending when the distributor KYC is not verif
 it('holds the monthly payout as kyc_pending when the distributor KYC is not verified', function () {
     $dist = makePayoutEligibleDistributor();
     $dist->user->update(['status' => 'pending']);
-    app(WalletService::class)->credit($dist->id, 500_000, 'rank_credit'); // ₹5,000 monthly stream
+    app(WalletService::class)->credit($dist->id, 500_000, 'rank_credit', walletRef(), 'test_reference'); // ₹5,000 monthly stream
 
     app(PayoutService::class)->runMonthlyBatch(Carbon::today());
 
@@ -494,7 +494,7 @@ it('holds the monthly payout as kyc_pending when the distributor KYC is not veri
 it('pays the held balance once KYC is verified on a later batch', function () {
     $dist = makePayoutEligibleDistributor();
     $dist->user->update(['status' => 'pending']);
-    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit');
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
 
     // First batch while unverified → held.
     app(PayoutService::class)->runWeeklyBatch(Carbon::today());
@@ -522,12 +522,12 @@ it('monthly batch: collects the repurchase deduction for a distributor with only
 
     // Prior-month Growth Booster ₹2,000 → monthly repurchase target = 20,000 paise.
     Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
-    $wallet->credit($dist->id, 200_000, 'gbb_credit');
+    $wallet->credit($dist->id, 200_000, 'gbb_credit', walletRef(), 'test_reference');
 
     // Current-month Growth Booster ₹1,000. No Group-A credits exist, so no
     // weekly batch can ever collect on this distributor's behalf.
     Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
-    $wallet->credit($dist->id, 100_000, 'gbb_credit');
+    $wallet->credit($dist->id, 100_000, 'gbb_credit', walletRef(), 'test_reference');
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
@@ -564,12 +564,12 @@ it('monthly batch: the repurchase deduction is clamped to the batch gross', func
     // June earns ₹10,000 GBB and is swept by June's own monthly batch, so it
     // cannot inflate July's gross. July's repurchase target = 10% = 100,000 paise.
     Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
-    $wallet->credit($dist->id, 1_000_000, 'gbb_credit');
+    $wallet->credit($dist->id, 1_000_000, 'gbb_credit', walletRef(), 'test_reference');
     app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 6, 1));
 
     // July earns only ₹500 — far below the 100,000-paise target.
     Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
-    $wallet->credit($dist->id, 50_000, 'gbb_credit');
+    $wallet->credit($dist->id, 50_000, 'gbb_credit', walletRef(), 'test_reference');
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
     $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->first();
@@ -593,18 +593,18 @@ it('monthly batch: does not re-collect a repurchase target the week batches alre
 
     // Prior-month GSB ₹2,000 → monthly repurchase target = 20,000 paise.
     Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
-    $wallet->credit($dist->id, 200_000, 'gsb_credit');
+    $wallet->credit($dist->id, 200_000, 'gsb_credit', walletRef(), 'test_reference');
 
     // First Tuesday of July: the weekly batch collects the whole target.
     Carbon::setTestNow(Carbon::create(2026, 7, 7, 9));
-    $wallet->credit($dist->id, 100_000, 'gsb_credit');
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
     $weekly = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
     expect(PayoutLineItem::where('payout_batch_id', $weekly->id)->where('distributor_id', $dist->id)->first()->repurchase_deduction_paise)
         ->toBe(20_000);
 
     // Month-end monthly batch, same calendar month: nothing left to collect.
     Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
-    $wallet->credit($dist->id, 100_000, 'gbb_credit');
+    $wallet->credit($dist->id, 100_000, 'gbb_credit', walletRef(), 'test_reference');
     $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
     $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
@@ -627,19 +627,19 @@ it('monthly batch: takes only the remainder when a weekly batch collected part o
 
     // June GBB ₹5,000, swept by June's monthly batch → July target = 50,000 paise.
     Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
-    $wallet->credit($dist->id, 500_000, 'gbb_credit');
+    $wallet->credit($dist->id, 500_000, 'gbb_credit', walletRef(), 'test_reference');
     app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 6, 1));
 
     // July weekly: gross ₹300 is smaller than the target, so only 30,000 is taken.
     Carbon::setTestNow(Carbon::create(2026, 7, 7, 9));
-    $wallet->credit($dist->id, 30_000, 'gsb_credit');
+    $wallet->credit($dist->id, 30_000, 'gsb_credit', walletRef(), 'test_reference');
     $weekly = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
     expect(PayoutLineItem::where('payout_batch_id', $weekly->id)->where('distributor_id', $dist->id)->first()->repurchase_deduction_paise)
         ->toBe(30_000);
 
     // July monthly: 50,000 target − 30,000 already collected = 20,000 remainder.
     Carbon::setTestNow(Carbon::create(2026, 7, 20, 9));
-    $wallet->credit($dist->id, 200_000, 'gbb_credit');
+    $wallet->credit($dist->id, 200_000, 'gbb_credit', walletRef(), 'test_reference');
     $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
     $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();

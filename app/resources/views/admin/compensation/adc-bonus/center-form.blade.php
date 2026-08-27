@@ -12,7 +12,7 @@
 @section('content')
 
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}" class="text-sm text-gray-500 hover:text-gray-700">← All centers</a>
+    <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← All centers</a>
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-xl">
@@ -120,7 +120,7 @@
         </div>
 
         <div class="pt-2 flex gap-3">
-            <button type="submit" class="px-5 py-2 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">
+            <button type="submit" class="px-5 py-2 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">
                 {{ $isEdit ? 'Edit Center' : 'Add Center' }}
             </button>
             <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}"

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Admin\Services\ApproveKycSubmission;
 use App\Modules\Compliance\Services\CancelCoolingOff;
+use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\RegistrationService;
@@ -18,6 +19,11 @@ use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
 
 /**
  * Couple registration (US-1.13) — option A: two distributor rows, both
@@ -95,6 +101,7 @@ function crService(): RegistrationService
             app(TeamStatsService::class),
         ),
         app(DatabaseManager::class),
+        app(ConsentDocuments::class),
     );
 }
 

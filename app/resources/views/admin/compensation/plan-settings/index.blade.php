@@ -88,7 +88,7 @@
     </div>
     @endif
 
-    <p class="mt-3 text-[11px] text-gray-500">
+    <p class="mt-3 text-[11px] text-gray-600">
         Both pool rates are set under
         <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
         Each day's arithmetic is frozen before anything is credited and is visible on the
@@ -138,7 +138,7 @@
         </p>
     </div>
 
-    <p class="mt-3 text-[11px] text-gray-500">
+    <p class="mt-3 text-[11px] text-gray-600">
         Thresholds, RAP and pool shares are the Rank Tiers table below; the envelope rate lives under
         <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
         Each month's arithmetic is visible on the
@@ -170,7 +170,7 @@
         </p>
     </div>
 
-    <p class="mt-3 text-[11px] text-gray-500">
+    <p class="mt-3 text-[11px] text-gray-600">
         AGP per slab sits on the GSB Slabs table; the pool rate lives under
         <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
         Each month's economics are frozen before any credit and visible on the
@@ -215,7 +215,7 @@
         </p>
     </div>
 
-    <p class="mt-3 text-[11px] text-gray-500">
+    <p class="mt-3 text-[11px] text-gray-600">
         Matrix-level values and eligibility tiers are the Fortune Bonus tab below; the pool rate and minimum live under
         <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>.
         Each month's per-level economics are frozen before any credit and visible on the
@@ -246,7 +246,7 @@
         </p>
     </div>
 
-    <p class="mt-3 text-[11px] text-gray-500">
+    <p class="mt-3 text-[11px] text-gray-600">
         The rate and cap live under
         <a href="{{ route('admin.settings') }}#compensation_plan" class="underline">Settings → Compensation plan</a>;
         per-centre phase caps are set on the centre's Edit form. Each month's per-centre arithmetic is visible on the
@@ -279,7 +279,7 @@
         </p>
     </div>
 
-    <p class="mt-3 text-[11px] text-gray-500">
+    <p class="mt-3 text-[11px] text-gray-600">
         Per-rank budgets are the Rank Tiers table below; the reward catalogue and pending milestones are managed under
         <a href="{{ route('admin.lifetime-awards.index') }}" class="underline">Lifetime Awards</a>, with the
         <a href="{{ route('admin.compensation.aw-rw-calculation.index') }}" class="underline">Awards &amp; Rewards</a> report alongside.
@@ -292,7 +292,7 @@
     @foreach($planTabs as $key => $label)
     <a href="{{ route('admin.compensation.plan-settings.index', ['tab' => $key]) }}"
        class="px-4 py-2 text-sm font-medium border-b-2 -mb-px
-              {{ $activeTab === $key ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+              {{ $activeTab === $key ? 'border-brand-500 text-brand-700' : 'border-transparent text-gray-600 hover:text-gray-700' }}">
         {{ $label }}
     </a>
     @endforeach
@@ -302,7 +302,7 @@
 @if($activeTab === 'gsb')
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-1">GSB slabs</h2>
-    <p class="text-xs text-gray-500 mb-3">
+    <p class="text-xs text-gray-600 mb-3">
         Bonus follows the <strong>score × score value</strong> model. Slabs 1–2 carry a fixed, editable score
         value (₹ per score point) and always pay in full. Slabs 3–7 are <strong>pro-rated daily</strong> from the
         GSB pool (<a href="{{ route('admin.settings') }}#compensation_plan" class="underline">GSB daily pool rate</a>,
@@ -328,66 +328,66 @@
             <fieldset class="contents" @disabled(! $canEdit)>
             <div class="flex items-center justify-between mb-3">
                 <span class="text-sm font-semibold text-gray-700">Slab {{ $row->slab }}</span>
-                <span class="text-xs text-gray-400">{{ $row->slab < 3 ? 'current bonus: '.$rupees($row->bonus_paise) : 'max bonus: '.$rupees($row->bonus_paise).' (pro-rated daily)' }}</span>
+                <span class="text-xs text-gray-600">{{ $row->slab < 3 ? 'current bonus: '.$rupees($row->bonus_paise) : 'max bonus: '.$rupees($row->bonus_paise).' (pro-rated daily)' }}</span>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Title <x-help-tip text="The personal-purchase title a distributor reaches at this slab (display only)." /></label>
                     <input type="text" name="title" data-field-label="Title" value="{{ $row->title }}"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Title min BV (paise) <x-help-tip text="Minimum lifetime personal BV (in paise; BV × 100) needed to hold this title. Gates whether a distributor can earn at this slab." /></label>
                     <input type="number" name="title_min_bv_paise" data-field-label="Title min BV (paise)" value="{{ $row->title_min_bv_paise }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $bv($row->title_min_bv_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $bv($row->title_min_bv_paise) }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Matched BV (paise) <x-help-tip text="The weaker-side matched BV (in paise) that triggers this slab's bonus at the daily GSB cut-off." /></label>
                     <input type="number" name="matched_bv_paise" data-field-label="Matched BV (paise)" value="{{ $row->matched_bv_paise }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $bv($row->matched_bv_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $bv($row->matched_bv_paise) }}</span>
                 </div>
                 @if($row->slab < 3)
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab. The bonus is score × this slab's score value, so it recomputes on save. Leave blank to leave the bonus unset." /></label>
                     <input type="number" name="score" data-field-label="Score" data-score-input value="{{ $row->score }}" min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400" data-score-preview>→ {{ $row->score !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600" data-score-preview>→ {{ $row->score !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Rupee value of one score point for this slab (KP 2026-07-21, default ₹250). The bonus is score × this value. Slabs 1–2 are fixed — always paid in full." /></label>
                     <input type="number" name="score_value_paise" data-field-label="Score value (paise)" data-score-value-input value="{{ $row->score_value_paise }}" required min="1"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) }} / score</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) }} / score</span>
                 </div>
                 @else
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score <x-help-tip text="Points for this slab (fixed by the plan). Not editable: slabs 3–7 are priced daily from the GSB pool." /></label>
                     <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">{{ $row->score ?? '—' }}</div>
-                    <span class="text-[11px] text-gray-400">→ up to {{ $row->score !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
+                    <span class="text-[11px] text-gray-600">→ up to {{ $row->score !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Variable — computed at each daily cut-off from the GSB pool (45% of the day's company BV), capped at this fixed value. See the GSB Input & Output report for each day's value." /></label>
                     <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">Variable (pool)</div>
-                    <span class="text-[11px] text-gray-400">up to ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) }} / score</span>
+                    <span class="text-[11px] text-gray-600">up to ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) }} / score</span>
                 </div>
                 @endif
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">MSB score <x-help-tip text="Mentorship Bonus points credited to the direct sponsor each time a sponsee's cut-off matches this slab. The sponsor's MB income is MSB score × the day's point value (the MSB pool ÷ the day's total points) — there is no configured per-slab value." /></label>
                     <input type="number" name="msb_score" data-field-label="MSB score" data-msb-score-input value="{{ $row->msb_score }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400" data-msb-preview>→ {{ $row->msb_score }} points × the day's value</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600" data-msb-preview>→ {{ $row->msb_score }} points × the day's value</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">MSB point value (₹) <x-help-tip text="Variable — computed at each daily cut-off as the MSB pool (3% of the day's company BV) ÷ the day's total MSB score points, floored to whole rupees. See the MSB Input & Output report for each day's value." /></label>
                     <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">Variable (pool)</div>
-                    <span class="text-[11px] text-gray-400">3% pool ÷ the day's points</span>
+                    <span class="text-[11px] text-gray-600">3% pool ÷ the day's points</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">AGP / occurrence <x-help-tip text="Arovolife Growth Points awarded each time this slab is earned (feeds the monthly Growth Booster pool)." /></label>
                     <input type="number" name="agp_per_occurrence" data-field-label="AGP / occurrence" value="{{ $row->agp_per_occurrence }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <label class="flex items-center gap-2 text-xs text-gray-600 mt-5">
                     <input type="checkbox" name="carry_forward_lifetime" data-field-label="Lifetime carry-forward" value="1" @checked($row->carry_forward_lifetime)>
@@ -432,57 +432,57 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Rank {{ $row->rank_number }} name <x-help-tip text="Display name for this rank." /></label>
                     <input type="text" name="rank_name" data-field-label="Rank {{ $row->rank_number }} name" value="{{ $row->rank_name }}" required
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Pool % <x-help-tip text="This rank's share of the company Rank Bonus pool, as a percent of monthly turnover." /></label>
                     <input type="number" step="0.01" name="pool_pct" data-field-label="Pool %" value="{{ rtrim(rtrim(number_format($row->pool_pct, 2, '.', ''), '0'), '.') }}" required min="0" max="100"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Q-Period (PYP) <x-help-tip text="Times this rank must be achieved (distinct months) before the NEXT rank opens for the distributor. KP 2026-08-05: R1/R2 = 1, R3–R5 = 2, R6–R9 = 3." /></label>
                     <input type="number" name="pyp_required" data-field-label="Q-Period (PYP)" value="{{ $row->pyp_required }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">RAP points <x-help-tip text="Rank Achievement Points per achiever. When set, this rank's pool is divided by total points (achievers × RAP + AO-GO points) and each participant is paid points × point value. Leave blank for an equal split among achievers (ranks 2–9). KP 2026-08-05: Rank 1 = 10." /></label>
                     <input type="number" name="rap_points" data-field-label="RAP points" value="{{ $row->rap_points }}" min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Personal BV (paise) <x-help-tip text="Lifetime personal BV (paise) the distributor must hold to qualify for this rank." /></label>
                     <input type="number" name="personal_bv_required_paise" data-field-label="Personal BV (paise)" value="{{ $row->personal_bv_required_paise }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $bv($row->personal_bv_required_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $bv($row->personal_bv_required_paise) }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Genos BV (paise, ranks 1–2) <x-help-tip text="Calendar-month Genos BV required on each side for ranks 1–2. Leave blank for ranks 3+, which use structural qualifiers instead." /></label>
                     <input type="number" name="group_bv_required_paise" data-field-label="Genos BV (paise)" value="{{ $row->group_bv_required_paise }}" min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $bv($row->group_bv_required_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $bv($row->group_bv_required_paise) }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Weaker-leg top-up (paise, ranks 1–2) <x-help-tip text="Cap on this month's personal BV that may supplement the weaker Genos leg toward the ranks 1–2 match (KP 2026-06-28: Rank 1 = 15,000 BV, Rank 2 = 30,000 BV). 0 for ranks 3+." /></label>
                     <input type="number" name="weaker_leg_topup_bv_paise" data-field-label="Weaker-leg top-up (paise)" value="{{ $row->weaker_leg_topup_bv_paise }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $bv($row->weaker_leg_topup_bv_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $bv($row->weaker_leg_topup_bv_paise) }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Qualifiers / side (ranks 3+) <x-help-tip text="Number of lower-rank qualifiers required on each Genos side for ranks 3 and above." /></label>
                     <input type="number" name="structural_qualifiers_per_side" data-field-label="Qualifiers / side" value="{{ $row->structural_qualifiers_per_side }}" min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Repurchase BV (paise) <x-help-tip text="Monthly repurchase BV this rank must complete each cycle to stay income-eligible. Stored in paise (BV × 100). KP: R1 1,000 … R9 2,300 BV." /></label>
                     <input type="number" name="repurchase_bv_paise" data-field-label="Repurchase BV (paise)" value="{{ $row->repurchase_bv_paise }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $bv($row->repurchase_bv_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $bv($row->repurchase_bv_paise) }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Lifetime award budget (paise) <x-help-tip text="Per-rank Lifetime Awards budget (non-cash). Stored in paise (₹ × 100). The itemised reward worths (Lifetime Awards → Reward catalog) reconcile to this. KP: R1 ₹15,000 … R9 ₹2.25Cr." /></label>
                     <input type="number" name="lifetime_award_budget_paise" data-field-label="Lifetime award budget (paise)" value="{{ $row->lifetime_award_budget_paise }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $rupees($row->lifetime_award_budget_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $rupees($row->lifetime_award_budget_paise) }}</span>
                 </div>
                 <label class="flex items-center gap-2 text-xs text-gray-600 mt-5">
                     <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
@@ -505,7 +505,7 @@
 @if($activeTab === 'fortune')
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-3">Fortune Bonus — matrix levels</h2>
-    <p class="text-xs text-gray-500 mb-3">Points per member apply by <strong>relative depth</strong> below a participant; payout mode and cap apply to the <strong>absolute matrix level</strong> in the monthly cascade. Caps include the guaranteed minimum commission (edited under Settings → Compensation plan).</p>
+    <p class="text-xs text-gray-600 mb-3">Points per member apply by <strong>relative depth</strong> below a participant; payout mode and cap apply to the <strong>absolute matrix level</strong> in the monthly cascade. Caps include the guaranteed minimum commission (edited under Settings → Compensation plan).</p>
     <div class="grid grid-cols-1 gap-3">
         @foreach($fortuneLevels as $row)
         <form method="POST" action="{{ route('admin.compensation.plan-settings.fortune-level.update', $row->level) }}"
@@ -531,12 +531,12 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Points per member (depth {{ $row->level }}) <x-help-tip text="FB points a participant earns for each enrolled distributor sitting this many levels below them in the month's matrix. The rupee value of a point is not set here — each level's value is derived from the pool at the monthly run." /></label>
                     <input type="number" name="points_per_member" data-field-label="Points per member at depth {{ $row->level }}" value="{{ $row->points_per_member }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Payout mode (level {{ $row->level }}) <x-help-tip text="How this ABSOLUTE matrix level pays in the monthly cascade. Capped: per-level point value with a per-member ceiling. Residual: shares one point value with the other residual levels over their combined points, no cap. Flat minimum: the guaranteed minimum only." /></label>
                     <select name="payout_mode" data-field-label="Payout mode at level {{ $row->level }}"
-                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                         <option value="capped" @selected($row->payout_mode === 'capped')>Capped</option>
                         <option value="residual" @selected($row->payout_mode === 'residual')>Residual</option>
                         <option value="flat_min" @selected($row->payout_mode === 'flat_min')>Flat minimum</option>
@@ -545,8 +545,8 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Cap (paise) <x-help-tip text="Per-member ceiling at this level, in paise, INCLUDING the guaranteed minimum commission (30,00,000 = ₹30,000). Required for capped mode; ignored for residual and flat-minimum levels." /></label>
                     <input type="number" name="cap_paise" data-field-label="Cap (paise) at level {{ $row->level }}" value="{{ $row->cap_paise }}" min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $row->cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->cap_paise / 100, 2) : '—' }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $row->cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->cap_paise / 100, 2) : '—' }}</span>
                 </div>
                 <div class="flex items-end">
                     @if($canEdit)
@@ -584,13 +584,13 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">BV required (paise) <x-help-tip text="Monthly repurchase BV (paise) the distributor must complete to enter the Fortune Bonus at this tier." /></label>
                     <input type="number" name="bv_required_paise" data-field-label="BV required (paise)" value="{{ $row->bv_required_paise }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
-                    <span class="text-[11px] text-gray-400">{{ $bv($row->bv_required_paise) }}</span>
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                    <span class="text-[11px] text-gray-600">{{ $bv($row->bv_required_paise) }}</span>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">GSB slabs required <x-help-tip text="Number of GSB slabs the distributor must earn in the month to be eligible at this tier." /></label>
                     <input type="number" name="slabs_required" data-field-label="GSB slabs required" value="{{ $row->slabs_required }}" required min="0"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500">
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div class="flex items-end gap-2">
                     @if($canEdit)

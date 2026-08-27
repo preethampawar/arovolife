@@ -42,9 +42,9 @@
 
         <div class="max-w-7xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 items-center gap-12 relative">
             <div data-reveal>
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">About arovolife</p>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">About arovolife</p>
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.05] mb-6">
-                    A new chapter in <span class="text-brand-600">Indian direct selling industry</span>.
+                    A new chapter in <span class="text-brand-700">Indian direct selling industry</span>.
                 </h1>
                 <p class="text-lg text-gray-600 mb-8 max-w-xl leading-relaxed">
                     arovolife is an India-incorporated direct-selling company, born in the first half of 2026
@@ -52,14 +52,14 @@
                     distributor are the same job, every single day.
                 </p>
                 <div class="flex flex-wrap items-center gap-3">
-                    <a href="{{ route('contact.show') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-lg shadow-brand-500/30 transition-colors">
+                    <a href="{{ route('contact.show') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-lg shadow-brand-500/30 transition-colors">
                         Become a Direct Seller →
                     </a>
-                    <a href="{{ route('shop.index') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-gray-300 hover:border-brand-500 text-gray-700 hover:text-brand-700 text-sm font-semibold transition-colors">
+                    <a href="{{ route('shop.index') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-gray-300 hover:border-brand-500 text-gray-700 hover:text-brand-800 text-sm font-semibold transition-colors">
                         Explore products
                     </a>
                 </div>
-                <p class="text-xs text-gray-500 mt-5">Free to register · 30-day cooling-off · Compliant with India's DSR 2021.</p>
+                <p class="text-xs text-gray-600 mt-5">Free to register · 30-day cooling-off · Compliant with India's DSR 2021.</p>
             </div>
 
             <div class="relative" data-reveal data-reveal-delay="200">
@@ -69,14 +69,14 @@
                 <div class="ar-float-slow absolute -top-6 -left-6 bg-white rounded-2xl shadow-xl border border-gray-100 px-4 py-3 flex items-center gap-3">
                     <span class="w-9 h-9 rounded-full bg-leaf-50 flex items-center justify-center text-leaf-600 font-bold text-sm">99%</span>
                     <div class="text-left">
-                        <p class="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">Customer satisfaction</p>
+                        <p class="text-[11px] uppercase tracking-wider text-gray-600 font-semibold">Customer satisfaction</p>
                         <p class="text-sm text-gray-800 font-semibold">our north star</p>
                     </div>
                 </div>
                 <div class="ar-float-slow absolute -bottom-6 -right-2 bg-white rounded-2xl shadow-xl border border-gray-100 px-4 py-3 flex items-center gap-3" style="animation-delay: -3s;">
                     <span class="w-9 h-9 rounded-full bg-sunrise-50 flex items-center justify-center text-sunrise-600 font-bold text-sm">24h</span>
                     <div class="text-left">
-                        <p class="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">Grievance SLA</p>
+                        <p class="text-[11px] uppercase tracking-wider text-gray-600 font-semibold">Grievance SLA</p>
                         <p class="text-sm text-gray-800 font-semibold">we respond fast</p>
                     </div>
                 </div>
@@ -91,7 +91,7 @@
                 <img src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=900&q=80&auto=format&fit=crop" alt="A team building together" class="w-full h-full object-cover" loading="lazy">
             </div>
             <div class="md:col-span-3" data-reveal data-reveal-delay="200">
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Our story</p>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our story</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                     Built from day one for the decade ahead.
                 </h2>
@@ -116,7 +116,7 @@
     <section class="py-20">
         <div class="max-w-6xl mx-auto px-6">
             <div class="text-center mb-12 max-w-2xl mx-auto" data-reveal>
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Our philosophy</p>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our philosophy</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     Customer first. Always.
                 </h2>
@@ -149,7 +149,7 @@
     <section class="bg-[#f4f7f6] py-20">
         <div class="max-w-6xl mx-auto px-6">
             <div class="text-center mb-12 max-w-2xl mx-auto" data-reveal>
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Our products</p>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our products</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     Best-in-class across every category.
                 </h2>
@@ -187,7 +187,7 @@
     <section class="py-20">
         <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
             <div data-reveal>
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Compliance & trust</p>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Compliance & trust</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                     The law isn't a checklist for us. It's the floor we stand on.
                 </h2>
@@ -266,7 +266,7 @@
                     <img src="https://images.unsplash.com/photo-1573164574572-cb89e39749b4?w=900&q=80&auto=format&fit=crop" alt="Growth pathway" class="w-full h-full object-cover" loading="lazy">
                 </div>
                 <div data-reveal data-reveal-delay="200">
-                    <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Growth pathway</p>
+                    <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Growth pathway</p>
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                         From your first step to leadership — we walk it with you.
                     </h2>
@@ -299,7 +299,7 @@
     <section class="bg-white border-y border-gray-100 py-20">
         <div class="max-w-6xl mx-auto px-6">
             <div class="text-center mb-12 max-w-2xl mx-auto" data-reveal>
-                <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Our values</p>
+                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our values</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     What we won't compromise on.
                 </h2>
@@ -332,7 +332,7 @@
         <div class="max-w-6xl mx-auto px-6">
             <div class="grid md:grid-cols-2 gap-12 items-center">
                 <div data-reveal>
-                    <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Why now, why arovolife</p>
+                    <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Why now, why arovolife</p>
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                         India's direct selling market is just getting started.
                     </h2>
@@ -357,7 +357,7 @@
                     <div class="rounded-2xl bg-gradient-to-br from-brand-50 to-white border border-brand-100 p-5">
                         <p class="ar-stat-num text-3xl md:text-4xl font-bold text-brand-700 leading-none mb-2">{{ $s['stat'] }}</p>
                         <p class="text-sm font-semibold text-gray-900">{{ $s['label'] }}</p>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ $s['sub'] }}</p>
+                        <p class="text-xs text-gray-600 mt-0.5">{{ $s['sub'] }}</p>
                     </div>
                     @endforeach
                 </div>
@@ -372,9 +372,9 @@
         <div class="absolute -bottom-20 left-1/4 w-[300px] h-[300px] bg-leaf-200/40 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="max-w-4xl mx-auto px-6 relative text-center" data-reveal>
-            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Register with us</p>
+            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Register with us</p>
             <h2 class="text-4xl md:text-5xl font-bold text-gray-900 leading-[1.1] mb-5">
-                Two paths in. <br class="hidden sm:inline">One promise of <span class="text-brand-600">trust</span>.
+                Two paths in. <br class="hidden sm:inline">One promise of <span class="text-brand-700">trust</span>.
             </h2>
             <p class="text-lg text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
                 Whether you come for the products or stay to build a business —
@@ -383,13 +383,13 @@
 
             <div class="grid sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
                 <a href="{{ route('shop.index') }}" class="group rounded-2xl bg-white border-2 border-gray-200 hover:border-brand-500 p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1">
-                    <p class="text-[11px] uppercase tracking-wider text-brand-600 font-semibold mb-1">For customers</p>
+                    <p class="text-[11px] uppercase tracking-wider text-brand-700 font-semibold mb-1">For customers</p>
                     <p class="text-xl font-bold text-gray-900 mb-2">Shop the range</p>
                     <p class="text-sm text-gray-600 mb-3">Quality nutraceutical and personal-care products, delivered honestly.</p>
                     <p class="text-sm text-brand-700 font-semibold group-hover:translate-x-1 transition-transform">Browse products →</p>
                 </a>
 
-                <a href="{{ route('contact.show') }}" class="group rounded-2xl bg-brand-500 hover:bg-brand-600 text-white p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1 shadow-lg shadow-brand-500/30">
+                <a href="{{ route('contact.show') }}" class="group rounded-2xl bg-brand-700 hover:bg-brand-800 text-white p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1 shadow-lg shadow-brand-500/30">
                     <p class="text-[11px] uppercase tracking-wider text-brand-100 font-semibold mb-1">For aspiring distributors</p>
                     <p class="text-xl font-bold mb-2">Become a Direct Seller</p>
                     <p class="text-sm text-brand-50 mb-3">Free to register. Industry-leading support. Earn from real product sales.</p>
@@ -397,14 +397,14 @@
                 </a>
             </div>
 
-            <p class="mt-10 text-xs text-gray-500">
+            <p class="mt-10 text-xs text-gray-600">
                 Arovolife Private Limited — CIN U46909TS2026PTC210896 — Registered in India.
             </p>
         </div>
     </section>
 
     {{-- Footer (matches landing) --}}
-    <footer class="bg-gray-900 text-gray-400 py-12">
+    <footer class="bg-gray-900 text-gray-600 py-12">
         <div class="max-w-7xl mx-auto px-6 text-center">
             <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mx-auto mb-4">
             <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs mb-4">
@@ -414,7 +414,7 @@
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a>
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
             </div>
-            <p class="text-xs text-gray-500 mb-3 leading-relaxed">
+            <p class="text-xs text-gray-600 mb-3 leading-relaxed">
                 Customer Care:
                 <a href="tel:+918886662949" class="hover:text-white">+91 88866 62949</a> ·
                 <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·

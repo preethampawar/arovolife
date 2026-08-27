@@ -34,7 +34,7 @@
         <article class="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ $page->title }}</h1>
             @if($page->published_at)
-            <p class="text-xs text-gray-500 mb-8">Published {{ $page->published_at->format('d M Y') }}</p>
+            <p class="text-xs text-gray-600 mb-8">Published {{ $page->published_at->format('d M Y') }}</p>
             @endif
             <div class="page-body">
                 {!! $page->body !!}
@@ -43,7 +43,7 @@
     </main>
 
     {{-- Footer --}}
-    <footer class="border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-500">
+    <footer class="border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-600">
         Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
     </footer>
 

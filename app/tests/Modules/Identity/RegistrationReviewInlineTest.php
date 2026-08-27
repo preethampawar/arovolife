@@ -7,6 +7,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 /**
  * Backlog #10: the Step-10 "Review & Finalise" page now shows the full review
  * INLINE (account / personal / KYC / bank / placement / documents) instead of

@@ -15,7 +15,7 @@
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Slug <span class="text-red-600">*</span> <x-help-tip text="The URL key for this page (the part after /p/); lowercase letters, numbers and hyphens only, and it cannot be changed after publishing." /></label>
         <div class="flex">
-            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 text-gray-500 text-sm select-none font-mono">/p/</span>
+            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 text-gray-600 text-sm select-none font-mono">/p/</span>
             <input name="slug" type="text" required
                 value="{{ old('slug', $page->slug) }}"
                 maxlength="120"
@@ -24,7 +24,7 @@
                 class="flex-1 rounded-l-none rounded-r-lg bg-white border border-gray-200 px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'')">
         </div>
-        <p class="mt-1 text-xs text-gray-500">Lowercase letters, numbers and hyphens only. Cannot be changed after publishing.</p>
+        <p class="mt-1 text-xs text-gray-600">Lowercase letters, numbers and hyphens only. Cannot be changed after publishing.</p>
         @error('slug')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
     </div>
 
@@ -46,7 +46,7 @@
                 {{ old('status', $page->status) === $val ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-300' }}">
                 <input type="radio" name="status" value="{{ $val }}"
                     {{ old('status', $page->status) === $val ? 'checked' : '' }}
-                    class="text-brand-600 border-gray-300 focus:ring-brand-500">
+                    class="text-brand-700 border-gray-300 focus:ring-brand-500">
                 <span class="text-sm text-gray-800">{{ $label }}</span>
             </label>
             @endforeach
@@ -67,7 +67,7 @@
 <div class="flex items-center justify-between mt-6 pt-5 border-t border-gray-200">
     <a href="{{ route('admin.content.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
     <button type="submit"
-        class="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+        class="px-6 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
         {{ $submitLabel ?? 'Save' }}
     </button>
 </div>

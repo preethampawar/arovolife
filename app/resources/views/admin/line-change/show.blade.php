@@ -17,13 +17,13 @@
 </div>
 
 <div class="rounded-2xl border border-gray-200 bg-white p-6 mb-6">
-    <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Request</p>
+    <p class="text-xs text-gray-600 uppercase tracking-wider mb-3">Request</p>
     <dl class="text-sm grid grid-cols-2 gap-y-2">
         <dt class="text-gray-600">Requester name</dt>
         <dd class="text-gray-900">{{ $lcr->distributor?->user?->full_name ?? '—' }}</dd>
 
         <dt class="text-gray-600">Requester ADN</dt>
-        <dd class="font-mono font-bold text-brand-600 tracking-widest">{{ $lcr->distributor?->adn ?? '—' }}</dd>
+        <dd class="font-mono font-bold text-brand-700 tracking-widest">{{ $lcr->distributor?->adn ?? '—' }}</dd>
 
         <dt class="text-gray-600">Requester email</dt>
         <dd class="text-gray-900">{{ $lcr->distributor?->user?->email ?? '—' }}</dd>
@@ -126,7 +126,7 @@
     </form>
 @endif
 
-<a href="{{ route('admin.line-changes.index') }}" class="inline-block mt-6 text-sm text-gray-500 hover:text-gray-700">
+<a href="{{ route('admin.line-changes.index') }}" class="inline-block mt-6 text-sm text-gray-600 hover:text-gray-700">
     ← Back to queue
 </a>
 

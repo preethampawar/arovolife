@@ -5,9 +5,9 @@
 @section('content')
 <div class="max-w-xl mx-auto">
     <div class="mb-7 lift-in" style="animation-delay: 80ms;">
-        <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Genos placement</p>
+        <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Genos placement</p>
         <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
-            Your <span class="text-brand-600">placement</span> is locked.
+            Your <span class="text-brand-700">placement</span> is locked.
         </h1>
         <p class="text-base text-gray-600 max-w-lg">
             Your sponsor selected this position when they shared the referral link with you.
@@ -50,7 +50,7 @@
                 ← Back
             </a>
             <button type="submit"
-                class="btn-cta group flex-1 rounded-full bg-brand-500 hover:bg-brand-600 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
+                class="btn-cta group flex-1 rounded-full bg-brand-700 hover:bg-brand-800 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                 style="animation-delay: 440ms;">
                 <span class="inline-flex items-center justify-center gap-2.5">
                     Continue to consent

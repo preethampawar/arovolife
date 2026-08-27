@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
+use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
@@ -9,6 +11,7 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -92,6 +95,42 @@ Schedule::command(AdcBonusRunCommand::class)
 // engines (GBB 2nd, Rank 8th, Fortune 9th 09:00, ADC 8th) have completed.
 Schedule::command(MonthlyPayoutCommand::class)
     ->monthlyOn(9, '10:30')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Grievance SLA sweep — hourly. Stamps acknowledgement / first-response /
+// resolution breaches the moment a published clock lapses, auto-escalates
+// tickets that have sat too long at one step of the policy §4 ladder, and
+// nudges the owning officer when a third-party-dependent grievance is due its
+// 15-day progress update.
+//
+// Hourly rather than daily because the acknowledgement promise is measured in
+// hours (48), not days: a once-a-day sweep could record a breach up to 24
+// hours after it happened, which is the one number in the monthly compliance
+// report that has to be exact.
+Schedule::command(GrievanceSlaSweepCommand::class)
+    ->hourly()
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Franchise commission runs on the 8th at 09:45 IST, after ADC at 09:30 and
+// before the monthly payout at 10:30. It depends on nothing — the base is
+// fulfilled order value, not BV or rank — so its position in the sequence is
+// about payout ordering, not data dependency.
+Schedule::command(FranchiseMonthlyRunCommand::class)
+    ->monthlyOn(8, '09:45')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Purchase offers on the 2nd at 06:00 IST. Early in the month and ahead of
+// every bonus engine, because the offers read the previous month's BV and
+// grant nothing that any other engine depends on — running them first means a
+// distributor sees what they earned before the payout cycle starts.
+Schedule::command(PurchaseOffersMonthlyRunCommand::class)
+    ->monthlyOn(2, '06:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

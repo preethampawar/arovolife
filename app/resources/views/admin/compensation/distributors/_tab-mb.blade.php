@@ -3,18 +3,18 @@
 </div>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No Mentorship Bonus history yet.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Mentorship Bonus history yet.</p>
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-3 py-2 text-left text-gray-500">Date</th>
-                <th class="px-3 py-2 text-left text-gray-500">Sponsee ADN <x-help-tip text="The downline distributor whose GSB slab achievement triggered this Mentorship Bonus." /></th>
-                <th class="px-3 py-2 text-center text-gray-500">Slab <x-help-tip text="The GSB slab the sponsee matched on this date." /></th>
-                <th class="px-3 py-2 text-right text-gray-500">MSB points <x-help-tip text="Points credited to this sponsor for the sponsee's slab (snapshotted at credit time)." /></th>
-                <th class="px-3 py-2 text-right text-gray-500">Point value <x-help-tip text="Rupee value of one MSB point on the day it was credited: the day's 3% MSB pool ÷ the day's total MSB points, floored to whole rupees." /></th>
-                <th class="px-3 py-2 text-right text-gray-500">MB credited <x-help-tip text="MB amount credited to this distributor's wallet (points × value)." /></th>
-                <th class="px-3 py-2 text-center text-gray-500">Status</th>
+                <th class="px-3 py-2 text-left text-gray-600">Date</th>
+                <th class="px-3 py-2 text-left text-gray-600">Sponsee ADN <x-help-tip text="The downline distributor whose GSB slab achievement triggered this Mentorship Bonus." /></th>
+                <th class="px-3 py-2 text-center text-gray-600">Slab <x-help-tip text="The GSB slab the sponsee matched on this date." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">MSB points <x-help-tip text="Points credited to this sponsor for the sponsee's slab (snapshotted at credit time)." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">Point value <x-help-tip text="Rupee value of one MSB point on the day it was credited: the day's 3% MSB pool ÷ the day's total MSB points, floored to whole rupees." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">MB credited <x-help-tip text="MB amount credited to this distributor's wallet (points × value)." /></th>
+                <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -26,18 +26,18 @@
                     @if($row->slab !== null)
                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[11px]">{{ $row->slab }}</span>
                     @else
-                    <span class="text-gray-400">—</span>
+                    <span class="text-gray-600">—</span>
                     @endif
                 </td>
                 <td class="px-3 py-2 text-right font-semibold">
-                    @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-400 font-normal">—</span>@endif
+                    @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-600 font-normal">—</span>@endif
                 </td>
-                <td class="px-3 py-2 text-right text-gray-500">
-                    @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 2) }}@else<span class="text-gray-400">—</span>@endif
+                <td class="px-3 py-2 text-right text-gray-600">
+                    @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
                 <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->mb_gross_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
+                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
                         {{ ucfirst($row->status) }}
                     </span>
                 </td>
