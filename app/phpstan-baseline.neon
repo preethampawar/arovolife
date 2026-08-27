@@ -2731,20 +2731,8 @@ parameters:
 			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\GsbCutoffResult\:\:\$power_side_before\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
-
-		-
 			message: '#^If condition is always true\.$#'
 			identifier: if.alwaysTrue
-			count: 1
-			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
 

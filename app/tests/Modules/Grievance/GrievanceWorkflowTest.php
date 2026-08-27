@@ -653,7 +653,11 @@ it('GRV-020: an attachment whose bytes are not what it claims is rejected', func
 
 it('GRV-021: a genuine image attachment is still accepted', function () {
     Notification::fake();
-    Storage::fake('s3');
+    // The evidence disk, not `s3` — GrievanceAttachmentStore writes to its own
+    // private bucket. Faking the wrong disk let the real S3 client throw, which
+    // the default test exception handler renders as a 500: no session errors,
+    // ticket already committed, attachment silently absent.
+    Storage::fake('grievance');
 
     // The guard must not break the common case: a phone screenshot. Real PNG
     // magic bytes, written explicitly rather than via fake()->image(), so the
@@ -672,8 +676,13 @@ it('GRV-021: a genuine image attachment is still accepted', function () {
         'email' => 'ravi@example.com',
         'consent_privacy' => '1',
         'attachments' => [$png],
-    ])->assertSessionHasNoErrors();
+    ])->assertSessionHasNoErrors()
+        // Pin the status too: `assertSessionHasNoErrors` is also true of a 500,
+        // so on its own it cannot tell acceptance apart from a crash.
+        ->assertRedirect();
 
     expect(Ticket::count())->toBe(1)
         ->and(TicketAttachment::count())->toBe(1);
+
+    Storage::disk('grievance')->assertExists(TicketAttachment::sole()->path);
 });
