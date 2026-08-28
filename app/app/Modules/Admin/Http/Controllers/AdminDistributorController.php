@@ -161,10 +161,15 @@ final class AdminDistributorController extends Controller
 
         $nomineeRow = DB::table('distributor_nominees')->where('distributor_id', $id)->first();
 
+        // `$distributor` above is a query-builder row, not an Eloquent model, so
+        // the profile has to be fetched the same way — a `->profile` relation
+        // call on a stdClass is a fatal error, not a null.
+        $profileRow = DB::table('distributor_profiles')->where('distributor_id', $id)->first();
+
         return view('admin.distributors.show', compact(
             'distributor', 'sponsor', 'placementParent', 'consents',
             'auditLogs', 'downlineCount', 'leftChild', 'rightChild',
-            'nomineeRow'
+            'nomineeRow', 'profileRow'
         ));
     }
 

@@ -203,7 +203,7 @@
 @endif
 
 {{-- Demographics --}}
-@if($distributor->profile)
+@if($profileRow)
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
     <div class="px-6 py-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">Demographics</h3>
@@ -236,36 +236,36 @@
         @endphp
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Gender</p>
-            <p class="text-gray-800">{{ $genderLabels[$distributor->profile->gender] ?? $distributor->profile->gender }}</p>
+            <p class="text-gray-800">{{ $genderLabels[$profileRow->gender] ?? $profileRow->gender }}</p>
         </div>
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Marital Status</p>
-            <p class="text-gray-800">{{ $maritalLabels[$distributor->profile->marital_status] ?? $distributor->profile->marital_status }}</p>
+            <p class="text-gray-800">{{ $maritalLabels[$profileRow->marital_status] ?? $profileRow->marital_status }}</p>
         </div>
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Highest Education</p>
-            <p class="text-gray-800">{{ $educationLabels[$distributor->profile->highest_education] ?? $distributor->profile->highest_education }}</p>
+            <p class="text-gray-800">{{ $educationLabels[$profileRow->highest_education] ?? $profileRow->highest_education }}</p>
         </div>
-        @if($distributor->profile->occupation)
+        @if($profileRow->occupation)
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Occupation</p>
-            <p class="text-gray-800">{{ $distributor->profile->occupation }}</p>
+            <p class="text-gray-800">{{ $profileRow->occupation }}</p>
         </div>
         @endif
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Mother Tongue</p>
-            <p class="text-gray-800">{{ $distributor->profile->mother_tongue }}</p>
+            <p class="text-gray-800">{{ $profileRow->mother_tongue }}</p>
         </div>
-        @if($distributor->profile->additional_language_1)
+        @if($profileRow->additional_language_1)
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Additional Language 1</p>
-            <p class="text-gray-800">{{ $distributor->profile->additional_language_1 }}</p>
+            <p class="text-gray-800">{{ $profileRow->additional_language_1 }}</p>
         </div>
         @endif
-        @if($distributor->profile->additional_language_2)
+        @if($profileRow->additional_language_2)
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Additional Language 2</p>
-            <p class="text-gray-800">{{ $distributor->profile->additional_language_2 }}</p>
+            <p class="text-gray-800">{{ $profileRow->additional_language_2 }}</p>
         </div>
         @endif
     </div>
