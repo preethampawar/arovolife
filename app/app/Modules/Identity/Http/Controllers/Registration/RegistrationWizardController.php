@@ -1062,6 +1062,7 @@ final class RegistrationWizardController extends Controller
 
         // Persist the demographics data collected at step 6.
         $demographicsData = $this->wizard->getStepData(6);
+        assert($demographicsData !== null, 'Demographics data must exist; required-steps guard should have redirected.');
         DistributorProfile::create([
             'distributor_id' => $result->distributorId,
             'gender' => $demographicsData['gender'],
