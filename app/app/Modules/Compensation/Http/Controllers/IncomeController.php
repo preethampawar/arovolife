@@ -491,6 +491,7 @@ final class IncomeController extends Controller
         }
 
         $walletBalancePaise = $walletService->balancePaise($distributor->id);
+        $repurchaseWalletBalancePaise = $walletService->repurchaseWalletBalancePaise($distributor->id);
 
         $totalPaidOutPaise = app(PayoutService::class)->totalTransferredPaise((int) $distributor->id);
 
@@ -503,7 +504,7 @@ final class IncomeController extends Controller
 
         return view('income.wallet', compact(
             'distributor', 'ledgerRows', 'payoutRows',
-            'walletBalancePaise', 'totalPaidOutPaise', 'nextPayout', 'minThresholdPaise',
+            'walletBalancePaise', 'repurchaseWalletBalancePaise', 'totalPaidOutPaise', 'nextPayout', 'minThresholdPaise',
         ));
     }
 

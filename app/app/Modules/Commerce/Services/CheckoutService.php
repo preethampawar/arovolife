@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\CustomerAddress;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
 use Illuminate\Database\DatabaseManager;
@@ -32,6 +33,7 @@ final class CheckoutService
         private readonly CouponService $coupons,
         private readonly ShippingService $shipping,
         private readonly CustomerAddressService $addressBook,
+        private readonly WalletService $walletService,
     ) {}
 
     /**
@@ -174,6 +176,18 @@ final class CheckoutService
 
             $totalPaise = max(0, $subtotalPaise - $discountPaise) + $shippingPaise;
 
+            // Auto-apply repurchase wallet credit for logged-in distributors.
+            // Capped at the order total so the payable amount never goes below
+            // zero. Guests ($buyerDistributorId === null) have no wallet.
+            $repurchaseCreditPaise = 0;
+            if ($buyerDistributorId !== null) {
+                $repurchaseCreditPaise = min(
+                    $this->walletService->repurchaseWalletBalancePaise($buyerDistributorId),
+                    $totalPaise,
+                );
+            }
+            $finalTotalPaise = max(0, $totalPaise - $repurchaseCreditPaise);
+
             $order = Order::create([
                 'order_no' => $orderNo,
                 'customer_id' => $customer->id,
@@ -191,7 +205,7 @@ final class CheckoutService
                 'gst_paise' => $gstPaise,
                 'discount_paise' => $discountPaise,
                 'shipping_paise' => $shippingPaise,
-                'total_paise' => $totalPaise,
+                'total_paise' => $finalTotalPaise,
                 'ship_name' => $shipping['name'],
                 'ship_phone_e164' => $shipping['phone'],
                 'ship_line1' => $shipping['line1'],
@@ -237,8 +251,22 @@ final class CheckoutService
                 $this->coupons->recordRedemption($appliedCoupon, $order->id, $customer->id, $discountPaise);
             }
 
+            // 3c. Record the repurchase wallet debit so the balance is reduced
+            // for future checkouts. Created inside the transaction so the order
+            // and the ledger entry are always consistent.
+            if ($repurchaseCreditPaise > 0) {
+                $this->walletService->debit(
+                    distributorId: $buyerDistributorId,
+                    amountPaise: $repurchaseCreditPaise,
+                    type: 'repurchase_wallet_used',
+                    referenceId: $order->id,
+                    referenceType: 'order',
+                    memo: 'Applied at checkout — order #'.$order->order_no,
+                );
+            }
+
             // 4. Ledger — Dr razorpay cash (money held), Cr customer_prepayment.
-            if ($paymentMethod === Order::PAYMENT_ONLINE && $totalPaise > 0) {
+            if ($paymentMethod === Order::PAYMENT_ONLINE && $finalTotalPaise > 0) {
                 $this->ledger->transfer(
                     sourceModule: 'Commerce',
                     sourceType: 'order.placed',
@@ -246,7 +274,7 @@ final class CheckoutService
                     idempotencyKey: "order.placed:{$order->id}",
                     debitAccount: 'asset.cash.gateway.razorpay',
                     creditAccount: 'liability.customer_prepayment',
-                    amountPaise: $totalPaise,
+                    amountPaise: $finalTotalPaise,
                     memo: "Order {$orderNo}",
                 );
             }

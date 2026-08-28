@@ -44,6 +44,15 @@
             </div>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}</p>
         </div>
+        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+            <div class="flex items-center justify-between mb-1">
+                <p class="text-xs text-gray-500">Repurchase Wallet</p>
+                <x-help-tip text="This balance is applied automatically at checkout toward your mandatory monthly repurchase and carries forward each month. It cannot be withdrawn." />
+            </div>
+            <p class="text-2xl font-bold {{ $repurchaseWalletBalancePaise > 0 ? 'text-green-700' : 'text-gray-900' }}">
+                ₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseWalletBalancePaise / 100, 2) }}
+            </p>
+        </div>
     </div>
 
     {{-- Wallet ledger --}}
@@ -102,6 +111,7 @@
                             'adc_credit' => 'ADC Bonus',
                             'payout_debit' => 'Payout to bank',
                             'repurchase_deduction' => 'Repurchase deduction',
+                            'repurchase_wallet_used' => 'Repurchase credit applied',
                             'income_cap_forfeit' => 'Monthly income cap',
                             'manual_credit' => 'Manual adjustment',
                         ];

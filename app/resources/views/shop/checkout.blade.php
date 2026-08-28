@@ -281,6 +281,8 @@
             $couponDiscount = $couponDiscount ?? 0;
             $shippingPaise = $shippingPaise ?? 0;
             $finalTotal = max(0, $cart->totalPaise() - $couponDiscount) + $shippingPaise;
+            $repurchaseCredit = min($repurchaseWalletBalancePaise ?? 0, $finalTotal);
+            $finalTotal = max(0, $finalTotal - $repurchaseCredit);
         @endphp
         @auth
             @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
@@ -303,6 +305,9 @@
             </div>
             @if($couponDiscount > 0)
             <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($couponDiscount / 100, 2) }}</span></div>
+            @endif
+            @if($repurchaseCredit > 0)
+            <div class="flex justify-between text-green-700"><span>Repurchase Credit</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseCredit / 100, 2) }}</span></div>
             @endif
         </div>
 

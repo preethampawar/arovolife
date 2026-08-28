@@ -74,6 +74,41 @@ class WalletService
     }
 
     /**
+     * Running balance of the repurchase wallet for a distributor.
+     *
+     * Credits: every `repurchase_deduction` entry (positive amount_paise).
+     * Debits:  every `repurchase_wallet_used` entry (negative amount_paise,
+     *          stored as abs() by WalletService::debit()).
+     *
+     * Returns the net balance, floored at 0. Cannot go negative.
+     */
+    public function repurchaseWalletBalancePaise(int $distributorId): int
+    {
+        $credits = (int) WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->where('type', 'repurchase_deduction')
+            ->sum('amount_paise');
+
+        $debits = abs((int) WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->where('type', 'repurchase_wallet_used')
+            ->sum('amount_paise'));
+
+        return max(0, $credits - $debits);
+    }
+
+    /**
+     * The absolute amount of repurchase credit that was applied to a specific
+     * order (reference_type = 'order', reference_id = order id).
+     * Returns 0 if none was applied.
+     */
+    public function repurchaseCreditAppliedToOrder(int $orderId): int
+    {
+        return abs((int) WalletLedgerEntry::where('reference_id', $orderId)
+            ->where('reference_type', 'order')
+            ->where('type', 'repurchase_wallet_used')
+            ->sum('amount_paise'));
+    }
+
+    /**
      * Sum of positive unswept credits for a distributor filtered to specific entry types.
      * Used by PayoutService to compute per-stream gross before sweeping.
      *

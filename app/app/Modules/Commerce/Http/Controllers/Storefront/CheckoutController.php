@@ -13,6 +13,7 @@ use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\ShippingService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Payments\Services\StubGateway;
@@ -37,6 +38,7 @@ final class CheckoutController extends Controller
         private readonly InvoiceGenerator $invoiceGenerator,
         private readonly ShippingService $shipping,
         private readonly CustomerAddressService $addressBook,
+        private readonly WalletService $walletService,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -72,6 +74,14 @@ final class CheckoutController extends Controller
 
         $buyerDistributor = $this->resolveBuyerDistributor($request);
 
+        // Repurchase wallet balance for the logged-in distributor, shown in the
+        // order summary so they know before placing that the credit will apply.
+        $repurchaseWalletBalancePaise = 0;
+        $repurchaseDistributorId = $request->user()?->distributor?->id;
+        if ($repurchaseDistributorId !== null) {
+            $repurchaseWalletBalancePaise = $this->walletService->repurchaseWalletBalancePaise($repurchaseDistributorId);
+        }
+
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
@@ -87,6 +97,7 @@ final class CheckoutController extends Controller
             'savedAddresses' => $savedAddresses,
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
             'buyerDistributor' => $buyerDistributor,
+            'repurchaseWalletBalancePaise' => $repurchaseWalletBalancePaise,
         ]);
     }
 
@@ -242,6 +253,9 @@ final class CheckoutController extends Controller
             'order' => $order,
             // BV is shown only to the authenticated owner who is a distributor.
             'showBv' => $this->ownsOrder($request, $order) && $request->user()?->distributor !== null,
+            // Repurchase credit applied to this order (paise). Zero when none was
+            // applied. Sourced from the wallet ledger so it's durable on any visit.
+            'repurchaseCreditApplied' => $this->walletService->repurchaseCreditAppliedToOrder($order->id),
         ]);
     }
 

@@ -43,6 +43,9 @@
             @if($order->discount_paise > 0)
             <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
             @endif
+            @if(($repurchaseCreditApplied ?? 0) > 0)
+            <div class="flex justify-between text-sm text-green-700"><span>Repurchase Credit</span><span>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseCreditApplied / 100, 2) }}</span></div>
+            @endif
             <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span>
                 @if($order->shipping_paise > 0)<span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}</span>
                 @else<span class="text-green-700">Free</span>@endif
