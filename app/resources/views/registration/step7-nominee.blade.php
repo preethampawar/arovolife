@@ -14,7 +14,7 @@
         <form method="POST" action="{{ route('register.nominee.submit') }}">
             @csrf
             <input type="hidden" name="skip" value="1">
-            <button type="submit" class="text-sm text-gray-500 underline hover:text-gray-700 transition-colors">
+            <button type="submit" class="text-sm text-gray-600 underline hover:text-gray-700 transition-colors">
                 Skip for now
             </button>
         </form>
@@ -80,7 +80,7 @@
         {{-- PAN Number (optional) --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                PAN Number <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                PAN Number <span class="text-xs text-gray-600 font-normal">(optional)</span>
             </label>
             <input name="pan_number" type="text"
                 value="{{ old('pan_number', $nominee['pan_number'] ?? '') }}"
@@ -95,14 +95,14 @@
         {{-- Aadhaar Number (optional) --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Aadhaar Number <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                Aadhaar Number <span class="text-xs text-gray-600 font-normal">(optional)</span>
             </label>
             <input name="aadhaar" type="text" inputmode="numeric"
                 value="{{ old('aadhaar', '') }}"
                 placeholder="12-digit Aadhaar number"
                 maxlength="12"
                 class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-            <p class="mt-1 text-xs text-gray-500">The nominee's Aadhaar number will be encrypted at rest and never displayed in full.</p>
+            <p class="mt-1 text-xs text-gray-600">The nominee's Aadhaar number will be encrypted at rest and never displayed in full.</p>
             @error('aadhaar')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
@@ -111,7 +111,7 @@
         {{-- Mobile (optional) --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Mobile Number <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                Mobile Number <span class="text-xs text-gray-600 font-normal">(optional)</span>
             </label>
             <input name="mobile" type="tel"
                 value="{{ old('mobile', $nominee['mobile'] ?? '') }}"
@@ -126,7 +126,7 @@
         {{-- Email (optional) --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Email Address <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                Email Address <span class="text-xs text-gray-600 font-normal">(optional)</span>
             </label>
             <input name="email" type="email"
                 value="{{ old('email', $nominee['email'] ?? '') }}"
@@ -141,7 +141,7 @@
         {{-- Address (optional) --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Address <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                Address <span class="text-xs text-gray-600 font-normal">(optional)</span>
             </label>
             <textarea name="address" rows="3" maxlength="2000"
                 placeholder="Nominee's full residential address"
@@ -156,7 +156,7 @@
             <label class="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" name="consent" value="1" required
                     {{ old('consent') ? 'checked' : '' }}
-                    class="mt-0.5 text-brand-600 border-gray-300 rounded focus:ring-brand-500">
+                    class="mt-0.5 text-brand-700 border-gray-300 rounded focus:ring-brand-500">
                 <span class="text-sm text-gray-700">
                     I confirm the nominee has been informed of this data collection and consents to its use for succession purposes.
                     <span class="text-red-700">*</span>
@@ -173,7 +173,7 @@
                 &larr; Back
             </a>
             <button type="submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Save &amp; Continue &rarr;
             </button>
         </div>

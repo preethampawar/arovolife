@@ -26,7 +26,7 @@
                     {{ old('gender', $data['gender'] ?? '') === $value ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white hover:bg-gray-50' }}">
                     <input type="radio" name="gender" value="{{ $value }}" required
                         {{ old('gender', $data['gender'] ?? '') === $value ? 'checked' : '' }}
-                        class="text-brand-600 border-gray-300 focus:ring-brand-500">
+                        class="text-brand-700 border-gray-300 focus:ring-brand-500">
                     <span class="text-sm text-gray-700">{{ $label }}</span>
                 </label>
                 @endforeach
@@ -92,7 +92,7 @@
         {{-- Occupation --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Occupation <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                Occupation <span class="text-xs text-gray-600 font-normal">(optional)</span>
             </label>
             <input name="occupation" type="text"
                 value="{{ old('occupation', $data['occupation'] ?? '') }}"
@@ -122,7 +122,7 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                    Additional Language <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                    Additional Language <span class="text-xs text-gray-600 font-normal">(optional)</span>
                 </label>
                 <input name="additional_language_1" type="text"
                     value="{{ old('additional_language_1', $data['additional_language_1'] ?? '') }}"
@@ -134,7 +134,7 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                    Additional Language 2 <span class="text-xs text-gray-500 font-normal">(optional)</span>
+                    Additional Language 2 <span class="text-xs text-gray-600 font-normal">(optional)</span>
                 </label>
                 <input name="additional_language_2" type="text"
                     value="{{ old('additional_language_2', $data['additional_language_2'] ?? '') }}"
@@ -153,7 +153,7 @@
                 &larr; Back
             </a>
             <button type="submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Save &amp; Continue &rarr;
             </button>
         </div>

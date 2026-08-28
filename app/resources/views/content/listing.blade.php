@@ -16,7 +16,7 @@
         <h1 class="text-3xl font-bold text-gray-900 mb-8">{{ $heading }}</h1>
 
         @if($pages->isEmpty())
-            <p class="text-gray-500 text-sm">{{ $emptyMsg }}</p>
+            <p class="text-gray-600 text-sm">{{ $emptyMsg }}</p>
         @else
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($pages as $page)
@@ -35,7 +35,7 @@
         @endif
     </main>
 
-    <footer class="border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-500">
+    <footer class="border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-600">
         Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
     </footer>
 
