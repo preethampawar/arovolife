@@ -22,7 +22,9 @@ use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
+use App\Modules\Commerce\Http\Controllers\DistributorFranchiseController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
@@ -308,6 +310,11 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // Line-change decisions — admin-operations (R-17).
     Route::post('/line-changes/{id}/approve', [AdminLineChangeController::class, 'approve'])->whereNumber('id')->middleware('can:placement.decide')->name('line-changes.approve');
     Route::post('/line-changes/{id}/reject', [AdminLineChangeController::class, 'reject'])->whereNumber('id')->middleware('can:placement.decide')->name('line-changes.reject');
+
+    // Commerce — franchise applications (review queue; flag-gated at controller level).
+    Route::get('/commerce/franchise', [AdminFranchiseController::class, 'index'])->name('commerce.franchise.index');
+    Route::post('/commerce/franchise/{franchise}/approve', [AdminFranchiseController::class, 'approve'])->whereNumber('franchise')->name('commerce.franchise.approve');
+    Route::post('/commerce/franchise/{franchise}/reject', [AdminFranchiseController::class, 'reject'])->whereNumber('franchise')->name('commerce.franchise.reject');
 
     // Commerce — orders
     Route::get('/commerce/orders', [AdminOrderController::class, 'index'])->name('commerce.orders.index');
@@ -770,4 +777,14 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
         ->whereNumber('user')->name('messages.show');
     Route::post('/messages/{user}', [MessageController::class, 'store'])
         ->whereNumber('user')->name('messages.store');
+
+    // Franchise application — flag-gated inside the controller (FranchiseFeature).
+    // The flag check is inside the controller to preserve zero-trace behaviour:
+    // a disabled feature returns 403, not a missing route.
+    Route::get('/my/franchise/apply', [DistributorFranchiseController::class, 'showApply'])
+        ->name('franchise.apply');
+    Route::post('/my/franchise/apply', [DistributorFranchiseController::class, 'handleApply'])
+        ->name('franchise.apply.submit');
+    Route::get('/my/franchise/status', [DistributorFranchiseController::class, 'showStatus'])
+        ->name('franchise.status');
 });

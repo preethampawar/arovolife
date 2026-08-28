@@ -8,6 +8,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\FranchiseFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -126,6 +127,14 @@ final class AdminFeatureFlagController extends Controller
                 'class' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center Bonus (Phase 7)',
                 'description' => 'Enables 3% BV-based bonus for official Arete Development Centers, capped at ₹1 lakh/month per center. Paid on the 8th. Requires center assignment and approved center records.',
+                'owner' => 'developer',
+            ],
+
+            // ── Franchise (parked — hard gate: DSA §6.2 notice + R-24 legal opinion) ──
+            'franchise' => [
+                'class' => FranchiseFeature::class,
+                'label' => 'Franchise application flow',
+                'description' => '⚠ COMPLIANCE GATE (R-21; DSA §6.2). When ON, distributors may submit franchise applications at /my/franchise/apply and the admin review queue is live at /admin/commerce/franchise. Must NOT be enabled until (1) the DSA §6.2 thirty-day written notice has run its course AND (2) legal counsel opinion (R-24) is on file. Keep OFF in all environments until then.',
                 'owner' => 'developer',
             ],
         ];
