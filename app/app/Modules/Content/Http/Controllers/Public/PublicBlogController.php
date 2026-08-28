@@ -13,6 +13,7 @@ final class PublicBlogController extends Controller
     public function index(): View
     {
         $pages = ContentPage::where('type', 'blog')
+            ->where('status', ContentPage::STATUS_PUBLISHED)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->orderByDesc('published_at')
