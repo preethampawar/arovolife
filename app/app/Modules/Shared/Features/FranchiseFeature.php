@@ -16,7 +16,7 @@ namespace App\Modules\Shared\Features;
  * Activate from /admin/feature-flags once both conditions are satisfied.
  *
  * Resolved via:
- *     Feature::active(FranchiseFeature::class)
+ *     Feature::for(null)->active(FranchiseFeature::class)
  */
 final class FranchiseFeature
 {
