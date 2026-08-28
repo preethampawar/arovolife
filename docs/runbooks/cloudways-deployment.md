@@ -23,7 +23,7 @@ folder is the webroot. Cloudways must be configured to serve from
 | Required PHP extensions | `bcmath, ctype, curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, redis, tokenizer, xml, zip` — all enabled by default on Cloudways but verify under *Settings & Packages → Advanced* |
 | Composer 2 | `composer --version` (Cloudways ships v2 by default) |
 | Node 20+ for asset builds | If missing: `nvm install 20` (per-master-user nvm is fine; ssh key is master-user scoped) |
-| Redis enabled | *Settings & Packages → Advanced → Redis* → **ON** |
+| Redis enabled | *Settings & Packages → Advanced → Redis* → **ON**. ACL is on, so also grab the per-app username / password / prefix — see §1.5 |
 | 8 GB RAM, swap ≥ 2 GB | `free -h` (Cloudways auto-creates swap) |
 | Outbound HTTPS to Resend / Mailgun / SES, SMS gateway, Aadhaar/PAN/penny-drop providers | Test from server: `curl -I https://api.resend.com` etc. |
 
@@ -115,8 +115,52 @@ site can't run without:
 - `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://app.arovolife.com`
 - `APP_KEY` (generated above)
 - `DB_*` — Cloudways auto-creates DB; values are at *Application → Access Details*
-- `REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379`, `REDIS_PASSWORD=` (Cloudways internal Redis has no password by default)
-- `SESSION_DRIVER=redis`, `CACHE_DRIVER=redis`, `QUEUE_CONNECTION=database` (Phase 1)
+- `SESSION_DRIVER=redis`, `CACHE_STORE=redis`, `QUEUE_CONNECTION=database` (Phase 1)
+
+  > **`CACHE_STORE`, not `CACHE_DRIVER`.** Laravel 11 renamed the key.
+  > `config/cache.php` reads `env('CACHE_STORE', 'database')`, so a `.env`
+  > carrying the old `CACHE_DRIVER` name gets no error — the app silently
+  > serves every cache read, cache lock, Pennant flag lookup and rate-limiter
+  > bucket out of MySQL. `php artisan app:deploy` now hard-fails when it
+  > finds the stale key. Confirm with:
+  > `php artisan tinker --execute="echo config('cache.default');"` → `redis`.
+
+- `REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379`, and **nothing else** — leave
+  `REDIS_USERNAME`, `REDIS_PASSWORD` and `REDIS_PREFIX` unset.
+
+  > ⚠ **Do not copy the triplet out of *Access Details → Redis*.** Cloudways
+  > displays a per-app prefix / username / password and reports
+  > `redis_acl_status: 1`, but on server 1611779 none of it is applied —
+  > verified 2026-08-28:
+  >
+  > ```
+  > redis-cli ACL GETUSER ahdhesuhty        → (nil)      # user was never created
+  > redis-cli --user ahdhesuhty --pass …    → WRONGPASS
+  > redis-cli PING                          → PONG       # default is still nopass
+  > ```
+  >
+  > Putting those values in `.env` fails every Redis call, which takes down
+  > **sessions as well as cache** — they share the connection. Staging went
+  > down this way once.
+  >
+  > Regenerating the password in the console does not help: re-tested the same
+  > day with a fresh password and `ACL GETUSER` was still `(nil)`. Saving the
+  > panel also did *not* restrict `default`, so nothing else on the box broke —
+  > but nothing was provisioned either.
+
+  Redis is therefore unauthenticated and shared with the other eight apps on
+  the box. Hardening it is a real task, not a checkbox:
+
+  1. Ask Cloudways support what saving the ACL panel does to the `default`
+     user. The same server hosts karonix and wineslekka **production**, all
+     connecting unauthenticated — if `default` becomes restricted they break
+     simultaneously.
+  2. Apply the panel, then `redis-cli ACL GETUSER <sys_user>` to confirm the
+     user now exists, and an unauthenticated `redis-cli PING` to confirm the
+     other apps still connect.
+  3. Only then add the triplet to arovolife's `.env`, with `.env.bak` ready.
+  4. Setting `REDIS_PREFIX` re-namespaces the session keyspace and signs every
+     logged-in distributor out — maintenance window on production.
 - `MAIL_*` — real SMTP/SES creds (not `log`)
 - `KYC_*`, `SMS_*`, `WHATSAPP_*` — live provider keys
 - `FILESYSTEM_DISK=s3` plus AWS keys (KYC document encryption-at-rest)

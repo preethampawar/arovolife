@@ -150,9 +150,46 @@ final class DeployCommand extends Command
 
             return false;
         }
+
+        if (! $this->assertCacheStoreKeyIsCurrent()) {
+            return false;
+        }
+
         $this->logBoth("▶ pre-flight: APP_ENV={$env}, OK");
 
         return true;
+    }
+
+    /**
+     * Laravel 11 renamed CACHE_DRIVER to CACHE_STORE, and config/cache.php
+     * reads env('CACHE_STORE', 'database'). A .env still carrying the old key
+     * therefore raises nothing at all — the app just serves every cache read,
+     * cache lock, Pennant flag lookup and rate-limiter bucket out of MySQL.
+     * That shipped unnoticed to staging and production once; refuse to let it
+     * happen twice.
+     *
+     * Reads the .env file rather than env(), because the config cache baked by
+     * the previous deploy means the file is never loaded into this process.
+     */
+    private function assertCacheStoreKeyIsCurrent(): bool
+    {
+        $path = base_path('.env');
+
+        if (! is_readable($path)) {
+            return true;
+        }
+
+        if (preg_match('/^\s*CACHE_DRIVER\s*=/m', (string) file_get_contents($path)) !== 1) {
+            return true;
+        }
+
+        $this->error(
+            'Refusing to deploy: .env sets CACHE_DRIVER, a key Laravel 11+ ignores. '
+            .'Rename it to CACHE_STORE, or the cache silently falls back to the '
+            .'database store. See docs/runbooks/cloudways-deployment.md §1.5.'
+        );
+
+        return false;
     }
 
     /** Hard step — abort the rest of the run if it throws. */
