@@ -172,6 +172,14 @@ Route::middleware([])->group(function (): void {
     Route::post('/register/identity-documents', [RegistrationWizardController::class, 'handleIdentityDocuments'])
         ->middleware('wizard.progress:5');
 
+    Route::get('/register/demographics', [RegistrationWizardController::class, 'showDemographics'])
+        ->middleware('wizard.progress:6')->name('register.demographics');
+    Route::post('/register/demographics', [RegistrationWizardController::class, 'handleDemographics'])
+        ->middleware('wizard.progress:6');
+
+    Route::get('/register/nominee', [RegistrationWizardController::class, 'showNominee'])
+        ->middleware('wizard.progress:7')->name('register.nominee');
+
     Route::get('/register/kyc/bank', [RegistrationWizardController::class, 'showBank'])
         ->middleware('wizard.progress:8')->name('register.bank');
     Route::post('/register/kyc/bank', [RegistrationWizardController::class, 'handleBank'])

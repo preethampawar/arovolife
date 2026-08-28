@@ -18,19 +18,22 @@ function rriSetWizardAtComplete(User $user): void
     test()->actingAs($user);
     test()->withSession([
         'registration_wizard' => [
-            'step' => 11,
+            'step' => 12,
             'user_id' => $user->id,
             'sponsor_id' => 1,
+            'placement_id' => 1,
+            'side_opt' => null,
             'data' => [
                 'account' => ['full_name' => 'Riya Reviewer', 'email' => $user->email, 'phone_e164' => $user->phone_e164],
-                'pan' => ['pan_number' => 'RRIAB1234X'],
-                'aadhaar' => ['ref' => 'STUB', 'last4' => '9012', 'aadhaar_number' => '000000009012'],
+                // After Task 2, PAN + Aadhaar are merged under 'identity_documents'.
+                'identity_documents' => ['pan_number' => 'RRIAB1234X', 'spouse_pan_number' => null, 'aadhaar_number' => '000000009012', 'last4' => '9012', 'ref' => 'STUB', 'spouse_last4' => null, 'spouse_ref' => null],
                 'bank' => ['account_number' => '000123456789', 'ifsc' => 'HDFC0001234'],
                 'personal' => ['date_of_birth' => '1990-01-01', 'state' => 'TG'],
                 'consent' => ['accepted' => true],
-                'orientation' => ['watched' => true],
+                'orientation' => ['quiz_passed' => true],
                 'documents' => ['documents' => []],
-                'placement' => ['placement_id' => 1, 'side' => null],
+                'demographics' => ['gender' => 'prefer_not_to_say', 'marital_status' => 'prefer_not_to_say', 'highest_education' => 'prefer_not_to_say', 'mother_tongue' => 'Telugu'],
+                'arete' => ['center_id' => null],
             ],
         ],
     ]);

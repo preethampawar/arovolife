@@ -228,4 +228,9 @@ final class Distributor extends Model
     {
         return $this->hasMany(LineChangeRequest::class);
     }
+
+    public function profile(): HasOne
+    {
+        return $this->hasOne(DistributorProfile::class);
+    }
 }

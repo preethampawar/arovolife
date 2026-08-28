@@ -202,6 +202,76 @@
 </div>
 @endif
 
+{{-- Demographics --}}
+@if($distributor->profile)
+<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="font-semibold text-gray-800">Demographics</h3>
+    </div>
+    <div class="px-6 py-4 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+        @php
+            $genderLabels = [
+                'male'               => 'Male',
+                'female'             => 'Female',
+                'transgender_other'  => 'Transgender or Other',
+                'prefer_not_to_say'  => 'Prefer not to say',
+            ];
+            $maritalLabels = [
+                'single'            => 'Single',
+                'married'           => 'Married',
+                'divorced'          => 'Divorced',
+                'widowed'           => 'Widowed',
+                'prefer_not_to_say' => 'Prefer not to say',
+            ];
+            $educationLabels = [
+                'below_10th'        => 'Below 10th',
+                '10th_pass'         => '10th Pass',
+                '12th_pass'         => '12th Pass',
+                'diploma'           => 'Diploma',
+                'graduate'          => 'Graduate',
+                'post_graduate'     => 'Post Graduate',
+                'doctorate'         => 'Doctorate',
+                'prefer_not_to_say' => 'Prefer not to say',
+            ];
+        @endphp
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Gender</p>
+            <p class="text-gray-800">{{ $genderLabels[$distributor->profile->gender] ?? $distributor->profile->gender }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Marital Status</p>
+            <p class="text-gray-800">{{ $maritalLabels[$distributor->profile->marital_status] ?? $distributor->profile->marital_status }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Highest Education</p>
+            <p class="text-gray-800">{{ $educationLabels[$distributor->profile->highest_education] ?? $distributor->profile->highest_education }}</p>
+        </div>
+        @if($distributor->profile->occupation)
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Occupation</p>
+            <p class="text-gray-800">{{ $distributor->profile->occupation }}</p>
+        </div>
+        @endif
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Mother Tongue</p>
+            <p class="text-gray-800">{{ $distributor->profile->mother_tongue }}</p>
+        </div>
+        @if($distributor->profile->additional_language_1)
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Additional Language 1</p>
+            <p class="text-gray-800">{{ $distributor->profile->additional_language_1 }}</p>
+        </div>
+        @endif
+        @if($distributor->profile->additional_language_2)
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Additional Language 2</p>
+            <p class="text-gray-800">{{ $distributor->profile->additional_language_2 }}</p>
+        </div>
+        @endif
+    </div>
+</div>
+@endif
+
 {{-- Admin Actions --}}
 @if($distributor->status !== 'terminated')
 <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">

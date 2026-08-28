@@ -12,6 +12,7 @@ use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
+use App\Modules\Identity\Models\DistributorProfile;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError;
 use App\Modules\Identity\Services\RegistrationService;
@@ -592,7 +593,69 @@ final class RegistrationWizardController extends Controller
         return redirect()->route('register.demographics');
     }
 
-    // ── Step 7: Bank KYC ──────────────────────────────────────────────────
+    // ── Step 6: Demographics ──────────────────────────────────────────────
+
+    public function showDemographics(): View
+    {
+        return view('registration.step6-demographics', [
+            'data' => $this->wizard->getStepData(6) ?? [],
+        ]);
+    }
+
+    public function handleDemographics(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'gender' => ['required', 'in:male,female,transgender_other,prefer_not_to_say'],
+            'marital_status' => ['required', 'in:single,married,divorced,widowed,prefer_not_to_say'],
+            'highest_education' => ['required', 'in:below_10th,10th_pass,12th_pass,diploma,graduate,post_graduate,doctorate,prefer_not_to_say'],
+            'occupation' => ['nullable', 'string', 'max:191'],
+            'mother_tongue' => ['required', 'string', 'max:100'],
+            'additional_language_1' => ['nullable', 'string', 'max:100'],
+            'additional_language_2' => ['nullable', 'string', 'max:100'],
+        ], [
+            'gender.required' => 'Please select your gender.',
+            'gender.in' => 'Please select a valid gender option.',
+            'marital_status.required' => 'Please select your marital status.',
+            'marital_status.in' => 'Please select a valid marital status option.',
+            'highest_education.required' => 'Please select your highest level of education.',
+            'highest_education.in' => 'Please select a valid education level.',
+            'mother_tongue.required' => 'Please enter your mother tongue.',
+            'mother_tongue.max' => 'Mother tongue must be at most 100 characters.',
+            'additional_language_1.max' => 'Additional language must be at most 100 characters.',
+            'additional_language_2.max' => 'Additional language must be at most 100 characters.',
+            'occupation.max' => 'Occupation must be at most 191 characters.',
+        ]);
+
+        $this->wizard->saveStepData(6, [
+            'gender' => $request->input('gender'),
+            'marital_status' => $request->input('marital_status'),
+            'highest_education' => $request->input('highest_education'),
+            'occupation' => $request->input('occupation'),
+            'mother_tongue' => $request->input('mother_tongue'),
+            'additional_language_1' => $request->input('additional_language_1'),
+            'additional_language_2' => $request->input('additional_language_2'),
+        ]);
+
+        return redirect()->route('register.nominee');
+    }
+
+    // ── Step 7: Nominee (placeholder — full implementation is a future task) ──
+
+    /**
+     * Placeholder for the Nominee step. Advances the wizard to step 8
+     * (Bank) directly until the nominee data-collection form is built.
+     */
+    public function showNominee(): RedirectResponse
+    {
+        // Stub: nominee data collection is deferred. Skip the step by
+        // saving an empty marker and forwarding to bank. This placeholder
+        // MUST be replaced with a real form in the nominee task.
+        $this->wizard->saveStepData(7, ['skipped' => true]);
+
+        return redirect()->route('register.bank');
+    }
+
+    // ── Step 8: Bank KYC ──────────────────────────────────────────────────
 
     public function showBank(): View
     {
@@ -896,6 +959,7 @@ final class RegistrationWizardController extends Controller
             'orientation' => 'register.orientation',
             'consent' => 'register.consent',
             'identity_documents' => 'register.identity-documents',
+            'demographics' => 'register.demographics',
             'bank' => 'register.bank',
             'personal' => 'register.personal',
             'documents' => 'register.documents',
@@ -995,6 +1059,19 @@ final class RegistrationWizardController extends Controller
             // or guide the customer to resume with a fresh placement.
             return redirect('/contact-us?reason=placement_taken');
         }
+
+        // Persist the demographics data collected at step 6.
+        $demographicsData = $this->wizard->getStepData(6);
+        DistributorProfile::create([
+            'distributor_id' => $result->distributorId,
+            'gender' => $demographicsData['gender'],
+            'marital_status' => $demographicsData['marital_status'],
+            'highest_education' => $demographicsData['highest_education'],
+            'occupation' => $demographicsData['occupation'] ?? null,
+            'mother_tongue' => $demographicsData['mother_tongue'],
+            'additional_language_1' => $demographicsData['additional_language_1'] ?? null,
+            'additional_language_2' => $demographicsData['additional_language_2'] ?? null,
+        ]);
 
         // Enrol the new distributor in their chosen Arete centre (or company default).
         $centerId = (int) ($state['data']['arete']['center_id'] ?? 0);
