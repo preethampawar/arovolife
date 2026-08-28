@@ -22,6 +22,7 @@ final class ContentPageRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:200'],
             'slug' => ['required', 'string', 'max:120', 'regex:/^[a-z0-9-]+$/', Rule::unique('content_pages', 'slug')->ignore($id)],
+            'type' => ['nullable', Rule::in(['blog', 'seminar', 'news', 'hub'])],
             'meta_description' => ['nullable', 'string', 'max:300'],
             'body' => ['nullable', 'string', 'max:100000'],
             'status' => ['required', Rule::in([ContentPage::STATUS_DRAFT, ContentPage::STATUS_PUBLISHED, ContentPage::STATUS_ARCHIVED])],

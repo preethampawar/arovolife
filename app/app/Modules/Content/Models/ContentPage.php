@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property string $slug
+ * @property string|null $type
  * @property string $title
  * @property string|null $body
  * @property string|null $meta_description
@@ -31,6 +32,7 @@ final class ContentPage extends Model
 
     protected $fillable = [
         'slug',
+        'type',
         'title',
         'body',
         'meta_description',

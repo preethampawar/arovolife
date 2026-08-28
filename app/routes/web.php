@@ -60,7 +60,10 @@ use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentControl
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
+use App\Modules\Content\Http\Controllers\Public\PublicBlogController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
+use App\Modules\Content\Http\Controllers\Public\PublicNewsController;
+use App\Modules\Content\Http\Controllers\Public\PublicSeminarController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
 use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
@@ -567,6 +570,11 @@ Route::middleware('auth')->group(function (): void {
 });
 
 // ── Public Content Pages ─────────────────────────────────────────────────────
+
+Route::get('/blogs', [PublicBlogController::class, 'index'])->name('public.blogs.index');
+Route::get('/seminars', [PublicSeminarController::class, 'index'])->name('public.seminars.index');
+Route::get('/news', [PublicNewsController::class, 'index'])->name('public.news.index');
+Route::get('/arovo-hub', fn () => view('landing.arovo-hub'))->name('public.arovo-hub');
 
 Route::get('/p/{slug}', [PublicContentPageController::class, 'show'])
     ->where('slug', '[a-z0-9-]+')

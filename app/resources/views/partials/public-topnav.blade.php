@@ -1,12 +1,38 @@
 {{-- Shared public top nav — used by landing, shop, wizard, dashboard, content pages --}}
 
 @php
+    // Nav items support two shapes:
+    //   flat link  — ['label', 'route'|'url', 'match']
+    //   dropdown   — ['label', 'dropdown' => true, 'match', 'children' => [['label','url'],...]]
     $navItems = [
-        ['label' => 'Home',         'route' => 'home',      'match' => ['home']],
-        ['label' => 'Shop',         'route' => 'shop.index','match' => ['shop.index', 'shop.product', 'shop.cart', 'shop.checkout', 'shop.confirmation']],
-        ['label' => 'About',        'route' => 'about',                                'match' => ['about']],
-        ['label' => 'How It Works', 'url'   => route('home') . '#how-it-works',        'match' => []],
-        ['label' => 'Contact',      'route' => 'contact.show','match' => ['contact.show']],
+        ['label' => 'Home',     'route' => 'home',           'match' => ['home']],
+        [
+            'label'    => 'About',
+            'dropdown' => true,
+            'match'    => ['about'],
+            'children' => [
+                ['label' => 'About Us',               'url' => route('about')],
+                ['label' => 'Management Team',        'url' => '/p/management-team'],
+                ['label' => 'Business Opportunities', 'url' => '/p/business-opportunities'],
+                ['label' => 'Success Story',          'url' => '/p/success-story'],
+            ],
+        ],
+        ['label' => 'News',     'route' => 'public.news.index',    'match' => ['public.news.index']],
+        ['label' => 'Shop',     'route' => 'shop.index',           'match' => ['shop.index', 'shop.product', 'shop.cart', 'shop.checkout', 'shop.confirmation']],
+        ['label' => 'Blogs',    'route' => 'public.blogs.index',   'match' => ['public.blogs.index']],
+        ['label' => 'Contact',  'route' => 'contact.show',         'match' => ['contact.show']],
+        ['label' => 'Seminars', 'route' => 'public.seminars.index','match' => ['public.seminars.index']],
+        [
+            'label'    => 'Arovo Hub',
+            'dropdown' => true,
+            'match'    => ['public.arovo-hub'],
+            'children' => [
+                ['label' => 'Health Services',    'url' => '/p/health-services'],
+                ['label' => 'Social Contribution','url' => '/p/social-contribution'],
+                ['label' => 'Online Shopping',    'url' => route('shop.index')],
+                ['label' => 'Online Courses',     'url' => '/p/online-courses'],
+            ],
+        ],
     ];
 @endphp
 
@@ -208,18 +234,37 @@
 
         {{-- Desktop nav (lg+) --}}
         <div class="hidden lg:flex items-center gap-7 text-sm ml-auto">
-            @foreach($navItems as $item)
+            @foreach($navItems as $navIdx => $item)
                 @php
                     $active = !empty($item['match']) && collect($item['match'])->contains(fn ($r) => request()->routeIs($r));
-                    $href   = $item['url'] ?? route($item['route']);
                 @endphp
-                <a href="{{ $href }}"
-                   class="py-5 font-medium transition-colors
-                          {{ $active
-                             ? 'text-white border-b-2 border-white -mb-px'
-                             : 'text-brand-50 hover:text-white' }}">
-                    {{ $item['label'] }}
-                </a>
+                @if(!empty($item['dropdown']))
+                    {{-- Dropdown nav item --}}
+                    @php $ddKey = 'nav-dd-'.$navIdx; @endphp
+                    <div class="relative" data-nav-dd="{{ $ddKey }}">
+                        <button type="button" data-nav-dd-trigger="{{ $ddKey }}" aria-haspopup="menu" aria-expanded="false"
+                            class="py-5 font-medium transition-colors inline-flex items-center gap-1
+                                   {{ $active ? 'text-white border-b-2 border-white -mb-px' : 'text-brand-50 hover:text-white' }}">
+                            {{ $item['label'] }}
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                        </button>
+                        <div data-nav-dd-panel="{{ $ddKey }}" hidden role="menu"
+                            class="absolute left-0 top-full w-52 rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900 py-1 z-[60]">
+                            @foreach($item['children'] as $child)
+                                <a href="{{ $child['url'] }}" class="block px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">{{ $child['label'] }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                @else
+                    @php $href = $item['url'] ?? route($item['route']); @endphp
+                    <a href="{{ $href }}"
+                       class="py-5 font-medium transition-colors
+                              {{ $active
+                                 ? 'text-white border-b-2 border-white -mb-px'
+                                 : 'text-brand-50 hover:text-white' }}">
+                        {{ $item['label'] }}
+                    </a>
+                @endif
             @endforeach
 
             {{-- Categories mega-dropdown (Atomy-style), built from the category master. --}}
@@ -343,19 +388,46 @@
         })();
     </script>
 
+    {{-- Nav dropdown toggles (About, Arovo Hub, etc. — each identified by a data-nav-dd key). --}}
+    <script>
+        (function () {
+            document.querySelectorAll('[data-nav-dd]').forEach(function (menu) {
+                var key     = menu.getAttribute('data-nav-dd');
+                var trigger = menu.querySelector('[data-nav-dd-trigger="' + key + '"]');
+                var panel   = menu.querySelector('[data-nav-dd-panel="' + key + '"]');
+                if (!trigger || !panel) { return; }
+                function close() { panel.hidden = true; trigger.setAttribute('aria-expanded', 'false'); }
+                function open()  { panel.hidden = false; trigger.setAttribute('aria-expanded', 'true'); }
+                trigger.addEventListener('click', function (e) { e.stopPropagation(); panel.hidden ? open() : close(); });
+                document.addEventListener('click', function (e) { if (!menu.contains(e.target)) close(); });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+            });
+        })();
+    </script>
+
     {{-- Mobile drawer (slides down under the header) --}}
     <div id="mobileNavDrawer" class="hidden lg:hidden bg-brand-500 border-t border-brand-600">
         <div class="px-4 py-2 flex flex-col text-sm">
             @foreach($navItems as $item)
                 @php
                     $active = !empty($item['match']) && collect($item['match'])->contains(fn ($r) => request()->routeIs($r));
-                    $href   = $item['url'] ?? route($item['route']);
                 @endphp
-                <a href="{{ $href }}"
-                   class="py-2.5 px-2 rounded-md font-medium transition-colors
-                          {{ $active ? 'text-white bg-brand-600' : 'text-brand-50 hover:text-white hover:bg-brand-600' }}">
-                    {{ $item['label'] }}
-                </a>
+                @if(!empty($item['dropdown']))
+                    <p class="px-2 pt-3 pb-1 text-xs text-brand-200 font-semibold uppercase tracking-wider">{{ $item['label'] }}</p>
+                    @foreach($item['children'] as $child)
+                        <a href="{{ $child['url'] }}"
+                           class="py-2 px-4 rounded-md text-brand-50 hover:text-white hover:bg-brand-600 transition-colors">
+                            {{ $child['label'] }}
+                        </a>
+                    @endforeach
+                @else
+                    @php $href = $item['url'] ?? route($item['route']); @endphp
+                    <a href="{{ $href }}"
+                       class="py-2.5 px-2 rounded-md font-medium transition-colors
+                              {{ $active ? 'text-white bg-brand-600' : 'text-brand-50 hover:text-white hover:bg-brand-600' }}">
+                        {{ $item['label'] }}
+                    </a>
+                @endif
             @endforeach
 
             <div class="border-t border-brand-600 my-2"></div>
