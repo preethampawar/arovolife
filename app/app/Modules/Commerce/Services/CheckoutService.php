@@ -254,7 +254,7 @@ final class CheckoutService
             // 3c. Record the repurchase wallet debit so the balance is reduced
             // for future checkouts. Created inside the transaction so the order
             // and the ledger entry are always consistent.
-            if ($repurchaseCreditPaise > 0) {
+            if ($repurchaseCreditPaise > 0 && $buyerDistributorId !== null) {
                 $this->walletService->debit(
                     distributorId: $buyerDistributorId,
                     amountPaise: $repurchaseCreditPaise,
