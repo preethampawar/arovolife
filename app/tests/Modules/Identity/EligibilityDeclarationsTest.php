@@ -86,7 +86,7 @@ it('DEC-03: all three accepted lets the step through', function () {
 
     $this->post('/register/consent', decPayload())
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('register.pan'));
+        ->assertRedirect(route('register.identity-documents'));
 
     // Read the session the request left behind, not a fresh service instance.
     $stored = session('registration_wizard')['data']['consent']['declarations'] ?? null;

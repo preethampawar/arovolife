@@ -113,7 +113,7 @@ it('FA-04: flag ON — valid POST creates Franchise with status=pending_approval
     expect($franchise)->not->toBeNull()
         ->and($franchise->status)->toBe(Franchise::STATUS_PENDING)
         ->and($franchise->applied_at)->not->toBeNull()
-        ->and($franchise->code)->toStartWith('ARV-FR-')
+        ->and($franchise->code)->toStartWith('FR-')
         ->and($franchise->address_line)->toBe('12 Main Street, Banjara Hills')
         ->and($franchise->pincode)->toBe('500034')
         ->and($franchise->district)->toBe('Hyderabad')
