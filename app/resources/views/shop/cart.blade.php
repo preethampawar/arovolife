@@ -21,8 +21,8 @@
 
 @if($cart->items->isEmpty())
 <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-    <p class="text-gray-500 mb-4">Your cart is empty.</p>
-    <a href="{{ route('shop.index') }}" class="text-brand-600 hover:text-brand-700 font-medium">Continue shopping →</a>
+    <p class="text-gray-600 mb-4">Your cart is empty.</p>
+    <a href="{{ route('shop.index') }}" class="text-brand-700 hover:text-brand-800 font-medium">Continue shopping →</a>
 </div>
 @else
 @php $addedVariantId = (int) session('added_variant_id'); @endphp
@@ -39,8 +39,8 @@
                 @endif
             </div>
             <div class="flex-1">
-                <a href="{{ route('shop.product', $item->variant->product->slug) }}" class="font-semibold text-gray-900 hover:text-brand-600">{{ $item->variant->product->name }}</a>
-                <p class="text-xs text-gray-500 mt-0.5 font-mono">SKU {{ $item->variant->variant_sku }}</p>
+                <a href="{{ route('shop.product', $item->variant->product->slug) }}" class="font-semibold text-gray-900 hover:text-brand-800">{{ $item->variant->product->name }}</a>
+                <p class="text-xs text-gray-600 mt-0.5 font-mono">SKU {{ $item->variant->variant_sku }}</p>
                 <p class="text-sm font-semibold text-gray-900 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($item->unit_price_paise / 100, 2) }}</p>
                 {{-- Per-product BV under the price — distributor-only, a factual
                      point value, never an earnings figure (hard rule #3). --}}
@@ -56,7 +56,7 @@
                 <form method="POST" action="{{ route('shop.cart.remove', $item) }}">
                     @csrf @method('DELETE')
                     <button type="submit" aria-label="Remove this item" title="Remove from cart"
-                        class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-red-600 transition-colors">
+                        class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-red-600 transition-colors">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
                         Remove
                     </button>
@@ -112,7 +112,7 @@
                 @else<span class="font-medium text-green-700">Free</span>@endif
             </div>
             @if($shippingPaise > 0 && $amountToFreeShippingPaise > 0)
-            <p class="text-xs text-gray-500">Add ₹{{ \App\Modules\Shared\Support\IndianNumber::format($amountToFreeShippingPaise / 100, 2) }} more to get free shipping.</p>
+            <p class="text-xs text-gray-600">Add ₹{{ \App\Modules\Shared\Support\IndianNumber::format($amountToFreeShippingPaise / 100, 2) }} more to get free shipping.</p>
             @endif
             @if($couponDiscount > 0)
             <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($couponDiscount / 100, 2) }}</span></div>
@@ -142,10 +142,10 @@
             <span class="font-bold text-lg text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($finalTotal / 100, 2) }}</span>
         </div>
         <a href="{{ route('shop.checkout') }}"
-           class="block text-center w-full py-3 rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm transition-colors">
+           class="block text-center w-full py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
             Proceed to Checkout
         </a>
-        <p class="text-xs text-gray-500 mt-3 text-center">30-day return window on every order.</p>
+        <p class="text-xs text-gray-600 mt-3 text-center">30-day return window on every order.</p>
 
         @if(auth()->user()?->distributor)
         {{-- Easy Purchase (multi-product): a distributor can share this whole
@@ -158,7 +158,7 @@
             @enderror
             @if(session('shared_cart_url'))
                 <p class="text-sm font-semibold text-gray-800 mb-1">Easy Purchase link ready</p>
-                <p class="text-xs text-gray-500 mb-2">Send this to a customer. Purchases through it for the next 30 days are attributed to you (ADN {{ auth()->user()->distributor->adn }}).</p>
+                <p class="text-xs text-gray-600 mb-2">Send this to a customer. Purchases through it for the next 30 days are attributed to you (ADN {{ auth()->user()->distributor->adn }}).</p>
                 <div class="flex items-center gap-2">
                     <input type="text" readonly value="{{ session('shared_cart_url') }}" id="sharedCartInput"
                         class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-mono text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500">

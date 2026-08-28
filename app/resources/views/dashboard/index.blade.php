@@ -38,7 +38,7 @@
 <div class="mb-8 grid grid-cols-1 md:grid-cols-2 md:items-start gap-4">
     <div>
         @if($hasDistributorBlock)
-            <a href="{{ route('dashboard.documents') }}" class="inline-flex items-center text-sm text-brand-600 font-medium hover:underline mb-3">
+            <a href="{{ route('dashboard.documents') }}" class="inline-flex items-center text-sm text-brand-700 font-medium hover:underline mb-3">
                 Manage my KYC documents →
             </a>
         @endif
@@ -66,19 +66,19 @@
                     onclick="this.select()">
                 <button type="button"
                     onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-                    class="px-3 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition-colors">
+                    class="px-3 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition-colors">
                     Copy
                 </button>
             </div>
             @if($bothFull)
                 <p class="mt-2 text-[11px] text-sunrise-700">
                     <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sunrise-500"></span>Direct slots full.</span>
-                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">My Genos →</a>
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-700 hover:text-brand-800 underline-offset-2 hover:underline">My Genos →</a>
                 </p>
             @else
                 <p class="mt-2 text-[11px] text-gray-700">
                     Want a specific deeper slot?
-                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">My Genos →</a>
+                    <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-brand-700 hover:text-brand-800 underline-offset-2 hover:underline">My Genos →</a>
                 </p>
             @endif
         </div>
@@ -126,23 +126,23 @@
                 $lcAvailable         = $lcBusinessDaysSince <= 5;
             @endphp
             <div class="mt-4 flex flex-col gap-1.5 text-xs">
-                <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">My Genos →</a>
-                <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">My Referrals →</a>
-                <a href="{{ route('orders.index') }}" class="text-brand-600 hover:text-brand-700 underline">My Orders →</a>
+                <a href="{{ route('tree.binary') }}" class="text-brand-700 hover:text-brand-800 underline">My Genos →</a>
+                <a href="{{ route('tree.sponsorship') }}" class="text-brand-700 hover:text-brand-800 underline">My Referrals →</a>
+                <a href="{{ route('orders.index') }}" class="text-brand-700 hover:text-brand-800 underline">My Orders →</a>
                 @foreach(\App\Modules\Compensation\Support\IncomeNavLinks::visible() as $businessLink)
                     @if(in_array($businessLink['route'], ['my-business', 'income.rank-bonus'], true))
-                        <a href="{{ route($businessLink['route']) }}" class="text-brand-600 hover:text-brand-700 underline">
+                        <a href="{{ route($businessLink['route']) }}" class="text-brand-700 hover:text-brand-800 underline">
                             {{ $businessLink['route'] === 'income.rank-bonus' ? 'My Rank Status' : $businessLink['label'] }} →
                         </a>
                     @endif
                 @endforeach
                 @if($lcAvailable)
-                    <a href="{{ route('line-change.show') }}" class="text-brand-600 hover:text-brand-700 underline">
+                    <a href="{{ route('line-change.show') }}" class="text-brand-700 hover:text-brand-800 underline">
                         Request line-change →
-                        <span class="text-gray-500 font-normal">({{ $lcRemaining }} {{ $lcRemaining === 1 ? 'day' : 'days' }} left)</span>
+                        <span class="text-gray-600 font-normal">({{ $lcRemaining }} {{ $lcRemaining === 1 ? 'day' : 'days' }} left)</span>
                     </a>
                 @else
-                    <span class="text-gray-400 cursor-not-allowed line-through"
+                    <span class="text-gray-600 cursor-not-allowed line-through"
                           title="The 5-business-day line-change window has ended.">
                         Request line-change
                     </span>
@@ -178,7 +178,7 @@
             <div class="flex items-center justify-between gap-2 mb-2">
                 <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold">Messages</p>
                 @if($unreadMessagesCount > 0)
-                    <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-brand-500 text-white text-[10px] font-bold leading-none">
+                    <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-brand-700 text-white text-[10px] font-bold leading-none">
                         {{ $unreadMessagesCount > 99 ? '99+' : $unreadMessagesCount }}
                     </span>
                 @endif
@@ -192,14 +192,14 @@
                 @endphp
                 <a href="{{ route('messages.show', ['user' => $latestMessage->from_user_id]) }}"
                     class="block group">
-                    <p class="text-sm font-semibold text-gray-900 group-hover:text-brand-700 truncate {{ $isUnread ? 'text-brand-700' : '' }}">
+                    <p class="text-sm font-semibold text-gray-900 group-hover:text-brand-800 truncate {{ $isUnread ? 'text-brand-700' : '' }}">
                         {{ $senderName }}
                     </p>
                     <p class="text-xs text-gray-800 line-clamp-2 mt-1">{{ $latestMessage->body }}</p>
                     <p class="text-[11px] text-gray-600 mt-1.5">{{ $latestMessage->created_at->diffForHumans() }}</p>
                 </a>
                 <a href="{{ route('messages.index') }}"
-                    class="inline-flex items-center gap-1 mt-3 text-xs text-brand-600 hover:text-brand-700 font-medium">
+                    class="inline-flex items-center gap-1 mt-3 text-xs text-brand-700 hover:text-brand-800 font-medium">
                     View all messages
                     <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5 15.75 12l-7.5 7.5"/>
@@ -209,7 +209,7 @@
                 <p class="text-sm text-gray-700">No messages yet.</p>
                 <p class="text-xs text-gray-600 mt-1">Open a card in the tree view and click "Send Message" to start a conversation.</p>
                 <a href="{{ route('messages.index') }}"
-                    class="inline-flex items-center gap-1 mt-3 text-xs text-brand-600 hover:text-brand-700 font-medium">
+                    class="inline-flex items-center gap-1 mt-3 text-xs text-brand-700 hover:text-brand-800 font-medium">
                     Open inbox
                     <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5 15.75 12l-7.5 7.5"/>
@@ -307,9 +307,9 @@
                 <p class="text-sm text-gray-800">A live view of your Genos downline and direct referrals.</p>
             </div>
             <div class="flex items-center gap-3 text-xs">
-                <a href="{{ route('tree.binary') }}" class="text-brand-600 hover:text-brand-700 underline">Genos →</a>
-                <span class="text-gray-500">·</span>
-                <a href="{{ route('tree.sponsorship') }}" class="text-brand-600 hover:text-brand-700 underline">Direct referrals →</a>
+                <a href="{{ route('tree.binary') }}" class="text-brand-700 hover:text-brand-800 underline">Genos →</a>
+                <span class="text-gray-600">·</span>
+                <a href="{{ route('tree.sponsorship') }}" class="text-brand-700 hover:text-brand-800 underline">Direct referrals →</a>
             </div>
         </div>
 
@@ -419,7 +419,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <a id="team-roster-download" href="#"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition">
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                         Download CSV
                     </a>
@@ -532,7 +532,7 @@
         <p class="text-amber-700 font-semibold mb-2">Registration not yet complete</p>
         <p class="text-sm text-gray-800 mb-4">Complete your registration to receive your ADN.</p>
         <a href="{{ route('register.orientation') }}"
-            class="inline-flex items-center gap-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-2.5 text-sm transition-colors">
+            class="inline-flex items-center gap-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-6 py-2.5 text-sm transition-colors">
             Continue Registration →
         </a>
     </div>

@@ -16,7 +16,7 @@
 
 <div class="max-w-3xl mx-auto">
     <div class="mb-6">
-        <a href="{{ route('dashboard') }}" class="text-sm text-brand-600 hover:underline">← Back to dashboard</a>
+        <a href="{{ route('dashboard') }}" class="text-sm text-brand-700 hover:underline">← Back to dashboard</a>
     </div>
 
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My KYC documents</h1>
@@ -59,10 +59,10 @@
                             @if($meta['required'])
                                 <span class="text-red-700">*</span>
                             @else
-                                <span class="text-gray-500 text-xs font-normal">(optional)</span>
+                                <span class="text-gray-600 text-xs font-normal">(optional)</span>
                             @endif
                         </h3>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ $meta['help'] }}</p>
+                        <p class="text-xs text-gray-600 mt-0.5">{{ $meta['help'] }}</p>
                     </div>
                     <div>
                         @if($isApproved)
@@ -88,20 +88,20 @@
                     <input type="file" name="document" accept="image/jpeg,image/png,application/pdf" required
                         class="text-xs text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-gray-200">
                     <button type="submit"
-                        class="px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium transition-colors">
+                        class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-medium transition-colors">
                         {{ $isPending ? 'Replace' : 'Upload' }}
                     </button>
                 </form>
                 @else
-                <p class="mt-3 text-xs text-gray-500">
-                    Already approved by admin. To replace, contact <a href="{{ route('content.show', 'grievance') }}" class="underline text-brand-600">support</a>.
+                <p class="mt-3 text-xs text-gray-600">
+                    Already approved by admin. To replace, contact <a href="{{ route('content.show', 'grievance') }}" class="underline text-brand-700">support</a>.
                 </p>
                 @endif
             </div>
         @endforeach
     </div>
 
-    <p class="text-xs text-gray-500">
+    <p class="text-xs text-gray-600">
         Accepted formats: JPG, PNG, PDF. Max file size 5 MB per document. All
         uploads are encrypted at rest and reviewed by an admin before the
         document is marked approved.

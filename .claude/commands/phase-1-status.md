@@ -1,28 +1,43 @@
 ---
 description: Emit a Phase-1 exit-gate checklist — which user stories are green, which compliance items are signed, security audit status
-allowed-tools: Bash(git log:*), Bash(grep:*), Bash(find:*), Bash(php artisan test:*), Read(**), Glob(**), Grep(**)
+allowed-tools: Bash(cd app && php artisan phase:status*), Bash(git log:*), Read(**), Glob(**), Grep(**)
 ---
 
 # /phase-1-status — exit-gate checklist
 
-Produce a one-page status snapshot for the Product Owner.
+Run the command and relay its output:
 
-## Sections
+```
+cd app && php artisan phase:status
+```
 
-1. **User stories US-1.01 … US-1.16** — for each, green / amber / red with one-line rationale.
-   Source of truth: `backlog/phase-1-backlog.md` and the presence of tests exercising each story.
-2. **Compliance items C-01 … C-09** — status and sign-off state.
-   Source: `docs/compliance/risk-register.md` and `git log` for trailers starting with `Compliance-Review:`.
-3. **Post-development security audit (10-point)** — per-item status.
-   Source: `docs/security/audit-checklist.md` (edit it to mark items done in PRs).
-4. **Exit gate (PRD §13)** — each numbered criterion with a tick or cross.
-5. **Next 3 highest-priority items** — what the team should work on next, based on what's red.
+Run it **from the host checkout, not inside the Docker container** — it reads
+`docs/` and `backlog/`, which sit above the Laravel app and are not mounted
+into the image. The command says so itself if it cannot see them.
 
-## Format
+## What it reports
 
-Use a plain ASCII table (no HTML, no fancy Markdown) so the PO can paste
-it into email. End with a single one-line verdict:
+1. **User stories US-1.01 … US-1.16** — green / amber / red, parsed from the
+   story-to-sprint map in `backlog/phase-1-backlog.md`.
+2. **Compliance items C-01 … C-09** — signed or unsigned, from
+   `docs/compliance/risk-register.md`, plus a count of `Compliance-Review:`
+   trailers in the git log. A trailer is evidence a review happened; it is not
+   a signature on C-01…C-09, and the command says so.
+3. **Post-development security audit (10-point)** — the verdicts from the most
+   recent audit-run table in `docs/security/audit-checklist.md`.
+4. **Exit criteria (PRD §11)** — nine criteria. Only the ones that are
+   repository facts get a state; the staging measurements and human sign-offs
+   are reported as UNVERIFIED or NEEDS-A-HUMAN rather than assumed green.
+5. **Next up** — the top of the roadmap's final sign-off gate.
+
+## After running it
+
+If anything is red or unverified, say what would move it. The command reads
+documents, so a stale document produces a stale snapshot — if a section looks
+wrong, check whether the document is behind the code rather than trusting
+either one.
+
+Do not paraphrase the verdict line. Quote it exactly:
 
 - `PHASE-1: READY FOR UAT`
-- `PHASE-1: READY FOR SECURITY AUDIT`
 - `PHASE-1: STILL IN BUILD (N items red)`

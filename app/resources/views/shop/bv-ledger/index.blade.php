@@ -11,26 +11,26 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-3 gap-4 mb-8">
         <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-            <p class="text-xs text-gray-500 mb-1">Accrued</p>
+            <p class="text-xs text-gray-600 mb-1">Accrued</p>
             <p class="text-xl font-bold text-green-700">{{ \App\Modules\Shared\Support\IndianNumber::format($breakdown->accruedPaise / 100, 0) }}</p>
-            <p class="text-xs text-gray-400">BV</p>
+            <p class="text-xs text-gray-600">BV</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-            <p class="text-xs text-gray-500 mb-1">Reversed</p>
+            <p class="text-xs text-gray-600 mb-1">Reversed</p>
             <p class="text-xl font-bold text-red-600">{{ \App\Modules\Shared\Support\IndianNumber::format(abs($breakdown->reversedPaise) / 100, 0) }}</p>
-            <p class="text-xs text-gray-400">BV</p>
+            <p class="text-xs text-gray-600">BV</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-            <p class="text-xs text-gray-500 mb-1">Net BV</p>
+            <p class="text-xs text-gray-600 mb-1">Net BV</p>
             <p class="text-xl font-bold text-brand-700">{{ \App\Modules\Shared\Support\IndianNumber::format($breakdown->netPaise / 100, 0) }}</p>
-            <p class="text-xs text-gray-400">BV</p>
+            <p class="text-xs text-gray-600">BV</p>
         </div>
     </div>
 
     @if($entries->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500">No BV transactions yet.</p>
-            <p class="text-sm text-gray-400 mt-1">BV accrues when you purchase products or when customers place orders via your shared links.</p>
+            <p class="text-gray-600">No BV transactions yet.</p>
+            <p class="text-sm text-gray-600 mt-1">BV accrues when you purchase products or when customers place orders via your shared links.</p>
         </div>
     @else
         {{-- Desktop table (sm+) --}}
@@ -58,12 +58,12 @@
                         <td class="px-4 py-3">
                             @if($entry->order !== null)
                                 @if($isCustomerSale)
-                                <a href="{{ route('orders.sales.show', $entry->order->order_no) }}" class="font-mono text-brand-600 hover:text-brand-700">{{ $entry->order->order_no }}</a>
+                                <a href="{{ route('orders.sales.show', $entry->order->order_no) }}" class="font-mono text-brand-700 hover:text-brand-800">{{ $entry->order->order_no }}</a>
                                 @else
-                                <a href="{{ route('orders.show', $entry->order->order_no) }}" class="font-mono text-brand-600 hover:text-brand-700">{{ $entry->order->order_no }}</a>
+                                <a href="{{ route('orders.show', $entry->order->order_no) }}" class="font-mono text-brand-700 hover:text-brand-800">{{ $entry->order->order_no }}</a>
                                 @endif
                             @else
-                            <span class="text-gray-400 font-mono">—</span>
+                            <span class="text-gray-600 font-mono">—</span>
                             @endif
                         </td>
                         <td class="px-4 py-3">
@@ -116,18 +116,18 @@
                         {{ $isReversal ? '−' : '+' }}{{ \App\Modules\Shared\Support\IndianNumber::format(abs($entry->bv_paise) / 100, 0) }} BV
                     </span>
                 </div>
-                <div class="flex justify-between text-xs text-gray-500">
+                <div class="flex justify-between text-xs text-gray-600">
                     <span>{{ $entry->effective_at->format('d M Y') }}</span>
                     @if($entry->order !== null)
                         @if($isCustomerSale)
-                        <a href="{{ route('orders.sales.show', $entry->order->order_no) }}" class="font-mono text-brand-600">{{ $entry->order->order_no }}</a>
+                        <a href="{{ route('orders.sales.show', $entry->order->order_no) }}" class="font-mono text-brand-700">{{ $entry->order->order_no }}</a>
                         @else
-                        <a href="{{ route('orders.show', $entry->order->order_no) }}" class="font-mono text-brand-600">{{ $entry->order->order_no }}</a>
+                        <a href="{{ route('orders.show', $entry->order->order_no) }}" class="font-mono text-brand-700">{{ $entry->order->order_no }}</a>
                         @endif
                     @endif
                 </div>
                 <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs">
-                    <span class="text-gray-400">Running total</span>
+                    <span class="text-gray-600">Running total</span>
                     <span class="font-semibold text-brand-700">{{ \App\Modules\Shared\Support\IndianNumber::format($running / 100, 0) }} BV</span>
                 </div>
             </div>

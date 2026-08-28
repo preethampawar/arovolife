@@ -82,6 +82,15 @@
                     fn () => \App\Modules\Public\Models\ContactInquiry::query()->whereNull('handled_at')->count(),
                 );
 
+                // Unsettled grievances for the sidebar badge. Same 60s cache —
+                // a statutory SLA queue that nobody can see the size of is a
+                // queue that gets missed.
+                $openGrievanceCount = \Illuminate\Support\Facades\Cache::remember(
+                    'admin.grievances.unsettled_count',
+                    60,
+                    fn () => \App\Modules\Grievance\Models\Ticket::query()->unsettled()->count(),
+                );
+
                 $navItems = [
                     ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => '⬡'],
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => '◉'],
@@ -90,13 +99,40 @@
                         ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => '👥', 'prefix' => 'admin.staff']]
                         : []),
                     ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => '⌬', 'prefix' => 'admin.tree'],
-                    ['route' => 'admin.kyc.index',                'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc'],
+                    // KYC is gated on `kyc.review` (R-17). Hiding the item
+                    // rather than letting it 403 keeps admin-finance from
+                    // walking into a wall on every shift.
+                    ...(auth()->user()?->can('kyc.review')
+                        ? [['route' => 'admin.kyc.index',            'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc']]
+                        : []),
                     ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => '⇄', 'prefix' => 'admin.line-changes'],
                     ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => '✉', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
+                    // Grievances are gated on `grievance.handle` (R-17: not
+                    // admin-finance). Hiding the item rather than letting it
+                    // 403 also keeps the open-complaint count out of view.
+                    ...(auth()->user()?->can('grievance.handle')
+                        ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => '📣', 'prefix' => 'admin.grievances', 'badge' => $openGrievanceCount]]
+                        : []),
+                    // Agreement §21 dormancy. Account discipline, so it follows
+                    // the same permission as freeze / terminate.
+                    ...(auth()->user()?->can('compliance.discipline')
+                        ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => '⏳', 'prefix' => 'admin.dormancy']]
+                        : []),
                     ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => '🛒', 'prefix' => 'admin.commerce.orders'],
                     ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => '📊', 'prefix' => 'admin.commerce.bv-ledger'],
+                    ...(auth()->user()?->can('audit.read')
+                        ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => '📈', 'prefix' => 'admin.analytics']]
+                        : []),
                     ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => '💰', 'prefix' => 'admin.compensation'],
                     ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => '🏷', 'prefix' => 'admin.commerce.coupons'],
+                    // Zero-trace: an unlaunched franchise programme leaves no
+                    // menu item behind for anyone to wonder about.
+                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FranchiseFeature::class)
+                        ? [['route' => 'admin.commerce.franchises.index', 'label' => 'Franchises', 'icon' => '🏪', 'prefix' => 'admin.commerce.franchises']]
+                        : []),
+                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class)
+                        ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => '🎁', 'prefix' => 'admin.commerce.offers']]
+                        : []),
                     ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => '📦', 'prefix' => 'admin.catalog.products'],
                     ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => '🗂', 'prefix' => 'admin.catalog.categories'],
                     ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => '🖼', 'prefix' => 'admin.catalog.banners'],
@@ -104,7 +140,9 @@
                     ['route' => 'admin.compliance-documents.index','label' => 'Compliance Docs', 'icon' => '🛡', 'prefix' => 'admin.compliance-documents'],
                     ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => '⚙'],
                     ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => '⚑', 'prefix' => 'admin.feature-flags'],
-                    ['route' => 'admin.audit-log',                'label' => 'Audit Log',      'icon' => '☰'],
+                    ...(auth()->user()?->can('audit.read')
+                        ? [['route' => 'admin.audit-log',            'label' => 'Audit Log',      'icon' => '☰']]
+                        : []),
                     ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => '❔', 'prefix' => 'admin.help'],
                 ];
             @endphp
@@ -121,22 +159,22 @@
                     @if($active)
                     <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-sunrise-500"></span>
                     @endif
-                    <span class="text-base {{ $active ? 'text-sunrise-400' : 'text-slate-400' }}">{{ $item['icon'] }}</span>
+                    <span class="text-base {{ $active ? 'text-sunrise-400' : 'text-slate-600' }}">{{ $item['icon'] }}</span>
                     <span class="flex-1">{{ $item['label'] }}</span>
                     @if(!empty($item['badge']))
-                        <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-500 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
+                        <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
                     @endif
                 </a>
             @endforeach
         </nav>
 
             <div class="mt-auto px-3 py-4 border-t border-slate-800">
-                <p class="text-xs text-slate-400 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
+                <p class="text-xs text-slate-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
                         class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 font-medium hover:bg-slate-800 hover:text-red-400 transition-colors">
-                        <span class="text-slate-400">⏻</span> Sign out
+                        <span class="text-slate-600">⏻</span> Sign out
                     </button>
                 </form>
             </div>
@@ -157,7 +195,7 @@
         <div class="sticky top-0 z-20">
         <header class="bg-slate-800 border-b border-slate-900 pl-16 pr-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sunrise-500 text-white shrink-0">Admin</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sunrise-800 text-white shrink-0">Admin</span>
                 <h1 class="text-sm sm:text-base font-semibold text-white tracking-tight truncate">@yield('heading', 'Admin Console')</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">

@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | ClamAV — malware scanning for uploads
+    |--------------------------------------------------------------------------
+    |
+    | With CLAMAV_HOST unset the container binds `UnconfiguredScanner`, which
+    | passes in local and testing and refuses everywhere else. A scanner that
+    | silently passed when it was absent would let the platform report that
+    | uploads are scanned when nothing is scanning them (T-6.1 finding H-4).
+    |
+    */
+
+    'clamav' => [
+        'host' => env('CLAMAV_HOST'),
+        'port' => (int) env('CLAMAV_PORT', 3310),
+        'timeout' => (int) env('CLAMAV_TIMEOUT', 15),
+    ],
+
 ];

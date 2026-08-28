@@ -11,10 +11,10 @@
     <div class="absolute inset-0 flex items-center justify-center p-4">
         <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl pointer-events-auto">
             <div class="px-6 pt-5 pb-3 border-b border-gray-100">
-                <h2 id="sendMessageModalTitle" class="text-xs uppercase tracking-wider font-semibold text-gray-500">Send Message</h2>
+                <h2 id="sendMessageModalTitle" class="text-xs uppercase tracking-wider font-semibold text-gray-600">Send Message</h2>
                 <p class="text-base font-semibold text-gray-900 mt-1 truncate" data-recipient-name>—</p>
                 <button type="button" data-modal-close
-                    class="absolute top-3 right-3 w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    class="absolute top-3 right-3 w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     aria-label="Close">
                     <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -31,7 +31,7 @@
                     placeholder="Write your message…"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
 
-                <div class="mt-1 flex items-center justify-between text-[10px] text-gray-400">
+                <div class="mt-1 flex items-center justify-between text-[10px] text-gray-600">
                     <span>Cmd/Ctrl + Enter to send</span>
                     <span data-char-count>0 / 4000</span>
                 </div>
@@ -45,7 +45,7 @@
                     </button>
                     <button type="submit"
                         data-submit-btn
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 text-white text-sm font-semibold transition-colors">
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 text-white text-sm font-semibold transition-colors">
                         <span data-submit-label>Send</span>
                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/>

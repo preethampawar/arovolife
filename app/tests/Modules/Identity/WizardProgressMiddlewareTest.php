@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 /**
  * WPM-02 .. WPM-04 — EnsureRegistrationProgress middleware behaviour on the
  * wizard step routes (pure session-only registration; the draft/av_draft

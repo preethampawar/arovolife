@@ -7,11 +7,11 @@ namespace App\Modules\Identity\Http\Controllers;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Services\ResubmitKycSubmission;
+use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -87,11 +87,11 @@ final class KycResubmitController extends Controller
         }
 
         $validated = $request->validate([
-            'pan_doc' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes()],
-            'aadhaar_doc' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes()],
-            'cheque_doc' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes()],
-            'address_proof_front' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes()],
-            'address_proof_back' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes()],
+            'pan_doc' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes, new ScannedForMalware],
+            'aadhaar_doc' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes, new ScannedForMalware],
+            'cheque_doc' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes, new ScannedForMalware],
+            'address_proof_front' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes, new ScannedForMalware],
+            'address_proof_back' => ['nullable', 'file', 'max:5120', 'mimetypes:image/jpeg,image/png,application/pdf', new ValidUploadedDocumentBytes, new ScannedForMalware],
         ]);
 
         $files = [];

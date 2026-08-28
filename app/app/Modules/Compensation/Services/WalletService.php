@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 class WalletService
 {
@@ -37,6 +38,23 @@ class WalletService
             ->all();
     }
 
+    /**
+     * Credit a distributor's wallet.
+     *
+     * A sale-derived credit MUST carry the reference to the result row it came
+     * from. Hard rule 2 is not satisfied by the money having been calculated
+     * from a sale somewhere upstream — it has to be possible to walk credit →
+     * result → BV → order afterwards, on demand, for any rupee the company
+     * paid. A credit with no reference is a payment nobody can tie to a sale,
+     * and "we know it came from BV" is not an answer to a regulator holding a
+     * ledger export.
+     *
+     * `manual_credit` is deliberately exempt: it is an admin correction, it has
+     * no result row by definition, and its control is the audit log rather than
+     * this guard.
+     *
+     * @throws InvalidArgumentException when a sale-derived credit has no reference
+     */
     public function credit(
         int $distributorId,
         int $amountPaise,
@@ -45,6 +63,21 @@ class WalletService
         ?string $referenceType = null,
         ?string $memo = null,
     ): WalletLedgerEntry {
+        $saleDerived = array_merge(
+            CompensationPlanSettingsService::GROUP_A_TYPES,
+            CompensationPlanSettingsService::GROUP_B_TYPES,
+            CompensationPlanSettingsService::GROUP_C_TYPES,
+            CompensationPlanSettingsService::GROUP_D_TYPES,
+        );
+
+        if (in_array($type, $saleDerived, true) && ($referenceId === null || $referenceType === null)) {
+            throw new InvalidArgumentException(
+                "Wallet credit of type '{$type}' requires referenceId and referenceType: every "
+                .'sale-derived credit must be traceable back to the product sale it came from '
+                .'(hard rule 2, DSR 2021 Rule 5(1)(c)).'
+            );
+        }
+
         return WalletLedgerEntry::create([
             'distributor_id' => $distributorId,
             'type' => $type,

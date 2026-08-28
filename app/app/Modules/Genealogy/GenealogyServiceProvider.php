@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Genealogy;
 
+use App\Modules\Genealogy\Console\Commands\PlacementBenchmarkCommand;
 use App\Modules\Genealogy\Events\LineChangeApproved;
 use App\Modules\Genealogy\Events\LineChangeRejected;
 use App\Modules\Genealogy\Events\LineChangeRequested;
@@ -21,6 +22,14 @@ final class GenealogyServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
+
+        // T-5.5's performance proof. Console-only; it refuses to run against
+        // any database whose name is not suffixed `_perf`.
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                PlacementBenchmarkCommand::class,
+            ]);
+        }
 
         // Notify the binary-tree parent ("a distributor was placed on your
         // L/R leg") and the sponsor ("your direct referral registered")

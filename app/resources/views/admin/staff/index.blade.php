@@ -12,7 +12,7 @@
         register. Every change made here is recorded in the audit log.
     </p>
     <a href="{{ route('admin.staff.create') }}"
-       class="shrink-0 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+       class="shrink-0 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
         + Add staff user
     </a>
 </div>
@@ -24,7 +24,7 @@
         <a href="{{ route('admin.staff.index', array_merge(request()->query(), ['role' => $r])) }}"
            class="px-3 py-1 rounded-full text-xs font-medium border transition-colors
                   {{ $isActive
-                     ? 'bg-brand-500 text-white border-brand-500'
+                     ? 'bg-brand-700 text-white border-brand-500'
                      : 'bg-white text-gray-700 border-gray-200 hover:border-brand-400' }}">
             {{ $r }}
         </a>
@@ -42,7 +42,7 @@
     <input name="q" type="text" value="{{ request()->query('q') }}"
         placeholder="Search name or email…"
         class="flex-1 max-w-sm rounded-lg bg-white border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
         Search
     </button>
     @if(request()->query('q'))
@@ -91,7 +91,7 @@
                         <span class="px-2 py-0.5 rounded-full text-xs border
                             {{ $u->status === 'active'     ? 'bg-green-50 text-green-700 border-green-200'
                              : ($u->status === 'frozen'    ? 'bg-red-50 text-red-700 border-red-200'
-                             : ($u->status === 'terminated'? 'bg-white text-gray-500 border-gray-200'
+                             : ($u->status === 'terminated'? 'bg-white text-gray-600 border-gray-200'
                              : 'bg-amber-50 text-amber-700 border-amber-200')) }}">
                             {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$u->status] ?? ucfirst((string) $u->status) }}
                         </span>
@@ -101,10 +101,10 @@
                     </td>
                     <td class="px-4 py-3 text-right">
                         @if($u->id === $currentUserId)
-                            <span class="text-xs text-gray-500">You</span>
+                            <span class="text-xs text-gray-600">You</span>
                         @else
                             <a href="{{ route('admin.staff.edit', $u->id) }}"
-                               class="text-xs font-medium text-brand-600 hover:text-brand-700">Manage</a>
+                               class="text-xs font-medium text-brand-700 hover:text-brand-800">Manage</a>
                         @endif
                     </td>
                 </tr>

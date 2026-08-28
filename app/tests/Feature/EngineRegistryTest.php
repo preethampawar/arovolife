@@ -34,8 +34,14 @@ it('has exactly one registry entry per compensation console command', function (
         ->values()
         ->all();
 
+    // Engines owned by another module (the purchase offers live in Commerce)
+    // are excluded from this comparison: the invariant here is that the
+    // Compensation module's own commands and the registry cannot drift apart.
+    // The "points every registry entry at a real artisan command" test below
+    // covers every engine whatever module it lives in.
     $registered = collect(EngineRegistry::all())
         ->map(fn ($definition): string => $definition->commandClass)
+        ->filter(fn (string $class): bool => str_starts_with($class, 'App\\Modules\\Compensation\\'))
         ->sort()
         ->values()
         ->all();
@@ -43,12 +49,12 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers ten engines with unique keys and signatures', function (): void {
+it('registers twelve engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(10);
+    expect($all)->toHaveCount(12);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(10);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(12);
 });
 
 it('points every registry entry at a real artisan command with the declared period option', function (): void {

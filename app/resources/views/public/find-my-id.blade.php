@@ -16,9 +16,9 @@
     <div class="max-w-lg mx-auto px-6 py-12 sm:py-16">
 
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Account recovery</p>
+            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Account recovery</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
-                Find my <span class="text-brand-600">ID</span>.
+                Find my <span class="text-brand-700">ID</span>.
             </h1>
             <p class="text-sm text-gray-600 mt-3">
                 @if(($step ?? 'lookup') === 'otp')
@@ -49,10 +49,10 @@
             <div class="card-refined p-6 sm:p-7 mb-6 bg-leaf-50 border border-leaf-200 lift-in text-center" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-leaf-700 mb-1">We found your account</p>
                 <p class="text-xs text-gray-600 mb-4">{{ $result['name'] }} · {{ $result['state'] }}</p>
-                <p class="text-xs uppercase tracking-wider text-gray-500 mb-1">Your Distributor Number (ADN)</p>
+                <p class="text-xs uppercase tracking-wider text-gray-600 mb-1">Your Distributor Number (ADN)</p>
                 <p class="text-3xl font-bold font-mono text-gray-900 tracking-wider">{{ $result['adn'] }}</p>
                 <a href="{{ route('login') }}"
-                   class="inline-block mt-5 px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
+                   class="inline-block mt-5 px-6 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
                     Log in →
                 </a>
             </div>
@@ -72,7 +72,7 @@
                         We sent a 6-digit code to
                         <strong class="text-gray-900 font-mono">{{ $maskedContact ?? '***' }}</strong>.
                     </p>
-                    <p class="text-xs text-gray-500 mt-1">It expires in 10 minutes.</p>
+                    <p class="text-xs text-gray-600 mt-1">It expires in 10 minutes.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Verification code</label>
@@ -83,16 +83,16 @@
                 </div>
 
                 <button type="submit"
-                    class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    class="w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                     Verify &amp; reveal my ADN
                 </button>
             </form>
 
             <form method="POST" action="{{ route('find-my-id.resend') }}" class="mt-4 text-center">
                 @csrf
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-gray-600">
                     Didn't receive the code?
-                    <button type="submit" class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">
+                    <button type="submit" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">
                         Resend code
                     </button>
                 </p>
@@ -114,7 +114,7 @@
                         placeholder="ABCDE1234F" autocomplete="off" spellcheck="false"
                         class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                         style="text-transform: uppercase;">
-                    <p class="text-xs text-gray-500 mt-1.5">Used only to verify it's you. We match it securely and never store or display it.</p>
+                    <p class="text-xs text-gray-600 mt-1.5">Used only to verify it's you. We match it securely and never store or display it.</p>
                 </div>
 
                 {{-- DPDP Act 2023 §5-6 — informed consent before processing the PAN. --}}
@@ -127,20 +127,20 @@
                             I agree to arovolife using my PAN solely to verify my identity and retrieve my ADN. It is
                             matched as a secure one-way hash and is not stored from this form. See our
                             <a href="{{ route('content.show', 'privacy') }}" target="_blank" rel="noopener"
-                               class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">Privacy Policy</a>.
+                               class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Privacy Policy</a>.
                         </span>
                     </label>
                     @error('consent_privacy')<p class="mt-1.5 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
 
                 <button type="submit"
-                    class="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    class="w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                     Find my ID
                 </button>
             </form>
 
-            <p class="text-center text-xs text-gray-500 mt-5">
-                Still stuck? <a href="{{ route('contact.show') }}" class="text-brand-600 hover:text-brand-700 font-medium">Contact support</a>.
+            <p class="text-center text-xs text-gray-600 mt-5">
+                Still stuck? <a href="{{ route('contact.show') }}" class="text-brand-700 hover:text-brand-800 font-medium">Contact support</a>.
             </p>
         @endif
 

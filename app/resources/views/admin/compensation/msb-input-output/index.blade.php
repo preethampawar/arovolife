@@ -23,10 +23,10 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <input type="date" name="to" value="{{ $to ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($day || $week || $from || $to)
     <a href="{{ route('admin.compensation.msb-input-output.index') }}"
-       class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+       class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
     <a href="{{ route('admin.compensation.msb-input-output.export', array_filter(['day' => $day, 'week' => $week, 'from' => $from, 'to' => $to])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
@@ -36,7 +36,7 @@
 
 @if($pools->isEmpty())
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">
         No pooled cut-off days yet — rows appear once the daily cut-off runs with the Mentorship Bonus enabled.
     </p>
 </div>
@@ -54,12 +54,12 @@
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
             <span class="font-semibold text-gray-800">{{ $pool->cutoff_date->format('d/m/Y') }}</span>
-            <span class="text-gray-500">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
-            <span class="text-gray-500">Week <strong class="text-gray-700">{{ $weekNo ?? '—' }}</strong></span>
-            <span class="text-gray-500">Day total received BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
-            <span class="text-gray-500">MSB pool ({{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%)
+            <span class="text-gray-600">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
+            <span class="text-gray-600">Week <strong class="text-gray-700">{{ $weekNo ?? '—' }}</strong></span>
+            <span class="text-gray-600">Day total received BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
+            <span class="text-gray-600">MSB pool ({{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%)
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) }}</strong></span>
-            <span class="text-gray-500">Point value
+            <span class="text-gray-600">Point value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) }}</strong></span>
             <span class="text-gray-500 ml-auto">Computed
                 <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
@@ -77,45 +77,45 @@
             <table class="w-full text-xs">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-3 py-2 text-left text-gray-500 font-medium">S.no</th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Day total received BV</th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">MSB — {{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%</th>
-                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Individual distributor MSB points <x-help-tip text="Each sponsor who accrued Mentorship Bonus points on this day, with the points they accrued. A sponsor credited by more than one sponsee appears once with their points summed." /></th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Point value <x-help-tip text="The MSB pool divided by the day's total MSB score points, floored to whole rupees. One value applies to every earner that day." /></th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
+                        <th class="px-3 py-2 text-left text-gray-600 font-medium">S.no</th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Day total received BV</th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">MSB — {{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%</th>
+                        <th class="px-3 py-2 text-left text-gray-600 font-medium">Individual distributor MSB points <x-help-tip text="Each sponsor who accrued Mentorship Bonus points on this day, with the points they accrued. A sponsor credited by more than one sponsee appears once with their points summed." /></th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Point value <x-help-tip text="The MSB pool divided by the day's total MSB score points, floored to whole rupees. One value applies to every earner that day." /></th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($rows as $i => $row)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-3 py-2 text-gray-500">{{ $i + 1 }}</td>
+                        <td class="px-3 py-2 text-gray-600">{{ $i + 1 }}</td>
                         <td class="px-3 py-2 text-right text-gray-700">@bv($pool->company_bv_paise)</td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) }}</td>
                         <td class="px-3 py-2">
                             <a href="{{ route('admin.compensation.distributors.show', [$row->sponsor_id, 'tab' => 'mb']) }}"
-                               class="text-brand-600 hover:underline font-medium">{{ $row->full_name ?: 'Distributor' }}</a>
-                            <span class="text-gray-400">({{ $row->adn }})</span>
+                               class="text-brand-700 hover:underline font-medium">{{ $row->full_name ?: 'Distributor' }}</a>
+                            <span class="text-gray-600">({{ $row->adn }})</span>
                             <span class="ml-1 inline-flex px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-semibold">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $row->msb_points) }} pts</span>
                         </td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(((int) $row->point_value_paise) / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->income_paise / 100, 2) }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="px-3 py-4 text-center text-gray-400">No Mentorship Bonus earners this day.</td></tr>
+                    <tr><td colspan="6" class="px-3 py-4 text-center text-gray-600">No Mentorship Bonus earners this day.</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
                     <tr>
                         <td class="px-3 py-1.5 text-right text-xs" colspan="3">Total MSB score points</td>
                         <td class="px-3 py-1.5 font-semibold">{{ \App\Modules\Shared\Support\IndianNumber::format($totalPoints) }}</td>
-                        <td class="px-3 py-1.5 text-right text-[11px] text-gray-500">
+                        <td class="px-3 py-1.5 text-right text-[11px] text-gray-600">
                             {{ $totalPoints > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 0).' ÷ '.\App\Modules\Shared\Support\IndianNumber::format($totalPoints) : '—' }}
                         </td>
                         <td></td>
                     </tr>
                     <tr class="font-semibold">
                         <td class="px-3 py-2 text-right text-xs" colspan="4">Total income</td>
-                        <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-500' }} text-[11px]">
+                        <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-600' }} text-[11px]">
                             leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($pool->leftover_paise) / 100, 2) }}
                         </td>
                         <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>

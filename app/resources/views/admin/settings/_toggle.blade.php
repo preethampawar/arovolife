@@ -29,7 +29,7 @@
                    transition-colors duration-200 ease-in-out
                    focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
                    disabled:cursor-not-allowed disabled:opacity-50
-                   {{ $isOn ? 'bg-brand-500' : 'bg-gray-300' }}">
+                   {{ $isOn ? 'bg-brand-700' : 'bg-gray-300' }}">
         <span class="sr-only">{{ $isOn ? 'On' : 'Off' }}</span>
         <span aria-hidden="true"
               class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0
@@ -41,7 +41,7 @@
          hidden input of the same name, so clicking this posts the inverse. --}}
     <noscript>
         <button type="submit" name="value" value="{{ $isOn ? 'false' : 'true' }}"
-                class="ml-2 px-3 py-1 text-xs rounded bg-brand-500 text-white">
+                class="ml-2 px-3 py-1 text-xs rounded bg-brand-700 text-white">
             {{ $isOn ? 'Turn off' : 'Turn on' }}
         </button>
     </noscript>

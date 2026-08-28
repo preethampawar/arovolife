@@ -6,21 +6,21 @@
 {{-- Rank Bonus results --}}
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-5">
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No Rank Bonus history yet.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Rank Bonus history yet.</p>
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-3 py-2 text-left text-gray-500">Month</th>
-                <th class="px-3 py-2 text-left text-gray-500">Rank</th>
-                <th class="px-3 py-2 text-right text-gray-500">Points <x-help-tip text="RAP (Rank Achievement Points) for an achiever, or AO-GO offer points for a grantee. Ranks 2–9 are an equal split and show —." /></th>
-                <th class="px-3 py-2 text-right text-gray-500">Point value</th>
-                <th class="px-3 py-2 text-right text-gray-500">Pool</th>
-                <th class="px-3 py-2 text-right text-gray-500">Gross</th>
-                <th class="px-3 py-2 text-right text-gray-500">Admin</th>
-                <th class="px-3 py-2 text-right text-gray-500">TDS</th>
-                <th class="px-3 py-2 text-right text-gray-500">Net</th>
-                <th class="px-3 py-2 text-center text-gray-500">Status</th>
+                <th class="px-3 py-2 text-left text-gray-600">Month</th>
+                <th class="px-3 py-2 text-left text-gray-600">Rank</th>
+                <th class="px-3 py-2 text-right text-gray-600">Points <x-help-tip text="RAP (Rank Achievement Points) for an achiever, or AO-GO offer points for a grantee. Ranks 2–9 are an equal split and show —." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">Point value</th>
+                <th class="px-3 py-2 text-right text-gray-600">Pool</th>
+                <th class="px-3 py-2 text-right text-gray-600">Gross</th>
+                <th class="px-3 py-2 text-right text-gray-600">Admin</th>
+                <th class="px-3 py-2 text-right text-gray-600">TDS</th>
+                <th class="px-3 py-2 text-right text-gray-600">Net</th>
+                <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -30,7 +30,7 @@
                     'credited' => 'bg-green-100 text-green-700',
                     'reversed' => 'bg-red-100 text-red-700',
                     'requalification_held' => 'bg-amber-100 text-amber-800',
-                    default => 'bg-gray-100 text-gray-500',
+                    default => 'bg-gray-100 text-gray-600',
                 };
                 $points = $row->rap_points ?? $row->aogo_points;
             @endphp
@@ -44,13 +44,13 @@
                     @endif
                 </td>
                 <td class="px-3 py-2 text-right font-semibold">{{ $points ?? '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-500">
-                    @if($row->point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) }}@else<span class="text-gray-400">—</span>@endif
+                <td class="px-3 py-2 text-right text-gray-600">
+                    @if($row->point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
-                <td class="px-3 py-2 text-right text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->pool_paise / 100, 0) }}</td>
+                <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->pool_paise / 100, 0) }}</td>
                 <td class="px-3 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
+                <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusClass }}">{{ str_replace('_', ' ', $row->status) }}</span>
@@ -70,17 +70,17 @@
         <x-help-tip text="Every month this distributor met a rank's conditions. Ranks 1–2 record the month's Left/Right Genos BV; Ranks 3–9 qualify structurally (two prior-rank qualifiers per side) and record no BV." />
     </p>
     @if(empty($quals) || $quals->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">No rank qualification yet.</p>
+    <p class="px-6 py-8 text-sm text-gray-600 text-center">No rank qualification yet.</p>
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-3 py-2 text-left text-gray-500">Month</th>
-                <th class="px-3 py-2 text-left text-gray-500">Rank</th>
-                <th class="px-3 py-2 text-center text-gray-500">Occurrence</th>
-                <th class="px-3 py-2 text-right text-gray-500">Left Genos BV</th>
-                <th class="px-3 py-2 text-right text-gray-500">Right Genos BV</th>
-                <th class="px-3 py-2 text-center text-gray-500">Status</th>
+                <th class="px-3 py-2 text-left text-gray-600">Month</th>
+                <th class="px-3 py-2 text-left text-gray-600">Rank</th>
+                <th class="px-3 py-2 text-center text-gray-600">Occurrence</th>
+                <th class="px-3 py-2 text-right text-gray-600">Left Genos BV</th>
+                <th class="px-3 py-2 text-right text-gray-600">Right Genos BV</th>
+                <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -90,14 +90,14 @@
                 <td class="px-3 py-2">
                     <span class="inline-flex px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">{{ $rankNames[$qual->rank_number] ?? 'Rank '.$qual->rank_number }}</span>
                     @if($qual->is_carry_forward)
-                    <span class="inline-flex px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px]">carry-forward</span>
+                    <span class="inline-flex px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[10px]">carry-forward</span>
                     @endif
                 </td>
                 <td class="px-3 py-2 text-center">#{{ $qual->occurrence_in_month }}</td>
-                <td class="px-3 py-2 text-right">@if($qual->left_genos_bv_paise !== null)@bv($qual->left_genos_bv_paise)@else<span class="text-gray-400">—</span>@endif</td>
-                <td class="px-3 py-2 text-right">@if($qual->right_genos_bv_paise !== null)@bv($qual->right_genos_bv_paise)@else<span class="text-gray-400">—</span>@endif</td>
+                <td class="px-3 py-2 text-right">@if($qual->left_genos_bv_paise !== null)@bv($qual->left_genos_bv_paise)@else<span class="text-gray-600">—</span>@endif</td>
+                <td class="px-3 py-2 text-right">@if($qual->right_genos_bv_paise !== null)@bv($qual->right_genos_bv_paise)@else<span class="text-gray-600">—</span>@endif</td>
                 <td class="px-3 py-2 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $qual->status === 'qualified' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">{{ ucfirst($qual->status) }}</span>
+                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $qual->status === 'qualified' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">{{ ucfirst($qual->status) }}</span>
                 </td>
             </tr>
             @endforeach
@@ -115,7 +115,7 @@
             AO-GO offer — this month
             <x-help-tip text="Evaluated live from what is recorded today. The grant itself is created only when the month's Rank Bonus run executes." />
         </span>
-        <span class="font-normal text-gray-500">
+        <span class="font-normal text-gray-600">
             Used {{ $aogoStatus->usesUsed }} of {{ $aogoStatus->usesMax }} · {{ $aogoStatus->pointsPerGrant }} points per grant
         </span>
     </p>
@@ -125,7 +125,7 @@
             Granted this month — {{ $aogoStatus->grantedPoints }} points ({{ str_replace('_', ' ', $aogoStatus->grantedStatus ?? '') }}).
         </p>
         @else
-        <p class="text-xs {{ $aogoStatus->conditionsMet ? 'text-green-700' : 'text-gray-500' }} font-medium mb-2">
+        <p class="text-xs {{ $aogoStatus->conditionsMet ? 'text-green-700' : 'text-gray-600' }} font-medium mb-2">
             {{ $aogoStatus->conditionsMet ? 'All conditions currently met — the monthly run will grant.' : 'Not eligible right now.' }}
         </p>
         @endif
@@ -133,7 +133,7 @@
             @foreach($aogoStatus->conditions as $condition)
             <li class="flex items-start gap-2 text-xs">
                 <span class="{{ $condition->met ? 'text-green-600' : 'text-gray-300' }}">{{ $condition->met ? '✓' : '○' }}</span>
-                <span class="{{ $condition->met ? 'text-gray-700' : 'text-gray-500' }} flex items-center gap-1">
+                <span class="{{ $condition->met ? 'text-gray-700' : 'text-gray-600' }} flex items-center gap-1">
                     {{ $condition->label }}
                     @if($condition->note)
                         <x-help-tip :text="$condition->note" />
@@ -156,13 +156,13 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-3 py-2 text-left text-gray-500">Month</th>
-                <th class="px-3 py-2 text-center text-gray-500">Grant #</th>
-                <th class="px-3 py-2 text-center text-gray-500">Previous rank</th>
-                <th class="px-3 py-2 text-right text-gray-500">Points</th>
-                <th class="px-3 py-2 text-right text-gray-500">Point value</th>
-                <th class="px-3 py-2 text-right text-gray-500">Income</th>
-                <th class="px-3 py-2 text-center text-gray-500">Status</th>
+                <th class="px-3 py-2 text-left text-gray-600">Month</th>
+                <th class="px-3 py-2 text-center text-gray-600">Grant #</th>
+                <th class="px-3 py-2 text-center text-gray-600">Previous rank</th>
+                <th class="px-3 py-2 text-right text-gray-600">Points</th>
+                <th class="px-3 py-2 text-right text-gray-600">Point value</th>
+                <th class="px-3 py-2 text-right text-gray-600">Income</th>
+                <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -172,14 +172,14 @@
                 <td class="px-3 py-2 text-center">{{ $grant->grant_number }}</td>
                 <td class="px-3 py-2 text-center">{{ $rankNames[$grant->previous_rank_number] ?? 'Rank '.$grant->previous_rank_number }}</td>
                 <td class="px-3 py-2 text-right font-semibold">{{ $grant->points }}</td>
-                <td class="px-3 py-2 text-right text-gray-500">
-                    @if($grant->point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($grant->point_value_paise / 100, 2) }}@else<span class="text-gray-400">—</span>@endif
+                <td class="px-3 py-2 text-right text-gray-600">
+                    @if($grant->point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($grant->point_value_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
                 <td class="px-3 py-2 text-right font-semibold text-green-700">
-                    @if($grant->income_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($grant->income_paise / 100, 2) }}@else<span class="text-gray-400">—</span>@endif
+                    @if($grant->income_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($grant->income_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
                 <td class="px-3 py-2 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $grant->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">{{ ucfirst($grant->status) }}</span>
+                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $grant->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">{{ ucfirst($grant->status) }}</span>
                 </td>
             </tr>
             @endforeach

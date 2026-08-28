@@ -325,12 +325,6 @@ parameters:
 			path: app/Modules/Commerce/Http/Controllers/Storefront/CartController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Http/Controllers/Storefront/CheckoutController.php
-
-		-
 			message: '#^Parameter \#1 \$coupon of method App\\Modules\\Commerce\\Services\\CouponService\:\:discountFor\(\) expects App\\Modules\\Commerce\\Models\\Coupon, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
@@ -541,12 +535,6 @@ parameters:
 			path: app/Modules/Commerce/Models/Order.php
 
 		-
-			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:customer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Commerce/Models/Order.php
-
-		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\Order\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -743,18 +731,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Services/OrderStateMachine.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email_enc\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Support/OrderBuyerNotifier.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Support/OrderBuyerNotifier.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -1133,30 +1109,6 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Genealogy/Models/Sponsorship.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Grievance\\Models\\Ticket\:\:\$sla_resolution_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Grievance/Models/Ticket.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Grievance\\Models\\Ticket\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Grievance/Models/Ticket.php
-
-		-
-			message: '#^Method App\\Modules\\Grievance\\Models\\Ticket\:\:events\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Grievance/Models/Ticket.php
-
-		-
-			message: '#^Method App\\Modules\\Grievance\\Models\\TicketEvent\:\:ticket\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Grievance/Models/TicketEvent.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Identity\\Models\\User\:\:\$login_throttle_cleared_at\.$#'
@@ -1549,48 +1501,6 @@ parameters:
 			path: app/Modules/Tax/Models/InvoiceLine.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_rate_bp\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$hsn_code_snapshot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$taxable_value_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
-			message: '#^Binary operation "%%" between float\|int\|string and 1000000 results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Modules/Tax/Services/InvoiceGenerator.php
-
-		-
 			message: '#^Offset ''dist'' on array\{sku\: ''AV\-AFW\-001'', slug\: ''aloe\-face\-wash'', category_slug\: ''personal\-care'', name\: ''arovolife Aloe Face…'', short_description\: ''150 ml\. Gentle…'', description\: ''A gentle aloe vera…'', hsn_code\: ''3401'', image_url\: ''https\://picsum…'', \.\.\.\}\|array\{sku\: ''AV\-FD\-001'', slug\: ''herbal\-green\-tea'', category_slug\: ''health\-care'', name\: ''arovolife Herbal…'', short_description\: ''25 bags\. Tulsi &…'', description\: ''Daily wellness tea…'', hsn_code\: ''0902'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-HW\-001'', slug\: ''gentle\-hand\-wash'', category_slug\: ''personal\-care'', name\: ''arovolife Gentle…'', short_description\: ''Aloe vera & neem\.…'', description\: ''A daily\-use hand…'', hsn_code\: ''3401'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-IB\-001'', slug\: ''immunity\-booster'', category_slug\: ''health\-care'', name\: ''arovolife Immunity…'', short_description\: ''60 capsules\. Zinc,…'', description\: ''Daily immunity…'', hsn_code\: ''3004'', image_url\: ''https\://picsum…'', \.\.\.\}\|array\{sku\: ''AV\-MV\-001'', slug\: ''multi\-vitamin'', category_slug\: ''health\-care'', name\: ''arovolife Multi…'', short_description\: ''30 tablets\. Daily…'', description\: ''Daily multivitamin…'', hsn_code\: ''2936'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-OL\-001'', slug\: ''hair\-essential\-oil'', category_slug\: ''personal\-care'', name\: ''arovolife Hair…'', short_description\: ''Bhringraj & amla\.…'', description\: ''Traditional hair…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-SH\-001'', slug\: ''scalpcare\-shampoo'', category_slug\: ''personal\-care'', name\: ''arovolife ScalpCare…'', short_description\: ''Anti\-dandruff…'', description\: ''Clinically tested…'', hsn_code\: ''3305'', image_url\: ''https\://images…'', \.\.\.\}\|array\{sku\: ''AV\-VCS\-001'', slug\: ''vitamin\-c\-serum'', category_slug\: ''skin\-and\-beauty'', name\: ''arovolife Vitamin C…'', short_description\: ''30 ml\. Brightening…'', description\: ''A lightweight…'', hsn_code\: ''3304'', image_url\: ''https\://picsum…'', \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
@@ -1607,12 +1517,6 @@ parameters:
 			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 1
 			path: database/seeders/SettingsSeeder.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
-			path: tests/Feature/Compliance/CommissionHasProductSaleTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$opened_at\.$#'
@@ -1639,6 +1543,18 @@ parameters:
 			path: tests/Feature/Compliance/RegistrationHasZeroOrdersTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 17
+			path: tests/Feature/Compliance/SeparationOfDutiesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Compliance/SeparationOfDutiesTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -1655,6 +1571,42 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Feature/Console/PurchaseDataResetTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Security/HardeningTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Security/HardeningTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Security/HardeningTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Security/PolicyBackstopTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 23
+			path: tests/Modules/Admin/AdminAdcReportsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminAdcReportsTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$description_html\.$#'
@@ -1923,7 +1875,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 13
+			count: 19
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
@@ -1935,7 +1887,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 10
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
@@ -2027,6 +1979,18 @@ parameters:
 			identifier: method.notFound
 			count: 5
 			path: tests/Modules/Admin/DeveloperRoleTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$docsRoot\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Modules/Admin/PhaseStatusCommandTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Admin/PhaseStatusCommandTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$image_url\.$#'
@@ -2123,6 +2087,18 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Admin/TerminateDistributorTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Analytics/AnalyticsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Analytics/AnalyticsTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -2227,12 +2203,6 @@ parameters:
 			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: tests/Modules/Commerce/CheckoutPaymentTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2257,18 +2227,6 @@ parameters:
 			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$display_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2283,7 +2241,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 6
+			count: 4
 			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
 
 		-
@@ -2313,6 +2271,18 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 8
+			path: tests/Modules/Commerce/FranchiseCommissionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/FranchiseCommissionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Commerce/MembersOnlyCheckoutTest.php
 
@@ -2324,24 +2294,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$self_consumption\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$claimed_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$distributor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: tests/Modules/Commerce/MyOrdersTest.php
@@ -2366,12 +2318,6 @@ parameters:
 
 		-
 			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 3
-			path: tests/Modules/Commerce/MyOrdersTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Commerce/MyOrdersTest.php
@@ -2441,6 +2387,18 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Commerce/OrderNotificationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Commerce/PurchaseOffersTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Commerce/PurchaseOffersTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
@@ -2553,7 +2511,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 5
+			count: 8
 			path: tests/Modules/Compensation/AdminCompensationNavTest.php
 
 		-
@@ -2625,7 +2583,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 7
 			path: tests/Modules/Compensation/AdminDistributorCompTest.php
 
 		-
@@ -2661,19 +2619,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 3
-			path: tests/Modules/Compensation/AdminRbCalculationTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Compensation/AdminRbCalculationTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 6
+			count: 7
 			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
 
 		-
@@ -2697,7 +2643,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 9
 			path: tests/Modules/Compensation/AdminMsbCalculationTest.php
 
 		-
@@ -2721,7 +2667,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 17
+			count: 27
 			path: tests/Modules/Compensation/AdminPlanSettingsTest.php
 
 		-
@@ -2729,6 +2675,18 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Compensation/AdminPlanSettingsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Compensation/AdminRbCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminRbCalculationTest.php
 
 		-
 			message: '#^Call to an undefined method object\:\:down\(\)\.$#'
@@ -2773,20 +2731,8 @@ parameters:
 			path: tests/Modules/Compensation/DropMsbScoreValueMigrationTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\GsbCutoffResult\:\:\$power_side_before\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
-
-		-
 			message: '#^If condition is always true\.$#'
 			identifier: if.alwaysTrue
-			count: 1
-			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
 			count: 1
 			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
 
@@ -2799,13 +2745,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 22
+			count: 27
 			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 24
+			count: 30
 			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
@@ -2827,13 +2773,25 @@ parameters:
 			path: tests/Modules/Compensation/MyBusinessControllerTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Modules/Compliance/AuditLogChainTest.php
+
+		-
+			message: '#^Function alcEntry\(\) has parameter \$details with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compliance/AuditLogChainTest.php
+
+		-
 			message: '#^Function seedActiveDistributor\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Compliance/CoolingOffCancelTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Compliance\\Models\\CoolingOffEvent\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Modules\\Compliance\\Models\\CoolingOffEvent\>\:\:\$reminder_d20_sent_at\.$#'
+			message: '#^Access to an undefined property App\\Modules\\Compliance\\Models\\CoolingOffEvent\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Modules\\Compliance\\Models\\CoolingOffEvent\>\:\:\$reminder_d7_sent_at\.$#'
 			identifier: property.notFound
 			count: 2
 			path: tests/Modules/Compliance/CoolingOffReminderTest.php
@@ -2849,6 +2807,42 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Compliance/CoolingOffReminderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 11
+			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compliance/InactivityTerminationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Compliance/RetentionPolicyTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Consent/ConsentWithdrawalTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
@@ -2925,6 +2919,42 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 27
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 11
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 4
 			path: tests/Modules/Identity/AdminPasswordResetLoginTest.php
 
@@ -2969,6 +2999,12 @@ parameters:
 			identifier: method.notFound
 			count: 6
 			path: tests/Modules/Identity/DistributorIdCardStatsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Identity/EligibilityDeclarationsTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
@@ -3289,6 +3325,36 @@ parameters:
 			path: tests/Modules/Messaging/MessageFlowTest.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$paid_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Payments\\Models\\PaymentIntent\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<\(Closure\)\|null\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Modules/Payments/StubGatewayGuardTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
 			count: 4
@@ -3439,6 +3505,18 @@ parameters:
 			path: tests/Modules/Shared/PiiScrubberProcessorTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Tax/TaxInvoiceTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Pest.php
+
+		-
 			message: '#^Function something\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -3449,15 +3527,3 @@ parameters:
 			identifier: method.alreadyNarrowedType
 			count: 1
 			path: tests/Unit/ExampleTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 23
-			path: tests/Modules/Admin/AdminAdcReportsTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminAdcReportsTest.php

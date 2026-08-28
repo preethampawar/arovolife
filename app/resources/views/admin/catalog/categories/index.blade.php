@@ -28,7 +28,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($categories as $cat)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-gray-500">{{ $loop->iteration }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-medium text-gray-900">{{ $cat->name }}</td>
                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $cat->slug }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $cat->parent?->name ?? '—' }}</td>
@@ -38,11 +38,11 @@
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $cat->status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200' }}">{{ ucfirst($cat->status) }}</span>
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <a href="{{ route('admin.catalog.categories.edit', $cat) }}" class="text-brand-600 hover:text-brand-700 font-medium">Edit</a>
+                        <a href="{{ route('admin.catalog.categories.edit', $cat) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-500">No categories yet.</td></tr>
+                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-600">No categories yet.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-4">
-    <a href="{{ route('admin.contact-inquiries.index') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back to inbox</a>
+    <a href="{{ route('admin.contact-inquiries.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← Back to inbox</a>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -16,7 +16,7 @@
             <div class="flex items-start justify-between gap-4 mb-4">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">{{ $inquiry->name }}</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">
+                    <p class="text-xs text-gray-600 mt-0.5">
                         Submitted {{ $inquiry->created_at->format('d M Y, H:i') }}
                         ({{ $inquiry->created_at->diffForHumans() }})
                     </p>
@@ -32,7 +32,7 @@
                 @endif
             </div>
 
-            <p class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">Message</p>
+            <p class="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-1.5">Message</p>
             <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{{ $inquiry->message }}</div>
         </div>
 
@@ -78,29 +78,29 @@
     {{-- Sidebar (contact details + meta) --}}
     <div class="space-y-4">
         <div class="rounded-2xl border border-gray-200 bg-white p-5">
-            <p class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Contact details</p>
+            <p class="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-2">Contact details</p>
             <dl class="space-y-2 text-sm">
                 <div>
-                    <dt class="text-xs text-gray-500">Email</dt>
+                    <dt class="text-xs text-gray-600">Email</dt>
                     <dd class="text-gray-800">
-                        <a href="mailto:{{ $inquiry->email }}" class="hover:text-brand-600 underline-offset-2 hover:underline">{{ $inquiry->email }}</a>
+                        <a href="mailto:{{ $inquiry->email }}" class="hover:text-brand-800 underline-offset-2 hover:underline">{{ $inquiry->email }}</a>
                     </dd>
                 </div>
                 <div>
-                    <dt class="text-xs text-gray-500">Phone</dt>
+                    <dt class="text-xs text-gray-600">Phone</dt>
                     <dd class="text-gray-800 font-mono">{{ $inquiry->phone_e164 }}</dd>
                 </div>
                 <div>
-                    <dt class="text-xs text-gray-500">Address</dt>
+                    <dt class="text-xs text-gray-600">Address</dt>
                     <dd class="text-gray-800">{{ $inquiry->address }}</dd>
                 </div>
                 <div>
-                    <dt class="text-xs text-gray-500">Purpose</dt>
+                    <dt class="text-xs text-gray-600">Purpose</dt>
                     <dd class="text-gray-800">{{ str_replace('_', ' ', $inquiry->purpose) }}</dd>
                 </div>
                 @if($inquiry->reason)
                 <div>
-                    <dt class="text-xs text-gray-500">Reason</dt>
+                    <dt class="text-xs text-gray-600">Reason</dt>
                     <dd class="text-gray-800">{{ $inquiry->reason }}</dd>
                 </div>
                 @endif
@@ -108,18 +108,18 @@
         </div>
 
         <div class="rounded-2xl border border-gray-200 bg-white p-5">
-            <p class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Submission metadata</p>
+            <p class="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-2">Submission metadata</p>
             <dl class="space-y-2 text-xs">
                 <div>
-                    <dt class="text-gray-500">IP</dt>
+                    <dt class="text-gray-600">IP</dt>
                     <dd class="text-gray-800 font-mono">{{ $inquiry->ip }}</dd>
                 </div>
                 <div>
-                    <dt class="text-gray-500">User agent</dt>
+                    <dt class="text-gray-600">User agent</dt>
                     <dd class="text-gray-800 break-words leading-snug">{{ $inquiry->user_agent ?? '—' }}</dd>
                 </div>
                 <div>
-                    <dt class="text-gray-500">Privacy consent</dt>
+                    <dt class="text-gray-600">Privacy consent</dt>
                     <dd class="text-gray-800">
                         @if($inquiry->privacy_consent_at)
                             <span class="text-leaf-700 font-semibold">✓ Recorded</span> {{ $inquiry->privacy_consent_at->format('d M Y H:i') }}

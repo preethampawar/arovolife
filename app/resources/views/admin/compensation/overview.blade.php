@@ -17,16 +17,16 @@
 <div class="grid grid-cols-2 {{ $gsbOn ? 'lg:grid-cols-4' : 'lg:grid-cols-1' }} gap-3 mb-6">
     @if($gsbOn)
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Today's cut-off
             <x-help-tip text="The 23:59 daily GSB cut-off runs automatically. If it shows Failed, use Manual Controls → Retry." />
         </p>
-        <p class="mt-1 text-lg font-bold {{ $cutoffStatus === 'done' ? 'text-green-700' : ($cutoffStatus === 'failed' ? 'text-red-600' : 'text-amber-600') }}">
+        <p class="mt-1 text-lg font-bold {{ $cutoffStatus === 'done' ? 'text-green-700' : ($cutoffStatus === 'failed' ? 'text-red-600' : 'text-amber-700') }}">
             {{ match($cutoffStatus) { 'done' => '✓ Done', 'failed' => '✗ Failed', default => '⚠ Pending' } }}
         </p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Failed jobs
             <x-help-tip text="Jobs that errored during today's cut-off or payout run. Each links to the affected distributor." />
         </p>
@@ -34,7 +34,7 @@
     </div>
     @endif
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Pending payouts
             <x-help-tip text="Total amount queued for the next Tuesday bank transfer. Does not include wallets below the ₹{{ \App\Modules\Shared\Support\IndianNumber::format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum." />
         </p>
@@ -42,13 +42,13 @@
     </div>
     @if($gsbOn)
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1">
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             GSB this week
             <x-help-tip text="GSB credited to wallets (after admin charge + TDS) since last Tuesday 00:00. Reversals are shown separately — they do not reduce this figure." />
         </p>
         <p class="mt-1 text-lg font-bold text-purple-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gsbThisWeekPaise / 100, 2) }}</p>
         @if($gsbReversalsThisWeekPaise > 0)
-            <p class="text-xs text-amber-600 font-medium mt-0.5">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gsbReversalsThisWeekPaise / 100, 2) }} reversed</p>
+            <p class="text-xs text-amber-700 font-medium mt-0.5">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gsbReversalsThisWeekPaise / 100, 2) }} reversed</p>
         @endif
     </div>
     @endif
@@ -82,21 +82,21 @@
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Today's cut-off — {{ \Illuminate\Support\Carbon::today()->format('d M Y') }}</span>
-        <a href="{{ route('admin.compensation.daily-cutoffs.index') }}" class="text-xs text-brand-600 hover:underline">View all dates →</a>
+        <a href="{{ route('admin.compensation.daily-cutoffs.index') }}" class="text-xs text-brand-700 hover:underline">View all dates →</a>
     </div>
     @if($cutoffTable->isEmpty())
-    <p class="px-5 py-8 text-sm text-gray-400 text-center">No data yet — GSB engine not yet active.</p>
+    <p class="px-5 py-8 text-sm text-gray-600 text-center">No data yet — GSB engine not yet active.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-500 font-medium">ADN</th>
-                    <th class="px-4 py-2 text-right text-gray-500 font-medium">Left BV <x-help-tip text="Left Genos BV accumulated today." /></th>
-                    <th class="px-4 py-2 text-right text-gray-500 font-medium">Right BV</th>
-                    <th class="px-4 py-2 text-center text-gray-500 font-medium">Slab</th>
-                    <th class="px-4 py-2 text-right text-gray-500 font-medium">Net GSB</th>
-                    <th class="px-4 py-2 text-center text-gray-500 font-medium">Status</th>
+                    <th class="px-4 py-2 text-left text-gray-600 font-medium">ADN</th>
+                    <th class="px-4 py-2 text-right text-gray-600 font-medium">Left BV <x-help-tip text="Left Genos BV accumulated today." /></th>
+                    <th class="px-4 py-2 text-right text-gray-600 font-medium">Right BV</th>
+                    <th class="px-4 py-2 text-center text-gray-600 font-medium">Slab</th>
+                    <th class="px-4 py-2 text-right text-gray-600 font-medium">Net GSB</th>
+                    <th class="px-4 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
@@ -106,7 +106,7 @@
                     <td class="px-4 py-2 text-right">@bv($row->left_bv_paise)</td>
                     <td class="px-4 py-2 text-right">@bv($row->right_bv_paise)</td>
                     <td class="px-4 py-2 text-center">{{ $row->slab ?? '—' }}</td>
-                    <td class="px-4 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-400' }}">
+                    <td class="px-4 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
                         {{ $row->net_gsb_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->net_gsb_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-4 py-2 text-center">

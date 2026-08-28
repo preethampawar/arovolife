@@ -224,6 +224,30 @@ The Direct Seller Agreement contemplates further components — the Growth Boost
 
 The Fortune Bonus is published at §7 above and is likewise not yet operative; it becomes payable only on the effective date stated in §7.6.
 
+### 11.1 Franchise commission
+
+A **franchise** is an arovolife-owned pickup and despatch point operated by a Distributor. Stock held at a franchise remains the property of the Company on consignment; the franchise does not buy it, own it or sell it. Orders are placed online in the ordinary way and remain attributed to the referring Distributor — choosing a franchise as a collection point changes where the goods are handed over, and nothing else. A franchise code is separate from an ADN and holds no position in the Genos, so operating one does not change the operator's placement, their team, or what anyone in their team earns.
+
+Where the Company appoints a Distributor to operate a franchise, that Distributor is paid **3% of the net product value of the orders handed over through that franchise**. Net product value means the order subtotal less the GST included in it and less any discount. GST is excluded because it is tax collected on behalf of the government and never Company revenue; delivery charges are excluded because they are a pass-through cost.
+
+An order counts in the calendar month in which its **30-day return window closes**, not the month it was delivered. This is deliberate: it means an order that is cancelled or returned never enters the calculation at all, so no commission has to be recovered from anyone after it has been paid.
+
+This payment is consideration for fulfilment work performed on identified product sales. It is not a joining fee, a recruitment payment, or an earning derived from the appointment of any other Distributor.
+
+> **Not yet operative.** The franchise commission becomes payable on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement, and is additionally subject to written legal-counsel confirmation of the programme's structure. No franchise commission has been paid to any Distributor to date, and no franchise has been appointed.
+
+### 11.2 Redeem points for Distributors holding no rank
+
+This offer is available **exclusively to Distributors who hold no rank**. It is earned entirely from a Distributor's own product purchases — purchases made for their own consumption, not sales made to other people. It cannot be earned by joining, by sponsoring anyone, or by anything other than the Distributor's own purchases.
+
+**Redeem points.** A Distributor who purchases at least 1,000 BV in each of six consecutive calendar months is credited redeem points equal to 20% of the BV accumulated over those six months, at one point per rupee of BV. A further six consecutive months credits another 20%, and completing twelve consecutive months credits an additional 10% of the twelve-month total. A single month below 1,000 BV ends the streak, which then begins again from zero.
+
+A refund reduces the month the returned purchase belongs to, not the month of the refund. A purchase that was returned does not keep a month qualifying.
+
+**Redeem points are not money.** They are a discount entitlement. One point reduces the product value of a future arovolife purchase by ₹1. They carry no cash value, cannot be withdrawn, transferred or exchanged, are not paid out in any circumstance, and cannot be used to pay GST or delivery charges. If an order paid partly in points is cancelled or refunded, the points are restored.
+
+> Redeem points are **not yet operative**. They become available on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement. No redeem point has been credited to any Distributor to date.
+
 ## 12. Changes to this plan
 
 This plan may be amended only with **30 days' prior written notice** to all active Distributors, under §6.2 of the Direct Seller Agreement. An amendment takes effect from the date stated in that notice and never retrospectively: bonuses already calculated are settled at the values that applied on the day they were calculated, and are not recomputed when the plan changes.

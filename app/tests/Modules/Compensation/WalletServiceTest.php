@@ -28,7 +28,7 @@ it('credit adds a positive entry', function () {
 it('debit subtracts from balance', function () {
     $dist = Distributor::factory()->create();
     $svc = app(WalletService::class);
-    $svc->credit($dist->id, 100_000, 'gsb_credit');
+    $svc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
     $svc->debit($dist->id, 40_000, 'payout_debit');
     expect($svc->balancePaise($dist->id))->toBe(60_000);
 });
@@ -36,8 +36,8 @@ it('debit subtracts from balance', function () {
 it('balance is the sum of all signed entries', function () {
     $dist = Distributor::factory()->create();
     $svc = app(WalletService::class);
-    $svc->credit($dist->id, 552_900, 'gsb_credit');    // ₹5,529
-    $svc->credit($dist->id, 27_640, 'mb_credit');      // ₹276.40
+    $svc->credit($dist->id, 552_900, 'gsb_credit', walletRef(), 'test_reference');    // ₹5,529
+    $svc->credit($dist->id, 27_640, 'mb_credit', walletRef(), 'test_reference');      // ₹276.40
     $svc->debit($dist->id, 552_900, 'payout_debit');
     expect($svc->balancePaise($dist->id))->toBe(27_640);
 });

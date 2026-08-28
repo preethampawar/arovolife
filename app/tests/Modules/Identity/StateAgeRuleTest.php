@@ -10,6 +10,11 @@ use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 /**
  * State-aware age rule (US-1.12 + DSR / Maharashtra Direct Selling rules).
  * Default minimum age is 18; specific states can override via the

@@ -69,6 +69,24 @@ return [
             'throw' => true,
         ],
 
+        // Private grievance-evidence bucket. Same reasoning as `kyc` above and
+        // the same S3 posture: a complainant attaching proof of a failed payout
+        // or a KYC mismatch is uploading exactly the documents the KYC bucket
+        // exists to protect, so it gets the same treatment rather than a local
+        // disk. Never web-served — streamed through an RBAC + audit-logged route.
+        'grievance' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'ap-south-1'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => 'grievance',
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

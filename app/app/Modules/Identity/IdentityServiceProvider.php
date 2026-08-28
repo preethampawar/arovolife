@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity;
 
+use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Genealogy\Events\DistributorRegistered;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Events\KycResubmitted;
 use App\Modules\Identity\Listeners\SendKycResubmittedMails;
 use App\Modules\Identity\Listeners\SendRegistrationSubmittedMails;
+use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Policies\DistributorPolicy;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\TeamStatsService;
 use App\Modules\Identity\Services\WizardStateService;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 final class IdentityServiceProvider extends ServiceProvider
@@ -27,12 +31,15 @@ final class IdentityServiceProvider extends ServiceProvider
             return new RegistrationService(
                 new PlacementEngine($app['db'], $app['events'], $app->make(TeamStatsService::class)),
                 $app['db'],
+                $app->make(ConsentDocuments::class),
             );
         });
     }
 
     public function boot(): void
     {
+        Gate::policy(Distributor::class, DistributorPolicy::class);
+
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
         // Registration / resubmission email wiring. Listeners send a welcome

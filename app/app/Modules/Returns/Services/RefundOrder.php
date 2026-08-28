@@ -7,6 +7,7 @@ namespace App\Modules\Returns\Services;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Returns\Events\OrderRefundApproved;
@@ -46,6 +47,11 @@ use RuntimeException;
  *   general_buyback / termination_buyback, saleable (refund_gst=false):
  *     Dr revenue.sales       [taxable]
  *     Cr liability.refund_payable [taxable]
+ *
+ * Redeemed points reduce the payable in every case and are credited back to
+ * revenue.discounts, undoing the contra-revenue debit `markShipped` posted when
+ * they were spent. When they cover the whole net product value the payable is
+ * zero and its line is omitted rather than posted — see below.
  *
  * Every case is balanced by construction (verified by LedgerPoster).
  */
@@ -88,15 +94,33 @@ final class RefundOrder
         $gstRefundPaise = $policy['refund_gst'] ? $order->gst_paise : 0;
         $shippingRefundPaise = $isCoolingOff ? $order->shipping_paise : 0;
         $discountPaise = $isCoolingOff ? $order->discount_paise : 0;
-        $netRefundPaise = $taxable + $gstRefundPaise + $shippingRefundPaise - $discountPaise;
+        // Redeem points were never cash, so they must never come back as cash.
+        // Without this line a buyer could pay ₹180 cash plus 1,000 points on a
+        // ₹1,180 order, cancel inside the cooling-off window and receive ₹1,180
+        // — turning a non-withdrawable discount entitlement into a cash-out
+        // route, and moving company money against consideration never received.
+        // The points side is returned in points below.
+        $redeemPointsPaise = (int) ($order->redeem_points_paise ?? 0);
+        $netRefundPaise = $taxable + $gstRefundPaise + $shippingRefundPaise - $discountPaise - $redeemPointsPaise;
 
         $idempotencyKey = "refund:{$order->id}";
 
         $this->db->transaction(function () use (
             $order, $returnRequest, $reason, $isCoolingOff,
             $taxable, $gstRefundPaise, $shippingRefundPaise, $discountPaise, $netRefundPaise,
-            $idempotencyKey, $actorUserId,
+            $redeemPointsPaise, $idempotencyKey, $actorUserId,
         ): void {
+            // Give the points back, in points, inside the same transaction that
+            // reverses the money. Idempotent, so a retried refund cannot mint
+            // them. Published §11.2 promises restoration; before this nothing
+            // called it and the points were simply destroyed.
+            if ($redeemPointsPaise > 0) {
+                app(RedeemPointsService::class)->refundForOrder(
+                    $order->id,
+                    'Restored on refund of order '.$order->order_no,
+                );
+            }
+
             // Build balanced ledger reversal lines.
             $lines = [
                 ['account' => 'revenue.sales', 'side' => 'debit', 'amount_paise' => $taxable],
@@ -115,7 +139,34 @@ final class RefundOrder
                 $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $discountPaise];
             }
 
-            $lines[] = ['account' => 'liability.refund_payable', 'side' => 'credit', 'amount_paise' => $netRefundPaise];
+            // The same reversal for points. `markShipped` debited
+            // revenue.discounts when they were spent, so the refund credits it
+            // back — and the asymmetry with $discountPaise above is deliberate:
+            // the coupon is only unwound inside the cooling-off window, while
+            // the cash reduction for points is unconditional, so its
+            // contra-reversal must be unconditional too.
+            //
+            // Without this line debits and credits differ by exactly
+            // $redeemPointsPaise, LedgerPoster throws inside the transaction,
+            // and a distributor who paid partly in points cannot cancel at all
+            // — the statutory one-click cooling-off refund would fail outright
+            // for those orders.
+            if ($redeemPointsPaise > 0) {
+                $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $redeemPointsPaise];
+            }
+
+            // No cash went out, so no cash comes back. Not a corner case:
+            // checkout caps points at the net product value and the checkout
+            // screen offers exactly that cap as the input's max, so a
+            // distributor who redeems the maximum offered pays nothing in cash
+            // and lands here. The LedgerPoster rejects a zero-amount line, so
+            // an unguarded credit rolls the whole refund back — including the
+            // points restoration — and a fully points-settled order could never
+            // be bought back at all (T&C §8, R-05). The entry still balances
+            // without it: Dr revenue.sales against Cr revenue.discounts.
+            if ($netRefundPaise > 0) {
+                $lines[] = ['account' => 'liability.refund_payable', 'side' => 'credit', 'amount_paise' => $netRefundPaise];
+            }
 
             $this->ledger->post(
                 sourceModule: 'Returns',

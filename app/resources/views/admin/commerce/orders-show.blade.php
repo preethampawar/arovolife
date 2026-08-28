@@ -16,12 +16,12 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Product</th>
-                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Qty</th>
-                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Price</th>
-                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">BV</th>
-                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">GST</th>
-                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Total</th>
+                        <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase">Product</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Qty</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Price</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">BV</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">GST</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Total</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -29,12 +29,12 @@
                     <tr>
                         <td class="py-2">
                             <p class="text-gray-900 font-medium">{{ $it->product_name_snapshot }}</p>
-                            <p class="text-xs text-gray-500 font-mono">{{ $it->variant_sku_snapshot }} · HSN {{ $it->hsn_code_snapshot }}</p>
+                            <p class="text-xs text-gray-600 font-mono">{{ $it->variant_sku_snapshot }} · HSN {{ $it->hsn_code_snapshot }}</p>
                         </td>
                         <td class="py-2 text-right">{{ $it->qty }}</td>
                         <td class="py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($it->unit_price_paise / 100, 2) }}</td>
                         <td class="py-2 text-right text-brand-700">{{ \App\Modules\Shared\Support\IndianNumber::format($it->lineBvPaise() / 100, 0) }} BV</td>
-                        <td class="py-2 text-right text-xs text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($it->gst_paise / 100, 2) }} ({{ $it->gst_rate_bp / 100 }}%)</td>
+                        <td class="py-2 text-right text-xs text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($it->gst_paise / 100, 2) }} ({{ $it->gst_rate_bp / 100 }}%)</td>
                         <td class="py-2 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($it->line_total_paise / 100, 2) }}</td>
                     </tr>
                     @endforeach
@@ -75,7 +75,7 @@
                         <input name="ship_tracking_no" type="text" maxlength="120" placeholder="e.g. 1234567890"
                             class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
-                    <button class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium">Mark as Shipped</button>
+                    <button class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium">Mark as Shipped</button>
                 </form>
                 @endif
 
@@ -99,7 +99,7 @@
                 @endif
 
                 @if(! in_array($order->status, ['placed', 'paid', 'shipped'], true))
-                <p class="text-sm text-gray-500">No fulfilment actions available in status <strong>{{ $order->status }}</strong>.</p>
+                <p class="text-sm text-gray-600">No fulfilment actions available in status <strong>{{ $order->status }}</strong>.</p>
                 @endif
             </div>
         </div>
@@ -107,9 +107,9 @@
 
     <div class="space-y-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Status</p>
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Status</p>
             <p class="text-lg font-semibold text-gray-900 capitalize">{{ str_replace('_', ' ', $order->status) }}</p>
-            <div class="mt-4 space-y-1 text-xs text-gray-500">
+            <div class="mt-4 space-y-1 text-xs text-gray-600">
                 @if($order->placed_at)<div>Placed {{ $order->placed_at->format('d M Y H:i') }}</div>@endif
                 @if($order->paid_at)<div>Paid {{ $order->paid_at->format('d M Y H:i') }}</div>@endif
                 @if($order->shipped_at)<div>Shipped {{ $order->shipped_at->format('d M Y H:i') }}</div>@endif
@@ -120,32 +120,32 @@
         </div>
 
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Payment</p>
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Payment</p>
             <p class="text-sm font-medium text-gray-900">Online</p>
         </div>
 
         @if($order->coolingOff)
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Cooling-Off</p>
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Cooling-Off</p>
             <p class="text-sm"><strong class="text-gray-900">{{ $order->coolingOff->daysRemaining() }} days</strong> remaining</p>
-            <p class="text-xs text-gray-500 mt-1">Closes {{ $order->coolingOff->ends_at->format('d M Y') }}</p>
-            <p class="text-xs text-gray-500 mt-1">Status: <span class="font-mono">{{ $order->coolingOff->status }}</span></p>
+            <p class="text-xs text-gray-600 mt-1">Closes {{ $order->coolingOff->ends_at->format('d M Y') }}</p>
+            <p class="text-xs text-gray-600 mt-1">Status: <span class="font-mono">{{ $order->coolingOff->status }}</span></p>
         </div>
         @endif
 
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Customer</p>
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Customer</p>
             <p class="text-sm font-medium text-gray-900">{{ $order->customer->display_name ?? '—' }}</p>
-            <p class="text-xs text-gray-500 break-all">{{ $order->customer->email_enc ?? '—' }}</p>
+            <p class="text-xs text-gray-600 break-all">{{ $order->customer->email_enc ?? '—' }}</p>
         </div>
 
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Attribution</p>
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Attribution</p>
             @if($order->attributed_distributor_id)
-            <p class="text-sm font-mono text-brand-600">{{ $order->distributor->adn ?? '#' . $order->attributed_distributor_id }}</p>
-            <p class="text-xs text-gray-500 mt-1">Source: {{ $order->attribution_source }}</p>
+            <p class="text-sm font-mono text-brand-700">{{ $order->distributor->adn ?? '#' . $order->attributed_distributor_id }}</p>
+            <p class="text-xs text-gray-600 mt-1">Source: {{ $order->attribution_source }}</p>
             @else
-            <p class="text-sm italic text-gray-400">House sale (no referrer)</p>
+            <p class="text-sm italic text-gray-600">House sale (no referrer)</p>
             @endif
             @if($order->self_consumption)
             <p class="text-xs text-amber-700 mt-1">Self-consumption (BV only)</p>
@@ -153,7 +153,7 @@
         </div>
 
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Shipping</p>
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Shipping</p>
             <p class="text-sm text-gray-700">
                 {{ $order->ship_name }}<br>
                 {{ $order->ship_phone_e164 }}<br>

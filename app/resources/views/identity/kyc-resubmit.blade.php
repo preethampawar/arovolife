@@ -45,7 +45,7 @@
 
     <div class="rounded-2xl border border-gray-200 bg-white p-6 mb-6">
         <p class="text-base font-semibold text-gray-800 mb-1.5">Upload replacement documents</p>
-        <p class="text-xs text-gray-500 mb-4">
+        <p class="text-xs text-gray-600 mb-4">
             Re-upload only the documents that need correction. Anything you don't upload here stays
             as it was. Accepted formats: JPEG, PNG or PDF — max 5 MB per file. Your account will move
             straight back into the review queue.
@@ -76,7 +76,7 @@
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Cancelled cheque / passbook page <x-help-tip text="upload a cancelled cheque or passbook page that shows your bank account and ifsc clearly." /> <span class="text-gray-400">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Cancelled cheque / passbook page <x-help-tip text="upload a cancelled cheque or passbook page that shows your bank account and ifsc clearly." /> <span class="text-gray-600">(optional)</span></label>
                 <input type="file" name="cheque_doc" accept=".jpg,.jpeg,.png,.pdf"
                     class="w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:px-3 file:py-1.5 file:text-sm file:cursor-pointer hover:file:bg-brand-100">
             </div>
@@ -94,20 +94,20 @@
             </div>
 
             <button type="submit"
-                class="w-full sm:w-auto rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-2.5 text-sm transition-colors">
+                class="w-full sm:w-auto rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-6 py-2.5 text-sm transition-colors">
                 Resubmit for review
             </button>
         </form>
     </div>
 
-    <p class="text-xs text-gray-500 text-center">
-        Need help? Write to <a href="mailto:support@arovolife.com" class="text-brand-600 hover:text-brand-700 underline">support@arovolife.com</a>
-        or visit our <a href="/p/grievance" class="text-brand-600 hover:text-brand-700 underline">grievance page</a>.
+    <p class="text-xs text-gray-600 text-center">
+        Need help? Write to <a href="mailto:support@arovolife.com" class="text-brand-700 hover:text-brand-800 underline">support@arovolife.com</a>
+        or visit our <a href="/p/grievance" class="text-brand-700 hover:text-brand-800 underline">grievance page</a>.
     </p>
 
     <form method="POST" action="{{ route('logout') }}" class="text-center mt-4">
         @csrf
-        <button type="submit" class="text-xs text-gray-500 hover:text-gray-700 underline">Sign out</button>
+        <button type="submit" class="text-xs text-gray-600 hover:text-gray-700 underline">Sign out</button>
     </form>
 </div>
 @endsection

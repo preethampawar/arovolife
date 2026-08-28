@@ -10,17 +10,17 @@
         {{-- "What's changing" diff, populated from the form's data-confirm-changes
              JSON (set by the editable-section component). Hidden when absent. --}}
         <div id="confirm-modal-changes-wrap" class="hidden mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">What's changing</p>
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-600 mb-1">What's changing</p>
             <ul id="confirm-modal-changes" class="space-y-1 text-sm"></ul>
         </div>
-        <p id="confirm-modal-impact" class="text-xs text-gray-500 mb-5 leading-relaxed"></p>
+        <p id="confirm-modal-impact" class="text-xs text-gray-600 mb-5 leading-relaxed"></p>
         <div class="flex justify-end gap-3">
             <button type="button" id="confirm-modal-cancel"
                 class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                 Cancel
             </button>
             <button type="button" id="confirm-modal-ok"
-                class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+                class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
                 Confirm
             </button>
         </div>
@@ -55,10 +55,10 @@
             name.className = 'font-medium text-gray-700';
             name.textContent = c.label + ': ';
             var from = document.createElement('span');
-            from.className = 'text-gray-400 line-through';
+            from.className = 'text-gray-600 line-through';
             from.textContent = c.from;
             var arrow = document.createElement('span');
-            arrow.className = 'mx-1 text-gray-400';
+            arrow.className = 'mx-1 text-gray-600';
             arrow.textContent = '→';
             var to = document.createElement('span');
             to.className = 'font-semibold text-gray-900';

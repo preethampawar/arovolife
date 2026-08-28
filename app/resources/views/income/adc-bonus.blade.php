@@ -15,13 +15,13 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">Net ADC Bonus earned (page)</p>
+            <p class="text-xs text-gray-600 mb-1">Net ADC Bonus earned (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">Months credited</p>
+            <p class="text-xs text-gray-600 mb-1">Months credited</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}
             </p>
@@ -31,14 +31,14 @@
     {{-- Filter --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">From (YYYY-MM)</label>
+            <label class="block text-xs text-gray-600 mb-1">From (YYYY-MM)</label>
             <input type="month" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">To (YYYY-MM)</label>
+            <label class="block text-xs text-gray-600 mb-1">To (YYYY-MM)</label>
             <input type="month" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
         @if(request('from') || request('to'))
             <a href="{{ route('income.adc-bonus') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
@@ -46,8 +46,8 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">No ADC Bonus yet.</p>
-            <p class="text-sm text-gray-400 mt-1">ADC Bonus is credited when you are assigned to an approved Arete Development Center and your center's members generate BV.</p>
+            <p class="text-gray-600 font-medium">No ADC Bonus yet.</p>
+            <p class="text-sm text-gray-600 mt-1">ADC Bonus is credited when you are assigned to an approved Arete Development Center and your center's members generate BV.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -77,7 +77,7 @@
                         <td class="px-4 py-3 text-right text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($row->member_count) }}</td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">@bv($row->total_member_bv_paise)</td>
                         <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">

@@ -18,9 +18,9 @@
         {{-- Header matches the homepage hero slider: small-caps eyebrow,
              bold sans headline, accent in solid brand colour. --}}
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">Welcome back</p>
+            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Welcome back</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
-                Sign in to your <span class="text-brand-600">arovolife</span> account.
+                Sign in to your <span class="text-brand-700">arovolife</span> account.
             </h1>
         </div>
 
@@ -55,14 +55,14 @@
                         class="input-refined">
                     <p class="mt-1.5 text-[11px] text-slate-500">
                         Sign in with your <strong>9-digit ADN</strong>.
-                        <a href="{{ route('find-my-id.show') }}" class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">Forgot your ADN?</a>
+                        <a href="{{ route('find-my-id.show') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Forgot your ADN?</a>
                     </p>
                 </div>
 
                 <div class="lift-in" style="animation-delay: 380ms;">
                     <label for="password" class="flex items-baseline justify-between mb-1.5">
                         <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">Password</span>
-                        <a href="{{ route('password.request') }}" class="text-[11px] text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">Forgot?</a>
+                        <a href="{{ route('password.request') }}" class="text-[11px] text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Forgot?</a>
                     </label>
                     <input id="password" name="password" type="password" autocomplete="current-password" required
                         placeholder="••••••••"
@@ -79,7 +79,7 @@
                             class="mt-0.5 rounded border-slate-300 text-brand-500 focus:ring-brand-500/40">
                         <span>
                             <span class="font-medium text-slate-700">Primary account holder</span>
-                            <span class="block text-[11px] text-slate-400 leading-snug mt-0.5">
+                            <span class="block text-[11px] text-slate-600 leading-snug mt-0.5">
                                 Joint (couple) ADNs are shared by two people. Leave this checked for the
                                 primary holder, or uncheck to sign in as the spouse.
                             </span>
@@ -95,7 +95,7 @@
                 </div>
 
                 <button type="submit"
-                    class="btn-cta group w-full rounded-full bg-brand-500 hover:bg-brand-600 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
+                    class="btn-cta group w-full rounded-full bg-brand-700 hover:bg-brand-800 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                     style="animation-delay: 500ms;">
                     <span class="inline-flex items-center justify-center gap-2.5">
                         Sign in
@@ -110,13 +110,13 @@
                 <span class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></span>
                 <p class="text-[12px] text-slate-500">
                     New to arovolife?
-                    <a href="{{ route('contact.show') }}" class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">Talk to our team →</a>
+                    <a href="{{ route('contact.show') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Talk to our team →</a>
                 </p>
                 <span class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></span>
             </div>
         </div>
 
-        <p class="mt-8 text-center text-[11px] text-slate-400 lift-in" style="animation-delay: 660ms;">
+        <p class="mt-8 text-center text-[11px] text-slate-600 lift-in" style="animation-delay: 660ms;">
             Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
         </p>
     </div>

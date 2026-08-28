@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $qty
  * @property int $product_variant_id
+ * @property string $hsn_code_snapshot
+ * @property int $gst_rate_bp
+ * @property int $taxable_value_paise
+ * @property int $gst_paise
+ * @property int $line_total_paise
+ * @property int $unit_price_paise
  * @property-read ProductVariant|null $variant
  */
 final class OrderItem extends Model

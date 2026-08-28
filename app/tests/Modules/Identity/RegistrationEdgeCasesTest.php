@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 /**
  * REC-01 .. REC-05 — registration-flow edge cases that don't fit in
  * the dedicated test files (RegistrationFlowTest covers happy/sad

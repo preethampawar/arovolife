@@ -46,22 +46,22 @@
                             @endif
                         </p>
                         @if($center->location)
-                            <p class="text-xs text-gray-500 mt-0.5">{{ $center->location }}</p>
+                            <p class="text-xs text-gray-600 mt-0.5">{{ $center->location }}</p>
                         @endif
                     </div>
                 </label>
                 @endforeach
             </div>
 
-            <p class="text-xs text-gray-400">
+            <p class="text-xs text-gray-600">
                 Your Arete centre assignment can be changed later from your profile (OTP required).
             </p>
         @endif
 
         <div class="flex items-center justify-between pt-4">
-            <a href="{{ route('register.documents') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
+            <a href="{{ route('register.documents') }}" class="text-sm text-gray-600 hover:text-gray-700">← Back</a>
             <button type="submit"
-                    class="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-sm transition-colors">
+                    class="px-6 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-sm transition-colors">
                 Continue →
             </button>
         </div>

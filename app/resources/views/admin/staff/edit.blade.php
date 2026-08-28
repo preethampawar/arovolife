@@ -14,19 +14,19 @@
         <h3 class="font-semibold text-gray-800 mb-3">{{ $staff->full_name ?: '—' }}</h3>
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-                <dt class="text-xs text-gray-500">Email</dt>
+                <dt class="text-xs text-gray-600">Email</dt>
                 <dd class="text-gray-800">{{ $staff->email }}</dd>
             </div>
             <div>
-                <dt class="text-xs text-gray-500">Phone</dt>
+                <dt class="text-xs text-gray-600">Phone</dt>
                 <dd class="text-gray-800 font-mono text-xs">{{ $staff->phone_e164 ?: '—' }}</dd>
             </div>
             <div>
-                <dt class="text-xs text-gray-500">Status</dt>
+                <dt class="text-xs text-gray-600">Status</dt>
                 <dd class="text-gray-800">{{ \App\Modules\Identity\Models\User::STATUS_LABELS[$staff->status] ?? ucfirst((string) $staff->status) }}</dd>
             </div>
             <div>
-                <dt class="text-xs text-gray-500">Last login</dt>
+                <dt class="text-xs text-gray-600">Last login</dt>
                 <dd class="text-gray-800">{{ $staff->last_login_at?->format('d M Y, h:i A') ?? 'Never' }}</dd>
             </div>
         </dl>
@@ -47,7 +47,7 @@
         data-confirm-impact="Immediately changes what this person can see and do in the admin console. Audit-logged with the before/after role list.">
         @csrf
         <h3 class="font-semibold text-gray-800 mb-1">Roles</h3>
-        <p class="text-xs text-gray-500 mb-4">Ticked roles replace the current set. At least one is required.</p>
+        <p class="text-xs text-gray-600 mb-4">Ticked roles replace the current set. At least one is required.</p>
         <div class="space-y-2 mb-4">
             @foreach($roles as $role)
             <label class="flex items-center gap-2 text-sm text-gray-700">
@@ -74,7 +74,7 @@
             : 'Blocks this person from signing in immediately. Their audit history is retained and the account can be reactivated later.' }}">
         @csrf
         <h3 class="font-semibold text-gray-800 mb-1">Account status</h3>
-        <p class="text-xs text-gray-500 mb-4">
+        <p class="text-xs text-gray-600 mb-4">
             Deactivating blocks sign-in without deleting anything — the audit trail stays intact.
         </p>
         <input type="hidden" name="status" value="{{ $staff->status === 'frozen' ? 'active' : 'frozen' }}">

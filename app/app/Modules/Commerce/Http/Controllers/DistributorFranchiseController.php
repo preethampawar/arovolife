@@ -28,7 +28,7 @@ final class DistributorFranchiseController extends Controller
         }
 
         $existing = Franchise::where('operator_distributor_id', $distributor->id)
-            ->whereIn('status', [Franchise::STATUS_PENDING_APPROVAL, Franchise::STATUS_ACTIVE])
+            ->whereIn('status', [Franchise::STATUS_PENDING, Franchise::STATUS_ACTIVE])
             ->first();
 
         if ($existing) {
@@ -53,7 +53,7 @@ final class DistributorFranchiseController extends Controller
 
         abort_if(
             Franchise::where('operator_distributor_id', $distributor->id)
-                ->whereIn('status', [Franchise::STATUS_PENDING_APPROVAL, Franchise::STATUS_ACTIVE])
+                ->whereIn('status', [Franchise::STATUS_PENDING, Franchise::STATUS_ACTIVE])
                 ->exists(),
             422,
             'You already have an active or pending franchise application.',
@@ -70,9 +70,15 @@ final class DistributorFranchiseController extends Controller
 
         $code = app(FranchiseCodeGenerator::class)->generate();
 
+        // `name` is NOT NULL on the franchises table. Applicants do not choose
+        // it — admin renames on approval — so derive a stable placeholder from
+        // the operator and the proposed location.
+        $operatorName = $distributor->user?->full_name ?? $distributor->adn;
+
         Franchise::create([
             'operator_distributor_id' => $distributor->id,
-            'status' => Franchise::STATUS_PENDING_APPROVAL,
+            'name' => mb_substr($operatorName.' — '.$validated['district'], 0, 160),
+            'status' => Franchise::STATUS_PENDING,
             'applied_at' => now(),
             'code' => $code,
             'address_line' => $validated['address_line'],

@@ -14,6 +14,11 @@ use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    // Registration records a consent against the published document text.
+    seedConsentDocuments();
+});
+
 /**
  * Password policy (T-2.3, relaxed from the master plan's 12-char target
  * down to 8 chars per project decision — entropy/HIBP/lockout still apply):

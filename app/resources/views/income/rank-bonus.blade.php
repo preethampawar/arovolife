@@ -23,26 +23,26 @@
         <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">My rank status</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Ranks are checked once a month. Everything below is your own recorded result.</p>
+                <p class="text-xs text-gray-600 mt-0.5">Ranks are checked once a month. Everything below is your own recorded result.</p>
             </div>
             <div class="flex flex-wrap gap-3">
                 <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
-                    <p class="text-[11px] uppercase tracking-wider text-gray-500 flex items-center justify-center gap-1">
+                    <p class="text-[11px] uppercase tracking-wider text-gray-600 flex items-center justify-center gap-1">
                         Current rank
                         <x-help-tip text="The rank you achieved this month, or last month while this month is still being counted." />
                     </p>
                     <p class="text-base font-bold text-indigo-700 mt-1">{{ $rankStatus->currentRankName() ?? 'No rank yet' }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
-                    <p class="text-[11px] uppercase tracking-wider text-gray-500 flex items-center justify-center gap-1">
+                    <p class="text-[11px] uppercase tracking-wider text-gray-600 flex items-center justify-center gap-1">
                         Highest rank
                         <x-help-tip text="The highest rank you have ever achieved." />
                     </p>
                     <p class="text-base font-bold text-purple-700 mt-1">{{ $rankStatus->highestRankName() ?? '—' }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
-                    <p class="text-[11px] uppercase tracking-wider text-gray-500">This month</p>
-                    <p class="text-base font-bold mt-1 {{ $rankStatus->qualifiedThisMonth ? 'text-green-700' : 'text-gray-400' }}">
+                    <p class="text-[11px] uppercase tracking-wider text-gray-600">This month</p>
+                    <p class="text-base font-bold mt-1 {{ $rankStatus->qualifiedThisMonth ? 'text-green-700' : 'text-gray-600' }}">
                         {{ $rankStatus->qualifiedThisMonth ? ($rankStatus->rankNames[$rankStatus->thisMonthRank] ?? 'Achieved') : 'Not yet achieved' }}
                     </p>
                 </div>
@@ -99,17 +99,17 @@
                             @endif
                         </span>
                         <span class="font-mono {{ $requirement->met() ? 'text-green-700 font-semibold' : 'text-gray-600' }}">
-                            {{ $currentLabel }} <span class="text-gray-400">of</span> {{ $requiredLabel }}
+                            {{ $currentLabel }} <span class="text-gray-600">of</span> {{ $requiredLabel }}
                             @if($requirement->met()) <span class="ml-1">✓</span> @endif
                         </span>
                     </div>
                     <div class="w-full bg-gray-100 rounded-full h-1.5">
-                        <div class="{{ $requirement->met() ? 'bg-green-500' : 'bg-brand-500' }} h-1.5 rounded-full" style="width:{{ $requirement->percent() }}%"></div>
+                        <div class="{{ $requirement->met() ? 'bg-green-500' : 'bg-brand-700' }} h-1.5 rounded-full" style="width:{{ $requirement->percent() }}%"></div>
                     </div>
                 </div>
                 @endforeach
             </div>
-            <p class="text-xs text-gray-500 mt-3">
+            <p class="text-xs text-gray-600 mt-3">
                 These are the plan's published conditions for {{ $rankStatus->nextRankName() }} shown next to your own current figures. Meeting them is not a guarantee of any income.
             </p>
         </div>
@@ -125,7 +125,7 @@
         <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">AO-GO offer</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Achieve Once – Get Once</p>
+                <p class="text-xs text-gray-600 mt-0.5">Achieve Once – Get Once</p>
             </div>
             <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 border border-teal-100 text-sm text-teal-800">
                 Used {{ $aogoStatus->usesUsed }} of {{ $aogoStatus->usesMax }}
@@ -151,7 +151,7 @@
             @foreach($aogoStatus->conditions as $condition)
             <li class="flex items-start gap-2 text-sm">
                 <span class="mt-0.5 {{ $condition->met ? 'text-green-600' : 'text-gray-300' }}">{{ $condition->met ? '✓' : '○' }}</span>
-                <span class="{{ $condition->met ? 'text-gray-700' : 'text-gray-500' }} flex items-center gap-1">
+                <span class="{{ $condition->met ? 'text-gray-700' : 'text-gray-600' }} flex items-center gap-1">
                     {{ $condition->label }}
                     @if($condition->note)
                         <x-help-tip :text="$condition->note" />
@@ -160,7 +160,7 @@
             </li>
             @endforeach
         </ul>
-        <p class="text-xs text-gray-500 mt-3">
+        <p class="text-xs text-gray-600 mt-3">
             These conditions are checked once a month, when the rank calculation runs. A month that misses them uses nothing —
             the offer stays available for a later month. Meeting them is not a guarantee of any income.
         </p>
@@ -171,20 +171,20 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 {{ ($aogoUsed ?? 0) > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">Net Rank Bonus earned (page)</p>
+            <p class="text-xs text-gray-600 mb-1">Net Rank Bonus earned (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1">Months credited</p>
+            <p class="text-xs text-gray-600 mb-1">Months credited</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}
             </p>
         </div>
         @if(($aogoUsed ?? 0) > 0)
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-500 mb-1 flex items-center justify-center gap-1">
+            <p class="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
                 AO-GO offer used
                 <x-help-tip text="Achieve Once – Get Once: if you lose your rank, you can earn 5 points in the Rank-1 pool up to {{ $aogoMax }} times in your lifetime — never in consecutive months, and only after re-achieving a rank between uses." />
             </p>
@@ -196,14 +196,14 @@
     {{-- Filter --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">From (YYYY-MM)</label>
+            <label class="block text-xs text-gray-600 mb-1">From (YYYY-MM)</label>
             <input type="month" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">To (YYYY-MM)</label>
+            <label class="block text-xs text-gray-600 mb-1">To (YYYY-MM)</label>
             <input type="month" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
         @if(request('from') || request('to'))
             <a href="{{ route('income.rank-bonus') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
@@ -211,8 +211,8 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">No Rank Bonus yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Your Rank Bonus will appear here once you qualify for a rank in a calendar month.</p>
+            <p class="text-gray-600 font-medium">No Rank Bonus yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Your Rank Bonus will appear here once you qualify for a rank in a calendar month.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -268,8 +268,8 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-500">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">

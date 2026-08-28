@@ -30,7 +30,7 @@
 
     <div class="relative grid md:grid-cols-[1fr_auto] items-center gap-6">
         <div>
-            <p class="text-xs font-semibold text-brand-600 uppercase tracking-wider mb-2">arovolife shopping mall</p>
+            <p class="text-xs font-semibold text-brand-700 uppercase tracking-wider mb-2">arovolife shopping mall</p>
             <h1 class="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-3">
                 Quality essentials, <span class="text-leaf-600">delivered honestly</span>.
             </h1>
@@ -135,8 +135,8 @@
      pill; the rest are neutral outlined pills that tint on hover. --}}
 @php
     $pillBase   = 'shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40';
-    $pillActive = 'bg-brand-500 text-white border-brand-500 shadow-sm shadow-brand-500/30';
-    $pillIdle   = 'bg-white text-gray-600 border-gray-200 hover:border-brand-300 hover:text-brand-700 hover:bg-brand-50';
+    $pillActive = 'bg-brand-700 text-white border-brand-500 shadow-sm shadow-brand-500/30';
+    $pillIdle   = 'bg-white text-gray-600 border-gray-200 hover:border-brand-300 hover:text-brand-800 hover:bg-brand-50';
 @endphp
 <div class="hidden lg:flex items-center gap-2 mb-8 overflow-x-auto pb-1">
     <a href="{{ route('shop.index') }}"
@@ -171,7 +171,7 @@
             <div class="flex items-end justify-between gap-3 mb-4">
                 <h2 class="text-lg font-bold text-gray-900">{{ $group['category']->name }}</h2>
                 <a href="{{ route('shop.index', ['category' => $group['category']->slug]) }}"
-                   class="text-sm font-medium text-brand-600 hover:text-brand-700 whitespace-nowrap">View all →</a>
+                   class="text-sm font-medium text-brand-700 hover:text-brand-800 whitespace-nowrap">View all →</a>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 @foreach($group['products'] as $product)
@@ -190,7 +190,7 @@
     </div>
 
     @if($products->isEmpty())
-    <div class="bg-white rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center text-gray-500">
+    <div class="bg-white rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center text-gray-600">
         <span class="text-5xl block mb-3 opacity-50">🛒</span>
         No products available yet — check back soon.
     </div>

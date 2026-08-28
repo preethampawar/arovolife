@@ -69,7 +69,7 @@
 
     {{-- Bank details (optional) --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h3 class="font-semibold text-gray-800 mb-1">Bank details <span class="text-gray-500 text-sm font-normal">(optional)</span></h3>
+        <h3 class="font-semibold text-gray-800 mb-1">Bank details <span class="text-gray-600 text-sm font-normal">(optional)</span></h3>
         <p class="text-xs text-gray-700 mb-4">
             The current account number is encrypted at rest. To rotate it,
             enter a new account number; leave it blank to keep the existing
@@ -87,7 +87,7 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
             <div>
-                <label class="block text-xs text-gray-700 mb-1" for="bank_ifsc">Bank IFSC <span class="text-gray-500">(clear to detach bank)</span> <x-help-tip text="The 11-character IFSC of the distributor's bank branch; clearing this field detaches the bank details entirely." /></label>
+                <label class="block text-xs text-gray-700 mb-1" for="bank_ifsc">Bank IFSC <span class="text-gray-600">(clear to detach bank)</span> <x-help-tip text="The 11-character IFSC of the distributor's bank branch; clearing this field detaches the bank details entirely." /></label>
                 <input type="text" id="bank_ifsc" name="bank_ifsc"
                     maxlength="11" pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}"
                     value="{{ old('bank_ifsc', $distributor->bank_ifsc) }}"
@@ -134,7 +134,7 @@
     </div>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
+        <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
             Save changes
         </button>
         <a href="{{ route('admin.distributors.show', $distributor->id) }}"
@@ -173,11 +173,11 @@
         </ul>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-xs text-gray-700">
             <div>
-                <p class="text-gray-500 mb-0.5">Current PAN (last 4)</p>
+                <p class="text-gray-600 mb-0.5">Current PAN (last 4)</p>
                 <p class="text-gray-800 font-mono text-sm">XXXXXX{{ $distributor->pan_last4 }}</p>
             </div>
             <div>
-                <p class="text-gray-500 mb-0.5">Current Aadhaar (last 4)</p>
+                <p class="text-gray-600 mb-0.5">Current Aadhaar (last 4)</p>
                 <p class="text-gray-800 font-mono text-sm">XXXX XXXX {{ $distributor->aadhaar_last4 ?? '—' }}</p>
             </div>
         </div>
@@ -245,7 +245,7 @@
         </p>
         <div class="flex flex-wrap items-center gap-3">
             <a href="{{ route('admin.kyc.show', $distributor->id) }}"
-               class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+               class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
                 Open KYC review →
             </a>
             @if(!$allVerified && $kycStatus['total'] > 0)
@@ -279,7 +279,7 @@
                 </details>
             @endif
         </div>
-        <p class="text-xs text-gray-500 mt-3">
+        <p class="text-xs text-gray-600 mt-3">
             Document uploads + per-document view/approve live on the dedicated KYC review page.
         </p>
     </div>
@@ -362,12 +362,12 @@
                 <div class="text-xs text-gray-700 leading-relaxed">
                     <p class="font-semibold text-gray-800 mb-1">Current photo on file</p>
                     <p>This is what the distributor sees on their dashboard ID card and what KYC reviewers see in the queue.</p>
-                    <p class="mt-2 text-gray-500">Pre-signed link valid for 15 minutes.</p>
+                    <p class="mt-2 text-gray-600">Pre-signed link valid for 15 minutes.</p>
                 </div>
             </div>
         @else
             <div class="mb-4 flex items-center gap-4 rounded-lg bg-gray-50 border border-dashed border-gray-300 p-4">
-                <div class="w-32 h-32 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-500 text-center px-2">No photo<br>uploaded yet</div>
+                <div class="w-32 h-32 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-600 text-center px-2">No photo<br>uploaded yet</div>
                 <p class="text-xs text-gray-700">The distributor hasn't uploaded an ID photo. Upload one below on their behalf if needed.</p>
             </div>
         @endif
@@ -379,7 +379,7 @@
             @csrf
             <input type="file" name="photo" accept="image/jpeg,image/png" required
                 class="text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-gray-200">
-            <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+            <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
                 {{ !empty($idPhotoUrl) ? 'Replace photo' : 'Upload photo' }}
             </button>
         </form>

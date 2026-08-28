@@ -17,9 +17,9 @@
         <div class="flex items-start gap-3">
             <span class="text-2xl shrink-0">📘</span>
             <div class="min-w-0">
-                <h2 class="font-semibold text-gray-900 group-hover:text-brand-700">{{ $doc['title'] }}</h2>
+                <h2 class="font-semibold text-gray-900 group-hover:text-brand-800">{{ $doc['title'] }}</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $doc['description'] }}</p>
-                <span class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 mt-3">Open reference →</span>
+                <span class="inline-flex items-center gap-1 text-xs font-medium text-brand-700 mt-3">Open reference →</span>
             </div>
         </div>
     </a>

@@ -22,7 +22,7 @@
         @php
             $rows = [
                 ['label' => 'Name',                    'value' => $idCardStats['name']],
-                ['label' => 'ID Number',               'value' => $idCardStats['adn'],                'class' => 'font-mono text-brand-600 tracking-wider'],
+                ['label' => 'ID Number',               'value' => $idCardStats['adn'],                'class' => 'font-mono text-brand-700 tracking-wider'],
                 ['label' => 'Registration Date',       'value' => $idCardStats['registration_date']?->format('d M Y, h:i A')],
                 ['label' => 'Franchise',               'value' => $idCardStats['franchise']],
                 ['label' => 'Region',                  'value' => $idCardStats['region']],
@@ -67,7 +67,7 @@
                         class="w-full aspect-[3/4] object-cover rounded-lg border-2 border-gray-200">
                 @else
                     <div class="w-full aspect-[3/4] rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/40 flex flex-col items-center justify-center text-center p-3">
-                        <svg class="w-8 h-8 text-gray-500 mb-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <svg class="w-8 h-8 text-gray-600 mb-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.776 48.776 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
                         </svg>
@@ -88,16 +88,16 @@
                         <img src="{{ $idPhotoUrl }}"
                             alt="Your ID photo"
                             class="w-full aspect-[3/4] object-cover rounded-lg border-2 border-gray-200 group-hover:border-brand-300 transition-colors">
-                        <span class="block mt-1.5 text-[11px] text-center text-brand-600 group-hover:text-brand-700 font-medium">
+                        <span class="block mt-1.5 text-[11px] text-center text-brand-700 group-hover:text-brand-800 font-medium">
                             Change photo
                         </span>
                     @else
                         <div class="w-full aspect-[3/4] rounded-lg border-2 border-dashed border-gray-300 group-hover:border-brand-400 group-hover:bg-brand-50/40 transition-colors flex flex-col items-center justify-center text-center p-3">
-                            <svg class="w-8 h-8 text-gray-600 group-hover:text-brand-500 mb-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <svg class="w-8 h-8 text-gray-600 group-hover:text-brand-800 mb-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.776 48.776 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
                             </svg>
-                            <span class="text-[11px] text-gray-800 group-hover:text-brand-700 font-medium leading-tight">
+                            <span class="text-[11px] text-gray-800 group-hover:text-brand-800 font-medium leading-tight">
                                 Upload ID photo
                             </span>
                             <span class="text-[11px] text-gray-600 mt-0.5">Passport style</span>
@@ -113,7 +113,7 @@
                     accept="image/jpeg,image/png"
                     class="hidden">
                 <noscript>
-                    <button type="submit" class="mt-1.5 w-full text-[11px] text-center text-brand-600 font-medium">Upload</button>
+                    <button type="submit" class="mt-1.5 w-full text-[11px] text-center text-brand-700 font-medium">Upload</button>
                 </noscript>
             </form>
             @error('photo')
@@ -135,14 +135,14 @@
                             <img id="idPhotoCropImage" alt="" class="block max-w-full">
                         </div>
                         <div class="flex items-center gap-3 mt-4">
-                            <span class="text-xs text-gray-500 w-12 shrink-0">Zoom</span>
+                            <span class="text-xs text-gray-600 w-12 shrink-0">Zoom</span>
                             <input id="idPhotoCropZoom" type="range" min="-0.5" max="1.5" step="0.01" value="0"
                                 class="flex-1 accent-brand-600">
                         </div>
                         {{-- Rotate ("360 adjustment") — drag to pan, slider to zoom,
                              these to rotate the photo in 90° steps. --}}
                         <div class="flex items-center gap-2 mt-3">
-                            <span class="text-xs text-gray-500 w-12 shrink-0">Rotate</span>
+                            <span class="text-xs text-gray-600 w-12 shrink-0">Rotate</span>
                             <button type="button" id="idPhotoRotateLeft" title="Rotate left 90°"
                                 class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 transition-colors">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
@@ -161,7 +161,7 @@
                             Cancel
                         </button>
                         <button type="button" id="idPhotoCropSave"
-                            class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 text-sm transition-colors">
+                            class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-2.5 text-sm transition-colors">
                             Save photo
                         </button>
                     </div>

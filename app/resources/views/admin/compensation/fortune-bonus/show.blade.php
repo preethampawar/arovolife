@@ -11,24 +11,24 @@
             Frozen month economics
             <x-help-tip text="Written once, before any credit, and never recomputed — a re-run prices against this snapshot so the month's economics never move under a distributor who was already paid." />
         </span>
-        <span class="text-gray-500">Company BV
+        <span class="text-gray-600">Company BV
             <strong class="text-gray-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->company_bv_paise / 100, 2) : '—' }}</strong></span>
-        <span class="text-gray-500">Pool rate
+        <span class="text-gray-600">Pool rate
             <strong class="text-gray-700">{{ $pool ? rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.').'%' : '—' }}</strong></span>
-        <span class="text-gray-500">Pool
+        <span class="text-gray-600">Pool
             <strong class="text-indigo-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) : '—' }}</strong></span>
-        <span class="text-gray-500">Total FB points
+        <span class="text-gray-600">Total FB points
             <x-help-tip text="The sum of every enrolled participant's FB points for the month — the denominator of the point value." />
             <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) : '—' }}</strong></span>
-        <span class="text-gray-500">Point value
+        <span class="text-gray-600">Point value
             <x-help-tip text="Cascade months price each capped level against the remaining pool and share one value across the residual levels — see the per-level table below. Months run before the cascade carry one month-wide value." />
             <strong class="text-gray-700">{{ $pool ? ($pool->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : 'Per level') : '—' }}</strong></span>
-        <span class="text-gray-500">Minimum guarantee
+        <span class="text-gray-600">Minimum guarantee
             <x-help-tip text="Every qualifier's guaranteed minimum × the number of qualifiers, reserved off the pool before the cascade distributes." />
             <strong class="text-gray-700">{{ $pool && $pool->guaranteed_total_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->guaranteed_total_paise / 100, 2) : '—' }}</strong></span>
-        <span class="text-gray-500">Payout
+        <span class="text-gray-600">Payout
             <strong class="text-green-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->payout_paise / 100, 2) : '—' }}</strong></span>
-        <span class="text-gray-500">Leftover
+        <span class="text-gray-600">Leftover
             <x-help-tip text="The part of the pool the cascade could not distribute — whole-rupee flooring remainders and the headroom left by per-level caps." />
             <strong class="{{ $pool && $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-700' }}">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->leftover_paise / 100, 2) : '—' }}</strong></span>
     </div>
@@ -39,7 +39,7 @@
     </p>
     @endif
     @unless($pool)
-    <p class="px-4 py-3 text-xs text-gray-400">
+    <p class="px-4 py-3 text-xs text-gray-600">
         No frozen pool row for this month — the engine has not run for it yet.
     </p>
     @endunless
@@ -54,7 +54,7 @@
     </div>
     <div class="overflow-x-auto">
         <table class="min-w-full text-xs">
-            <thead class="bg-gray-50 text-gray-500">
+            <thead class="bg-gray-50 text-gray-600">
                 <tr>
                     <th class="px-4 py-2 text-left font-medium">Level</th>
                     <th class="px-4 py-2 text-left font-medium">Mode</th>
@@ -84,7 +84,7 @@
 @endif
 
 {{-- Per-depth points ladder (admin-editable under Plan settings → Fortune Bonus) --}}
-<div class="mb-6 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+<div class="mb-6 flex flex-wrap items-center gap-2 text-xs text-gray-600">
     <span class="font-medium text-gray-700">FB points per downline member
         <x-help-tip text="Points a participant earns for each enrolled distributor sitting this many levels below them in the month's matrix. Nothing is earned deeper than level 9." />
     </span>
@@ -100,10 +100,10 @@
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
     @foreach($levelSummaries as $level => $summary)
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm text-center">
-        <p class="text-xs font-medium text-gray-500 mb-1">Level {{ $level }}</p>
+        <p class="text-xs font-medium text-gray-600 mb-1">Level {{ $level }}</p>
         <p class="text-sm font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->participant_count) }} participants</p>
         <p class="text-xs text-indigo-700 font-medium mt-0.5">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $summary->total_points) }} FB points</p>
-        <p class="text-xs text-gray-500 mt-0.5">Net total: ₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }}</p>
+        <p class="text-xs text-gray-600 mt-0.5">Net total: ₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }}</p>
     </div>
     @endforeach
 </div>
@@ -115,33 +115,33 @@
         <span class="text-sm font-semibold text-gray-900">Matrix participants</span>
     </div>
     @if($rows->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-400 text-center">No participants enrolled for this month.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No participants enrolled for this month.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-right text-gray-500">#</th>
-                    <th class="px-4 py-2 text-left text-gray-500">ADN</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Level</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Tier</th>
-                    <th class="px-4 py-2 text-left text-gray-500">First GSB date</th>
-                    <th class="px-4 py-2 text-right text-gray-500">FB points</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Value</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Gross</th>
-                    <th class="px-4 py-2 text-right text-gray-500">TDS</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Net</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Status</th>
+                    <th class="px-4 py-2 text-right text-gray-600">#</th>
+                    <th class="px-4 py-2 text-left text-gray-600">ADN</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Level</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Tier</th>
+                    <th class="px-4 py-2 text-left text-gray-600">First GSB date</th>
+                    <th class="px-4 py-2 text-right text-gray-600">FB points</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Value</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Gross</th>
+                    <th class="px-4 py-2 text-right text-gray-600">TDS</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Net</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
                 @foreach($rows as $participant)
                 @php
                     $result = $resultsByDistributor[$participant->distributor_id] ?? null;
-                    $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-500', 'pending' => 'bg-amber-100 text-amber-700'];
+                    $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-600', 'pending' => 'bg-amber-100 text-amber-700'];
                 @endphp
                 <tr>
-                    <td class="px-4 py-2 text-right font-mono text-gray-400">{{ \App\Modules\Shared\Support\IndianNumber::format($participant->position) }}</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($participant->position) }}</td>
                     <td class="px-4 py-2 font-mono">{{ $participant->distributor->adn ?? '—' }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-medium">L{{ $participant->matrix_level }}</span>
@@ -149,10 +149,10 @@
                     <td class="px-4 py-2 text-center text-gray-600">{{ str_replace('_', ' ', $participant->eligibility_tier) }}</td>
                     <td class="px-4 py-2 text-gray-600">{{ $participant->first_gsb_date ?? '—' }}</td>
                     <td class="px-4 py-2 text-right font-mono text-indigo-700">{{ $result?->points !== null ? \App\Modules\Shared\Support\IndianNumber::format($result->points) : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono text-gray-500">{{ $result?->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->point_value_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-600">{{ $result?->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->point_value_paise / 100, 2) : '—' }}</td>
                     <td class="px-4 py-2 text-right font-mono">{{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->gross_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono text-gray-500">{{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->tds_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono font-semibold {{ ($result?->net_paise ?? 0) > 0 ? 'text-green-700' : 'text-gray-400' }}">
+                    <td class="px-4 py-2 text-right font-mono text-gray-600">{{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->tds_paise / 100, 2) : '—' }}</td>
+                    <td class="px-4 py-2 text-right font-mono font-semibold {{ ($result?->net_paise ?? 0) > 0 ? 'text-green-700' : 'text-gray-600' }}">
                         {{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->net_paise / 100, 2) : '—' }}
                     </td>
                     <td class="px-4 py-2 text-center">
@@ -161,7 +161,7 @@
                             {{ ucfirst($result->status) }}
                         </span>
                         @else
-                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-600">—</span>
                         @endif
                     </td>
                 </tr>

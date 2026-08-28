@@ -10,28 +10,28 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($months->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-400 text-center">No Fortune Bonus batches yet — engine has not yet run.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No Fortune Bonus batches yet — engine has not yet run.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-500">Month</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Participants</th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-left text-gray-600">Month</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Participants</th>
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Pool
                         <x-help-tip text="5% of the month's company-wide BV, frozen before any credit." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Total points
                         <x-help-tip text="The sum of every enrolled participant's FB points — the denominator of the point value." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">
+                    <th class="px-4 py-2 text-right text-gray-600">
                         Point value
                         <x-help-tip text="Cascade months price per level — open the month for the per-level table. Months run before the cascade show their single month-wide value." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-500">Net credited</th>
-                    <th class="px-4 py-2 text-right text-gray-500">Credited at</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Net credited</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Credited at</th>
                     <th class="px-4 py-2"></th>
                 </tr>
             </thead>
@@ -45,12 +45,12 @@
                     <td class="px-4 py-2 text-right text-gray-600">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) : '—' }}</td>
                     <td class="px-4 py-2 text-right text-gray-600">{{ $pool ? ($pool->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : 'Per level') : '—' }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_net_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right text-gray-500">
+                    <td class="px-4 py-2 text-right text-gray-600">
                         {{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}
                     </td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.fortune-bonus.show', \Illuminate\Support\Carbon::parse($m->month_start)->format('Y-m')) }}"
-                           class="text-brand-600 text-xs hover:underline">View →</a>
+                           class="text-brand-700 text-xs hover:underline">View →</a>
                     </td>
                 </tr>
                 @endforeach

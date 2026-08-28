@@ -9,7 +9,7 @@
         Please review everything below before we issue your arovolife Distributor Number (ADN). Nothing is saved
         until you confirm.
     </p>
-    <p class="text-xs text-gray-500 mb-8">
+    <p class="text-xs text-gray-600 mb-8">
         PAN, Aadhaar and bank account are masked for your security — only the last 4 digits are shown.
     </p>
 
@@ -120,7 +120,7 @@
         {{-- Cooling-off (statutory copy — keep verbatim) --}}
         <div class="rounded-lg bg-brand-50 border border-brand-500/50 p-4">
             <p class="text-xs text-brand-500 font-medium">30-Day Cooling-Off Period</p>
-            <p class="text-xs text-brand-600 mt-1">
+            <p class="text-xs text-brand-700 mt-1">
                 After registration you have <strong>30 days</strong> to cancel with no penalty. Registration is free of
                 charge — there is nothing to refund at registration; once paid memberships exist, any fees paid
                 during the window will be returned in full. One-click cancellation is available from your dashboard.
@@ -143,13 +143,13 @@
                 ← Back
             </a>
             <button type="submit" id="finalise-submit"
-                class="flex-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-4 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Confirm &amp; Issue My ADN →
             </button>
         </div>
     </form>
 
-    <p class="mt-4 text-center text-xs text-gray-400">
+    <p class="mt-4 text-center text-xs text-gray-600">
         By confirming you agree to all previously accepted terms. Registration is free of charge.
     </p>
 </div>

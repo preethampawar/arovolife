@@ -16,7 +16,7 @@
 {{-- Filter --}}
 <form method="GET" class="flex gap-3 mb-6 items-end">
     <div>
-        <label class="block text-xs text-gray-500 mb-1">Status <x-help-tip text="Filter the list by award status — pending, delivered or cancelled. Leave on All to show every milestone." /></label>
+        <label class="block text-xs text-gray-600 mb-1">Status <x-help-tip text="Filter the list by award status — pending, delivered or cancelled. Leave on All to show every milestone." /></label>
         <select name="status" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
             <option value="">All</option>
             <option value="pending" @selected(request('status') === 'pending')>Pending</option>
@@ -24,7 +24,7 @@
             <option value="cancelled" @selected(request('status') === 'cancelled')>Cancelled</option>
         </select>
     </div>
-    <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600">Filter</button>
+    <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800">Filter</button>
     @if(request('status'))
         <a href="{{ route('admin.lifetime-awards.index') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
     @endif
@@ -32,22 +32,22 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($milestones->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-400 text-center">No lifetime award milestones yet.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No lifetime award milestones yet.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-gray-500">ADN</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Rank</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Triggered</th>
-                    <th class="px-4 py-2 text-center text-gray-500">
+                    <th class="px-4 py-2 text-left text-gray-600">ADN</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Rank</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Triggered</th>
+                    <th class="px-4 py-2 text-center text-gray-600">
                         Qualifications <x-help-tip text="Count / threshold. Award is only deliverable once the threshold is reached." />
                     </th>
-                    <th class="px-4 py-2 text-left text-gray-500">Award</th>
-                    <th class="px-4 py-2 text-center text-gray-500">Status</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Delivered at</th>
-                    <th class="px-4 py-2 text-left text-gray-500">Disbursement</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Award</th>
+                    <th class="px-4 py-2 text-center text-gray-600">Status</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Delivered at</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Disbursement</th>
                     <th class="px-4 py-2"></th>
                 </tr>
             </thead>
@@ -78,13 +78,13 @@
                         @php $rc = $catalog[$milestone->rank_number] ?? ['budget_paise' => 0, 'rewards' => []]; @endphp
                         <div class="font-semibold text-gray-800">{{ $rupees($rc['budget_paise']) }} budget</div>
                         @if(!empty($rc['rewards']))
-                        <ul class="mt-1 space-y-0.5 text-[11px] text-gray-500 list-disc list-inside">
+                        <ul class="mt-1 space-y-0.5 text-[11px] text-gray-600 list-disc list-inside">
                             @foreach($rc['rewards'] as $reward)
-                            <li>{{ $reward['item'] }} <span class="text-gray-400">— {{ $rupees($reward['worth_paise']) }}</span></li>
+                            <li>{{ $reward['item'] }} <span class="text-gray-600">— {{ $rupees($reward['worth_paise']) }}</span></li>
                             @endforeach
                         </ul>
                         @else
-                        <span class="text-[11px] text-gray-400">{{ $milestone->award_description }}</span>
+                        <span class="text-[11px] text-gray-600">{{ $milestone->award_description }}</span>
                         @endif
                     </td>
                     <td class="px-4 py-2 text-center">
@@ -92,16 +92,16 @@
                             {{ ucfirst($milestone->status) }}
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-gray-500">
+                    <td class="px-4 py-2 text-gray-600">
                         {{ $milestone->delivered_at ? $milestone->delivered_at->format('d M Y') : '—' }}
                     </td>
-                    <td class="px-4 py-2 text-gray-500 text-xs">
+                    <td class="px-4 py-2 text-gray-600 text-xs">
                         @if($milestone->disbursement_type)
                             <span class="inline-flex px-2 py-0.5 rounded {{ $milestone->disbursement_type === 'cash' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600' }} text-[10px] font-medium">
                                 {{ ucfirst($milestone->disbursement_type) }}
                             </span>
                             @if($milestone->disbursement_type === 'cash' && $milestone->net_paise)
-                            <div class="mt-0.5 text-[10px] text-gray-400">Net {{ $rupees($milestone->net_paise) }}</div>
+                            <div class="mt-0.5 text-[10px] text-gray-600">Net {{ $rupees($milestone->net_paise) }}</div>
                             @endif
                         @else
                             —
@@ -128,7 +128,7 @@
                                 </button>
                             </form>
                             @else
-                            <span class="text-[10px] text-amber-600 font-medium">
+                            <span class="text-[10px] text-amber-700 font-medium">
                                 Awaiting {{ $threshold - $milestone->qualification_count }} more re-qual{{ $threshold - $milestone->qualification_count > 1 ? 's' : '' }}
                             </span>
                             @endif

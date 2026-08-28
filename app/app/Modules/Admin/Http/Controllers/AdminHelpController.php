@@ -56,6 +56,31 @@ final class AdminHelpController extends Controller
             'description' => 'The statutory 30-day cancellation window, the one-click refund flow, reminders, and edge cases.',
             'file' => 'cooling-off.md',
         ],
+        'purchase-offers' => [
+            'title' => 'Purchase Offers',
+            'description' => 'The half-price monthly product and the redeem-points streak for unranked distributors: who qualifies, why points are not money, and the two readings that need KP before launch.',
+            'file' => 'purchase-offers.md',
+        ],
+        'franchise-programme' => [
+            'title' => 'Franchise Programme',
+            'description' => 'Pickup points operated by distributors: what a franchise is and is not, the 3% fulfilment commission, the approval lifecycle, and the three gates before it goes live.',
+            'file' => 'franchise-programme.md',
+        ],
+        'dormancy-termination' => [
+            'title' => 'Dormancy & Termination (§21)',
+            'description' => 'The twelve-month no-sale rule, the seven-day notice, the master switch that ships off, and the re-registration wait afterwards.',
+            'file' => 'dormancy-termination.md',
+        ],
+        'grievance-handling' => [
+            'title' => 'Grievance Handling',
+            'description' => 'How to work the complaint queue: the published SLA clocks, the four-step escalation ladder, third-party extensions, and the monthly compliance report.',
+            'file' => 'grievance-handling.md',
+        ],
+        'analytics' => [
+            'title' => 'Analytics',
+            'description' => 'How to read the funnels, the retention table and the base panel — what each figure counts, and why nothing on the page forecasts.',
+            'file' => 'analytics.md',
+        ],
         'status-reference' => [
             'title' => 'Status Reference',
             'description' => 'Every status / lifecycle value across the platform — accounts, KYC, genealogy, catalog, orders, payments, returns and more — with plain-English explanations.',

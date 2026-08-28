@@ -18,8 +18,8 @@
 
     @if(! $genosBvEligible)
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">Genos BV is not being counted yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Genos BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? \App\Modules\Shared\Support\IndianNumber::format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
+            <p class="text-gray-600 font-medium">Genos BV is not being counted yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Genos BV is counted only after your lifetime personal BV reaches {{ $gsbMinBvPaise !== null ? \App\Modules\Shared\Support\IndianNumber::format($gsbMinBvPaise / 100, 0) : '600' }} BV of personal purchases. Your Genos ledger will appear here after that.</p>
         </div>
     @else
 
@@ -39,14 +39,14 @@
     {{-- Filter form --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">From</label>
+            <label class="block text-xs text-gray-600 mb-1">From</label>
             <input type="date" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">To</label>
+            <label class="block text-xs text-gray-600 mb-1">To</label>
             <input type="date" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
         @if(request('from') || request('to'))
             <a href="{{ route('income.genos-ledger') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
@@ -54,8 +54,8 @@
 
     @if($days->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-500 font-medium">No Genos BV activity yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Entries will appear here as members of your Genos make purchases.</p>
+            <p class="text-gray-600 font-medium">No Genos BV activity yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Entries will appear here as members of your Genos make purchases.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -83,15 +83,15 @@
                     </tr>
                     @if(count($day->credits) === 0 && count($day->reversals) === 0)
                     <tr>
-                        <td colspan="4" class="px-4 py-2.5 text-gray-400 italic">No Genos BV added this day.</td>
+                        <td colspan="4" class="px-4 py-2.5 text-gray-600 italic">No Genos BV added this day.</td>
                     </tr>
                     @endif
                     @foreach($day->credits as $credit)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-2.5 text-gray-500">
+                        <td class="px-4 py-2.5 text-gray-600">
                             Purchase BV
                             @if($credit->debt_consumed_paise > 0)
-                            <span class="block text-xs text-gray-400">after {{ \App\Modules\Shared\Support\IndianNumber::format($credit->debt_consumed_paise / 100, 0) }} BV adjusted for a cancelled order</span>
+                            <span class="block text-xs text-gray-600">after {{ \App\Modules\Shared\Support\IndianNumber::format($credit->debt_consumed_paise / 100, 0) }} BV adjusted for a cancelled order</span>
                             @endif
                         </td>
                         <td class="px-4 py-2.5 font-mono text-gray-700">{{ $credit->buyer_adn }}</td>
@@ -125,11 +125,11 @@
                         $c = $day->cutoff;
                         $statusLabels = [
                             'credited' => ['GSB earned', 'bg-green-100 text-green-700'],
-                            'no_match' => ['No match', 'bg-gray-100 text-gray-500'],
+                            'no_match' => ['No match', 'bg-gray-100 text-gray-600'],
                             'below_600bv' => ['Below 600 BV', 'bg-amber-100 text-amber-700'],
                             'reversed' => ['Reversed', 'bg-red-100 text-red-700'],
                         ];
-                        [$statusLabel, $statusClass] = $statusLabels[$c->status] ?? ['Pending', 'bg-gray-100 text-gray-500'];
+                        [$statusLabel, $statusClass] = $statusLabels[$c->status] ?? ['Pending', 'bg-gray-100 text-gray-600'];
                     @endphp
                     <tr class="bg-indigo-50/60">
                         <td colspan="2" class="px-4 py-2.5 text-indigo-900">

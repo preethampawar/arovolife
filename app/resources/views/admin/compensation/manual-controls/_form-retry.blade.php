@@ -21,7 +21,7 @@
         <textarea name="reason" rows="2" required placeholder="e.g. Wallet write failed due to DB timeout — retrying after recovery"
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none"></textarea>
     </div>
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600">
+    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 text-white text-sm font-medium hover:bg-brand-800">
         Preview &amp; Confirm &rarr;
     </button>
 </form>

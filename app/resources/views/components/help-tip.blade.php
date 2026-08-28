@@ -6,7 +6,7 @@
 <span class="relative inline-flex items-center align-middle ml-1" data-help-tip>
     <button type="button" tabindex="0" aria-label="More information"
         class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-brand-400
-               {{ $light ? 'border-white/60 text-white/90 hover:bg-white/10' : 'border-gray-400 text-gray-500 hover:bg-gray-100' }}">
+               {{ $light ? 'border-white/60 text-white/90 hover:bg-white/10' : 'border-gray-400 text-gray-600 hover:bg-gray-100' }}">
         i
     </button>
     <span role="tooltip"

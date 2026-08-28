@@ -16,7 +16,7 @@
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500">Wallet Balance</p>
+                <p class="text-xs text-gray-600">Wallet Balance</p>
                 <x-help-tip text="Your current wallet balance — GSB and other bonus credits net of any debits. This will be transferred to your bank account on the next payout date." />
             </div>
             <p class="text-2xl font-bold {{ $walletBalancePaise > 0 ? 'text-green-700' : 'text-gray-900' }}">
@@ -25,21 +25,21 @@
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500">Total Paid Out</p>
+                <p class="text-xs text-gray-600">Total Paid Out</p>
                 <x-help-tip text="Total net amount transferred to your bank account since you joined." />
             </div>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalPaidOutPaise / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500">Next Payout Date</p>
+                <p class="text-xs text-gray-600">Next Payout Date</p>
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ $nextPayout->format('d M') }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Every Tuesday (IST)</p>
+            <p class="text-xs text-gray-600 mt-0.5">Every Tuesday (IST)</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500">Min. Payout</p>
+                <p class="text-xs text-gray-600">Min. Payout</p>
                 <x-help-tip text="Wallet balances below this threshold roll over to the next Tuesday batch." />
             </div>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}</p>
@@ -58,13 +58,13 @@
     {{-- Wallet ledger --}}
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-base font-semibold text-gray-800">Wallet Ledger</h2>
-        <a href="{{ route('income.wallet.export') }}" class="text-sm text-brand-600 hover:text-brand-700 font-medium">&#11015; CSV</a>
+        <a href="{{ route('income.wallet.export') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">&#11015; CSV</a>
     </div>
 
     @if($ledgerRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
-            <p class="text-gray-500 font-medium">No wallet transactions yet.</p>
-            <p class="text-sm text-gray-400 mt-1">{{ \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\GenosSalesBonusFeature::class) ? 'Credits will appear here after your first GSB cut-off.' : 'Credits will appear here once you start earning bonuses.' }}</p>
+            <p class="text-gray-600 font-medium">No wallet transactions yet.</p>
+            <p class="text-sm text-gray-600 mt-1">{{ \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\GenosSalesBonusFeature::class) ? 'Credits will appear here after your first GSB cut-off.' : 'Credits will appear here once you start earning bonuses.' }}</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto mb-6">
@@ -123,7 +123,7 @@
                         <td class="px-4 py-3 text-gray-700">
                             {{ $walletTypeLabels[$entry->type] ?? \Illuminate\Support\Str::of($entry->type)->replace('_', ' ')->ucfirst() }}
                             @if($entry->memo)
-                                <span class="block text-xs text-gray-400">{{ $entry->memo }}</span>
+                                <span class="block text-xs text-gray-600">{{ $entry->memo }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">
@@ -143,8 +143,8 @@
     <h2 class="text-base font-semibold text-gray-800 mb-3">Payout History</h2>
     @if($payoutRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center">
-            <p class="text-gray-500 font-medium">No payouts yet.</p>
-            <p class="text-sm text-gray-400 mt-1">Your first bank transfer will appear here after the Tuesday payout run.</p>
+            <p class="text-gray-600 font-medium">No payouts yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Your first bank transfer will appear here after the Tuesday payout run.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -172,10 +172,10 @@
                             @elseif($row->status === 'kyc_pending')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Awaiting KYC</span>
                             @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">{{ ucfirst($row->status) }}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ ucfirst($row->status) }}</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ $row->utr_number ?? '—' }}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $row->utr_number ?? '—' }}</td>
                     </tr>
                     @endforeach
                 </tbody>

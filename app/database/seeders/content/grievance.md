@@ -1,4 +1,4 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-05-21. -->
+<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-08-16. -->
 
 This Grievance Redressal Policy describes how Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife", "the Company") handles complaints from Distributors, customers, prospective Distributors, members of the public and third parties. It is published under Rule 12 of the Consumer Protection (Direct Selling) Rules 2021 ("DSR 2021"), the Consumer Protection Act 2019 and the Digital Personal Data Protection Act 2023 ("DPDP Act").
 
@@ -15,7 +15,8 @@ The arovolife Grievance Officer is the single point of contact for complaints th
 | Phone | +91 88866 62949. Hours: 10:00 – 18:00 IST, Monday to Saturday, excluding national holidays. |
 | Post | The Grievance Officer, Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India. *(This is the registered office and correspondence address.)* |
 | In-app | Dashboard → Help → "Raise a Grievance". |
-| Web form | `/contact-us` with reason "Grievance / Complaint". A `/p/grievance/form` page will be added in Phase 2 to provide a dedicated structured form with ticket-number issuance. |
+| Web form | [`/p/grievance/form`](/p/grievance/form) — a structured grievance form open to anyone, registered or not, which issues a complaint number on submission. `/contact-us` remains available for general enquiries. |
+| Track a complaint | [`/grievance/track`](/grievance/track) — enter your complaint number and the email you filed with to see the current status and history. |
 
 The Grievance Officer is supported by a Nodal Officer (for serious / cross-functional complaints) and a Compliance Committee (for ethics matters, suspensions and terminations). The current designations are:
 
@@ -30,12 +31,14 @@ The Grievance Officer is supported by a Nodal Officer (for serious / cross-funct
 
 | Stage | Time-bound commitment |
 |---|---|
-| Acknowledgement of receipt (with ticket number) | within **48 hours** of receipt, by email and SMS |
+| Acknowledgement of receipt (with ticket number) | within **48 hours** of receipt, by email (in practice, immediately on submission) |
 | First substantive response | within **5 working days** |
 | Resolution | within **30 days** of receipt for ordinary matters; up to **60 days** for matters that require a third party (banks, payment gateways, AUA/KUA partner, statutory authorities), with status updates every 15 days |
 | Cooling-off refund | within **7 business days** of arovolife receiving the returned product, or within **7 business days** of cancellation for digital-only orders |
 | Buyback refund (post-termination resaleable stock) | within **15 business days** of arovolife receiving the returned stock |
 | Payout-failure investigation | within **5 working days** of the failed-payout notification |
+
+Every clock above runs from the date the complaint **reached arovolife** — the postmark, the call, the walk-in, the moment the form was submitted — not from the date a member of staff entered it into the tracker. Complaints arriving by post, phone or in person are recorded against their receipt date.
 
 Where arovolife cannot meet a stated SLA for reasons beyond its reasonable control, the complainant is notified in writing with the new expected resolution date and the cause of delay.
 
@@ -46,18 +49,23 @@ You may raise a grievance through any of the following channels. Use whichever i
 ### 3.1 In-App / Web Form (preferred)
 
 1. Open your dashboard → Help → "Raise a Grievance" (Distributors), or
-2. Visit `/contact-us` and choose reason "Grievance / Complaint" (anyone, including non-registered users), or
-3. Visit `/p/grievance/form` once it is live in Phase 2.
+2. Visit [`/p/grievance/form`](/p/grievance/form) — open to anyone, including people with no arovolife account.
 
-You will be asked to describe the matter, attach evidence (PDFs, images, screenshots up to 10 MB each), and supply your contact details. On submission, a ticket number is issued immediately on screen, by email and by SMS.
+You will be asked to describe the matter, attach evidence (PDFs, images, screenshots up to 10 MB each), and supply your contact details. On submission, a ticket number is issued immediately on screen and by email.
+
+You may also file **anonymously**. We will investigate as far as the evidence allows, but we will have no way to send you the complaint number, progress updates or the outcome — so please record the number shown on screen.
+
+Once filed, track the complaint at [`/grievance/track`](/grievance/track) using your complaint number and the email you filed with, or from Dashboard → Help → My grievances if you are a Distributor.
 
 ### 3.2 Email
 
-Write to `grievance@arovolife.com`. The subject line should begin with "Grievance" and include any prior ticket number if applicable. Attach evidence. You will receive an automated acknowledgement with a ticket number within 48 hours.
+Write to `grievance@arovolife.com`. The subject line should begin with "Grievance" and include any prior ticket number if applicable. Attach evidence.
+
+The mailbox is monitored on business days. An officer records your email in the same tracker and sends you the ticket number, within 48 hours of receipt. Note that the mailbox is not automated: if you need the ticket number immediately, use the [web form](/p/grievance/form) instead, which issues it on screen at once.
 
 ### 3.3 Phone
 
-Call the helpline number during published hours. The agent will note your complaint, issue a ticket number, and send the confirmation by SMS.
+Call the helpline number during published hours. The agent will note your complaint, record it in the same tracker, and read out your ticket number. If you give an email address, the confirmation is sent there as well.
 
 ### 3.4 Post
 
@@ -155,7 +163,7 @@ If your concern does not fit any of the above, raise it anyway — the ticketing
 1. **Ticket numbers.** Every grievance receives a unique alphanumeric ticket number on receipt. Use it in all correspondence.
 2. **Retention.** Grievance records (the complaint, every internal note, every communication with the complainant, the final order) are retained for **seven (7) years** from final closure, in accordance with DSR 2021 Rule 12.
 3. **Confidentiality.** Personal information disclosed in a grievance is processed only for the purpose of investigating and resolving that grievance and (where required) for statutory reporting. It is shared only with the officers, vendors and authorities who have a need to know. No marketing use is made of grievance data.
-4. **Anti-retaliation.** A Distributor who files a good-faith grievance is protected from any retaliatory action by their upline, downline or any administrator. Retaliation is a terminable breach of the Code of Ethics.
+4. **Anti-retaliation.** Retaliation against a Distributor for filing a good-faith grievance — by their upline, their downline or any administrator — is a **terminable breach of the Code of Ethics**. If you believe you are being retaliated against, raise it as a fresh grievance under "Ethics & fraud"; those complaints go directly to the Grievance Officer and are visible only to the compliance team. No officer may handle a grievance filed against them or by their own Distributor account. Ethics complaints may also be filed anonymously (§6.5).
 5. **Anonymous complaints.** Anonymous complaints are accepted (especially for ethics matters) but resolution feedback cannot be provided to an anonymous complainant. Internally, anonymous reports are investigated to the extent the evidence permits.
 6. **Audit.** A quarterly internal audit reviews ticket volumes, response times, root causes and repeat issues. The summary is shared with the Compliance Committee and feeds into platform and policy improvements.
 
@@ -176,4 +184,4 @@ For DPDP Act complaints, jurisdiction lies with the Data Protection Board of Ind
 
 ---
 
-*Grievance Redressal Policy version: v2026-05-21. The current published version is always available at `/p/grievance`. This page is updated whenever a contact detail, escalation step or statutory route changes.*
+*Grievance Redressal Policy version: v2026-08-16. The current published version is always available at `/p/grievance`. This page is updated whenever a contact detail, escalation step or statutory route changes.*

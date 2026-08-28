@@ -33,13 +33,13 @@
                     Download PDF
                 </button>
                 <button type="button" onclick="window.print()"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-sm font-medium text-white transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-sm font-medium text-white transition-colors">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z"/></svg>
                     Print
                 </button>
             </div>
         </div>
-        <p class="max-w-4xl mx-auto px-4 sm:px-6 pb-3 text-xs text-gray-500">
+        <p class="max-w-4xl mx-auto px-4 sm:px-6 pb-3 text-xs text-gray-600">
             Both buttons open your browser's print dialog — choose <span class="font-medium">Save as PDF</span> to download.
         </p>
     </div>
@@ -71,14 +71,14 @@
             <div class="flex items-center gap-4 mb-4">
                 <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-12 w-auto">
                 <div>
-                    <p class="text-[11px] uppercase tracking-wider text-brand-600 font-semibold">Direct Seller Application</p>
-                    <p class="text-sm text-gray-500">Arovolife Private Limited · CIN U46909TS2026PTC210896</p>
+                    <p class="text-[11px] uppercase tracking-wider text-brand-700 font-semibold">Direct Seller Application</p>
+                    <p class="text-sm text-gray-600">Arovolife Private Limited · CIN U46909TS2026PTC210896</p>
                 </div>
             </div>
             <p class="text-sm text-gray-600 leading-relaxed">
                 This is the record of your registration as an arovolife Direct Seller. The details below
                 reflect what is held on file. If any field needs correction, raise a request from
-                <a href="{{ route('contact.show') }}" class="text-brand-600 underline">Contact us</a>.
+                <a href="{{ route('contact.show') }}" class="text-brand-700 underline">Contact us</a>.
             </p>
         </div>
 
@@ -226,7 +226,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="text-xs text-gray-500 italic">*Please use the company provided format for Partner declaration and Board Resolution.</p>
+                <p class="text-xs text-gray-600 italic">*Please use the company provided format for Partner declaration and Board Resolution.</p>
 
                 <p>1.4 Each Direct Seller will be assigned a unique ID, the associates cannot operate through multiple IDs.</p>
                 <p>1.5 Each Direct Seller confirms to undergo mandatory orientation covering Company policies, product information, compensation structure, grievance redressal and applicable legal obligations before commencing business activities.</p>
@@ -365,7 +365,7 @@
                     <p><strong>Name of the Direct Seller:</strong>
                         <span class="ml-2">{{ $distributor->full_name ?: $user?->full_name ?: '__________________________' }}</span>
                     </p>
-                    <p><strong>Signatures:</strong> <span class="ml-2 text-gray-500">__________________________</span></p>
+                    <p><strong>Signatures:</strong> <span class="ml-2 text-gray-600">__________________________</span></p>
                     <p><strong>Date:</strong> <span class="ml-2">{{ $distributor->effective_date?->format('d M Y') ?: '____________' }}</span></p>
                     <p><strong>Place:</strong> <span class="ml-2">{{ $distributor->state ?: '____________' }}</span></p>
                 </div>
@@ -375,15 +375,15 @@
         {{-- Footer contact strip — wrapped as real <a> tags so the
              helpline, email and website stay clickable in the browser's
              Save-as-PDF output. --}}
-        <div class="text-center text-[11px] text-slate-400 space-y-1">
+        <div class="text-center text-[11px] text-slate-600 space-y-1">
             <p>Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
             <p>
-                <a href="tel:+918886662949" class="text-brand-600 hover:underline">+91 88866 62949</a>
-                <span class="text-slate-400">|</span>
-                <a href="mailto:support@arovolife.com" class="text-brand-600 hover:underline">support@arovolife.com</a>
+                <a href="tel:+918886662949" class="text-brand-700 hover:underline">+91 88866 62949</a>
+                <span class="text-slate-600">|</span>
+                <a href="mailto:support@arovolife.com" class="text-brand-700 hover:underline">support@arovolife.com</a>
             </p>
             <p>
-                <a href="https://www.arovolife.com" class="text-brand-600 hover:underline" target="_blank" rel="noopener">www.arovolife.com</a>
+                <a href="https://www.arovolife.com" class="text-brand-700 hover:underline" target="_blank" rel="noopener">www.arovolife.com</a>
             </p>
         </div>
     </div>

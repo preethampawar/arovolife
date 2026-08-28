@@ -111,7 +111,7 @@ it('FA-04: flag ON — valid POST creates Franchise with status=pending_approval
     $franchise = Franchise::where('operator_distributor_id', $distId)->first();
 
     expect($franchise)->not->toBeNull()
-        ->and($franchise->status)->toBe(Franchise::STATUS_PENDING_APPROVAL)
+        ->and($franchise->status)->toBe(Franchise::STATUS_PENDING)
         ->and($franchise->applied_at)->not->toBeNull()
         ->and($franchise->code)->toStartWith('ARV-FR-')
         ->and($franchise->address_line)->toBe('12 Main Street, Banjara Hills')
@@ -130,7 +130,8 @@ it('FA-05: flag ON — duplicate application (pending exists) returns 422', func
     // Seed an existing pending franchise for this distributor.
     Franchise::create([
         'operator_distributor_id' => $distId,
-        'status' => Franchise::STATUS_PENDING_APPROVAL,
+        'name' => 'Existing Franchise',
+        'status' => Franchise::STATUS_PENDING,
         'code' => 'ARV-FR-000001',
         'address_line' => 'Existing address',
         'pincode' => '500001',
@@ -171,7 +172,8 @@ it('FA-07: status page with pending application returns 200 with "under review" 
 
     Franchise::create([
         'operator_distributor_id' => $distId,
-        'status' => Franchise::STATUS_PENDING_APPROVAL,
+        'name' => 'Existing Franchise',
+        'status' => Franchise::STATUS_PENDING,
         'code' => 'ARV-FR-000002',
         'address_line' => 'Some Street',
         'pincode' => '500002',

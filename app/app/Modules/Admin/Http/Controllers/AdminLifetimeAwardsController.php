@@ -132,7 +132,11 @@ final class AdminLifetimeAwardsController extends Controller
             app(WalletService::class)->credit(
                 distributorId: $milestone->distributor_id,
                 amountPaise: $netPaise,
-                type: 'lifetime_award_cash',
+                // `awards_credit`, not `lifetime_award_cash`: the latter is not in
+                // the wallet_ledger_entries type enum and never was, so on MySQL
+                // this insert fails outright and the award is never paid. Found
+                // by the hard-rule-2 credit registry, 2026-08-17.
+                type: 'awards_credit',
                 referenceId: $milestone->id,
                 referenceType: 'lifetime_award_milestone',
                 memo: 'Lifetime Award Cash — Rank '.$milestone->rank_number,

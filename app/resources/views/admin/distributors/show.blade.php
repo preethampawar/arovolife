@@ -40,7 +40,7 @@
                 data-confirm-title="Confirm impersonation"
                 data-confirm-impact="You will browse arovolife as this distributor until you end the session. The switch is audit-logged and reversible by stopping impersonation.">
                 @csrf
-                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sunrise-500 hover:bg-sunrise-600 text-white text-xs font-semibold transition-colors shadow-sm">
+                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sunrise-800 hover:bg-sunrise-900 text-white text-xs font-semibold transition-colors shadow-sm">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
                     Impersonate
                 </button>
@@ -55,7 +55,7 @@
     <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6">
         <div class="flex items-start justify-between mb-4">
             <div>
-                <p class="text-3xl font-mono font-bold text-brand-600">{{ $distributor->adn }}</p>
+                <p class="text-3xl font-mono font-bold text-brand-700">{{ $distributor->adn }}</p>
                 <p class="text-sm text-gray-800 mt-1">{{ $distributor->full_name ?: 'No name recorded' }}</p>
             </div>
             @php
@@ -67,8 +67,8 @@
                 $isTerminated = $distributor->status === 'terminated';
                 if ($isTerminated) {
                     $statusBadge = $distributor->closure_type === 'cooling_off_cancellation'
-                        ? ['label' => 'Cancelled (cooling-off)', 'class' => 'bg-white text-gray-500 border-gray-200']
-                        : ['label' => 'Terminated', 'class' => 'bg-white text-gray-500 border-gray-200'];
+                        ? ['label' => 'Cancelled (cooling-off)', 'class' => 'bg-white text-gray-600 border-gray-200']
+                        : ['label' => 'Terminated', 'class' => 'bg-white text-gray-600 border-gray-200'];
                 } else {
                     $statusBadge = match ($distributor->status) {
                         'active'   => ['label' => 'Active',   'class' => 'bg-green-50 text-green-700 border-green-200'],
@@ -138,7 +138,7 @@
                 <div class="flex-1 rounded-lg p-3 border {{ $leftChild ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white/50' }}">
                     <p class="text-xs text-gray-700 mb-1">Left (L)</p>
                     @if($leftChild)
-                    <a href="{{ route('admin.distributors.show', $leftChild->id) }}" class="text-xs font-mono text-brand-600 hover:underline">{{ $leftChild->adn }}</a>
+                    <a href="{{ route('admin.distributors.show', $leftChild->id) }}" class="text-xs font-mono text-brand-700 hover:underline">{{ $leftChild->adn }}</a>
                     @else
                     <span class="text-xs text-gray-600">Empty</span>
                     @endif
@@ -169,7 +169,7 @@
                     onclick="this.select()">
                 <button type="button"
                     onclick="navigator.clipboard.writeText('{{ $inviteAuto }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-                    class="px-3 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold transition-colors">
+                    class="px-3 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition-colors">
                     Copy
                 </button>
             </div>
@@ -197,7 +197,7 @@
 @if($sponsor)
 <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
     <p class="text-xs text-gray-700 uppercase tracking-wider mb-2">Sponsor</p>
-    <p class="text-sm font-mono text-brand-600">{{ $sponsor->adn }}</p>
+    <p class="text-sm font-mono text-brand-700">{{ $sponsor->adn }}</p>
     <p class="text-xs text-gray-700">{{ $sponsor->full_name }} · {{ $sponsor->email }}</p>
 </div>
 @endif
@@ -530,9 +530,9 @@ function unmaskNomineeAadhaar(btn) {
         <div class="flex items-start justify-between mb-1">
             <h2 id="resetPwdTitle" class="text-base font-semibold text-gray-900">Reset password</h2>
             <button type="button" onclick="closeResetPwdModal()" aria-label="Close"
-                class="text-gray-400 hover:text-gray-700 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100">×</button>
+                class="text-gray-600 hover:text-gray-700 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100">×</button>
         </div>
-        <p class="text-xs text-gray-500 mb-4 leading-relaxed">
+        <p class="text-xs text-gray-600 mb-4 leading-relaxed">
             Sets a new password for
             <span class="font-semibold text-gray-700">{{ $distributor->full_name ?: 'this distributor' }}</span>
             (<span class="font-mono">{{ $distributor->adn }}</span>) immediately. The current password and any
@@ -558,7 +558,7 @@ function unmaskNomineeAadhaar(btn) {
                 <button type="button" onclick="closeResetPwdModal()"
                     class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit"
-                    class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">Set password</button>
+                    class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">Set password</button>
             </div>
         </form>
     </div>

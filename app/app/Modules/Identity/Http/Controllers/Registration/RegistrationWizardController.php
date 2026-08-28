@@ -898,6 +898,14 @@ final class RegistrationWizardController extends Controller
             'consent_ethics' => ['required', 'accepted'],
             'consent_plan' => ['required', 'accepted'],
             'consent_privacy' => ['required', 'accepted'],
+            // T&C §2.3 eligibility declarations. `accepted` rather than
+            // `boolean`: an unchecked box posts nothing at all, so a rule that
+            // merely validates the value when present would let a joiner
+            // through having declared none of them — the same shape that let
+            // grievances be filed with no contact details.
+            'declared_sound_mind' => ['required', 'accepted'],
+            'declared_not_insolvent' => ['required', 'accepted'],
+            'declared_no_moral_turpitude' => ['required', 'accepted'],
         ], [
             'consent_tnc.required' => 'Please check the Terms and Conditions consent.',
             'consent_tnc.accepted' => 'You must accept the Direct Seller Agreement and Terms of Service to continue.',
@@ -907,6 +915,12 @@ final class RegistrationWizardController extends Controller
             'consent_plan.accepted' => 'You must accept the Compensation Plan to continue.',
             'consent_privacy.required' => 'Please check the Privacy Policy consent.',
             'consent_privacy.accepted' => 'You must accept the Privacy Policy to continue.',
+            'declared_sound_mind.required' => 'Please confirm the declaration about sound mind.',
+            'declared_sound_mind.accepted' => 'You must be of sound mind to enter this agreement.',
+            'declared_not_insolvent.required' => 'Please confirm the declaration about insolvency.',
+            'declared_not_insolvent.accepted' => 'An undischarged insolvent cannot register as a Direct Seller.',
+            'declared_no_moral_turpitude.required' => 'Please confirm the declaration about convictions.',
+            'declared_no_moral_turpitude.accepted' => 'A conviction for an offence involving moral turpitude in the last five years bars registration.',
         ]);
 
         $this->wizard->saveStepData(4, [
@@ -914,6 +928,15 @@ final class RegistrationWizardController extends Controller
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent() ?? '',
             'at' => now()->toISOString(),
+            // Recorded individually. A single "I meet the eligibility
+            // criteria" flag cannot tell you afterwards which limb was false
+            // when one turns out to be — and each of these voids the agreement
+            // ab initio on its own (T&C §2.3).
+            'declarations' => [
+                'sound_mind' => true,
+                'not_insolvent' => true,
+                'no_moral_turpitude' => true,
+            ],
         ]);
 
         return redirect()->route('register.identity-documents');

@@ -10,7 +10,7 @@
         </div>
         <h1 class="text-2xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
         <p class="text-gray-600">Thank you for your order, {{ $order->customer->display_name }}.</p>
-        <p class="text-sm text-gray-500 mt-1">Order number: <strong class="text-gray-900 font-mono">{{ $order->order_no }}</strong></p>
+        <p class="text-sm text-gray-600 mt-1">Order number: <strong class="text-gray-900 font-mono">{{ $order->order_no }}</strong></p>
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">

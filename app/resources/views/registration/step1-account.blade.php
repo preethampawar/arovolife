@@ -9,9 +9,9 @@
          slider: small-caps eyebrow + bold sans headline + accent in solid
          brand colour. No italic, no serif. --}}
     <div class="mb-7 lift-in" style="animation-delay: 80ms;">
-        <p class="text-sm font-medium text-brand-600 uppercase tracking-wider mb-3">A new arovolife distributor</p>
+        <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">A new arovolife distributor</p>
         <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
-            Create your <span class="text-brand-600">Direct Seller</span> account.
+            Create your <span class="text-brand-700">Direct Seller</span> account.
         </h1>
         <p class="text-lg text-gray-600 max-w-lg">
             Registration is <strong class="text-gray-800 font-semibold">free of charge</strong> and backed by India's
@@ -23,7 +23,7 @@
          (ADR-0003). The user cannot edit them from inside the wizard. --}}
     @if(!empty($sponsorAdn))
     <div class="mb-6 lift-in flex items-center gap-3 rounded-xl border border-brand-200/70 bg-gradient-to-r from-brand-50 to-white px-4 py-3" style="animation-delay: 140ms;">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-brand-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-brand-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 11H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h4"/>
             <path d="M15 11h4a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-4"/>
             <path d="M9 13h6"/>
@@ -136,7 +136,7 @@
                 ← Back
             </a>
             <button type="submit"
-                class="btn-cta group flex-1 rounded-full bg-brand-500 hover:bg-brand-600 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
+                class="btn-cta group flex-1 rounded-full bg-brand-700 hover:bg-brand-800 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                 style="animation-delay: 720ms;">
                 <span class="inline-flex items-center justify-center gap-2.5">
                     Create account & continue
@@ -153,7 +153,7 @@
         <span class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></span>
         <p class="text-[12px] text-slate-500">
             Already have an account?
-            <a href="{{ route('login') }}" class="text-brand-600 hover:text-brand-700 font-medium underline-offset-4 hover:underline">Sign in →</a>
+            <a href="{{ route('login') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Sign in →</a>
         </p>
         <span class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></span>
     </div>
