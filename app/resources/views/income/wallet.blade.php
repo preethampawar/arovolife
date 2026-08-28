@@ -46,7 +46,7 @@
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-500">Repurchase Wallet</p>
+                <p class="text-xs text-gray-600">Repurchase Wallet</p>
                 <x-help-tip text="This balance is applied automatically at checkout toward your mandatory monthly repurchase and carries forward each month. It cannot be withdrawn." />
             </div>
             <p class="text-2xl font-bold {{ $repurchaseWalletBalancePaise > 0 ? 'text-green-700' : 'text-gray-900' }}">
