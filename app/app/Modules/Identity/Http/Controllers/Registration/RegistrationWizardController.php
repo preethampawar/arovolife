@@ -699,9 +699,10 @@ final class RegistrationWizardController extends Controller
 
         if (! empty($validated['aadhaar'])) {
             $sessionData['aadhaar_last4'] = substr($validated['aadhaar'], -4);
-            // Stored briefly in session; encrypted at rest when written to DB
-            // via PiiEncrypted cast in handleComplete(). Hard rule #8.
-            $sessionData['aadhaar_raw'] = $validated['aadhaar'];
+            // Encrypt before storing in session — raw Aadhaar must never sit in plaintext
+            // across multiple HTTP cycles. Decrypted only at handleComplete() for DB write.
+            // Hard rule #8: raw Aadhaar never stored.
+            $sessionData['aadhaar_encrypted_session'] = encrypt($validated['aadhaar']);
         }
 
         $this->wizard->saveStepData(7, $sessionData);
@@ -1139,8 +1140,10 @@ final class RegistrationWizardController extends Controller
                 'date_of_birth' => $nomineeData['date_of_birth'],
                 'pan_number' => $nomineeData['pan_number'] ?? null,
                 'aadhaar_last4' => $nomineeData['aadhaar_last4'] ?? null,
-                // PiiEncrypted cast handles encryption on write; hard rule #8.
-                'aadhaar_encrypted' => $nomineeData['aadhaar_raw'] ?? null,
+                // Decrypt from session then let PiiEncrypted cast re-encrypt for DB. Hard rule #8.
+                'aadhaar_encrypted' => isset($nomineeData['aadhaar_encrypted_session'])
+                    ? decrypt($nomineeData['aadhaar_encrypted_session'])
+                    : null,
                 'mobile' => $nomineeData['mobile'] ?? null,
                 'email' => $nomineeData['email'] ?? null,
                 'address' => $nomineeData['address'] ?? null,

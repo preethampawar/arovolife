@@ -297,7 +297,7 @@ it('RN-08: handleComplete() with nominee data creates a distributor_nominees row
                     'date_of_birth' => '1990-06-15',
                     'pan_number' => null,
                     'aadhaar_last4' => '4321',
-                    'aadhaar_raw' => '123456784321',
+                    'aadhaar_encrypted_session' => encrypt('123456784321'),
                     'mobile' => null,
                     'email' => null,
                     'address' => null,

@@ -423,6 +423,15 @@ final class AdminDistributorController extends Controller
 
         abort_if($aadhaar === null, 404);
 
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'nominee_aadhaar_unmasked',
+            'subject_type' => 'distributor',
+            'subject_id' => $id,
+            'details' => null,
+            'ip' => $request->ip(),
+        ]);
+
         return response()->json(['aadhaar' => $aadhaar]);
     }
 }
