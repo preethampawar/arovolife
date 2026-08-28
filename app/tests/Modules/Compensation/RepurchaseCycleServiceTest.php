@@ -6,7 +6,6 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Events\IncomeSuspended;
-use App\Modules\Compensation\Events\RepurchaseGraceStarted;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
@@ -102,16 +101,17 @@ it('completes the cycle once the required repurchase BV is reached', function ()
     expect($cycle->completed_at)->not->toBeNull();
 });
 
-it('enters grace past the due date and emits the event', function (): void {
-    Event::fake([RepurchaseGraceStarted::class]);
+it('immediately suspends past the due date and emits the event', function (): void {
+    Event::fake([IncomeSuspended::class]);
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 300_000, '2026-01-05');
 
-    // Feb cycle due 2026-03-04, grace to 2026-03-11; evaluate on the 6th, unmet.
+    // Feb cycle due 2026-03-04; grace_days=0 so grace_end_date == due_date.
+    // Evaluating on the 6th (past due) immediately suspends — no grace window.
     $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-03-06'));
 
-    expect($cycle->status)->toBe(RepurchaseCycle::STATUS_GRACE);
-    Event::assertDispatched(RepurchaseGraceStarted::class);
+    expect($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
+    Event::assertDispatched(IncomeSuspended::class);
 });
 
 it('suspends after grace lapses and emits the event', function (): void {
@@ -119,10 +119,22 @@ it('suspends after grace lapses and emits the event', function (): void {
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 300_000, '2026-01-05');
 
-    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-03-20')); // past grace_end 03-11
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-03-20')); // past due_date 03-04; grace_days=0
 
     expect($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
     Event::assertDispatched(IncomeSuspended::class);
+});
+
+it('resolves to SUSPENDED the day after due date when grace_days is zero', function (): void {
+    // Unit regression: grace_days=0 means grace_end_date == due_date.
+    // Any date strictly after the due date must resolve to SUSPENDED, not GRACE.
+    $dist = Distributor::factory()->create();
+    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // anchor day 5; due 2026-03-04
+
+    // 2026-03-05 is exactly one day after due_date; grace_end_date is also 03-04.
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-03-05'));
+
+    expect($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
 });
 
 it('reactivates a suspended distributor once they complete the repurchase', function (): void {
@@ -201,7 +213,7 @@ function makeGsbReadyRetailer(string $date): Distributor
     return $dist;
 }
 
-it('credits GSB normally when the repurchase engine is OFF, even past grace', function (): void {
+it('credits GSB normally when the repurchase engine is OFF, even past due date', function (): void {
     $dist = makeGsbReadyRetailer('2026-03-20'); // would be suspended if engine were on
 
     $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-20'));
@@ -209,9 +221,9 @@ it('credits GSB normally when the repurchase engine is OFF, even past grace', fu
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
 });
 
-it('suspends the GSB credit when the engine is ON and the cycle is past grace', function (): void {
+it('suspends the GSB credit when the engine is ON and the cycle is past due date', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
-    $dist = makeGsbReadyRetailer('2026-03-20'); // > grace_end 2026-03-11
+    $dist = makeGsbReadyRetailer('2026-03-20'); // > due_date 2026-03-04; grace_days=0
 
     $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-20'));
 
@@ -220,27 +232,28 @@ it('suspends the GSB credit when the engine is ON and the cycle is past grace', 
     expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0); // …but not credited
 });
 
-it('holds the GSB credit during the repurchase grace window', function (): void {
+it('suspends the GSB credit immediately the day after the due date', function (): void {
+    // grace_days=0: grace_end_date == due_date, so any day past due_date is suspended.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
-    $dist = makeGsbReadyRetailer('2026-03-06'); // due 03-04, grace to 03-11
+    $dist = makeGsbReadyRetailer('2026-03-06'); // due 03-04; grace_days=0, so suspended on 03-06
 
     $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-06'));
 
-    expect($result->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_HELD);
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
     expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
 });
 
-it('releases grace-held GSB on repurchase completion but keeps suspended GSB forfeited', function (): void {
-    // KP 2026-06-28 final: income HELD during the 7-day grace is released to the
-    // wallet once the distributor completes their repurchase; income SUSPENDED
-    // after grace is forfeited for that lapsed period and is never released.
+it('keeps suspended GSB rows forfeited after repurchase completion (grace_days=0)', function (): void {
+    // grace_days=0: no grace window; any day past the due date is immediately SUSPENDED.
+    // Completing repurchase later reactivates the cycle but cannot release SUSPENDED rows
+    // (only HELD rows are released, and HELD only arises when grace_days > 0).
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create(['status' => 'active', 'adn' => '100000901']);
-    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // anchor day 5; due 03-04, grace to 03-11
+    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // anchor day 5; due 03-04, grace_days=0
 
-    // A slab-1 match on each of two days: one in grace, one after grace.
-    foreach (['2026-03-06' => 'grace', '2026-03-15' => 'suspended'] as $date => $_phase) {
+    // A slab-1 match on each of two days, both past the due date.
+    foreach (['2026-03-06', '2026-03-15'] as $date) {
         GroupBvDaily::create([
             'distributor_id' => $dist->id, 'date' => $date,
             'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000, // weaker 16,000 BV ≥ slab 1
@@ -249,30 +262,30 @@ it('releases grace-held GSB on repurchase completion but keeps suspended GSB for
 
     $gsb = app(GsbCutoffService::class);
 
-    // Day in grace → HELD (calculated, not credited).
+    // Both days past due → SUSPENDED immediately (no grace hold).
     svc()->evaluate($dist->id, Carbon::parse('2026-03-06'));
-    $held = $gsb->runForDistributor($dist->id, Carbon::parse('2026-03-06'));
-    expect($held->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_HELD);
+    $row1 = $gsb->runForDistributor($dist->id, Carbon::parse('2026-03-06'));
+    expect($row1->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
 
-    // Day past grace → SUSPENDED (forfeited).
     svc()->evaluate($dist->id, Carbon::parse('2026-03-15'));
-    $suspended = $gsb->runForDistributor($dist->id, Carbon::parse('2026-03-15'));
-    expect($suspended->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0); // nothing credited yet
+    $row2 = $gsb->runForDistributor($dist->id, Carbon::parse('2026-03-15'));
+    expect($row2->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
 
-    // Complete the repurchase → IncomeReactivated → listener releases HELD only.
+    // Complete the repurchase → cycle reactivates, but no HELD rows exist to release.
     seedSelfPurchase($dist->id, 60_000, '2026-03-20'); // 600 BV, meets the obligation
     $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-03-20'));
     expect($cycle->status)->toBe(RepurchaseCycle::STATUS_COMPLETED);
 
-    // Grace-held row released and credited; suspended row still forfeited.
-    expect($held->fresh()->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
-    expect($suspended->fresh()->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
-    // Wallet holds exactly the one released slab-1 amount (₹1,800), not both.
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(200_000);
+    // Both suspended rows remain forfeited; wallet stays empty.
+    expect($row1->fresh()->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
+    expect($row2->fresh()->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
 });
 
-it('release listener is idempotent — a second reactivation does not double-credit', function (): void {
+it('release listener is idempotent — a second reactivation does not credit when no held rows exist', function (): void {
+    // grace_days=0: the GSB row on 2026-03-06 is SUSPENDED, not HELD.
+    // Firing IncomeReactivated twice must not throw and must not credit anything.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create(['status' => 'active', 'adn' => '100000902']);
@@ -282,12 +295,12 @@ it('release listener is idempotent — a second reactivation does not double-cre
         'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000,
     ]);
 
-    svc()->evaluate($dist->id, Carbon::parse('2026-03-06'));
-    app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-06'));
+    svc()->evaluate($dist->id, Carbon::parse('2026-03-06')); // → SUSPENDED
+    app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-06')); // → REPURCHASE_SUSPENDED
 
-    // Fire the reactivation twice directly.
+    // Fire the reactivation twice directly; no held rows to release → wallet stays 0.
     event(new IncomeReactivated($dist->id, 1));
     event(new IncomeReactivated($dist->id, 1));
 
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(200_000); // credited once only
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0); // nothing to release
 });

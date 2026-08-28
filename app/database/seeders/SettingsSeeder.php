@@ -82,7 +82,7 @@ final class SettingsSeeder extends Seeder
             'comp.adc.cap_paise' => '10000000',             // ₹1,00,000
             'comp.repurchase.rate_bp' => '1000',            // 10%
             'comp.repurchase.cap_paise' => '1000000',       // ₹10,000
-            'comp.repurchase.grace_days' => '7',
+            'comp.repurchase.grace_days' => '0',
             'comp.repurchase.non_ranked_bv_paise' => '60000', // 600 BV
             'comp.fortune.pool_rate_bp' => '500',           // 5% of the month's company BV (÷ the month's total FB points)
             'comp.fortune.exclude_rank_6' => 'true',

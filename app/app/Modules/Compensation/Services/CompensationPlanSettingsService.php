@@ -108,7 +108,7 @@ final class CompensationPlanSettingsService
         'comp.rank.pay_highest_rank_only' => true,
         'comp.repurchase.rate_bp' => 1000,
         'comp.repurchase.cap_paise' => 1_000_000,
-        'comp.repurchase.grace_days' => 7,
+        'comp.repurchase.grace_days' => 0,
         'comp.repurchase.non_ranked_bv_paise' => 60_000,
         'payout.min_threshold_paise' => 10_000,
         'payout.neft_min_bv_paise' => 300_000,

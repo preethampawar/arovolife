@@ -108,8 +108,7 @@ AGP accrue per **GSB slab match** during the month — **12 AGP** for a slab-1 m
 3. The month's economics are frozen in a `gbb_monthly_pools` row **before any credit** and never recomputed, so re-runs and single-distributor retries price against the same snapshot (`gbb.pool.frozen` audit entry) — the same auditable, tamper-evident design as the GSB and MSB daily pools.
 
 ### Repurchase interaction
-- **Held** (`repurchase_held`) — a distributor inside their repurchase grace window has their GBB **calculated but not credited**; it is released automatically when they complete their repurchase. Held distributors **still count in the pool denominator**, because they may yet be paid.
-- **Forfeited** (`repurchase_suspended`) — once the grace window lapses the month's GBB is forfeited and can never be paid, so those distributors are **excluded from the denominator** (their AGP does not dilute anyone else's point value).
+- **Forfeited** (`repurchase_suspended`) — a distributor who misses their repurchase due date is suspended immediately (grace_days = 0). Their month's GBB is forfeited and can never be paid, so those distributors are **excluded from the denominator** (their AGP does not dilute anyone else's point value).
 
 GBB sits behind its own feature flag and is **OFF**; nothing is credited until the plan change is published with the §6.2 notice period. The per-month arithmetic (BV, pool, eligible distributors, total AGP, point value, income, leftover, held/suspended rows) is visible in the admin **GBB calculation report**.
 
@@ -166,7 +165,7 @@ Members deeper than level 9 earn nothing. All nine figures are **admin-editable*
 
 ### Who is enrolled
 
-Every gate is assessed **per month**, and the distributor's repurchase wallet must be clear — a distributor inside their repurchase grace window is held, and a lapsed grace window suspends the month's Fortune Bonus entirely.
+Every gate is assessed **per month**, and the distributor's repurchase wallet must be clear — missing the repurchase due date suspends the month's Fortune Bonus immediately (grace_days = 0; there is no held window).
 
 | Tier | Personal BV required | GSB slab achievements required in the month |
 |---|---|---|

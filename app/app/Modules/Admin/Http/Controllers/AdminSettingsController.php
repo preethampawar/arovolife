@@ -557,11 +557,11 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase grace period (days)',
-                'description' => 'Days after the repurchase due date during which income is calculated but held before suspension. KP-confirmed 7.',
+                'description' => 'Days after the repurchase due date during which income is calculated but held before suspension. 0 = immediate suspension on missed due date.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 90,
-                'default' => '7',
+                'default' => '0',
             ],
             'comp.repurchase.non_ranked_bv_paise' => [
                 'group' => 'compensation_plan',
