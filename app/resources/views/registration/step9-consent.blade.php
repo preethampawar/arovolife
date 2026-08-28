@@ -1,5 +1,5 @@
 @extends('layouts.wizard')
-@section('title', 'Step 9 — Legal Consent')
+@section('title', 'Step 4 — Legal Consent')
 @php $currentStep = 4; @endphp
 
 @section('content')

@@ -1,5 +1,5 @@
 @extends('layouts.wizard')
-@section('title', 'Step 1 — Orientation')
+@section('title', 'Step 3 — Orientation')
 @php $currentStep = 3; @endphp
 
 @section('content')

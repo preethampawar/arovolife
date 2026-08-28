@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
-@section('title', 'Step 3 — Personal Details')
-@php $currentStep = 8; @endphp
+@section('title', 'Step 9 — Personal Details')
+@php $currentStep = 9; @endphp
 
 @section('content')
 <div class="max-w-xl mx-auto">

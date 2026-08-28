@@ -1,6 +1,6 @@
 @extends('layouts.wizard')
-@section('title', 'Step 7 — Bank Details (optional)')
-@php $currentStep = 7; @endphp
+@section('title', 'Step 8 — Bank Details (optional)')
+@php $currentStep = 8; @endphp
 
 @section('content')
 <div class="max-w-xl mx-auto">
@@ -59,7 +59,7 @@
         @include('registration._draft_notice')
 
         <div class="flex items-center justify-between gap-3 pt-2">
-            <a href="{{ route('register.aadhaar') }}"
+            <a href="{{ route('register.nominee') }}"
                class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
                 ← Back
             </a>
