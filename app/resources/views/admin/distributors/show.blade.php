@@ -272,6 +272,106 @@
 </div>
 @endif
 
+{{-- Nominee --}}
+@if($nomineeRow)
+<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-800">Nominee</h3>
+        @if($nomineeRow->aadhaar_last4)
+        <button type="button"
+            onclick="unmaskNomineeAadhaar(this)"
+            data-url="{{ route('admin.distributors.nominee.unmask', $distributor->id) }}"
+            class="text-xs text-brand-700 underline hover:text-brand-900 transition-colors">
+            Show Aadhaar
+        </button>
+        @endif
+    </div>
+    <div class="px-6 py-4 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+        @php
+            $relationshipLabels = [
+                'spouse'  => 'Spouse',
+                'child'   => 'Child',
+                'parent'  => 'Parent',
+                'sibling' => 'Sibling',
+                'other'   => 'Other',
+            ];
+        @endphp
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Full Name</p>
+            <p class="text-gray-800">{{ $nomineeRow->full_name }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Relationship</p>
+            <p class="text-gray-800">{{ $relationshipLabels[$nomineeRow->relationship] ?? $nomineeRow->relationship }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Date of Birth</p>
+            <p class="text-gray-800">{{ \Carbon\Carbon::parse($nomineeRow->date_of_birth)->format('d M Y') }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">PAN</p>
+            <p class="text-gray-800 font-mono">{{ $nomineeRow->pan_number ?? '—' }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Aadhaar (last 4)</p>
+            @if($nomineeRow->aadhaar_last4)
+            <p class="text-gray-800 font-mono" id="nominee-aadhaar-display">****{{ $nomineeRow->aadhaar_last4 }}</p>
+            @else
+            <p class="text-gray-800">—</p>
+            @endif
+        </div>
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Mobile</p>
+            <p class="text-gray-800">{{ $nomineeRow->mobile ?? '—' }}</p>
+        </div>
+        @if($nomineeRow->email)
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Email</p>
+            <p class="text-gray-800">{{ $nomineeRow->email }}</p>
+        </div>
+        @endif
+        @if($nomineeRow->address)
+        <div class="col-span-2 sm:col-span-3">
+            <p class="text-xs text-gray-700 mb-0.5">Address</p>
+            <p class="text-gray-800">{{ $nomineeRow->address }}</p>
+        </div>
+        @endif
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Consent Given</p>
+            <p class="text-gray-800">{{ \Carbon\Carbon::parse($nomineeRow->consent_given_at)->format('d M Y, h:i A') }}</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function unmaskNomineeAadhaar(btn) {
+    const url = btn.dataset.url;
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        const el = document.getElementById('nominee-aadhaar-display');
+        if (el && data.aadhaar) {
+            el.textContent = data.aadhaar;
+        }
+        btn.textContent = 'Shown';
+    })
+    .catch(() => {
+        btn.textContent = 'Error — retry';
+        btn.disabled = false;
+    });
+}
+</script>
+@endif
+
 {{-- Admin Actions --}}
 @if($distributor->status !== 'terminated')
 <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">

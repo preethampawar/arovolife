@@ -233,4 +233,9 @@ final class Distributor extends Model
     {
         return $this->hasOne(DistributorProfile::class);
     }
+
+    public function nominee(): HasOne
+    {
+        return $this->hasOne(DistributorNominee::class);
+    }
 }

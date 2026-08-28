@@ -12,6 +12,7 @@ use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
+use App\Modules\Identity\Models\DistributorNominee;
 use App\Modules\Identity\Models\DistributorProfile;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError;
@@ -639,18 +640,71 @@ final class RegistrationWizardController extends Controller
         return redirect()->route('register.nominee');
     }
 
-    // ── Step 7: Nominee (placeholder — full implementation is a future task) ──
+    // ── Step 7: Nominee ────────────────────────────────────────────────────
 
-    /**
-     * Placeholder for the Nominee step. Advances the wizard to step 8
-     * (Bank) directly until the nominee data-collection form is built.
-     */
-    public function showNominee(): RedirectResponse
+    public function showNominee(): View
     {
-        // Stub: nominee data collection is deferred. Skip the step by
-        // saving an empty marker and forwarding to bank. This placeholder
-        // MUST be replaced with a real form in the nominee task.
-        $this->wizard->saveStepData(7, ['skipped' => true]);
+        return view('registration.step7-nominee', [
+            'currentStep' => 7,
+            'nominee' => $this->wizard->getStepData(7) ?? [],
+        ]);
+    }
+
+    public function handleNominee(Request $request): RedirectResponse
+    {
+        if ($request->input('skip') === '1') {
+            $this->wizard->saveStepData(7, ['skipped' => true]);
+
+            return redirect()->route('register.bank');
+        }
+
+        $validated = $request->validate([
+            'full_name' => ['required', 'string', 'max:191'],
+            'relationship' => ['required', 'in:spouse,child,parent,sibling,other'],
+            'date_of_birth' => ['required', 'date', 'before:today'],
+            'pan_number' => ['nullable', 'string', 'max:20', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/'],
+            'aadhaar' => ['nullable', 'string', 'digits:12'],
+            'mobile' => ['nullable', 'string', 'max:15'],
+            'email' => ['nullable', 'email', 'max:191'],
+            'address' => ['nullable', 'string', 'max:2000'],
+            'consent' => ['required', 'accepted'],
+        ], [
+            'full_name.required' => 'Please enter the nominee\'s full name.',
+            'full_name.max' => 'Nominee\'s name must be at most 191 characters.',
+            'relationship.required' => 'Please select your relationship to the nominee.',
+            'relationship.in' => 'Please select a valid relationship.',
+            'date_of_birth.required' => 'Please enter the nominee\'s date of birth.',
+            'date_of_birth.date' => 'Please enter a valid date of birth.',
+            'date_of_birth.before' => 'Date of birth must be in the past.',
+            'pan_number.regex' => 'PAN must be 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
+            'aadhaar.digits' => 'Aadhaar must be exactly 12 digits.',
+            'email.email' => 'Please enter a valid email address.',
+            'consent.required' => 'Please confirm the nominee\'s consent to data collection.',
+            'consent.accepted' => 'You must confirm that the nominee has consented to data collection to continue.',
+        ], [
+            'pan_number' => 'nominee PAN',
+            'aadhaar' => 'nominee Aadhaar number',
+        ]);
+
+        $sessionData = [
+            'full_name' => $validated['full_name'],
+            'relationship' => $validated['relationship'],
+            'date_of_birth' => $validated['date_of_birth'],
+            'pan_number' => $validated['pan_number'] ?? null,
+            'mobile' => $validated['mobile'] ?? null,
+            'email' => $validated['email'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'consent_given_at' => now()->toDateTimeString(),
+        ];
+
+        if (! empty($validated['aadhaar'])) {
+            $sessionData['aadhaar_last4'] = substr($validated['aadhaar'], -4);
+            // Stored briefly in session; encrypted at rest when written to DB
+            // via PiiEncrypted cast in handleComplete(). Hard rule #8.
+            $sessionData['aadhaar_raw'] = $validated['aadhaar'];
+        }
+
+        $this->wizard->saveStepData(7, $sessionData);
 
         return redirect()->route('register.bank');
     }
@@ -1073,6 +1127,26 @@ final class RegistrationWizardController extends Controller
             'additional_language_1' => $demographicsData['additional_language_1'] ?? null,
             'additional_language_2' => $demographicsData['additional_language_2'] ?? null,
         ]);
+
+        // Persist nominee data collected at step 7 (optional — user may have skipped).
+        // FIXME: pre-launch — confirm UIDAI compliance for nominee Aadhaar storage.
+        $nomineeData = $this->wizard->getStepData(7);
+        if ($nomineeData !== null && ! isset($nomineeData['skipped'])) {
+            DistributorNominee::create([
+                'distributor_id' => $result->distributorId,
+                'full_name' => $nomineeData['full_name'],
+                'relationship' => $nomineeData['relationship'],
+                'date_of_birth' => $nomineeData['date_of_birth'],
+                'pan_number' => $nomineeData['pan_number'] ?? null,
+                'aadhaar_last4' => $nomineeData['aadhaar_last4'] ?? null,
+                // PiiEncrypted cast handles encryption on write; hard rule #8.
+                'aadhaar_encrypted' => $nomineeData['aadhaar_raw'] ?? null,
+                'mobile' => $nomineeData['mobile'] ?? null,
+                'email' => $nomineeData['email'] ?? null,
+                'address' => $nomineeData['address'] ?? null,
+                'consent_given_at' => $nomineeData['consent_given_at'],
+            ]);
+        }
 
         // Enrol the new distributor in their chosen Arete centre (or company default).
         $centerId = (int) ($state['data']['arete']['center_id'] ?? 0);

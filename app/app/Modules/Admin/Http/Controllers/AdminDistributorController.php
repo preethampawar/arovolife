@@ -11,8 +11,10 @@ use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Services\AuditLogPresenter;
+use App\Modules\Identity\Models\DistributorNominee;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Csv;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -157,9 +159,12 @@ final class AdminDistributorController extends Controller
             ->where('distributors.id', '!=', $id)
             ->first();
 
+        $nomineeRow = DB::table('distributor_nominees')->where('distributor_id', $id)->first();
+
         return view('admin.distributors.show', compact(
             'distributor', 'sponsor', 'placementParent', 'consents',
-            'auditLogs', 'downlineCount', 'leftChild', 'rightChild'
+            'auditLogs', 'downlineCount', 'leftChild', 'rightChild',
+            'nomineeRow'
         ));
     }
 
@@ -399,5 +404,25 @@ final class AdminDistributorController extends Controller
         }
 
         return back()->with('status', sprintf('Distributor %s set to %s.', $row->adn, $status));
+    }
+
+    /**
+     * Decrypt and return the nominee's Aadhaar number for authorised KYC staff.
+     * Gated by `admin.kyc.unmask` permission — see separation-of-duties note in CLAUDE.md.
+     */
+    public function unmaskNomineeAadhaar(Request $request, int $id): JsonResponse
+    {
+        abort_unless($request->user()?->can('admin.kyc.unmask'), 403);
+
+        $nominee = DistributorNominee::where('distributor_id', $id)->first();
+
+        abort_if($nominee === null, 404);
+
+        // Access via Eloquent so PiiEncrypted cast handles decryption automatically.
+        $aadhaar = $nominee->aadhaar_encrypted;
+
+        abort_if($aadhaar === null, 404);
+
+        return response()->json(['aadhaar' => $aadhaar]);
     }
 }

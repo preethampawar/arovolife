@@ -179,6 +179,8 @@ Route::middleware([])->group(function (): void {
 
     Route::get('/register/nominee', [RegistrationWizardController::class, 'showNominee'])
         ->middleware('wizard.progress:7')->name('register.nominee');
+    Route::post('/register/nominee', [RegistrationWizardController::class, 'handleNominee'])
+        ->middleware('wizard.progress:7')->name('register.nominee.submit');
 
     Route::get('/register/kyc/bank', [RegistrationWizardController::class, 'showBank'])
         ->middleware('wizard.progress:8')->name('register.bank');
@@ -245,6 +247,8 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/distributors/{id}/identity', [AdminDistributorEditController::class, 'updateIdentity'])->whereNumber('id')->name('distributors.identity');
     Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
     // Account discipline (block / unblock / terminate) — admin-compliance (R-17).
+    Route::post('/distributors/{id}/nominee/unmask', [AdminDistributorController::class, 'unmaskNomineeAadhaar'])->whereNumber('id')->middleware('can:admin.kyc.unmask')->name('distributors.nominee.unmask');
+
     Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.freeze');
     Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.unfreeze');
     Route::post('/distributors/{id}/terminate', [AdminDistributorController::class, 'terminate'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.terminate');
