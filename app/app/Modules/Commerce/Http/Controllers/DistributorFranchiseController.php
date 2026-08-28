@@ -73,7 +73,7 @@ final class DistributorFranchiseController extends Controller
         // `name` is NOT NULL on the franchises table. Applicants do not choose
         // it — admin renames on approval — so derive a stable placeholder from
         // the operator and the proposed location.
-        $operatorName = $distributor->user?->full_name ?? $distributor->adn;
+        $operatorName = $distributor->user->full_name ?? $distributor->adn;
 
         Franchise::create([
             'operator_distributor_id' => $distributor->id,
@@ -93,7 +93,7 @@ final class DistributorFranchiseController extends Controller
             ->with('success', 'Your application has been submitted. We will be in touch shortly.');
     }
 
-    public function showStatus(Request $request): View|RedirectResponse
+    public function showStatus(Request $request): View
     {
         if (! Feature::for(null)->active(FranchiseFeature::class)) {
             abort(403, 'Franchise applications are not yet open.');

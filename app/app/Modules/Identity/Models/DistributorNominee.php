@@ -57,6 +57,9 @@ final class DistributorNominee extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Distributor, $this>
+     */
     public function distributor(): BelongsTo
     {
         return $this->belongsTo(Distributor::class);

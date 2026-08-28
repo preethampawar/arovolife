@@ -111,7 +111,11 @@ function rnSeedDistributor(int $userId): int
     return $id;
 }
 
-/** Return a valid nominee form payload. */
+/**
+ * Return a valid nominee form payload.
+ *
+ * @return array<string, mixed>
+ */
 function rnValidPayload(): array
 {
     return [

@@ -245,11 +245,17 @@ final class Distributor extends Model
         return $this->hasMany(LineChangeRequest::class);
     }
 
+    /**
+     * @return HasOne<DistributorProfile, $this>
+     */
     public function profile(): HasOne
     {
         return $this->hasOne(DistributorProfile::class);
     }
 
+    /**
+     * @return HasOne<DistributorNominee, $this>
+     */
     public function nominee(): HasOne
     {
         return $this->hasOne(DistributorNominee::class);

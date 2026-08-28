@@ -26,7 +26,11 @@ beforeEach(function (): void {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Create a logged-in distributor and return [userId, distributorId]. */
+/**
+ * Create a logged-in distributor and return [userId, distributorId].
+ *
+ * @return array{0: int, 1: int}
+ */
 function crwDistributor(): array
 {
     $user = User::create([
@@ -109,6 +113,9 @@ function crwCart(int $pricePaise = 500000): Cart
     return $cart->load('items.variant.product');
 }
 
+/**
+ * @return array<string, mixed>
+ */
 function crwBuyer(): array
 {
     return [
@@ -119,6 +126,9 @@ function crwBuyer(): array
     ];
 }
 
+/**
+ * @return array<string, mixed>
+ */
 function crwAddr(): array
 {
     return [
