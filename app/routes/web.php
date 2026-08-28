@@ -167,40 +167,35 @@ Route::middleware([])->group(function (): void {
     Route::post('/register/consent', [RegistrationWizardController::class, 'handleConsent'])
         ->middleware('wizard.progress:4');
 
-    Route::get('/register/kyc/pan', [RegistrationWizardController::class, 'showPan'])
-        ->middleware('wizard.progress:5')->name('register.pan');
-    Route::post('/register/kyc/pan', [RegistrationWizardController::class, 'handlePan'])
+    Route::get('/register/identity-documents', [RegistrationWizardController::class, 'showIdentityDocuments'])
+        ->middleware('wizard.progress:5')->name('register.identity-documents');
+    Route::post('/register/identity-documents', [RegistrationWizardController::class, 'handleIdentityDocuments'])
         ->middleware('wizard.progress:5');
 
-    Route::get('/register/kyc/aadhaar', [RegistrationWizardController::class, 'showAadhaar'])
-        ->middleware('wizard.progress:6')->name('register.aadhaar');
-    Route::post('/register/kyc/aadhaar', [RegistrationWizardController::class, 'handleAadhaar'])
-        ->middleware('wizard.progress:6');
-
     Route::get('/register/kyc/bank', [RegistrationWizardController::class, 'showBank'])
-        ->middleware('wizard.progress:7')->name('register.bank');
+        ->middleware('wizard.progress:8')->name('register.bank');
     Route::post('/register/kyc/bank', [RegistrationWizardController::class, 'handleBank'])
-        ->middleware('wizard.progress:7');
-
-    Route::get('/register/personal', [RegistrationWizardController::class, 'showPersonal'])
-        ->middleware('wizard.progress:8')->name('register.personal');
-    Route::post('/register/personal', [RegistrationWizardController::class, 'handlePersonal'])
         ->middleware('wizard.progress:8');
 
-    Route::get('/register/documents', [RegistrationWizardController::class, 'showDocuments'])
-        ->middleware('wizard.progress:9')->name('register.documents');
-    Route::post('/register/documents', [RegistrationWizardController::class, 'handleDocuments'])
+    Route::get('/register/personal', [RegistrationWizardController::class, 'showPersonal'])
+        ->middleware('wizard.progress:9')->name('register.personal');
+    Route::post('/register/personal', [RegistrationWizardController::class, 'handlePersonal'])
         ->middleware('wizard.progress:9');
 
-    Route::get('/register/arete-centre', [RegistrationWizardController::class, 'showArete'])
-        ->middleware('wizard.progress:10')->name('register.arete');
-    Route::post('/register/arete-centre', [RegistrationWizardController::class, 'handleArete'])
+    Route::get('/register/documents', [RegistrationWizardController::class, 'showDocuments'])
+        ->middleware('wizard.progress:10')->name('register.documents');
+    Route::post('/register/documents', [RegistrationWizardController::class, 'handleDocuments'])
         ->middleware('wizard.progress:10');
 
-    Route::get('/register/complete', [RegistrationWizardController::class, 'showComplete'])
-        ->middleware('wizard.progress:11')->name('register.complete');
-    Route::post('/register/complete', [RegistrationWizardController::class, 'handleComplete'])
+    Route::get('/register/arete-centre', [RegistrationWizardController::class, 'showArete'])
+        ->middleware('wizard.progress:11')->name('register.arete');
+    Route::post('/register/arete-centre', [RegistrationWizardController::class, 'handleArete'])
         ->middleware('wizard.progress:11');
+
+    Route::get('/register/complete', [RegistrationWizardController::class, 'showComplete'])
+        ->middleware('wizard.progress:12')->name('register.complete');
+    Route::post('/register/complete', [RegistrationWizardController::class, 'handleComplete'])
+        ->middleware('wizard.progress:12');
 });
 
 // ── Admin Console ────────────────────────────────────────────────────────────

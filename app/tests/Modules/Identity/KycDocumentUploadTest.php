@@ -33,8 +33,8 @@ function kycSeedSession(): User
     test()->actingAs($user);
     test()->withSession([
         'registration_wizard' => [
-            // Documents is step 9 in the canonical 2026-05 order.
-            'step' => 9,
+            // Documents is step 10 in the canonical 2026-05 order.
+            'step' => 10,
             'user_id' => $user->id,
             'sponsor_id' => 1,
             'data' => [
@@ -63,12 +63,12 @@ it('KYC-UP-01: step 7 accepts all required docs (+ optional cheque) and persists
         'address_proof_back' => UploadedFile::fake()->image('addr_back.jpg', 600, 400),
     ]);
 
-    // Documents (step 9) advances to the Arete centre step (10), not
+    // Documents (step 10) advances to the Arete centre step (11), not
     // straight to Complete — the Arete step was inserted in 3d20da7.
     $response->assertRedirect('/register/arete-centre');
 
     $wizard = app(WizardStateService::class);
-    $docs = $wizard->getStepData(9)['documents'] ?? null;
+    $docs = $wizard->getStepData(10)['documents'] ?? null;
 
     expect($docs)->not->toBeNull()
         ->and($docs)->toHaveKeys(['pan', 'aadhaar', 'aadhaar_back', 'cheque', 'address_proof_front', 'address_proof_back']);
@@ -101,9 +101,9 @@ it('KYC-UP-02: rejects an executable file even if extension says image', functio
     $response->assertRedirect();
     $response->assertSessionHasErrors('pan_doc');
 
-    // Documents step (9) must not have advanced.
+    // Documents step (10) must not have advanced.
     $wizard = app(WizardStateService::class);
-    expect($wizard->getStepData(9))->toBeNull();
+    expect($wizard->getStepData(10))->toBeNull();
 });
 
 it('KYC-UP-03: rejects oversize file (>5 MB)', function () {
@@ -145,7 +145,7 @@ it('KYC-UP-04: step 7 accepts the required docs without the optional cheque', fu
     $response->assertSessionHasNoErrors();
 
     $wizard = app(WizardStateService::class);
-    $docs = $wizard->getStepData(9)['documents'] ?? null;
+    $docs = $wizard->getStepData(10)['documents'] ?? null;
     expect($docs)->not->toBeNull()
         ->and($docs)->toHaveKeys(['pan', 'aadhaar', 'aadhaar_back', 'address_proof_front', 'address_proof_back'])
         // The omitted optional cheque must NOT appear as a ghost key.
@@ -192,5 +192,5 @@ it('KYC-UP-07: step 7 rejects an incomplete set missing a required address-proof
 
     $response->assertRedirect();
     $response->assertSessionHasErrors('address_proof_back');
-    expect(app(WizardStateService::class)->getStepData(9))->toBeNull();
+    expect(app(WizardStateService::class)->getStepData(10))->toBeNull();
 });

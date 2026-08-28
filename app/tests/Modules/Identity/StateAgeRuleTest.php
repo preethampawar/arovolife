@@ -27,8 +27,8 @@ function sarSeedSession(): User
     test()->actingAs($user);
     test()->withSession([
         'registration_wizard' => [
-            // Personal is step 8 in the canonical 2026-05 order.
-            'step' => 8,
+            // Personal is step 9 in the canonical 2026-05 order.
+            'step' => 9,
             'user_id' => $user->id,
             'sponsor_id' => 1,
             'data' => [],

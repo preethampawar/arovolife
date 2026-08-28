@@ -122,14 +122,18 @@ it('REC-02: duplicate PAN at step 5 rejected with friendly error (Hard rule #6)'
     recSeedWizardAt(5);
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
-        ->post(route('register.pan'), ['pan_number' => $rawPan]);
+        ->post(route('register.identity-documents'), [
+            'pan_number' => $rawPan,
+            'aadhaar_number' => '123456789012',
+            'consent_aadhaar' => '1',
+        ]);
 
     $response->assertRedirect();
     $response->assertSessionHasErrors('pan_number');
     $err = session('errors')->get('pan_number')[0] ?? '';
     expect($err)->toContain('already exists');
 
-    // PAN step data was NOT advanced.
+    // Identity-documents step data was NOT advanced.
     $wizard = app(WizardStateService::class);
     expect($wizard->getStepData(5)['pan_number'] ?? null)->not->toBe($rawPan);
 });
@@ -139,7 +143,11 @@ it('REC-03: malformed PAN at step 5 returns 422 with format hint', function (): 
 
     foreach (['ABCD1234X', 'ABCDE12345', '123456789A', 'ABCDEFGHIJ'] as $bad) {
         $response = $this->withoutMiddleware(PreventRequestForgery::class)
-            ->post(route('register.pan'), ['pan_number' => $bad]);
+            ->post(route('register.identity-documents'), [
+                'pan_number' => $bad,
+                'aadhaar_number' => '123456789012',
+                'consent_aadhaar' => '1',
+            ]);
 
         $response->assertRedirect();
         $response->assertSessionHasErrors('pan_number');
@@ -147,20 +155,24 @@ it('REC-03: malformed PAN at step 5 returns 422 with format hint', function (): 
     }
 });
 
-it('REC-04: malformed Aadhaar at step 6 returns 422 — only exactly 12 digits accepted', function (): void {
-    recSeedWizardAt(6);
+it('REC-04: malformed Aadhaar at step 5 returns 422 — only exactly 12 digits accepted', function (): void {
+    recSeedWizardAt(5);
 
     foreach (['12345678901', '1234567890123', '12345abc9012'] as $bad) {
         $response = $this->withoutMiddleware(PreventRequestForgery::class)
-            ->post(route('register.aadhaar'), ['aadhaar_number' => $bad]);
+            ->post(route('register.identity-documents'), [
+                'pan_number' => 'ABCDE1234F',
+                'aadhaar_number' => $bad,
+                'consent_aadhaar' => '1',
+            ]);
 
         $response->assertRedirect();
         $response->assertSessionHasErrors('aadhaar_number');
     }
 });
 
-it('REC-05: partial bank fill (account number but no IFSC) rejected at step 7', function (): void {
-    recSeedWizardAt(7);
+it('REC-05: partial bank fill (account number but no IFSC) rejected at step 8', function (): void {
+    recSeedWizardAt(8);
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('register.bank'), [
@@ -174,8 +186,8 @@ it('REC-05: partial bank fill (account number but no IFSC) rejected at step 7', 
     expect($err)->toContain('IFSC');
 });
 
-it('REC-06: BOTH bank fields blank at step 7 is accepted (bank is optional)', function (): void {
-    recSeedWizardAt(7);
+it('REC-06: BOTH bank fields blank at step 8 is accepted (bank is optional)', function (): void {
+    recSeedWizardAt(8);
 
     $response = $this->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('register.bank'), [
@@ -186,8 +198,8 @@ it('REC-06: BOTH bank fields blank at step 7 is accepted (bank is optional)', fu
     $response->assertRedirect(route('register.personal'));
     $response->assertSessionHasNoErrors();
 
-    // Wizard advances to step 7 (bank) with null values stored.
+    // Wizard advances to step 8 (bank) with null values stored.
     $wizard = app(WizardStateService::class);
-    $bank = $wizard->getStepData(7);
+    $bank = $wizard->getStepData(8);
     expect($bank)->toMatchArray(['account_number' => null, 'ifsc' => null]);
 });

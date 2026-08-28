@@ -17,13 +17,12 @@ final class WizardStateService
         2 => 'account',
         3 => 'orientation',
         4 => 'consent',
-        5 => 'pan',
-        6 => 'aadhaar',
-        7 => 'bank',
-        8 => 'personal',
-        9 => 'documents',
-        10 => 'arete',
-        11 => 'complete',
+        5 => 'identity_documents',
+        8 => 'bank',
+        9 => 'personal',
+        10 => 'documents',
+        11 => 'arete',
+        12 => 'complete',
     ];
 
     public function __construct(private readonly Session $session) {}
@@ -168,12 +167,11 @@ final class WizardStateService
         return match (true) {
             $step <= 3 => 'register.orientation',
             $step === 4 => 'register.consent',
-            $step === 5 => 'register.pan',
-            $step === 6 => 'register.aadhaar',
-            $step === 7 => 'register.bank',
-            $step === 8 => 'register.personal',
-            $step === 9 => 'register.documents',
-            $step === 10 => 'register.arete',
+            $step === 5 => 'register.identity-documents',
+            $step === 8 => 'register.bank',
+            $step === 9 => 'register.personal',
+            $step === 10 => 'register.documents',
+            $step === 11 => 'register.arete',
             default => 'register.complete',
         };
     }

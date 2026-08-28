@@ -93,15 +93,15 @@ it('WPM-03: active wizard session + correct step → passthrough', function (): 
 });
 
 it('WPM-05: skipping ahead redirects to the furthest-completed step, not the target itself', function (): void {
-    // Regression: when the Arete step (10) was inserted (3d20da7) the
-    // middleware kept a stale local step→route map still pointing 10 at
-    // register.complete — a user at step 10 requesting /register/complete
-    // (wizard.progress:11) was redirected to /register/complete itself, an
+    // Regression: when the Arete step (11) was inserted (3d20da7) the
+    // middleware kept a stale local step→route map still pointing 11 at
+    // register.complete — a user at step 11 requesting /register/complete
+    // (wizard.progress:12) was redirected to /register/complete itself, an
     // infinite redirect loop. The middleware now resolves the redirect via
     // the canonical WizardStateService::stepRoute() map.
     $this->withSession([
         'registration_wizard' => [
-            'step' => 10,
+            'step' => 11,
             'sponsor_id' => 1,
             'data' => [],
         ],

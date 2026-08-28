@@ -57,9 +57,9 @@ final class EnsureRegistrationProgress
             // step, resolved through the canonical WizardStateService map. A
             // previous local copy of that map went stale when the Arete step
             // was inserted, redirecting step-10 users to /register/complete
-            // itself — an infinite loop. Clamped to 10 so the redirect can
-            // never target the gated Complete route.
-            $redirectStep = max(3, min($furthestAllowed, 10));
+            // itself — an infinite loop. Clamped to 11 so the redirect can
+            // never target the gated Complete route (step 12).
+            $redirectStep = max(3, min($furthestAllowed, 11));
 
             return redirect()->route(WizardStateService::stepRoute($redirectStep));
         }

@@ -15,17 +15,18 @@
 
     @php
         $steps = [
-            1  => ['label' => 'Sponsor & Placement', 'route' => 'join.show'],
-            2  => ['label' => 'Account',             'route' => 'register.account.show'],
-            3  => ['label' => 'Orientation',         'route' => 'register.orientation'],
-            4  => ['label' => 'Consent',             'route' => 'register.consent'],
-            5  => ['label' => 'PAN',                 'route' => 'register.pan'],
-            6  => ['label' => 'Aadhaar',             'route' => 'register.aadhaar'],
-            7  => ['label' => 'Bank (optional)',     'route' => 'register.bank'],
-            8  => ['label' => 'Personal',            'route' => 'register.personal'],
-            9  => ['label' => 'Documents',           'route' => 'register.documents'],
-            10 => ['label' => 'Arete Centre',        'route' => 'register.arete'],
-            11 => ['label' => 'Complete',            'route' => 'register.complete'],
+            1  => ['label' => 'Sponsor & Placement',  'route' => 'join.show'],
+            2  => ['label' => 'Account',              'route' => 'register.account.show'],
+            3  => ['label' => 'Orientation',          'route' => 'register.orientation'],
+            4  => ['label' => 'Consent',              'route' => 'register.consent'],
+            5  => ['label' => 'Identity Documents',   'route' => 'register.identity-documents'],
+            6  => ['label' => 'Demographics',         'route' => 'register.demographics'],
+            7  => ['label' => 'Nominee',              'route' => 'register.nominee'],
+            8  => ['label' => 'Bank (optional)',      'route' => 'register.bank'],
+            9  => ['label' => 'Personal',             'route' => 'register.personal'],
+            10 => ['label' => 'Documents',            'route' => 'register.documents'],
+            11 => ['label' => 'Arete Centre',         'route' => 'register.arete'],
+            12 => ['label' => 'Complete',             'route' => 'register.complete'],
         ];
         $current = $currentStep ?? 1;
     @endphp
@@ -63,7 +64,7 @@
                     <p class="text-[10px] uppercase tracking-[0.22em] text-brand-700/80 font-semibold mb-2">Registration</p>
                     <h2 class="text-display text-3xl text-slate-900 leading-[1.05]" style="font-weight: 380;">
                         Step <span class="text-brand-500">{{ str_pad((string) $current, 2, '0', STR_PAD_LEFT) }}</span>
-                        <span class="text-slate-300 font-light">/ 10</span>
+                        <span class="text-slate-300 font-light">/ 11</span>
                     </h2>
                     <p class="mt-2 text-[12px] text-slate-500 leading-relaxed">
                         {{ $steps[$current]['label'] ?? '' }}.
@@ -72,7 +73,7 @@
 
                 <nav aria-label="Registration steps" class="relative">
                     {{-- Vertical rail behind the numerals — gradient fills with progress --}}
-                    @php $progressPct = max(0, min(100, ($current - 1) / 9 * 100)); @endphp
+                    @php $progressPct = max(0, min(100, ($current - 1) / 11 * 100)); @endphp
                     <span aria-hidden="true"
                           class="absolute left-[14px] top-2 bottom-2 w-px bg-slate-200/70"></span>
                     <span aria-hidden="true"

@@ -465,7 +465,7 @@ final class RegistrationWizardController extends Controller
     {
         return view('registration.step3-personal', [
             'states' => $this->indianStates(),
-            'data' => $this->wizard->getStepData(8) ?? [],
+            'data' => $this->wizard->getStepData(9) ?? [],
         ]);
     }
 
@@ -506,7 +506,7 @@ final class RegistrationWizardController extends Controller
         $isCouple = false;
         $spouse = null;
 
-        $this->wizard->saveStepData(8, [
+        $this->wizard->saveStepData(9, [
             'date_of_birth' => $validated['date_of_birth'],
             'state' => $validated['state'],
             'address' => $validated['address'],
@@ -525,33 +525,46 @@ final class RegistrationWizardController extends Controller
         return (int) ($overrides[$state] ?? 18);
     }
 
-    // ── Step 4: PAN KYC ────────────────────────────────────────────────────
+    // ── Step 5: Identity Documents (PAN + Aadhaar) ────────────────────────
 
-    public function showPan(): View
+    public function showIdentityDocuments(): View
     {
-        return view('registration.step4-pan', [
+        return view('registration.step5-identity-documents', [
             'data' => $this->wizard->getStepData(5) ?? [],
             'isCouple' => false /* couple registration disabled — see handlePersonal */,
         ]);
     }
 
-    public function handlePan(Request $request): RedirectResponse
+    public function handleIdentityDocuments(Request $request): RedirectResponse
     {
-        // Auto-uppercase before regex check so a curl POST with lowercase
-        // doesn't get a confusing "format invalid" message — PAN is a
+        // Auto-uppercase PAN before regex check so a curl POST with lowercase
+        // doesn't produce a confusing "format invalid" message — PAN is a
         // case-insensitive identifier in practice (the dedup hash strips
         // case anyway).
         $request->merge([
             'pan_number' => strtoupper(trim((string) $request->input('pan_number', ''))),
         ]);
 
+        // Strip auto-grouping spaces from Aadhaar input ("1234 5678 9012" →
+        // "123456789012") before validation so the digits-only rule applies cleanly.
+        $rawAadhaar = preg_replace('/\D+/', '', (string) $request->input('aadhaar_number', '')) ?? '';
+        $request->merge(['aadhaar_number' => $rawAadhaar]);
+
         $validated = $request->validate([
             'pan_number' => ['required', 'regex:/^[A-Z]{5}[0-9]{4}[A-Z]$/'],
+            'aadhaar_number' => ['required', 'digits:12'],
+            'consent_aadhaar' => ['required', 'accepted'],
         ], [
             'pan_number.required' => 'Please enter your PAN number.',
             'pan_number.regex' => 'PAN must be exactly 10 characters: 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).',
+            'aadhaar_number.required' => 'Please enter your 12-digit Aadhaar number.',
+            'aadhaar_number.digits' => 'Aadhaar must be exactly 12 digits.',
+            'consent_aadhaar.required' => 'Please consent to Aadhaar-based identity verification before continuing.',
+            'consent_aadhaar.accepted' => 'You must consent to Aadhaar-based identity verification for KYC purposes to continue.',
         ], [
             'pan_number' => 'PAN',
+            'aadhaar_number' => 'Aadhaar number',
+            'consent_aadhaar' => 'Aadhaar consent',
         ]);
 
         // Hard rule #6: one PAN = one ADN. The dedup query covers BOTH primary
@@ -562,49 +575,13 @@ final class RegistrationWizardController extends Controller
             return back()->withErrors(['pan_number' => 'A Direct Seller account already exists for this PAN.']);
         }
 
-        $this->wizard->saveStepData(5, [
-            'pan_number' => $validated['pan_number'],
-            'spouse_pan_number' => null,
-        ]);
-
-        return redirect()->route('register.aadhaar');
-    }
-
-    // ── Step 6: Aadhaar KYC ────────────────────────────────────────────────
-
-    public function showAadhaar(): View
-    {
-        return view('registration.step5-aadhaar', [
-            'data' => $this->wizard->getStepData(6) ?? [],
-            'isCouple' => false /* couple registration disabled — see handlePersonal */,
-        ]);
-    }
-
-    public function handleAadhaar(Request $request): RedirectResponse
-    {
-        // Strip the auto-grouping spaces from the input ("1234 5678 9012" → "123456789012")
-        // before validation so the digits-only rule applies cleanly.
-        $rawAadhaar = preg_replace('/\D+/', '', (string) $request->input('aadhaar_number', '')) ?? '';
-        $request->merge(['aadhaar_number' => $rawAadhaar]);
-
-        $validated = $request->validate([
-            'aadhaar_number' => ['required', 'digits:12'],
-            'consent_aadhaar' => ['required', 'accepted'],
-        ], [
-            'aadhaar_number.required' => 'Please enter your 12-digit Aadhaar number.',
-            'aadhaar_number.digits' => 'Aadhaar must be exactly 12 digits.',
-            'consent_aadhaar.required' => 'Please consent to Aadhaar storage before continuing.',
-            'consent_aadhaar.accepted' => 'You must consent to store your Aadhaar number for KYC verification. Your raw Aadhaar will be permanently deleted after verification.',
-        ], [
-            'aadhaar_number' => 'Aadhaar number',
-            'consent_aadhaar' => 'Aadhaar consent',
-        ]);
-
         // Phase 1 stub reference token. Real implementation calls a vendor
         // (Hyperverge / IDFY / DigiLocker) and stores the returned ref.
         $ref = 'STUB_'.strtoupper(uniqid('REF', true));
 
-        $this->wizard->saveStepData(6, [
+        $this->wizard->saveStepData(5, [
+            'pan_number' => $validated['pan_number'],
+            'spouse_pan_number' => null,
             'aadhaar_number' => $validated['aadhaar_number'],
             'last4' => substr($validated['aadhaar_number'], -4),
             'ref' => $ref,
@@ -612,7 +589,7 @@ final class RegistrationWizardController extends Controller
             'spouse_ref' => null,
         ]);
 
-        return redirect()->route('register.bank');
+        return redirect()->route('register.demographics');
     }
 
     // ── Step 7: Bank KYC ──────────────────────────────────────────────────
@@ -620,7 +597,7 @@ final class RegistrationWizardController extends Controller
     public function showBank(): View
     {
         return view('registration.step6-bank', [
-            'data' => $this->wizard->getStepData(7) ?? [],
+            'data' => $this->wizard->getStepData(8) ?? [],
         ]);
     }
 
@@ -636,7 +613,7 @@ final class RegistrationWizardController extends Controller
         $bothBlank = ! $accountFilled && ! $ifscFilled;
 
         if ($bothBlank) {
-            $this->wizard->saveStepData(7, ['account_number' => null, 'ifsc' => null]);
+            $this->wizard->saveStepData(8, ['account_number' => null, 'ifsc' => null]);
 
             return redirect()->route('register.personal');
         }
@@ -656,7 +633,7 @@ final class RegistrationWizardController extends Controller
             'ifsc' => 'IFSC code',
         ]);
 
-        $this->wizard->saveStepData(7, $validated);
+        $this->wizard->saveStepData(8, $validated);
 
         // After Bank → Personal (was Documents in the old order).
         return redirect()->route('register.personal');
@@ -744,7 +721,7 @@ final class RegistrationWizardController extends Controller
         $pathPrefix = 'reg_'.$this->wizard->registrationSessionId();
 
         $stored = $this->storeKycFiles($request, self::KYC_DOC_FIELDS, $pathPrefix, $disk);
-        $this->wizard->saveStepData(9, [
+        $this->wizard->saveStepData(10, [
             'documents' => $stored,
             'spouse_documents' => [],
         ]);
@@ -821,7 +798,7 @@ final class RegistrationWizardController extends Controller
             'at' => now()->toISOString(),
         ]);
 
-        return redirect()->route('register.pan');
+        return redirect()->route('register.identity-documents');
     }
 
     // ── Step 10: Complete ─────────────────────────────────────────────────
@@ -830,7 +807,7 @@ final class RegistrationWizardController extends Controller
     {
         $centers = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)->get();
         $defaultCenter = $centers->firstWhere('is_company_default', true);
-        $savedData = $this->wizard->getStepData(10);
+        $savedData = $this->wizard->getStepData(11);
         $selectedId = isset($savedData['center_id']) ? (int) $savedData['center_id'] : $defaultCenter?->id;
 
         return view('registration.step10-arete', compact('centers', 'defaultCenter', 'selectedId'));
@@ -845,7 +822,7 @@ final class RegistrationWizardController extends Controller
         $center = AreteCenter::findOrFail((int) $request->integer('center_id'));
         abort_unless($center->status === AreteCenter::STATUS_ACTIVE, 422, 'That Arete centre is not currently available.');
 
-        $this->wizard->saveStepData(10, ['center_id' => $center->id]);
+        $this->wizard->saveStepData(11, ['center_id' => $center->id]);
 
         return redirect()->route('register.complete');
     }
@@ -871,10 +848,12 @@ final class RegistrationWizardController extends Controller
             ? $resolveRow((int) $state['placement_id'])
             : null;
 
+        $identityDocuments = $data['identity_documents'] ?? [];
+
         return view('registration.step10-complete', [
             'personal' => $data['personal'] ?? [],
-            'pan' => $data['pan'] ?? [],
-            'aadhaar' => $data['aadhaar'] ?? [],
+            'pan' => ['pan_number' => $identityDocuments['pan_number'] ?? '', 'spouse_pan_number' => $identityDocuments['spouse_pan_number'] ?? null],
+            'aadhaar' => ['last4' => $identityDocuments['last4'] ?? '****', 'ref' => $identityDocuments['ref'] ?? ''],
             'bank' => $data['bank'] ?? [],
             'account' => $data['account'] ?? [],
             'documents' => $data['documents']['documents'] ?? [],
@@ -916,8 +895,7 @@ final class RegistrationWizardController extends Controller
             'account' => 'register.account.show',
             'orientation' => 'register.orientation',
             'consent' => 'register.consent',
-            'pan' => 'register.pan',
-            'aadhaar' => 'register.aadhaar',
+            'identity_documents' => 'register.identity-documents',
             'bank' => 'register.bank',
             'personal' => 'register.personal',
             'documents' => 'register.documents',
@@ -937,11 +915,25 @@ final class RegistrationWizardController extends Controller
         // distributor under the chosen placement node. Without this, finalise
         // silently falls back to sponsor_id and tries to place under the root,
         // which usually fails with PlacementSlotsExhaustedError.
+        // Split the merged identity_documents block back into the 'pan' and
+        // 'aadhaar' sub-arrays that RegistrationService::finalise() expects.
+        $identityDocs = $state['data']['identity_documents'] ?? [];
         $wizardData = array_merge($state['data'], [
             'sponsor_id' => $state['sponsor_id'],
             'placement' => [
                 'placement_id' => $state['placement_id'] ?? $state['sponsor_id'],
                 'side' => $state['side_opt'] ?? null,
+            ],
+            'pan' => [
+                'pan_number' => $identityDocs['pan_number'] ?? '',
+                'spouse_pan_number' => $identityDocs['spouse_pan_number'] ?? null,
+            ],
+            'aadhaar' => [
+                'aadhaar_number' => $identityDocs['aadhaar_number'] ?? '',
+                'last4' => $identityDocs['last4'] ?? '0000',
+                'ref' => $identityDocs['ref'] ?? '',
+                'spouse_last4' => $identityDocs['spouse_last4'] ?? null,
+                'spouse_ref' => $identityDocs['spouse_ref'] ?? null,
             ],
         ]);
 
@@ -986,7 +978,7 @@ final class RegistrationWizardController extends Controller
             // distributors.pan_hash gives us a clean throwable here so we
             // route the user back to step 4 with a friendly message rather
             // than returning a generic 500.
-            return redirect()->route('register.pan')->withErrors([
+            return redirect()->route('register.identity-documents')->withErrors([
                 'pan_number' => 'A Direct Seller account already exists for this PAN. If you are registering with your spouse, please re-check both PAN numbers.',
             ]);
         } catch (PlacementSlotFullError|PlacementSlotsExhaustedError $e) {
