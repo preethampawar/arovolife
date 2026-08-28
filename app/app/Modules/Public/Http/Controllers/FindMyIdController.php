@@ -64,19 +64,19 @@ final class FindMyIdController extends Controller
             $minutes = (int) ceil(RateLimiter::availableIn($hourKey) / 60);
 
             return view('public.find-my-id', [
-                'step'  => 'lookup',
+                'step' => 'lookup',
                 'error' => "Too many attempts. Please try again in about {$minutes} minute(s).",
             ]);
         }
 
         $validated = $request->validate([
-            'full_name'       => ['required', 'string', 'max:255'],
+            'full_name' => ['required', 'string', 'max:255'],
             // Indian PAN: 5 letters, 4 digits, 1 letter.
-            'pan'             => ['required', 'string', 'regex:/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/'],
+            'pan' => ['required', 'string', 'regex:/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/'],
             // DPDP Act 2023 §5-6 — informed consent before processing the PAN.
             'consent_privacy' => ['required', 'accepted'],
         ], [
-            'pan.regex'                => 'Enter a valid 10-character PAN (e.g. ABCDE1234F).',
+            'pan.regex' => 'Enter a valid 10-character PAN (e.g. ABCDE1234F).',
             'consent_privacy.required' => 'Please agree to the privacy notice before continuing.',
             'consent_privacy.accepted' => 'Please agree to the privacy notice before continuing.',
         ]);
@@ -107,7 +107,7 @@ final class FindMyIdController extends Controller
             $this->auditAttempt($request, 'identity.find_my_id.miss', null);
 
             return view('public.find-my-id', [
-                'step'  => 'lookup',
+                'step' => 'lookup',
                 'error' => "We couldn't find a distributor matching those details. Please check your name and PAN, or contact support.",
             ]);
         }
@@ -116,10 +116,10 @@ final class FindMyIdController extends Controller
         $otpKey = 'dist:'.(int) $row->id;
         $code = $otp->issue(self::OTP_PURPOSE, $otpKey, [
             'dist_id' => (int) $row->id,
-            'adn'     => (string) $row->adn,
-            'name'    => (string) $row->full_name,
-            'state'   => (string) $row->state,
-            'status'  => (string) $row->status,
+            'adn' => (string) $row->adn,
+            'name' => (string) $row->full_name,
+            'state' => (string) $row->state,
+            'status' => (string) $row->status,
         ]);
 
         $user = User::find((int) $row->user_id);
@@ -132,7 +132,7 @@ final class FindMyIdController extends Controller
         $this->auditAttempt($request, 'identity.find_my_id.otp_issued', (int) $row->id);
 
         return view('public.find-my-id', [
-            'step'          => 'otp',
+            'step' => 'otp',
             'maskedContact' => $this->maskEmail((string) $row->email),
         ]);
     }
@@ -143,7 +143,7 @@ final class FindMyIdController extends Controller
 
         if (! is_int($distId)) {
             return view('public.find-my-id', [
-                'step'  => 'lookup',
+                'step' => 'lookup',
                 'error' => 'Your session has expired. Please start again.',
             ]);
         }
@@ -152,7 +152,7 @@ final class FindMyIdController extends Controller
             'otp_code' => ['required', 'string', 'digits:6'],
         ], [
             'otp_code.required' => 'Please enter the 6-digit code we sent you.',
-            'otp_code.digits'   => 'Enter a valid 6-digit code.',
+            'otp_code.digits' => 'Enter a valid 6-digit code.',
         ]);
 
         $result = $otp->verify(self::OTP_PURPOSE, 'dist:'.$distId, $validated['otp_code']);
@@ -167,8 +167,8 @@ final class FindMyIdController extends Controller
             }
 
             return view('public.find-my-id', [
-                'step'          => $needsRestart ? 'lookup' : 'otp',
-                'error'         => $result->message(),
+                'step' => $needsRestart ? 'lookup' : 'otp',
+                'error' => $result->message(),
                 'maskedContact' => $needsRestart ? null : $this->maskedContactForDist($distId),
             ]);
         }
@@ -182,11 +182,11 @@ final class FindMyIdController extends Controller
         $payload = $result->payload;
 
         return view('public.find-my-id', [
-            'step'   => 'result',
+            'step' => 'result',
             'result' => [
-                'adn'    => $payload['adn'],
-                'name'   => $payload['name'],
-                'state'  => $payload['state'],
+                'adn' => $payload['adn'],
+                'name' => $payload['name'],
+                'state' => $payload['state'],
                 'status' => $payload['status'],
             ],
         ]);
@@ -198,7 +198,7 @@ final class FindMyIdController extends Controller
 
         if (! is_int($distId)) {
             return view('public.find-my-id', [
-                'step'  => 'lookup',
+                'step' => 'lookup',
                 'error' => 'Your session has expired. Please start again.',
             ]);
         }
@@ -213,7 +213,7 @@ final class FindMyIdController extends Controller
             $request->session()->forget(self::SESSION_DIST_ID);
 
             return view('public.find-my-id', [
-                'step'  => 'lookup',
+                'step' => 'lookup',
                 'error' => 'Account not found. Please start again.',
             ]);
         }
@@ -221,10 +221,10 @@ final class FindMyIdController extends Controller
         $otpKey = 'dist:'.$distId;
         $code = $otp->issue(self::OTP_PURPOSE, $otpKey, [
             'dist_id' => $distId,
-            'adn'     => (string) $row->adn,
-            'name'    => (string) $row->full_name,
-            'state'   => (string) $row->state,
-            'status'  => (string) $row->status,
+            'adn' => (string) $row->adn,
+            'name' => (string) $row->full_name,
+            'state' => (string) $row->state,
+            'status' => (string) $row->status,
         ]);
 
         $user = User::find((int) $row->user_id);
@@ -235,9 +235,9 @@ final class FindMyIdController extends Controller
         $this->auditAttempt($request, 'identity.find_my_id.otp_resent', $distId);
 
         return view('public.find-my-id', [
-            'step'          => 'otp',
+            'step' => 'otp',
             'maskedContact' => $this->maskEmail((string) $row->email),
-            'resent'        => true,
+            'resent' => true,
         ]);
     }
 
@@ -273,13 +273,13 @@ final class FindMyIdController extends Controller
     private function auditAttempt(Request $request, string $action, ?int $distributorId): void
     {
         AuditLog::create([
-            'actor_id'     => null,
-            'action'       => $action,
+            'actor_id' => null,
+            'action' => $action,
             // subject_type is NOT NULL; misses/throttles have no distributor.
             'subject_type' => $distributorId !== null ? 'distributor' : 'find_my_id_attempt',
-            'subject_id'   => $distributorId,
-            'details'      => ['channel' => 'public_find_my_id'],
-            'ip'           => $request->ip(),
+            'subject_id' => $distributorId,
+            'details' => ['channel' => 'public_find_my_id'],
+            'ip' => $request->ip(),
         ]);
     }
 }

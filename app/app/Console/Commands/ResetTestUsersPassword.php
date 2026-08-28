@@ -20,12 +20,13 @@ final class ResetTestUsersPassword extends Command
         // Find test users (emails with test, may2026, mailinator patterns)
         $users = User::where(function ($query) {
             $query->where('email', 'like', '%test%')
-                  ->orWhere('email', 'like', '%may2026%')
-                  ->orWhere('email', 'like', '%mailinator%');
+                ->orWhere('email', 'like', '%may2026%')
+                ->orWhere('email', 'like', '%mailinator%');
         })->get();
 
         if ($users->isEmpty()) {
             $this->info('No test users found.');
+
             return 0;
         }
 

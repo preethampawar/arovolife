@@ -23,6 +23,7 @@ use App\Modules\Compliance\Notifications\InactivityTerminationNoticeNotification
 use App\Modules\Compliance\Services\InactivityTerminationService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -277,7 +278,7 @@ it('INA-011: notices are idempotent — a second sweep does not reissue or resta
 it('INA-012: the dormancy admin page renders and a notice can be withdrawn with a reason', function () {
     Notification::fake();
     inaEnableSweep();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $staff = inaStaff();
     $staff->assignRole('admin-compliance');

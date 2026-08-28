@@ -7,6 +7,7 @@ namespace App\Modules\Grievance\Models;
 use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Evidence attached to a grievance (policy §3.1).
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $original_name
  * @property string $mime_type
  * @property int $size_bytes
- * @property \Illuminate\Support\Carbon $created_at
+ * @property Carbon $created_at
  * @property-read Ticket $ticket
  * @property-read User|null $uploadedBy
  */

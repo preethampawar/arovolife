@@ -23,6 +23,7 @@ use Illuminate\View\View;
 final class AdminComplianceDocumentController extends Controller
 {
     private const DISK = 'local';
+
     private const DIR = 'compliance-documents';
 
     public function index(): View

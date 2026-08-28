@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Models;
 
-use App\Modules\Commerce\Enums\PurchaseOfferType;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\Commerce\Enums\PurchaseOfferType;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One offer earned by one distributor in one month.
@@ -22,15 +23,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $distributor_id
  * @property PurchaseOfferType $offer_type
- * @property \Illuminate\Support\Carbon $month_start
+ * @property Carbon $month_start
  * @property int $qualifying_bv_paise
  * @property int $streak_months
  * @property int|null $product_variant_id
  * @property int $points_awarded
  * @property string $status
- * @property \Illuminate\Support\Carbon|null $expires_on
+ * @property Carbon|null $expires_on
  * @property int|null $consumed_order_id
- * @property \Illuminate\Support\Carbon|null $consumed_at
+ * @property Carbon|null $consumed_at
  * @property-read Distributor $distributor
  * @property-read ProductVariant|null $variant
  */

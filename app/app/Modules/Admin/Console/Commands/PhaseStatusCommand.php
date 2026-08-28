@@ -120,7 +120,7 @@ final class PhaseStatusCommand extends Command
 
         foreach ($matches as $match) {
             $story = trim($match[1]);
-            $detail = trim(strip_tags($match[3]), " |");
+            $detail = trim(strip_tags($match[3]), ' |');
 
             [$state, $note] = $this->gradeStory($detail);
 

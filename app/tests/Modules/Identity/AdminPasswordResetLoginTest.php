@@ -25,7 +25,6 @@ uses(RefreshDatabase::class);
  * Both #2 and #3 must end up authenticated and redirected away from
  * /login. If either fails, the bug is back.
  */
-
 beforeEach(function () {
     Role::findOrCreate('admin');
     Role::findOrCreate('distributor');
@@ -93,8 +92,8 @@ function aprlMakeAdmin(): User
 
 it('APR-01: admin sets a new password → distributor EMAIL login is rejected (ADN-only policy)', function () {
     $newPassword = 'BrandNew-9pass!ZZ';
-    [$user]      = aprlMakeDistributor('email-login-', 'OldCorrectPass!2026', '900100200');
-    $admin       = aprlMakeAdmin();
+    [$user] = aprlMakeDistributor('email-login-', 'OldCorrectPass!2026', '900100200');
+    $admin = aprlMakeAdmin();
     $distributor = Distributor::query()->where('user_id', $user->id)->firstOrFail();
 
     RateLimiter::clear('login:'.strtolower($user->email).'|127.0.0.1');
@@ -129,9 +128,9 @@ it('APR-01: admin sets a new password → distributor EMAIL login is rejected (A
 
 it('APR-02: admin sets a new password → distributor can sign in with ADN', function () {
     $newPassword = 'AdnRoute-9pass!QQ';
-    $adn         = '900200300';
-    [$user]      = aprlMakeDistributor('adn-login-', 'OldCorrectPass!2026', $adn);
-    $admin       = aprlMakeAdmin();
+    $adn = '900200300';
+    [$user] = aprlMakeDistributor('adn-login-', 'OldCorrectPass!2026', $adn);
+    $admin = aprlMakeAdmin();
     $distributor = Distributor::query()->where('user_id', $user->id)->firstOrFail();
 
     RateLimiter::clear('login:'.strtolower($user->email).'|127.0.0.1');
@@ -160,9 +159,9 @@ it('APR-02: admin sets a new password → distributor can sign in with ADN', fun
 it('APR-04: REGRESSION — pre-reset failed attempts must not lock the user out after admin reset', function () {
     $oldPassword = 'OldCorrectPass!2026';
     $newPassword = 'BrandNew-9pass!ZZ';
-    $adn         = '900400500';
-    [$user]      = aprlMakeDistributor('throttle-', $oldPassword, $adn);
-    $admin       = aprlMakeAdmin();
+    $adn = '900400500';
+    [$user] = aprlMakeDistributor('throttle-', $oldPassword, $adn);
+    $admin = aprlMakeAdmin();
     $distributor = Distributor::query()->where('user_id', $user->id)->firstOrFail();
 
     // The lockout bucket is keyed on the resolved email; an ADN login resolves
@@ -203,8 +202,8 @@ it('APR-04: REGRESSION — pre-reset failed attempts must not lock the user out 
 it('APR-03: stale password no longer works after reset', function () {
     $oldPassword = 'OldCorrectPass!2026';
     $newPassword = 'NewCorrectPass!2026';
-    [$user]      = aprlMakeDistributor('stale-', $oldPassword, '900300400');
-    $admin       = aprlMakeAdmin();
+    [$user] = aprlMakeDistributor('stale-', $oldPassword, '900300400');
+    $admin = aprlMakeAdmin();
     $distributor = Distributor::query()->where('user_id', $user->id)->firstOrFail();
 
     RateLimiter::clear('login:'.strtolower($user->email).'|127.0.0.1');

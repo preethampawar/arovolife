@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services\Recompute;
 
+use App\Console\Actions\PurchaseDataResetAction;
 use App\Modules\Compensation\Support\DerivedTables;
 use Closure;
 use Illuminate\Database\DatabaseManager;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Removes every row computed from BV, leaving the purchases untouched.
  *
- * The distinction from {@see \App\Console\Actions\PurchaseDataResetAction} is
+ * The distinction from {@see PurchaseDataResetAction} is
  * the whole point: that action wipes the orders too ("start selling again"),
  * this one keeps them ("recompute the same history"). Both take their
  * compensation table list from {@see DerivedTables}, so neither can drift.
@@ -27,7 +28,7 @@ final class CompensationStateWiper
      * Truncate every derived table and reset the derived columns.
      *
      * @param  Closure(string): void|null  $progress
-     * @return array<string, int>  table => rows removed
+     * @return array<string, int> table => rows removed
      */
     public function wipe(?Closure $progress = null): array
     {

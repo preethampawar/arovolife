@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin;
 
+use App\Modules\Admin\Console\Commands\PhaseStatusCommand;
 use App\Modules\Admin\Events\DistributorDeactivated;
 use App\Modules\Admin\Events\DistributorFrozen;
 use App\Modules\Admin\Events\DistributorReactivated;
-use App\Modules\Admin\Console\Commands\PhaseStatusCommand;
 use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Admin\Events\KycApproved;

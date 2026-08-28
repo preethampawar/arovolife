@@ -8,12 +8,13 @@ use App\Modules\Commerce\Models\Order;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $order_id
  * @property string $invoice_no
- * @property \Illuminate\Support\Carbon $issued_at
+ * @property Carbon $issued_at
  * @property string|null $seller_gstin
  * @property string $seller_state
  * @property string|null $buyer_gstin

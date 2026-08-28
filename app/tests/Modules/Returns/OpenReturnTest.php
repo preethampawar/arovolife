@@ -186,16 +186,16 @@ it('ORT-10: non-cooling-off return is blocked when a payout batch was processed 
 
     // Simulate a payout batch that was generated AFTER the order was placed.
     DB::table('payout_batches')->insert([
-        'batch_type'               => 'gsb_weekly',
-        'batch_date'               => now()->toDateString(),
-        'status'                   => 'pending',
-        'total_gross_paise'        => 0,
-        'total_deductions_paise'   => 0,
-        'total_net_paise'          => 0,
-        'distributor_count'        => 0,
-        'processed_at'             => now()->addMinute(), // after order.created_at
-        'created_at'               => now(),
-        'updated_at'               => now(),
+        'batch_type' => 'gsb_weekly',
+        'batch_date' => now()->toDateString(),
+        'status' => 'pending',
+        'total_gross_paise' => 0,
+        'total_deductions_paise' => 0,
+        'total_net_paise' => 0,
+        'distributor_count' => 0,
+        'processed_at' => now()->addMinute(), // after order.created_at
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
     expect(fn () => app(OpenReturn::class)->execute($order, $customer, 'damage', null, null))
@@ -203,25 +203,25 @@ it('ORT-10: non-cooling-off return is blocked when a payout batch was processed 
 });
 
 it('ORT-11: cooling-off return is allowed even when a payout batch was processed (statutory right)', function (): void {
-    Event::fake([App\Modules\Returns\Events\OrderRefundApproved::class]);
+    Event::fake([OrderRefundApproved::class]);
     ['order' => $order, 'customer' => $customer] = openReturnFixture();
 
     // Simulate a payout batch processed after the order.
     DB::table('payout_batches')->insert([
-        'batch_type'               => 'gsb_weekly',
-        'batch_date'               => now()->toDateString(),
-        'status'                   => 'pending',
-        'total_gross_paise'        => 0,
-        'total_deductions_paise'   => 0,
-        'total_net_paise'          => 0,
-        'distributor_count'        => 0,
-        'processed_at'             => now()->addMinute(),
-        'created_at'               => now(),
-        'updated_at'               => now(),
+        'batch_type' => 'gsb_weekly',
+        'batch_date' => now()->toDateString(),
+        'status' => 'pending',
+        'total_gross_paise' => 0,
+        'total_deductions_paise' => 0,
+        'total_net_paise' => 0,
+        'distributor_count' => 0,
+        'processed_at' => now()->addMinute(),
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 
     // Cooling-off is a statutory right — must not be blocked regardless of GSB disbursement.
     $rq = app(OpenReturn::class)->execute($order, $customer, 'cooling_off', null, null);
     expect($rq)->not->toBeNull();
-    Event::assertDispatched(App\Modules\Returns\Events\OrderRefundApproved::class);
+    Event::assertDispatched(OrderRefundApproved::class);
 });

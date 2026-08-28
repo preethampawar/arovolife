@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Schema;
  * paid. Distributors can add or update bank details later from their
  * dashboard.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         // MySQL — the original migration explicitly ran a NOT NULL

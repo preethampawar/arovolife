@@ -64,7 +64,7 @@ beforeEach(function (): void {
 });
 
 it('FMI-01: exact name + PAN sends OTP and shows OTP step — ADN NOT revealed yet (R-27)', function (): void {
-    \Illuminate\Support\Facades\Notification::fake();
+    Notification::fake();
     fmiDistributor('100200300', 'Ravi Kumar', 'ABCDE1234F');
 
     $response = fmiPost(['full_name' => 'Ravi Kumar', 'pan' => 'ABCDE1234F']);
@@ -101,7 +101,7 @@ it('FMI-03: correct name but wrong PAN does not reveal the ADN', function (): vo
 });
 
 it('FMI-04: name is case/space-insensitive and lowercase PAN still matches → shows OTP step', function (): void {
-    \Illuminate\Support\Facades\Notification::fake();
+    Notification::fake();
     fmiDistributor('100200303', 'Ravi Kumar', 'ABCDE1234F');
 
     $response = fmiPost(['full_name' => '  ravi KUMAR ', 'pan' => 'abcde1234f']);

@@ -175,7 +175,7 @@ it('declares a cadence that matches what the scheduler actually registers', func
             // The registered string looks like "'php' 'artisan' gsb:daily-cutoff --date='...'",
             // so anchor on the signature followed by whitespace or end-of-string —
             // a bare str_contains would let rank:monthly-run match rank:check-qualifications.
-            $pattern = "/\\bartisan'?\\s+".preg_quote($definition->commandSignature, '/')."(\\s|$)/";
+            $pattern = "/\\bartisan'?\\s+".preg_quote($definition->commandSignature, '/').'(\\s|$)/';
 
             if (preg_match($pattern, (string) $event->command) === 1) {
                 $registered[$definition->commandSignature] = $event->expression;

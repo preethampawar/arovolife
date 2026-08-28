@@ -41,7 +41,7 @@ final class KycDocumentFlaggedNotification extends Notification implements Shoul
         );
 
         return (new MailMessage)
-            ->subject('Action needed: re-upload your ' . $this->humanType())
+            ->subject('Action needed: re-upload your '.$this->humanType())
             ->view('emails.kyc-document-flagged', [
                 'documentType' => $this->humanType(),
                 'reason' => $this->reason,

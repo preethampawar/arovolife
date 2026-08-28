@@ -10,6 +10,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
 
@@ -28,11 +29,11 @@ uses(RefreshDatabase::class);
 function fmiOtpDistributor(string $name, string $pan, string $email): User
 {
     $user = User::create([
-        'full_name'     => $name,
-        'email'         => $email,
-        'phone_e164'    => '+91'.rand(7000000000, 9999999999),
+        'full_name' => $name,
+        'email' => $email,
+        'phone_e164' => '+91'.rand(7000000000, 9999999999),
         'password_hash' => bcrypt('x'),
-        'status'        => 'active',
+        'status' => 'active',
     ]);
 
     $panHash = hash('sha256', strtoupper(trim($pan)), true);
@@ -40,25 +41,25 @@ function fmiOtpDistributor(string $name, string $pan, string $email): User
     disableTestForeignKeys();
     try {
         $id = DB::table('distributors')->insertGetId([
-            'user_id'             => $user->id,
-            'adn'                 => 'ADN'.rand(100000000, 999999999),
-            'pan_hash'            => $panHash,
-            'pan_last4'           => substr(strtoupper($pan), -4),
-            'bank_account_enc'    => 'stub',
-            'bank_ifsc'           => 'SBIN0000000',
-            'sponsor_id'          => 0,
+            'user_id' => $user->id,
+            'adn' => 'ADN'.rand(100000000, 999999999),
+            'pan_hash' => $panHash,
+            'pan_last4' => substr(strtoupper($pan), -4),
+            'bank_account_enc' => 'stub',
+            'bank_ifsc' => 'SBIN0000000',
+            'sponsor_id' => 0,
             'placement_parent_id' => 0,
-            'side_chosen_by'      => 'referral_default',
-            'depth'               => 0,
-            'effective_date'      => now()->format('Y-m-d H:i:s.v'),
-            'cooling_off_end_at'  => now()->addDays(30)->format('Y-m-d H:i:s.v'),
-            'state'               => 'TS',
-            'is_primary_couple'   => 0,
-            'created_at'          => now()->format('Y-m-d H:i:s.v'),
-            'updated_at'          => now()->format('Y-m-d H:i:s.v'),
+            'side_chosen_by' => 'referral_default',
+            'depth' => 0,
+            'effective_date' => now()->format('Y-m-d H:i:s.v'),
+            'cooling_off_end_at' => now()->addDays(30)->format('Y-m-d H:i:s.v'),
+            'state' => 'TS',
+            'is_primary_couple' => 0,
+            'created_at' => now()->format('Y-m-d H:i:s.v'),
+            'updated_at' => now()->format('Y-m-d H:i:s.v'),
         ]);
         DB::table('distributors')->where('id', $id)->update([
-            'sponsor_id'          => $id,
+            'sponsor_id' => $id,
             'placement_parent_id' => $id,
         ]);
     } finally {
@@ -69,12 +70,12 @@ function fmiOtpDistributor(string $name, string $pan, string $email): User
 }
 
 /** POST to /find-my-id with name+PAN+consent. */
-function fmiLookup(string $name, string $pan): \Illuminate\Testing\TestResponse
+function fmiLookup(string $name, string $pan): TestResponse
 {
     return test()->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('find-my-id.lookup'), [
-            'full_name'       => $name,
-            'pan'             => $pan,
+            'full_name' => $name,
+            'pan' => $pan,
             'consent_privacy' => '1',
         ]);
 }
@@ -107,10 +108,10 @@ it('FMI-02: correct OTP reveals ADN, clears session, audit event fired', functio
     // Re-issue to get the plaintext code (test helper — OTP is still active)
     $code = $otp->issue('find_my_id', 'dist:'.$distId, [
         'dist_id' => $distId,
-        'adn'     => $adn,
-        'name'    => 'Ravi Kumar',
-        'state'   => 'TS',
-        'status'  => 'active',
+        'adn' => $adn,
+        'name' => 'Ravi Kumar',
+        'state' => 'TS',
+        'status' => 'active',
     ]);
 
     $res = $this->withoutMiddleware(PreventRequestForgery::class)

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compliance\Services;
 
+use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Compliance\DTOs\InactivityAssessment;
 use App\Modules\Compliance\Models\AuditLog;
-use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Compliance\Notifications\InactivityTerminationNoticeNotification;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Support\Carbon;

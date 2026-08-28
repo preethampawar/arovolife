@@ -28,10 +28,12 @@ use App\Modules\Commerce\Models\Franchise;
 use App\Modules\Commerce\Services\FranchiseCodeGenerator;
 use App\Modules\Compensation\Models\FranchiseCommissionResult;
 use App\Modules\Compensation\Services\FranchiseCommissionService;
+use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\FranchiseFeature;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -140,7 +142,7 @@ function frnRun(?Carbon $month = null): array
 // ─── tests ───────────────────────────────────────────────────────────────────
 
 it('FRN-001: the flag off leaves no trace — no routes, no checkout picker', function () {
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
     $staff = frnStaff();
 
     // 404 rather than 403: an unlaunched programme should not confirm it exists.
@@ -304,7 +306,7 @@ it('FRN-010: the commission credits the operator’s wallet against the result r
 
 it('FRN-011: admin screens render and an approval is audit-logged', function () {
     frnEnable();
-    $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+    $this->seed(RolesAndPermissionsSeeder::class);
 
     $staff = frnStaff('admin-compliance');
     $franchise = frnFranchise(['status' => Franchise::STATUS_PENDING]);
@@ -436,7 +438,7 @@ it('FRN-015: a franchise credit is actually paid out, not just swept', function 
         'updated_at' => now(),
     ]);
 
-    $batch = app(\App\Modules\Compensation\Services\PayoutService::class)
+    $batch = app(PayoutService::class)
         ->runMonthlyBatch(Carbon::now()->startOfMonth());
 
     $line = DB::table('payout_line_items')

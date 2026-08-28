@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Grievance\Notifications;
 
+use App\Modules\Commerce\Notifications\OrderNotificationChannels;
+
 /**
  * One place to decide how grievance notifications reach a complainant.
  *
@@ -15,7 +17,7 @@ namespace App\Modules\Grievance\Notifications;
  *
  * Mirrors Commerce\Notifications\OrderNotificationChannels.
  *
- * @see \App\Modules\Commerce\Notifications\OrderNotificationChannels
+ * @see OrderNotificationChannels
  */
 final class GrievanceNotificationChannels
 {

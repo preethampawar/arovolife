@@ -1,10 +1,10 @@
 <?php
 
-use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
-use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
+use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;

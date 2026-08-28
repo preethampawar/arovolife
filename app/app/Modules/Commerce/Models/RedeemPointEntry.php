@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Models;
 
-use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One movement in a distributor's redeem-point balance.
@@ -20,13 +21,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int $distributor_id
- * @property int $points  signed: positive accrual, negative redemption or expiry
+ * @property int $points signed: positive accrual, negative redemption or expiry
  * @property string $type
  * @property string|null $reference_type
  * @property int|null $reference_id
  * @property string|null $memo
  * @property int|null $actor_user_id
- * @property \Illuminate\Support\Carbon $created_at
+ * @property Carbon $created_at
  * @property-read Distributor $distributor
  * @property-read User|null $actor
  */

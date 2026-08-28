@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Grievance\Models;
 
-use App\Modules\Identity\Models\User;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Grievance\Enums\EscalationLevel;
@@ -12,10 +11,13 @@ use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Enums\TicketChannel;
 use App\Modules\Grievance\Enums\TicketStatus;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * A grievance, from any of the intake channels in policy §3.
@@ -42,26 +44,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $order_id
  * @property int|null $assigned_to_user_id
  * @property EscalationLevel $escalation_level
- * @property \Illuminate\Support\Carbon|null $sla_acknowledgement_at
- * @property \Illuminate\Support\Carbon|null $sla_first_response_at
- * @property \Illuminate\Support\Carbon|null $sla_resolution_at
- * @property \Illuminate\Support\Carbon|null $acknowledged_at
- * @property \Illuminate\Support\Carbon|null $first_response_at
- * @property \Illuminate\Support\Carbon|null $resolved_at
- * @property \Illuminate\Support\Carbon|null $closed_at
- * @property \Illuminate\Support\Carbon|null $escalated_at
+ * @property Carbon|null $sla_acknowledgement_at
+ * @property Carbon|null $sla_first_response_at
+ * @property Carbon|null $sla_resolution_at
+ * @property Carbon|null $acknowledged_at
+ * @property Carbon|null $first_response_at
+ * @property Carbon|null $resolved_at
+ * @property Carbon|null $closed_at
+ * @property Carbon|null $escalated_at
  * @property bool $third_party_dependent
- * @property \Illuminate\Support\Carbon|null $last_status_update_at
- * @property \Illuminate\Support\Carbon|null $acknowledgement_breached_at
- * @property \Illuminate\Support\Carbon|null $first_response_breached_at
- * @property \Illuminate\Support\Carbon|null $resolution_breached_at
+ * @property Carbon|null $last_status_update_at
+ * @property Carbon|null $acknowledgement_breached_at
+ * @property Carbon|null $first_response_breached_at
+ * @property Carbon|null $resolution_breached_at
  * @property string|null $resolution_note
  * @property int|null $closed_by_user_id
- * @property \Illuminate\Support\Carbon|null $retention_until
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketEvent> $events
- * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketAttachment> $attachments
+ * @property Carbon|null $retention_until
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read Collection<int, TicketEvent> $events
+ * @property-read Collection<int, TicketAttachment> $attachments
  * @property-read Distributor|null $distributor
  * @property-read Customer|null $customer
  * @property-read Order|null $order

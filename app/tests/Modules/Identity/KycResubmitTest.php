@@ -30,7 +30,6 @@ uses(RefreshDatabase::class);
  * both spouses' user.status flips back to pending so the admin can approve
  * the unit again.
  */
-
 function krsSeedDistributor(string $status = 'pending', bool $isPrimaryCouple = false, ?int $spouseDistId = null): array
 {
     $user = User::create([

@@ -135,10 +135,10 @@ final class AdminCreateDistributorAction
         // and the admin / distributor can add bank later from the edit
         // form before any payout.
         $bankAccountRaw = trim((string) ($input['bank_account'] ?? ''));
-        $bankIfscRaw    = strtoupper(trim((string) ($input['bank_ifsc'] ?? '')));
-        $bankProvided   = $bankAccountRaw !== '' && $bankIfscRaw !== '';
+        $bankIfscRaw = strtoupper(trim((string) ($input['bank_ifsc'] ?? '')));
+        $bankProvided = $bankAccountRaw !== '' && $bankIfscRaw !== '';
         $bankAccountEnc = $bankProvided ? Crypt::encryptString($bankAccountRaw) : null;
-        $bankIfscFinal  = $bankProvided ? $bankIfscRaw : null;
+        $bankIfscFinal = $bankProvided ? $bankIfscRaw : null;
 
         // Phase 1 stub Aadhaar ref — same shape RegistrationService uses
         // until the UIDAI-approved AUA/KUA partner is wired in.

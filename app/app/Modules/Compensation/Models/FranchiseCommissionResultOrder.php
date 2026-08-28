@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Models;
 use App\Modules\Commerce\Models\Order;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One sale a franchise commission was paid on (R-22).
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $result_id
  * @property int $order_id
  * @property int $base_paise
- * @property \Illuminate\Support\Carbon|null $delivered_at
+ * @property Carbon|null $delivered_at
  * @property-read FranchiseCommissionResult $result
  * @property-read Order $order
  */

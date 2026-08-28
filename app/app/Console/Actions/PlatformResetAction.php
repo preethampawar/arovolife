@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Actions;
 
+use App\Modules\Compensation\Support\DerivedTables;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Support\ReservedAdns;
 use App\Modules\Identity\Models\User;
@@ -86,7 +87,7 @@ final class PlatformResetAction
     /**
      * The full nuke list, in FK-safe order: everything the purchase reset
      * removes (which in turn single-sources its compensation half from
-     * {@see \App\Modules\Compensation\Support\DerivedTables}), then the
+     * {@see DerivedTables}), then the
      * platform's own identity, tree, consent and audit tables.
      *
      * @return list<string>

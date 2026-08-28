@@ -10,12 +10,12 @@ use App\Modules\Compensation\Models\FranchiseCommissionResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\FranchiseFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use App\Modules\Shared\Features\FranchiseFeature;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -243,7 +243,6 @@ final class AdminFranchiseController extends Controller
         abort_unless(Feature::for(null)->active(FranchiseFeature::class), 404);
     }
 
-
     /**
      * @return array<string, mixed>
      */
@@ -268,7 +267,7 @@ final class AdminFranchiseController extends Controller
     }
 
     /**
-     * @return int|null|false  false when the ADN does not resolve
+     * @return int|null|false false when the ADN does not resolve
      */
     private function resolveOperator(?string $adn): int|null|false
     {

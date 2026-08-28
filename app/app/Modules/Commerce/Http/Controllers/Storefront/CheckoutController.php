@@ -10,16 +10,15 @@ use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
-use App\Modules\Commerce\Services\RedeemPointsService;
-use App\Modules\Shared\Features\PurchaseOffersFeature;
-use Laravel\Pennant\Feature;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
+use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Payments\Services\StubGateway;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +27,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class CheckoutController extends Controller

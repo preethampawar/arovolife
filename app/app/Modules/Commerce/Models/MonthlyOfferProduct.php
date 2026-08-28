@@ -8,6 +8,7 @@ use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * The company-announced product carrying the half-price offer in a month.
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * and the entitlement disagree.
  *
  * @property int $id
- * @property \Illuminate\Support\Carbon $month_start
+ * @property Carbon $month_start
  * @property int $product_variant_id
  * @property int|null $created_by_user_id
  * @property string|null $notes

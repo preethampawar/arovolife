@@ -6,6 +6,7 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -121,7 +122,7 @@ it('shows an admin no distributor figures on any tree card', function (): void {
     tcosAccrueBv($id, 1_600_000);
 
     $admin = tcosUser('admin');
-    \Spatie\Permission\Models\Role::findOrCreate('admin', 'web');
+    Role::findOrCreate('admin', 'web');
     $admin->assignRole('admin');
 
     $this->actingAs($admin->refresh())

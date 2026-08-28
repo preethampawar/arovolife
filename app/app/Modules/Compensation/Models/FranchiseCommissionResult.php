@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Franchise;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One franchise's commission for one month.
@@ -20,13 +21,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $franchise_id
  * @property int $distributor_id
- * @property \Illuminate\Support\Carbon $month_start
+ * @property Carbon $month_start
  * @property int $order_count
  * @property int $base_paise
  * @property int $rate_bp
  * @property int $gross_paise
  * @property string $status
- * @property \Illuminate\Support\Carbon|null $credited_at
+ * @property Carbon|null $credited_at
  * @property-read Franchise $franchise
  * @property-read Distributor $distributor
  */

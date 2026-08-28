@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * A company-owned pickup / fulfilment point operated by a distributor.
@@ -32,12 +33,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $status
  * @property int|null $commission_rate_bp
  * @property int|null $arete_center_id
- * @property \Illuminate\Support\Carbon|null $applied_at
- * @property \Illuminate\Support\Carbon|null $approved_at
+ * @property Carbon|null $applied_at
+ * @property Carbon|null $approved_at
  * @property int|null $approved_by_user_id
  * @property string|null $notes
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon $updated_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Distributor|null $operator
  * @property-read AreteCenter|null $areteCenter
  * @property-read User|null $approvedBy

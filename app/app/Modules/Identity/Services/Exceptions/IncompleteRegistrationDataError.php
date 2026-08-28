@@ -14,6 +14,4 @@ use LogicException;
  * accidentally get caught by handlers reaching for PlacementSlotsExhaustedError
  * / PlacementSlotFullError (both of which extend RuntimeException).
  */
-final class IncompleteRegistrationDataError extends LogicException
-{
-}
+final class IncompleteRegistrationDataError extends LogicException {}

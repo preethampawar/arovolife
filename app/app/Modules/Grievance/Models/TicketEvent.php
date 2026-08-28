@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Grievance\Models;
 
-use App\Modules\Identity\Models\User;
 use App\Modules\Grievance\Enums\TicketEventKind;
+use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One entry in a ticket's append-only timeline.
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $from_value
  * @property string|null $to_value
  * @property string|null $note
- * @property \Illuminate\Support\Carbon $created_at
+ * @property Carbon $created_at
  * @property-read Ticket $ticket
  * @property-read User|null $actor
  */

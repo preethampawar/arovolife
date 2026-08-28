@@ -8,10 +8,10 @@ use App\Modules\Commerce\Models\Franchise;
 use App\Modules\Compensation\Models\FranchiseCommissionResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\FranchiseCommissionService;
+use App\Modules\Shared\Features\FranchiseFeature;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
-use App\Modules\Shared\Features\FranchiseFeature;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 
