@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Compensation\Services\RankBonusMonthSnapshot;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -28,6 +30,8 @@ final class AdminRankBonusCalculationController extends Controller
 
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
+        private readonly RankBonusMonthSnapshot $snapshot,
+        private readonly CompensationPlanSettingsService $plan,
     ) {}
 
     public function index(Request $request): View
@@ -64,9 +68,30 @@ final class AdminRankBonusCalculationController extends Controller
         // The Arete Center column only exists while the ADC feature is on.
         $adcOn = Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
 
+        // One Rank-1 header + formula block per month on view: the filtered
+        // month, or every month present among the Rank-1 rows on this page.
+        $rank1Months = is_string($month)
+            ? [Carbon::parse($month.'-01')]
+            : collect($rank1Rows->items())
+                ->map(fn (\stdClass $row) => Carbon::parse($row->month_start)->startOfMonth())
+                ->unique(fn (Carbon $m) => $m->toDateString())
+                ->sortDesc()
+                ->values()
+                ->all();
+
+        $rank1Blocks = [];
+        foreach ($rank1Months as $rank1Month) {
+            $snapshot = $this->snapshot->rank1($rank1Month);
+            if ($snapshot !== null) {
+                $rank1Blocks[] = ['date' => $rank1Month, 'rank1' => $snapshot];
+            }
+        }
+
         return view('admin.compensation.rb-calculation.index', [
             'rank1Rows' => $rank1Rows,
             'rankRows' => $rankRows,
+            'rank1Blocks' => $rank1Blocks,
+            'rankNames' => $this->plan->rankNames(),
             'q' => $q ?: null,
             'month' => $month,
             'rank' => $rank,
@@ -141,7 +166,7 @@ final class AdminRankBonusCalculationController extends Controller
                 ->where('d.adn', 'like', "%{$q}%")
                 ->orWhere('u.full_name', 'like', "%{$q}%")
             ))
-            ->when($month, fn ($b) => $b->whereRaw("DATE_FORMAT(rbr.month_start, '%Y-%m') = ?", [$month]))
+            ->when($month, fn ($b) => $b->where('rbr.month_start', $month.'-01'))
             ->when($higherRanksOnly, fn ($b) => $b->where('rbr.rank_number', '>', 1))
             ->when($rank, fn ($b) => $b->where('rbr.rank_number', $rank))
             ->when($status, fn ($b) => $b->where('rbr.status', $status))

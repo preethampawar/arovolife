@@ -49,6 +49,9 @@
 
 {{-- ── Rank 1 — points model (RAP + AO-GO) ─────────────────────────────── --}}
 <h2 class="text-sm font-semibold text-gray-800 mb-2">Rank 1 — Silver (RAP &amp; AO-GO points)</h2>
+@foreach($rank1Blocks as $block)
+    @include('admin.compensation.rank-bonus._rank1-formula', ['rank1' => $block['rank1'], 'date' => $block['date'], 'rankNames' => $rankNames])
+@endforeach
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
     @if($rank1Rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No Rank-1 records found.</p>

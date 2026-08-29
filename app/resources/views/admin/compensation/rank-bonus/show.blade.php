@@ -4,6 +4,8 @@
 
 @section('content')
 
+@include('admin.compensation.rank-bonus._rank1-formula', ['rank1' => $rank1, 'date' => $date, 'rankNames' => $rankNames])
+
 {{-- Per-rank summary cards --}}
 @if($rankSummaries->isNotEmpty())
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">

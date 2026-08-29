@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\RankBonusMonthSnapshot;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -14,6 +15,11 @@ use Laravel\Pennant\Feature;
 
 final class AdminRankBonusController extends Controller
 {
+    public function __construct(
+        private readonly CompensationPlanSettingsService $plan,
+        private readonly RankBonusMonthSnapshot $snapshot,
+    ) {}
+
     public function index(): View
     {
         abort_unless(Feature::for(null)->active(RankBonusFeature::class), 404);
@@ -62,8 +68,9 @@ final class AdminRankBonusController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $rankNames = app(CompensationPlanSettingsService::class)->rankNames();
+        $rankNames = $this->plan->rankNames();
+        $rank1 = $this->snapshot->rank1($date);
 
-        return view('admin.compensation.rank-bonus.show', compact('rows', 'rankSummaries', 'date', 'rankNames'));
+        return view('admin.compensation.rank-bonus.show', compact('rows', 'rankSummaries', 'date', 'rankNames', 'rank1'));
     }
 }

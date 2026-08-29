@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RankTiersSeeder;
@@ -211,4 +212,62 @@ it('is hidden behind the Rank Bonus flag', function () {
     $this->actingAs(rbIoAdmin())
         ->get(route('admin.compensation.rb-input-output.index'))
         ->assertNotFound();
+});
+
+it('shows the Rank 1 month header and the point-value formula with this month\'s values on the monthly page', function () {
+    rbIoSeedWorkedMonth('2026-07-01');
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', '2026-07'))
+        ->assertOk();
+
+    // Header: turnover, envelope, Rank 1 pool, points, point value.
+    $res->assertSee('Month turnover');
+    $res->assertSee(Bv::format(100_000_000));
+    $res->assertSee('Rank envelope (20%)');
+    $res->assertSee('₹2,00,000.00');
+    $res->assertSee('pool (7% of envelope)');
+    $res->assertSee('₹14,000.00');
+    $res->assertSee('₹560');
+
+    // Formula, symbolic then substituted.
+    $res->assertSee('Total points = (Qualifiers × RAP points) + AO-GO points');
+    $res->assertSee('(2 × 10) + 5 = <strong>25</strong>', false);
+    $res->assertSee('÷ 25 ⌋', false);
+    $res->assertSee('<strong>₹5,600</strong> per qualifier', false);
+});
+
+it('omits the Rank 1 header when the month has no Rank 1 rows', function () {
+    rbIoResult(104, '2026-06-01', 2, 680_000, 1, 680_000);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', '2026-06'))
+        ->assertOk()
+        ->assertDontSee('How the');
+});
+
+it('shows the Rank 1 month header and formula on the monthly calculation report', function () {
+    rbIoSeedWorkedMonth('2026-07-01');
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-calculation.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('July 2026');
+    $res->assertSee('Rank envelope (20%)');
+    $res->assertSee('₹2,00,000.00');
+    $res->assertSee('pool (7% of envelope)');
+    $res->assertSee('How the');
+    $res->assertSee('(2 × 10) + 5 = <strong>25</strong>', false);
+    $res->assertSee('<strong>₹5,600</strong> per qualifier', false);
+
+    // Unfiltered: one block per month present among the Rank-1 rows on the
+    // page — the table joins distributors, so the fixture ids need real rows.
+    foreach ([101, 102, 103] as $id) {
+        Distributor::factory()->create(['id' => $id]);
+    }
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-calculation.index'))
+        ->assertOk()
+        ->assertSee('How the');
 });
