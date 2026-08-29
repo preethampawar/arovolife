@@ -69,6 +69,17 @@ final class CompensationRecomputeRunner
         // repurchase cycles that opened weeks ago. The event bus stays live —
         // listeners like ReleaseHeldGsbOnReactivation are part of a correct
         // recomputation — only the transport is muted.
+        //
+        // Both mutes are captured first and restored in the `finally` below.
+        // A queue worker is a long-lived process that handles many jobs, so a
+        // swap left in place outlives this replay: every later
+        // SendQueuedNotifications in that worker resolves the NotificationFake
+        // and dies with "Argument #1 ($manager) must be of type ChannelManager".
+        // Those notifications are then lost — the job fails after the event
+        // that produced it has already been consumed.
+        $realNotificationChannelManager = Notification::getFacadeRoot();
+        $realMailer = config('mail.default');
+
         Notification::fake();
         config(['mail.default' => 'array']);
 
@@ -148,8 +159,11 @@ final class CompensationRecomputeRunner
             throw $e;
         } finally {
             // A replay that dies mid-flight must never leave the process — or a
-            // queue worker reusing it — on a fake clock.
+            // queue worker reusing it — on a fake clock, on a fake notification
+            // channel manager, or on the array mailer.
             Carbon::setTestNow();
+            Notification::swap($realNotificationChannelManager);
+            config(['mail.default' => $realMailer]);
         }
     }
 

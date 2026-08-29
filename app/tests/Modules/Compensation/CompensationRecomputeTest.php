@@ -22,8 +22,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Testing\Fakes\NotificationFake;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -263,6 +265,31 @@ it('replays a window and leaves the clock on real time', function (): void {
     expect($report->daysReplayed)->toBe(6);
     expect($report->ordersPropagated)->toBe(1);
     expect(Carbon::hasTestNow())->toBeFalse();
+});
+
+it('leaves notifications on the real channel manager after a replay', function (): void {
+    // Regression: the runner muted notifications with `Notification::fake()`
+    // and switched the mailer to `array`, but restored neither. In a request
+    // that is harmless -- the process ends. On a queue worker, which is
+    // long-lived and handles many jobs, the swap outlived the replay and every
+    // later SendQueuedNotifications job in that worker resolved the
+    // NotificationFake and died with "Argument #1 ($manager) must be of type
+    // ChannelManager". 87 such failures were observed on staging, each one a
+    // notification lost after the event that produced it was consumed.
+    $realManager = Notification::getFacadeRoot();
+    $realMailer = config('mail.default');
+
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
+
+    app(CompensationRecomputeRunner::class)->run(
+        from: Carbon::parse('2026-06-05'),
+        to: Carbon::parse('2026-06-06'),
+    );
+
+    expect(Notification::getFacadeRoot())->not->toBeInstanceOf(NotificationFake::class);
+    expect(Notification::getFacadeRoot())->toBe($realManager);
+    expect(config('mail.default'))->toBe($realMailer);
 });
 
 it('leaves the clock on real time even when the replay throws', function (): void {
