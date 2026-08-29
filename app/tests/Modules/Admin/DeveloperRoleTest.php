@@ -104,6 +104,20 @@ it('DEV-13: developer reaches the Pulse dashboard', function () {
     $this->get('/pulse')->assertOk();
 });
 
+it('DEV-13b: the Pulse dashboard alone gets a CSP that lets Alpine evaluate', function () {
+    $this->actingAs(devStaff('developer'));
+
+    // Pulse's cards are Livewire + Alpine; Alpine compiles its expressions with
+    // new Function(), so without 'unsafe-eval' every card stays a skeleton
+    // (staging, 2026-08-29). The widening is confined to the dashboard path.
+    $pulse = (string) $this->get('/pulse')->headers->get('Content-Security-Policy');
+    $site = (string) $this->get('/')->headers->get('Content-Security-Policy');
+
+    expect($pulse)->toContain("'unsafe-eval'")
+        ->and($pulse)->toContain("frame-ancestors 'none'")
+        ->and($site)->not->toContain("'unsafe-eval'");
+});
+
 /**
  * Pulse ships gated on `viewPulse`, which its own default answers with
  * "true if local". A Gate alone cannot hold this surface either way, because

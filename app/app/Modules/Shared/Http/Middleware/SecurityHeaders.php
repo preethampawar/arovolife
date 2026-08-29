@@ -47,13 +47,35 @@ final class SecurityHeaders
         ."form-action 'self'; "
         ."frame-ancestors 'none'";
 
+    /**
+     * The Pulse dashboard alone also gets `'unsafe-eval'`. Pulse renders its
+     * cards with Livewire + Alpine, and Alpine compiles every `x-data` /
+     * `wire:init` expression with `new Function()`, which the strict policy
+     * blocks — on staging (2026-08-29) the page loaded but every card stayed
+     * a skeleton, with an EvalError per expression in the console. The
+     * dashboard is developer-only (`role:developer` in config/pulse.php) and
+     * renders nothing user-supplied, so widening it there costs nothing the
+     * site-wide policy is protecting. Everything else in the policy is kept.
+     */
+    private const CSP_PULSE = "default-src 'self'; "
+        ."script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        ."style-src 'self' 'unsafe-inline'; "
+        ."img-src 'self' data: blob: https:; "
+        ."font-src 'self' data:; "
+        ."connect-src 'self'; "
+        ."media-src 'self'; "
+        ."object-src 'none'; "
+        ."base-uri 'self'; "
+        ."form-action 'self'; "
+        ."frame-ancestors 'none'";
+
     public function handle(Request $request, Closure $next): Response
     {
         /** @var Response $response */
         $response = $next($request);
 
         $headers = [
-            'Content-Security-Policy' => self::CSP,
+            'Content-Security-Policy' => $this->isPulseDashboard($request) ? self::CSP_PULSE : self::CSP,
             'X-Frame-Options' => 'DENY',
             // Stops a browser second-guessing a declared content type, which
             // is how an uploaded file served as text/plain becomes script.
@@ -83,5 +105,12 @@ final class SecurityHeaders
         }
 
         return $response;
+    }
+
+    private function isPulseDashboard(Request $request): bool
+    {
+        $path = trim((string) config('pulse.path', 'pulse'), '/');
+
+        return $path !== '' && $request->is($path, $path.'/*');
     }
 }
