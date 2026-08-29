@@ -301,7 +301,7 @@ Its own worker means it never queues behind a burst of order mail.
 |---|---|
 | Connection Driver | `redis` (read-only; see above) |
 | Number of Processes | `1` (**do not raise this**) |
-| Timeout (Seconds) | `7200` |
+| Timeout (Seconds) | `999` (the panel's maximum — see below) |
 | Sleep time (Seconds) | `3` |
 | Queue | `compensation` |
 | Maximum Tries | `1` |
@@ -313,8 +313,17 @@ connection's `retry_after` is 90s while `RunEngineChainJob` and
 `RecomputeAllJob` set timeouts of 3600s and 7200s, so a long job goes
 "available" again while it is still running. With a single worker there is
 nothing to re-reserve it; with two, the second picks it up and the ledger
-takes concurrent writes (R-61). Timeout must cover the longest job — the
-panel default of 60 kills every engine run at the one-minute mark.
+takes concurrent writes (R-61).
+
+**Why Timeout is 999 and not 7200.** The panel refuses anything above 999
+seconds (verified on staging 2026-08-29). That is fine: the field becomes
+`queue:work --timeout=999`, and Laravel gives a job's own `$timeout`
+property precedence over the command-line value
+(`Illuminate\Queue\Worker::timeoutForJob`). `RunEngineChainJob` (3600s) and
+`RecomputeAllJob` (7200s) both declare theirs, so the panel value governs
+only the short jobs on this queue (group-BV propagation and the like),
+which finish in seconds. Do not leave the panel default of 60 either — it
+would still kill those short jobs' worker restarts at the one-minute mark.
 
 **Why Job 3 has Tries 1 when the others have 3.** `--tries` is how many
 times Laravel re-runs a job that throws or is killed, with nobody in the
@@ -333,7 +342,9 @@ also fails the job until someone looks; on this queue a visible failure
 that waits for a human beats an invisible retry that may double-pay. No
 compensation job declares its own `$tries`, so the panel value is the one
 that applies. `docker/docker-compose.yml` mirrors these values locally
-(`--tries=1 --timeout=7200` on `queue-compensation`). Rationale: ADR-0011.
+(`--tries=1 --timeout=7200` on `queue-compensation`; the panel caps at 999,
+which is equivalent because the long jobs carry their own `$timeout`).
+Rationale: ADR-0011.
 
 Two panel defaults bite: **Timeout 60** (above) and **Artisan Path
 `public_html/artisan`**, which is wrong for this repo — Laravel lives one
@@ -564,7 +575,7 @@ The Servers card on the dashboard stays empty as a result; that is expected.
 | Emails send but no bonus is ever credited | Supervisord Job 3 (queue `compensation`) is down or was never added | Check *Application Settings → Supervisord Jobs → View Jobs Status*; Jobs 1 and 2 do not drain `compensation` |
 | A new compensation job never runs | Job missing `onQueue('compensation')`, so it sits on `default` | `QueueRoutingTest` catches this — run it before deploying |
 | Duplicate ledger writes from one engine run | Job 3 raised above 1 process | Return it to 1; `retry_after` (90s) is far below the engine timeouts, so a second worker re-reserves a job that is still running (R-61) |
-| Every engine run fails at exactly 60s | Job 3 left on the panel's default Timeout of 60 | Set Timeout to 7200 (§1.9) |
+| Every engine run fails at exactly 60s | Job 3 left on the panel's default Timeout of 60 | Set Timeout to 999, the panel maximum (§1.9) |
 | Saving a job fails with "Only lowercase alphanumeric characters are allowed" | Queue field given a comma list such as `otp,default` | One queue name per job; that is why there are three jobs (§1.9) |
 | A Supervisord job shows FATAL and never RUNNING | Artisan Path left at the panel default `public_html/artisan` | Set it to `public_html/app/artisan` — Laravel is one level down in this repo |
 | Jobs run, but `failed_jobs.connection` says `redis` and someone "fixes" `config/queue.php` | The `redis` connection is deliberately the database driver; the name is forced by Cloudways | Leave the alias; `QueueRoutingTest` fails if it is reverted. See §1.9 |
@@ -715,7 +726,7 @@ Workers:      Application Settings -> Supervisord Jobs (3 jobs, all on the
               database driver despite the panel's `redis` label -- 1.9):
                 Job 1  otp           1 proc   timeout 120   tries 3
                 Job 2  default       2 procs  timeout 120   tries 3
-                Job 3  compensation  1 proc   timeout 7200  tries 1  (never >1 proc)
+                Job 3  compensation  1 proc   timeout 999   tries 1  (never >1 proc; long jobs carry their own 3600/7200)
               Artisan Path on all three: public_html/app/artisan
 Open tinker:  php artisan tinker
 ```
