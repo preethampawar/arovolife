@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Listeners\RecordEngineRun;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineRunService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Console\Events\CommandFinished;
@@ -155,4 +159,58 @@ it('ignores commands that are not compensation engines', function (): void {
     Artisan::call('inspire');
 
     expect(EngineRun::count())->toBe(0);
+});
+
+it('stamps ledger entries written during an engine run with that run id', function (): void {
+    // Driven through the console events directly: the point under test is the
+    // window between CommandStarting and CommandFinished, not any one engine.
+    $recorder = app(RecordEngineRun::class);
+    $input = new ArrayInput(['--month' => '2026-05']);
+    $output = new NullOutput;
+
+    $recorder->starting(new CommandStarting('rank:check-qualifications', $input, $output));
+
+    $distributor = Distributor::factory()->create();
+    $duringRun = app(WalletService::class)->credit($distributor->id, 1000, 'manual_credit');
+
+    expect($duringRun->engine_run_id)->toBe(EngineRun::sole()->id);
+
+    $recorder->finished(new CommandFinished('rank:check-qualifications', $input, $output, 0));
+
+    $afterRun = app(WalletService::class)->credit($distributor->id, 1000, 'manual_credit');
+
+    // Nothing written after the run belongs to it — the recompute replay places
+    // orders between runs in the same process.
+    expect($afterRun->engine_run_id)->toBeNull();
+    expect(WalletLedgerEntry::whereNotNull('engine_run_id')->count())->toBe(1);
+
+    // finalise() reads runId() after Artisan::call has already returned, so
+    // CommandFinished must not clear it — only the active run is cleared.
+    expect(app(EngineRunContext::class)->runId())->toBe(EngineRun::sole()->id);
+});
+
+it('restores the outer run id when a nested command finishes', function (): void {
+    $recorder = app(RecordEngineRun::class);
+    $context = app(EngineRunContext::class);
+    $input = new ArrayInput(['--month' => '2026-05']);
+    $output = new NullOutput;
+
+    $recorder->starting(new CommandStarting('rank:check-qualifications', $input, $output));
+    $outerId = EngineRun::where('engine_key', 'rank.check')->sole()->id;
+
+    $recorder->starting(new CommandStarting('gbb:monthly-run', $input, $output));
+    $innerId = EngineRun::where('engine_key', 'gbb.monthly')->sole()->id;
+
+    expect($context->activeRunId())->toBe($innerId);
+
+    $recorder->finished(new CommandFinished('gbb:monthly-run', $input, $output, 0));
+
+    expect($context->activeRunId())->toBe($outerId);
+
+    $recorder->finished(new CommandFinished('rank:check-qualifications', $input, $output, 0));
+
+    expect($context->activeRunId())->toBeNull();
+    // endRun() never touches runId: it stays the last run *started* — the inner
+    // one here — so EngineRunService::finalise() can still find its row.
+    expect($context->runId())->toBe($innerId);
 });

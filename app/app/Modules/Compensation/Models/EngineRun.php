@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Models;
 use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -89,6 +90,17 @@ final class EngineRun extends Model
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    /**
+     * The wallet entries this run itself wrote — for a failed run, exactly what
+     * it committed before it stopped.
+     *
+     * @return HasMany<WalletLedgerEntry, $this>
+     */
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(WalletLedgerEntry::class, 'engine_run_id');
     }
 
     /** A run still marked `running` long after it started — the process died. */

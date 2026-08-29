@@ -16,6 +16,13 @@ use App\Modules\Compensation\Models\EngineRun;
  * so the service can attach captured console output afterwards.
  *
  * Unbound (the cron / developer-CLI case) it reports a plain console run.
+ *
+ * Two run ids, deliberately: `activeRunId` is the run currently executing —
+ * cleared at CommandFinished so that nothing written *between* runs in the same
+ * process (e.g. the recompute replay re-placing orders) is misattributed to the
+ * run that just ended. `runId` is the last run started and is kept until
+ * `reset()`, because EngineRunService::finalise() reads it after Artisan::call
+ * has already returned, to attach the captured console output.
  */
 final class EngineRunContext
 {
@@ -26,6 +33,8 @@ final class EngineRunContext
     private ?string $chainId = null;
 
     private ?int $runId = null;
+
+    private ?int $activeRunId = null;
 
     public function attribute(string $trigger, ?int $actorId, ?string $chainId): void
     {
@@ -41,6 +50,7 @@ final class EngineRunContext
         $this->actorId = null;
         $this->chainId = null;
         $this->runId = null;
+        $this->activeRunId = null;
     }
 
     public function trigger(): string
@@ -59,9 +69,26 @@ final class EngineRunContext
     }
 
     /** Called by the listener once the engine_runs row exists. */
-    public function recordRunId(int $runId): void
+    public function beginRun(int $runId): void
     {
         $this->runId = $runId;
+        $this->activeRunId = $runId;
+    }
+
+    /**
+     * Called by the listener at CommandFinished. Restores the enclosing run (or
+     * null) as the active one; `runId` is deliberately left alone so finalise()
+     * can still find the row it has to attach output to.
+     */
+    public function endRun(?int $outerRunId): void
+    {
+        $this->activeRunId = $outerRunId;
+    }
+
+    /** The run currently executing, if any — what WalletService stamps. */
+    public function activeRunId(): ?int
+    {
+        return $this->activeRunId;
     }
 
     public function runId(): ?int

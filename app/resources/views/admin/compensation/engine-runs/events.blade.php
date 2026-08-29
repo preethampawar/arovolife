@@ -9,7 +9,7 @@
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-gray-600">
         Every recorded engine run — scheduled, manual, and dependency runs pulled in by a manual trigger.
-        <x-help-tip text="Rows are written the moment an engine starts and finalised when it finishes. Rows sharing a chain ID belong to one manual trigger and the prerequisites it ran first." />
+        <x-help-tip text="Rows are written the moment an engine starts and finalised when it finishes. Rows sharing a chain ID belong to one manual trigger and the prerequisites it ran first. Ledger shows the wallet entries the run itself wrote — a failed run's committed rows are listed here, not lost." />
     </p>
     <div class="flex items-center gap-2">
         <form method="GET" action="{{ route('admin.compensation.engine-runs.events') }}" class="flex items-center gap-2">
@@ -40,6 +40,7 @@
                 <th class="px-4 py-3">By</th>
                 <th class="px-4 py-3">Started</th>
                 <th class="px-4 py-3">Duration</th>
+                <th class="px-4 py-3">Ledger</th>
                 <th class="px-4 py-3">Chain</th>
                 <th class="px-4 py-3">Details</th>
             </tr>
@@ -56,6 +57,10 @@
                     default => ['bg-gray-100 text-gray-600', $run->status],
                 };
                 $duration = $run->durationSeconds();
+                $ledger = $ledgerByRun[$run->id] ?? null;
+                $ledgerEntries = $ledger === null ? 0 : (int) $ledger->entries;
+                $ledgerNetPaise = $ledger === null ? 0 : (int) $ledger->net_paise;
+                $ledgerCommittedByFailedRun = $ledgerEntries > 0 && $run->status === EngineRun::STATUS_FAILED;
             @endphp
             <tr class="text-gray-600 align-top">
                 <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ $definition?->label ?? $run->engine_key }}</td>
@@ -66,6 +71,17 @@
                 <td class="px-4 py-3 whitespace-nowrap">{{ $run->started_at->format('d M Y H:i:s') }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
                     @if($duration === null) — @elseif($duration < 60) {{ $duration }}s @else {{ intdiv($duration, 60) }}m {{ $duration % 60 }}s @endif
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap {{ $ledgerCommittedByFailedRun ? 'text-red-700 font-medium' : '' }}">
+                    @if($ledgerEntries === 0)
+                    —
+                    @else
+                    {{ $ledgerEntries }} {{ $ledgerEntries === 1 ? 'entry' : 'entries' }} ·
+                    {{ $ledgerNetPaise < 0 ? '-' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($ledgerNetPaise) / 100, 2) }}
+                    @if($ledgerCommittedByFailedRun)
+                    <x-help-tip text="This run failed after committing these entries. A re-run skips them; nothing is double-paid." />
+                    @endif
+                    @endif
                 </td>
                 <td class="px-4 py-3 font-mono text-[10px] text-gray-600">{{ $run->chain_id ? substr($run->chain_id, 0, 8) : '—' }}</td>
                 <td class="px-4 py-3 max-w-xs">

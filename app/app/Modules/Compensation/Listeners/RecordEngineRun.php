@@ -91,7 +91,7 @@ final class RecordEngineRun
 
         $this->inFlight[$definition->commandSignature][] = $run->id;
         $this->startedHrtime[$run->id] = hrtime(true);
-        $context->recordRunId($run->id);
+        $context->beginRun($run->id);
 
         if ($this->featureFlagIsOff($definition)) {
             $this->flagOff[$run->id] = true;
@@ -120,6 +120,12 @@ final class RecordEngineRun
         if ($this->inFlight[$signature] === []) {
             unset($this->inFlight[$signature]);
         }
+
+        // Immediately after the pop, and before anything that can return early:
+        // from here on nothing this process writes belongs to $runId. Nesting is
+        // possible (a command invoking another), so restore the enclosing run
+        // rather than blanking the attribution outright.
+        $this->context()->endRun($this->topOfAnyStack());
 
         $wasFlagOff = isset($this->flagOff[$runId]);
         unset($this->flagOff[$runId]);
@@ -151,6 +157,24 @@ final class RecordEngineRun
         } catch (Throwable $e) {
             $this->logFailure('engine_run.record.finish_failed', $definition->key, $e);
         }
+    }
+
+    /**
+     * The innermost run still in flight after a pop, or null when none is.
+     *
+     * Signatures are keyed separately, so "outer" is the last id of the last
+     * non-empty stack: PHP preserves insertion order, and a nested command can
+     * only have been started after its parent.
+     */
+    private function topOfAnyStack(): ?int
+    {
+        foreach (array_reverse($this->inFlight) as $ids) {
+            if ($ids !== []) {
+                return $ids[count($ids) - 1];
+            }
+        }
+
+        return null;
     }
 
     /** Monotonic milliseconds since this run's CommandStarting, if we saw it. */

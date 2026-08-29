@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\DTOs\RecomputeReport;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
@@ -120,9 +121,55 @@ it('lists run events and filters them by engine', function (): void {
         ->get(route('admin.compensation.engine-runs.events', ['engine' => 'gbb.monthly']))
         ->assertOk()
         ->assertSee('Growth Booster Bonus')
-        // The ADC row is failed; filtering to GBB must hide it.
-        ->assertDontSee('failed')
+        // The ADC row is failed; filtering to GBB must hide it. Matched on the
+        // status pill's own markup, not the bare word: the page's header text
+        // explains what a failed run leaves in the Ledger column.
+        ->assertDontSee('>failed<', false)
         ->assertSee('manual');
+});
+
+it('shows the ledger entries a run wrote on the events page', function (): void {
+    $wrote = EngineRun::create([
+        'engine_key' => 'gbb.monthly',
+        'period_start' => '2026-07-01',
+        'status' => EngineRun::STATUS_FAILED,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+    EngineRun::create([
+        'engine_key' => 'gbb.monthly',
+        'period_start' => '2026-06-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => now()->subDay(),
+        'finished_at' => now()->subDay(),
+    ]);
+
+    $distributor = Distributor::factory()->create();
+
+    foreach ([150_000, 250_000] as $amountPaise) {
+        WalletLedgerEntry::create([
+            'distributor_id' => $distributor->id,
+            'type' => 'gbb_credit',
+            'amount_paise' => $amountPaise,
+            'reference_id' => $amountPaise,
+            'reference_type' => 'gbb_result',
+            'engine_run_id' => $wrote->id,
+        ]);
+    }
+
+    $response = $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.events', ['engine' => 'gbb.monthly']))
+        ->assertOk()
+        // What the failed run committed before it stopped: 2 entries, ₹4,000.
+        ->assertSee('2 entries')
+        ->assertSee('₹4,000.00')
+        ->assertSee('This run failed after committing these entries.');
+
+    // The second run wrote nothing: only one of the two rows carries a figure,
+    // the other falls back to the em-dash placeholder.
+    expect(substr_count($response->getContent(), 'entries ·'))->toBe(1);
 });
 
 it('rejects an events filter for an unknown engine key', function (): void {

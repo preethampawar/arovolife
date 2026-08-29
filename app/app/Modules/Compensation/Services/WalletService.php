@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Support\EngineRunContext;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -85,6 +86,7 @@ class WalletService
             'reference_id' => $referenceId,
             'reference_type' => $referenceType,
             'memo' => $memo,
+            'engine_run_id' => $this->activeEngineRunId(),
         ]);
     }
 
@@ -103,7 +105,22 @@ class WalletService
             'reference_id' => $referenceId,
             'reference_type' => $referenceType,
             'memo' => $memo,
+            'engine_run_id' => $this->activeEngineRunId(),
         ]);
+    }
+
+    /**
+     * The engine run this entry belongs to, so a run's committed rows can be
+     * listed afterwards — a failed run leaves a set, not archaeology.
+     *
+     * Resolved per call, never captured in the constructor: EngineRunContext is
+     * container-scoped and flushed between queue jobs, while this service may be
+     * held by a long-lived worker. Null outside an engine run (order-time
+     * entries, admin corrections).
+     */
+    private function activeEngineRunId(): ?int
+    {
+        return app(EngineRunContext::class)->activeRunId();
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Console\Actions\PurchaseDataResetAction;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineChainResolver;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
@@ -313,8 +314,21 @@ final class AdminEngineRunsController extends Controller
             ->paginate(50)
             ->withQueryString();
 
+        // One aggregate query for the whole page: how many wallet entries each
+        // run wrote and their net amount. A failed run's committed rows are then
+        // a listed set rather than something to reconstruct by hand.
+        $ledgerByRun = $runs->isEmpty()
+            ? collect()
+            : WalletLedgerEntry::query()
+                ->whereIn('engine_run_id', $runs->pluck('id'))
+                ->groupBy('engine_run_id')
+                ->selectRaw('engine_run_id, COUNT(*) AS entries, SUM(amount_paise) AS net_paise')
+                ->get()
+                ->keyBy('engine_run_id');
+
         return view('admin.compensation.engine-runs.events', [
             'runs' => $runs,
+            'ledgerByRun' => $ledgerByRun,
             'engineKey' => $engineKey,
             // Full map so historical rows of a now-disabled engine keep their
             // label; the filter dropdown only offers currently visible engines.

@@ -327,7 +327,8 @@ stopped, and with tries 3 the first two failures never reach `failed_jobs`
 at all. (R-61 is the separate, concurrent case: two workers on one job.)
 With tries 1 the first failure lands in `failed_jobs`, shows in Pulse, and
 the run is marked failed on the Engine Runs page, where it is re-triggered
-deliberately once the cause is known. The cost is that a transient blip
+deliberately once the cause is known; the Ledger column on Run events lists
+what the failed run committed before it stopped. The cost is that a transient blip
 also fails the job until someone looks; on this queue a visible failure
 that waits for a human beats an invisible retry that may double-pay. No
 compensation job declares its own `$tries`, so the panel value is the one

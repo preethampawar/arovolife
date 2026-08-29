@@ -25,6 +25,16 @@ it('credit adds a positive entry', function () {
     expect($svc->balancePaise($dist->id))->toBe(100_000);
 });
 
+it('leaves engine_run_id null outside an engine run', function () {
+    // Order-time and admin-correction entries have no run to attribute them to;
+    // only the Run events "Ledger" column depends on the distinction.
+    $dist = Distributor::factory()->create();
+    $svc = app(WalletService::class);
+
+    expect($svc->credit($dist->id, 100_000, 'manual_credit')->engine_run_id)->toBeNull();
+    expect($svc->debit($dist->id, 40_000, 'payout_debit')->engine_run_id)->toBeNull();
+});
+
 it('debit subtracts from balance', function () {
     $dist = Distributor::factory()->create();
     $svc = app(WalletService::class);
