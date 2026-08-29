@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -111,7 +112,7 @@ final class GsbDailyPoolService
         } else {
             // Floor to whole rupees (KP: 220.79 → ₹220): truncate the per-score
             // paise value to a multiple of 100.
-            $valuePaise = min($capPaise, intdiv(intdiv($remainderPaise, $variableTotalScore), 100) * 100);
+            $valuePaise = min($capPaise, Money::floorRupee($remainderPaise, $variableTotalScore));
         }
 
         $variablePayoutPaise = $valuePaise * $variableTotalScore;

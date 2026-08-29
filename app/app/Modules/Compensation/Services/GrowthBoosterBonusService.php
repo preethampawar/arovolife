@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -224,9 +225,7 @@ final class GrowthBoosterBonusService
         // Floor the per-AGP value to whole rupees: truncate to a multiple of
         // 100 paise. max() guards a refund-heavy (negative-BV) month, where
         // intdiv() truncates toward zero.
-        $valuePaise = $totalAgp === 0
-            ? 0
-            : max(0, intdiv(intdiv($poolPaise, $totalAgp), 100) * 100);
+        $valuePaise = Money::floorRupee($poolPaise, $totalAgp);
 
         $payoutPaise = $valuePaise * $totalAgp;
 

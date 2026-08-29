@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Shared\Support\Money;
+
 /**
  * Pure Fortune Bonus cascade allocator (KP 2026-08-09). No DB, no clock —
  * everything it needs arrives as arguments, so KP's full ₹36cr worked example
@@ -106,7 +108,7 @@ final class FortuneDistributionCalculator
 
             $cap = $levelConfigs[$level]['cap_paise'] ?? null;
             $pointEarnCeiling = $cap === null ? PHP_INT_MAX : max(0, $cap - $minCommissionPaise);
-            $value = $this->floorRupee($remaining, $remainingPoints);
+            $value = Money::floorRupee($remaining, $remainingPoints);
 
             $paid = 0;
             $levelPoints = 0;
@@ -131,7 +133,7 @@ final class FortuneDistributionCalculator
                 }
             }
 
-            $value = $this->floorRupee($remaining, $residualPoints);
+            $value = Money::floorRupee($remaining, $residualPoints);
 
             foreach ($residualLevels as $level) {
                 $paid = 0;
@@ -168,7 +170,7 @@ final class FortuneDistributionCalculator
      */
     private function allocateShortfall(array $byLevel, int $pool, int $count, int $guaranteedTotal, array $levelConfigs): array
     {
-        $perHead = $this->floorRupee($pool, $count);
+        $perHead = Money::floorRupee($pool, $count);
 
         $incomes = [];
         $levels = [];
@@ -227,15 +229,5 @@ final class FortuneDistributionCalculator
             'point_value_paise' => $valuePaise,
             'paid_paise' => $paidPaise,
         ];
-    }
-
-    /** Whole-rupee floor of amount ÷ points: truncate to a multiple of 100 paise, clamped ≥ 0. */
-    private function floorRupee(int $amountPaise, int $points): int
-    {
-        if ($points <= 0) {
-            return 0;
-        }
-
-        return max(0, intdiv(intdiv($amountPaise, $points), 100) * 100);
     }
 }

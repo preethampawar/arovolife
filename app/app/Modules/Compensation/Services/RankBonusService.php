@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -139,9 +140,7 @@ final class RankBonusService
                     $totalPoints = count($payableIds) * $rapPoints + (int) $grants->sum('points');
                     // Point value floored to the whole rupee; the remainder
                     // stays unspent (KP confirmed 2026-08-05, same as MSB).
-                    $pointValuePaise = $totalPoints > 0
-                        ? intdiv(intdiv($poolPaise, $totalPoints), 100) * 100
-                        : 0;
+                    $pointValuePaise = Money::floorRupee($poolPaise, $totalPoints);
                     $grossPerQualifier = $rapPoints * $pointValuePaise;
                 } else {
                     $grossPerQualifier = $payableIds !== []

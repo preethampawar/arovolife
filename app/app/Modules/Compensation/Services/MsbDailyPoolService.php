@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -77,9 +78,7 @@ final class MsbDailyPoolService
 
         // Floor to whole rupees (KP: 3,000 ÷ 60 = 50): truncate the per-point
         // paise value to a multiple of 100. max() guards a negative-BV day.
-        $valuePaise = $totalPoints === 0
-            ? 0
-            : max(0, intdiv(intdiv($poolPaise, $totalPoints), 100) * 100);
+        $valuePaise = Money::floorRupee($poolPaise, $totalPoints);
 
         $payoutPaise = $valuePaise * $totalPoints;
 
