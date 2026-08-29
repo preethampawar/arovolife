@@ -145,7 +145,7 @@ services:
     # One process, deliberately. Serialising the ledger writes means a
     # released job can never be re-reserved by a second worker while the
     # first is still running, and engine chains cannot interleave.
-    command: ["php", "artisan", "queue:work", "--queue=compensation", "--tries=3", "--sleep=2", "--timeout=120"]
+    command: ["php", "artisan", "queue:work", "--queue=compensation", "--tries=1", "--sleep=2", "--timeout=7200"]
     volumes:
       - ../app:/var/www/html
     environment:

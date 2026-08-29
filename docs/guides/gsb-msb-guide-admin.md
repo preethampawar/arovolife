@@ -55,8 +55,10 @@ never a mutable balance.
 
 **Staging prerequisite (one-time):** the schedule only fires if the server has a
 cron entry running `php artisan schedule:run` every minute **and** a queue worker
-(`php artisan queue:work database`) — without the worker, orders will be marked
-paid but BV never propagates. Until that is configured on Cloudways, run the
+draining the **`compensation` queue** (`php artisan queue:work --queue=compensation`,
+Supervisord Job 3 on Cloudways — see the deployment runbook §1.9) — without that
+worker, orders will be marked paid but BV never propagates. A plain `queue:work`
+is not enough: it drains only `default`, and BV propagation is not on `default`. Until that is configured on Cloudways, run the
 commands manually (Section 4).
 
 ---
@@ -150,7 +152,7 @@ is audit-logged with a reason.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Order paid but no BV anywhere | Queue worker not running | Start `queue:work database`; the queued job will process |
+| Order paid but no BV anywhere | The `compensation` queue worker is not running (Supervisord Job 3) | Start `queue:work --queue=compensation`; the queued job will process. A worker on `default` alone does not drain it |
 | BV visible but no GSB after 00:10 | Cron not configured, or title gate not met, or weaker side below slab 1 | Run the cut-off manually; check the distributor's personal BV title |
 | GSB credited but no bank payout | Below ₹100 minimum (rolls over), no verified bank account (`no_bank_account` hold), or below Retailer title (credited to wallet only) | Daily Cut-offs + Weekly Payout batch detail show hold reasons |
 | Need to re-run a wrong day | — | Manual Controls → Retry cut-off (idempotent), or `--distributor=` for one person |

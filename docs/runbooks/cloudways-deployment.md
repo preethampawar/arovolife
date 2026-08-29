@@ -314,9 +314,24 @@ connection's `retry_after` is 90s while `RunEngineChainJob` and
 "available" again while it is still running. With a single worker there is
 nothing to re-reserve it; with two, the second picks it up and the ledger
 takes concurrent writes (R-61). Timeout must cover the longest job — the
-panel default of 60 kills every engine run at the one-minute mark. Tries is
-1 because a half-finished engine run must not be replayed on top of itself;
-the engine's own idempotency and `engine_runs` handle the re-run.
+panel default of 60 kills every engine run at the one-minute mark.
+
+**Why Job 3 has Tries 1 when the others have 3.** `--tries` is how many
+times Laravel re-runs a job that throws or is killed, with nobody in the
+loop. For an OTP that is right — resending is harmless. On the money path
+it is not: an engine chain that died halfway has already written some
+ledger credits, and a retry starts the chain from the top; `PropagateGroupBvJob`
+has no overlap guard (R-61), so a retry after a partial propagation walks
+the upline again and can credit group BV twice. A retry also hides the
+failure — with tries 3 the first two attempts never reach `failed_jobs`.
+With tries 1 the first failure lands in `failed_jobs`, shows in Pulse, and
+the run is marked failed on the Engine Runs page, where it is re-triggered
+deliberately once the cause is known. The cost is that a transient blip
+also fails the job until someone looks; on this queue a visible failure
+that waits for a human beats an invisible retry that may double-pay. No
+compensation job declares its own `$tries`, so the panel value is the one
+that applies. `docker/docker-compose.yml` mirrors these values locally
+(`--tries=1 --timeout=7200` on `queue-compensation`). Rationale: ADR-0011.
 
 Two panel defaults bite: **Timeout 60** (above) and **Artisan Path
 `public_html/artisan`**, which is wrong for this repo — Laravel lives one
@@ -694,5 +709,11 @@ DB backup:    mysqldump … | gzip > ~/backups/<ts>.sql.gz
 Tail logs:    tail -F storage/logs/laravel.log
 Tail deploy:  tail -F storage/logs/deploy.log
 Failed jobs:  php artisan queue:failed
+Workers:      Application Settings -> Supervisord Jobs (3 jobs, all on the
+              database driver despite the panel's `redis` label -- 1.9):
+                Job 1  otp           1 proc   timeout 120   tries 3
+                Job 2  default       2 procs  timeout 120   tries 3
+                Job 3  compensation  1 proc   timeout 7200  tries 1  (never >1 proc)
+              Artisan Path on all three: public_html/app/artisan
 Open tinker:  php artisan tinker
 ```

@@ -69,7 +69,7 @@ If a user request would break one of these rules, stop and reply with:
   `Identity`, `Genealogy`, `Kyc`, `Consent`, `Orientation`, `Commerce` (Phase 2), `Wallet` (Phase 3), `Compensation` (Phases 4-6), `Compliance`, `Admin`, `Analytics`.
 - **Service Layer is the single source of truth.** Controllers never touch the DB directly; they call services. Services emit domain events.
 - **Event-driven.** Every non-trivial state change emits a domain event (`distributor.registered`, `placement.created`, `consent.accepted`, `cooling_off.cancelled`).
-- **Queue-based processing.** Heavy work runs on Laravel queues. Phase 1 uses the database driver; Phase 10 may swap to Redis.
+- **Queue-based processing.** Heavy work runs on Laravel queues, on the **database driver on every environment — permanently**. Redis was evaluated and rejected (ADR-0011): the Cloudways Redis is shared with eight other apps under `allkeys-lfu`, which may evict a queued job silently, and a silently dropped compensation job is a distributor not credited with no record of it. Three named queues — `otp`, `default`, `compensation` — each drained by its own worker; `compensation` runs on exactly one process with tries 1. Cache and sessions stay on Redis.
 - **Double-entry ledger** (Phase 3 onwards). The wallet is never a mutable integer; it's a projection of an append-only entries table.
 - **Idempotency.** Every external call (payment, SMS, email, gateway) carries an idempotency key.
 - **Separation of duties.** `admin-finance` cannot freeze; `admin-compliance` cannot approve payouts. RBAC enforces this in code, not policy.

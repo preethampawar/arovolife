@@ -458,8 +458,15 @@ request timeout halfway through leaves the database wiped and half-rebuilt. The
 replay takes minutes, so the worker draining that queue has to allow it:
 
 ```bash
-php artisan queue:work --timeout=7200 --tries=1 --memory=512
+php artisan queue:work --queue=compensation --timeout=7200 --tries=1 --memory=512
 ```
+
+`--queue=compensation` is not optional: every compensation job tags itself onto
+that queue and a bare `queue:work` drains only `default`, so the job would sit
+untouched. On Cloudways this is Supervisord **Job 3** (`docs/runbooks/cloudways-deployment.md`
+§1.9): 1 process, timeout 7200, tries 1 — the single process is what stops a
+long job being re-reserved by a second worker, and tries 1 is what stops a
+half-finished replay being re-run on top of itself.
 
 **`php artisan queue:listen` cannot run this job.** It does not execute jobs
 itself; it spawns a child `queue:work --once` wrapped in a process with the

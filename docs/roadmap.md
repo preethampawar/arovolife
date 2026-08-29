@@ -437,7 +437,7 @@ Explicitly out of scope for the current sprint (PO decision 2026-08-16:
   step on login
 - **T-5.2 / T-5.3 Observability** — structured JSON logs, OpenTelemetry
   traces, Prometheus metrics
-- Redis queue swap (currently the database driver)
+- ~~Redis queue swap~~ — **decided against, 2026-08-29** (ADR-0011): the queue stays on the database driver permanently; shared Redis under `allkeys-lfu` can evict jobs silently. Horizon is off the table with it (Redis-only). Pulse covers queue visibility instead.
 - Couple-registration follow-ups: withdraw-cascade, 60-day dedup on
   marriage, line-change cascade, spouse-login magic link
 
