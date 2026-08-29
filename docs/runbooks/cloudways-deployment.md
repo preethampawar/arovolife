@@ -257,13 +257,32 @@ line. On the compensation path that is a distributor not credited with
 nothing anywhere saying so. `CACHE_STORE` and `SESSION_DRIVER` stay on Redis;
 a lost cache entry is regenerated, a lost job is not.
 
-Two jobs, not one. Every queued class used to land on `default` behind a
+Three jobs, not one. Every queued class used to land on `default` behind a
 single pool, so an engine chain or a full recompute — minutes to hours of
 ledger work — parked in front of every OTP, order confirmation and KYC mail
 on the platform. Priority ordering on one pool would not fix that: a long
-job still occupies the worker it is holding.
+job still occupies the worker it is holding. And the panel's **Queue field
+accepts exactly one name** — lowercase alphanumeric, no commas — so
+`otp,default` is rejected with "Only lowercase alphanumeric characters are
+allowed". One queue, one job.
 
-**Job 1 — distributor-facing work** (edit the existing `Job_1`)
+**Job 1 — OTP delivery** (edit the existing `Job_1`)
+
+| Field | Value |
+|---|---|
+| Connection Driver | `redis` (read-only; see above) |
+| Number of Processes | `1` |
+| Timeout (Seconds) | `120` |
+| Sleep time (Seconds) | `3` |
+| Queue | `otp` |
+| Maximum Tries | `3` |
+| Environment | *(blank)* |
+| Artisan Path | `public_html/app/artisan` |
+
+A verification code is the one queued job a human is actively waiting on.
+Its own worker means it never queues behind a burst of order mail.
+
+**Job 2 — everything else distributor-facing** (add new)
 
 | Field | Value |
 |---|---|
@@ -271,16 +290,12 @@ job still occupies the worker it is holding.
 | Number of Processes | `2` |
 | Timeout (Seconds) | `120` |
 | Sleep time (Seconds) | `3` |
-| Queue | `otp,default` |
+| Queue | `default` |
 | Maximum Tries | `3` |
 | Environment | *(blank)* |
 | Artisan Path | `public_html/app/artisan` |
 
-`otp` leads the list so a verification code — the one queued job a human is
-actively waiting on — drains ahead of bulk notification traffic. Both queues
-carry only short jobs, so priority ordering is sufficient here.
-
-**Job 2 — compensation engines** (add new)
+**Job 3 — compensation engines** (add new)
 
 | Field | Value |
 |---|---|
@@ -311,7 +326,7 @@ both jobs show RUNNING afterwards (*View Jobs Status*, or the MCP
 `app/Modules/Compensation/Jobs/` carries `onQueue('compensation')` and that
 the `redis` connection is still the database driver.
 
-Total worker processes go from 1 to 3. Restart both jobs after every deploy so
+Total worker processes go from 1 to 4. Restart all three jobs after every deploy so
 they pick up new code (see §3).
 
 ### 1.10 Scheduler
@@ -529,10 +544,11 @@ The Servers card on the dashboard stays empty as a result; that is expected.
 | Mixed-content warnings after SSL | `APP_URL` still `http://` | Update `APP_URL` to `https://…`, re-cache config |
 | Sessions not persisting after login | `SESSION_DOMAIN` mismatch | Set to `.arovolife.com` (leading dot for subdomains) |
 | Queue jobs appear stuck | Old worker still running pre-deploy code | `php artisan queue:restart` |
-| Emails send but no bonus is ever credited | Supervisord Job 2 (queue `compensation`) is down or was never added | Check *Application Settings → Supervisord Jobs → View Jobs Status*; Job 1 does not drain `compensation` |
+| Emails send but no bonus is ever credited | Supervisord Job 3 (queue `compensation`) is down or was never added | Check *Application Settings → Supervisord Jobs → View Jobs Status*; Jobs 1 and 2 do not drain `compensation` |
 | A new compensation job never runs | Job missing `onQueue('compensation')`, so it sits on `default` | `QueueRoutingTest` catches this — run it before deploying |
-| Duplicate ledger writes from one engine run | Job 2 raised above 1 process | Return it to 1; `retry_after` (90s) is far below the engine timeouts, so a second worker re-reserves a job that is still running (R-61) |
-| Every engine run fails at exactly 60s | Job 2 left on the panel's default Timeout of 60 | Set Timeout to 7200 (§1.9) |
+| Duplicate ledger writes from one engine run | Job 3 raised above 1 process | Return it to 1; `retry_after` (90s) is far below the engine timeouts, so a second worker re-reserves a job that is still running (R-61) |
+| Every engine run fails at exactly 60s | Job 3 left on the panel's default Timeout of 60 | Set Timeout to 7200 (§1.9) |
+| Saving a job fails with "Only lowercase alphanumeric characters are allowed" | Queue field given a comma list such as `otp,default` | One queue name per job; that is why there are three jobs (§1.9) |
 | A Supervisord job shows FATAL and never RUNNING | Artisan Path left at the panel default `public_html/artisan` | Set it to `public_html/app/artisan` — Laravel is one level down in this repo |
 | Jobs run, but `failed_jobs.connection` says `redis` and someone "fixes" `config/queue.php` | The `redis` connection is deliberately the database driver; the name is forced by Cloudways | Leave the alias; `QueueRoutingTest` fails if it is reverted. See §1.9 |
 | `php artisan config:cache` errors with `RuntimeException` | An `env()` call outside `config/` | Search code, move env reads into a config file |
