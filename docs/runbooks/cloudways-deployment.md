@@ -238,13 +238,45 @@ config file — fix the source, then re-cache.
 Cloudways exposes Supervisor under *Application → Application Settings →
 Supervisord Queues*. Add a queue:
 
+Two entries, not one. Every queued class used to land on `default` behind a
+single pool, so a Growth Booster chain or a full recompute — minutes to hours
+of ledger work — parked in front of every OTP, order confirmation and KYC
+mail on the platform. Splitting the queues is what fixes that; running both
+lists on one pool would not, because priority ordering still lets a long job
+occupy the worker it is holding.
+
+**Entry A — distributor-facing work**
+
 | Field | Value |
 |---|---|
-| Command | `php /home/master/applications/ahdhesuhty/public_html/app/artisan queue:work --queue=default --sleep=3 --tries=3 --max-time=3600` |
-| Number of processes | `2` (8 GB tier comfortably handles this) |
+| Command | `php /home/master/applications/ahdhesuhty/public_html/app/artisan queue:work --queue=otp,default --sleep=3 --tries=3 --max-time=3600` |
+| Number of processes | `2` |
 | Auto restart | ON |
 
-Phase 1 uses the database queue driver; restart workers after every
+`otp` leads the list so a verification code — the one queued job a human is
+actively waiting on — always drains ahead of bulk notification traffic. Both
+queues carry only short jobs, so priority ordering is sufficient here.
+
+**Entry B — compensation engines**
+
+| Field | Value |
+|---|---|
+| Command | `php /home/master/applications/ahdhesuhty/public_html/app/artisan queue:work --queue=compensation --sleep=3 --tries=3 --max-time=3600` |
+| Number of processes | `1` (**do not raise this**) |
+| Auto restart | ON |
+
+One process is a correctness requirement, not a capacity choice. The database
+connection's `retry_after` is 90s while `RunEngineChainJob` and
+`RecomputeAllJob` set timeouts of 3600s and 7200s, so a long job goes
+"available" again while it is still running. With a single worker on the queue
+there is nothing to re-reserve it; with two, the second picks it up and the
+ledger takes concurrent writes. `QueueRoutingTest` asserts every job in
+`app/Modules/Compensation/Jobs/` carries `onQueue('compensation')`.
+
+Total worker processes go from 2 to 3. The queue driver stays `database`:
+the server's Redis is shared with eight other applications under
+`maxmemory-policy allkeys-lfu`, which is free to evict queued jobs silently —
+unacceptable for anything that credits money. Restart workers after every
 deploy so they pick up new code (see §3).
 
 ### 1.10 Scheduler
@@ -412,11 +444,44 @@ Phase 1 baseline (more in Phase 12 per `phase_1_deferrals.md`):
 | Cloudways server CPU/RAM/Disk | *Server Management → Monitoring* — set 80% thresholds |
 | MySQL slow queries | *Server Management → MySQL → Slow Query Log* |
 | Laravel logs | `tail -F /home/master/applications/ahdhesuhty/public_html/app/storage/logs/laravel.log` |
-| Failed jobs | `php artisan queue:failed` (email weekly to ops) |
+| Failed jobs | `/pulse` (see §4.1), or `php artisan queue:failed` |
 | Audit log volume spike | Check `audit_log` table count daily; sudden 10× = suspicious |
 
 Set up Cloudways → *Server Management → Monitoring → Alerts* to email
 the on-call when CPU > 80% for 5 min, disk > 85%, or load > 6.
+
+---
+
+### 4.1 Pulse
+
+`/pulse` — queue throughput and wait time, slow jobs, slow queries, slow
+requests, exceptions and cache hit rates. This is the platform's only queue
+observability: before it, a failed job landed in `failed_jobs` and nobody was
+told, which on a bonus-crediting job means a distributor finds the gap before
+we do.
+
+**Access.** Restricted to the `developer` role by the middleware in
+`config/pulse.php`. Admins get 403 — Pulse shows job payloads and exception
+traces, so it is a developer surface like feature flags and plan settings.
+Note that a Gate alone cannot hold it: `AppServiceProvider`'s `Gate::before`
+answers true for every super-staff user before any definition is consulted, so
+the middleware is what actually closes the door. DEV-13/14/15 in
+`DeveloperRoleTest` assert developer 200 / admin 403 / guest redirect — if
+those ever go green-to-red after a middleware change, the dashboard is exposed.
+
+**Storage.** Recorders write to the application database on the default
+`storage` ingest driver, so there is no extra daemon and no Supervisor entry.
+Retention is 7 days, trimmed by lottery on ingest. Deliberately not the
+server's Redis — see §1.5.
+
+**Killswitch.** `PULSE_ENABLED=false` in `.env` then `php artisan config:cache`
+stops all recording without removing the package. Reach for it if ingest write
+volume ever shows up in the MySQL slow log.
+
+**Not wired up.** The `Servers` recorder needs `php artisan pulse:check`
+running as a daemon. It is left unconfigured — a second always-on process for
+host metrics that Cloudways *Server Management → Monitoring* already reports.
+The Servers card on the dashboard stays empty as a result; that is expected.
 
 ---
 
@@ -429,6 +494,9 @@ the on-call when CPU > 80% for 5 min, disk > 85%, or load > 6.
 | Mixed-content warnings after SSL | `APP_URL` still `http://` | Update `APP_URL` to `https://…`, re-cache config |
 | Sessions not persisting after login | `SESSION_DOMAIN` mismatch | Set to `.arovolife.com` (leading dot for subdomains) |
 | Queue jobs appear stuck | Old worker still running pre-deploy code | `php artisan queue:restart` |
+| Emails send but no bonus is ever credited | Supervisor Entry B (`--queue=compensation`) is down or was never added | Check *Application Settings → Supervisord Queues*; Entry A does not drain `compensation` |
+| A new compensation job never runs | Job missing `onQueue('compensation')`, so it sits on `default` | `QueueRoutingTest` catches this — run it before deploying |
+| Duplicate ledger writes from one engine run | Entry B raised above 1 process | Return it to 1; `retry_after` (90s) is far below the engine timeouts, so a second worker re-reserves a job that is still running |
 | `php artisan config:cache` errors with `RuntimeException` | An `env()` call outside `config/` | Search code, move env reads into a config file |
 | Permission denied on `storage/logs/laravel.log` | Wrong owner after rsync | `chown -R master:www-data storage bootstrap/cache && chmod -R 775 …` |
 
