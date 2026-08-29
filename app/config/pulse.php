@@ -105,9 +105,19 @@ return [
     | for various tasks, including caching dashboard results, establishing
     | locks for events that should only occur on one server and signals.
     |
+    | Pinned to `array`, not the app default. Laravel's cache refuses to
+    | unserialize PHP objects (cache.serializable_classes = false, a gadget-
+    | chain guard we keep), but Pulse memoises each card's query result — a
+    | Collection — through this store and reads it back on the next request.
+    | On Redis that read returned an incomplete object and every Livewire
+    | card update 500'd (staging, 2026-08-29). The array store never
+    | serialises, so the 5-second memo simply lives for the request. The
+    | only cross-process use is the `pulse:check` single-server lock, which
+    | this single-server deployment does not run.
+    |
     */
 
-    'cache' => env('PULSE_CACHE_DRIVER'),
+    'cache' => env('PULSE_CACHE_DRIVER', 'array'),
 
     /*
     |--------------------------------------------------------------------------

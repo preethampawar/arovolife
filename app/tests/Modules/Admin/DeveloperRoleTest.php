@@ -8,6 +8,8 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pulse\Livewire\Queues;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -102,6 +104,22 @@ it('DEV-13: developer reaches the Pulse dashboard', function () {
     $this->actingAs(devStaff('developer'));
 
     $this->get('/pulse')->assertOk();
+});
+
+it('DEV-13c: Pulse cards render when the default cache store refuses to unserialize objects', function () {
+    $this->actingAs(devStaff('developer'));
+
+    // Laravel 13's cache.serializable_classes = false makes every object read
+    // from a serialising store an incomplete object. Pulse memoises card
+    // queries (Collections) through its own cache store, so that store must
+    // be one that never serialises — staging 2026-08-29: every card 500'd on
+    // Redis. The file store enforces the same rule as Redis, so it stands in.
+    config(['cache.default' => 'file', 'cache.serializable_classes' => false]);
+
+    // Pulse cards are lazy: a plain Livewire::test() renders only the
+    // placeholder and never runs the query, so lazy loading is switched off.
+    Livewire::withoutLazyLoading()->test(Queues::class)->assertOk();
+    Livewire::withoutLazyLoading()->test(Queues::class)->assertOk();
 });
 
 it('DEV-13b: the Pulse dashboard alone gets a CSP that lets Alpine evaluate', function () {
