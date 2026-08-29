@@ -14,6 +14,7 @@ declare(strict_types=1);
  */
 
 use App\Modules\Content\Models\ContentPage;
+use Database\Seeders\ProductionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -64,4 +65,25 @@ it('a non-blog page does not appear in the /blogs listing', function (): void {
     ]);
 
     $this->get('/blogs')->assertOk()->assertDontSee('Test News Article');
+});
+
+// PCL-007 — staging 2026-08-29: the About dropdown linked pages that only the
+// dev seeder created, so a fresh install 404'd on every one of them.
+it('every /p/ page the public top-nav links to exists after the production seeder', function (): void {
+    $this->seed(ProductionSeeder::class);
+
+    $html = $this->get('/')->assertOk()->getContent();
+    preg_match_all('#href="/p/([a-z0-9-]+)"#', $html, $m);
+
+    expect($m[1])->not->toBeEmpty()
+        ->and($m[1])->toContain('business-opportunities');
+
+    foreach (array_unique($m[1]) as $slug) {
+        $this->get('/p/'.$slug)->assertOk();
+    }
+});
+
+// PCL-008 — Arovo Hub is hidden from the nav until its pages are written.
+it('does not show the Arovo Hub dropdown in the public nav', function (): void {
+    $this->get('/')->assertOk()->assertDontSee('Arovo Hub');
 });

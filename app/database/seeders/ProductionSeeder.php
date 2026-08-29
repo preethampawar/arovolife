@@ -279,11 +279,18 @@ final class ProductionSeeder extends Seeder
      */
     private function seedContentPages(): void
     {
+        // Statutory documents plus every page the public top-nav links to
+        // (the About dropdown). A nav link without its row is a 404
+        // on a fresh install — staging 2026-08-29. Bodies are placeholders;
+        // none may carry income projections (Hard Rule 3, DSR 5(1)(d)).
         $pages = [
             ['slug' => 'terms',     'title' => 'Direct Seller Agreement & Terms of Service'],
             ['slug' => 'privacy',   'title' => 'Privacy Policy'],
             ['slug' => 'ethics',    'title' => 'Code of Ethics'],
             ['slug' => 'grievance', 'title' => 'Grievance Redressal'],
+            ['slug' => 'management-team',        'title' => 'Management Team'],
+            ['slug' => 'business-opportunities', 'title' => 'Business Opportunities'],
+            ['slug' => 'success-story',          'title' => 'Success Story'],
         ];
 
         foreach ($pages as $page) {

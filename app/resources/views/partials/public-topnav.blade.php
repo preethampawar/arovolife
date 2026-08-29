@@ -22,17 +22,9 @@
         ['label' => 'Blogs',    'route' => 'public.blogs.index',   'match' => ['public.blogs.index']],
         ['label' => 'Contact',  'route' => 'contact.show',         'match' => ['contact.show']],
         ['label' => 'Seminars', 'route' => 'public.seminars.index','match' => ['public.seminars.index']],
-        [
-            'label'    => 'Arovo Hub',
-            'dropdown' => true,
-            'match'    => ['public.arovo-hub'],
-            'children' => [
-                ['label' => 'Health Services',    'url' => '/p/health-services'],
-                ['label' => 'Social Contribution','url' => '/p/social-contribution'],
-                ['label' => 'Online Shopping',    'url' => route('shop.index')],
-                ['label' => 'Online Courses',     'url' => '/p/online-courses'],
-            ],
-        ],
+        // Arovo Hub (Health Services / Social Contribution / Online Courses)
+        // is hidden until its pages are written — client, 2026-08-29. The
+        // /arovo-hub route and the hub content-page type stay in place.
     ];
 @endphp
 
