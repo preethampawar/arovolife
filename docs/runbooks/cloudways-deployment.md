@@ -319,11 +319,12 @@ panel default of 60 kills every engine run at the one-minute mark.
 **Why Job 3 has Tries 1 when the others have 3.** `--tries` is how many
 times Laravel re-runs a job that throws or is killed, with nobody in the
 loop. For an OTP that is right — resending is harmless. On the money path
-it is not: an engine chain that died halfway has already written some
-ledger credits, and a retry starts the chain from the top; `PropagateGroupBvJob`
-has no overlap guard (R-61), so a retry after a partial propagation walks
-the upline again and can credit group BV twice. A retry also hides the
-failure — with tries 3 the first two attempts never reach `failed_jobs`.
+the retry itself is safe — every engine is either one transaction or
+per-row idempotent, and `wallet_ledger_entries` is UNIQUE on
+`(type, reference_type, reference_id)`, so a replay cannot double-credit —
+but it is *blind*: it re-runs an engine chain before anyone has read why it
+stopped, and with tries 3 the first two failures never reach `failed_jobs`
+at all. (R-61 is the separate, concurrent case: two workers on one job.)
 With tries 1 the first failure lands in `failed_jobs`, shows in Pulse, and
 the run is marked failed on the Engine Runs page, where it is re-triggered
 deliberately once the cause is known. The cost is that a transient blip

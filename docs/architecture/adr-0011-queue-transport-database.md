@@ -71,12 +71,16 @@ and has no free-text command field. Every worker it manages is launched as
    deliberately not raised — it is per connection, so raising it would delay
    the retry of every crashed OTP job by the same amount. The single process
    is the guard; R-61 tracks the code-level guard that should back it.
-5. **Job 3 runs each job once (tries 1)** because a run that died halfway
-   has already written credits, and an automatic retry replays on top of
-   them; `PropagateGroupBvJob` has no overlap guard and would credit group BV
-   twice. A visible failure in `failed_jobs`, Pulse and the Engine Runs page,
-   re-triggered by a person once the cause is known, beats an invisible
-   retry that may double-pay.
+5. **Job 3 runs each job once (tries 1)** for visibility, not for safety.
+   A sequential retry cannot double-credit: every engine is either a single
+   transaction (rank, GBB, ADC, group-BV propagation) or per-row idempotent
+   behind a unique key, and `wallet_ledger_entries` is UNIQUE on
+   `(type, reference_type, reference_id)`. What an automatic retry does is
+   re-run the money path before anyone has read why it stopped, and with
+   tries 3 the first two failures never reach `failed_jobs`. A visible
+   failure in `failed_jobs`, Pulse and the Engine Runs page, re-triggered by
+   a person once the cause is known, is the intended recovery — resume, not
+   revert (ADR-0004: the ledger is append-only).
 6. **Horizon is off the table** with Redis (it is Redis-only). Laravel Pulse
    provides queue and failed-job visibility instead, developer-role only.
 
