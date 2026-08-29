@@ -147,6 +147,10 @@ it('measures each drop from the stage before it', function (): void {
     }
     DB::table('consents')->insert([
         'distributor_id' => 1, 'document_type' => 'tnc', 'document_version' => '1.0',
+        // BINARY(32) NOT NULL with no default on MySQL; the create migration
+        // only widens it there, so sqlite leaves it nullable and hides the
+        // omission. Raw binary, as every production writer stores it.
+        'doc_hash_sha256' => hash('sha256', 'tnc-1.0', true),
         'accepted_at' => $inside, 'ip' => '127.0.0.1', 'user_agent' => 'test',
     ]);
 

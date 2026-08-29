@@ -62,5 +62,6 @@ it('RPI-03: the balance check refuses an overdraw', function () {
     expect(fn () => $service->redeem(1, 101, 1, 'too many'))
         ->toThrow(RuntimeException::class, 'the balance is 100');
 
-    expect(RedeemPointEntry::where('distributor_id', 1)->sum('points'))->toBe(100);
+    // MySQL returns SUM() as a string through PDO where sqlite returns an int.
+    expect((int) RedeemPointEntry::where('distributor_id', 1)->sum('points'))->toBe(100);
 });
