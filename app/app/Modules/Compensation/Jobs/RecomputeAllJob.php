@@ -51,7 +51,11 @@ final class RecomputeAllJob implements ShouldQueue
         private readonly ?string $to = null,
         private readonly ?array $onlyEngineKeys = null,
         private readonly bool $windowed = false,
-    ) {}
+    ) {
+        // Hours of work in the worst case — the clearest reason the compensation
+        // queue is separate from everything a distributor waits on.
+        $this->onQueue('compensation');
+    }
 
     public function handle(CompensationRecomputeRunner $runner): void
     {

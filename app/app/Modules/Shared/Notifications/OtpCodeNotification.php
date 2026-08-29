@@ -28,7 +28,12 @@ final class OtpCodeNotification extends Notification implements ShouldQueue
         public readonly string $code,
         public readonly string $action,
         public readonly int $expiresMinutes = 10,
-    ) {}
+    ) {
+        // A human is actively waiting on this one, so it gets its own queue name.
+        // Workers list `otp` first, which drains it ahead of the bulk
+        // notification traffic a busy registration day generates.
+        $this->onQueue('otp');
+    }
 
     /** @return array<int, string> */
     public function via(object $notifiable): array

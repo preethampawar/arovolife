@@ -31,7 +31,11 @@ final class ReverseGroupBvJob implements ShouldQueue
     public function __construct(
         private readonly int $orderId,
         private readonly ?int $actorUserId = null,
-    ) {}
+    ) {
+        // Same queue as PropagateGroupBvJob — a reversal must never run
+        // concurrently with the propagation it is undoing.
+        $this->onQueue('compensation');
+    }
 
     public function handle(GroupBvReversalService $reversal, GsbPersonalBvTopupService $topup): void
     {

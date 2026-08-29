@@ -28,7 +28,12 @@ final class PropagateGroupBvJob implements ShouldQueue
         private readonly int $distributorId,
         private readonly int $bvPaise,
         private readonly string $date,  // YYYY-MM-DD, captured at dispatch time
-    ) {}
+    ) {
+        // Group-BV propagation is ledger work: it runs on the `compensation`
+        // queue, whose single worker serialises it against the engine chain
+        // so two processes never write the same upline concurrently.
+        $this->onQueue('compensation');
+    }
 
     public function handle(GroupBvAccumulatorService $accumulator): void
     {

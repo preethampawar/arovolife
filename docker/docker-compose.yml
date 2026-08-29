@@ -115,7 +115,37 @@ services:
       dockerfile: docker/Dockerfile
     container_name: arovolife-queue
     working_dir: /var/www/html
-    command: ["php", "artisan", "queue:work", "--tries=3", "--sleep=2", "--timeout=120"]
+    # Distributor-facing work only. `otp` is listed first so a verification
+    # code always drains ahead of bulk notification traffic. Mirrors the two
+    # Supervisor entries on Cloudways — see the runbook §1.9.
+    command: ["php", "artisan", "queue:work", "--queue=otp,default", "--tries=3", "--sleep=2", "--timeout=120"]
+    volumes:
+      - ../app:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: arovolife
+      DB_USERNAME: arovolife
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: database
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [arovolife]
+
+  queue-compensation:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: arovolife-queue-compensation
+    working_dir: /var/www/html
+    # One process, deliberately. Serialising the ledger writes means a
+    # released job can never be re-reserved by a second worker while the
+    # first is still running, and engine chains cannot interleave.
+    command: ["php", "artisan", "queue:work", "--queue=compensation", "--tries=3", "--sleep=2", "--timeout=120"]
     volumes:
       - ../app:/var/www/html
     environment:

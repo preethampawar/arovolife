@@ -43,7 +43,11 @@ final class RunEngineChainJob implements ShouldQueue
         public readonly string $period,
         public readonly ?int $actorId,
         public readonly string $chainId,
-    ) {}
+    ) {
+        // Minutes of work. Isolated onto `compensation` so it cannot sit in
+        // front of a distributor's OTP or order mail on the shared worker.
+        $this->onQueue('compensation');
+    }
 
     public function handle(EngineChainResolver $resolver, EngineRunService $runner): void
     {
