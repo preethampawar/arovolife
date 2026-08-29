@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Jobs;
 
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
+use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -100,5 +101,17 @@ final class RecomputeAllJob implements ShouldQueue
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * Anything that escapes handle() — the guard refusing before the runner
+     * has started the progress record, the worker's timeout killing the
+     * process, a stale worker on an old allow-list — would otherwise leave
+     * the admin page reading "Queued" forever. The runner marks its own
+     * failures; this covers the ones raised before or around it.
+     */
+    public function failed(Throwable $e): void
+    {
+        app(RecomputeProgress::class)->fail($e->getMessage());
     }
 }

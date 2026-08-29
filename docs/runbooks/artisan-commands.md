@@ -372,12 +372,19 @@ hidden and both endpoints 404, which is the intended fail-closed behaviour.
 ```bash
 # Enable it first — it refuses without BOTH of these, and always in production
 COMP_RECOMPUTE_ENABLED=true
-COMP_RECOMPUTE_ALLOWED_DATABASES=arovolife_staging   # comma-separated; empty = nowhere
+COMP_RECOMPUTE_ALLOWED_DATABASES=ahdhesuhty          # comma-separated; empty = nowhere
 
 php artisan compensation:recompute-all              # confirms, naming the target DB
 php artisan compensation:recompute-all --force      # scripted, no prompt
 php artisan compensation:recompute-all --from=2026-07-01 --to=2026-07-31
 ```
+
+The name must match the *connected* `DB_DATABASE` exactly — when the staging
+database moved off RDS (2026-08-29) the stale RDS name here hid the tool. The
+`compensation` worker reads these keys at boot, so after editing them run
+`php artisan config:clear && php artisan queue:restart`; a worker still holding
+the old list refuses the job and the admin page sits on "Queued" (the job's
+`failed()` hook now surfaces that refusal on the progress bar instead).
 
 #### Replay only what you need — `--windowed` and `--only`
 

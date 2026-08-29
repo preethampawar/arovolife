@@ -556,6 +556,31 @@ it('records the failure on the progress state when a replay throws', function ()
     expect($state['finished_at'])->not->toBeNull();
 });
 
+it('marks the progress failed when the job is refused by the guard before the runner starts', function (): void {
+    // Regression: the guard throws before the runner touches the progress
+    // record, so a worker still holding a stale allow-list left the admin
+    // page reading "Queued — waiting for the queue worker" forever.
+    config(['arovolife.recompute.enabled' => true, 'arovolife.recompute.allowed_databases' => ['somewhere-else']]);
+
+    $progress = app(RecomputeProgress::class);
+    $progress->queued();
+
+    $job = new RecomputeAllJob(actorUserId: null);
+
+    try {
+        $job->handle(app(CompensationRecomputeRunner::class));
+        $this->fail('expected the guard to refuse');
+    } catch (RecomputeNotPermitted $e) {
+        $job->failed($e);
+    }
+
+    $state = $progress->read();
+
+    expect($state['state'])->toBe(RecomputeProgress::STATE_FAILED);
+    expect($state['error'])->toContain('somewhere-else');
+    expect($state['finished_at'])->not->toBeNull();
+});
+
 it('reports idle before any recompute has run', function (): void {
     config(['arovolife.recompute.enabled' => true]);
 
