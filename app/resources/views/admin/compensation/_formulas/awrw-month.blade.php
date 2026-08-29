@@ -6,8 +6,10 @@
     $totalBudget = array_sum(array_map(fn (array $r): int => $r['budget_paise'] * $r['milestones'], $aw['ranks']));
     $totalNet = array_sum(array_column($aw['ranks'], 'net_paise'));
 @endphp
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
+{{-- Collapsed by default; a page showing a single period opens it. The header row is the summary. --}}
+<details class="group bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6"{{ ($open ?? false) ? ' open' : '' }}>
+    <summary class="px-4 py-3 bg-gray-50 group-open:border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none" title="Show or hide the calculation">
+        <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.17 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
         <span class="font-semibold text-gray-800">{{ \Illuminate\Support\Carbon::parse($monthStart)->format('F Y') }}</span>
         <span class="text-gray-500">Milestones triggered <strong class="text-gray-700">{{ $num($aw['milestones']) }}</strong>
             <x-help-tip text="One milestone per distributor per rank, created the first month they qualify for that rank." /></span>
@@ -17,7 +19,7 @@
         <span class="text-gray-500">Cash rewards net <strong class="text-gray-700">{{ $inr($totalNet) }}</strong></span>
         <span class="text-gray-500 ml-auto">Computed <strong class="text-gray-700">{{ $aw['computed_at']?->format('d M Y H:i') ?? '—' }}</strong>
             <x-help-tip text="When this month's milestones were written by the Rank Bonus run." /></span>
-    </div>
+    </summary>
 
     <div class="px-4 py-4 grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
         <div>
@@ -55,4 +57,4 @@
             </table>
         </div>
     </div>
-</div>
+</details>

@@ -48,7 +48,7 @@
 
 {{-- Per month: frozen pool header + the cascade formula, symbolic then with the month's values --}}
 @foreach($monthPools as $pool)
-    @include('admin.compensation._formulas.fb-month', ['pool' => $pool])
+    @include('admin.compensation._formulas.fb-month', ['pool' => $pool, 'open' => count($monthPools) === 1])
 @endforeach
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

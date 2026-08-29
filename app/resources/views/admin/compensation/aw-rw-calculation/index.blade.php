@@ -42,7 +42,7 @@
 
 {{-- Per month: milestone header + how an award/reward is valued, with the month's per-rank figures --}}
 @foreach($monthBlocks as $monthStart => $aw)
-    @include('admin.compensation._formulas.awrw-month', ['aw' => $aw, 'monthStart' => $monthStart])
+    @include('admin.compensation._formulas.awrw-month', ['aw' => $aw, 'monthStart' => $monthStart, 'open' => count($monthBlocks) === 1])
 @endforeach
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

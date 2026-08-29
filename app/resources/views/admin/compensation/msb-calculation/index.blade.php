@@ -43,7 +43,7 @@
 
 {{-- Per cut-off day: frozen pool header + the score/point-value formula, symbolic then with the day's values --}}
 @foreach($dayPools as $pool)
-    @include('admin.compensation._formulas.msb-day', ['pool' => $pool])
+    @include('admin.compensation._formulas.msb-day', ['pool' => $pool, 'open' => count($dayPools) === 1])
 @endforeach
 @if($hiddenDays > 0)
 <p class="mb-4 text-xs text-gray-500">Showing the {{ \App\Modules\Compensation\Services\BonusCalculationSnapshots::MAX_DAILY_BLOCKS }} latest days on this page; {{ $hiddenDays }} more day{{ $hiddenDays === 1 ? '' : 's' }} below — filter by date to see a specific day's formula.</p>

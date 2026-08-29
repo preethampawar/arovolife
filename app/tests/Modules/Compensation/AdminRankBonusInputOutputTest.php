@@ -260,14 +260,20 @@ it('shows the Rank 1 month header and formula on the monthly calculation report'
     $res->assertSee('How the');
     $res->assertSee('(2 × 10) + 5 = <strong>25</strong>', false);
     $res->assertSee('<strong>₹5,600</strong> per qualifier', false);
+    // A single filtered month renders its block expanded.
+    $res->assertSee('mb-6" open>', false);
 
     // Unfiltered: one block per month present among the Rank-1 rows on the
     // page — the table joins distributors, so the fixture ids need real rows.
+    // With more than one month on view the blocks stay collapsed.
+    rbIoSeedWorkedMonth('2026-06-01');
     foreach ([101, 102, 103] as $id) {
         Distributor::factory()->create(['id' => $id]);
     }
     $this->actingAs(rbIoAdmin())
         ->get(route('admin.compensation.rb-calculation.index'))
         ->assertOk()
-        ->assertSee('How the');
+        ->assertSee('How the')
+        ->assertSee('June 2026')
+        ->assertDontSee('mb-6" open>', false);
 });

@@ -41,7 +41,7 @@
 
 {{-- Per month: aggregate header + the per-centre formula, symbolic then with the month's values --}}
 @foreach($monthBlocks as $monthStart => $adc)
-    @include('admin.compensation._formulas.adc-month', ['adc' => $adc, 'monthStart' => $monthStart])
+    @include('admin.compensation._formulas.adc-month', ['adc' => $adc, 'monthStart' => $monthStart, 'open' => count($monthBlocks) === 1])
 @endforeach
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
