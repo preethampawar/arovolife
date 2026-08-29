@@ -200,12 +200,18 @@ it('shows the carry-forward decomposition, todays genos bv and team counts', fun
 
     $this->get(route('my-business'))
         ->assertOk()
-        // Left: 6,000 today + 6,000 carried over = 12,000 effective, Left is power.
-        ->assertSee('12,000')
-        ->assertSee('6,000 today + 6,000 carried over')
+        // Carried-over tiles show the LAST cut-off's carry over only: today's
+        // 6,000 Left BV is NOT added before tonight's cut-off (client, 2026-08-29).
+        ->assertSee('6,000')
+        ->assertDontSee('12,000')
+        ->assertDontSee('today + ')
+        ->assertSee('As of the last 23:59 cut-off')
+        // …what is pending sits on the info icon.
+        ->assertSee("Pending tonight's 23:59 cut-off: 6,000 BV of Left Genos business today.")
+        ->assertSee("Pending tonight's 23:59 cut-off: 3,000 BV of Right Genos business today.")
+        // Badges are the last cut-off's decision: Left holds the power CF.
         ->assertSee('Power side')
         // Right is weaker, so it holds the side-less slab-1 accumulator.
-        ->assertSee('3,000 today + 0 carried over')
         ->assertSee('Weaker side')
         ->assertSee('+ 600 BV slab-1 weaker carry over')
         // No slab has ever matched, so carry forward (post-match remainder) is 0.
@@ -240,12 +246,14 @@ it('keeps personal purchase BV out of the carried-over figures until the cut-off
 
     $this->get(route('my-business'))
         ->assertOk()
-        // Right stays at 16,000 — the 1,000 BV personal purchase is not in it.
-        ->assertSee('16,000')
-        ->assertSee('16,000 today + 0 carried over')
+        // The 1,000 BV personal purchase is not attached to either side…
         ->assertDontSee('17,000')
-        // ...it is announced separately as pending tonight's cut-off.
-        ->assertSee("+ 1,000 BV personal purchase — pending tonight's cut-off", false);
+        ->assertDontSee('personal purchase — pending')
+        // …and no side is badged before a cut-off has decided the sides.
+        ->assertDontSee('Power side')
+        ->assertDontSee('Weaker side')
+        // It is announced on the info icon as pending tonight's cut-off.
+        ->assertSee('1,000 BV of your own purchase, which goes to whichever side is weaker at that moment', false);
 });
 
 it('shows carry forward as the remainder of the last slab match only', function (): void {
@@ -310,9 +318,9 @@ it('shows zero genos figures on my business below the personal bv minimum', func
         ->assertSee('requires 600 BV of personal purchases')
         // The seeded carry-forward and today's BV are both withheld…
         ->assertDontSee('6,000')
-        ->assertDontSee('3,000 today')
+        ->assertDontSee('3,000 BV of Right')
         // …and every Genos card reads 0 instead.
-        ->assertSee('0 today + 0 carried over')
+        ->assertSee('Nothing is pending for your Left side')
         ->assertDontSee('as of last page load');
 });
 

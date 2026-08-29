@@ -88,6 +88,32 @@ final readonly class GsbSlabProgress
     }
 
     /**
+     * Power side as decided at the LAST 23:59 cut-off — the rolling
+     * carry-forward store — or null when no cut-off has assigned one yet.
+     *
+     * Distributor-facing tiles show their Power/Weaker badges from this, never
+     * from the live intraday comparison (client, 2026-08-29): the sides are
+     * decided only at the cut-off, so nothing may reflect before it. The live
+     * {@see powerSide()} stays for the engine preview and hover text.
+     */
+    public function settledPowerSide(): ?string
+    {
+        return $this->powerCfSide;
+    }
+
+    /**
+     * Weaker side as decided at the last cut-off; null until one has run.
+     */
+    public function settledWeakerSide(): ?string
+    {
+        return match ($this->powerCfSide) {
+            'L' => 'R',
+            'R' => 'L',
+            default => null,
+        };
+    }
+
+    /**
      * Everything currently carried on one side: its power-side carry-forward
      * plus, on the weaker side only, the side-less slab-1 weaker accumulator
      * (which counts toward whichever side is weaker at the next cut-off).

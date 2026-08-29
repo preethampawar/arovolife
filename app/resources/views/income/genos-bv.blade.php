@@ -43,8 +43,10 @@
                 // added into either side's total. Tie ⇒ Left is the power side
                 // (engine tie-break), so Right is the weaker one.
                 $slab1WeakerCfBv = (int) round($slabProgress->slab1WeakerCfPaise / 100);
-                $powerSideIsLeft = $slabProgress->powerSide() === 'L';
-                $weakerSideIsLeft = ! $powerSideIsLeft;
+                // Badges are the LAST cut-off's decision, hidden until one exists
+                // (client, 2026-08-29: sides are decided at 23:59, never intraday).
+                $settledPowerSide = $slabProgress->settledPowerSide();
+                $weakerSideIsLeft = ($slabProgress->settledWeakerSide() ?? 'R') === 'L';
                 $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
                 $powerBadgeClasses = $sideBadgeClasses.' bg-indigo-100 text-indigo-700';
                 $weakerBadgeClasses = $sideBadgeClasses.' bg-amber-100 text-amber-700';
@@ -54,24 +56,22 @@
                 // Personal purchase BV waits for the 23:59 cut-off — it is never part
                 // of a side's total at purchase time.
                 $pendingPersonalBv = (int) round($slabProgress->pendingPersonalBvTopupPaise / 100);
-                $pendingPersonalBvHint = $pendingPersonalBv > 0
-                    ? '+ '.\App\Modules\Shared\Support\IndianNumber::format($pendingPersonalBv, 0).' BV personal purchase — pending tonight\'s cut-off'
+                $pendingPersonalBvTip = $pendingPersonalBv > 0
+                    ? \App\Modules\Shared\Support\IndianNumber::format($pendingPersonalBv, 0).' BV of your own purchase is pending tonight\'s 23:59 cut-off. It is added then to whichever Genos side is weaker at that moment, and only if a side has reached the first slab — never before the cut-off.'
                     : null;
-                $pendingPersonalBvTip = 'Your own purchase BV is not added to either side when you buy. At tonight\'s 23:59 cut-off it is added to whichever Genos side is weaker, and only if a side has reached the first slab.';
                 $slab1WeakerCfTip = 'Weaker-side BV from earlier days — including any personal-BV top-up — carries over into the slab-1 weaker bucket at each cut-off. That bucket is not pinned to a side; it applies to whichever side is weaker at the next cut-off, so it is not part of this side\'s total. It appears as Slab 1 "Your progress" in the ladder below and counts toward the 15,000 BV first-slab match.';
             @endphp
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-5">
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Left Genos BV today <x-help-tip text="Today's Left Genos BV plus any BV carried over on your Left side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->leftEffectivePaise / 100, 0) }}</p>
-                    <p class="mt-1">
-                        <span class="{{ $powerSideIsLeft ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $powerSideIsLeft ? 'Power side' : 'Weaker side' }}</span>
-                    </p>
-                    @if ($pendingPersonalBvHint !== null && $slabProgress->pendingTopupSide === 'L')
-                        <p class="text-xs text-gray-500 mt-1 flex items-start gap-1">
-                            {{ $pendingPersonalBvHint }}
-                            <x-help-tip :text="$pendingPersonalBvTip" />
+                    @if ($settledPowerSide !== null)
+                        <p class="mt-1">
+                            <span class="{{ $settledPowerSide === 'L' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'L' ? 'Power side' : 'Weaker side' }}</span>
                         </p>
+                    @endif
+                    @if ($pendingPersonalBvTip !== null)
+                        <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">Personal purchase pending <x-help-tip :text="$pendingPersonalBvTip" /></p>
                     @endif
                     @if ($slab1WeakerCfHint !== null && $weakerSideIsLeft)
                         <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">
@@ -83,14 +83,13 @@
                 <div class="bg-gray-50 rounded-xl px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Right Genos BV today <x-help-tip text="Today's Right Genos BV plus any BV carried over on your Right side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
-                    <p class="mt-1">
-                        <span class="{{ $powerSideIsLeft ? $weakerBadgeClasses : $powerBadgeClasses }}">{{ $powerSideIsLeft ? 'Weaker side' : 'Power side' }}</span>
-                    </p>
-                    @if ($pendingPersonalBvHint !== null && $slabProgress->pendingTopupSide === 'R')
-                        <p class="text-xs text-gray-500 mt-1 flex items-start gap-1">
-                            {{ $pendingPersonalBvHint }}
-                            <x-help-tip :text="$pendingPersonalBvTip" />
+                    @if ($settledPowerSide !== null)
+                        <p class="mt-1">
+                            <span class="{{ $settledPowerSide === 'R' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'R' ? 'Power side' : 'Weaker side' }}</span>
                         </p>
+                    @endif
+                    @if ($pendingPersonalBvTip !== null)
+                        <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">Personal purchase pending <x-help-tip :text="$pendingPersonalBvTip" /></p>
                     @endif
                     @if ($slab1WeakerCfHint !== null && ! $weakerSideIsLeft)
                         <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">

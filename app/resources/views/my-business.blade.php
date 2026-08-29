@@ -10,8 +10,6 @@
     // the distributor will never be credited for.
     $gsbMinBv = $gsbMinBvPaise !== null ? Number::format($gsbMinBvPaise / 100, 0) : '600';
 
-    $leftEffectiveBv = (int) round(($slabProgress?->leftEffectivePaise ?? 0) / 100);
-    $rightEffectiveBv = (int) round(($slabProgress?->rightEffectivePaise ?? 0) / 100);
     $leftTodayBv = (int) round(($dailyBv->left_bv_paise ?? 0) / 100);
     $rightTodayBv = (int) round(($dailyBv->right_bv_paise ?? 0) / 100);
 
@@ -25,9 +23,32 @@
     // credits it to the weaker group — shown as a separate pending line, never
     // added into the carried-over totals.
     $pendingPersonalBv = (int) round(($slabProgress?->pendingPersonalBvTopupPaise ?? 0) / 100);
-    $pendingPersonalBvTip = 'Your own purchase BV is not added to either side when you buy. At tonight\'s 23:59 cut-off it is added to whichever Genos side is weaker, and only if a side has reached the first slab.';
 
-    $powerSideIsLeft = ($slabProgress?->powerSide() ?? 'L') === 'L';
+    // Pending-until-cut-off rule (client, 2026-08-29): nothing that tonight's
+    // 23:59 cut-off decides is shown on the tiles beforehand. The Carried-over
+    // tiles show the carry over as it stood after the LAST cut-off — today's
+    // Genos BV is not added to it, the personal purchase BV is not attached to
+    // a side, and the Power/Weaker badges are the last cut-off's decision
+    // (hidden until one exists). Everything pending is on the info icon.
+    $leftCarriedBv = (int) round(($slabProgress?->carriedLeftPaise() ?? 0) / 100);
+    $rightCarriedBv = (int) round(($slabProgress?->carriedRightPaise() ?? 0) / 100);
+    $settledPowerSide = $slabProgress?->settledPowerSide();
+    $settledWeakerSide = $slabProgress?->settledWeakerSide() ?? 'R';
+    $pendingTip = static function (string $side, int $todayBv) use ($pendingPersonalBv): string {
+        $tail = ' Carry over, the power/weaker side and any slab match are updated only at the cut-off.';
+        if ($todayBv <= 0 && $pendingPersonalBv <= 0) {
+            return 'Nothing is pending for your '.$side.' side — no '.$side.' Genos BV has arrived since the last 23:59 cut-off.'.$tail;
+        }
+        $parts = [];
+        if ($todayBv > 0) {
+            $parts[] = Number::format($todayBv, 0).' BV of '.$side.' Genos business today';
+        }
+        if ($pendingPersonalBv > 0) {
+            $parts[] = Number::format($pendingPersonalBv, 0).' BV of your own purchase, which goes to whichever side is weaker at that moment (only if a side has reached the first slab)';
+        }
+
+        return 'Pending tonight\'s 23:59 cut-off: '.implode(' and ', $parts).'.'.$tail;
+    };
     $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
     $powerBadgeClasses = $sideBadgeClasses.' bg-indigo-100 text-indigo-700';
     $weakerBadgeClasses = $sideBadgeClasses.' bg-amber-100 text-amber-700';
@@ -42,7 +63,7 @@
         : '';
     $todayBvTipSuffix = $gsbOn ? ' — that is, since the last 23:59 cut-off. It does not include BV carried over from earlier days' : '';
 
-    $badgeTipSuffix = ' The badge shows whether this is currently your power side (the higher of the two) or your weaker side — only the weaker side is matched against the slab table at the 23:59 cut-off.';
+    $badgeTipSuffix = ' The badge shows whether this was your power side (the higher of the two) or your weaker side at the last 23:59 cut-off — only the weaker side is matched against the slab table. It is hidden until a cut-off has decided the sides.';
 
     $cardClasses = 'bg-white rounded-2xl border border-gray-200 p-5';
     $statLabelClasses = 'text-xs text-gray-600 font-medium';
@@ -56,7 +77,7 @@
     {{-- Page note --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         @if($gsbOn)
-            A snapshot of your own arovolife business: your personal purchase BV and title, your current wallet balance, and the Left and Right Genos figures tonight's 23:59 cut-off will use. Every number here is a record of what has already happened on your account. Use the tabs above to open the detailed pages.
+            A snapshot of your own arovolife business: your personal purchase BV and title, your current wallet balance, and your Left and Right Genos carry over as it stood after the last 23:59 cut-off. Every number here is a record of what has already happened on your account. Use the tabs above to open the detailed pages.
         @else
             A snapshot of your own arovolife business: your personal purchase BV and title, your current wallet balance, and your Left and Right Genos team figures. Every number here is a record of what has already happened on your account. Use the tabs above to open the detailed pages.
         @endif
@@ -104,40 +125,32 @@
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Left Genos BV</p>
-                <x-help-tip text="Your Left Genos BV today plus the BV carried over on your Left side from earlier days — business that occurs before matching is carry over, and this is the figure tonight's 23:59 cut-off will use for the Left side. Carry over is never lost; it keeps accumulating until a slab is matched. Your own purchase BV is not included here — the 23:59 cut-off adds it to the weaker side.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="The BV carried over on your Left side, as it stood after the last 23:59 cut-off — business that occurs before matching is carry over, and it is never lost; it keeps accumulating until a slab is matched. Today's Left Genos BV and your own purchase BV are not added until tonight's cut-off — the info icon below shows what is pending.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($leftEffectiveBv, 0) }}</p>
-            <p class="mt-1">
-                <span class="{{ $powerSideIsLeft ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $powerSideIsLeft ? 'Power side' : 'Weaker side' }}</span>
-            </p>
-            <p class="text-xs text-gray-600 mt-1">{{ Number::format($leftTodayBv, 0) }} today + {{ Number::format($leftEffectiveBv - $leftTodayBv, 0) }} carried over</p>
-            @if($pendingPersonalBv > 0 && $slabProgress->pendingTopupSide === 'L')
-                <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">
-                    + {{ Number::format($pendingPersonalBv, 0) }} BV personal purchase — pending tonight's cut-off
-                    <x-help-tip :text="$pendingPersonalBvTip" />
+            <p class="{{ $statValueClasses }}">{{ Number::format($leftCarriedBv, 0) }}</p>
+            @if($settledPowerSide !== null)
+                <p class="mt-1">
+                    <span class="{{ $settledPowerSide === 'L' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'L' ? 'Power side' : 'Weaker side' }}</span>
                 </p>
             @endif
-            @if($slabProgress !== null && $slabProgress->weakerSide() === 'L' && $slabProgress->slab1WeakerCfPaise > 0)
+            <p class="text-xs text-gray-600 mt-1 flex items-center gap-1">As of the last 23:59 cut-off <x-help-tip :text="$pendingTip('Left', $leftTodayBv)" /></p>
+            @if($slabProgress !== null && $settledWeakerSide === 'L' && $slabProgress->slab1WeakerCfPaise > 0)
                 <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
             @endif
         </div>
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Right Genos BV</p>
-                <x-help-tip text="Your Right Genos BV today plus the BV carried over on your Right side from earlier days — business that occurs before matching is carry over, and this is the figure tonight's 23:59 cut-off will use for the Right side. Carry over is never lost; it keeps accumulating until a slab is matched. Your own purchase BV is not included here — the 23:59 cut-off adds it to the weaker side.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="The BV carried over on your Right side, as it stood after the last 23:59 cut-off — business that occurs before matching is carry over, and it is never lost; it keeps accumulating until a slab is matched. Today's Right Genos BV and your own purchase BV are not added until tonight's cut-off — the info icon below shows what is pending.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($rightEffectiveBv, 0) }}</p>
-            <p class="mt-1">
-                <span class="{{ $powerSideIsLeft ? $weakerBadgeClasses : $powerBadgeClasses }}">{{ $powerSideIsLeft ? 'Weaker side' : 'Power side' }}</span>
-            </p>
-            <p class="text-xs text-gray-600 mt-1">{{ Number::format($rightTodayBv, 0) }} today + {{ Number::format($rightEffectiveBv - $rightTodayBv, 0) }} carried over</p>
-            @if($pendingPersonalBv > 0 && $slabProgress->pendingTopupSide === 'R')
-                <p class="text-xs text-gray-600 mt-1 flex items-start gap-1">
-                    + {{ Number::format($pendingPersonalBv, 0) }} BV personal purchase — pending tonight's cut-off
-                    <x-help-tip :text="$pendingPersonalBvTip" />
+            <p class="{{ $statValueClasses }}">{{ Number::format($rightCarriedBv, 0) }}</p>
+            @if($settledPowerSide !== null)
+                <p class="mt-1">
+                    <span class="{{ $settledPowerSide === 'R' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'R' ? 'Power side' : 'Weaker side' }}</span>
                 </p>
             @endif
-            @if($slabProgress !== null && $slabProgress->weakerSide() === 'R' && $slabProgress->slab1WeakerCfPaise > 0)
+            <p class="text-xs text-gray-600 mt-1 flex items-center gap-1">As of the last 23:59 cut-off <x-help-tip :text="$pendingTip('Right', $rightTodayBv)" /></p>
+            @if($slabProgress !== null && $settledWeakerSide === 'R' && $slabProgress->slab1WeakerCfPaise > 0)
                 <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
             @endif
         </div>
