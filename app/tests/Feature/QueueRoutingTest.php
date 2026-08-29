@@ -55,3 +55,15 @@ it('leaves no compensation job untagged', function () {
 
     expect($untagged)->toBe([], 'Compensation jobs missing onQueue(\'compensation\'): '.implode(', ', array_map('basename', $untagged)));
 });
+
+it('keeps the redis-named connection on the database driver for Cloudways', function () {
+    // Cloudways' Supervisord Jobs panel launches every worker as
+    // `queue:work redis` -- the Connection Driver field is read-only. That
+    // argument is a name resolved through config/queue.php, so the name
+    // stays and the driver beneath it is the database. Anyone "fixing" the
+    // alias back to the real Redis driver silently moves the money-path
+    // queue onto a shared, eviction-prone Redis. This is the tripwire.
+    expect(config('queue.connections.redis'))
+        ->toBe(config('queue.connections.database'))
+        ->and(config('queue.connections.redis.driver'))->toBe('database');
+});

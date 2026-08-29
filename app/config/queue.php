@@ -1,5 +1,23 @@
 <?php
 
+// One definition, two names -- see the `redis` entry under `connections` for
+// why. Defined once so the two can never drift apart.
+$databaseQueue = [
+    'driver' => 'database',
+    'connection' => env('DB_QUEUE_CONNECTION'),
+    'table' => env('DB_QUEUE_TABLE', 'jobs'),
+    'queue' => env('DB_QUEUE', 'default'),
+    // 90s is far below the engine timeouts (RunEngineChainJob 3600s,
+    // RecomputeAllJob 7200s), so a compensation job goes "available" again
+    // while still running. Safe only because the compensation worker is
+    // pinned to ONE process (runbook 1.9 / R-61): a second process would
+    // re-reserve it and the ledger would take concurrent writes. Raising
+    // this instead would delay the retry of every crashed OTP job by the
+    // same amount, so the single-worker rule is the guard, not this value.
+    'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+    'after_commit' => false,
+];
+
 return [
 
     /*
@@ -35,14 +53,25 @@ return [
             'driver' => 'sync',
         ],
 
-        'database' => [
-            'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
-            'table' => env('DB_QUEUE_TABLE', 'jobs'),
-            'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
-            'after_commit' => false,
-        ],
+        'database' => $databaseQueue,
+
+        // Cloudways: same connection, forced name. Its Supervisord Jobs panel
+        // has a read-only "Connection Driver" of `redis`, so every worker it
+        // manages is launched as `queue:work redis ...` and there is no way to
+        // make it say `database`. That argument is a NAME looked up here, not
+        // the Redis server -- so the name stays and the driver underneath is
+        // the database. The worker Cloudways starts drains the `jobs` table.
+        //
+        // This is deliberate. The server's Redis is shared with eight other
+        // apps under `maxmemory-policy allkeys-lfu`, which may evict a queued
+        // job silently; on the compensation path that is a distributor not
+        // credited with nothing anywhere saying so. The queue therefore lives
+        // in MySQL on every environment, and `QUEUE_CONNECTION` stays
+        // `database` -- this alias only exists so the Cloudways worker reaches
+        // the same table. CACHE_STORE and SESSION_DRIVER are unaffected; they
+        // still use Redis. See docs/runbooks/cloudways-deployment.md 1.9 and
+        // QueueRoutingTest, which fails if this is ever "fixed" back.
+        'redis' => $databaseQueue,
 
         'beanstalkd' => [
             'driver' => 'beanstalkd',
@@ -61,15 +90,6 @@ return [
             'queue' => env('SQS_QUEUE', 'default'),
             'suffix' => env('SQS_SUFFIX'),
             'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
-            'after_commit' => false,
-        ],
-
-        'redis' => [
-            'driver' => 'redis',
-            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
-            'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
-            'block_for' => null,
             'after_commit' => false,
         ],
 
