@@ -80,6 +80,11 @@ final class CommissionHasProductSaleTest extends TestCase
         'income_cap_forfeit',
         'manual_credit',
         'reversal',
+        // A debit, not a credit: CheckoutService writes it with a negative
+        // amount_paise when the repurchase wallet pays for an order. It spends
+        // an entitlement that some other type already created and traced; it
+        // creates none of its own.
+        'repurchase_wallet_used',
     ];
 
     /** HR2-01: BV cannot exist without an order. */
@@ -163,6 +168,25 @@ final class CommissionHasProductSaleTest extends TestCase
             [],
             array_values($unclassified),
             'Unclassified wallet ledger type(s): '.implode(', ', $unclassified),
+        );
+
+        // And the other direction, which is the half that was missing. Every
+        // type migration restates the whole enum by hand, so one of them can
+        // silently drop a value another added -- exactly what happened to
+        // `franchise_credit` between 2026_08_16_130100 and 2026_08_28_200000.
+        // Asserting only that declared values are classified cannot see that:
+        // a classified value absent from the enum is invisible by construction.
+        // The engine writing it then fails with "1265 Data truncated" and
+        // credits nothing.
+        $undeclared = array_diff(
+            array_merge(array_keys(self::CREDIT_TRACE), self::NON_ENTITLEMENT_TYPES),
+            $declared,
+        );
+
+        $this->assertSame(
+            [],
+            array_values($undeclared),
+            'Classified type(s) missing from the wallet_ledger_entries enum: '.implode(', ', $undeclared),
         );
     }
 
