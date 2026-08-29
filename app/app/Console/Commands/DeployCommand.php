@@ -81,10 +81,8 @@ final class DeployCommand extends Command
             if (! $this->option('skip-migrate')) {
                 $this->stepHard('migrate', function (): void {
                     $this->logBoth('  pretend run:');
-                    Artisan::call('migrate', ['--pretend' => true]);
-                    $this->logBoth(Artisan::output());
-                    Artisan::call('migrate', ['--force' => true]);
-                    $this->logBoth(Artisan::output());
+                    $this->artisanFresh('migrate', '--pretend');
+                    $this->artisanFresh('migrate', '--force');
                 });
             } else {
                 $this->logBoth('  ↷ migrate skipped');
@@ -92,8 +90,7 @@ final class DeployCommand extends Command
 
             if (! $this->option('skip-seed') && ! $this->failed) {
                 $this->stepHard('db:seed ProductionSeeder', function (): void {
-                    Artisan::call('db:seed', ['--class' => 'ProductionSeeder', '--force' => true]);
-                    $this->logBoth(Artisan::output());
+                    $this->artisanFresh('db:seed', '--class=ProductionSeeder', '--force');
                 });
             } elseif ($this->option('skip-seed')) {
                 $this->logBoth('  ↷ ProductionSeeder skipped');
@@ -106,10 +103,10 @@ final class DeployCommand extends Command
         }
 
         if (! $this->option('skip-cache') && ! $this->failed) {
-            $this->stepHard('config:cache', fn () => Artisan::call('config:cache'));
-            $this->stepHard('route:cache', fn () => Artisan::call('route:cache'));
-            $this->stepHard('view:cache', fn () => Artisan::call('view:cache'));
-            $this->stepSoft('event:cache', fn () => Artisan::call('event:cache'));
+            $this->stepHard('config:cache', fn () => $this->artisanFresh('config:cache'));
+            $this->stepHard('route:cache', fn () => $this->artisanFresh('route:cache'));
+            $this->stepHard('view:cache', fn () => $this->artisanFresh('view:cache'));
+            $this->stepSoft('event:cache', fn () => $this->artisanFresh('event:cache'));
         } elseif ($this->option('skip-cache')) {
             $this->logBoth('  ↷ cache rebuild skipped');
         }
@@ -190,6 +187,37 @@ final class DeployCommand extends Command
         );
 
         return false;
+    }
+
+    /**
+     * Run an artisan command in a FRESH php process rather than via
+     * Artisan::call().
+     *
+     * This process booted before `composer install` ran, so its autoloader
+     * (an optimized classmap, loaded once at startup) knows nothing about a
+     * package the deploy just added. Staging, 2026-08-29: the first deploy
+     * after adding laravel/pulse died in `migrate` with
+     * `Class "Laravel\Pulse\Support\PulseMigration" not found`, and the
+     * seeder and every cache rebuild were skipped behind it. Anything that
+     * touches vendor classes after composer has run — migrations, seeders,
+     * the cache builders — therefore goes through a child process, which
+     * starts on the vendor tree that composer just wrote.
+     *
+     * Throws on a non-zero exit so stepHard/stepSoft see it as a failure.
+     */
+    private function artisanFresh(string ...$args): void
+    {
+        $process = new Process(
+            [PHP_BINARY, 'artisan', ...$args, '--no-interaction', '--ansi'],
+            base_path(),
+            null,
+            null,
+            600.0,
+        );
+
+        $process->mustRun(function (string $type, string $buffer): void {
+            $this->logBoth(rtrim($buffer));
+        });
     }
 
     /** Hard step — abort the rest of the run if it throws. */

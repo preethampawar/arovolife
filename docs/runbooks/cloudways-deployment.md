@@ -572,6 +572,7 @@ The Servers card on the dashboard stays empty as a result; that is expected.
 | Mixed-content warnings after SSL | `APP_URL` still `http://` | Update `APP_URL` to `https://…`, re-cache config |
 | Sessions not persisting after login | `SESSION_DOMAIN` mismatch | Set to `.arovolife.com` (leading dot for subdomains) |
 | Queue jobs appear stuck | Old worker still running pre-deploy code | `php artisan queue:restart` |
+| `migrate` fails with `Class "…" not found` right after composer added a package | `app:deploy` (pre-2026-08-29) ran migrations in the same process that ran `composer install`, on the old autoloader | Re-run `php artisan app:deploy …` — composer is a no-op and the fresh process sees the package. Fixed: post-composer artisan steps now run in a child process |
 | Emails send but no bonus is ever credited | Supervisord Job 3 (queue `compensation`) is down or was never added | Check *Application Settings → Supervisord Jobs → View Jobs Status*; Jobs 1 and 2 do not drain `compensation` |
 | A new compensation job never runs | Job missing `onQueue('compensation')`, so it sits on `default` | `QueueRoutingTest` catches this — run it before deploying |
 | Duplicate ledger writes from one engine run | Job 3 raised above 1 process | Return it to 1; `retry_after` (90s) is far below the engine timeouts, so a second worker re-reserves a job that is still running (R-61) |
