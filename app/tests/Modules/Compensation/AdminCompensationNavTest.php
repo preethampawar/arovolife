@@ -133,3 +133,22 @@ it('shows the gated daily-engine links and calculation reports when their flags 
         ->assertSee(route('admin.compensation.adc-calculation.index'), false)
         ->assertSee(route('admin.compensation.aw-rw-calculation.index'), false);
 });
+
+it('shows the report title on the page itself, not only in the header bar', function (): void {
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    $admin = compNavAdmin();
+
+    // Client, 2026-08-28: the page title must be visible on every report page.
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.gbb-input-output.index'))
+        ->assertOk()
+        ->assertSee('<h2 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-4">GBB Input &amp; Output Per Month Calculation</h2>', false);
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('<h2 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-4">', false)
+        ->assertSee('Rank Bonus Input &amp; Output', false);
+});

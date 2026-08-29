@@ -212,6 +212,17 @@
         </div>
 
         <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-w-0 max-w-full">
+            {{-- Compensation pages carry an in-content page title as well as the
+                 small header-bar one (client, 2026-08-28: the report's title must
+                 be visible on the page itself, on every report, not just one).
+                 It is the same `heading` section every view already declares,
+                 so no page has to repeat it. --}}
+            @if(request()->routeIs('admin.compensation.*') || request()->routeIs('admin.lifetime-awards.*'))
+            @hasSection('heading')
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-4">@yield('heading')</h2>
+            @endif
+            @endif
+
             {{-- Flash messages are rendered here for every admin page. Views must
                  NOT repeat these blocks — a page that renders its own
                  session('status') shows the message twice. --}}
