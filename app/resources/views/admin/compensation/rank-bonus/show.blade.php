@@ -4,7 +4,7 @@
 
 @section('content')
 
-@include('admin.compensation.rank-bonus._rank1-formula', ['rank1' => $rank1, 'date' => $date, 'rankNames' => $rankNames])
+@include('admin.compensation._formulas.rb-month', ['rank1' => $rank1, 'date' => $date, 'rankNames' => $rankNames])
 
 {{-- Per-rank summary cards --}}
 @if($rankSummaries->isNotEmpty())

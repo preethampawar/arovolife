@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\MentorshipBonusResult;
+use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -192,4 +193,33 @@ it('hides the MSB reports while the feature is off', function (): void {
 
     $this->actingAs($admin)->get(route('admin.compensation.msb-calculation.index'))->assertNotFound();
     $this->actingAs($admin)->get(route('admin.compensation.msb-input-output.index'))->assertNotFound();
+});
+
+it('shows the frozen day header and the point-value formula with the day\'s values', function () {
+    $sponsor = msbReportDistributor('MSBAAA', 'Alice');
+    $sponsee = msbReportDistributor('MSBSPA', 'Anu');
+    makeMbRow($sponsor, $sponsee, 1, 12, 25_000, 300_000, '2026-07-14');
+
+    MsbDailyPool::create([
+        'cutoff_date' => '2026-07-14',
+        'company_bv_paise' => 10_000_000,
+        'pool_rate_bp' => 300,
+        'pool_paise' => 300_000,
+        'total_points' => 12,
+        'point_value_paise' => 25_000,
+        'payout_paise' => 300_000,
+        'leftover_paise' => 0,
+    ]);
+
+    $res = $this->actingAs(msbReportAdmin())
+        ->get(route('admin.compensation.msb-calculation.index'))
+        ->assertOk();
+
+    $res->assertSee('14/07/2026');
+    $res->assertSee('MSB pool (3%)');
+    $res->assertSee('₹3,000.00');
+    $res->assertSee('How the MSB point value is calculated');
+    $res->assertSee('Point value = ⌊ MSB pool ÷ Total MSB points ⌋');
+    $res->assertSee('⌊ ₹3,000.00 ÷ 12 ⌋ = ⌊ ₹250.00 ⌋ = <strong>₹250</strong>', false);
+    $res->assertSee('10 × ₹250 = <strong>₹2,500</strong>', false);
 });

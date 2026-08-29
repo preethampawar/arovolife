@@ -40,6 +40,11 @@
     </a>
 </form>
 
+{{-- Per month: milestone header + how an award/reward is valued, with the month's per-rank figures --}}
+@foreach($monthBlocks as $monthStart => $aw)
+    @include('admin.compensation._formulas.awrw-month', ['aw' => $aw, 'monthStart' => $monthStart])
+@endforeach
+
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No award or reward records found.</p>

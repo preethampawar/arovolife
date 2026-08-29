@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
@@ -36,6 +37,7 @@ final class AdminFortuneBonusCalculationController extends Controller
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
         private readonly CompensationPlanSettingsService $plan,
+        private readonly BonusCalculationSnapshots $snapshots,
     ) {}
 
     public function index(Request $request): View
@@ -61,7 +63,12 @@ final class AdminFortuneBonusCalculationController extends Controller
 
         $this->attachMonthlyRanks($items);
 
+        // Header + formula blocks: the filtered month, else every month among
+        // the rows on this page.
+        $monthPools = $this->snapshots->fortuneMonths($this->snapshots->monthsOnPage($rows->items(), 'month_start', $month));
+
         return view('admin.compensation.fb-calculation.index', [
+            'monthPools' => $monthPools,
             'rows' => $rows,
             'q' => $q ?: null,
             'month' => $month,
@@ -135,7 +142,7 @@ final class AdminFortuneBonusCalculationController extends Controller
                 ->where('d.adn', 'like', "%{$q}%")
                 ->orWhere('u.full_name', 'like', "%{$q}%")
             ))
-            ->when($month, fn ($b) => $b->whereRaw("DATE_FORMAT(fbr.month_start, '%Y-%m') = ?", [$month]))
+            ->when($month, fn ($b) => $b->where('fbr.month_start', $month.'-01'))
             ->when($status, fn ($b) => $b->where('fbr.status', $status))
             ->select(
                 'fbr.id',

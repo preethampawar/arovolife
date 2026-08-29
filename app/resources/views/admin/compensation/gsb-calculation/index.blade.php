@@ -43,6 +43,14 @@
     </a>
 </form>
 
+{{-- Per cut-off day: frozen pool header + the score/point-value formula, symbolic then with the day's values --}}
+@foreach($dayPools as $pool)
+    @include('admin.compensation._formulas.gsb-day', ['pool' => $pool, 'slab3Score' => $slab3Score])
+@endforeach
+@if($hiddenDays > 0)
+<p class="mb-4 text-xs text-gray-500">Showing the {{ \App\Modules\Compensation\Services\BonusCalculationSnapshots::MAX_DAILY_BLOCKS }} latest days on this page; {{ $hiddenDays }} more day{{ $hiddenDays === 1 ? '' : 's' }} below — filter by date to see a specific day's formula.</p>
+@endif
+
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No slab-earning records found.</p>

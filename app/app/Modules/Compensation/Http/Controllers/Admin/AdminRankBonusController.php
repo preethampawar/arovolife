@@ -6,7 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
-use App\Modules\Compensation\Services\RankBonusMonthSnapshot;
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -17,7 +17,7 @@ final class AdminRankBonusController extends Controller
 {
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
-        private readonly RankBonusMonthSnapshot $snapshot,
+        private readonly BonusCalculationSnapshots $snapshots,
     ) {}
 
     public function index(): View
@@ -69,7 +69,7 @@ final class AdminRankBonusController extends Controller
             ->withQueryString();
 
         $rankNames = $this->plan->rankNames();
-        $rank1 = $this->snapshot->rank1($date);
+        $rank1 = $this->snapshots->rankBonusMonth($date);
 
         return view('admin.compensation.rank-bonus.show', compact('rows', 'rankSummaries', 'date', 'rankNames', 'rank1'));
     }

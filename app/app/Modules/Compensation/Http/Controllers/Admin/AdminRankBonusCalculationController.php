@@ -6,7 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
-use App\Modules\Compensation\Services\RankBonusMonthSnapshot;
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -30,7 +30,7 @@ final class AdminRankBonusCalculationController extends Controller
 
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
-        private readonly RankBonusMonthSnapshot $snapshot,
+        private readonly BonusCalculationSnapshots $snapshots,
         private readonly CompensationPlanSettingsService $plan,
     ) {}
 
@@ -81,7 +81,7 @@ final class AdminRankBonusCalculationController extends Controller
 
         $rank1Blocks = [];
         foreach ($rank1Months as $rank1Month) {
-            $snapshot = $this->snapshot->rank1($rank1Month);
+            $snapshot = $this->snapshots->rankBonusMonth($rank1Month);
             if ($snapshot !== null) {
                 $rank1Blocks[] = ['date' => $rank1Month, 'rank1' => $snapshot];
             }

@@ -62,7 +62,7 @@
             <span class="text-gray-600">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
             <span class="text-gray-600">Week <strong class="text-gray-700">{{ $weekNo ?? '—' }}</strong></span>
             <span class="text-gray-600">Day total BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
-            <span class="text-gray-600">GSB pool ({{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%)
+            <span class="text-gray-600">GSB pool ({{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($pool->pool_rate_bp) }})
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) }}</strong></span>
             <span class="text-gray-600">Variable score value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_paise / 100, 2) }}</strong>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -28,6 +29,7 @@ final class AdminMsbCalculationController extends Controller
 
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
+        private readonly BonusCalculationSnapshots $snapshots,
     ) {}
 
     public function index(Request $request): View
@@ -44,7 +46,14 @@ final class AdminMsbCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($sponsorIds);
         $totals = $this->totals($q, $from, $to, $status, $slab);
 
+        // Header + formula blocks: one per cut-off day on this page, newest
+        // first, capped so a 50-row page cannot render 50 of them.
+        $pageDates = $this->snapshots->datesOnPage($rows->items(), 'cutoff_date');
+        $dayPools = $this->snapshots->msbDays($pageDates->take(BonusCalculationSnapshots::MAX_DAILY_BLOCKS)->all());
+
         return view('admin.compensation.msb-calculation.index', [
+            'dayPools' => $dayPools,
+            'hiddenDays' => max(0, $pageDates->count() - BonusCalculationSnapshots::MAX_DAILY_BLOCKS),
             'rows' => $rows,
             'q' => $q ?: null,
             'from' => $request->query('from'),

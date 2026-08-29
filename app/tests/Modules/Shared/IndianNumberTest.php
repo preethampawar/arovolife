@@ -24,3 +24,18 @@ it('formats with Indian digit grouping regardless of ICU locale data', function 
         // maxPrecision trims without padding, same as Number::format.
         ->and(IndianNumber::format(1_234.56, null, 1))->toBe('1,234.6');
 });
+
+it('formats paise as lakh-grouped rupees', function (): void {
+    expect(IndianNumber::rupees(1_377_143_980))->toBe('₹1,37,71,439.80');
+    expect(IndianNumber::rupees(56_000, 0))->toBe('₹560');
+    expect(IndianNumber::rupees(0))->toBe('₹0.00');
+});
+
+it('formats percentages without trailing zeros', function (): void {
+    expect(IndianNumber::percent(20.0))->toBe('20%');
+    expect(IndianNumber::percent(2.5))->toBe('2.5%');
+    expect(IndianNumber::percent(3.75))->toBe('3.75%');
+    expect(IndianNumber::percentFromBp(4500))->toBe('45%');
+    expect(IndianNumber::percentFromBp(250))->toBe('2.5%');
+    expect(IndianNumber::percentFromBp(340))->toBe('3.4%');
+});

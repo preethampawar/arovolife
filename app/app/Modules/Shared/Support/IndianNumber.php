@@ -44,4 +44,22 @@ final class IndianNumber
 
         return $formatted === false ? (string) $number : $formatted;
     }
+
+    /** Paise → "₹1,37,71,439.80" (lakh grouping, fixed decimals). */
+    public static function rupees(int $paise, int $precision = 2): string
+    {
+        return '₹'.self::format($paise / 100, $precision);
+    }
+
+    /** 20.0 → "20%", 2.5 → "2.5%", 3.75 → "3.75%" (trailing zeros dropped). */
+    public static function percent(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.').'%';
+    }
+
+    /** Basis points → percent label: 4500 → "45%", 250 → "2.5%". */
+    public static function percentFromBp(int $bp): string
+    {
+        return self::percent($bp / 100);
+    }
 }

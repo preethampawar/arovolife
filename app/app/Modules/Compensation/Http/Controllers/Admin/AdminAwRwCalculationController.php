@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Illuminate\Contracts\View\View;
@@ -21,6 +22,7 @@ final class AdminAwRwCalculationController extends Controller
 
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
+        private readonly BonusCalculationSnapshots $snapshots,
     ) {}
 
     public function index(Request $request): View
@@ -46,7 +48,12 @@ final class AdminAwRwCalculationController extends Controller
         $distributorIds = collect($rows->items())->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
+        // Header + formula blocks: the filtered month, else every month among
+        // the rows on this page.
+        $monthBlocks = $this->snapshots->awRwMonths($this->snapshots->monthsOnPage($rows->items(), 'triggered_month', $month));
+
         return view('admin.compensation.aw-rw-calculation.index', [
+            'monthBlocks' => $monthBlocks,
             'rows' => $rows,
             'q' => $q ?: null,
             'month' => $month,
@@ -115,7 +122,7 @@ final class AdminAwRwCalculationController extends Controller
                 ->where('d.adn', 'like', "%{$q}%")
                 ->orWhere('u.full_name', 'like', "%{$q}%")
             ))
-            ->when($month, fn ($b) => $b->whereRaw("DATE_FORMAT(lam.triggered_month, '%Y-%m') = ?", [$month]))
+            ->when($month, fn ($b) => $b->where('lam.triggered_month', $month.'-01'))
             ->when($status, fn ($b) => $b->where('lam.status', $status))
             ->when($type, fn ($b) => $b->where('lam.disbursement_type', $type))
             ->select(

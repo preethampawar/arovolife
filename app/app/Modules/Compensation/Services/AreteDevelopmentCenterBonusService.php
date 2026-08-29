@@ -105,15 +105,7 @@ final class AreteDevelopmentCenterBonusService
                 // without emailing proof of the upgrade is held to a lower
                 // slab income. The override can only lower the standard cap,
                 // never raise it — the plan cap is a hard ceiling.
-                $capPaise = $this->plan->adcCapPaise();
-                if ($center->monthly_cap_override_paise !== null) {
-                    $capPaise = min($capPaise, $center->monthly_cap_override_paise);
-                }
-
-                $gross = max(0, min(
-                    (int) floor($totalBv * $this->plan->adcRateBp() / 10_000),
-                    $capPaise,
-                ));
+                $gross = $this->grossFor($totalBv, $center->monthly_cap_override_paise)['gross_paise'];
                 $result = AdcBonusResult::updateOrCreate(
                     [
                         'center_id' => $center->id,
@@ -163,6 +155,29 @@ final class AreteDevelopmentCenterBonusService
             'skipped_no_bv' => $skippedNoBv,
             'skipped_net_negative' => $skippedNetNegative,
             'total_net_paise' => $totalNet,
+        ];
+    }
+
+    /**
+     * The ADC arithmetic, in one place for the engine and the admin report:
+     * flat = ⌊ member BV × rate ⌋, gross = min(flat, cap), where a centre's
+     * own override may only LOWER the plan cap (the plan cap is a ceiling).
+     *
+     * @return array{flat_paise: int, cap_paise: int, gross_paise: int}
+     */
+    public function grossFor(int $memberBvPaise, ?int $capOverridePaise): array
+    {
+        $capPaise = $this->plan->adcCapPaise();
+        if ($capOverridePaise !== null) {
+            $capPaise = min($capPaise, $capOverridePaise);
+        }
+
+        $flat = max(0, (int) floor($memberBvPaise * $this->plan->adcRateBp() / 10_000));
+
+        return [
+            'flat_paise' => $flat,
+            'cap_paise' => $capPaise,
+            'gross_paise' => min($flat, $capPaise),
         ];
     }
 }

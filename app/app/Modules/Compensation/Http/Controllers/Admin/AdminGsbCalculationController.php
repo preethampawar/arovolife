@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -28,6 +30,8 @@ final class AdminGsbCalculationController extends Controller
 
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
+        private readonly BonusCalculationSnapshots $snapshots,
+        private readonly CompensationPlanSettingsService $plan,
     ) {}
 
     public function index(Request $request): View
@@ -44,7 +48,15 @@ final class AdminGsbCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
         $totals = $this->totals($q, $from, $to, $status, $slab);
 
+        // Header + formula blocks: one per cut-off day on this page, newest
+        // first, capped so a 50-row page cannot render 50 of them.
+        $pageDates = $this->snapshots->datesOnPage($rows->items(), 'cutoff_date');
+        $dayPools = $this->snapshots->gsbDays($pageDates->take(BonusCalculationSnapshots::MAX_DAILY_BLOCKS)->all());
+
         return view('admin.compensation.gsb-calculation.index', [
+            'dayPools' => $dayPools,
+            'hiddenDays' => max(0, $pageDates->count() - BonusCalculationSnapshots::MAX_DAILY_BLOCKS),
+            'slab3Score' => $this->plan->gsbSlab(3)['score'] ?? null,
             'rows' => $rows,
             'q' => $q ?: null,
             'from' => $request->query('from'),

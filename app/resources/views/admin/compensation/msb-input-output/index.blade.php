@@ -57,7 +57,7 @@
             <span class="text-gray-600">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
             <span class="text-gray-600">Week <strong class="text-gray-700">{{ $weekNo ?? '—' }}</strong></span>
             <span class="text-gray-600">Day total received BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
-            <span class="text-gray-600">MSB pool ({{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%)
+            <span class="text-gray-600">MSB pool ({{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($pool->pool_rate_bp) }})
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) }}</strong></span>
             <span class="text-gray-600">Point value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) }}</strong></span>
@@ -79,7 +79,7 @@
                     <tr>
                         <th class="px-3 py-2 text-left text-gray-600 font-medium">S.no</th>
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Day total received BV</th>
-                        <th class="px-3 py-2 text-right text-gray-600 font-medium">MSB — {{ rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.') }}%</th>
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">MSB — {{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($pool->pool_rate_bp) }}</th>
                         <th class="px-3 py-2 text-left text-gray-600 font-medium">Individual distributor MSB points <x-help-tip text="Each sponsor who accrued Mentorship Bonus points on this day, with the points they accrued. A sponsor credited by more than one sponsee appears once with their points summed." /></th>
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Point value <x-help-tip text="The MSB pool divided by the day's total MSB score points, floored to whole rupees. One value applies to every earner that day." /></th>
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>

@@ -456,3 +456,21 @@ it('offers the four development phases on the centre form', function (): void {
         ->assertSee('Phase 4 — up to ₹80,000/month · 1,200 sq ft, full facility')
         ->assertSee('Monthly cap override');
 });
+
+it('shows the month header and the per-centre ADC formula with the month\'s values', function (): void {
+    adcReportCenterWithResult('Kukatpally Center', 'ADCAAA', 'Alice');
+    adcReportCenterWithResult('Kochi Center', 'ADCBBB', 'Bob');
+
+    $res = $this->actingAs(adcReportAdmin())
+        ->get(route('admin.compensation.adc-calculation.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('July 2026');
+    $res->assertSee('Centres paid');
+    $res->assertSee('ADC rate (3%)');
+    $res->assertSee('How each centre\'s ADC bonus is calculated', false);
+    $res->assertSee('ADC bonus = min( Flat bonus, Monthly cap )');
+    // Two centres × 10,000 BV = 20,000 BV × 3% = ₹600, nothing capped.
+    $res->assertSee('× 3% = <strong>₹600.00</strong>', false);
+    $res->assertSee('cap on 0 centres = <strong>₹600.00</strong>', false);
+});

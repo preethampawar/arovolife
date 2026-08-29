@@ -39,6 +39,11 @@
     </a>
 </form>
 
+{{-- Per month: aggregate header + the per-centre formula, symbolic then with the month's values --}}
+@foreach($monthBlocks as $monthStart => $adc)
+    @include('admin.compensation._formulas.adc-month', ['adc' => $adc, 'monthStart' => $monthStart])
+@endforeach
+
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No ADC Bonus records found.</p>

@@ -14,7 +14,7 @@
         <span class="text-gray-600">Company BV
             <strong class="text-gray-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->company_bv_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-600">Pool rate
-            <strong class="text-gray-700">{{ $pool ? rtrim(rtrim(number_format($pool->pool_rate_bp / 100, 2), '0'), '.').'%' : '—' }}</strong></span>
+            <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::percentFromBp($pool->pool_rate_bp) : '—' }}</strong></span>
         <span class="text-gray-600">Pool
             <strong class="text-indigo-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-600">Total AGP

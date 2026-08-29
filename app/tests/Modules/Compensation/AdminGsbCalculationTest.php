@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -180,4 +181,46 @@ it('hides every GSB admin surface while the feature is off', function (): void {
     ] as $url) {
         $this->actingAs($admin)->get($url)->assertNotFound();
     }
+});
+
+it('shows the frozen day header and the slab 3–7 score-value formula with the day\'s values', function () {
+    $a = reportDistributor('ADNAAA', 'Alice');
+    makeCutoff($a, 3, 32, 800_000, '2026-07-14');
+
+    GsbDailyPool::create([
+        'cutoff_date' => '2026-07-14',
+        'company_bv_paise' => 100_000_000,
+        'pool_rate_bp' => 4500,
+        'pool_paise' => 45_000_000,
+        'fixed_payout_paise' => 600_000,
+        'variable_total_score' => 32,
+        'variable_score_value_cap_paise' => 25_000,
+        'variable_score_value_paise' => 25_000,
+        'variable_payout_paise' => 800_000,
+        'leftover_paise' => 45_000_000 - 600_000 - 800_000,
+    ]);
+
+    $res = $this->actingAs(reportAdmin())
+        ->get(route('admin.compensation.gsb-calculation.index'))
+        ->assertOk();
+
+    $res->assertSee('14/07/2026');
+    $res->assertSee('GSB pool (45%)');
+    $res->assertSee('₹4,50,000.00');
+    $res->assertSee('Fixed payout (slabs 1–2)');
+    $res->assertSee('How the slab 3–7 score value is calculated');
+    $res->assertSee('Score value = min( Cap, ⌊ Remaining pool ÷ Slab 3–7 total score ⌋ )');
+    // ₹4,50,000 − ₹6,000 = ₹4,44,000; ÷ 32 = ₹13,875 → floored, then capped at ₹250.
+    $res->assertSee('₹4,50,000.00 − ₹6,000.00 = <strong>₹4,44,000.00</strong>', false);
+    $res->assertSee('<strong>₹250</strong> (capped)', false);
+});
+
+it('omits the day header when the day has no frozen pool row', function () {
+    $a = reportDistributor('ADNAAA', 'Alice');
+    makeCutoff($a, 1, 8, 200_000, '2026-07-14');
+
+    $this->actingAs(reportAdmin())
+        ->get(route('admin.compensation.gsb-calculation.index'))
+        ->assertOk()
+        ->assertDontSee('How the slab');
 });

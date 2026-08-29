@@ -280,3 +280,37 @@ it('hides the GBB calculation report while the feature is off', function (): voi
         ->get(route('admin.compensation.gbb-calculation.export'))
         ->assertNotFound();
 });
+
+it('shows the frozen month header and the AGP point-value formula with the month\'s values', function () {
+    $alice = gbbReportDistributor('GBBAAA', 'Alice');
+    makeGbbRow($alice, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
+
+    GbbMonthlyPool::create([
+        'month_start' => '2026-07-01',
+        'company_bv_paise' => 10_000_000,
+        'pool_rate_bp' => 500,
+        'pool_paise' => 500_000,
+        'total_agp' => 20,
+        'point_value_paise' => 25_000,
+        'payout_paise' => 500_000,
+        'leftover_paise' => 0,
+    ]);
+
+    $res = $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('July 2026');
+    $res->assertSee('GBB pool (5%)');
+    $res->assertSee('₹5,000.00');
+    $res->assertSee('How the AGP point value is calculated');
+    $res->assertSee('Point value = ⌊ GBB pool ÷ Total AGP ⌋');
+    $res->assertSee('⌊ ₹5,000.00 ÷ 20 ⌋ = ⌊ ₹250.00 ⌋ = <strong>₹250</strong>', false);
+    $res->assertSee('GBBAAA');
+
+    // Unfiltered: one block per month among the rows on the page.
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.index'))
+        ->assertOk()
+        ->assertSee('How the AGP point value is calculated');
+});

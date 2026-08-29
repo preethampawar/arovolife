@@ -6,7 +6,7 @@
 
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Per-month Rank Bonus pool economics, one row per rank. Each month shows the company turnover (BV), each
-    rank's pool (its share of the <strong>{{ rtrim(rtrim(number_format($envelopeBp / 100, 2), '0'), '.') }}%
+    rank's pool (its share of the <strong>{{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($envelopeBp) }}
     rank envelope</strong>), the qualifiers it paid and the income they received.
     <span class="font-medium">Rank 1 divides its pool by points (RAP + AO-GO)</span>; ranks 2–9 split their
     pool equally among qualifiers. The ₹ pools, qualifier counts and point values are frozen snapshots from
@@ -51,7 +51,7 @@
             <span class="font-semibold text-gray-800">{{ \Illuminate\Support\Carbon::parse($monthStart)->format('F Y') }}</span>
             <span class="text-gray-500">Month turnover
                 <strong class="text-gray-700">@if($block['turnover_paise'] !== null)@bv($block['turnover_paise'])@else — @endif</strong></span>
-            <span class="text-gray-500">Rank envelope ({{ rtrim(rtrim(number_format($envelopeBp / 100, 2), '0'), '.') }}%)
+            <span class="text-gray-500">Rank envelope ({{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($envelopeBp) }})
                 <x-help-tip text="The envelope % and each rank's pool % are current plan settings, not frozen snapshots — the ₹ pool amounts of ranks that paid ARE frozen on the run's result rows." />
                 @if($block['turnover_paise'] !== null)
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($block['turnover_paise'] * $envelopeBp / 10000) / 100, 2) }}</strong>
@@ -84,7 +84,7 @@
                             <span class="inline-flex items-center justify-center w-6 h-6 rounded-full {{ $rank['frozen'] ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500' }} font-bold text-[11px]">{{ $rank['rank'] }}</span>
                             <span class="ml-1 {{ $rank['frozen'] ? 'text-gray-700' : '' }} font-medium">{{ $rank['name'] }}</span>
                         </td>
-                        <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format($rank['pool_pct'], 2), '0'), '.') }}%</td>
+                        <td class="px-3 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::percent($rank['pool_pct']) }}</td>
                         <td class="px-3 py-2 text-right {{ $rank['frozen'] ? 'text-gray-700' : '' }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($rank['pool_paise'] / 100, 2) }}{{ $rank['frozen'] ? '' : ' *' }}
                         </td>

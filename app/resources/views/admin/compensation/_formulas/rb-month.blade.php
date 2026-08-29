@@ -1,11 +1,10 @@
 {{-- Rank 1 month header + point-value formula (frozen snapshot from the run).
-     Expects: ?array $rank1 (RankBonusMonthSnapshot::rank1), Carbon $date, array $rankNames --}}
+     Expects: ?array $rank1 (BonusCalculationSnapshots::rankBonusMonth), Carbon $date, array $rankNames --}}
 @if($rank1 !== null)
 @php
-    $inr = fn (int $paise, int $dp = 2) => '₹'.\App\Modules\Shared\Support\IndianNumber::format($paise / 100, $dp);
-    $pct = fn (float $v) => rtrim(rtrim(number_format($v, 2), '0'), '.').'%';
-    $envelopePct = $pct($rank1['envelope_bp'] / 100);
-    $poolPct = $pct($rank1['pool_pct']);
+    $inr = \App\Modules\Shared\Support\IndianNumber::rupees(...);
+    $envelopePct = \App\Modules\Shared\Support\IndianNumber::percentFromBp($rank1['envelope_bp']);
+    $poolPct = \App\Modules\Shared\Support\IndianNumber::percent($rank1['pool_pct']);
     $envelopePaise = (int) round($rank1['turnover_paise'] * $rank1['envelope_bp'] / 10_000);
     $rank1Name = $rankNames[1] ?? 'Rank 1';
     $rawPointValue = ($rank1['total_points'] ?? 0) > 0 ? $rank1['pool_paise'] / $rank1['total_points'] : null;

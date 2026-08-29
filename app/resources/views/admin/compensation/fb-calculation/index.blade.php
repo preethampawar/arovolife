@@ -46,6 +46,11 @@
     </a>
 </form>
 
+{{-- Per month: frozen pool header + the cascade formula, symbolic then with the month's values --}}
+@foreach($monthPools as $pool)
+    @include('admin.compensation._formulas.fb-month', ['pool' => $pool])
+@endforeach
+
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No Fortune Bonus records found.</p>

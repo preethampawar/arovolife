@@ -359,3 +359,75 @@ it('hides the FB calculation report while the feature is off', function (): void
         ->get(route('admin.compensation.fb-calculation.export'))
         ->assertNotFound();
 });
+
+it('shows the frozen month header and the cascade formula with the month\'s values on the FB calculation report', function () {
+    $alice = fbReportDistributor('FBAAA1', 'Alice');
+    makeFbParticipant($alice, 1, 0, '2026-08-01', '2026-08-14');
+    makeFbResult($alice, 35, 113_200, 3_000_000, FortuneBonusResult::STATUS_CREDITED, '2026-08-01');
+
+    $pool = FortuneMonthlyPool::create([
+        'month_start' => '2026-08-01',
+        'company_bv_paise' => 100_000_000,
+        'pool_rate_bp' => 500,
+        'pool_paise' => 5_000_000,
+        'total_points' => 44,
+        'point_value_paise' => null,
+        'payout_paise' => 4_999_200,
+        'leftover_paise' => 800,
+        'min_commission_paise' => 3000,
+        'guaranteed_total_paise' => 15_000,
+        'is_shortfall' => false,
+        'shortfall_per_head_paise' => null,
+    ]);
+    FortuneMonthlyPoolLevel::create([
+        'fortune_monthly_pool_id' => $pool->id, 'matrix_level' => 0, 'payout_mode' => 'capped',
+        'cap_paise' => 3_000_000, 'participants' => 2, 'points' => 35, 'point_value_paise' => 113_200, 'paid_paise' => 3_000_000,
+    ]);
+    FortuneMonthlyPoolLevel::create([
+        'fortune_monthly_pool_id' => $pool->id, 'matrix_level' => 1, 'payout_mode' => 'residual',
+        'cap_paise' => null, 'participants' => 3, 'points' => 9, 'point_value_paise' => 220_800, 'paid_paise' => 1_996_200,
+    ]);
+
+    $res = $this->actingAs(fbReportAdmin())
+        ->get(route('admin.compensation.fb-calculation.index', ['month' => '2026-08']))
+        ->assertOk();
+
+    $res->assertSee('August 2026');
+    $res->assertSee('Fortune pool (5%)');
+    $res->assertSee('₹50,000.00');
+    $res->assertSee('Minimum guarantee (₹30 each)');
+    $res->assertSee('How the Fortune Bonus is calculated');
+    $res->assertSee('Minimum guarantee = Minimum commission × Qualifiers');
+    $res->assertSee('₹30 × 5 = <strong>₹150.00</strong>', false);
+    $res->assertSee('₹50,000.00 − ₹150.00 = <strong>₹49,850.00</strong>', false);
+    $res->assertSee('Level 0 (Capped');
+    $res->assertSee('cap ₹30,000');
+    $res->assertSee('Level 1 (Residual');
+    $res->assertSee('₹2,208');
+});
+
+it('flags a shortfall month in the FB calculation formula', function () {
+    $alice = fbReportDistributor('FBAAA1', 'Alice');
+    makeFbResult($alice, 35, null, 1_000, FortuneBonusResult::STATUS_CREDITED, '2026-09-01');
+
+    FortuneMonthlyPool::create([
+        'month_start' => '2026-09-01',
+        'company_bv_paise' => 100_000,
+        'pool_rate_bp' => 500,
+        'pool_paise' => 5_000,
+        'total_points' => 44,
+        'point_value_paise' => null,
+        'payout_paise' => 5_000,
+        'leftover_paise' => 0,
+        'min_commission_paise' => 3000,
+        'guaranteed_total_paise' => 15_000,
+        'is_shortfall' => true,
+        'shortfall_per_head_paise' => 1_000,
+    ]);
+
+    $this->actingAs(fbReportAdmin())
+        ->get(route('admin.compensation.fb-calculation.index', ['month' => '2026-09']))
+        ->assertOk()
+        ->assertSee('Shortfall month')
+        ->assertSee('<strong>₹10</strong> per qualifier', false);
+});
