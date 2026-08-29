@@ -61,6 +61,7 @@
                 <strong class="text-gray-700">{{ $block['computed_at']?->format('d M Y H:i') ?? '—' }}</strong>
                 <x-help-tip text="When this month's Rank Bonus rows were written — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the month's end." /></span>
         </div>
+        @include('admin.compensation._formulas.rb-month', ['rank1' => $rank1Snapshots[$monthStart] ?? null, 'date' => \Illuminate\Support\Carbon::parse($monthStart), 'rankNames' => $rankNames, 'embedded' => true, 'open' => count($months->items()) === 1])
 
         <div class="overflow-x-auto">
             <table class="w-full text-xs">

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankAogoGrant;
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -44,6 +45,7 @@ final class AdminRankBonusInputOutputController extends Controller
 
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
+        private readonly BonusCalculationSnapshots $snapshots,
     ) {}
 
     public function index(Request $request): View
@@ -64,6 +66,13 @@ final class AdminRankBonusInputOutputController extends Controller
         return view('admin.compensation.rb-input-output.index', [
             'months' => $months,
             'blocks' => $this->blocks($monthStarts),
+            // The Rank-1 points model behind each month's formula strip — read
+            // through the same snapshot service as the calculation reports.
+            'rank1Snapshots' => array_combine($monthStarts, array_map(
+                fn (string $monthStart): ?array => $this->snapshots->rankBonusMonth(Carbon::parse($monthStart)),
+                $monthStarts,
+            )),
+            'rankNames' => $this->plan->rankNames(),
             'envelopeBp' => $this->plan->rankEnvelopeBp(),
             'month' => $month,
             'from' => $from,

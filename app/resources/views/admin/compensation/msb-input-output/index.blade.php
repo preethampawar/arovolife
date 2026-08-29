@@ -65,6 +65,7 @@
                 <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
                 <x-help-tip text="When this day's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the original cut-off run." /></span>
         </div>
+        @include('admin.compensation._formulas.msb-day', ['pool' => $pool, 'embedded' => true, 'open' => count($pools->items()) === 1])
 
         @if($pool->total_points === 0 && $pool->pool_paise > 0)
         <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">

@@ -71,6 +71,7 @@
                 <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
                 <x-help-tip text="When this day's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the original cut-off run." /></span>
         </div>
+        @include('admin.compensation._formulas.gsb-day', ['pool' => $pool, 'slab3Score' => $slab3Score, 'embedded' => true, 'open' => count($pools->items()) === 1])
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
                 <thead class="bg-gray-50">

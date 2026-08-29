@@ -277,3 +277,32 @@ it('shows the Rank 1 month header and formula on the monthly calculation report'
         ->assertSee('June 2026')
         ->assertDontSee('mb-6" open>', false);
 });
+
+it('embeds the collapsible Rank 1 point-value formula strip inside each month block', function () {
+    rbIoSeedWorkedMonth('2026-06-01');
+    rbIoSeedWorkedMonth('2026-07-01');
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk();
+    $res->assertSee('point value was calculated');
+    $res->assertSee('Total points = (Qualifiers × RAP points) + AO-GO points');
+    $res->assertSee('(2 × 10) + 5 = <strong>25</strong>', false);
+    $res->assertSee('<strong>₹5,600</strong> per qualifier', false);
+    $res->assertDontSee('border-gray-200" open>', false);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index', ['month' => '2026-07']))
+        ->assertOk()
+        ->assertSee('border-gray-200" open>', false);
+});
+
+it('omits the formula strip for a month with no Rank 1 rows', function () {
+    rbIoResult(104, '2026-06-01', 2, 680_000, 1, 680_000);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('June 2026')
+        ->assertDontSee('point value was calculated');
+});

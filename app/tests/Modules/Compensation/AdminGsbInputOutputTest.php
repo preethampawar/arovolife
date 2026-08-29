@@ -134,3 +134,24 @@ it('shows the empty state before any pooled day exists', function () {
         ->assertOk()
         ->assertSee('No pooled cut-off days yet');
 });
+
+it('embeds the collapsible score-value formula strip inside each day block', function () {
+    $today = today();
+    ioPool($today->toDateString());
+    ioPool($today->copy()->subDay()->toDateString());
+
+    // Two days on the page: the strip is present but collapsed.
+    $res = $this->actingAs(ioAdmin())
+        ->get(route('admin.compensation.gsb-input-output.index'))
+        ->assertOk();
+    $res->assertSee("How this day's slab 3–7 score value was calculated", false);
+    $res->assertSee('How the slab 3–7 score value is calculated');
+    $res->assertSee('⌊ ₹4,44,000.00 ÷ 32 ⌋', false);   // (pool − fixed) ÷ slab 3–7 score
+    $res->assertDontSee('border-gray-200" open>', false);
+
+    // Filtered to one day: the strip opens automatically.
+    $this->actingAs(ioAdmin())
+        ->get(route('admin.compensation.gsb-input-output.index', ['from' => $today->toDateString()]))
+        ->assertOk()
+        ->assertSee('border-gray-200" open>', false);
+});

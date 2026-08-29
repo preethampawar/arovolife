@@ -188,3 +188,21 @@ it('is reachable by the business admin roles but not by an unprivileged user', f
         ->get(route('admin.compensation.gbb-input-output.index'))
         ->assertForbidden();
 });
+
+it('embeds the collapsible point-value formula strip inside each month block', function () {
+    gbbIoPool('2026-06-01', 100, 5_000);
+    gbbIoPool('2026-07-01', 100, 5_000);
+
+    $res = $this->actingAs(gbbIoAdmin())
+        ->get(route('admin.compensation.gbb-input-output.index'))
+        ->assertOk();
+    $res->assertSee("How this month's AGP point value was calculated", false);
+    $res->assertSee('How the AGP point value is calculated');
+    $res->assertSee('⌊ ₹5,000.00 ÷ 100 ⌋', false);
+    $res->assertDontSee('border-gray-200" open>', false);
+
+    $this->actingAs(gbbIoAdmin())
+        ->get(route('admin.compensation.gbb-input-output.index', ['month' => '2026-07']))
+        ->assertOk()
+        ->assertSee('border-gray-200" open>', false);
+});

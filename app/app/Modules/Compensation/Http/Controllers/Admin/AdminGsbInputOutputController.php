@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -40,6 +41,10 @@ final class AdminGsbInputOutputController extends Controller
 
     private const FUNDED_STATUSES = GsbCutoffResult::POOL_FUNDED_STATUSES;
 
+    public function __construct(
+        private readonly CompensationPlanSettingsService $plan,
+    ) {}
+
     public function index(Request $request): View
     {
         abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
@@ -60,6 +65,7 @@ final class AdminGsbInputOutputController extends Controller
         return view('admin.compensation.gsb-input-output.index', [
             'pools' => $pools,
             'slabAggregates' => $this->slabAggregates($dates),
+            'slab3Score' => $this->plan->gsbSlab(3)['score'] ?? null,
             'anchor' => $anchor,
             'day' => $day,
             'week' => $week,

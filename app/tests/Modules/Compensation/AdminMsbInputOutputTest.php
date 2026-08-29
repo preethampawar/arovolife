@@ -205,3 +205,22 @@ it('is reachable by the business admin roles but not by an unprivileged user', f
         ->get(route('admin.compensation.msb-input-output.index'))
         ->assertForbidden();
 });
+
+it('embeds the collapsible point-value formula strip inside each day block', function () {
+    $today = today();
+    msbIoPool($today->toDateString(), 75, 4_000);
+    msbIoPool($today->copy()->subDay()->toDateString(), 75, 4_000);
+
+    $res = $this->actingAs(msbIoAdmin())
+        ->get(route('admin.compensation.msb-input-output.index'))
+        ->assertOk();
+    $res->assertSee("How this day's MSB point value was calculated", false);
+    $res->assertSee('How the MSB point value is calculated');
+    $res->assertSee('⌊ ₹3,000.00 ÷ 75 ⌋', false);
+    $res->assertDontSee('border-gray-200" open>', false);
+
+    $this->actingAs(msbIoAdmin())
+        ->get(route('admin.compensation.msb-input-output.index', ['from' => $today->toDateString()]))
+        ->assertOk()
+        ->assertSee('border-gray-200" open>', false);
+});
