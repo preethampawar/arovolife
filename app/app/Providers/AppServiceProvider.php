@@ -100,6 +100,13 @@ class AppServiceProvider extends ServiceProvider
         // middleware, which this bypass does NOT affect.
         Gate::before(fn (User $user) => $user->isSuperStaff() ? true : null);
 
+        // Pulse's own authorisation. The `role:developer` middleware in
+        // config/pulse.php is what actually keeps admins out — Gate::before
+        // above answers true for them before this ever runs — but Pulse checks
+        // this ability internally too, and its packaged default is
+        // "allow if local", which would be wide open on staging.
+        Gate::define('viewPulse', fn (User $user) => $user->hasRole('developer'));
+
         if ($this->app->runningInConsole()) {
             // Module commands live outside app/Console/Commands, so Laravel's
             // auto-discovery never sees them — every one must be listed here.

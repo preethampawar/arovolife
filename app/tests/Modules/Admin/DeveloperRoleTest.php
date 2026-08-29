@@ -98,6 +98,29 @@ it('DEV-05: developer can write a developer-owned setting', function () {
     expect(DB::table('settings')->where('key', 'payout.min_threshold_paise')->value('value'))->toBe('15000');
 });
 
+it('DEV-13: developer reaches the Pulse dashboard', function () {
+    $this->actingAs(devStaff('developer'));
+
+    $this->get('/pulse')->assertOk();
+});
+
+/**
+ * Pulse ships gated on `viewPulse`, which its own default answers with
+ * "true if local". A Gate alone cannot hold this surface either way, because
+ * AppServiceProvider's Gate::before returns true for every super-staff user
+ * before a definition is consulted — so admins would pass. The
+ * `role:developer` middleware in config/pulse.php is what actually closes it.
+ */
+it('DEV-14: an admin cannot open Pulse', function () {
+    $this->actingAs(devStaff('admin'));
+
+    $this->get('/pulse')->assertForbidden();
+});
+
+it('DEV-15: Pulse is closed to guests', function () {
+    $this->get('/pulse')->assertRedirect();
+});
+
 // ─── Stealth ─────────────────────────────────────────────────────────────────
 
 it('DEV-06: the settings page shows an admin no developer-owned key', function () {
