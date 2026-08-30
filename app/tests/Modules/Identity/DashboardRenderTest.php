@@ -142,7 +142,6 @@ it('DSH-04: dashboard keeps every legacy element alongside the new KPI strip and
         'Cooling-Off Period', 'Cancel registration', 'Messages', 'Documents', 'Membership Card',
         'My Team', 'data-team-roster="total"', 'data-team-roster="direct"',
         'data-team-roster="left"', 'data-team-roster="right"', 'id="team-roster-modal"',
-        'Phase 1 Platform',
         // New surfaces.
         'Personal BV', 'Wallet balance', 'Total team', 'Direct referrals',
         'Quick actions', 'Genos balance', 'Team growth', 'Member since',

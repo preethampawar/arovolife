@@ -78,11 +78,4 @@
     </div>
 @endif
 
-{{-- Phase 1 notice --}}
-<div class="mt-10 rounded-xl border border-gray-200 bg-white/50 p-4 text-xs text-gray-700">
-    <strong class="text-gray-800">Phase 1 Platform</strong> —
-    Product catalogue, orders, commissions and wallet features are coming in later phases.
-    For support, email support@arovolife.com.
-</div>
-
 @endsection
