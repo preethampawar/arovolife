@@ -38,6 +38,10 @@
 @include('dashboard._hero')
 
 @if($distributor)
+    <div class="mb-6">
+        @include('dashboard._profile-stats')
+    </div>
+
     @include('dashboard._kpi-strip')
     @include('dashboard._quick-actions')
 
@@ -54,10 +58,6 @@
             @include('dashboard._cooling-off')
             @include('dashboard._messages')
         </div>
-    </div>
-
-    <div class="mb-6">
-        @include('dashboard._profile-stats')
     </div>
 
     <div class="mb-6">
