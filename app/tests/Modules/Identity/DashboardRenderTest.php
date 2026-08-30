@@ -10,9 +10,19 @@ declare(strict_types=1);
  */
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\DistributorRequestsFeature;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -117,4 +127,90 @@ it('DSH-03: dashboard ID-photo input opens the crop modal (no auto-submit)', fun
 
     // ...and the file input no longer auto-submits the form on change.
     $response->assertDontSee("onchange=\"document.getElementById('idPhotoForm').submit();\"", false);
+});
+
+it('DSH-04: dashboard keeps every legacy element alongside the new KPI strip and quick actions', function () {
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    $response = $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    foreach ([
+        // Legacy elements that must survive the redesign.
+        'Manage my KYC documents', 'My Referral Link', 'Personal invite', 'Copy',
+        'Profile Stats', 'Download PDF', 'Placement', 'My Business', 'Request line-change',
+        'Cooling-Off Period', 'Cancel registration', 'Messages', 'Documents', 'Membership Card',
+        'My Team', 'data-team-roster="total"', 'data-team-roster="direct"',
+        'data-team-roster="left"', 'data-team-roster="right"', 'id="team-roster-modal"',
+        'Phase 1 Platform',
+        // New surfaces.
+        'Personal BV', 'Wallet balance', 'Total team', 'Direct referrals',
+        'Quick actions', 'Genos balance', 'Team growth', 'Member since',
+    ] as $needle) {
+        $response->assertSee($needle, false);
+    }
+});
+
+it('DSH-05: flag-gated dashboard surfaces leave no trace while their features are off', function () {
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    foreach ([
+        GenosSalesBonusFeature::class,
+        MentorshipBonusFeature::class,
+        GrowthBoosterBonusFeature::class,
+        RankBonusFeature::class,
+        FortuneBonusFeature::class,
+        AreteDevelopmentCenterBonusFeature::class,
+        PurchaseOffersFeature::class,
+        AreteCenterApplicationsFeature::class,
+        DistributorRequestsFeature::class,
+    ] as $flag) {
+        Feature::for(null)->deactivate($flag);
+    }
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Left Genos BV', false)
+        ->assertDontSee('Income snapshot', false)
+        // The quick-action tiles specifically (the topnav has its own, separately gated, links).
+        ->assertDontSee('leading-tight">My Offers</span>', false)
+        ->assertDontSee('leading-tight">Arete Centres</span>', false)
+        ->assertDontSee('leading-tight">My Requests</span>', false)
+        ->assertDontSee('Power side', false)
+        ->assertDontSee('Weaker side', false);
+});
+
+it('DSH-06: flag-gated dashboard surfaces appear with wallet-credited figures once their features are on', function () {
+    $user = dshUser('active');
+    $id = dshDistributor($user);
+
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(PurchaseOffersFeature::class);
+    Feature::for(null)->activate(AreteCenterApplicationsFeature::class);
+    Feature::for(null)->activate(DistributorRequestsFeature::class);
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $id, 'type' => 'gsb_credit', 'amount_paise' => 200_000, 'created_at' => now()],
+        ['distributor_id' => $id, 'type' => 'gsb_credit', 'amount_paise' => 100_000, 'created_at' => now()->subMonths(2)],
+        ['distributor_id' => $id, 'type' => 'payout_debit', 'amount_paise' => -50_000, 'created_at' => now()],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Left Genos BV', false)
+        ->assertSee('Right Genos BV', false)
+        ->assertSee('Income snapshot', false)
+        ->assertSee('Genos Sales Bonus', false)
+        ->assertSee('₹2,000', false)   // this month
+        ->assertSee('₹3,000', false)   // lifetime
+        ->assertSee('₹2,500', false)   // wallet balance after the debit
+        ->assertSee('Wallet credits, last 6 months', false)
+        ->assertSee('leading-tight">My Offers</span>', false)
+        ->assertSee('leading-tight">Arete Centres</span>', false)
+        ->assertSee('leading-tight">My Requests</span>', false)
+        ->assertDontSee('Power side', false)
+        ->assertDontSee('Weaker side', false);
 });

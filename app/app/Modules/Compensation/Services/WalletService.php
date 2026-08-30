@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Support\EngineRunContext;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -37,6 +38,40 @@ class WalletService
             ->pluck('total_paise', 'type')
             ->map(fn ($total): int => (int) $total)
             ->all();
+    }
+
+    /**
+     * Positive (credit) totals per calendar month for the trailing `$months`
+     * months (current month inclusive), zero-filled and keyed `Y-m` ascending.
+     * Same "money that actually reached the wallet" source as
+     * creditTotalsByType(), bucketed on IST month boundaries.
+     *
+     * @return array<string, int> Y-m => total paise
+     */
+    public function creditTotalsByMonth(int $distributorId, int $months = 6): array
+    {
+        $months = max(1, $months);
+        $nowIst = Carbon::now('Asia/Kolkata');
+        $start = $nowIst->copy()->startOfMonth()->subMonthsNoOverflow($months - 1);
+
+        $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->where('amount_paise', '>', 0)
+            ->where('created_at', '>=', $start->copy()->timezone(config('app.timezone')))
+            ->get(['amount_paise', 'created_at']);
+
+        $series = [];
+        for ($i = 0; $i < $months; $i++) {
+            $series[$start->copy()->addMonthsNoOverflow($i)->format('Y-m')] = 0;
+        }
+
+        foreach ($entries as $entry) {
+            $key = $entry->created_at->copy()->timezone('Asia/Kolkata')->format('Y-m');
+            if (array_key_exists($key, $series)) {
+                $series[$key] += (int) $entry->amount_paise;
+            }
+        }
+
+        return $series;
     }
 
     /**

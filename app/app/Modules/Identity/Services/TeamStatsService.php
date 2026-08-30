@@ -120,6 +120,36 @@ final class TeamStatsService
             ->all();
     }
 
+    /**
+     * Registrations in the distributor's Genos downline per calendar day for
+     * the trailing `$days` days (today inclusive), zero-filled and keyed
+     * `Y-m-d` in ascending order. Same membership as the "Total team" count,
+     * so the dashboard's growth bars sum to the "Registered this month" ring.
+     *
+     * @return array<string, int>
+     */
+    public function joinedPerDay(Distributor $distributor, int $days = 30): array
+    {
+        $days = max(1, $days);
+        $start = now()->subDays($days - 1)->startOfDay();
+
+        $counts = $this->scopedQuery($distributor, 'total')
+            ->reorder()
+            ->where('d.effective_date', '>=', $start)
+            ->groupBy($this->db->raw('DATE(d.effective_date)'))
+            ->select($this->db->raw('DATE(d.effective_date) as day'), $this->db->raw('COUNT(*) as n'))
+            ->pluck('n', 'day')
+            ->all();
+
+        $series = [];
+        for ($i = 0; $i < $days; $i++) {
+            $key = $start->copy()->addDays($i)->toDateString();
+            $series[$key] = (int) ($counts[$key] ?? 0);
+        }
+
+        return $series;
+    }
+
     public function scopedCount(Distributor $distributor, string $scope): int
     {
         return (int) $this->scopedQuery($distributor, $scope)->count();
