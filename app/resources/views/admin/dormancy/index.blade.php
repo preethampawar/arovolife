@@ -11,7 +11,7 @@
     ];
 @endphp
 
-<div class="mb-6 max-w-3xl text-sm leading-relaxed text-slate-600">
+<div class="mb-6 max-w-3xl text-sm leading-relaxed text-gray-700">
     <p>
         Agreement §21 closes an account after <strong>{{ $inactivityMonths }} continuous months</strong>
         without a sale, following <strong>{{ $noticeDays }} days</strong> of written notice. The clock runs
@@ -21,7 +21,7 @@
 </div>
 
 @if (! $sweepEnabled)
-    <div class="mb-6 rounded-xl border border-amber-600/40 bg-amber-500/10 px-5 py-4 text-sm text-amber-200">
+    <div class="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
         <p class="font-semibold">Automatic termination is OFF.</p>
         <p class="mt-1 leading-relaxed">
             The nightly sweep reports what it would do and writes nothing — no notices are sent and no
@@ -34,13 +34,13 @@
 @endif
 
 @if (session('status'))
-    <div class="mb-6 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+    <div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
         {{ session('status') }}
     </div>
 @endif
 
 @if ($errors->any())
-    <div class="mb-6 rounded-lg border border-rose-600/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {{ $errors->first() }}
     </div>
 @endif
@@ -49,20 +49,20 @@
     @foreach ($filters as $value => $label)
         <a href="{{ route('admin.dormancy.index', ['filter' => $value]) }}"
            class="rounded-full px-3.5 py-1.5 text-xs font-semibold transition
-                  {{ $filter === $value ? 'bg-sunrise-800 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700' }}">
+                  {{ $filter === $value ? 'bg-slate-800 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100' }}">
             {{ $label }}
         </a>
     @endforeach
 </div>
 
 @if ($distributors->isEmpty())
-    <div class="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-600">
+    <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center text-gray-600">
         Nobody in this state.
     </div>
 @else
-    <div class="overflow-x-auto rounded-xl border border-slate-700">
-        <table class="min-w-full divide-y divide-slate-700 text-sm">
-            <thead class="bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-600">
+    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                 <tr>
                     <th class="px-4 py-3">ADN</th>
                     <th class="px-4 py-3">Name</th>
@@ -78,33 +78,33 @@
                     @endif
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-800">
+            <tbody class="divide-y divide-gray-100">
                 @foreach ($distributors as $distributor)
                     @php $assessment = $assessments[$distributor->id]; @endphp
-                    <tr class="hover:bg-slate-800/60">
+                    <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 font-mono text-xs">
                             <a href="{{ route('admin.distributors.show', $distributor->id) }}"
-                               class="font-semibold text-sunrise-400 underline">{{ $distributor->adn }}</a>
+                               class="font-semibold text-brand-700 hover:text-brand-800 underline">{{ $distributor->adn }}</a>
                         </td>
-                        <td class="px-4 py-3 text-slate-200">{{ $distributor->user?->full_name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-slate-600">
+                        <td class="px-4 py-3 text-gray-900">{{ $distributor->user?->full_name ?? '—' }}</td>
+                        <td class="px-4 py-3 text-gray-600">
                             {{ $assessment->lastSaleAt?->format('d M Y') ?? 'Never sold' }}
                         </td>
-                        <td class="px-4 py-3 text-slate-600">{{ $assessment->clockRunningFrom->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $assessment->clockRunningFrom->format('d M Y') }}</td>
 
                         @if ($filter === 'terminated')
-                            <td class="px-4 py-3 text-slate-300">{{ $distributor->terminated_at?->format('d M Y') ?? '—' }}</td>
-                            <td class="px-4 py-3 text-slate-300">
+                            <td class="px-4 py-3 text-gray-800">{{ $distributor->terminated_at?->format('d M Y') ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-800">
                                 {{ $distributor->reregistration_allowed_from?->format('d M Y') ?? 'No wait' }}
                             </td>
                         @else
-                            <td class="px-4 py-3 {{ $assessment->isDormant ? 'text-rose-300' : 'text-slate-600' }}">
+                            <td class="px-4 py-3 {{ $assessment->isDormant ? 'text-red-700' : 'text-gray-600' }}">
                                 {{ $assessment->dormantFrom->format('d M Y') }}
                             </td>
-                            <td class="px-4 py-3 text-slate-300">
+                            <td class="px-4 py-3 text-gray-800">
                                 @if ($assessment->noticeExpiresAt)
                                     Closes {{ $assessment->noticeExpiresAt->format('d M Y') }}
-                                    <span class="block text-xs text-slate-500">
+                                    <span class="block text-xs text-gray-500">
                                         {{ $assessment->daysLeftOnNotice() }} day(s) left
                                     </span>
                                 @else
@@ -121,9 +121,9 @@
                                         @csrf
                                         <input type="text" name="reason" maxlength="500" required
                                                placeholder="Reason"
-                                               class="w-40 rounded-lg border-slate-600 bg-slate-800 text-xs text-slate-100 placeholder-slate-500">
+                                               class="w-40 rounded-lg border-gray-300 text-xs text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:ring-brand-500">
                                         <button type="submit"
-                                                class="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-800">
+                                                class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100">
                                             Withdraw
                                         </button>
                                     </form>
