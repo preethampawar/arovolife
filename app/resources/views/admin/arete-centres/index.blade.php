@@ -105,7 +105,7 @@
                     <th class="px-3 py-2 text-center text-gray-600">Status</th>
                     <th class="px-3 py-2 text-left text-gray-600">Contact</th>
                     <th class="px-3 py-2 text-left text-gray-600">Weekly off</th>
-                    <th class="px-3 py-2 text-left text-gray-600">Address</th>
+                    <th class="px-3 py-2 text-left text-gray-600 min-w-[14rem]">Address</th>
                     <th class="px-3 py-2 text-right text-gray-600">Members</th>
                     <th class="px-3 py-2 text-right text-gray-600">Actions</th>
                 </tr>
@@ -150,7 +150,7 @@
                         @if($center->contact_number)<span class="block font-mono">{{ $center->contact_number }}</span>@endif
                     </td>
                     <td class="px-3 py-2 text-gray-600">{{ $center->weekly_off ? (AreteCenter::WEEKLY_OFF_OPTIONS[$center->weekly_off] ?? $center->weekly_off) : '—' }}</td>
-                    <td class="px-3 py-2 text-gray-600 max-w-[16rem] truncate" title="{{ $address }}">{{ $address !== '' ? $address : '—' }}</td>
+                    <td class="px-3 py-2 text-gray-600 min-w-[14rem] max-w-[22rem] whitespace-normal break-words">{{ $address !== '' ? $address : '—' }}</td>
                     <td class="px-3 py-2 text-right">{{ IndianNumber::format($center->members_count) }}</td>
                     <td class="px-3 py-2 text-right whitespace-nowrap">
                         <a href="{{ route('admin.arete-centres.edit', $center) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
