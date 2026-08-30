@@ -48,6 +48,10 @@
 (() => {
     const modal     = document.getElementById('distributorDetailsModal');
     if (! modal) return;
+    // Hoist to <body>: the tree canvas sits inside transformed / scrolling
+    // ancestors that create their own stacking context, which would pin
+    // this fixed overlay beneath the sticky site header (z-40).
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
     const body      = modal.querySelector('[data-modal-body]');
     const backdrop  = modal.querySelector('[data-modal-backdrop]');
     const closeBtns = modal.querySelectorAll('[data-modal-close]');
