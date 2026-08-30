@@ -218,6 +218,10 @@ In accordance with the Privacy Policy and the DPDP Act:
 
 You may request erasure of any personal data held beyond the retention periods above by writing to the Data Protection Officer at `dpo@arovolife.com`. arovolife will respond within 30 days. Data retained under a legal obligation (e.g. tax records within the 8-year window) cannot be erased on request.
 
+### 8.5 Visibility Within Your Genos
+
+Your name, ADN, KYC status, activation date, current and highest achieved rank, and accumulated personal BV are visible to your sponsor and to the Distributors above you in your Genos (placement) line, inside their authenticated genealogy view, for the sole purpose of mentoring you and coordinating product training. They are not used to set targets for you and are not visible to Distributors outside your line. Your purchase history, order contents, bank details, PAN and Aadhaar are never shown to other Distributors. A Distributor who publishes, forwards or quotes another Distributor's rank or BV outside the platform breaches Code of Ethics §2.11. This clause takes effect 30 days after the notice issued under §16.2.
+
 ## 9. PII Handling
 
 Detailed obligations on collection, processing, sharing, security, retention and your rights as a Data Principal are set out in the Privacy Policy at `/p/privacy`, which is incorporated by reference into this Agreement.
@@ -327,4 +331,4 @@ The nominee facility is **not yet operative**. Until a duly-noticed amendment to
 
 ---
 
-*Direct Seller Agreement & Terms of Service version: v2026-05-21. The current published version is always available at `/p/terms`. Together with the Code of Ethics, the Privacy Policy and the Grievance Redressal Policy, this Agreement constitutes the entire contract between you and arovolife.*
+*Direct Seller Agreement & Terms of Service version: v2026-08-30 (amends v2026-05-21: §8.5 added; effective 30 days after the §16.2 notice). The current published version is always available at `/p/terms`. Together with the Code of Ethics, the Privacy Policy and the Grievance Redressal Policy, this Agreement constitutes the entire contract between you and arovolife.*

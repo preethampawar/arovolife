@@ -34,18 +34,22 @@
     $rerootKey           = $rerootKey   ?? 'adn';
     $isSponsorshipModeTop = ($mode ?? 'binary') === 'sponsorship';
 
-    // Highest Rank / Current Rank / Personal BV are own-data-only (hard rule
-    // #3 — a distributor never sees another distributor's figures), so at most
-    // ONE card on this canvas can carry them: the viewer's own. Resolve that
-    // single card here, through the same service the dashboard and the Details
-    // popup read, rather than querying once per node. Null for admins (no
-    // distributor row) and whenever the viewer's own node isn't on screen —
-    // every other card renders "—".
-    $viewerDistributor = auth()->user()?->distributor;
-    $ownCardId         = $viewerDistributor?->id;
-    $ownCardStats      = $viewerDistributor
-        ? app(\App\Modules\Identity\Services\DistributorIdCardStats::class)->compact($viewerDistributor)
-        : null;
+    // Highest Rank / Current Rank / Personal BV for every card on this canvas,
+    // resolved in ONE pass through the same service the dashboard and the
+    // Details popup read (three queries for the whole canvas; never per
+    // node). The service decides per node what this viewer may see: their
+    // own card always; downline cards only while the developer setting
+    // genealogy.downline_stats_visible is ON (R-65, hard rule 3 as amended).
+    $cardStatsService = app(\App\Modules\Identity\Services\DistributorIdCardStats::class);
+    if ($isSponsorshipModeTop) {
+        $visibleNodes = collect($childrenByParent ?? [])->flatten(1)->push($self);
+    } elseif (isset($nodesById)) {
+        $visibleNodes = collect($nodesById)->values();
+    } else {
+        $visibleNodes = collect($childByParentSide ?? [])->flatMap(fn ($sides) => array_values($sides))->push($self);
+    }
+    $cardStatsById = $cardStatsService->compactMany($visibleNodes->unique('id'));
+    $downlineStatsNotice = ! $adminContext && $cardStatsService->downlineStatsVisible();
 @endphp
 
 @if($contextNote)
@@ -244,6 +248,13 @@
 
     <span class="hidden md:inline ml-auto text-gray-600 text-[11px]">Drag to pan · Cmd/Ctrl + scroll to zoom</span>
 </div>
+
+@if($downlineStatsNotice)
+<p class="mb-3 text-xs text-gray-700 flex items-start gap-1.5">
+    <svg class="w-4 h-4 shrink-0 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+    <span>Each member's rank and personal BV are visible to you as their upline, to help you support their business. Do not share, screenshot or quote them outside the platform or in any recruitment or sales conversation (Code of Ethics §2.11).</span>
+</p>
+@endif
 
 <div id="treeFrame" class="relative">
     <div id="treeViewport"

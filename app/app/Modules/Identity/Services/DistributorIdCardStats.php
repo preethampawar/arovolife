@@ -12,6 +12,7 @@ use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
 
@@ -37,87 +38,169 @@ use Laravel\Pennant\Feature;
  * engine, total_withdrawal_income from the settled payout line items. No
  * placeholders remain.
  *
- * The compact fields are own-data-only, so a tree canvas needs {@see
- * self::compact()} exactly once — for the viewer's own node. `_content.blade.php`
- * resolves it there and the node partials render "—" for every other card;
- * do not call this per node.
+ * Rank and personal BV are own-data-only by default. While the developer
+ * setting `genealogy.downline_stats_visible` is ON (client decision
+ * 2026-08-30, R-65, hard rule 3 as amended) they are ALSO shown to the
+ * distributor's sponsor, their placement upline and admins — and to nobody
+ * else. {@see self::compactMany()} enforces that per node, so every caller
+ * (tree canvas, Details popup, dashboard) inherits the same guard; a tree
+ * canvas resolves every visible card in one pass through it and never per
+ * node. The personal-purchase title and the withdrawal income on the full
+ * card stay own-data-only regardless of the setting.
  */
 final class DistributorIdCardStats
 {
+    public const string DOWNLINE_STATS_SETTING = 'genealogy.downline_stats_visible';
+
     public function __construct(
         private readonly TeamStatsService $teamStats,
         private readonly BvLedgerService $bvLedger,
     ) {}
 
     /**
-     * Compact 8-field stats — the subset rendered on each tree card. No
-     * team-count joins, so cheap enough to call once per node.
+     * Compact 8-field stats — the subset rendered on each tree card and the
+     * head of the full dashboard card.
      *
      * @return array<string, mixed>
      */
     public function compact(Distributor $distributor): array
     {
-        // The relation is non-null by schema (distributors.user_id is NOT
-        // NULL with an FK to users.id) — Larastan correctly flags
-        // nullsafe access here as unreachable. Read directly.
-        $user = $distributor->user;
-
-        $ranks = $this->ownRankLabels($distributor);
-
-        return [
-            'name' => $user->full_name ?: $user->email,
-            'adn' => $distributor->adn,
-            'highest_rank' => $ranks['highest'],
-            'current_rank' => $ranks['current'],
-            'region' => 'India',
-            'verification_label' => $user->verificationLabel(),
-            'verification_class' => $user->verificationClass(),
-            'activation_date' => $user->activated_at,
-            'total_personal_bv' => $this->ownPersonalBv($distributor),
-        ];
+        return $this->compactMany([$distributor])[(int) $distributor->id];
     }
 
     /**
-     * The distributor's current and highest achieved rank — shown ONLY to the
-     * authenticated owner, exactly like personal BV below (hard rule #3 — own
-     * data only), and only while the Rank Bonus feature is live, so a
-     * flag-off bonus leaves no trace on the card.
+     * {@see self::compact()} for every distributor on a tree canvas, keyed by
+     * distributor id. Batches the rank labels and the personal-BV totals so
+     * a canvas of N cards costs three queries, not 3N.
      *
-     * @return array{current: ?string, highest: ?string}
+     * @param  iterable<Distributor>  $distributors
+     * @return array<int, array<string, mixed>>
      */
-    private function ownRankLabels(Distributor $distributor): array
+    public function compactMany(iterable $distributors): array
     {
-        if (auth()->id() !== $distributor->user_id) {
-            return ['current' => null, 'highest' => null];
+        $list = [];
+        foreach ($distributors as $distributor) {
+            $list[(int) $distributor->id] = $distributor;
+        }
+        if ($list === []) {
+            return [];
         }
 
+        $ids = array_keys($list);
+        $visible = $this->statsVisibleIds($ids);
+        $ranks = $this->rankLabels($visible);
+        $this->bvLedger->warmPersonalBvCache($visible);
+
+        $out = [];
+        foreach ($list as $id => $distributor) {
+            // The relation is non-null by schema (distributors.user_id is NOT
+            // NULL with an FK to users.id) — Larastan correctly flags
+            // nullsafe access here as unreachable. Read directly.
+            $user = $distributor->user;
+            $canSee = in_array($id, $visible, true);
+            $paise = $canSee ? $this->bvLedger->totalPersonalBvPaise($id) : 0;
+
+            $out[$id] = [
+                'name' => $user->full_name ?: $user->email,
+                'adn' => $distributor->adn,
+                'highest_rank' => $canSee ? ($ranks[$id]['highest'] ?? null) : null,
+                'current_rank' => $canSee ? ($ranks[$id]['current'] ?? null) : null,
+                'region' => 'India',
+                'verification_label' => $user->verificationLabel(),
+                'verification_class' => $user->verificationClass(),
+                'activation_date' => $user->activated_at,
+                'total_personal_bv' => $paise > 0 ? Number::format($paise / 100, 0).' BV' : null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Whether the downline-visibility switch is ON. Surfaces use this to
+     * decide whether to show the "visible to you as their upline" notice —
+     * zero trace while OFF.
+     */
+    public function downlineStatsVisible(): bool
+    {
+        try {
+            return DB::table('settings')
+                ->where('key', self::DOWNLINE_STATS_SETTING)
+                ->value('value') === 'true';
+        } catch (QueryException) {
+            return false;
+        }
+    }
+
+    /**
+     * The subset of $ids whose rank and personal BV the authenticated user may
+     * see: always their own node; and, while the switch is ON, every node
+     * they sponsor or sit above in the Genos (closure descendants), or every
+     * node at all for super-staff. One closure query, one sponsor query.
+     *
+     * @param  int[]  $ids
+     * @return int[]
+     */
+    private function statsVisibleIds(array $ids): array
+    {
+        $viewer = auth()->user();
+        if ($viewer === null) {
+            return [];
+        }
+
+        $own = $viewer->distributor?->id;
+        $visible = $own !== null && in_array((int) $own, $ids, true) ? [(int) $own] : [];
+
+        if (! $this->downlineStatsVisible()) {
+            return $visible;
+        }
+
+        if ($viewer->isSuperStaff()) {
+            return $ids;
+        }
+
+        if ($own === null) {
+            return $visible;
+        }
+
+        $descendants = DB::table('genealogy_closure')
+            ->where('ancestor_id', $own)
+            ->where('depth', '>', 0)
+            ->whereIn('descendant_id', $ids)
+            ->pluck('descendant_id');
+
+        $sponsored = Distributor::query()
+            ->where('sponsor_id', $own)
+            ->whereIn('id', $ids)
+            ->whereColumn('id', '!=', 'sponsor_id')
+            ->pluck('id');
+
+        return array_values(array_unique(array_map('intval', array_merge(
+            $visible,
+            $descendants->all(),
+            $sponsored->all(),
+        ))));
+    }
+
+    /**
+     * Current and highest achieved rank for the ids the viewer may see
+     * (R-65), and only while the Rank Bonus feature is live, so a flag-off
+     * bonus leaves no trace.
+     *
+     * @param  int[]  $ids
+     * @return array<int, array{current: ?string, highest: ?string}>
+     */
+    private function rankLabels(array $ids): array
+    {
         if (! Feature::for(null)->active(RankBonusFeature::class)) {
-            return ['current' => null, 'highest' => null];
+            return [];
         }
 
         try {
-            return app(RankStatusService::class)->labelsFor((int) $distributor->id);
+            return app(RankStatusService::class)->labelsForMany($ids);
         } catch (QueryException) {
-            return ['current' => null, 'highest' => null];
+            return [];
         }
-    }
-
-    /**
-     * The distributor's accumulated personal BV (ADR-0006), formatted for
-     * display — but ONLY when the card belongs to the authenticated viewer.
-     * A downline member's personal BV is never exposed to an upline or admin
-     * via the tree/Details surfaces (hard rule #3 — own data only). Returns
-     * null (renders "—") for other distributors or when nothing has accrued.
-     */
-    private function ownPersonalBv(Distributor $distributor): ?string
-    {
-        if (auth()->id() !== $distributor->user_id) {
-            return null;
-        }
-
-        $paise = $this->bvLedger->totalPersonalBvPaise($distributor->id);
-
-        return $paise > 0 ? Number::format($paise / 100, 0).' BV' : null;
     }
 
     /**

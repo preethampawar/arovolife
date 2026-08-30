@@ -1,4 +1,4 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-05-21. -->
+<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-08-30. -->
 
 This Privacy Policy describes how Arovolife Private Limited collects, uses, stores, shares and protects personal data, and the rights you have as a Data Principal. It is published under the Digital Personal Data Protection Act 2023 ("DPDP Act"), the Information Technology Act 2000 (including the SPDI Rules 2011 to the extent they remain in force), the Consumer Protection (Direct Selling) Rules 2021, and the Income Tax Act 1961.
 
@@ -73,6 +73,7 @@ We process your personal data for:
 3. **Compensation accounting** — calculating BV, ranks, commissions, pool shares, payouts, TDS and GST.
 4. **Order fulfilment** — receiving, packing, dispatching and tracking customer orders; managing returns, refunds and buybacks.
 5. **Customer and Distributor support** — responding to your queries, processing grievances, providing training and education content.
+5a. **Genealogy visibility** — showing your name, ADN, KYC status, activation date, current and highest achieved rank, and accumulated personal BV to your sponsor and to the Distributors above you in your Genos (placement) line, inside their authenticated genealogy view only, so that they can mentor you and coordinate product training. These figures are **not** used to set targets for you, are not shown to Distributors outside your line, and must not be shared by them outside the platform (Code of Ethics §2.11). Your purchase history, order contents, bank details, PAN and Aadhaar are never shown to other Distributors. This purpose takes effect only after the 30-day notice in §13 has run.
 6. **Fraud prevention and security** — detecting account compromise, surrogate selling, ghost placements, BV manipulation, payment fraud, and abuse of the platform.
 7. **Statutory reporting** — filings with Income Tax, GST authorities, MCA, and consumer-protection authorities.
 8. **Platform improvement** — first-party analytics on aggregate, pseudonymised usage; bug diagnostics; performance tuning.
@@ -140,6 +141,7 @@ We share personal data only with the categories of recipients listed below, only
 | Communication providers (SMS, email, push) | Transactional and consented marketing messages | Mobile; email; the message body. |
 | Cloud infrastructure provider (India region) | Hosting, storage, backup | All data, encrypted; provider has no access to plaintext. |
 | Statutory authorities (Income Tax, GST, MCA, consumer authorities, courts) | Compliance with law | As required by the specific order or filing. |
+| Your sponsor and the Distributors above you in your Genos line (Distributors, not third parties) | Mentoring and coordinating product training within your line (§4 5a) | Name; ADN; KYC status; activation date; current and highest rank; accumulated personal BV. Never purchase history, bank details, PAN or Aadhaar. |
 | Professional advisors (auditors, tax, legal) | Internal audit, statutory audit, legal advice | The minimum necessary, under confidentiality agreement. |
 | Acquirer / successor entity in a merger or restructuring | Continuity of services | As legally required, with notice to Data Principals. |
 

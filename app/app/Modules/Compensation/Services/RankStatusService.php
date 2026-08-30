@@ -93,19 +93,70 @@ final class RankStatusService
      */
     public function labelsFor(int $distributorId): array
     {
-        $counts = $this->achievementCounts($distributorId);
-        if ($counts === []) {
-            return ['current' => null, 'highest' => null];
+        // Single source: the batch resolver owns the rule.
+        return $this->labelsForMany([$distributorId])[$distributorId];
+    }
+
+    /**
+     * The ONLY place the two card badges are derived: highest = the top
+     * achieved rank ever; current = the top rank achieved this month, else
+     * last month, else none. Two grouped queries for any number of
+     * distributors — the tree canvas needs every visible card's badges and
+     * must never resolve them per node. Every requested id is present in
+     * the result; distributors with no achievement map to null/null.
+     *
+     * @param  int[]  $distributorIds
+     * @return array<int, array{current: ?string, highest: ?string}>
+     */
+    public function labelsForMany(array $distributorIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $distributorIds)));
+        $labels = array_fill_keys($ids, ['current' => null, 'highest' => null]);
+        if ($ids === []) {
+            return $labels;
+        }
+
+        $highest = RankQualification::query()->achieved()
+            ->whereIn('distributor_id', $ids)
+            ->toBase()
+            ->groupBy('distributor_id')
+            ->selectRaw('distributor_id, MAX(rank_number) as highest_rank')
+            ->pluck('highest_rank', 'distributor_id');
+
+        if ($highest->isEmpty()) {
+            return $labels;
         }
 
         $monthStart = Carbon::today('Asia/Kolkata')->startOfMonth();
-        $current = $this->highestRankQualifiedIn($distributorId, $monthStart)
-            ?? $this->highestRankQualifiedIn($distributorId, $monthStart->copy()->subMonth());
+        $months = [$monthStart->toDateString(), $monthStart->copy()->subMonth()->toDateString()];
 
-        return [
-            'current' => $current !== null ? $this->plan->rankName($current) : null,
-            'highest' => $this->plan->rankName(max(array_keys($counts))),
-        ];
+        // Per distributor: the top rank held this month, else last month —
+        // same precedence as labelsFor(), resolved with one query.
+        $current = [];
+        $rows = RankQualification::query()->achieved()
+            ->whereIn('distributor_id', $ids)
+            ->whereIn('month_start', $months)
+            ->toBase()
+            ->groupBy('distributor_id', 'month_start')
+            ->selectRaw('distributor_id, month_start, MAX(rank_number) as top_rank')
+            ->get();
+        foreach ($rows as $row) {
+            $did = (int) $row->distributor_id;
+            $isThisMonth = Carbon::parse((string) $row->month_start)->toDateString() === $months[0];
+            if ($isThisMonth || ! isset($current[$did])) {
+                $current[$did] = (int) $row->top_rank;
+            }
+        }
+
+        foreach ($highest as $did => $rank) {
+            $did = (int) $did;
+            $labels[$did] = [
+                'current' => isset($current[$did]) ? $this->plan->rankName($current[$did]) : null,
+                'highest' => $this->plan->rankName((int) $rank),
+            ];
+        }
+
+        return $labels;
     }
 
     /**

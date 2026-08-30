@@ -507,6 +507,16 @@ final class AdminSettingsController extends Controller
                 ],
             ],
 
+            'genealogy.downline_stats_visible' => [
+                'group' => 'placement',
+                'owner' => 'developer',
+                'label' => 'Show downline rank and personal BV on tree cards',
+                'description' => 'When ON, every Genos / Direct-referral card and the Details popup show that distributor\'s Highest Rank, Current Rank and accumulated Personal BV to their sponsor, their upline and admins (client decision 2026-08-30, risk register R-65). When OFF those rows are filled only on the viewer\'s own card and read "—" everywhere else. Personal-purchase title and withdrawal income are never shown to others regardless of this switch.',
+                'impact' => 'Turning this ON discloses one distributor\'s purchase volume and rank to other distributors. Do not enable until the amended Privacy Policy §4/§7 and DSA §8.5 have been published and the 30-day DPDP §5 / DSA §16.2 notice has elapsed.',
+                'type' => 'bool',
+                'default' => 'false',
+            ],
+
             // ── Commerce — storefront ──────────────────────────────────────
             'commerce.storefront.enabled' => [
                 'group' => 'commerce',

@@ -33,7 +33,7 @@ exists. Phase 12 production hardening (MFA, observability, Redis) is deferred.
 
 1. **Joining is free of cost.** The registration wizard must not add any SKU to a cart or charge anything. (T&C §4; DSR Rule 5.)
 2. **Commissions are a function of product sales only.** No credit, payout, bonus, pool entry or reward may exist without an associated `product_sale_id`. (DSR Rule 5(1)(c).)
-3. **No income projections.** The public site and the registration UI must never display or imply future earnings. Historical facts only, scoped to the logged-in distributor's own data. (DSR Rule 5(1)(d); T&C §6.)
+3. **No income projections.** The public site and the registration UI must never display or imply future earnings. Historical facts only. Earnings, wallet and payout figures are scoped to the logged-in distributor's own data. *Amended 2026-08-30 (client decision, R-65):* inside the authenticated, subtree-scoped genealogy (Genos / Direct-referral cards and the Details popup) a distributor's **rank titles and accumulated personal BV** may be shown to their sponsor, their upline and admins — a historical fact about that distributor, never money, never a projection — but only while the developer-owned setting `genealogy.downline_stats_visible` is ON after the DPDP §5 notice period has run. Personal-purchase title, withdrawal income, wallet and payouts stay own-only. (DSR Rule 5(1)(d); T&C §6; DSA §8.5.)
 4. **Mandatory orientation** (watch ≥ 95% + micro-quiz) before registration can be finalised. (T&C Step 2.)
 5. **30-day cooling-off** with one-click cancellation and full refund. SMS/email reminders at D-7 / D-1. (T&C §4.)
 6. **One PAN = one ADN.** Couple registrations use a single ADN with a primary/secondary flag. (T&C §1.4, §7.)

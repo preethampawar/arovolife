@@ -90,7 +90,8 @@ surface and are managed by the technical team:
 - the compensation-plan ladders (GSB slabs, rank tiers, Fortune tables) —
   visible on Compensation → Plan settings for **monitoring**, but not editable there;
 - plan rates, caps and periods (admin charge, TDS, payout thresholds), the
-  cooling-off window, placement/spillover behaviour, referral attribution,
+  cooling-off window, placement/spillover behaviour, downline rank/BV
+  visibility on tree cards, referral attribution,
   self-purchase rules, payment gateways and notification switches;
 - the engine kill-switches.
 

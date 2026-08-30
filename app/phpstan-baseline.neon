@@ -2877,8 +2877,14 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
-			path: tests/Modules/Genealogy/TreeCardOwnStatsTest.php
+			count: 8
+			path: tests/Modules/Genealogy/TreeCardStatsTest.php
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Genealogy/TreeCardStatsTest.php
+
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'

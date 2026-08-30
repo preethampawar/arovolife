@@ -25,6 +25,7 @@ A Distributor or administrator MUST NOT, directly or indirectly:
 8. **List on third-party e-commerce marketplaces** (Amazon, Flipkart, Meesho, Myntra, JioMart, etc.), online classifieds (OLX, Quikr), social-commerce platforms (Instagram Shop, Facebook Marketplace), or any platform that allows purchase without the customer being attributed to a Distributor's ADN. This is a violation of arovolife's direct-selling model and of clause §9 of the Direct Seller Agreement.
 9. **Operate a physical retail store** stocking arovolife product, or place arovolife product in someone else's retail store on consignment or otherwise.
 10. **Make false claims about arovolife's regulatory status, affiliations, government endorsements, awards, or media coverage.**
+11. **Publish or misuse another Distributor's figures.** The rank and accumulated personal BV of your downline are shown to you inside your genealogy view solely so you can mentor them. Screenshotting, forwarding, publishing or quoting another Distributor's rank or BV outside the platform, using them in any recruitment or sales representation, or using a downline member's distance from a BV threshold to pressure them into purchasing ("inventory loading") is prohibited and is treated under ¶4 as pressure-selling.
 
 ## 3. Recruitment Ethics
 
