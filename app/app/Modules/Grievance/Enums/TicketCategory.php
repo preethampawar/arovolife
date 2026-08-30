@@ -24,6 +24,14 @@ enum TicketCategory: string
     case Compensation = 'compensation';
     case Genealogy = 'genealogy';
     case Ethics = 'ethics';
+    // Code-of-ethics complaints against another distributor (client's
+    // "Distributor Request" list, items 8–11, 30-08-2026). They are
+    // complaints, not requests, so they live here and reach the Compliance
+    // Committee like any other ethics matter.
+    case Poaching = 'poaching';
+    case CompetitiveBusiness = 'competitive_business';
+    case ECommerceSelling = 'ecommerce_selling';
+    case StockingUndercutting = 'stocking_undercutting';
     case Privacy = 'privacy';
     case Platform = 'platform';
     case Other = 'other';
@@ -41,6 +49,10 @@ enum TicketCategory: string
             self::Compensation => 'Compensation & payouts',
             self::Genealogy => 'Genealogy & placement',
             self::Ethics => 'Ethics & fraud',
+            self::Poaching => 'Poaching (recruiting from another distributor\'s team)',
+            self::CompetitiveBusiness => 'Competitive business (promoting another direct-selling company)',
+            self::ECommerceSelling => 'Selling arovolife products on e-commerce sites',
+            self::StockingUndercutting => 'Stocking and under-cutting (bulk stocking or selling below MRP)',
             self::Privacy => 'Privacy & data',
             self::Platform => 'Platform & security',
             self::Other => 'Something else',
@@ -63,6 +75,10 @@ enum TicketCategory: string
             self::Order,
             self::Refund,
             self::Ethics,
+            self::Poaching,
+            self::CompetitiveBusiness,
+            self::ECommerceSelling,
+            self::StockingUndercutting,
             self::Privacy,
             self::Platform,
             self::Other,
@@ -76,6 +92,40 @@ enum TicketCategory: string
      */
     public function bypassesFrontLine(): bool
     {
-        return in_array($this, [self::Ethics, self::Privacy], true);
+        return $this->isEthics() || $this === self::Privacy;
+    }
+
+    /**
+     * Every code-of-ethics family: the general case plus the four named
+     * distributor-conduct complaints. Used wherever "ethics" visibility or
+     * routing rules apply, so the named cases inherit them automatically.
+     */
+    public function isEthics(): bool
+    {
+        return in_array($this, [
+            self::Ethics, self::Poaching, self::CompetitiveBusiness,
+            self::ECommerceSelling, self::StockingUndercutting,
+        ], true);
+    }
+
+    /**
+     * Categories readable by the compliance side only: every ethics family
+     * plus privacy. The queue, the ticket page and the monthly report all
+     * hide these from anyone without `compliance.discipline`.
+     *
+     * @return list<string>
+     */
+    public static function sensitiveValues(): array
+    {
+        return array_map(
+            fn (self $c): string => $c->value,
+            array_values(array_filter(self::cases(), fn (self $c): bool => $c->bypassesFrontLine())),
+        );
+    }
+
+    /** @return list<self> */
+    public static function ethicsCases(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $c): bool => $c->isEthics()));
     }
 }

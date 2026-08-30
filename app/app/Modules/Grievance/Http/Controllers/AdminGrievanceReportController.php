@@ -100,7 +100,7 @@ final class AdminGrievanceReportController extends Controller
             return [];
         }
 
-        return [TicketCategory::Ethics->value, TicketCategory::Privacy->value];
+        return TicketCategory::sensitiveValues();
     }
 
     private function resolveMonth(Request $request): Carbon

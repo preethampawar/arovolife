@@ -62,7 +62,12 @@ by hand from the ticket page. Each escalation emails the new owner.
 
 **Ethics and privacy complaints skip step 1** and open directly with the
 Grievance Officer. A bribe allegation must not land in the lap of the agent it
-might be about.
+might be about. The four named distributor-conduct complaints — **Poaching**,
+**Competitive business**, **Selling on e-commerce sites** and **Stocking and
+under-cutting** — are ethics complaints too: they follow the same routing and
+the same compliance-only visibility, and they are the place a distributor
+reports another distributor's conduct (there is no separate "report a
+distributor" form).
 
 Step 4 is the end of the internal ladder. Steps 5 to 8 of the published matrix
 — the National Consumer Helpline, the CCPA, the Consumer Disputes Redressal

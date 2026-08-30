@@ -412,10 +412,7 @@ final class AdminGrievanceController extends Controller
         }
 
         if (! $user->can('compliance.discipline')) {
-            $query->whereNotIn('category', [
-                TicketCategory::Ethics->value,
-                TicketCategory::Privacy->value,
-            ]);
+            $query->whereNotIn('category', TicketCategory::sensitiveValues());
         }
 
         // Never list a grievance the viewer filed themselves.

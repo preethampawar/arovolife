@@ -686,3 +686,25 @@ it('GRV-021: a genuine image attachment is still accepted', function () {
 
     Storage::disk('grievance')->assertExists(TicketAttachment::sole()->path);
 });
+
+it('GRV-040: distributor-conduct complaints (poaching, competitive business, e-commerce, stocking) are ethics complaints', function () {
+    Notification::fake();
+
+    foreach ([TicketCategory::Poaching, TicketCategory::CompetitiveBusiness, TicketCategory::ECommerceSelling, TicketCategory::StockingUndercutting] as $category) {
+        $ticket = grvFile(['category' => $category, 'subject' => 'Report about another distributor']);
+
+        expect($ticket->escalation_level)->toBe(EscalationLevel::GrievanceOfficer)
+            ->and($category->isEthics())->toBeTrue()
+            ->and(in_array($category->value, TicketCategory::sensitiveValues(), true))->toBeTrue()
+            ->and(in_array($category, TicketCategory::selectable(), true))->toBeTrue();
+    }
+
+    // A signed-in distributor can pick the new category on the in-app form.
+    $user = grvDistributorUser();
+    $this->actingAs($user)->get(route('my.grievances.create'))->assertOk()->assertSee('Poaching');
+    $this->actingAs($user)->post(route('my.grievances.store'), [
+        'subject' => 'Products listed on a marketplace',
+        'body' => 'A distributor in my city is listing arovolife products on an online marketplace.',
+        'category' => TicketCategory::ECommerceSelling->value,
+    ])->assertRedirect();
+});
