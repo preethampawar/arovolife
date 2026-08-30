@@ -35,8 +35,8 @@
                 </p>
                 @if($hasDistributorBlock)
                     <div class="mt-3 flex flex-wrap gap-2 text-xs">
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 font-mono tracking-wider">
-                            <svg class="w-3.5 h-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/></svg>
+                        <span class="inline-flex items-center gap-2 rounded-full bg-white text-brand-900 px-3 py-1 text-sm font-mono font-bold tracking-widest shadow-md ring-2 ring-sunrise-400 ring-offset-2 ring-offset-brand-800">
+                            <svg class="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/></svg>
                             ADN {{ $distributor->adn }}
                         </span>
                         @if($rankOn && $rankStatus?->currentRankName())
@@ -62,18 +62,21 @@
             {{-- Referral-link card — same source and behaviour as before,
                  now on a glass panel inside the hero so distributors always
                  see their invite URL at the very top of the dashboard. --}}
-            <div class="w-full rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 self-start">
+            <div class="w-full rounded-2xl border-2 border-sunrise-400 bg-white/15 backdrop-blur-sm p-4 self-start shadow-lg shadow-sunrise-500/20 ring-4 ring-sunrise-400/20">
                 <div class="flex items-center justify-between gap-3 mb-2">
-                    <p class="text-[11px] text-white/90 uppercase tracking-wider font-semibold">My Referral Link</p>
-                    <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-white text-brand-700">Personal invite</span>
+                    <p class="inline-flex items-center gap-1.5 text-xs text-white uppercase tracking-wider font-bold">
+                        <svg class="w-4 h-4 text-sunrise-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/></svg>
+                        My Referral Link
+                    </p>
+                    <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-sunrise-400 text-brand-950">Personal invite</span>
                 </div>
                 <div class="flex items-stretch gap-2">
                     <input type="text" readonly value="{{ $inviteUrl }}"
-                        class="flex-1 min-w-0 rounded-lg border border-white/30 bg-white px-2.5 py-1.5 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-sunrise-400"
+                        class="flex-1 min-w-0 rounded-lg border-2 border-sunrise-300 bg-white px-2.5 py-2 text-xs font-mono font-semibold text-brand-900 focus:outline-none focus:ring-2 focus:ring-sunrise-400"
                         onclick="this.select()">
                     <button type="button"
                         onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-                        class="px-3 rounded-lg bg-sunrise-500 hover:bg-sunrise-600 text-white text-xs font-semibold transition-colors">
+                        class="px-4 rounded-lg bg-sunrise-500 hover:bg-sunrise-600 text-white text-xs font-bold shadow-md transition-colors">
                         Copy
                     </button>
                 </div>
