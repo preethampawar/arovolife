@@ -65,6 +65,12 @@ final class RolesAndPermissionsSeeder extends Seeder
         // the decision itself sits behind `compliance.discipline`.
         'adc.application.review' => ['admin-operations', 'admin-compliance'],
 
+        // Reading a distributor request exposes identity documents and, for
+        // a transfer, a relative's details. Operations decides name / DOB
+        // corrections (`kyc.review`); compliance decides transfers and
+        // cancellations (`compliance.discipline`). Finance has no part.
+        'distributor.request.handle' => ['admin-operations', 'admin-compliance'],
+
         // Reading the audit log is monitoring, not action, and every scoped
         // role needs it to do its own job — but admin-finance reading it is
         // also the check on admin-finance, so it stays broad deliberately.

@@ -91,6 +91,22 @@ return [
         // photos). Kept out of the KYC root on purpose: these are premises
         // records, not identity records, and admin viewing is audited
         // separately.
+        // Distributor request documents (name / DOB proof, relationship
+        // proof, consent letters). Identity records, but kept apart from the
+        // KYC root so the KYC purge and the request retention are separate.
+        'distributor-requests' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'ap-south-1'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => 'distributor-requests',
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         'adc' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

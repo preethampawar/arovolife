@@ -91,6 +91,18 @@
                     fn () => \App\Modules\Grievance\Models\Ticket::query()->unsettled()->count(),
                 );
 
+                // Open distributor requests for the sidebar badge (flag-gated,
+                // same 60s cache as the other queues).
+                $distributorRequestsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\DistributorRequestsFeature::class)
+                    && (auth()->user()?->can('distributor.request.handle') ?? false);
+                $openDistributorRequestCount = $distributorRequestsOn
+                    ? \Illuminate\Support\Facades\Cache::remember(
+                        'admin.distributor_requests.open_count',
+                        60,
+                        fn () => \App\Modules\Identity\Models\DistributorRequest::query()->open()->count(),
+                    )
+                    : 0;
+
                 $navItems = [
                     ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => '⬡'],
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => '◉'],
@@ -106,6 +118,9 @@
                         ? [['route' => 'admin.kyc.index',            'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc']]
                         : []),
                     ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => '⇄', 'prefix' => 'admin.line-changes'],
+                    ...($distributorRequestsOn
+                        ? [['route' => 'admin.distributor-requests.index', 'label' => 'Distributor requests', 'icon' => '📝', 'prefix' => 'admin.distributor-requests', 'badge' => $openDistributorRequestCount]]
+                        : []),
                     ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => '✉', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
                     // Grievances are gated on `grievance.handle` (R-17: not
                     // admin-finance). Hiding the item rather than letting it

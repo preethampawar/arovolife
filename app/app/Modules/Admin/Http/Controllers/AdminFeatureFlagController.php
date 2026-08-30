@@ -8,6 +8,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\DistributorRequestsFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\FranchiseFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -149,6 +150,14 @@ final class AdminFeatureFlagController extends Controller
                 'class' => AreteCenterApplicationsFeature::class,
                 'label' => 'Arete Development Centre applications',
                 'description' => 'Lets a distributor apply to open an Arete Development Centre (premises details, documents, declarations) and puts the review queue — approve / reject / request changes — in the admin console. Approval activates the centre in the registry at Phase 1 and assigns the applicant as its owner. OFF leaves no trace: no menu item, no routes, no minimum-size setting. The admin centre registry itself stays available regardless of this flag.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+
+            'identity.distributor_requests' => [
+                'class' => DistributorRequestsFeature::class,
+                'label' => 'Distributor requests',
+                'description' => 'Lets a distributor file a formal request about their own record — name correction, name change, date-of-birth correction, membership transfer to an immediate blood relation, or ID cancellation — with supporting documents, and puts the review queue in the admin console. Name and DOB approvals update the record (audit-logged); transfer and cancellation approvals are acknowledgements that compliance then carries out with the existing account tools. OFF leaves no trace: no menu item, no routes, no queue.',
                 'owner' => 'developer',
                 'requires' => [],
             ],

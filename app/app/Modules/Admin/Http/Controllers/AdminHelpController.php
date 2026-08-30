@@ -76,6 +76,11 @@ final class AdminHelpController extends Controller
             'description' => 'How to work the complaint queue: the published SLA clocks, the four-step escalation ladder, third-party extensions, and the monthly compliance report.',
             'file' => 'grievance-handling.md',
         ],
+        'distributor-requests' => [
+            'title' => 'Distributor Requests',
+            'description' => 'Name and date-of-birth corrections, name changes, membership transfers and ID cancellations: what each type does on approval, who decides it, and what to check before approving.',
+            'file' => 'distributor-requests.md',
+        ],
         'analytics' => [
             'title' => 'Analytics',
             'description' => 'How to read the funnels, the retention table and the base panel — what each figure counts, and why nothing on the page forecasts.',
