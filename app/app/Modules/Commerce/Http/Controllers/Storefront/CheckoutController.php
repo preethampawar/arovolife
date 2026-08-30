@@ -133,6 +133,15 @@ final class CheckoutController extends Controller
             return $redirect;
         }
 
+        // Refuse before the gateway can throw: with the stub outside its
+        // environment allow-list and no real gateway, an online order has no
+        // way to be captured.
+        if (! $this->onlinePermitted()) {
+            return back()->withErrors([
+                'payment_method' => 'Online payment is not available right now. Please try again later or contact support.',
+            ])->withInput();
+        }
+
         $allowedMethods = [Order::PAYMENT_ONLINE];
 
         $billingSame = $request->boolean('billing_same');
@@ -433,9 +442,22 @@ final class CheckoutController extends Controller
         return DB::table('settings')->where('key', $key)->value('value') === 'true';
     }
 
-    /** Online payment is available if any online gateway is enabled. */
+    /**
+     * Online payment is available if any online gateway is enabled AND can
+     * actually run here. The stub flag alone is not enough: StubGateway
+     * refuses outside its environment allow-list, and offering a method the
+     * gateway will throw on turns a settings mismatch into a 500 at the
+     * moment the buyer presses "Place order".
+     */
     private function onlineEnabled(): bool
     {
-        return $this->flag('payments.gateway.stub.enabled') || $this->flag('payments.gateway.razorpay.enabled');
+        return ($this->flag('payments.gateway.stub.enabled') && $this->gateway->permitted())
+            || $this->flag('payments.gateway.razorpay.enabled');
+    }
+
+    /** Some gateway can actually capture an online order in this environment. */
+    private function onlinePermitted(): bool
+    {
+        return $this->gateway->permitted() || $this->flag('payments.gateway.razorpay.enabled');
     }
 }

@@ -88,6 +88,26 @@ return [
     | feature is scheduled for deletion once the plan is signed off — see
     | docs/runbooks/artisan-commands.md → compensation:recompute-all.
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Stub payment gateway allow-list
+    |--------------------------------------------------------------------------
+    |
+    | StubGateway captures an order without collecting money (R-56 / T-6.1
+    | C-1). It refuses to run unless APP_ENV is named here, and it refuses in
+    | production regardless of what this says. Defaults to local and testing;
+    | add `staging` on the UAT build so the client can place test orders
+    | until a real gateway exists.
+    */
+    'payments' => [
+        'stub' => [
+            'allowed_environments' => array_values(array_filter(array_map(
+                trim(...),
+                explode(',', (string) env('PAYMENT_STUB_ENVIRONMENTS', 'local,testing')),
+            ), static fn (string $name): bool => $name !== '')),
+        ],
+    ],
+
     'recompute' => [
         'enabled' => (bool) env('COMP_RECOMPUTE_ENABLED', false),
 

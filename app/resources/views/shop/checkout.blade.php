@@ -276,12 +276,21 @@
         {{-- Payment method (online only) --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Payment Method</h2>
-            <div>
-                <label class="flex items-center gap-3 p-3 rounded-lg border border-brand-500 bg-brand-50">
-                    <input type="radio" name="payment_method" value="online" checked class="text-brand-700 focus:ring-brand-500">
-                    <span class="text-sm"><strong class="text-gray-900">Pay online</strong> <span class="text-gray-600">— card / UPI / netbanking</span></span>
-                </label>
-            </div>
+            @if ($onlineEnabled)
+                <div>
+                    <label class="flex items-center gap-3 p-3 rounded-lg border border-brand-500 bg-brand-50">
+                        <input type="radio" name="payment_method" value="online" checked class="text-brand-700 focus:ring-brand-500">
+                        <span class="text-sm"><strong class="text-gray-900">Pay online</strong> <span class="text-gray-600">— card / UPI / netbanking</span></span>
+                    </label>
+                </div>
+            @else
+                <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    Online payment is not available right now. Please try again later or contact support.
+                </div>
+            @endif
+            @error('payment_method')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
         </div>
 
         <div class="bg-white rounded-2xl border border-gray-200 p-6">

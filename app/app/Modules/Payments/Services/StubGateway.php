@@ -34,17 +34,38 @@ final class StubGateway
     public function __construct(private readonly OrderStateMachine $orderStateMachine) {}
 
     /**
-     * @throws RuntimeException when instantiated anywhere but local/testing
+     * Whether the stub may run in the current environment.
+     *
+     * `arovolife.payments.stub.allowed_environments` (PAYMENT_STUB_ENVIRONMENTS)
+     * widens the stub to UAT builds such as staging. Production is refused
+     * whatever the list says — the allow-list exists to let the client test
+     * checkout, not to give an operator a way to switch the guard off.
+     */
+    public function permitted(): bool
+    {
+        if (app()->environment('production')) {
+            return false;
+        }
+
+        /** @var list<string> $allowed */
+        $allowed = config('arovolife.payments.stub.allowed_environments', ['local', 'testing']);
+
+        return app()->environment($allowed);
+    }
+
+    /**
+     * @throws RuntimeException when used in an environment not on the allow-list
      */
     private function assertNotProduction(): void
     {
-        if (app()->environment('local', 'testing')) {
+        if ($this->permitted()) {
             return;
         }
 
         throw new RuntimeException(
             'StubGateway captures payment without collecting money and must never run outside '
-            .'local/testing. Configure a real payment gateway before taking orders. '
+            .'local/testing (or an environment named in PAYMENT_STUB_ENVIRONMENTS). '
+            .'Configure a real payment gateway before taking orders. '
             .'(Security audit T-6.1 finding C-1.)'
         );
     }
