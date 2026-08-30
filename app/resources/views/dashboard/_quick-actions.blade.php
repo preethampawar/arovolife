@@ -20,18 +20,38 @@
         $actions[] = ['label' => 'My Requests', 'href' => route('my.requests.index'), 'tone' => 'bg-slate-100 text-slate-700', 'svg' => '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>'];
     }
     $actions[] = ['label' => 'Cooling-off', 'href' => route('cooling-off.show'), 'tone' => 'bg-red-50 text-red-700', 'svg' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>'];
+
+    // Each tone string is "bg-{c}-50 text-{c}-700"; derive the tinted card,
+    // border and solid icon from the colour name (classes listed literally
+    // below so Tailwind keeps them).
+    $quickTones = [
+        'sunrise' => ['card' => 'border-sunrise-200 bg-sunrise-50 hover:border-sunrise-400 hover:bg-sunrise-100', 'icon' => 'bg-sunrise-500 text-white', 'label' => 'text-sunrise-900'],
+        'amber'   => ['card' => 'border-amber-200 bg-amber-50 hover:border-amber-400 hover:bg-amber-100',         'icon' => 'bg-amber-500 text-white',   'label' => 'text-amber-900'],
+        'brand'   => ['card' => 'border-brand-200 bg-brand-50 hover:border-brand-400 hover:bg-brand-100',         'icon' => 'bg-brand-500 text-white',   'label' => 'text-brand-900'],
+        'leaf'    => ['card' => 'border-leaf-200 bg-leaf-50 hover:border-leaf-400 hover:bg-leaf-100',             'icon' => 'bg-leaf-500 text-white',    'label' => 'text-leaf-900'],
+        'indigo'  => ['card' => 'border-indigo-200 bg-indigo-50 hover:border-indigo-400 hover:bg-indigo-100',     'icon' => 'bg-indigo-500 text-white',  'label' => 'text-indigo-900'],
+        'emerald' => ['card' => 'border-emerald-200 bg-emerald-50 hover:border-emerald-400 hover:bg-emerald-100', 'icon' => 'bg-emerald-500 text-white', 'label' => 'text-emerald-900'],
+        'pink'    => ['card' => 'border-pink-200 bg-pink-50 hover:border-pink-400 hover:bg-pink-100',             'icon' => 'bg-pink-500 text-white',    'label' => 'text-pink-900'],
+        'violet'  => ['card' => 'border-violet-200 bg-violet-50 hover:border-violet-400 hover:bg-violet-100',     'icon' => 'bg-violet-500 text-white',  'label' => 'text-violet-900'],
+        'slate'   => ['card' => 'border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-slate-100',         'icon' => 'bg-slate-600 text-white',   'label' => 'text-slate-900'],
+        'red'     => ['card' => 'border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100',                 'icon' => 'bg-red-500 text-white',     'label' => 'text-red-900'],
+    ];
 @endphp
 
 <div class="mb-6">
     <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold mb-3">Quick actions</p>
     <div class="flex flex-wrap gap-2 sm:gap-3">
         @foreach($actions as $action)
+            @php
+                preg_match('/^bg-([a-z]+)-/', $action['tone'], $m);
+                $qt = $quickTones[$m[1] ?? 'brand'] ?? $quickTones['brand'];
+            @endphp
             <a href="{{ $action['href'] }}"
-               class="group flex flex-1 basis-[calc(33.333%-0.5rem)] sm:basis-24 sm:max-w-36 min-w-0 flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-brand-200">
-                <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl {{ $action['tone'] }} transition group-hover:scale-105">
+               class="group flex flex-1 basis-[calc(33.333%-0.5rem)] sm:basis-24 sm:max-w-36 min-w-0 flex-col items-center gap-2 rounded-2xl border {{ $qt['card'] }} px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-md {{ $qt['icon'] }} transition group-hover:scale-105">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">{!! $action['svg'] !!}</svg>
                 </span>
-                <span class="text-[11px] sm:text-xs font-semibold text-gray-800 leading-tight">{{ $action['label'] }}</span>
+                <span class="text-[11px] sm:text-xs font-semibold {{ $qt['label'] }} leading-tight">{{ $action['label'] }}</span>
             </a>
         @endforeach
     </div>

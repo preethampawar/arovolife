@@ -11,37 +11,52 @@
 
      Optional vars:
        $readonly    — bool; when true, photo block is plain <img> with no
-                      upload affordance. Default false. --}}
+                      upload affordance. Default false.
+       $colorful    — bool; when true, rows are grouped into tinted bands
+                      (identity / team / rank / money). Default false. --}}
 @php
     $readonly = $readonly ?? false;
+    $colorful = $colorful ?? false;
+
+    // Row groups for the colourful variant — label => [dot, band] classes.
+    $groupTones = [
+        'identity' => ['dot' => 'bg-brand-500',   'band' => 'bg-brand-50/70'],
+        'team'     => ['dot' => 'bg-indigo-500',  'band' => 'bg-indigo-50/70'],
+        'rank'     => ['dot' => 'bg-sunrise-500', 'band' => 'bg-sunrise-50/70'],
+        'money'    => ['dot' => 'bg-leaf-500',    'band' => 'bg-leaf-50/70'],
+    ];
 @endphp
 
 <div class="grid grid-cols-1 sm:grid-cols-[1fr_140px] lg:grid-cols-[1fr_160px] gap-6">
     {{-- LEFT: 15-row stats list ───────────────────────────────────────── --}}
-    <dl class="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] gap-x-3 gap-y-2 text-sm">
+    <dl class="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] gap-x-3 {{ $colorful ? 'gap-y-1' : 'gap-y-2' }} text-sm">
         @php
             $rows = [
-                ['label' => 'Name',                    'value' => $idCardStats['name']],
-                ['label' => 'ID Number',               'value' => $idCardStats['adn'],                'class' => 'font-mono text-brand-700 tracking-wider'],
-                ['label' => 'Registration Date',       'value' => $idCardStats['registration_date']?->format('d M Y, h:i A')],
-                ['label' => 'Franchise',               'value' => $idCardStats['franchise']],
-                ['label' => 'Region',                  'value' => $idCardStats['region']],
-                ['label' => 'Status',                  'value' => $idCardStats['verification_label'], 'render' => 'pill', 'pill_class' => $idCardStats['verification_class']],
-                ['label' => 'Activation Date',         'value' => $idCardStats['activation_date']?->format('d M Y')],
-                ['label' => 'Personal Sales Position', 'value' => $idCardStats['personal_sales_title']],
-                ['label' => 'Left Team',               'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['left_team'])],
-                ['label' => 'Right Team',              'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['right_team'])],
-                ['label' => 'Total Team',              'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['total_team'])],
-                ['label' => 'Highest Rank',            'value' => $idCardStats['highest_rank']],
-                ['label' => 'Current Rank',            'value' => $idCardStats['current_rank']],
-                ['label' => 'Total Personal BV',       'value' => $idCardStats['total_personal_bv']],
-                ['label' => 'Total Withdrawal Income', 'value' => $idCardStats['total_withdrawal_income']],
+                ['label' => 'Name',                    'group' => 'identity', 'value' => $idCardStats['name']],
+                ['label' => 'ID Number',               'group' => 'identity', 'value' => $idCardStats['adn'],                'class' => 'font-mono text-brand-700 tracking-wider'],
+                ['label' => 'Registration Date',       'group' => 'identity', 'value' => $idCardStats['registration_date']?->format('d M Y, h:i A')],
+                ['label' => 'Franchise',               'group' => 'identity', 'value' => $idCardStats['franchise']],
+                ['label' => 'Region',                  'group' => 'identity', 'value' => $idCardStats['region']],
+                ['label' => 'Status',                  'group' => 'identity', 'value' => $idCardStats['verification_label'], 'render' => 'pill', 'pill_class' => $idCardStats['verification_class']],
+                ['label' => 'Activation Date',         'group' => 'identity', 'value' => $idCardStats['activation_date']?->format('d M Y')],
+                ['label' => 'Personal Sales Position', 'group' => 'rank', 'value' => $idCardStats['personal_sales_title']],
+                ['label' => 'Left Team',               'group' => 'team', 'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['left_team'])],
+                ['label' => 'Right Team',              'group' => 'team', 'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['right_team'])],
+                ['label' => 'Total Team',              'group' => 'team', 'value' => \App\Modules\Shared\Support\IndianNumber::format((int) $idCardStats['total_team'])],
+                ['label' => 'Highest Rank',            'group' => 'rank', 'value' => $idCardStats['highest_rank']],
+                ['label' => 'Current Rank',            'group' => 'rank', 'value' => $idCardStats['current_rank']],
+                ['label' => 'Total Personal BV',       'group' => 'money', 'value' => $idCardStats['total_personal_bv']],
+                ['label' => 'Total Withdrawal Income', 'group' => 'money', 'value' => $idCardStats['total_withdrawal_income']],
             ];
         @endphp
 
         @foreach($rows as $row)
-            <dt class="text-gray-700 truncate">{{ $row['label'] }}</dt>
-            <dd class="font-medium text-gray-900 truncate {{ $row['class'] ?? '' }}">
+            @php $gt = $colorful ? $groupTones[$row['group']] : null; @endphp
+            <dt class="text-gray-700 truncate {{ $gt ? 'flex items-center gap-2 rounded-l-lg pl-2 py-1 '.$gt['band'] : '' }}">
+                @if($gt)<span class="h-2 w-2 shrink-0 rounded-full {{ $gt['dot'] }}" aria-hidden="true"></span>@endif
+                {{ $row['label'] }}
+            </dt>
+            <dd class="font-medium text-gray-900 truncate {{ $row['class'] ?? '' }} {{ $gt ? 'rounded-r-lg pr-2 py-1 '.$gt['band'] : '' }}">
                 @if(($row['render'] ?? null) === 'pill')
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border {{ $row['pill_class'] ?? '' }}">
                         {{ $row['value'] }}

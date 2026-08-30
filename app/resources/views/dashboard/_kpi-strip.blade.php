@@ -67,11 +67,11 @@
     ];
 
     $toneClasses = [
-        'brand'   => ['tile' => 'bg-brand-50 text-brand-700',     'ring' => 'focus:ring-brand-500'],
-        'leaf'    => ['tile' => 'bg-leaf-50 text-leaf-700',       'ring' => 'focus:ring-leaf-500'],
-        'sky'     => ['tile' => 'bg-sky-50 text-sky-700',         'ring' => 'focus:ring-sky-500'],
-        'indigo'  => ['tile' => 'bg-indigo-50 text-indigo-700',   'ring' => 'focus:ring-indigo-500'],
-        'sunrise' => ['tile' => 'bg-sunrise-50 text-sunrise-700', 'ring' => 'focus:ring-sunrise-500'],
+        'brand'   => ['card' => 'border-brand-200 bg-gradient-to-br from-brand-50 via-white to-white hover:border-brand-300',       'bar' => 'from-brand-400 to-brand-600',     'icon' => 'bg-brand-500 text-white shadow-brand-500/30',     'value' => 'text-brand-800',   'ring' => 'focus:ring-brand-500'],
+        'leaf'    => ['card' => 'border-leaf-200 bg-gradient-to-br from-leaf-50 via-white to-white hover:border-leaf-300',           'bar' => 'from-leaf-400 to-leaf-600',       'icon' => 'bg-leaf-500 text-white shadow-leaf-500/30',       'value' => 'text-leaf-800',    'ring' => 'focus:ring-leaf-500'],
+        'sky'     => ['card' => 'border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white hover:border-sky-300',               'bar' => 'from-sky-400 to-sky-600',         'icon' => 'bg-sky-500 text-white shadow-sky-500/30',         'value' => 'text-sky-800',     'ring' => 'focus:ring-sky-500'],
+        'indigo'  => ['card' => 'border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-white hover:border-indigo-300',     'bar' => 'from-indigo-400 to-indigo-600',   'icon' => 'bg-indigo-500 text-white shadow-indigo-500/30',   'value' => 'text-indigo-800',  'ring' => 'focus:ring-indigo-500'],
+        'sunrise' => ['card' => 'border-sunrise-200 bg-gradient-to-br from-sunrise-50 via-white to-white hover:border-sunrise-300', 'bar' => 'from-sunrise-400 to-sunrise-600', 'icon' => 'bg-sunrise-500 text-white shadow-sunrise-500/30', 'value' => 'text-sunrise-800', 'ring' => 'focus:ring-sunrise-500'],
     ];
     $gridCols = count($tiles) === 6 ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4';
 @endphp
@@ -90,15 +90,16 @@
                 : 'href="'.$tile['href'].'"';
         @endphp
         <{{ $tag }} {!! $attrs !!}
-            class="group block cursor-pointer text-left rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 {{ $tone['ring'] }}">
+            class="group relative block cursor-pointer overflow-hidden text-left rounded-2xl border {{ $tone['card'] }} p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 {{ $tone['ring'] }}">
+            <span class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r {{ $tone['bar'] }}" aria-hidden="true"></span>
             <div class="flex items-start justify-between gap-2 mb-3">
-                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {{ $tone['tile'] }}">
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md {{ $tone['icon'] }}">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">{!! $tile['svg'] !!}</svg>
                 </span>
                 <x-help-tip :text="$tile['tip']" />
             </div>
             <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">{{ $tile['label'] }}</p>
-            <p class="mt-1 text-xl sm:text-2xl font-bold text-gray-900 leading-tight truncate">{{ $tile['value'] }}</p>
+            <p class="mt-1 text-xl sm:text-2xl font-bold {{ $tone['value'] }} leading-tight truncate">{{ $tile['value'] }}</p>
             <p class="mt-1 text-[11px] text-gray-600 leading-snug">{{ $tile['sub'] }}</p>
         </{{ $tag }}>
     @endforeach
