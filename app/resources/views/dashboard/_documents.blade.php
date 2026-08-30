@@ -2,7 +2,8 @@
      Only Membership Card is implemented today; the others are Phase 4+
      placeholders, rendered as disabled "Coming soon" so the surface is
      discoverable but the missing wiring is honest. --}}
-<div class="col-span-full">
+@php $docsLayout = $docsLayout ?? 'row'; @endphp
+<div class="{{ $docsLayout === 'stacked' ? 'h-full flex flex-col' : '' }}">
     <div class="flex items-baseline justify-between mb-3">
         <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold">Documents</p>
     </div>
@@ -39,7 +40,7 @@
         ];
     @endphp
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid gap-4 {{ $docsLayout === 'stacked' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 flex-1 content-start' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' }}">
         @foreach($docs as $doc)
             @if($doc['url'])
                 <a href="{{ $doc['url'] }}" target="_blank" rel="noopener"

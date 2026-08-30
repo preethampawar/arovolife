@@ -38,8 +38,13 @@
 @include('dashboard._hero')
 
 @if($distributor)
-    <div class="mb-6">
-        @include('dashboard._profile-stats')
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="lg:col-span-2 min-w-0">
+            @include('dashboard._profile-stats')
+        </div>
+        <div class="min-w-0">
+            @include('dashboard._documents', ['docsLayout' => 'stacked'])
+        </div>
     </div>
 
     @include('dashboard._kpi-strip')
@@ -58,10 +63,6 @@
             @include('dashboard._cooling-off')
             @include('dashboard._messages')
         </div>
-    </div>
-
-    <div class="mb-6">
-        @include('dashboard._documents')
     </div>
 
     @include('dashboard._my-team')
