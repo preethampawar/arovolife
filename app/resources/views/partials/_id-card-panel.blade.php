@@ -29,7 +29,7 @@
 
 <div class="grid grid-cols-1 sm:grid-cols-[1fr_140px] lg:grid-cols-[1fr_160px] gap-6">
     {{-- LEFT: 15-row stats list ───────────────────────────────────────── --}}
-    <dl class="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] gap-x-3 {{ $colorful ? 'gap-y-1' : 'gap-y-2' }} text-sm">
+    <dl class="grid grid-cols-[180px_1fr] sm:grid-cols-[200px_1fr] gap-x-3 {{ $colorful ? 'gap-y-1' : 'gap-y-2' }} text-sm">
         @php
             $rows = [
                 ['label' => 'Name',                    'group' => 'identity', 'value' => $idCardStats['name']],
@@ -52,11 +52,11 @@
 
         @foreach($rows as $row)
             @php $gt = $colorful ? $groupTones[$row['group']] : null; @endphp
-            <dt class="text-gray-700 truncate {{ $gt ? 'flex items-center gap-2 rounded-l-lg pl-2 py-1 '.$gt['band'] : '' }}">
+            <dt class="text-gray-700 break-words {{ $gt ? 'flex items-center gap-2 rounded-l-lg pl-2 py-1 '.$gt['band'] : '' }}">
                 @if($gt)<span class="h-2 w-2 shrink-0 rounded-full {{ $gt['dot'] }}" aria-hidden="true"></span>@endif
                 {{ $row['label'] }}
             </dt>
-            <dd class="font-medium text-gray-900 truncate {{ $row['class'] ?? '' }} {{ $gt ? 'rounded-r-lg pr-2 py-1 '.$gt['band'] : '' }}">
+            <dd class="font-medium text-gray-900 truncate self-stretch {{ $row['class'] ?? '' }} {{ $gt ? 'rounded-r-lg pr-2 py-1 '.$gt['band'] : '' }}">
                 @if(($row['render'] ?? null) === 'pill')
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border {{ $row['pill_class'] ?? '' }}">
                         {{ $row['value'] }}
