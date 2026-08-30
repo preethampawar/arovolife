@@ -62,34 +62,39 @@
             {{-- Referral-link card — same source and behaviour as before,
                  now on a glass panel inside the hero so distributors always
                  see their invite URL at the very top of the dashboard. --}}
-            <div class="w-full rounded-2xl border-2 border-sunrise-400 bg-white/15 backdrop-blur-sm p-4 self-start shadow-lg shadow-sunrise-500/20 ring-4 ring-sunrise-400/20">
+            <div class="w-full rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 self-start">
                 <div class="flex items-center justify-between gap-3 mb-2">
-                    <p class="inline-flex items-center gap-1.5 text-xs text-white uppercase tracking-wider font-bold">
-                        <svg class="w-4 h-4 text-sunrise-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/></svg>
-                        My Referral Link
-                    </p>
-                    <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-sunrise-400 text-brand-950">Personal invite</span>
+                    <p class="text-[11px] text-white/90 uppercase tracking-wider font-semibold">My Referral Link</p>
+                    <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-white text-brand-700">Personal invite</span>
                 </div>
                 <div class="flex items-stretch gap-2">
                     <input type="text" readonly value="{{ $inviteUrl }}"
-                        class="flex-1 min-w-0 rounded-lg border-2 border-sunrise-300 bg-white px-2.5 py-2 text-xs font-mono font-semibold text-brand-900 focus:outline-none focus:ring-2 focus:ring-sunrise-400"
+                        class="flex-1 min-w-0 rounded-lg border border-white/30 bg-white px-2.5 py-1.5 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-sunrise-400"
                         onclick="this.select()">
                     <button type="button"
                         onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-                        class="px-4 rounded-lg bg-sunrise-500 hover:bg-sunrise-600 text-white text-xs font-bold shadow-md transition-colors">
+                        class="px-3 rounded-lg bg-sunrise-500 hover:bg-sunrise-600 text-white text-xs font-semibold transition-colors">
                         Copy
                     </button>
                 </div>
                 @if($bothFull)
-                    <p class="mt-2 text-[11px] text-sunrise-200">
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-sunrise-200">
                         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sunrise-400"></span>Direct slots full.</span>
-                        <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-white underline-offset-2 hover:underline">My Genos →</a>
-                    </p>
+                        <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
+                           class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-800 shadow-md ring-2 ring-sunrise-400 hover:bg-sunrise-50 transition-colors">
+                            <svg class="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v6m0 0-4.5 4.5M12 9l4.5 4.5M7.5 13.5v4.5m9-4.5v4.5M5.25 18h4.5m4.5 0h4.5"/></svg>
+                            My Genos →
+                        </a>
+                    </div>
                 @else
-                    <p class="mt-2 text-[11px] text-white/80">
-                        Want a specific deeper slot?
-                        <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}" class="text-white underline-offset-2 hover:underline">My Genos →</a>
-                    </p>
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/80">
+                        <span>Want a specific deeper slot?</span>
+                        <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
+                           class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-800 shadow-md ring-2 ring-sunrise-400 hover:bg-sunrise-50 transition-colors">
+                            <svg class="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v6m0 0-4.5 4.5M12 9l4.5 4.5M7.5 13.5v4.5m9-4.5v4.5M5.25 18h4.5m4.5 0h4.5"/></svg>
+                            My Genos →
+                        </a>
+                    </div>
                 @endif
             </div>
         @endif
