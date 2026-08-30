@@ -9,6 +9,10 @@
 </div>
 
 <div class="flex justify-end gap-2 mb-4">
+    @if(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteCenterApplicationsFeature::class) && (auth()->user()?->can('adc.application.review') ?? false))
+    <a href="{{ route('admin.compensation.adc-bonus.applications.index') }}"
+       class="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50">Applications →</a>
+    @endif
     <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}"
        class="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50">Manage Centers →</a>
 </div>

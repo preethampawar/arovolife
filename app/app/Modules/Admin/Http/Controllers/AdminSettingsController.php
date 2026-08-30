@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\FranchiseFeature;
@@ -213,6 +214,23 @@ final class AdminSettingsController extends Controller
                 'min' => 1,
                 'max' => 12,
                 'default' => '1',
+            ],
+
+            // ── Arete Development Centre applications ──────────────────────
+            // Feature-gated: invisible and 404 on update while the application
+            // flow is off. Admin-owned — operations sets the minimum premises
+            // size the client asked for (decision #3, 2026-08-30).
+            'adc.min_premises_sqft' => [
+                'group' => 'compensation',
+                'owner' => 'admin',
+                'feature' => AreteCenterApplicationsFeature::class,
+                'label' => 'Minimum premises size for an Arete Development Centre (sq ft)',
+                'description' => 'The smallest premises a distributor may declare when applying to open an Arete Development Centre. The application form pre-fills its size field with this value and the server rejects anything smaller. Phase 1 of the published development ladder expects 400 sq ft; the default of 350 leaves room for a centre that is still being fitted out.',
+                'impact' => 'Applies to applications submitted or resubmitted from now on. Existing applications and approved centres are not re-checked.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 100000,
+                'default' => '350',
             ],
 
             // ── Franchise ──────────────────────────────────────────────────

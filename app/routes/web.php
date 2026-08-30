@@ -37,6 +37,7 @@ use App\Modules\Commerce\Http\Controllers\Storefront\MyOrdersController;
 use App\Modules\Commerce\Http\Controllers\Storefront\ShopController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcCalculationController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminAreteCenterApplicationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAwRwCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
@@ -60,6 +61,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusInputOutputController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
+use App\Modules\Compensation\Http\Controllers\DistributorAreteCenterApplicationController;
 use App\Modules\Compensation\Http\Controllers\IncomeController;
 use App\Modules\Compensation\Http\Controllers\MyBusinessController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
@@ -490,6 +492,27 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::get('/centers/{center}/edit', [AdminAdcBonusController::class, 'centersEdit'])->name('centers.edit')->whereNumber('center');
             Route::put('/centers/{center}', [AdminAdcBonusController::class, 'centersUpdate'])->name('centers.update')->whereNumber('center');
             Route::post('/centers/{center}/members', [AdminAdcBonusController::class, 'centersAddMember'])->name('centers.add-member')->whereNumber('center');
+            // Deactivating a centre stops its owner's ADC bonus — a discipline
+            // action, so it carries the same gate as freeze / terminate.
+            Route::post('/centers/{center}/status/{action}', [AdminAdcBonusController::class, 'centersSetStatus'])
+                ->name('centers.status')->whereNumber('center')->whereIn('action', ['activate', 'deactivate'])
+                ->middleware('can:compliance.discipline');
+            Route::post('/centers/{center}/default', [AdminAdcBonusController::class, 'centersSetDefault'])->name('centers.default')->whereNumber('center');
+
+            // Application review queue — flag-gated inside the controller
+            // (AreteCenterApplicationsFeature). Decisions carry the same
+            // permission as franchise approval: they create an earning
+            // position, so admin-finance alone cannot take them.
+            Route::prefix('applications')->name('applications.')->middleware('can:adc.application.review')->group(function (): void {
+                Route::get('/', [AdminAreteCenterApplicationController::class, 'index'])->name('index');
+                Route::get('/{application}', [AdminAreteCenterApplicationController::class, 'show'])->name('show')->whereNumber('application');
+                Route::get('/{application}/documents/{document}', [AdminAreteCenterApplicationController::class, 'document'])
+                    ->name('document')->whereNumber('application')->whereNumber('document');
+                Route::post('/{application}/{action}', [AdminAreteCenterApplicationController::class, 'review'])
+                    ->name('review')->whereNumber('application')
+                    ->whereIn('action', ['review', 'approve', 'reject', 'request-changes'])
+                    ->middleware('can:compliance.discipline');
+            });
             Route::get('/{month}', [AdminAdcBonusController::class, 'show'])->name('show')->where('month', '\d{4}-\d{2}');
         });
 
@@ -954,4 +977,12 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
         ->name('franchise.apply.submit');
     Route::get('/my/franchise/status', [DistributorFranchiseController::class, 'showStatus'])
         ->name('franchise.status');
+
+    // Arete Development Centre application — flag-gated inside the controller
+    // (AreteCenterApplicationsFeature, 404 when off for zero trace).
+    Route::get('/my/arete-centre', [DistributorAreteCenterApplicationController::class, 'status'])->name('my.adc.status');
+    Route::get('/my/arete-centre/apply', [DistributorAreteCenterApplicationController::class, 'create'])->name('my.adc.apply');
+    Route::post('/my/arete-centre/apply', [DistributorAreteCenterApplicationController::class, 'store'])->name('my.adc.apply.submit');
+    Route::get('/my/arete-centre/edit', [DistributorAreteCenterApplicationController::class, 'edit'])->name('my.adc.edit');
+    Route::put('/my/arete-centre/edit', [DistributorAreteCenterApplicationController::class, 'update'])->name('my.adc.update');
 });

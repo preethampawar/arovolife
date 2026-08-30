@@ -141,8 +141,8 @@
                 <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Arete Development Centre <x-help-tip text="The Arete centre you are connected to for local support, training and events. You can change this with OTP verification." /></p>
                 @if($areteCenter)
                     <p class="text-sm font-semibold text-gray-900">{{ $areteCenter->name }}</p>
-                    @if($areteCenter->location)
-                        <p class="text-xs text-gray-600 mt-0.5">{{ $areteCenter->location }}</p>
+                    @if($areteCenter->displayLocation() !== '')
+                        <p class="text-xs text-gray-600 mt-0.5">{{ $areteCenter->displayLocation() }}</p>
                     @endif
                 @else
                     <p class="text-sm text-gray-600">Not assigned yet</p>

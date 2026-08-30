@@ -10,6 +10,7 @@ use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\CompensationRecomputeAllCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
@@ -128,6 +129,7 @@ class AppServiceProvider extends ServiceProvider
                 FortuneBonusEnrollCommand::class,
                 AdcBonusRunCommand::class,
                 FranchiseMonthlyRunCommand::class,
+                AdcPurgeRejectedDocumentsCommand::class,
                 PurchaseOffersMonthlyRunCommand::class,
                 MonthlyPayoutCommand::class,
                 RepurchaseEvaluateCommand::class,

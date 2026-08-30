@@ -61,7 +61,7 @@ final class ProfileController extends Controller
                 ?->center
             : null;
 
-        $availableCenters = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)->get();
+        $availableCenters = AreteCenter::query()->selectable()->get();
 
         return view('profile.show', [
             'user' => $user,

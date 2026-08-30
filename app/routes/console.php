@@ -2,6 +2,7 @@
 
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
@@ -124,6 +125,13 @@ Schedule::command(FranchiseMonthlyRunCommand::class)
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
+
+// ADC application documents of rejected applications are erased 90 days after
+// the decision (DPDP §8(7) storage limitation, R-62). Daily, quiet hour.
+Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
+    ->dailyAt('03:15')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
 
 // Purchase offers on the 2nd at 06:00 IST. Early in the month and ahead of
 // every bonus engine, because the offers read the previous month's BV and

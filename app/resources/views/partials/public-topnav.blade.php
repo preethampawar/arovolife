@@ -93,6 +93,11 @@
                             <span aria-hidden="true">🎁</span> My offers
                         </a>
                         @endif
+                        @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteCenterApplicationsFeature::class) && auth()->user()?->distributor)
+                        <a href="{{ route('my.adc.status') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
+                            <span aria-hidden="true">🏛</span> My Arete Centre
+                        </a>
+                        @endif
                         <a href="{{ route('orders.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
                             <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2"/></svg>
                             My Orders &amp; Sales
@@ -443,6 +448,9 @@
                 <a href="{{ route('my-business') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Business</a>
                 @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class) && auth()->user()?->distributor)
                 <a href="{{ route('my.offers.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Offers</a>
+                @endif
+                @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteCenterApplicationsFeature::class) && auth()->user()?->distributor)
+                <a href="{{ route('my.adc.status') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Arete Centre</a>
                 @endif
                 <a href="{{ route('orders.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Orders &amp; Sales</a>
                 <a href="{{ route('bv-ledger.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My BV Ledger</a>

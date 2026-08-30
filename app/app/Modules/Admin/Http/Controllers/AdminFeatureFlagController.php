@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\FranchiseFeature;
@@ -143,6 +144,13 @@ final class AdminFeatureFlagController extends Controller
                 'label' => 'Arete Development Center Bonus (Phase 7)',
                 'description' => 'Enables 3% BV-based bonus for official Arete Development Centers, capped at ₹1 lakh/month per center. Paid on the 8th. Requires center assignment and approved center records.',
                 'owner' => 'developer',
+            ],
+            'compensation.arete_center_applications' => [
+                'class' => AreteCenterApplicationsFeature::class,
+                'label' => 'Arete Development Centre applications',
+                'description' => 'Lets a distributor apply to open an Arete Development Centre (premises details, documents, declarations) and puts the review queue — approve / reject / request changes — in the admin console. Approval activates the centre in the registry at Phase 1 and assigns the applicant as its owner. OFF leaves no trace: no menu item, no routes, no minimum-size setting. The admin centre registry itself stays available regardless of this flag.',
+                'owner' => 'developer',
+                'requires' => [],
             ],
 
             // ── Franchise (parked — hard gate: DSA §6.2 notice + R-24 legal opinion) ──

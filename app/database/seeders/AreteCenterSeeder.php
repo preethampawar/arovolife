@@ -15,7 +15,10 @@ final class AreteCenterSeeder extends Seeder
             ['is_company_default' => true],
             [
                 'name' => 'Arovolife Company Centre',
+                'centre_type' => AreteCenter::TYPE_COMPANY,
                 'location' => 'Hyderabad, Telangana',
+                'city' => 'Hyderabad',
+                'state' => 'Telangana',
                 'assigned_distributor_id' => null,
                 'status' => AreteCenter::STATUS_ACTIVE,
                 'is_company_default' => true,

@@ -236,8 +236,8 @@ it('lists the structured address on the centres screen', function (): void {
     $this->actingAs(adcReportAdmin())
         ->get(route('admin.compensation.adc-bonus.centers.index'))
         ->assertOk()
-        ->assertSee('Pincode / District / State')
-        ->assertSee('502001 · — · Telangana', false);
+        ->assertSee('Centre name')
+        ->assertSee('Telangana');
 });
 
 it('rejects an unknown status filter', function (): void {
@@ -344,7 +344,7 @@ it('prefills the edit form with the stored centre and preselects its state', fun
     $this->actingAs(adcReportAdmin())
         ->get(route('admin.compensation.adc-bonus.centers.edit', $center))
         ->assertOk()
-        ->assertSee('Edit Center')
+        ->assertSee('Edit Arete Development Centre')
         ->assertSee('value="Medak Center"', false)
         ->assertSee('value="502001"', false)
         ->assertSee('value="'.$assignee->adn.'"', false)

@@ -59,6 +59,12 @@ final class RolesAndPermissionsSeeder extends Seeder
     private const SHARED = [
         'grievance.handle' => ['admin-operations', 'admin-compliance'],
 
+        // Reading an Arete Development Centre application exposes the
+        // applicant's contact details, premises deed and photos. Finance has
+        // no role in siting a centre, so it cannot open the queue at all;
+        // the decision itself sits behind `compliance.discipline`.
+        'adc.application.review' => ['admin-operations', 'admin-compliance'],
+
         // Reading the audit log is monitoring, not action, and every scoped
         // role needs it to do its own job — but admin-finance reading it is
         // also the check on admin-finance, so it stays broad deliberately.

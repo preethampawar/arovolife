@@ -946,7 +946,7 @@ final class RegistrationWizardController extends Controller
 
     public function showArete(): View
     {
-        $centers = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)->get();
+        $centers = AreteCenter::query()->selectable()->get();
         $defaultCenter = $centers->firstWhere('is_company_default', true);
         $savedData = $this->wizard->getStepData(11);
         $selectedId = isset($savedData['center_id']) ? (int) $savedData['center_id'] : $defaultCenter?->id;

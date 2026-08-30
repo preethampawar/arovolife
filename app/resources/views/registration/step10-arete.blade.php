@@ -23,34 +23,38 @@
 
         @if($centers->isEmpty())
             {{-- Company default is always present after seeding; this is a last-resort fallback. --}}
-            @php
-                $fallbackId = $defaultCenter?->id ?? 0;
-            @endphp
-            <input type="hidden" name="center_id" value="{{ $fallbackId }}">
+            <input type="hidden" name="center_id" value="{{ $defaultCenter?->id ?? 0 }}">
             <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
                 You will be enrolled in the <strong>Arovolife Company Centre</strong> by default. You can select a different centre from your profile after registration.
             </div>
         @else
-            <div class="space-y-3">
-                @foreach($centers as $center)
-                <label class="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors
-                    {{ $selectedId === $center->id ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white hover:border-brand-300' }}">
-                    <input type="radio" name="center_id" value="{{ $center->id }}"
-                           class="mt-0.5 shrink-0 accent-brand-500"
-                           {{ $selectedId === $center->id ? 'checked' : '' }}>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900">
-                            {{ $center->name }}
-                            @if($center->is_company_default)
-                                <span class="ml-2 inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full bg-brand-100 text-brand-700">Company default</span>
-                            @endif
-                        </p>
-                        @if($center->location)
-                            <p class="text-xs text-gray-600 mt-0.5">{{ $center->location }}</p>
-                        @endif
-                    </div>
+            @php
+                $byState = $centers->groupBy(fn ($c) => $c->state ?? 'Other');
+                $selected = $centers->firstWhere('id', $selectedId) ?? $defaultCenter;
+            @endphp
+            <div>
+                <label for="center_id" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Choose your centre <span class="text-red-500">*</span>
+                    <x-help-tip text="Centres are listed by state. The company centre is pre-selected if you are not sure — you can change this later from your profile (OTP required)." />
                 </label>
-                @endforeach
+                <select id="center_id" name="center_id" required
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:ring-brand-500">
+                    @foreach($byState as $stateName => $stateCenters)
+                    <optgroup label="{{ $stateName }}">
+                        @foreach($stateCenters as $center)
+                        <option value="{{ $center->id }}" @selected($selectedId === $center->id)>
+                            {{ $center->name }}@if($center->displayLocation() !== '') — {{ $center->displayLocation() }}@endif
+                            @if($center->is_company_default) (company default)@endif
+                        </option>
+                        @endforeach
+                    </optgroup>
+                    @endforeach
+                </select>
+                @if($selected)
+                <p class="text-xs text-gray-600 mt-2">
+                    Currently selected: <strong>{{ $selected->name }}</strong>@if($selected->displayLocation() !== ''), {{ $selected->displayLocation() }}@endif.
+                </p>
+                @endif
             </div>
 
             <p class="text-xs text-gray-600">

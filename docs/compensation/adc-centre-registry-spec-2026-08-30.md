@@ -1,6 +1,6 @@
 # ADC (Arete Development Centre) registry + application — field spec
 
-**Status:** spec agreed 2026-08-30, not yet built. Source: the client's four reference
+**Status:** spec agreed 2026-08-30; **built 2026-08-30** behind the `compensation.arete_center_applications` flag (registry columns/filters/status actions ship ungated under the existing ADC flag; Step-11 picker is a grouped dropdown). Source: the client's four reference
 screenshots (a competitor's outlet application form + branch list) and the client's
 six decisions of 2026-08-30. Builds on the shipped manual ADC phase-tracking workflow
 (`arete_centers`, commit e79c39e) — extend that table, do not create a parallel one.

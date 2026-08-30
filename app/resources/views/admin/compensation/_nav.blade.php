@@ -11,6 +11,7 @@
     Overview quick-links did.
 --}}
 @php
+    use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
     use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
     use App\Modules\Shared\Features\FortuneBonusFeature;
     use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -26,6 +27,8 @@
     $rankOn = Feature::for(null)->active(RankBonusFeature::class);
     $fortuneOn = Feature::for(null)->active(FortuneBonusFeature::class);
     $adcOn = Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
+    $adcApplicationsOn = $adcOn && Feature::for(null)->active(AreteCenterApplicationsFeature::class)
+        && (auth()->user()?->can('adc.application.review') ?? false);
     $awardsOn = Feature::for(null)->active(LifetimeAwardsFeature::class);
 
     /**
@@ -63,7 +66,8 @@
             $gbbOn ? ['label' => 'Growth Booster Bonus', 'route' => 'admin.compensation.gbb.index', 'match' => 'admin.compensation.gbb.'] : null,
             $rankOn ? ['label' => 'Rank Bonus', 'route' => 'admin.compensation.rank-bonus.index', 'match' => 'admin.compensation.rank-bonus'] : null,
             $fortuneOn ? ['label' => 'Fortune Bonus', 'route' => 'admin.compensation.fortune-bonus.index', 'match' => 'admin.compensation.fortune-bonus'] : null,
-            $adcOn ? ['label' => 'ADC Bonus', 'route' => 'admin.compensation.adc-bonus.index', 'match' => 'admin.compensation.adc-bonus'] : null,
+            $adcOn ? ['label' => 'ADC Bonus', 'route' => 'admin.compensation.adc-bonus.index', 'match' => 'admin.compensation.adc-bonus.index'] : null,
+            $adcApplicationsOn ? ['label' => 'ADC Applications', 'route' => 'admin.compensation.adc-bonus.applications.index', 'match' => 'admin.compensation.adc-bonus.applications'] : null,
             $awardsOn ? ['label' => 'Lifetime Awards', 'route' => 'admin.lifetime-awards.index', 'match' => 'admin.lifetime-awards'] : null,
             ['heading' => 'Calculation reports'],
             $gbbOn ? ['label' => 'GBB Calculation', 'route' => 'admin.compensation.gbb-calculation.index', 'match' => 'admin.compensation.gbb-calculation'] : null,
