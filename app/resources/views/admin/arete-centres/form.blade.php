@@ -5,8 +5,8 @@
     $center = $center ?? null;
     $isEdit = $center !== null;
     $action = $isEdit
-        ? route('admin.compensation.adc-bonus.centers.update', $center)
-        : route('admin.compensation.adc-bonus.centers.store');
+        ? route('admin.arete-centres.update', $center)
+        : route('admin.arete-centres.store');
     $inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400';
     $lbl = 'block text-sm font-medium text-gray-700 mb-1';
     $v = fn (string $field, $default = '') => old($field, $center?->{$field} ?? $default);
@@ -15,9 +15,10 @@
 @section('heading', $isEdit ? 'Edit Arete Development Centre' : 'Add Arete Development Centre')
 
 @section('content')
+@include('admin.arete-centres._tabs')
 
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← Registry</a>
+    <a href="{{ route('admin.arete-centres.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← Registry</a>
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-2xl">
@@ -182,7 +183,7 @@
             <button type="submit" class="px-5 py-2 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">
                 {{ $isEdit ? 'Save changes' : 'Add Centre' }}
             </button>
-            <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}"
+            <a href="{{ route('admin.arete-centres.index') }}"
                class="px-5 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors">Cancel</a>
         </div>
     </form>

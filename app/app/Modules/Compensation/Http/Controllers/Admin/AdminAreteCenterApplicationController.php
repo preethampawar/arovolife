@@ -71,7 +71,7 @@ final class AdminAreteCenterApplicationController extends Controller
             ->pluck('n', 'status')
             ->all();
 
-        return view('admin.compensation.adc-bonus.applications.index', [
+        return view('admin.arete-centres.applications.index', [
             'applications' => $applications,
             'counts' => $counts,
             'filters' => ['status' => $status, 'state' => $state, 'q' => $search],
@@ -85,7 +85,7 @@ final class AdminAreteCenterApplicationController extends Controller
 
         $application->load(['distributor.user', 'distributor.sponsor.user', 'documents', 'declarations', 'center', 'reviewedBy']);
 
-        return view('admin.compensation.adc-bonus.applications.show', [
+        return view('admin.arete-centres.applications.show', [
             'application' => $application,
             'declarationTexts' => AreteCenterDeclarations::all(),
         ]);
@@ -121,7 +121,7 @@ final class AdminAreteCenterApplicationController extends Controller
             return back()->withErrors(['review' => $e->getMessage()]);
         }
 
-        return redirect()->route('admin.compensation.adc-bonus.applications.show', $application)
+        return redirect()->route('admin.arete-centres.applications.show', $application)
             ->with('success', $message);
     }
 

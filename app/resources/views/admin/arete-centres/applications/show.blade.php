@@ -3,6 +3,7 @@
 @section('heading', 'Application — '.$application->centre_name)
 
 @section('content')
+@include('admin.arete-centres._tabs')
 @php
     $badge = [
         'submitted' => 'bg-amber-100 text-amber-800', 'under_review' => 'bg-blue-100 text-blue-800',
@@ -18,7 +19,7 @@
 @endphp
 
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.compensation.adc-bonus.applications.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← All applications</a>
+    <a href="{{ route('admin.arete-centres.applications.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← All applications</a>
     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badge[$application->status] ?? 'bg-gray-100 text-gray-600' }}">{{ $application->statusLabel() }}</span>
 </div>
 
@@ -76,7 +77,7 @@
                         <p class="font-medium text-gray-900">{{ $doc->typeLabel() }}</p>
                         <p class="text-xs text-gray-500">{{ $doc->original_name }} · {{ \App\Modules\Shared\Support\IndianNumber::format(intdiv($doc->size_bytes, 1024)) }} KB · uploaded {{ $ist($doc->created_at) }}</p>
                     </div>
-                    <a href="{{ route('admin.compensation.adc-bonus.applications.document', [$application, $doc]) }}" target="_blank" rel="noopener" class="text-brand-700 hover:text-brand-800 font-medium whitespace-nowrap">Open ↗</a>
+                    <a href="{{ route('admin.arete-centres.applications.document', [$application, $doc]) }}" target="_blank" rel="noopener" class="text-brand-700 hover:text-brand-800 font-medium whitespace-nowrap">Open ↗</a>
                 </li>
                 @endforeach
             </ul>
@@ -108,7 +109,7 @@
                 <dt class="text-gray-500">Last reviewed</dt><dd>{{ $ist($application->reviewed_at) }}</dd>
                 <dt class="text-gray-500">Reviewed by</dt><dd>{{ $application->reviewedBy?->full_name ?? '—' }}</dd>
                 @if($application->center)
-                <dt class="text-gray-500">Centre</dt><dd><a class="text-brand-700 hover:text-brand-800 font-medium" href="{{ route('admin.compensation.adc-bonus.centers.edit', $application->center) }}">{{ $application->center->name }}</a></dd>
+                <dt class="text-gray-500">Centre</dt><dd><a class="text-brand-700 hover:text-brand-800 font-medium" href="{{ route('admin.arete-centres.edit', $application->center) }}">{{ $application->center->name }}</a></dd>
                 @endif
             </dl>
             @if($application->admin_notes)
@@ -123,14 +124,14 @@
             @elseif($decidable)
             <div class="space-y-3">
                 @if($application->status === 'submitted')
-                <form method="POST" action="{{ route('admin.compensation.adc-bonus.applications.review', [$application, 'review']) }}"
+                <form method="POST" action="{{ route('admin.arete-centres.applications.review', [$application, 'review']) }}"
                       data-confirm="Mark this application as under review?" data-confirm-title="Start review" data-confirm-impact="Tells the queue someone is looking at it. No email is sent.">
                     @csrf
                     <button type="submit" class="{{ $btn }} w-full border border-gray-300 text-gray-700 hover:bg-gray-50">Mark under review</button>
                 </form>
                 @endif
 
-                <form method="POST" action="{{ route('admin.compensation.adc-bonus.applications.review', [$application, 'approve']) }}"
+                <form method="POST" action="{{ route('admin.arete-centres.applications.review', [$application, 'approve']) }}"
                       data-confirm="Approve this application and create the centre?" data-confirm-title="Approve application"
                       data-confirm-impact="Creates “{{ $application->centre_name }}” as an active distributor centre at Phase 1 with {{ $applicant->adn }} as its owner, and emails the applicant.">
                     @csrf
@@ -139,7 +140,7 @@
                     <button type="submit" class="{{ $btn }} w-full bg-green-600 text-white hover:bg-green-700">Approve and create centre</button>
                 </form>
 
-                <form method="POST" action="{{ route('admin.compensation.adc-bonus.applications.review', [$application, 'request-changes']) }}"
+                <form method="POST" action="{{ route('admin.arete-centres.applications.review', [$application, 'request-changes']) }}"
                       data-confirm="Send this application back for changes?" data-confirm-title="Request changes" data-confirm-impact="The applicant is emailed your reason and can edit and resubmit.">
                     @csrf
                     <label class="block text-xs text-gray-600 mb-1">What needs to change <span class="text-red-500">*</span></label>
@@ -147,7 +148,7 @@
                     <button type="submit" class="{{ $btn }} w-full bg-orange-500 text-white hover:bg-orange-600">Request changes</button>
                 </form>
 
-                <form method="POST" action="{{ route('admin.compensation.adc-bonus.applications.review', [$application, 'reject']) }}"
+                <form method="POST" action="{{ route('admin.arete-centres.applications.review', [$application, 'reject']) }}"
                       data-confirm="Reject this application?" data-confirm-title="Reject application" data-confirm-impact="The applicant is emailed your reason. They may apply again later.">
                     @csrf
                     <label class="block text-xs text-gray-600 mb-1">Reason <span class="text-red-500">*</span></label>
@@ -157,7 +158,7 @@
             </div>
             @elseif($application->status === 'needs_changes')
                 <p class="text-sm text-gray-600">Waiting for the applicant to update and resubmit.</p>
-                <form method="POST" action="{{ route('admin.compensation.adc-bonus.applications.review', [$application, 'reject']) }}" class="mt-3"
+                <form method="POST" action="{{ route('admin.arete-centres.applications.review', [$application, 'reject']) }}" class="mt-3"
                       data-confirm="Reject this application?" data-confirm-title="Reject application" data-confirm-impact="The applicant is emailed your reason.">
                     @csrf
                     <textarea name="reason" rows="2" maxlength="1000" required placeholder="Reason" class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm mb-2"></textarea>

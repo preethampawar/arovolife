@@ -3,13 +3,12 @@
 @section('heading', 'Arete Development Centre registry')
 
 @section('content')
+@include('admin.arete-centres._tabs')
 @php
     use App\Modules\Compensation\Models\AreteCenter;
     use App\Modules\Shared\Support\IndianNumber;
 
     $inp = 'border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400';
-    $applicationsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteCenterApplicationsFeature::class)
-        && (auth()->user()?->can('adc.application.review') ?? false);
     $canDiscipline = auth()->user()?->can('compliance.discipline') ?? false;
 @endphp
 
@@ -26,13 +25,8 @@
 </div>
 @endif
 
-<div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <div class="flex gap-3 text-sm">
-        @if($applicationsOn)
-        <a href="{{ route('admin.compensation.adc-bonus.applications.index') }}" class="text-brand-700 hover:text-brand-800 font-medium">Application review queue →</a>
-        @endif
-    </div>
-    <a href="{{ route('admin.compensation.adc-bonus.centers.create') }}"
+<div class="flex flex-wrap justify-end items-center gap-2 mb-4">
+    <a href="{{ route('admin.arete-centres.create') }}"
        class="px-4 py-1.5 rounded-lg bg-brand-700 text-white text-sm hover:bg-brand-800 transition-colors">+ Add Centre</a>
 </div>
 
@@ -90,7 +84,7 @@
         <input type="text" name="q" value="{{ $filters['q'] }}" class="{{ $inp }} w-44">
     </div>
     <button type="submit" class="px-4 py-1.5 rounded-lg bg-brand-700 text-white text-sm hover:bg-brand-800 transition-colors">Filter</button>
-    <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}" class="text-sm text-gray-600 hover:text-gray-800">Reset</a>
+    <a href="{{ route('admin.arete-centres.index') }}" class="text-sm text-gray-600 hover:text-gray-800">Reset</a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -159,10 +153,10 @@
                     <td class="px-3 py-2 text-gray-600 max-w-[16rem] truncate" title="{{ $address }}">{{ $address !== '' ? $address : '—' }}</td>
                     <td class="px-3 py-2 text-right">{{ IndianNumber::format($center->members_count) }}</td>
                     <td class="px-3 py-2 text-right whitespace-nowrap">
-                        <a href="{{ route('admin.compensation.adc-bonus.centers.edit', $center) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
+                        <a href="{{ route('admin.arete-centres.edit', $center) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
                         @if($center->isActive())
                             @if(! $center->is_company_default)
-                            <form method="POST" action="{{ route('admin.compensation.adc-bonus.centers.default', $center) }}" class="inline ml-2"
+                            <form method="POST" action="{{ route('admin.arete-centres.default', $center) }}" class="inline ml-2"
                                   data-confirm="Make “{{ $center->name }}” the company default centre?" data-confirm-title="Set company default"
                                   data-confirm-impact="New registrations will have this centre pre-selected at Step 11. The previous default stays active.">
                                 @csrf
@@ -174,7 +168,7 @@
                             @endif
                             @endif
                         @elseif($canDiscipline)
-                            <form method="POST" action="{{ route('admin.compensation.adc-bonus.centers.status', [$center, 'activate']) }}" class="inline ml-2"
+                            <form method="POST" action="{{ route('admin.arete-centres.status', [$center, 'activate']) }}" class="inline ml-2"
                                   data-confirm="Activate “{{ $center->name }}”?" data-confirm-title="Activate centre"
                                   data-confirm-impact="The centre becomes selectable again at Step 11 and on profiles.">
                                 @csrf
@@ -186,7 +180,7 @@
                 @if($canDiscipline && $center->isActive() && ! $center->is_company_default)
                 <tr id="deactivate-{{ $center->id }}" class="hidden bg-red-50">
                     <td colspan="13" class="px-4 py-3">
-                        <form method="POST" action="{{ route('admin.compensation.adc-bonus.centers.status', [$center, 'deactivate']) }}" class="flex flex-wrap items-end gap-3"
+                        <form method="POST" action="{{ route('admin.arete-centres.status', [$center, 'deactivate']) }}" class="flex flex-wrap items-end gap-3"
                               data-confirm="Deactivate “{{ $center->name }}”?" data-confirm-title="Deactivate centre"
                               data-confirm-impact="The centre disappears from Step 11 and the profile picker. Distributors already connected to it are not moved.">
                             @csrf

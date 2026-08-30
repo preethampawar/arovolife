@@ -165,7 +165,7 @@ it('stores a centre with its pincode, district and state', function (): void {
     $assignee = adcReportDistributor('ADCOWN', 'Owner');
 
     $this->actingAs(adcReportAdmin())
-        ->post(route('admin.compensation.adc-bonus.centers.store'), [
+        ->post(route('admin.arete-centres.store'), [
             'name' => 'Medak Center',
             'location' => 'Main Road',
             'pincode' => '502001',
@@ -173,7 +173,7 @@ it('stores a centre with its pincode, district and state', function (): void {
             'state' => 'Telangana',
             'assigned_adn' => $assignee->adn,
         ])
-        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+        ->assertRedirect(route('admin.arete-centres.index'));
 
     $center = AreteCenter::where('name', 'Medak Center')->firstOrFail();
     expect($center->pincode)->toBe('502001')
@@ -185,7 +185,7 @@ it('rejects a pincode that is not exactly six digits', function (): void {
     $assignee = adcReportDistributor('ADCOWN', 'Owner');
 
     $this->actingAs(adcReportAdmin())
-        ->post(route('admin.compensation.adc-bonus.centers.store'), [
+        ->post(route('admin.arete-centres.store'), [
             'name' => 'Bad Pincode Center',
             'pincode' => '50200',
             'assigned_adn' => $assignee->adn,
@@ -199,7 +199,7 @@ it('rejects a state outside the official list of states and union territories', 
     $assignee = adcReportDistributor('ADCOWN', 'Owner');
 
     $this->actingAs(adcReportAdmin())
-        ->post(route('admin.compensation.adc-bonus.centers.store'), [
+        ->post(route('admin.arete-centres.store'), [
             'name' => 'Atlantis Center',
             'state' => 'Atlantis',
             'assigned_adn' => $assignee->adn,
@@ -211,7 +211,7 @@ it('rejects a state outside the official list of states and union territories', 
 
 it('offers every state and union territory on the centre form', function (): void {
     $this->actingAs(adcReportAdmin())
-        ->get(route('admin.compensation.adc-bonus.centers.create'))
+        ->get(route('admin.arete-centres.create'))
         ->assertOk()
         ->assertSee('— Select state —', false)
         ->assertSee('Telangana')
@@ -234,7 +234,7 @@ it('lists the structured address on the centres screen', function (): void {
     ]);
 
     $this->actingAs(adcReportAdmin())
-        ->get(route('admin.compensation.adc-bonus.centers.index'))
+        ->get(route('admin.arete-centres.index'))
         ->assertOk()
         ->assertSee('Centre name')
         ->assertSee('Telangana');
@@ -277,7 +277,7 @@ it('edits a centre and audit-logs the before and after', function (): void {
     ]);
 
     $this->actingAs(adcReportAdmin())
-        ->put(route('admin.compensation.adc-bonus.centers.update', $center), [
+        ->put(route('admin.arete-centres.update', $center), [
             'name' => 'Sangareddy Center',
             'location' => 'Ring Road',
             'pincode' => '502285',
@@ -285,7 +285,7 @@ it('edits a centre and audit-logs the before and after', function (): void {
             'state' => 'Telangana',
             'assigned_adn' => $newAssignee->adn,
         ])
-        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+        ->assertRedirect(route('admin.arete-centres.index'));
 
     $center->refresh();
     expect($center->name)->toBe('Sangareddy Center')
@@ -308,12 +308,12 @@ it('audit-logs a centre creation', function (): void {
     $assignee = adcReportDistributor('ADCOWN', 'Owner');
 
     $this->actingAs(adcReportAdmin())
-        ->post(route('admin.compensation.adc-bonus.centers.store'), [
+        ->post(route('admin.arete-centres.store'), [
             'name' => 'Medak Center',
             'pincode' => '502001',
             'assigned_adn' => $assignee->adn,
         ])
-        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+        ->assertRedirect(route('admin.arete-centres.index'));
 
     $center = AreteCenter::where('name', 'Medak Center')->firstOrFail();
     $audit = AuditLog::where('action', 'adc.center.created')
@@ -342,7 +342,7 @@ it('prefills the edit form with the stored centre and preselects its state', fun
     ]);
 
     $this->actingAs(adcReportAdmin())
-        ->get(route('admin.compensation.adc-bonus.centers.edit', $center))
+        ->get(route('admin.arete-centres.edit', $center))
         ->assertOk()
         ->assertSee('Edit Arete Development Centre')
         ->assertSee('value="Medak Center"', false)
@@ -367,9 +367,9 @@ it('links each centre row to its edit form', function (): void {
     ]);
 
     $this->actingAs(adcReportAdmin())
-        ->get(route('admin.compensation.adc-bonus.centers.index'))
+        ->get(route('admin.arete-centres.index'))
         ->assertOk()
-        ->assertSee(route('admin.compensation.adc-bonus.centers.edit', $center), false);
+        ->assertSee(route('admin.arete-centres.edit', $center), false);
 });
 
 it('records a phase upgrade and cap override on the centre form and audit-logs them', function (): void {
@@ -385,13 +385,13 @@ it('records a phase upgrade and cap override on the centre form and audit-logs t
     ]);
 
     $this->actingAs(adcReportAdmin())
-        ->put(route('admin.compensation.adc-bonus.centers.update', $center), [
+        ->put(route('admin.arete-centres.update', $center), [
             'name' => 'Medak Center',
             'assigned_adn' => $assignee->adn,
             'development_phase' => 2,
             'monthly_cap_override' => 20000,
         ])
-        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+        ->assertRedirect(route('admin.arete-centres.index'));
 
     $center->refresh();
     expect($center->development_phase)->toBe(2)
@@ -420,13 +420,13 @@ it('clears the cap override when the field is left blank', function (): void {
     ]);
 
     $this->actingAs(adcReportAdmin())
-        ->put(route('admin.compensation.adc-bonus.centers.update', $center), [
+        ->put(route('admin.arete-centres.update', $center), [
             'name' => 'Medak Center',
             'assigned_adn' => $assignee->adn,
             'development_phase' => 2,
             'monthly_cap_override' => '',
         ])
-        ->assertRedirect(route('admin.compensation.adc-bonus.centers.index'));
+        ->assertRedirect(route('admin.arete-centres.index'));
 
     $center->refresh();
     expect($center->monthly_cap_override_paise)->toBeNull()
@@ -437,7 +437,7 @@ it('rejects a development phase outside 1–4', function (): void {
     $assignee = adcReportDistributor('ADCOWN', 'Owner');
 
     $this->actingAs(adcReportAdmin())
-        ->post(route('admin.compensation.adc-bonus.centers.store'), [
+        ->post(route('admin.arete-centres.store'), [
             'name' => 'Phase Nine Center',
             'assigned_adn' => $assignee->adn,
             'development_phase' => 9,
@@ -449,7 +449,7 @@ it('rejects a development phase outside 1–4', function (): void {
 
 it('offers the four development phases on the centre form', function (): void {
     $this->actingAs(adcReportAdmin())
-        ->get(route('admin.compensation.adc-bonus.centers.create'))
+        ->get(route('admin.arete-centres.create'))
         ->assertOk()
         ->assertSee('Development phase')
         ->assertSee('Phase 1 — up to ₹20,000/month · 400 sq ft, basic setup')

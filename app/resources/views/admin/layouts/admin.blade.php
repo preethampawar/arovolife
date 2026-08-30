@@ -103,6 +103,18 @@
                     )
                     : 0;
 
+                // Open Arete Centre applications for the sidebar badge. The
+                // registry itself is always on; only the queue is flag-gated.
+                $adcApplicationsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteCenterApplicationsFeature::class)
+                    && (auth()->user()?->can('adc.application.review') ?? false);
+                $openAdcApplicationCount = $adcApplicationsOn
+                    ? \Illuminate\Support\Facades\Cache::remember(
+                        'admin.adc_applications.open_count',
+                        60,
+                        fn () => \App\Modules\Compensation\Models\AreteCenterApplication::query()->open()->count(),
+                    )
+                    : 0;
+
                 $navItems = [
                     ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => '⬡'],
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => '◉'],
@@ -139,6 +151,10 @@
                         ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => '📈', 'prefix' => 'admin.analytics']]
                         : []),
                     ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => '💰', 'prefix' => 'admin.compensation'],
+                    // Arete Development Centres are entities in their own right
+                    // (Step 11, profile, member directory); the ADC bonus is a
+                    // layer on top and lives under Compensation.
+                    ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => '🏛', 'prefix' => 'admin.arete-centres', 'badge' => $openAdcApplicationCount],
                     ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => '🏷', 'prefix' => 'admin.commerce.coupons'],
                     // Zero-trace: an unlaunched franchise programme leaves no
                     // menu item behind for anyone to wonder about.

@@ -3,6 +3,7 @@
 @section('heading', 'Arete Development Centre applications')
 
 @section('content')
+@include('admin.arete-centres._tabs')
 @php
     $inp = 'border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400';
     $badge = [
@@ -17,9 +18,8 @@
     Distributors apply to open an Arete Development Centre; approving an application creates the centre in the registry at Phase 1 with the applicant as its owner. Every decision is audit-logged and emailed to the applicant.
 </div>
 
-<div class="flex items-center justify-between mb-4">
+<div class="mb-4">
     <p class="text-sm text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($openCount) }} open · {{ \App\Modules\Shared\Support\IndianNumber::format($counts['approved'] ?? 0) }} approved · {{ \App\Modules\Shared\Support\IndianNumber::format($counts['rejected'] ?? 0) }} rejected</p>
-    <a href="{{ route('admin.compensation.adc-bonus.centers.index') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Centre registry →</a>
 </div>
 
 <form method="GET" class="mb-4 flex flex-wrap items-end gap-3 bg-white rounded-xl border border-gray-200 p-4">
@@ -47,7 +47,7 @@
         <input type="text" name="q" value="{{ $filters['q'] }}" placeholder="Centre name, city, pincode or ADN" class="{{ $inp }} w-64">
     </div>
     <button type="submit" class="px-4 py-1.5 rounded-lg bg-brand-700 text-white text-sm hover:bg-brand-800 transition-colors">Filter</button>
-    <a href="{{ route('admin.compensation.adc-bonus.applications.index') }}" class="text-sm text-gray-600 hover:text-gray-800">Reset</a>
+    <a href="{{ route('admin.arete-centres.applications.index') }}" class="text-sm text-gray-600 hover:text-gray-800">Reset</a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -76,7 +76,7 @@
                     <td class="px-4 py-2"><span class="font-mono">{{ $app->distributor->adn ?? '—' }}</span> <span class="text-gray-600">{{ $app->distributor->user->full_name ?? '' }}</span></td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($app->premises_sqft) }}</td>
                     <td class="px-4 py-2 text-center"><span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badge[$app->status] ?? 'bg-gray-100 text-gray-600' }}">{{ $app->statusLabel() }}</span></td>
-                    <td class="px-4 py-2 text-right"><a href="{{ route('admin.compensation.adc-bonus.applications.show', $app) }}" class="text-brand-700 hover:text-brand-800 font-medium">Review</a></td>
+                    <td class="px-4 py-2 text-right"><a href="{{ route('admin.arete-centres.applications.show', $app) }}" class="text-brand-700 hover:text-brand-800 font-medium">Review</a></td>
                 </tr>
                 @endforeach
             </tbody>

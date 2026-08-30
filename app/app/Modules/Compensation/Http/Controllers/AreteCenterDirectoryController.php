@@ -13,7 +13,7 @@ use Illuminate\View\View;
 /**
  * Members-only directory of active Arete Development Centres (spec §F).
  *
- * Signed-in distributors only: distributor-run centres list a personal
+ * Signed-in distributors (and admin staff) only: distributor-run centres list a personal
  * contact number, which is personal data under the DPDP Act — a public
  * page would publish it to anyone. Shows no owner ADN, member counts or
  * earnings (hard rule 3).
@@ -22,7 +22,10 @@ final class AreteCenterDirectoryController extends Controller
 {
     public function index(Request $request): View
     {
-        abort_unless($request->user()?->distributor !== null, 403);
+        // Members, plus back-office staff (who need to see exactly what a
+        // member sees). Guests are turned away before this by `auth`.
+        $user = $request->user();
+        abort_unless($user !== null && ($user->distributor !== null || $user->isStaff()), 403);
 
         $centreId = (int) $request->query('centre', 0);
         $state = (string) $request->query('state', '');

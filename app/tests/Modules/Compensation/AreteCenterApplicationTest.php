@@ -104,7 +104,7 @@ test('flag off leaves no trace: apply page and admin queue 404', function (): vo
     $distributor = Distributor::factory()->create();
 
     $this->actingAs($distributor->user)->get(route('my.adc.apply'))->assertNotFound();
-    $this->actingAs(adcAppAdmin())->get(route('admin.compensation.adc-bonus.applications.index'))->assertNotFound();
+    $this->actingAs(adcAppAdmin())->get(route('admin.arete-centres.applications.index'))->assertNotFound();
 });
 
 test('distributor can submit an application with documents and declarations', function (): void {
@@ -159,8 +159,8 @@ test('approval creates an active distributor centre at phase 1 owned by the appl
     $admin = adcAppAdmin();
 
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.applications.review', [$application, 'approve']), ['reason' => 'Looks good'])
-        ->assertRedirect(route('admin.compensation.adc-bonus.applications.show', $application));
+        ->post(route('admin.arete-centres.applications.review', [$application, 'approve']), ['reason' => 'Looks good'])
+        ->assertRedirect(route('admin.arete-centres.applications.show', $application));
 
     $application->refresh();
     $center = $application->center;
@@ -181,7 +181,7 @@ test('approval creates an active distributor centre at phase 1 owned by the appl
 
     // Approving again is refused — the application is closed.
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.applications.review', [$application, 'approve']))
+        ->post(route('admin.arete-centres.applications.review', [$application, 'approve']))
         ->assertSessionHasErrors('review');
 });
 
@@ -191,11 +191,11 @@ test('request changes lets the applicant edit and resubmit; reject needs a reaso
     $admin = adcAppAdmin();
 
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.applications.review', [$application, 'request-changes']), [])
+        ->post(route('admin.arete-centres.applications.review', [$application, 'request-changes']), [])
         ->assertSessionHasErrors('reason');
 
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.applications.review', [$application, 'request-changes']), ['reason' => 'Upload a clearer rent agreement'])
+        ->post(route('admin.arete-centres.applications.review', [$application, 'request-changes']), ['reason' => 'Upload a clearer rent agreement'])
         ->assertSessionHasNoErrors();
 
     expect($application->refresh()->status)->toBe(AreteCenterApplication::STATUS_NEEDS_CHANGES);
@@ -216,7 +216,7 @@ test('request changes lets the applicant edit and resubmit; reject needs a reaso
         ->and($application->documents()->where('type', 'ownership_or_rent_proof')->value('original_name'))->toBe('rent-v2.pdf');
 
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.applications.review', [$application, 'reject']), ['reason' => 'Premises not suitable'])
+        ->post(route('admin.arete-centres.applications.review', [$application, 'reject']), ['reason' => 'Premises not suitable'])
         ->assertSessionHasNoErrors();
 
     expect($application->refresh()->status)->toBe(AreteCenterApplication::STATUS_REJECTED);
@@ -233,16 +233,16 @@ test('admin registry filters by state and type, and deactivation hides the centr
     $pune = AreteCenter::create(['name' => 'Pune Centre', 'centre_type' => 'distributor', 'city' => 'Pune', 'state' => 'Maharashtra', 'assigned_distributor_id' => $owner->id, 'status' => 'active']);
     $admin = adcAppAdmin();
 
-    $this->actingAs($admin)->get(route('admin.compensation.adc-bonus.centers.index', ['state' => 'Maharashtra']))
+    $this->actingAs($admin)->get(route('admin.arete-centres.index', ['state' => 'Maharashtra']))
         ->assertOk()->assertSee('Pune Centre')->assertDontSee('Company HQ');
-    $this->actingAs($admin)->get(route('admin.compensation.adc-bonus.centers.index', ['type' => 'company']))
+    $this->actingAs($admin)->get(route('admin.arete-centres.index', ['type' => 'company']))
         ->assertOk()->assertSee('Company HQ')->assertDontSee('Pune Centre');
 
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.centers.status', [$pune, 'deactivate']), [])
+        ->post(route('admin.arete-centres.status', [$pune, 'deactivate']), [])
         ->assertSessionHasErrors('reason');
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.centers.status', [$pune, 'deactivate']), ['reason' => 'Premises closed'])
+        ->post(route('admin.arete-centres.status', [$pune, 'deactivate']), ['reason' => 'Premises closed'])
         ->assertSessionHasNoErrors();
 
     expect($pune->refresh()->status)->toBe(AreteCenter::STATUS_INACTIVE)
@@ -250,7 +250,7 @@ test('admin registry filters by state and type, and deactivation hides the centr
         ->and(AreteCenter::query()->selectable()->pluck('name')->all())->toBe(['Company HQ']);
 
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.centers.status', [$pune, 'activate']))
+        ->post(route('admin.arete-centres.status', [$pune, 'activate']))
         ->assertSessionHasNoErrors();
     expect(AreteCenter::query()->selectable()->pluck('name')->all())->toBe(['Pune Centre', 'Company HQ']);
 });
@@ -271,11 +271,11 @@ test('admin-finance cannot open the queue, view documents, decide, or deactivate
     ]);
     $finance->assignRole('admin-finance');
 
-    $this->actingAs($finance)->get(route('admin.compensation.adc-bonus.applications.index'))->assertForbidden();
-    $this->actingAs($finance)->get(route('admin.compensation.adc-bonus.applications.show', $application))->assertForbidden();
-    $this->actingAs($finance)->get(route('admin.compensation.adc-bonus.applications.document', [$application, $document]))->assertForbidden();
-    $this->actingAs($finance)->post(route('admin.compensation.adc-bonus.applications.review', [$application, 'approve']))->assertForbidden();
-    $this->actingAs($finance)->post(route('admin.compensation.adc-bonus.centers.status', [$center, 'deactivate']), ['reason' => 'x'])->assertForbidden();
+    $this->actingAs($finance)->get(route('admin.arete-centres.applications.index'))->assertForbidden();
+    $this->actingAs($finance)->get(route('admin.arete-centres.applications.show', $application))->assertForbidden();
+    $this->actingAs($finance)->get(route('admin.arete-centres.applications.document', [$application, $document]))->assertForbidden();
+    $this->actingAs($finance)->post(route('admin.arete-centres.applications.review', [$application, 'approve']))->assertForbidden();
+    $this->actingAs($finance)->post(route('admin.arete-centres.status', [$center, 'deactivate']), ['reason' => 'x'])->assertForbidden();
 
     expect($application->refresh()->status)->toBe(AreteCenterApplication::STATUS_SUBMITTED)
         ->and($center->refresh()->status)->toBe(AreteCenter::STATUS_ACTIVE);
@@ -288,14 +288,14 @@ test('viewing a document is audit-logged and deactivation emails the owner', fun
     $admin = adcAppAdmin();
 
     $this->actingAs($admin)
-        ->get(route('admin.compensation.adc-bonus.applications.document', [$application, $document]))
+        ->get(route('admin.arete-centres.applications.document', [$application, $document]))
         ->assertOk();
 
     expect(AuditLog::where('action', 'adc.application.document_viewed')->where('subject_id', $application->id)->exists())->toBeTrue();
 
     $center = AreteCenter::create(['name' => 'Owned Centre', 'centre_type' => 'distributor', 'assigned_distributor_id' => $distributor->id, 'status' => 'active']);
     $this->actingAs($admin)
-        ->post(route('admin.compensation.adc-bonus.centers.status', [$center, 'deactivate']), ['reason' => 'Premises closed'])
+        ->post(route('admin.arete-centres.status', [$center, 'deactivate']), ['reason' => 'Premises closed'])
         ->assertSessionHasNoErrors();
 
     Notification::assertSentTo($distributor->user, AreteCenterDeactivatedNotification::class,
@@ -308,7 +308,7 @@ test('rejected applications lose their documents after the retention window', fu
     $keys = $application->documents()->pluck('object_storage_key')->all();
 
     $this->actingAs(adcAppAdmin())
-        ->post(route('admin.compensation.adc-bonus.applications.review', [$application, 'reject']), ['reason' => 'No'])
+        ->post(route('admin.arete-centres.applications.review', [$application, 'reject']), ['reason' => 'No'])
         ->assertSessionHasNoErrors();
 
     $this->artisan('adc:purge-rejected-documents')->assertSuccessful();
@@ -378,7 +378,7 @@ test('the apply page shows PAN and bank masked with a reveal toggle, and stores 
     expect($application->applicant_alternate_mobile)->toBe('+919876501234');
 
     $this->actingAs(adcAppAdmin())
-        ->get(route('admin.compensation.adc-bonus.applications.show', $application))
+        ->get(route('admin.arete-centres.applications.show', $application))
         ->assertOk()
         ->assertSee('+919876501234')
         ->assertSee('Photo — approach to the location');
@@ -405,4 +405,46 @@ test('the centre directory is members-only, filters by state and city, and never
 
     $this->actingAs($member->user)->get(route('my.adc.directory', ['state' => 'Maharashtra', 'city' => 'Hyderabad']))
         ->assertOk()->assertSee('No centres match');
+});
+
+test('the registry and the application queue live under Arete Centres and do not depend on the ADC bonus flag', function (): void {
+    Feature::for(null)->deactivate(AreteDevelopmentCenterBonusFeature::class);
+    AreteCenter::create(['name' => 'Company HQ', 'centre_type' => 'company', 'city' => 'Hyderabad', 'state' => 'Telangana', 'status' => 'active', 'is_company_default' => true]);
+    $admin = adcAppAdmin();
+
+    $this->actingAs($admin)->get(route('admin.arete-centres.index'))
+        ->assertOk()->assertSee('Company HQ')->assertSee(route('admin.arete-centres.applications.index'), false);
+    $this->actingAs($admin)->get(route('admin.arete-centres.create'))->assertOk();
+    $this->actingAs($admin)->get(route('admin.arete-centres.applications.index'))->assertOk();
+
+    // Sidebar entry is there for any admin, whatever the bonus flag says; the
+    // bonus report itself stays hidden while its own flag is off.
+    $this->actingAs($admin)->get(route('admin.dashboard'))->assertSee(route('admin.arete-centres.index'), false);
+    $this->actingAs($admin)->get(route('admin.compensation.adc-bonus.index'))->assertNotFound();
+});
+
+test('the Applications tab and sidebar badge disappear while the applications flag is off', function (): void {
+    Feature::for(null)->deactivate(AreteCenterApplicationsFeature::class);
+    $admin = adcAppAdmin();
+
+    $this->actingAs($admin)->get(route('admin.arete-centres.index'))
+        ->assertOk()->assertDontSee(route('admin.arete-centres.applications.index'), false);
+});
+
+test('legacy ADC bonus URLs for the registry and the queue redirect to Arete Centres', function (): void {
+    $admin = adcAppAdmin();
+
+    $this->actingAs($admin)->get('/admin/compensation/adc-bonus/centers')
+        ->assertRedirect(url('/admin/arete-centres'))->assertStatus(301);
+    $this->actingAs($admin)->get('/admin/compensation/adc-bonus/centers/create')
+        ->assertRedirect(url('/admin/arete-centres/create'))->assertStatus(301);
+    $this->actingAs($admin)->get('/admin/compensation/adc-bonus/applications')
+        ->assertRedirect(url('/admin/arete-centres/applications'))->assertStatus(301);
+});
+
+test('admin staff can open the members-only centre directory', function (): void {
+    AreteCenter::create(['name' => 'Company HQ', 'centre_type' => 'company', 'city' => 'Hyderabad', 'state' => 'Telangana', 'status' => 'active', 'is_company_default' => true]);
+
+    $this->actingAs(adcAppAdmin())->get(route('my.adc.directory'))->assertOk()->assertSee('Company HQ');
+    $this->actingAs(adcAppAdmin())->get(route('admin.arete-centres.index'))->assertSee(route('my.adc.directory'), false);
 });

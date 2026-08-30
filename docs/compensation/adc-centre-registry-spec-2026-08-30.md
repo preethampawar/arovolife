@@ -96,6 +96,14 @@ Store: declaration version id, accepted-at timestamp, IP, per checkbox.
 
 ## B. Admin — centre registry
 
+**Location (2026-08-30 restructure).** Own admin section **Arete Centres**
+(`/admin/arete-centres`, sidebar entry with an open-applications badge) with tabs
+*Centres* and *Applications* and a link to the member directory. The registry is
+never gated on the ADC *bonus* flag — centres are needed by Step 11 and the profile
+page regardless; only the *Applications* tab follows `compensation.arete_center_applications`.
+The bonus pages stay under Compensation → ADC Bonus. Old
+`/admin/compensation/adc-bonus/{centers,applications}` URLs redirect (301).
+
 ### Columns (list)
 
 Sr · Centre name · City · State · Owner (ADN + name) · Type (company / distributor) ·

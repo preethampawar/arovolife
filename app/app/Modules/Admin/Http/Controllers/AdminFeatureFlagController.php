@@ -149,7 +149,7 @@ final class AdminFeatureFlagController extends Controller
             'compensation.arete_center_applications' => [
                 'class' => AreteCenterApplicationsFeature::class,
                 'label' => 'Arete Development Centre applications',
-                'description' => 'Lets a distributor apply to open an Arete Development Centre (premises details, documents, declarations) and puts the review queue — approve / reject / request changes — in the admin console. Approval activates the centre in the registry at Phase 1 and assigns the applicant as its owner. OFF leaves no trace: no menu item, no routes, no minimum-size setting. The admin centre registry itself stays available regardless of this flag.',
+                'description' => 'Lets a distributor apply to open an Arete Development Centre (premises details, documents, declarations) and puts the review queue — approve / reject / request changes — under Arete Centres in the admin console. Approval activates the centre in the registry at Phase 1 and assigns the applicant as its owner. OFF leaves no trace: no Applications tab, no routes, no minimum-size setting. The Arete Centres registry itself is always available — it does not depend on this flag or on the ADC Bonus flag.',
                 'owner' => 'developer',
                 'requires' => [],
             ],
