@@ -15,17 +15,17 @@
 @endphp
 
 <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-    <p class="text-sm text-slate-600">
+    <p class="text-sm text-gray-600">
         Every intake channel — web, contact form, email, phone, post and walk-in — lands here.
         Sorted by the resolution deadline, soonest first.
     </p>
     <div class="flex gap-2">
         <a href="{{ route('admin.grievances.report') }}"
-           class="rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-800">
+           class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
             Compliance report
         </a>
         <a href="{{ route('admin.grievances.create') }}"
-           class="rounded-lg bg-sunrise-800 px-4 py-2 text-sm font-semibold text-white hover:bg-sunrise-900">
+           class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
             Record a complaint
         </a>
     </div>
@@ -35,7 +35,7 @@
     @foreach ($filters as $value => $label)
         <a href="{{ route('admin.grievances.index', array_filter(['status' => $value, 'category' => $category, 'level' => $level, 'q' => $search])) }}"
            class="rounded-full px-3.5 py-1.5 text-xs font-semibold transition
-                  {{ $status === $value ? 'bg-sunrise-800 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700' }}">
+                  {{ $status === $value ? 'bg-slate-800 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100' }}">
             {{ $label }}
         </a>
     @endforeach
@@ -49,14 +49,14 @@
          operator hears nothing about what it filters (WCAG 4.1.2). --}}
     <input type="text" name="q" value="{{ $search }}" placeholder="Complaint number, subject, email or phone"
            aria-label="Search grievances by complaint number, subject, email or phone"
-           class="min-w-64 flex-1 rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100 placeholder-slate-500">
-    <select name="category" aria-label="Filter by category" class="rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100">
+           class="min-w-64 flex-1 rounded-lg border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500 text-sm text-gray-900 placeholder-gray-400">
+    <select name="category" aria-label="Filter by category" class="rounded-lg border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500 text-sm text-gray-900">
         <option value="">All categories</option>
         @foreach ($categories as $option)
             <option value="{{ $option->value }}" @selected($category === $option->value)>{{ $option->label() }}</option>
         @endforeach
     </select>
-    <select name="level" aria-label="Filter by escalation step" class="rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100">
+    <select name="level" aria-label="Filter by escalation step" class="rounded-lg border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500 text-sm text-gray-900">
         <option value="">All escalation steps</option>
         @foreach ($levels as $option)
             <option value="{{ $option->value }}" @selected($level === (string) $option->value)>
@@ -64,19 +64,19 @@
             </option>
         @endforeach
     </select>
-    <button type="submit" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
+    <button type="submit" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
         Filter
     </button>
 </form>
 
 @if ($tickets->isEmpty())
-    <div class="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-600">
+    <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center text-gray-600">
         No grievances match this filter.
     </div>
 @else
-    <div class="overflow-x-auto rounded-xl border border-slate-700">
-        <table class="min-w-full divide-y divide-slate-700 text-sm">
-            <thead class="bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-600">
+    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                 <tr>
                     <th class="px-4 py-3">Number</th>
                     <th class="px-4 py-3">Subject</th>
@@ -87,21 +87,21 @@
                     <th class="px-4 py-3">Status</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-800">
+            <tbody class="divide-y divide-gray-100">
                 @foreach ($tickets as $ticket)
-                    <tr class="hover:bg-slate-800/60">
+                    <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
                             <a href="{{ route('admin.grievances.show', $ticket->id) }}"
-                               class="font-mono text-xs font-semibold text-sunrise-400 underline">{{ $ticket->ticket_no }}</a>
+                               class="font-mono text-xs font-semibold text-brand-700 underline hover:text-brand-800">{{ $ticket->ticket_no }}</a>
                             @if ($ticket->hasEverBreached())
-                                <span class="ml-1.5 rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">SLA</span>
+                                <span class="ml-1.5 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">SLA</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-slate-200">{{ \Illuminate\Support\Str::limit($ticket->subject, 44) }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ $ticket->category->label() }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ $ticket->escalation_level->value }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ $ticket->created_at->format('d M Y') }}</td>
-                        <td class="px-4 py-3 {{ $ticket->isSlaBreached() ? 'font-semibold text-rose-300' : 'text-slate-600' }}">
+                        <td class="px-4 py-3 text-gray-800">{{ \Illuminate\Support\Str::limit($ticket->subject, 44) }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $ticket->category->label() }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $ticket->escalation_level->value }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $ticket->created_at->format('d M Y') }}</td>
+                        <td class="px-4 py-3 {{ $ticket->isSlaBreached() ? 'font-semibold text-red-700' : 'text-gray-600' }}">
                             {{ $ticket->sla_resolution_at?->format('d M Y') ?? '—' }}
                         </td>
                         <td class="px-4 py-3">

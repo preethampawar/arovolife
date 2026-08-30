@@ -9,34 +9,34 @@
 @endphp
 
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-    <p class="max-w-2xl text-sm leading-relaxed text-slate-600">
+    <p class="max-w-2xl text-sm leading-relaxed text-gray-600">
         Two offers for distributors who hold <strong>no rank</strong>:
         {{ number_format($settings->cycleRateBp() / 100, 0) }}% of the streak's BV as redeem points for
         {{ $settings->cycleMonths() }} consecutive months of <strong>@bv($qualifyingBv) BV</strong>, and a
         half-price company-announced product for a qualifying month (after activating at
-        <strong>@bv($activationBv) BV</strong> lifetime) — <strong class="text-amber-300">which is
+        <strong>@bv($activationBv) BV</strong> lifetime) — <strong class="text-amber-700">which is
         recorded but not yet redeemable</strong>.
     </p>
     <form method="GET" action="{{ route('admin.commerce.offers.index') }}" class="flex items-end gap-2">
         <div>
-            <label for="month" class="mb-1 block text-xs font-medium text-slate-600">Month</label>
+            <label for="month" class="mb-1 block text-xs font-medium text-gray-600">Month</label>
             <input id="month" name="month" type="month" value="{{ $month->format('Y-m') }}"
-                   class="rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100">
+                   class="rounded-lg border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500 text-sm text-gray-900">
         </div>
-        <button type="submit" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-700 hover:bg-slate-800">
+        <button type="submit" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
             View
         </button>
     </form>
 </div>
 
 @if (session('status'))
-    <div class="mb-6 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+    <div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
         {{ session('status') }}
     </div>
 @endif
 
 @if ($errors->any())
-    <div class="mb-6 rounded-lg border border-rose-600/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {{ $errors->first() }}
     </div>
 @endif
@@ -44,7 +44,7 @@
 {{-- R-49. Staff announce a product from this screen, so the limitation has to
      be here and not only in the risk register: an announcement creates grants
      the platform cannot honour. --}}
-<div class="mb-6 rounded-lg border border-amber-600/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+<div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     <strong>The half-price offer cannot be redeemed yet (R-49).</strong>
     Nothing applies the offer price at cart or checkout, so a grant is a record of who qualified and
     nothing more. It has been removed from the published plan and from the distributor's My Offers page
@@ -53,25 +53,25 @@
 </div>
 
 {{-- The announcement --}}
-<div class="mb-8 rounded-xl border border-slate-700 bg-slate-900/40 p-6">
-    <h2 class="mb-1 text-sm font-semibold text-slate-100">
+<div class="mb-8 rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+    <h2 class="mb-1 text-sm font-semibold text-gray-900">
         Half-price product for {{ $month->format('F Y') }}
     </h2>
-    <p class="mb-4 text-sm text-slate-600">
+    <p class="mb-4 text-sm text-gray-600">
         With no product named, the engine grants no half-price offer for this month at all — an entitlement
         to an unnamed product is not an entitlement. Once the month has been granted the product can no
         longer be changed.
     </p>
 
     @if ($announced)
-        <div class="mb-4 rounded-lg bg-slate-800/60 px-4 py-3 text-sm">
-            <p class="font-semibold text-slate-100">
+        <div class="mb-4 rounded-lg bg-gray-50 px-4 py-3 text-sm">
+            <p class="font-semibold text-gray-900">
                 {{ $announced->variant->product?->name ?? $announced->variant->variant_sku }}
             </p>
-            <p class="text-slate-600">
+            <p class="text-gray-600">
                 Distributor price ₹@bv($announced->variant->distributor_price_paise / 100)
                 → offer price
-                <strong class="text-emerald-300">₹@bv($settings->offerPricePaise($announced->variant->distributor_price_paise) / 100)</strong>
+                <strong class="text-green-700">₹@bv($settings->offerPricePaise($announced->variant->distributor_price_paise) / 100)</strong>
             </p>
         </div>
     @endif
@@ -84,9 +84,9 @@
         @csrf
         <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
         <div class="min-w-72 flex-1">
-            <label for="product_variant_id" class="mb-1.5 block text-sm font-medium text-slate-300">Product</label>
+            <label for="product_variant_id" class="mb-1.5 block text-sm font-medium text-gray-700">Product</label>
             <select id="product_variant_id" name="product_variant_id" required
-                    class="w-full rounded-lg border-slate-600 bg-slate-800 text-sm text-slate-100">
+                    class="w-full rounded-lg border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500 text-sm text-gray-900">
                 <option value="">Choose a product</option>
                 @foreach ($variants as $variant)
                     <option value="{{ $variant->id }}" @selected($announced?->product_variant_id === $variant->id)>
@@ -96,7 +96,7 @@
                 @endforeach
             </select>
         </div>
-        <button type="submit" class="rounded-lg bg-sunrise-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sunrise-900">
+        <button type="submit" class="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
             {{ $announced ? 'Change product' : 'Announce' }}
         </button>
     </form>
@@ -104,28 +104,28 @@
 
 {{-- What was granted --}}
 <div class="mb-6 grid gap-3 sm:grid-cols-3">
-    <div class="rounded-xl border border-slate-700 bg-slate-900/40 px-4 py-3">
-        <p class="text-xs uppercase tracking-wider text-slate-500">Half-price grants</p>
-        <p class="mt-1 text-2xl font-bold text-slate-100">{{ $totals['half_price'] }}</p>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
+        <p class="text-xs uppercase tracking-wider text-gray-500">Half-price grants</p>
+        <p class="mt-1 text-2xl font-bold text-gray-900">{{ $totals['half_price'] }}</p>
     </div>
-    <div class="rounded-xl border border-slate-700 bg-slate-900/40 px-4 py-3">
-        <p class="text-xs uppercase tracking-wider text-slate-500">Streaks completed</p>
-        <p class="mt-1 text-2xl font-bold text-slate-100">{{ $totals['points_grants'] }}</p>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
+        <p class="text-xs uppercase tracking-wider text-gray-500">Streaks completed</p>
+        <p class="mt-1 text-2xl font-bold text-gray-900">{{ $totals['points_grants'] }}</p>
     </div>
-    <div class="rounded-xl border border-slate-700 bg-slate-900/40 px-4 py-3">
-        <p class="text-xs uppercase tracking-wider text-slate-500">Points awarded</p>
-        <p class="mt-1 text-2xl font-bold text-slate-100">{{ number_format($totals['points_awarded']) }}</p>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3">
+        <p class="text-xs uppercase tracking-wider text-gray-500">Points awarded</p>
+        <p class="mt-1 text-2xl font-bold text-gray-900">{{ number_format($totals['points_awarded']) }}</p>
     </div>
 </div>
 
 @if ($grants->isEmpty())
-    <div class="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-600">
+    <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center text-gray-600">
         Nothing granted for {{ $month->format('F Y') }}. Run <code>offers:monthly-run --month={{ $month->format('Y-m') }}</code>.
     </div>
 @else
-    <div class="overflow-x-auto rounded-xl border border-slate-700">
-        <table class="min-w-full divide-y divide-slate-700 text-sm">
-            <thead class="bg-slate-800 text-left text-xs uppercase tracking-wider text-slate-600">
+    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                 <tr>
                     <th class="px-4 py-3">ADN</th>
                     <th class="px-4 py-3">Distributor</th>
@@ -135,18 +135,18 @@
                     <th class="px-4 py-3">Result</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-800">
+            <tbody class="divide-y divide-gray-100">
                 @foreach ($grants as $grant)
-                    <tr class="hover:bg-slate-800/60">
+                    <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 font-mono text-xs">
                             <a href="{{ route('admin.distributors.show', $grant->distributor_id) }}"
-                               class="text-sunrise-400 underline">{{ $grant->distributor?->adn }}</a>
+                               class="text-brand-700 underline hover:text-brand-800">{{ $grant->distributor?->adn }}</a>
                         </td>
-                        <td class="px-4 py-3 text-slate-300">{{ $grant->distributor?->user?->full_name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ $grant->offer_type->label() }}</td>
-                        <td class="px-4 py-3 text-slate-600">@bv($grant->qualifying_bv_paise / 100)</td>
-                        <td class="px-4 py-3 text-slate-600">{{ $grant->streak_months }}</td>
-                        <td class="px-4 py-3 text-slate-200">
+                        <td class="px-4 py-3 text-gray-700">{{ $grant->distributor?->user?->full_name ?? '—' }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $grant->offer_type->label() }}</td>
+                        <td class="px-4 py-3 text-gray-600">@bv($grant->qualifying_bv_paise / 100)</td>
+                        <td class="px-4 py-3 text-gray-600">{{ $grant->streak_months }}</td>
+                        <td class="px-4 py-3 text-gray-800">
                             @if ($grant->points_awarded > 0)
                                 {{ number_format($grant->points_awarded) }} points
                             @elseif ($grant->variant)
