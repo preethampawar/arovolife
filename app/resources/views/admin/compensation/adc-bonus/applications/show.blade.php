@@ -40,6 +40,7 @@
                 <dt class="text-gray-500">ADN</dt><dd class="font-mono">{{ $applicant->adn }}</dd>
                 <dt class="text-gray-500">Joined</dt><dd>{{ $applicant->effective_date?->format('d M Y') ?? '—' }}</dd>
                 <dt class="text-gray-500">Mobile</dt><dd class="font-mono">{{ $applicant->user->phone_e164 ?? '—' }}</dd>
+                <dt class="text-gray-500">Alternate mobile</dt><dd class="font-mono">{{ $application->applicant_alternate_mobile ?: '—' }}</dd>
                 <dt class="text-gray-500">Email</dt><dd>{{ $applicant->user->email ?? '—' }}</dd>
                 <dt class="text-gray-500">Sponsor</dt><dd>{{ $sponsor ? ($sponsor->user->full_name ?? '').' ('.$sponsor->adn.')' : '—' }}</dd>
                 <dt class="text-gray-500">Registered address</dt><dd>{{ $applicant->user->address ?? '—' }}</dd>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\AreteCenterApplication;
+use App\Modules\Compensation\Models\AreteCenterApplicationDocument;
 use App\Modules\Compensation\Notifications\AreteCenterApplicationReviewedNotification;
 use App\Modules\Compensation\Notifications\AreteCenterApplicationSubmittedNotification;
 use App\Modules\Compensation\Notifications\AreteCenterDeactivatedNotification;
@@ -53,6 +54,17 @@ function adcAppPdf(string $name): UploadedFile
     return UploadedFile::fake()->createWithContent($name, '%PDF-1.4\n'.str_repeat('x', 512));
 }
 
+/** The five named site photos, one small JPEG each. @return array<string, list<UploadedFile>> */
+function adcAppPhotos(): array
+{
+    $out = [];
+    foreach (AreteCenterApplicationDocument::photoTypes() as $type) {
+        $out[$type] = [UploadedFile::fake()->image("{$type}.jpg", 200, 150)];
+    }
+
+    return $out;
+}
+
 /** @return array<string, mixed> */
 function adcAppPayload(array $overrides = []): array
 {
@@ -72,8 +84,8 @@ function adcAppPayload(array $overrides = []): array
         'declarations' => AreteCenterDeclarations::keys(),
         'documents' => [
             'ownership_or_rent_proof' => [adcAppPdf('rent.pdf')],
-            'premises_photo' => [UploadedFile::fake()->image('front.jpg'), UploadedFile::fake()->image('hall.jpg')],
             'address_proof' => [adcAppPdf('bill.pdf')],
+            ...adcAppPhotos(),
         ],
     ], $overrides);
 }
@@ -102,7 +114,7 @@ test('distributor can submit an application with documents and declarations', fu
 
     expect($application->status)->toBe(AreteCenterApplication::STATUS_SUBMITTED)
         ->and($application->premises_sqft)->toBe(450)
-        ->and($application->documents()->count())->toBe(4)
+        ->and($application->documents()->count())->toBe(7)
         ->and($application->declarations()->count())->toBe(count(AreteCenterDeclarations::keys()));
 
     foreach ($application->documents as $document) {
@@ -200,7 +212,7 @@ test('request changes lets the applicant edit and resubmit; reject needs a reaso
     $application->refresh();
     expect($application->status)->toBe(AreteCenterApplication::STATUS_SUBMITTED)
         ->and($application->centre_name)->toBe('Sangareddy ADC (revised)')
-        ->and($application->documents()->count())->toBe(4)
+        ->and($application->documents()->count())->toBe(7)
         ->and($application->documents()->where('type', 'ownership_or_rent_proof')->value('original_name'))->toBe('rent-v2.pdf');
 
     $this->actingAs($admin)
@@ -300,7 +312,7 @@ test('rejected applications lose their documents after the retention window', fu
         ->assertSessionHasNoErrors();
 
     $this->artisan('adc:purge-rejected-documents')->assertSuccessful();
-    expect($application->documents()->count())->toBe(4);
+    expect($application->documents()->count())->toBe(7);
 
     $application->forceFill(['reviewed_at' => now()->subDays(91)])->save();
     $this->artisan('adc:purge-rejected-documents')->assertSuccessful();
@@ -311,4 +323,86 @@ test('rejected applications lose their documents after the retention window', fu
         Storage::disk('adc')->assertMissing($key);
     }
     expect(AuditLog::where('action', 'adc.application.documents_purged')->where('subject_id', $application->id)->exists())->toBeTrue();
+});
+
+test('site photos are one image per named slot, capped by the admin photo-size setting', function (): void {
+    DB::table('settings')->insert(['key' => 'adc.max_photo_kb', 'value' => '100', 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+    $distributor = Distributor::factory()->create();
+
+    // A PDF is not a photo.
+    $this->actingAs($distributor->user)
+        ->post(route('my.adc.apply.submit'), adcAppPayload(['documents' => [
+            'ownership_or_rent_proof' => [adcAppPdf('rent.pdf')],
+            'address_proof' => [adcAppPdf('bill.pdf')],
+            ...adcAppPhotos(),
+            'photo_front' => [adcAppPdf('front.pdf')],
+        ]]))
+        ->assertSessionHasErrors('documents.photo_front.0');
+
+    // Over the cap.
+    $this->actingAs($distributor->user)
+        ->post(route('my.adc.apply.submit'), adcAppPayload(['documents' => [
+            'ownership_or_rent_proof' => [adcAppPdf('rent.pdf')],
+            'address_proof' => [adcAppPdf('bill.pdf')],
+            ...adcAppPhotos(),
+            'photo_left' => [UploadedFile::fake()->image('left.jpg', 200, 150)->size(150)],
+        ]]))
+        ->assertSessionHasErrors('documents.photo_left.0');
+
+    // A missing slot.
+    $photos = adcAppPhotos();
+    unset($photos['photo_approach']);
+    $this->actingAs($distributor->user)
+        ->post(route('my.adc.apply.submit'), adcAppPayload(['documents' => [
+            'ownership_or_rent_proof' => [adcAppPdf('rent.pdf')],
+            'address_proof' => [adcAppPdf('bill.pdf')],
+            ...$photos,
+        ]]))
+        ->assertSessionHasErrors('documents.photo_approach');
+
+    expect(AreteCenterApplication::count())->toBe(0);
+});
+
+test('the apply page shows PAN and bank masked with a reveal toggle, and stores the applicant alternate mobile', function (): void {
+    $distributor = Distributor::factory()->create(['pan_last4' => '234F', 'bank_ifsc' => 'HDFC0001234']);
+
+    $this->actingAs($distributor->user)->get(route('my.adc.apply'))
+        ->assertOk()
+        ->assertSee('XXXXXX234F')
+        ->assertSee('HDFC0001234')
+        ->assertSee('id="identityRevealToggle"', false)
+        ->assertSee('applicant_alternate_mobile');
+
+    $application = adcAppSubmit($distributor, ['applicant_alternate_mobile' => '+919876501234']);
+
+    expect($application->applicant_alternate_mobile)->toBe('+919876501234');
+
+    $this->actingAs(adcAppAdmin())
+        ->get(route('admin.compensation.adc-bonus.applications.show', $application))
+        ->assertOk()
+        ->assertSee('+919876501234')
+        ->assertSee('Photo — approach to the location');
+});
+
+test('the centre directory is members-only, filters by state and city, and never shows the owner ADN', function (): void {
+    $owner = Distributor::factory()->create();
+    AreteCenter::create(['name' => 'Company HQ', 'centre_type' => 'company', 'city' => 'Hyderabad', 'state' => 'Telangana', 'status' => 'active', 'is_company_default' => true, 'contact_person' => 'Front desk', 'contact_number' => '+914012345678', 'weekly_off' => 'sunday', 'address_line_1' => '1 Banjara Hills']);
+    AreteCenter::create(['name' => 'Pune Centre', 'centre_type' => 'distributor', 'city' => 'Pune', 'state' => 'Maharashtra', 'assigned_distributor_id' => $owner->id, 'status' => 'active', 'contact_number' => '+919999900000']);
+    AreteCenter::create(['name' => 'Closed Centre', 'centre_type' => 'company', 'city' => 'Nagpur', 'state' => 'Maharashtra', 'status' => 'inactive']);
+
+    $this->get(route('my.adc.directory'))->assertRedirect(route('login'));
+
+    $member = Distributor::factory()->create();
+    $this->actingAs($member->user)->get(route('my.adc.directory'))
+        ->assertOk()
+        ->assertSee('Company HQ')->assertSee('Front desk')->assertSee('+914012345678')->assertSee('Sunday')
+        ->assertSee('Pune Centre')
+        ->assertDontSee('Closed Centre')
+        ->assertDontSee($owner->adn);
+
+    $this->actingAs($member->user)->get(route('my.adc.directory', ['state' => 'Maharashtra']))
+        ->assertOk()->assertSee('+919999900000')->assertDontSee('Front desk'); // HQ stays in the centre dropdown, not the list
+
+    $this->actingAs($member->user)->get(route('my.adc.directory', ['state' => 'Maharashtra', 'city' => 'Hyderabad']))
+        ->assertOk()->assertSee('No centres match');
 });

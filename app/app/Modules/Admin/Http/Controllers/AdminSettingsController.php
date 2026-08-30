@@ -232,6 +232,18 @@ final class AdminSettingsController extends Controller
                 'max' => 100000,
                 'default' => '350',
             ],
+            'adc.max_photo_kb' => [
+                'group' => 'compensation',
+                'owner' => 'admin',
+                'feature' => AreteCenterApplicationsFeature::class,
+                'label' => 'Maximum size of one premises photo on an Arete Development Centre application (KB)',
+                'description' => 'Each of the five premises photos (inside, front, right, left, approach) must be a JPG or PNG no larger than this. The form shrinks larger phone photos in the browser before uploading, so a small cap is workable.',
+                'impact' => 'Applies to photos uploaded from now on. Photos already on file are not re-checked.',
+                'type' => 'int',
+                'min' => 50,
+                'max' => 10240,
+                'default' => '500',
+            ],
 
             // ── Franchise ──────────────────────────────────────────────────
             // Feature-gated: while the franchise flag is off these keys are

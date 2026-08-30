@@ -35,9 +35,13 @@ draft → submitted → under_review → approved (centre status=active) | rejec
 
 ### A1. Applicant — all **read-only**, pulled from the distributor record (never re-entered)
 
-Name · ADN · date of joining (effective date) · current rank · registered address · mobile ·
-email · sponsor name + ADN + rank. **PAN / bank / IFSC are NOT shown or collected** —
-already on file via KYC + bank details.
+Name · ADN · date of joining (effective date) · current level (rank) · registered address ·
+mobile · email · sponsor name + ADN, with the sponsor's date of joining and current level
+**masked behind an eye toggle** · PAN, bank account number and IFSC **shown masked
+(last 4) with the same eye toggle** — read-only, pulled from KYC / bank details, never
+re-entered. The only applicant-side input is an optional **alternate mobile number**
+(client form, 30-08-2026). Revealed PAN shows the full number only while the platform
+still holds it (it is purged to its last 4 after KYC verification).
 
 ### A2. Centre identity
 
@@ -68,13 +72,14 @@ already on file via KYC + bank details.
 | Document | Required |
 |---|---|
 | Premises ownership proof **or** rent/lease agreement | yes |
-| Photos of the premises (exterior + interior, up to 5) | yes |
 | Address proof of premises (electricity bill / property tax receipt) | yes |
+| Site photos — five named slots: **inside, front side, right side, left side, approach to the location** (client form, 30-08-2026) | yes, one image each |
 | Trade / shop-establishment registration, if any | optional |
-| Applicant's recent photo | optional |
 
-PDF/JPG/PNG, ≤ 5 MB each; stored under the application id, never under the
-distributor's KYC folder.
+Documents: PDF/JPG/PNG, ≤ 5 MB each. Photos: JPG/PNG only, ≤ `adc.max_photo_kb`
+(admin setting, default 500 KB per the client's form); the form shrinks larger
+phone photos in the browser before upload. Stored under the application id, never
+under the distributor's KYC folder.
 
 ### A5. Declarations (checkboxes, each individually required; text is versioned content)
 
@@ -128,12 +133,21 @@ New: `arete_center_applications` (status machine above, snapshot of A2–A3, adm
 notes, reviewed_by/at), `arete_center_application_documents`,
 `arete_center_application_declarations`.
 
-Settings registry: `adc.min_premises_sqft` (int, default 350, admin-owned).
+Settings registry: `adc.min_premises_sqft` (int, default 350, admin-owned — the client's
+30-08-2026 form says 800; operations sets the floor) · `adc.max_photo_kb` (int, default 500, admin-owned).
+
+## F. Members-only centre directory (client item 2, 30-08-2026)
+
+`/arete-centres` for signed-in distributors: filters centre (dropdown), state (dropdown),
+city (dropdown, narrowed by state); list S.No · City · Centre name · Weekly off ·
+Contact person · Contact number · Address. Active centres only; no owner ADN, counts or
+earnings. Not public: distributor-owned centres carry personal contact numbers (DPDP).
 
 ## E. Compliance notes
 
 - Hard rule 7: copy audit on every string — "centre", never "shop / outlet / store".
 - Hard rule 3: the application and Step-11 UI show no income, projections or
   phase-income figures to the applicant; the ₹20K–₹80K phase ladder is admin-only.
-- Hard rule 8: no PAN / Aadhaar / bank in this flow; documents on a private disk.
+- Hard rule 8: PAN / bank shown masked and read-only to the applicant only; never collected
+  or re-entered; documents on a private disk.
 - Application is free; approval creates no purchase obligation (hard rule 1).

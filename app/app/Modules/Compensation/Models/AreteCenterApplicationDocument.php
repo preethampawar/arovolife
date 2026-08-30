@@ -24,22 +24,49 @@ final class AreteCenterApplicationDocument extends Model
 {
     public const string TYPE_OWNERSHIP_OR_RENT = 'ownership_or_rent_proof';
 
+    /** Legacy bucket from before the five named photo slots; kept so old rows still label. */
     public const string TYPE_PREMISES_PHOTO = 'premises_photo';
+
+    public const string TYPE_PHOTO_INSIDE = 'photo_inside';
+
+    public const string TYPE_PHOTO_FRONT = 'photo_front';
+
+    public const string TYPE_PHOTO_RIGHT = 'photo_right';
+
+    public const string TYPE_PHOTO_LEFT = 'photo_left';
+
+    public const string TYPE_PHOTO_APPROACH = 'photo_approach';
 
     public const string TYPE_ADDRESS_PROOF = 'address_proof';
 
     public const string TYPE_TRADE_LICENCE = 'trade_licence';
 
-    /** type => [label, required, max files] */
+    /**
+     * type => [label, required, max files, image-only]
+     *
+     * The five photo slots mirror the client's reference form (30-08-2026):
+     * one image each, capped at `adc.max_photo_kb` (the form downsizes large
+     * phone photos in the browser before upload so the cap is workable).
+     */
     public const array TYPES = [
-        self::TYPE_OWNERSHIP_OR_RENT => ['label' => 'Premises ownership proof or rent / lease agreement', 'required' => true, 'max' => 1],
-        self::TYPE_PREMISES_PHOTO => ['label' => 'Photos of the premises (exterior and interior)', 'required' => true, 'max' => 5],
-        self::TYPE_ADDRESS_PROOF => ['label' => 'Address proof of the premises (electricity bill / property-tax receipt)', 'required' => true, 'max' => 1],
+        self::TYPE_OWNERSHIP_OR_RENT => ['label' => 'Premises ownership proof or rent / lease agreement', 'required' => true, 'max' => 1, 'image' => false],
+        self::TYPE_ADDRESS_PROOF => ['label' => 'Address proof of the premises (electricity bill / property-tax receipt)', 'required' => true, 'max' => 1, 'image' => false],
+        self::TYPE_PHOTO_INSIDE => ['label' => 'Photo — inside the premises', 'required' => true, 'max' => 1, 'image' => true],
+        self::TYPE_PHOTO_FRONT => ['label' => 'Photo — front side', 'required' => true, 'max' => 1, 'image' => true],
+        self::TYPE_PHOTO_RIGHT => ['label' => 'Photo — right side', 'required' => true, 'max' => 1, 'image' => true],
+        self::TYPE_PHOTO_LEFT => ['label' => 'Photo — left side', 'required' => true, 'max' => 1, 'image' => true],
+        self::TYPE_PHOTO_APPROACH => ['label' => 'Photo — approach to the location', 'required' => true, 'max' => 1, 'image' => true],
         // Optional: some local authorities require a Shops & Establishments
         // certificate even for non-retail premises. Its presence is not a
         // suggestion that the centre trades — the declarations say it may not.
-        self::TYPE_TRADE_LICENCE => ['label' => 'Shops & Establishments registration certificate, if your local authority requires one for non-retail premises', 'required' => false, 'max' => 1],
+        self::TYPE_TRADE_LICENCE => ['label' => 'Shops & Establishments registration certificate, if your local authority requires one for non-retail premises', 'required' => false, 'max' => 1, 'image' => false],
     ];
+
+    /** @return list<string> the five named photo slots */
+    public static function photoTypes(): array
+    {
+        return array_keys(array_filter(self::TYPES, fn (array $meta): bool => $meta['image']));
+    }
 
     protected $fillable = [
         'application_id', 'type', 'original_name', 'object_storage_key',
@@ -61,7 +88,10 @@ final class AreteCenterApplicationDocument extends Model
 
     public function typeLabel(): string
     {
-        return self::TYPES[$this->type]['label'] ?? ucwords(str_replace('_', ' ', $this->type));
+        return match ($this->type) {
+            self::TYPE_PREMISES_PHOTO => 'Photo of the premises',
+            default => self::TYPES[$this->type]['label'] ?? ucwords(str_replace('_', ' ', $this->type)),
+        };
     }
 
     public function isImage(): bool

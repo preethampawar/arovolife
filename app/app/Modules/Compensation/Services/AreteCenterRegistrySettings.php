@@ -17,6 +17,10 @@ final class AreteCenterRegistrySettings
 
     public const int DEFAULT_MIN_PREMISES_SQFT = 350;
 
+    public const string KEY_MAX_PHOTO_KB = 'adc.max_photo_kb';
+
+    public const int DEFAULT_MAX_PHOTO_KB = 500;
+
     /**
      * Smallest premises an application may declare, in square feet. Pre-filled
      * on the form and enforced server-side against the same value (the
@@ -31,5 +35,21 @@ final class AreteCenterRegistrySettings
         }
 
         return max(1, (int) $value);
+    }
+
+    /**
+     * Largest premises photo accepted, in kilobytes. The client's reference
+     * form says 500 KB; the application form shrinks larger phone photos in
+     * the browser before upload so the cap is workable in practice.
+     */
+    public function maxPhotoKb(): int
+    {
+        $value = DB::table('settings')->where('key', self::KEY_MAX_PHOTO_KB)->value('value');
+
+        if ($value === null || ! is_numeric($value)) {
+            return self::DEFAULT_MAX_PHOTO_KB;
+        }
+
+        return max(50, (int) $value);
     }
 }

@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property string $centre_name
  * @property string|null $contact_person
  * @property string|null $alternate_contact_number
+ * @property string|null $applicant_alternate_mobile
  * @property string $address_line_1
  * @property string|null $address_line_2
  * @property string $landmark
@@ -89,7 +90,7 @@ final class AreteCenterApplication extends Model
 
     protected $fillable = [
         'distributor_id', 'center_id', 'status',
-        'centre_name', 'contact_person', 'alternate_contact_number',
+        'centre_name', 'contact_person', 'alternate_contact_number', 'applicant_alternate_mobile',
         'address_line_1', 'address_line_2', 'landmark', 'pincode', 'city', 'state',
         'property_type', 'premises_sqft', 'distance_to_nearest_adc_km',
         'opening_time', 'closing_time', 'weekly_off',

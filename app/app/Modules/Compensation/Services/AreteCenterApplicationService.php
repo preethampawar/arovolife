@@ -273,6 +273,7 @@ final class AreteCenterApplicationService
             'centre_name' => $data['centre_name'],
             'contact_person' => $data['contact_person'] ?? null,
             'alternate_contact_number' => $data['alternate_contact_number'] ?? null,
+            'applicant_alternate_mobile' => $data['applicant_alternate_mobile'] ?? null,
             'address_line_1' => $data['address_line_1'],
             'address_line_2' => $data['address_line_2'] ?? null,
             'landmark' => $data['landmark'],
