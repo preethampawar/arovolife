@@ -61,6 +61,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusInputOutputController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminWeeklyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\CompensationOverviewController;
+use App\Modules\Compensation\Http\Controllers\AreteCenterDirectoryController;
 use App\Modules\Compensation\Http\Controllers\DistributorAreteCenterApplicationController;
 use App\Modules\Compensation\Http\Controllers\IncomeController;
 use App\Modules\Compensation\Http\Controllers\MyBusinessController;
@@ -81,12 +82,14 @@ use App\Modules\Grievance\Http\Controllers\AdminGrievanceReportController;
 use App\Modules\Grievance\Http\Controllers\DistributorGrievanceController;
 use App\Modules\Grievance\Http\Controllers\PublicGrievanceController;
 use App\Modules\Grievance\Http\Controllers\SupportHubController;
+use App\Modules\Identity\Http\Controllers\Admin\AdminDistributorRequestController;
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
 use App\Modules\Identity\Http\Controllers\DashboardController;
 use App\Modules\Identity\Http\Controllers\DirectSellerApplicationController;
 use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
+use App\Modules\Identity\Http\Controllers\DistributorRequestController;
 use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController;
 use App\Modules\Identity\Http\Controllers\KycResubmitController;
@@ -345,6 +348,19 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     });
 
     // Line-change requests — review queue + approve/reject
+    // Distributor requests (name / DOB correction, name change, membership
+    // transfer, ID cancellation). Flag-gated in the controller. Reading needs
+    // `distributor.request.handle`; each decision checks the permission the
+    // request type names (kyc.review or compliance.discipline).
+    Route::prefix('distributor-requests')->name('distributor-requests.')->middleware('can:distributor.request.handle')->group(function (): void {
+        Route::get('/', [AdminDistributorRequestController::class, 'index'])->name('index');
+        Route::get('/{distributorRequest}', [AdminDistributorRequestController::class, 'show'])->name('show')->whereNumber('distributorRequest');
+        Route::get('/{distributorRequest}/documents/{document}', [AdminDistributorRequestController::class, 'document'])
+            ->name('document')->whereNumber('distributorRequest')->whereNumber('document');
+        Route::post('/{distributorRequest}/{action}', [AdminDistributorRequestController::class, 'decide'])
+            ->name('decide')->whereNumber('distributorRequest')->whereIn('action', ['review', 'approve', 'reject']);
+    });
+
     Route::get('/line-changes', [AdminLineChangeController::class, 'index'])->name('line-changes.index');
     Route::get('/line-changes/{id}', [AdminLineChangeController::class, 'show'])->whereNumber('id')->name('line-changes.show');
     // Line-change decisions — admin-operations (R-17).
@@ -833,6 +849,13 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/my/grievances/{id}/attachments/{attachmentId}', [DistributorGrievanceController::class, 'streamAttachment'])
         ->whereNumber('id')->whereNumber('attachmentId')->name('my.grievances.attachment');
 
+    // Formal requests about the distributor's own record (flag-gated in the
+    // controller: DistributorRequestsFeature).
+    Route::get('/my/requests', [DistributorRequestController::class, 'index'])->name('my.requests.index');
+    Route::get('/my/requests/create', [DistributorRequestController::class, 'create'])->name('my.requests.create');
+    Route::post('/my/requests', [DistributorRequestController::class, 'store'])->name('my.requests.store');
+    Route::get('/my/requests/{distributorRequest}', [DistributorRequestController::class, 'show'])->whereNumber('distributorRequest')->name('my.requests.show');
+
     // The distributor's own offers: point balance, streak and entitlements.
     Route::get('/my/offers', [MyOffersController::class, 'index'])->name('my.offers.index');
 
@@ -980,6 +1003,9 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Arete Development Centre application — flag-gated inside the controller
     // (AreteCenterApplicationsFeature, 404 when off for zero trace).
+    // Members-only directory of active centres (spec §F). Not public: the
+    // contact numbers of distributor-run centres are personal data.
+    Route::get('/arete-centres', [AreteCenterDirectoryController::class, 'index'])->name('my.adc.directory');
     Route::get('/my/arete-centre', [DistributorAreteCenterApplicationController::class, 'status'])->name('my.adc.status');
     Route::get('/my/arete-centre/apply', [DistributorAreteCenterApplicationController::class, 'create'])->name('my.adc.apply');
     Route::post('/my/arete-centre/apply', [DistributorAreteCenterApplicationController::class, 'store'])->name('my.adc.apply.submit');
