@@ -52,7 +52,7 @@
         </div>
         {{-- Hero stat card --}}
         <div class="hidden md:flex flex-col items-center justify-center bg-white rounded-2xl border border-gray-200 shadow-xl p-5 min-w-[180px]">
-            <span class="text-5xl">🛍</span>
+            <x-lucide-shopping-bag class="w-12 h-12 text-brand-600" />
             <p class="mt-2 text-sm text-gray-700 font-semibold text-center">Direct from arovolife — no resellers</p>
         </div>
     </div>
@@ -191,7 +191,7 @@
 
     @if($products->isEmpty())
     <div class="bg-white rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center text-gray-600">
-        <span class="text-5xl block mb-3 opacity-50">🛒</span>
+        <x-lucide-shopping-cart class="w-12 h-12 mx-auto mb-3 opacity-50" />
         No products available yet — check back soon.
     </div>
     @endif

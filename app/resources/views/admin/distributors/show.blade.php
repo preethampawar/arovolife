@@ -25,7 +25,7 @@
         </a>
         <a href="{{ route('admin.compensation.distributors.show', $distributor->id) }}"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-300 bg-purple-50 text-sm text-purple-700 font-medium hover:bg-purple-100">
-            💰 Compensation →
+            <x-lucide-banknote class="w-4 h-4" /> Compensation →
         </a>
 
         <button type="button" onclick="openResetPwdModal()"

@@ -310,15 +310,15 @@
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-5">
                 @foreach([
-                    ['icon' => '⚖', 'title' => 'Ethics',       'body' => 'Right is right, even when nobody is watching. Especially then.',          'card' => 'bg-brand-50/70 border-brand-100 hover:border-brand-300',   'tile' => 'border-brand-100'],
-                    ['icon' => '🔍', 'title' => 'Transparency', 'body' => 'Costs published. Commissions auditable. No fine print that bites later.',  'card' => 'bg-sky-50/70 border-sky-100 hover:border-sky-300',         'tile' => 'border-sky-100'],
-                    ['icon' => '🤲', 'title' => 'Trust',        'body' => 'We earn it once, then we work every day to keep it.',                     'card' => 'bg-amber-50/70 border-amber-100 hover:border-amber-300',   'tile' => 'border-amber-100'],
-                    ['icon' => '💚', 'title' => 'Service',      'body' => 'Customers and distributors are family. We treat them like it.',           'card' => 'bg-leaf-50/70 border-leaf-100 hover:border-leaf-300',      'tile' => 'border-leaf-100'],
-                    ['icon' => '🔬', 'title' => 'Excellence',   'body' => 'Best-in-class isn\'t a slogan — it\'s a manufacturing standard.',          'card' => 'bg-violet-50/70 border-violet-100 hover:border-violet-300','tile' => 'border-violet-100'],
-                    ['icon' => '🌏', 'title' => 'Community',     'body' => 'Indian roots, international standards, decade-long horizon.',              'card' => 'bg-rose-50/70 border-rose-100 hover:border-rose-300',      'tile' => 'border-rose-100'],
+                    ['icon' => 'scale', 'title' => 'Ethics',       'body' => 'Right is right, even when nobody is watching. Especially then.',          'card' => 'bg-brand-50/70 border-brand-100 hover:border-brand-300',   'tile' => 'border-brand-100 text-brand-700'],
+                    ['icon' => 'search', 'title' => 'Transparency', 'body' => 'Costs published. Commissions auditable. No fine print that bites later.',  'card' => 'bg-sky-50/70 border-sky-100 hover:border-sky-300',         'tile' => 'border-sky-100 text-sky-700'],
+                    ['icon' => 'hand-heart', 'title' => 'Trust',        'body' => 'We earn it once, then we work every day to keep it.',                     'card' => 'bg-amber-50/70 border-amber-100 hover:border-amber-300',   'tile' => 'border-amber-100 text-amber-700'],
+                    ['icon' => 'heart', 'title' => 'Service',      'body' => 'Customers and distributors are family. We treat them like it.',           'card' => 'bg-leaf-50/70 border-leaf-100 hover:border-leaf-300',      'tile' => 'border-leaf-100 text-leaf-700'],
+                    ['icon' => 'microscope', 'title' => 'Excellence',   'body' => 'Best-in-class isn\'t a slogan — it\'s a manufacturing standard.',          'card' => 'bg-violet-50/70 border-violet-100 hover:border-violet-300','tile' => 'border-violet-100 text-violet-700'],
+                    ['icon' => 'globe', 'title' => 'Community',     'body' => 'Indian roots, international standards, decade-long horizon.',              'card' => 'bg-rose-50/70 border-rose-100 hover:border-rose-300',      'tile' => 'border-rose-100 text-rose-700'],
                 ] as $i => $v)
                 <div class="{{ $v['card'] }} border rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300" data-reveal data-reveal-delay="{{ (($i % 3) + 1) * 100 }}">
-                    <div class="w-10 h-10 rounded-lg bg-white border {{ $v['tile'] }} flex items-center justify-center text-xl mb-3 shadow-sm">{{ $v['icon'] }}</div>
+                    <div class="w-10 h-10 rounded-lg bg-white border {{ $v['tile'] }} flex items-center justify-center mb-3 shadow-sm">{{ svg('lucide-'.$v['icon'], 'w-5 h-5') }}</div>
                     <h3 class="font-bold text-gray-900 mb-1">{{ $v['title'] }}</h3>
                     <p class="text-sm text-gray-600 leading-snug">{{ $v['body'] }}</p>
                 </div>

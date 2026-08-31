@@ -50,7 +50,7 @@
 
         <div class="rounded-lg bg-brand-50 border border-brand-200 p-4">
             <p class="text-xs text-brand-700">
-                🔒 Your account number is encrypted (AES-256) before being stored.
+                <x-lucide-lock class="w-3.5 h-3.5 inline-block -mt-0.5 mr-0.5" /> Your account number is encrypted (AES-256) before being stored.
                 Penny-drop verification will be performed before first payout.
                 (Phase 1: stub verification.)
             </p>

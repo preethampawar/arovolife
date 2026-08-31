@@ -12,7 +12,7 @@
     <div class="grid gap-4 sm:grid-cols-2 mb-8">
         <a href="{{ route('my.grievances.create') }}"
            class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:border-brand-300 hover:shadow transition">
-            <p class="text-2xl mb-2">📣</p>
+            <p class="mb-2"><x-lucide-megaphone class="w-6 h-6 text-brand-700" /></p>
             <p class="font-semibold text-gray-900 mb-1">Raise a grievance</p>
             <p class="text-sm text-gray-600">
                 A formal complaint with a complaint number, an SLA clock and a published escalation route.
@@ -21,7 +21,7 @@
 
         <a href="{{ route('my.grievances.index') }}"
            class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:border-brand-300 hover:shadow transition">
-            <p class="text-2xl mb-2">📂</p>
+            <p class="mb-2"><x-lucide-folder-open class="w-6 h-6 text-brand-700" /></p>
             <p class="font-semibold text-gray-900 mb-1">My grievances</p>
             <p class="text-sm text-gray-600">
                 @if ($openGrievances > 0)
@@ -34,7 +34,7 @@
 
         <a href="{{ route('contact.show') }}"
            class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:border-brand-300 hover:shadow transition">
-            <p class="text-2xl mb-2">✉️</p>
+            <p class="mb-2"><x-lucide-mail class="w-6 h-6 text-brand-700" /></p>
             <p class="font-semibold text-gray-900 mb-1">General enquiry</p>
             <p class="text-sm text-gray-600">
                 A question rather than a complaint — no ticket number, no SLA clock.
@@ -43,7 +43,7 @@
 
         <a href="{{ route('content.show', 'grievance') }}"
            class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:border-brand-300 hover:shadow transition">
-            <p class="text-2xl mb-2">📖</p>
+            <p class="mb-2"><x-lucide-book-open class="w-6 h-6 text-brand-700" /></p>
             <p class="font-semibold text-gray-900 mb-1">Grievance Redressal Policy</p>
             <p class="text-sm text-gray-600">
                 Our SLAs, the four internal escalation steps, and the statutory authorities beyond them.

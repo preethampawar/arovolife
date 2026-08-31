@@ -15,7 +15,7 @@
     <a href="{{ route('admin.help.show', $slug) }}"
        class="group block bg-white rounded-2xl border border-gray-200 hover:border-brand-400 hover:shadow-md transition-all p-5">
         <div class="flex items-start gap-3">
-            <span class="text-2xl shrink-0">📘</span>
+            <x-lucide-book-open class="w-6 h-6 shrink-0 text-brand-700" />
             <div class="min-w-0">
                 <h2 class="font-semibold text-gray-900 group-hover:text-brand-800">{{ $doc['title'] }}</h2>
                 <p class="text-sm text-gray-600 mt-1">{{ $doc['description'] }}</p>

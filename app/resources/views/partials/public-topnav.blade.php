@@ -90,20 +90,20 @@
                         </a>
                         @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class) && auth()->user()?->distributor)
                         <a href="{{ route('my.offers.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <span aria-hidden="true">🎁</span> My offers
+                            <x-lucide-gift class="w-4 h-4 text-gray-600" /> My offers
                         </a>
                         @endif
                         @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteCenterApplicationsFeature::class) && auth()->user()?->distributor)
                         <a href="{{ route('my.adc.status') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <span aria-hidden="true">🏛</span> My Arete Centre
+                            <x-lucide-landmark class="w-4 h-4 text-gray-600" /> My Arete Centre
                         </a>
                         @endif
                         <a href="{{ route('my.adc.directory') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <span aria-hidden="true">📍</span> Arete Centres
+                            <x-lucide-map-pin class="w-4 h-4 text-gray-600" /> Arete Centres
                         </a>
                         @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\DistributorRequestsFeature::class) && auth()->user()?->distributor)
                         <a href="{{ route('my.requests.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <span aria-hidden="true">📝</span> My Requests
+                            <x-lucide-clipboard-list class="w-4 h-4 text-gray-600" /> My Requests
                         </a>
                         @endif
                         <a href="{{ route('orders.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
