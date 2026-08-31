@@ -41,32 +41,71 @@
     ];
 @endphp
 
+{{-- Desktop (lg+): sticky column --}}
 <aside class="hidden lg:block" aria-label="My account navigation">
     <div class="lg:sticky lg:top-28 space-y-5 rounded-2xl border border-brand-100/80 bg-gradient-to-b from-white via-brand-50/50 to-leaf-50/40 shadow-sm p-4">
-        @foreach($groups as $groupLabel => $items)
-        <div>
-            <p class="px-3 mb-1.5 text-[10px] uppercase tracking-[0.18em] text-gray-500 font-semibold">{{ $groupLabel }}</p>
-            <nav class="space-y-0.5">
-                @foreach($items as $item)
-                    @php
-                        $active = request()->routeIs($item['route'])
-                            || (isset($item['prefix']) && request()->routeIs($item['prefix'].'*'));
-                    @endphp
-                    <a href="{{ route($item['route']) }}"
-                       @if($active) aria-current="page" @endif
-                       class="relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors
-                              {{ $active
-                                 ? 'bg-brand-100/70 text-brand-800 font-semibold shadow-sm'
-                                 : 'text-gray-700 hover:bg-white/80 hover:text-gray-900 font-medium' }}">
-                        @if($active)
-                        <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand-600"></span>
-                        @endif
-                        <span class="w-5 text-center {{ $active ? 'text-brand-700' : 'text-gray-500' }}" aria-hidden="true">{{ $item['icon'] }}</span>
-                        <span class="flex-1 truncate">{{ $item['label'] }}</span>
-                    </a>
-                @endforeach
-            </nav>
-        </div>
-        @endforeach
+        @include('partials._distributor-sidenav-groups')
     </div>
 </aside>
+
+{{-- Mobile (below lg): trigger button + slide-over drawer --}}
+<div class="lg:hidden mb-4">
+    <button type="button" id="distributorNavBtn"
+        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors">
+        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+        </svg>
+        My Account menu
+    </button>
+</div>
+
+<div id="distributorNavBackdrop" class="lg:hidden fixed inset-0 z-[60] bg-gray-900/40 hidden"></div>
+
+<aside id="distributorNavDrawer"
+    class="lg:hidden fixed top-0 bottom-0 left-0 z-[70] w-72 max-w-[85vw] overflow-y-auto border-r border-brand-100/80 bg-gradient-to-b from-white via-brand-50/50 to-leaf-50/40 shadow-xl -translate-x-full transition-transform duration-200 ease-out"
+    aria-label="My account navigation">
+    <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <p class="text-[11px] uppercase tracking-[0.2em] text-brand-700 font-semibold">My Account</p>
+        <button type="button" id="distributorNavCloseBtn" aria-label="Close menu"
+            class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-white/80 hover:text-gray-800 transition-colors">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+    <div class="space-y-5 p-4 pt-2">
+        @include('partials._distributor-sidenav-groups')
+    </div>
+</aside>
+
+{{-- Drawer toggle — vanilla JS, same pattern as the admin sidebar drawer. --}}
+<script>
+    (function () {
+        const btn = document.getElementById('distributorNavBtn');
+        const closeBtn = document.getElementById('distributorNavCloseBtn');
+        const drawer = document.getElementById('distributorNavDrawer');
+        const backdrop = document.getElementById('distributorNavBackdrop');
+        if (! btn || ! drawer || ! backdrop) return;
+
+        const open = () => {
+            drawer.classList.remove('-translate-x-full');
+            backdrop.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden', 'lg:overflow-auto');
+        };
+        const close = () => {
+            drawer.classList.add('-translate-x-full');
+            backdrop.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        };
+
+        btn.addEventListener('click', open);
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        backdrop.addEventListener('click', close);
+        drawer.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
+
+        // Auto-close when the viewport widens into desktop (lg = 1024px).
+        const mql = window.matchMedia('(min-width: 1024px)');
+        const onChange = (e) => { if (e.matches) close(); };
+        mql.addEventListener ? mql.addEventListener('change', onChange) : mql.addListener(onChange);
+    })();
+</script>
