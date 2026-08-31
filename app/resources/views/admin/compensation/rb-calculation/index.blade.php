@@ -13,12 +13,14 @@
     ];
 @endphp
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Rank Bonus (RB) calculation — one row per distributor per month.
     Rank 1 is points-based (achievers earn RAP, AO-GO grantees earn offer points; income = points × point value).
     Ranks 2–9 split each pool equally among achievers. "requalification_held" = re-qualified but missed the
     month's requalification conditions (rank's repurchase BV + cleared repurchase wallet) — recorded, not paid.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

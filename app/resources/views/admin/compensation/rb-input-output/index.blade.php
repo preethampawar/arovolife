@@ -4,6 +4,7 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Per-month Rank Bonus pool economics, one row per rank. Each month shows the company turnover (BV), each
     rank's pool (its share of the <strong>{{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($envelopeBp) }}
@@ -13,6 +14,7 @@
     the run; the envelope % and per-rank pool % shown are <strong>current plan settings</strong>, as are the
     asterisked pools of ranks that had no qualifiers. Search by month or month range.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

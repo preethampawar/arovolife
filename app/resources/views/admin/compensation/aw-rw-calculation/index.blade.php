@@ -4,12 +4,14 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global Lifetime Awards & Rewards table — one row per milestone delivery.
     <strong>Award</strong> = the physical goods item (e.g., iPhone, Royal Enfield).
     <strong>Reward</strong> = cash disbursement (where the distributor chose cash in lieu of goods).
     Filter by type to see goods-only or cash-only rows.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

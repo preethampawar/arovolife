@@ -5,6 +5,7 @@
 @section('content')
 
 {{-- Page note --}}
+@developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     @if($gsbOn)
         The Compensation Overview shows the real-time status of today's daily GSB cut-off, any failed or stuck jobs, the total pending payout queue, and this week's GSB distributed. Items in the attention feed need action before Tuesday's payout — use Retry or Recalculate to resolve them.
@@ -12,6 +13,7 @@
         The Compensation Overview shows the total amount queued for the next payout run.
     @endif
 </div>
+@enddeveloper
 
 {{-- Stat cards --}}
 <div class="grid grid-cols-2 {{ $gsbOn ? 'lg:grid-cols-4' : 'lg:grid-cols-1' }} gap-3 mb-6">

@@ -4,9 +4,11 @@
 
 @section('content')
 
+@developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     Before each nightly GSB cut-off, a distributor's own day's personal order BV is injected into their weaker Genos leg to help them reach a slab. This ledger records every such injection and any subsequent reversal (triggered when the originating order is cancelled within the cooling-off period).
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-5">

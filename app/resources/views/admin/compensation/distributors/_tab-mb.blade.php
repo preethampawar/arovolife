@@ -1,6 +1,8 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Mentorship Bonus earned by this distributor as a sponsor. When a directly sponsored sponsee's cut-off matches a GSB slab, the sponsor earns that slab's MSB points; the credit is points × the day's point value (the 3% MSB pool ÷ the day's total points). Legacy rows from the old 10%→1% rate ladder show — in the points columns.
 </div>
+@enddeveloper
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No Mentorship Bonus history yet.</p>

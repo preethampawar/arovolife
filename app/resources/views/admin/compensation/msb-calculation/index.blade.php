@@ -4,11 +4,13 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global daily Mentorship Bonus (MSB) calculation table — one row per sponsor–sponsee pair per cutoff date.
     When a sponsee's cut-off matches a GSB slab, the direct sponsor earns that slab's MSB points; income = points × the day's point value (the 3% MSB pool ÷ the day's total points — see <a href="{{ route('admin.compensation.msb-input-output.index') }}" class="underline">MSB Input &amp; Output / Day</a>).
     Search by sponsor or sponsee ADN/name, filter by date range, slab and status.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

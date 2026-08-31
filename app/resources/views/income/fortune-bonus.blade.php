@@ -8,9 +8,11 @@
     @include('income._tabs')
 
     {{-- Page note --}}
+    @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         The Fortune Bonus is a monthly matrix reward funded entirely by the month's pool (5% of company BV). Eligible distributors are placed in a 3×9 matrix in order of GSB activity, and each month you earn FB points from the enrolled distributors below you in that matrix. A ₹30 minimum per qualifier is set aside from the pool first; if a month's pool cannot cover it, the pool is divided equally instead and that share may be ₹0. On top of the minimum, your FB points are multiplied by your matrix level's point value for the month — a value that varies with company BV and everyone's points, and may be ₹0 — up to your level's maximum (₹30,000 at levels 0–3, ₹20,000 at level 4, ₹10,000 at level 5, ₹5,000 at level 6, including the ₹30; levels 7–8 share the remaining pool by points; level 9 receives the minimum only). A 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Credited on the 9th of the following month. Every figure below is a record of a completed month — nothing here is a projection of future income.
     </div>
+    @enddeveloper
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">

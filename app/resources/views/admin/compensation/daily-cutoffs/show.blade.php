@@ -9,11 +9,13 @@
        class="text-sm text-brand-700 hover:underline">← Back to cut-offs list</a>
 </div>
 
+@developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     All distributors processed in the {{ $parsed->format('d M Y') }} 23:59 cut-off. Use
     <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls</a>
     to retry failed rows or reverse incorrect credits.
 </div>
+@enddeveloper
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($rows->isEmpty())

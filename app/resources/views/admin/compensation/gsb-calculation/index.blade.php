@@ -4,10 +4,12 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global daily GSB slab calculation table — shows every distributor who matched a slab on each cutoff date.
     Only rows where a slab was awarded are included. Search by ADN or name, filter by date range and status.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

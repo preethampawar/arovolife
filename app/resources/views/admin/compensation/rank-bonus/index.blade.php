@@ -4,9 +4,11 @@
 
 @section('content')
 
+@developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     The Rank Bonus is distributed monthly from 9 separate pools (one per rank). Each pool is that rank's percentage of the month's rank envelope — the envelope being a configurable share (default 20%) of the month's company-wide BV. Rank 1 is points-based: achievers earn RAP and AO-GO grantees earn offer points, and the pool is divided by the month's total points. Ranks 2–9 split their pool equally among achievers. Runs automatically on the 8th of each month.
 </div>
+@enddeveloper
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($months->isEmpty())

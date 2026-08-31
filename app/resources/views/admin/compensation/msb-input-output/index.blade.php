@@ -4,6 +4,7 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Per-day Mentorship Bonus pool economics. Each day shows the company's total received BV, the
     <strong>MSB pool</strong> (the configured pool rate of that day's BV), every sponsor who accrued MSB score
@@ -12,6 +13,7 @@
     rupees — so the day's total income equals the pool apart from that remainder. Search by day number, week number
     or date range.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

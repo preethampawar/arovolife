@@ -8,6 +8,7 @@
     @include('income._tabs')
 
     {{-- Page note --}}
+    @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         The Rank Bonus is paid monthly from each rank's pool (a share of the company's business volume for that month).
         Rank 1 (Silver) is points-based: each achiever earned 10 RAP and each AO-GO grantee 5 points that month; the pool was divided by the month's total points and your income is your points × the point value.
@@ -15,6 +16,7 @@
         Re-qualifying a rank you already achieved requires that month's repurchase BV and a cleared repurchase wallet.
         Admin charge (min of 3%, max ₹25,000 per monthly batch) and 5% TDS are deducted. Credited on the 8th of the following month.
     </div>
+    @enddeveloper
 
     {{-- Rank status — the distributor's own standing, and the published
          conditions of the next rank measured against their own figures. --}}

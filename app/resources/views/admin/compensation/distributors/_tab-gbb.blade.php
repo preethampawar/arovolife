@@ -1,6 +1,8 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Monthly Growth Booster Bonus (GBB). AGP earned from the month's GSB slab matches divides the month's GBB pool: income = the distributor's AGP × the point value (pool ÷ the month's total AGP).
 </div>
+@enddeveloper
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No Growth Booster Bonus history yet.</p>

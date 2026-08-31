@@ -1,6 +1,8 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Personal BV ledger for this distributor — every accrual (purchase) and reversal (cancellation / refund). Net BV is the running total. BV is tied exclusively to paid product sales (hard rule #2).
 </div>
+@enddeveloper
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No BV ledger entries yet.</p>

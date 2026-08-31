@@ -4,6 +4,7 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Per-month Growth Booster Bonus pool economics. Each month shows the company's total BV, the
     <strong>GBB pool</strong> (the configured pool rate of that month's BV), every distributor who earned AGP,
@@ -13,6 +14,7 @@
     and release at the frozen point value; suspended rows earned AGP that was excluded and is never paid.
     Search by month or month range.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

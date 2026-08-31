@@ -8,9 +8,11 @@
     @include('income._tabs')
 
     {{-- Page note --}}
+    @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         You earn Mentorship Bonus points when a distributor you directly sponsored achieves a Genos Sales Bonus (GSB) slab. Each slab carries a fixed number of MSB points, and your bonus is those points × that day's point value — the day's Mentorship Bonus pool shared out across everyone's points. The value therefore depends on that day's company-wide sales and on how many points were earned, and it can be ₹0 on a low-sales day; the points are recorded either way. This bonus applies only to directly sponsored distributors' GSB slab achievements — not to any other income type.
     </div>
+    @enddeveloper
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

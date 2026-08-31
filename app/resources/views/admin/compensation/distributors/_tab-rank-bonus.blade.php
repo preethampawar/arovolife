@@ -1,7 +1,9 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Monthly Rank Bonus for this distributor. Rank 1 is points-based (RAP for achievers, AO-GO offer points for grantees; income = points × the month's point value); Ranks 2–9 split their pool equally among that rank's achievers.
     "requalification_held" = re-qualified but missed the month's requalification conditions (the rank's repurchase BV + a cleared repurchase wallet) — recorded, not paid.
 </div>
+@enddeveloper
 
 {{-- Rank Bonus results --}}
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-5">

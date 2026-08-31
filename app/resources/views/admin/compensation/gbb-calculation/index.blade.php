@@ -14,6 +14,7 @@
     ];
 @endphp
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Growth Booster Bonus (GBB) calculation table — one row per distributor per month.
     AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP.
@@ -21,6 +22,7 @@
     "repurchase_suspended" = the grace window lapsed, so the month is not payable.
     Search by ADN or name, filter by month and status.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

@@ -1,6 +1,8 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Shows every daily cut-off result for this distributor. Gross GSB is before deductions. Failed rows have not been credited to the wallet — use Retry. Reversed rows have a debit entry in the wallet ledger.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

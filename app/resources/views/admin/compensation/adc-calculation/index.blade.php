@@ -4,12 +4,14 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly ADC Bonus calculation table — one row per Arete centre per month.
     <strong>Monthly Turnover BV</strong> = net BV of all members assigned to the centre (refunds deducted).
     <strong>Rate %</strong> = gross ADC ÷ turnover BV × 100.
     Search by pincode, district or state to filter by centre area.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

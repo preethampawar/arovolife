@@ -34,6 +34,7 @@ use App\Modules\Returns\Events\OrderRefundApproved;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Number;
@@ -107,6 +108,11 @@ class AppServiceProvider extends ServiceProvider
         // this ability internally too, and its packaged default is
         // "allow if local", which would be wide open on staging.
         Gate::define('viewPulse', fn (User $user) => $user->hasRole('developer'));
+
+        // @developer gates the engine/plan explainer banners on the
+        // compensation console and income pages: plan internals are
+        // developer-only, hidden from admins and distributors alike.
+        Blade::if('developer', fn (): bool => auth()->user()?->hasRole('developer') === true);
 
         if ($this->app->runningInConsole()) {
             // Module commands live outside app/Console/Commands, so Laravel's

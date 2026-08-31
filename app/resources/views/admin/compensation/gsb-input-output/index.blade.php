@@ -4,6 +4,7 @@
 
 @section('content')
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Per-day GSB pool economics (from the first pooled day onward). Each day shows the company's total BV, the
     GSB pool (the configured pool rate of that day's BV), the <strong>fixed</strong> section (slabs 1–2 — always paid at their fixed
@@ -11,6 +12,7 @@
     fixed value; the variance column shows how far below the cap the day landed). Search by day number, week number
     or date range.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

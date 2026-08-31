@@ -4,9 +4,11 @@
 
 @section('content')
 
+@developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     Payouts run automatically every Tuesday covering all wallets with a balance of ₹{{ $minPayout }} or more. Each batch shows total gross, deductions (repurchase + admin charge + TDS), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over to the next week. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls → Force Payout</a> only if the automated batch failed for a specific distributor.
 </div>
+@enddeveloper
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($batches->isEmpty())

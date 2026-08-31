@@ -10,12 +10,14 @@
     $fortuneOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FortuneBonusFeature::class);
 @endphp
 
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Monthly repurchase obligation, anchored to the day the distributor first reached 600 personal BV.
     Missing it holds income during the grace window, then suspends GSB{{ $fortuneOn ? ' / Fortune' : '' }} / Growth Booster
     (never Mentorship or Rank). Maintained by the daily <code class="font-mono">repurchase:evaluate</code>
     command; only active when the Repurchase engine feature flag is on.
 </div>
+@enddeveloper
 
 @if($current)
 <div class="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">

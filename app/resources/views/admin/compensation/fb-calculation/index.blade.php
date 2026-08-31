@@ -12,6 +12,7 @@
     ];
 @endphp
 
+@developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Fortune Bonus (FB) calculation table — one row per distributor per month.
     Value = the whole-rupee point value applied at the distributor's matrix level in the month's
@@ -21,6 +22,7 @@
     depth (0 = top); Date = the first GSB credit that enrolled them. Rows written before the
     cascade rework show "—" for points and value. Search by ADN or name.
 </div>
+@enddeveloper
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap items-center gap-3 mb-4">

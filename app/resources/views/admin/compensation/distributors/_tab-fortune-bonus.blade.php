@@ -1,6 +1,8 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Monthly Fortune Bonus. Positions are filled first-come-first-served; each matrix level pays depth points × that level's point value, subject to the level's per-distributor cap and the plan's minimum commission.
 </div>
+@enddeveloper
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No Fortune Bonus history yet.</p>

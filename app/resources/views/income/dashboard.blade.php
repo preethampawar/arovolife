@@ -8,6 +8,7 @@
     @include('income._tabs')
 
     {{-- Page note --}}
+    @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         @if ($gsbOn)
             This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. Deductions (3% admin charge, 5% TDS, and any repurchase wallet balance) are applied before transfer.
@@ -15,6 +16,7 @@
             This dashboard shows a live snapshot of your income. Weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. Deductions (3% admin charge, 5% TDS, and any repurchase wallet balance) are applied before transfer.
         @endif
     </div>
+    @enddeveloper
 
     {{-- Wallet hero card --}}
     <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 text-white mb-6">

@@ -1,6 +1,8 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     History of weekly Tuesday bank transfer payout line items for this distributor.
 </div>
+@enddeveloper
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($rows) || $rows->isEmpty())
     <p class="px-6 py-8 text-sm text-gray-600 text-center">No payout history yet.</p>

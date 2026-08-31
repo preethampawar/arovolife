@@ -1,6 +1,8 @@
+@developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Transaction view of this distributor's Genos BV: every paid downline order that credited their Left or Right group (snapshotted at credit time), cancelled-order reversals, closed by that day's cut-off settlement — matched BV is consumed, the weaker side resets, and the carry-forward shown is what survived into the next day. Settlement figures come from the stored cut-off result, never recomputed.
 </div>
+@enddeveloper
 
 @php
     $debtParts = [];
