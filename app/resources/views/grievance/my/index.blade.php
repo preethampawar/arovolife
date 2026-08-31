@@ -2,7 +2,7 @@
 @section('title', 'My grievances')
 
 @section('content')
-<div class="max-w-4xl">
+<div>
 
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>

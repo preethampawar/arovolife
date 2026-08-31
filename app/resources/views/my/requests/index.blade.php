@@ -9,7 +9,7 @@
         'approved' => 'bg-green-100 text-green-700', 'rejected' => 'bg-red-100 text-red-700',
     ];
 @endphp
-<div class="max-w-5xl">
+<div>
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">My requests</h1>

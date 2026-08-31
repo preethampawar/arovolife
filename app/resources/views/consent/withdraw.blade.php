@@ -2,7 +2,7 @@
 @section('title', 'Withdraw consent')
 
 @section('content')
-<div class="max-w-2xl">
+<div>
 
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Withdraw consent</h1>
     <p class="text-sm text-gray-600 mb-6">

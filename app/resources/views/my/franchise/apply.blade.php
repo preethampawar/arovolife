@@ -3,7 +3,7 @@
 
 @section('content')
 
-<div class="max-w-xl">
+<div>
     <h1 class="text-2xl font-bold mb-2">Apply for a Franchise</h1>
 
     {{-- Form-purpose note (platform convention). --}}

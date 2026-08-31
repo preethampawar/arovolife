@@ -9,7 +9,7 @@
     $lifetimeBv = $lifetimeBvPaise / 100;
 @endphp
 
-<div class="max-w-3xl">
+<div>
 
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My offers</h1>
     <p class="text-sm text-gray-600 mb-8">

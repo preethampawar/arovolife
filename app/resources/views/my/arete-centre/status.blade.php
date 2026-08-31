@@ -3,7 +3,7 @@
 
 @section('content')
 
-<div class="max-w-xl">
+<div>
     <h1 class="text-2xl font-bold mb-6">My Arete Development Centre</h1>
 
     @if(session('success'))

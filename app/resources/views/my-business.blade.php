@@ -69,7 +69,7 @@
     $statLabelClasses = 'text-xs text-gray-600 font-medium';
     $statValueClasses = 'text-2xl font-bold text-gray-900';
 @endphp
-<div class="max-w-5xl mx-auto px-4 py-8">
+<div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My Business</h1>
 
     @include('income._tabs')

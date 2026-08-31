@@ -2,7 +2,7 @@
 @section('title', 'My Addresses')
 
 @section('content')
-<div class="max-w-3xl">
+<div>
     <h1 class="text-2xl font-bold text-gray-900 mb-1">My Addresses</h1>
     <p class="text-sm text-gray-600 mb-6">Save your delivery addresses so you can reuse them at checkout.</p>
 

@@ -2,7 +2,7 @@
 @section('title', 'Grievance '.$ticket->ticket_no)
 
 @section('content')
-<div class="max-w-3xl">
+<div>
 
     <a href="{{ route('my.grievances.index') }}" class="text-sm text-brand-700 underline">← All grievances</a>
 

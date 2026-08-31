@@ -12,7 +12,7 @@
     };
 @endphp
 
-<div class="max-w-3xl">
+<div>
     <a href="{{ route('orders.sales') }}" class="text-sm text-brand-700 hover:text-brand-800">← Back to my sales</a>
 
     <div class="flex items-center justify-between mt-3 mb-6 gap-3 flex-wrap">

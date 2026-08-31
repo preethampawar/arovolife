@@ -10,7 +10,7 @@
 @endphp
 
 @section('content')
-<div class="max-w-3xl">
+<div>
     <div class="flex items-center gap-3 mb-2">
         <a href="{{ route('my.requests.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← My requests</a>
     </div>

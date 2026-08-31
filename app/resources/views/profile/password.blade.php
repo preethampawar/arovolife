@@ -2,7 +2,7 @@
 @section('title', 'Change password')
 
 @section('content')
-<div class="max-w-md">
+<div>
     <h1 class="text-2xl font-bold text-gray-900 mb-1">Change password</h1>
     <p class="text-sm text-gray-600 mb-6">Pick a strong, unique password — we check it against the public breach list.</p>
 

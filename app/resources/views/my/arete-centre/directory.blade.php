@@ -7,7 +7,7 @@
     $inp = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500';
     $lbl = 'block text-xs font-medium text-gray-600 mb-1';
 @endphp
-<div class="max-w-6xl">
+<div>
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Arete Development Centres</h1>
         <p class="text-sm text-gray-600">Find an Arete Development Centre near you — training, product demonstration and distributor support centres across the country.</p>

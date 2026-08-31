@@ -11,7 +11,7 @@
     };
 @endphp
 
-<div class="max-w-5xl">
+<div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My Orders</h1>
 
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-4">

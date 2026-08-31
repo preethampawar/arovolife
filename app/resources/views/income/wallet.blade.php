@@ -2,7 +2,7 @@
 @section('title', 'My Income — Wallet & Payouts')
 
 @section('content')
-<div class="max-w-5xl">
+<div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Wallet &amp; Payouts</h1>
 
     @include('income._tabs')

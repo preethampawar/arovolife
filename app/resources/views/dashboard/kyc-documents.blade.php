@@ -14,7 +14,7 @@
     ];
 @endphp
 
-<div class="max-w-3xl">
+<div>
     <div class="mb-6">
         <a href="{{ route('dashboard') }}" class="text-sm text-brand-700 hover:underline">← Back to dashboard</a>
     </div>

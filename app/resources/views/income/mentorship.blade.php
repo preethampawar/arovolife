@@ -2,7 +2,7 @@
 @section('title', 'My Income — Mentorship Bonus')
 
 @section('content')
-<div class="max-w-5xl">
+<div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Mentorship Bonus</h1>
 
     @include('income._tabs')

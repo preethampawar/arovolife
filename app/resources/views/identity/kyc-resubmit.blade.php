@@ -3,7 +3,7 @@
 @section('title', 'Re-upload your KYC documents')
 
 @section('content')
-<div class="max-w-3xl">
+<div>
 
     @if(session('status'))
     <div class="rounded-xl border border-leaf-200 bg-leaf-50 p-4 mb-6 text-sm text-leaf-800">
