@@ -59,10 +59,10 @@
     </button>
 </div>
 
-<div id="distributorNavBackdrop" class="lg:hidden fixed inset-0 z-[60] bg-gray-900/40 hidden"></div>
+<div id="distributorNavBackdrop" class="lg:hidden fixed inset-0 z-40 bg-gray-900/40 hidden"></div>
 
 <aside id="distributorNavDrawer"
-    class="lg:hidden fixed top-0 bottom-0 left-0 z-[70] w-72 max-w-[85vw] overflow-y-auto border-r border-brand-100/80 bg-gradient-to-b from-white via-brand-50/50 to-leaf-50/40 shadow-xl -translate-x-full transition-transform duration-200 ease-out"
+    class="lg:hidden fixed top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] overflow-y-auto border-r border-brand-100/80 bg-gradient-to-b from-white via-brand-50 to-leaf-50 shadow-xl -translate-x-full transition-transform duration-200 ease-out"
     aria-label="My account navigation">
     <div class="flex items-center justify-between px-4 pt-4 pb-2">
         <p class="text-[11px] uppercase tracking-[0.2em] text-brand-700 font-semibold">My Account</p>
