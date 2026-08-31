@@ -28,15 +28,6 @@ return [
             'phone' => env('PROD_ADMIN_PHONE', '+910000000000'),
         ],
 
-        'root_distributor' => [
-            'email' => env('PROD_ROOT_EMAIL'),
-            'password' => env('PROD_ROOT_PASSWORD'),
-            'name' => env('PROD_ROOT_NAME', 'Arovolife Company Root'),
-            'phone' => env('PROD_ROOT_PHONE', '+910000000001'),
-            'state' => env('PROD_ROOT_STATE', 'TG'),
-            'adn' => env('PROD_ROOT_ADN', '111222333'),
-        ],
-
         'compliance' => [
             'state_age_minimums' => env('COMPLIANCE_STATE_AGE_MINIMUMS', '{"MH":21}'),
         ],

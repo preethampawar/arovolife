@@ -678,17 +678,12 @@ PROD_ADMIN_PASSWORD=<strong-password>
 PROD_ADMIN_NAME=Arovolife Operations
 PROD_ADMIN_PHONE=+919999999999
 
-# L0 (genealogy root) — only created on first deploy, when the distributors
-# table is empty. The ADN below is the referral link the first real
-# recruits will use: https://APP_URL/register?sponsor=111222333&placement=111222333
-# ADNs are 9-digit numeric values; new joiners are allocated in ascending
-# order from this seed (next = 111222334, then 111222335, …).
-PROD_ROOT_EMAIL=root@arovolife.com
-PROD_ROOT_NAME=Arovolife Company Root
-PROD_ROOT_PHONE=+919000000001
-PROD_ROOT_STATE=TG
-PROD_ROOT_ADN=111222333
-PROD_ROOT_PASSWORD=<long-random>     # only used if you ever need to log in as root
+# Genealogy bootstrap — no env vars needed. On first deploy (empty
+# distributors table) ProductionSeeder builds the 31 reserved company
+# distributors (root ADN 444555666, tree levels 0-4, sponsorship edges
+# included — see ReservedAdns / R-66). The referral link for the first
+# real recruits is: https://APP_URL/register?sponsor=444555666
+# The old PROD_ROOT_* single-root vars are retired (2026-08-31).
 
 # Auth hardening
 PASSWORD_MIN_LENGTH=12
