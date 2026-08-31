@@ -87,6 +87,14 @@
         const backdrop = document.getElementById('distributorNavBackdrop');
         if (! btn || ! drawer || ! backdrop) return;
 
+        // Move both to <body> so their z-indexes are compared at the document
+        // root. Inside the content grid they're trapped by the wizard-stage
+        // rule (`.wizard-stage > * { position: relative; z-index: 1 }` on the
+        // grid), which lets the sticky z-40 topnav paint over the z-50 drawer
+        // — same escape the topnav profile dropdown uses.
+        document.body.appendChild(backdrop);
+        document.body.appendChild(drawer);
+
         const open = () => {
             drawer.classList.remove('-translate-x-full');
             backdrop.classList.remove('hidden');
