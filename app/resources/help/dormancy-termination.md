@@ -47,12 +47,7 @@ path back from a terminated account, and the first automated run is also the
 only chance to catch a sales-attribution bug before it closes distributors who
 were in fact selling.
 
-Before turning it on:
-
-```
-php artisan distributors:inactivity-sweep --dry-run
-```
-
+Before turning it on, review the most recent report-only sweep output.
 Read every line. Spot-check a few ADNs against their order history. Then flip
 the switch in **Settings → Termination (dormancy)**.
 

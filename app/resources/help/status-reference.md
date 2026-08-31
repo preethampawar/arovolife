@@ -4,9 +4,7 @@
 > Values shown are the **internal enum values** stored in the database; where a
 > distinct **user-facing label** exists, it is called out.
 >
-> **Source of truth is the code, not this file.** When you add or rename a
-> status, update the migration/model *and* this doc in the same change. Verify
-> against the cited file before relying on a value.
+> **Source of truth is the code, not this file.** When a status is added or renamed, this doc is updated in the same change.
 
 ---
 
@@ -27,7 +25,7 @@
 
 Default: `pending`. The master account state for every member. All user-facing
 surfaces (distributor dashboard, Genos tree legend, admin, reports) render these
-through `App\Modules\Identity\Models\User::STATUS_LABELS` / `statusLabel()` so the
+through one shared label map, so the
 same status never reads differently in two places.
 
 | Value | Label (canonical) | Meaning |
@@ -42,20 +40,12 @@ same status never reads differently in two places.
 > action keys stay `admin.distributor.frozen` / `unfrozen` for traceability —
 > only the user-facing word is "Blocked".
 
-Defined in:
-- `app/app/Modules/Identity/Database/Migrations/2026_04_19_000001_create_users_table.php`
-  (enum), `..._2026_05_24_000001_add_rejected_status_to_users.php` (added `rejected`).
-- Labels: `app/app/Modules/Identity/Models/User.php` (`STATUS_LABELS`, `statusLabel()`,
-  `statusTheme()`, `accountStatusLabel()`, `treeLegend()`).
-
 ### `users.closure_type` — *why* a `terminated` account closed
 
 | Value | Resulting label | Meaning |
 |---|---|---|
 | `cooling_off_cancellation` | **Cancelled** | The distributor exercised their statutory 30-day cooling-off right to cancel (self-initiated). |
 | `admin_termination` | **Terminated** | An admin permanently closed the account (fraud / repeat offender / policy). |
-
-Defined in: `app/app/Modules/Identity/Database/Migrations/2026_05_25_000002_add_closure_type_to_users.php`.
 
 ### `distributors.status` — the distributor *record* (separate axis)
 
@@ -65,8 +55,6 @@ Default: `active`. Governs the distributor position/record, not login.
 |---|---|
 | `active` | The distributor record is active (admin "Activate Distributor"). |
 | `inactive` | The record is deactivated (admin "Deactivate Distributor"); the user account may still exist independently. |
-
-Defined in: `app/app/Modules/Identity/Database/Migrations/..._add_status_to_distributors_table.php`.
 
 ---
 
@@ -78,8 +66,6 @@ themselves carry **flag columns** rather than a status enum:
 
 - `kyc_documents.flagged_reason` / `flagged_at` / `flagged_by` — when set, the
   document is "flagged for re-upload" (the re-upload flow); otherwise unflagged.
-
-Defined in: `app/app/Modules/Kyc/Database/Migrations/2026_05_28_000001_add_flag_columns_to_kyc_documents_table.php`.
 
 ---
 
@@ -94,8 +80,6 @@ Defined in: `app/app/Modules/Kyc/Database/Migrations/2026_05_28_000001_add_flag_
 | `rejected` | Admin declined it. |
 | `expired` | The request lapsed without a decision. |
 
-Defined in: `app/app/Modules/Genealogy/Database/Migrations/..._create_line_change_requests_table.php`.
-
 ---
 
 ## Catalog (Phase 2 — live)
@@ -106,9 +90,6 @@ Defined in: `app/app/Modules/Genealogy/Database/Migrations/..._create_line_chang
 | `product_variants.status` | `active` · `archived` | `active` | Whether the specific SKU/variant is sellable. |
 | `product_categories.status` | `active` · `archived` | `active` | Whether the category shows in storefront nav/pills. |
 | `banners.status` | `active` · `archived` | `active` | Whether the banner is eligible to display (combined with its schedule). |
-
-Defined in: `app/app/Modules/Catalog/Database/Migrations/..._create_catalog_tables.php`,
-`..._create_product_categories_table.php`, `..._create_banners_table.php`.
 
 ---
 
@@ -131,15 +112,10 @@ Defined in: `app/app/Modules/Catalog/Database/Migrations/..._create_catalog_tabl
 | `refund_approved` | **Phase-2 terminal refund state.** Ledger reversed, BV reversed. Refund initiated; money credited within 7 working days once Phase-3 gateway settlement runs. Customer copy: *"Refund initiated."* |
 | `refunded` | Gateway has confirmed money returned (Phase 3). |
 
-Defined in: `app/app/Modules/Commerce/Models/Order.php` (`STATUS_*` constants).
-
 | Other field | Values | Default | Meaning |
 |---|---|---|---|
 | `carts.status` | `open` · `expired` · `cancelled` | `open` | Shopping-cart lifecycle; expires after its TTL. |
 | `coupons.status` | `active` · `archived` | `active` | Whether a promo code can be applied. |
-
-Defined in: `app/app/Modules/Commerce/Database/Migrations/..._create_commerce_tables.php`,
-`..._create_coupons_table.php`.
 
 ---
 
@@ -150,8 +126,6 @@ Defined in: `app/app/Modules/Commerce/Database/Migrations/..._create_commerce_ta
 | `payments.status` | `created` · `authorised` · `captured` · `failed` · `cancelled` | `created` | Gateway intent lifecycle; `captured` = money taken (the Phase-2 stub auto-captures). |
 | webhook / refund events | `created` · `processed` · `failed` | `created` | Idempotent processing state of an inbound gateway event. |
 
-Defined in: `app/app/Modules/Payments/Database/Migrations/..._create_payments_tables.php`.
-
 ---
 
 ## Content (Phase 1 — live)
@@ -159,8 +133,6 @@ Defined in: `app/app/Modules/Payments/Database/Migrations/..._create_payments_ta
 | Field | Values | Default | Meaning |
 |---|---|---|---|
 | `content_pages.status` | `draft` · `published` · `archived` | `draft` | CMS pages (Terms, Privacy, Grievance, etc.); only `published` is publicly visible. |
-
-Defined in: `app/app/Modules/Content/Database/Migrations/..._create_content_pages_table.php`.
 
 ---
 
@@ -173,15 +145,10 @@ Defined in: `app/app/Modules/Content/Database/Migrations/..._create_content_page
 | Returns · `return_requests.status` | `opened` · `approved` · `rejected` | `opened` | Return request lifecycle. `opened` = awaiting review; `approved` = refund executed; `rejected` = admin rejected. (Phase 2 — live.) |
 | Grievance · `grievances.status` | `open` · `acknowledged` · `in_progress` · `resolved` · `closed` | `open` | DSR-2021 grievance-redressal SLA workflow. (Scaffolded.) |
 
-Defined in: `app/app/Modules/Fulfilment/Database/Migrations/..._create_shipments_table.php`,
-`app/app/Modules/Returns/Database/Migrations/..._create_returns_tables.php`,
-`app/app/Modules/Grievance/Database/Migrations/..._create_grievance_tables.php`.
-
 ---
 
 ## Compliance (Phase 1 — live)
 
 Cooling-off is tracked as **events with reminder timestamps** (`cooling_off_events`),
 not a status enum — the D-7 / D-1 reminder columns drive the statutory
-30-day window. See `app/app/Modules/Compliance/Database/Migrations/2026_04_29_000001_add_reminder_columns_to_cooling_off_events.php`
-and `docs/architecture/adr-0005-order-cooling-off-clock.md`.
+30-day window.
