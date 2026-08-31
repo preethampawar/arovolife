@@ -3,9 +3,9 @@
 @php $currentStep = 5; @endphp
 
 @section('content')
-<div class="max-w-xl mx-auto">
+<div class="max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-2">Identity Documents</h2>
-    <p class="text-gray-600 text-sm mb-8">
+    <p class="text-gray-600 text-sm mb-6">
         Provide your PAN and Aadhaar numbers. One PAN can only be linked to one arovolife
         Distributor Number (ADN). Both are held encrypted while our compliance team verifies
         your KYC documents, then dropped — only the last 4 digits of each remain afterwards.

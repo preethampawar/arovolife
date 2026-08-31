@@ -3,9 +3,9 @@
 @php $currentStep = 9; @endphp
 
 @section('content')
-<div class="max-w-xl mx-auto">
+<div class="max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-2">Personal Details</h2>
-    <p class="text-gray-600 text-sm mb-8">You must be 18+ years old (21+ in Maharashtra) to register as a Direct Seller.</p>
+    <p class="text-gray-600 text-sm mb-6">You must be 18+ years old (21+ in Maharashtra) to register as a Direct Seller.</p>
 
     <form method="POST" action="{{ url('/register/personal') }}" class="space-y-5 bg-white rounded-2xl border border-gray-200 p-8">
         @csrf

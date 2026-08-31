@@ -3,7 +3,7 @@
 @php $currentStep = 8; @endphp
 
 @section('content')
-<div class="max-w-xl mx-auto">
+<div class="max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-2">Bank Account Details <span class="text-gray-600 text-base font-normal">(optional)</span></h2>
     <p class="text-gray-600 text-sm mb-6">
         Bank details are used for commission payouts (Phase 2+). You can

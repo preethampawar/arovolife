@@ -10,15 +10,7 @@
         provides local support, training and events. You can change it later from your profile.
     </p>
 
-    @if($errors->any())
-        <div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4">
-            <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
-                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-            </ul>
-        </div>
-    @endif
-
-    <form method="POST" action="{{ route('register.arete') }}" class="space-y-4">
+    <form method="POST" action="{{ route('register.arete') }}" class="space-y-5 bg-white rounded-2xl border border-gray-200 p-8">
         @csrf
 
         @if($centers->isEmpty())
@@ -62,10 +54,13 @@
             </p>
         @endif
 
-        <div class="flex items-center justify-between pt-4">
-            <a href="{{ route('register.documents') }}" class="text-sm text-gray-600 hover:text-gray-700">← Back</a>
+        <div class="flex items-center justify-between gap-3 pt-2">
+            <a href="{{ route('register.documents') }}"
+               class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
+                ← Back
+            </a>
             <button type="submit"
-                    class="px-6 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-sm transition-colors">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Continue →
             </button>
         </div>

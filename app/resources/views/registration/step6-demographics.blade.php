@@ -3,9 +3,9 @@
 @php $currentStep = 6; @endphp
 
 @section('content')
-<div class="max-w-xl mx-auto">
+<div class="max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-2">Demographics</h2>
-    <p class="text-gray-600 text-sm mb-2">
+    <p class="text-gray-600 text-sm mb-6">
         This information personalises your experience and is not shared publicly.
     </p>
 

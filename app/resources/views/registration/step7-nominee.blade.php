@@ -3,7 +3,7 @@
 @php $currentStep = 7; @endphp
 
 @section('content')
-<div class="max-w-xl mx-auto">
+<div class="max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-2">Nominee Details</h2>
     <p class="text-gray-600 text-sm mb-6">
         Designate someone to act on your behalf in case of unforeseen circumstances. This is optional.

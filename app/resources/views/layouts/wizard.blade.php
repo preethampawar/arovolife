@@ -64,7 +64,7 @@
                     <p class="text-[10px] uppercase tracking-[0.22em] text-brand-700/80 font-semibold mb-2">Registration</p>
                     <h2 class="text-display text-3xl text-slate-900 leading-[1.05]" style="font-weight: 380;">
                         Step <span class="text-brand-500">{{ str_pad((string) $current, 2, '0', STR_PAD_LEFT) }}</span>
-                        <span class="text-slate-300 font-light">/ 11</span>
+                        <span class="text-slate-300 font-light">/ 12</span>
                     </h2>
                     <p class="mt-2 text-[12px] text-slate-500 leading-relaxed">
                         {{ $steps[$current]['label'] ?? '' }}.

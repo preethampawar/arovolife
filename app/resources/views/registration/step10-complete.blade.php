@@ -9,7 +9,7 @@
         Please review everything below before we issue your arovolife Distributor Number (ADN). Nothing is saved
         until you confirm.
     </p>
-    <p class="text-xs text-gray-600 mb-8">
+    <p class="text-xs text-gray-600 mb-6">
         PAN, Aadhaar and bank account are masked for your security — only the last 4 digits are shown.
     </p>
 
@@ -139,11 +139,11 @@
         @csrf
         <div class="flex items-center justify-between gap-3">
             <a href="{{ route('register.documents') }}"
-               class="inline-flex items-center px-5 py-4 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-base font-semibold transition-colors">
+               class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors transition-colors">
                 ← Back
             </a>
             <button type="submit" id="finalise-submit"
-                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-4 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Confirm &amp; Issue My ADN →
             </button>
         </div>

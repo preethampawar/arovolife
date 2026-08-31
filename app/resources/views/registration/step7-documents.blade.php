@@ -3,9 +3,9 @@
 @php $currentStep = 10; @endphp
 
 @section('content')
-<div class="max-w-xl mx-auto">
+<div class="max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold mb-2">Upload your documents</h2>
-    <p class="text-gray-600 text-sm mb-8">
+    <p class="text-gray-600 text-sm mb-6">
         Upload clear scans or photos of each document. Accepted formats: JPEG, PNG, PDF.
         Max file size 5 MB. An admin will review and approve your documents before your
         registration becomes active.

@@ -1,9 +1,10 @@
-@extends('layouts.app')
+@extends('layouts.wizard')
 @section('title', 'Register with arovolife')
+@php $currentStep = 1; @endphp
 
 @section('content')
-<div class="max-w-md mx-auto">
-    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Register with arovolife</h1>
+<div class="max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold mb-2">Register with arovolife</h2>
     <p class="text-sm text-gray-600 mb-6">
         @if($sponsorLocked)
             You've been invited by an existing Direct Seller — their ADN is filled
@@ -17,20 +18,12 @@
         @endif
     </p>
 
-    @if($errors->any())
-        <div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <ul class="list-disc list-inside space-y-1">
-                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-            </ul>
-        </div>
-    @endif
-
     <form method="POST" action="{{ route('join.submit') }}"
-          class="space-y-5 bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+          class="space-y-5 bg-white rounded-2xl border border-gray-200 p-8">
         @csrf
 
         <div>
-            <label for="sponsor_adn" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Sponsor ADN <span class="text-red-700">*</span></label>
+            <label for="sponsor_adn" class="block text-sm font-medium text-gray-700 mb-1.5">Sponsor ADN <span class="text-red-700">*</span></label>
             <input type="text" id="sponsor_adn" name="sponsor_adn" required
                    value="{{ $sponsorAdn }}"
                    placeholder="111222333"
@@ -41,7 +34,7 @@
                    spellcheck="false"
                    data-adn-input="sponsor"
                    @if($sponsorLocked) readonly tabindex="-1" @endif
-                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 @if($sponsorLocked) bg-gray-50 text-gray-700 cursor-not-allowed @endif">
+                   class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent @if($sponsorLocked) bg-gray-50 text-gray-700 cursor-not-allowed @endif">
             <p data-adn-name="sponsor" class="mt-1.5 text-xs text-gray-600 min-h-[1.25rem]">
                 @if($sponsorLocked)
                     Looking up sponsor name…
@@ -52,7 +45,7 @@
         </div>
 
         <div>
-            <label for="placement_adn" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Placement ADN <span class="text-red-700">*</span></label>
+            <label for="placement_adn" class="block text-sm font-medium text-gray-700 mb-1.5">Placement ADN <span class="text-red-700">*</span></label>
             <input type="text" id="placement_adn" name="placement_adn" required
                    value="{{ $placementAdn }}"
                    placeholder="111222333"
@@ -62,14 +55,14 @@
                    autocomplete="off"
                    spellcheck="false"
                    data-adn-input="placement"
-                   class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                   class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
             <p data-adn-name="placement" class="mt-1.5 text-xs text-gray-600 min-h-[1.25rem]">
                 Often the same as the Sponsor ADN. Ask your sponsor if you're unsure.
             </p>
         </div>
 
         <button type="submit" id="join-submit"
-            class="w-full rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-lg shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:bg-brand-700">
+            class="w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-700">
             Continue to Orientation →
         </button>
     </form>
