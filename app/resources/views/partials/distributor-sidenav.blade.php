@@ -42,7 +42,7 @@
 @endphp
 
 <aside class="hidden lg:block" aria-label="My account navigation">
-    <div class="lg:sticky lg:top-28 space-y-5">
+    <div class="lg:sticky lg:top-28 space-y-5 rounded-2xl border border-brand-100/80 bg-gradient-to-b from-white via-brand-50/50 to-leaf-50/40 shadow-sm p-4">
         @foreach($groups as $groupLabel => $items)
         <div>
             <p class="px-3 mb-1.5 text-[10px] uppercase tracking-[0.18em] text-gray-500 font-semibold">{{ $groupLabel }}</p>
@@ -56,8 +56,8 @@
                        @if($active) aria-current="page" @endif
                        class="relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors
                               {{ $active
-                                 ? 'bg-brand-50 text-brand-800 font-semibold'
-                                 : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                                 ? 'bg-brand-100/70 text-brand-800 font-semibold shadow-sm'
+                                 : 'text-gray-700 hover:bg-white/80 hover:text-gray-900 font-medium' }}">
                         @if($active)
                         <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand-600"></span>
                         @endif
