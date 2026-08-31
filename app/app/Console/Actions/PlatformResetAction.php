@@ -128,6 +128,7 @@ final class PlatformResetAction
             'details' => [
                 'reserved_root_adn' => ReservedAdns::ROOT,
                 'reserved_children_count' => count(ReservedAdns::CHILDREN),
+                'sponsorship_rows' => count(ReservedAdns::CHILDREN),
                 'note' => 'Full platform reset via php artisan platform:reset',
             ],
         ]);
@@ -306,6 +307,23 @@ final class PlatformResetAction
             'sponsor_id' => $rootDistributorId,
             'placement_parent_id' => $rootDistributorId,
         ]);
+
+        // ── 2.5. Sponsorship rows (horizontal tree). The reserved accounts are
+        // permanent company accounts, so they need the same sponsorship edges
+        // PlacementEngine writes for organic joiners: each node's sponsor is
+        // its direct parent in the binary tree. Without these rows anything
+        // that reads `sponsorship` (MSB accrual, direct-referral lists, team
+        // stats) treats them as sponsorless. The root gets no row — a
+        // self-edge would make the company root its own direct referral.
+        $sponsorshipRows = [];
+        for ($i = 1; $i < 31; $i++) {
+            $sponsorshipRows[] = [
+                'sponsor_id' => $distributorIds[intdiv($i - 1, 2)],
+                'distributor_id' => $distributorIds[$i],
+                'created_at' => $now,
+            ];
+        }
+        $this->db->table('sponsorship')->insert($sponsorshipRows);
 
         // ── 3. Build genealogy_closure rows. For every distributor i, insert one
         // (self, self, 0) row; for every ancestor a of i (a != i), insert (a, i, depth-diff).

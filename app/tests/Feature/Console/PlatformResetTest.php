@@ -56,6 +56,20 @@ it('wipes everything and rebuilds only the 31 reserved company distributors (lev
     // 31 self-rows + (2*1 + 4*2 + 8*3 + 16*4) ancestor rows = 129.
     expect(DB::table('genealogy_closure')->count())->toBe(129);
 
+    // Sponsorship: 30 horizontal edges — every reserved child is sponsored by
+    // its direct binary-tree parent; the root gets NO row (a self-edge would
+    // make the company root its own direct referral).
+    $rootId = Distributor::query()->where('depth', 0)->value('id');
+    expect(DB::table('sponsorship')->count())->toBe(30)
+        ->and(DB::table('sponsorship')->whereColumn('sponsor_id', 'distributor_id')->count())->toBe(0)
+        ->and(DB::table('sponsorship')->where('distributor_id', $rootId)->count())->toBe(0)
+        ->and(
+            DB::table('sponsorship')
+                ->join('distributors', 'distributors.id', '=', 'sponsorship.distributor_id')
+                ->whereColumn('sponsorship.sponsor_id', 'distributors.placement_parent_id')
+                ->count()
+        )->toBe(30);
+
     // The reset is audit-logged (audit_log itself was truncated first).
     expect(DB::table('audit_log')->where('action', 'platform.reset')->count())->toBe(1);
 });
