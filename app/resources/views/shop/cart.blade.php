@@ -12,7 +12,7 @@
           data-confirm-impact="All {{ $cart->items->count() }} {{ $cart->items->count() === 1 ? 'item' : 'items' }} will be removed. This cannot be undone.">
         @csrf @method('DELETE')
         <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-sm font-medium text-red-700 transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            <x-lucide-trash-2 class="w-3.5 h-3.5" />
             Clear all
         </button>
     </form>
@@ -35,7 +35,7 @@
                 @if($item->variant->product->image_url)
                 <img src="{{ $item->variant->product->image_url }}" class="w-full h-full object-cover rounded-lg">
                 @else
-                <svg class="w-10 h-10 text-brand-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.41 11.59c.8-.8 2.1-.8 2.9 0l4.56 4.56m-1.5-1.5 1.66-1.66c.8-.8 2.1-.8 2.9 0l2.83 2.83"/></svg>
+                <x-lucide-image class="w-10 h-10 text-brand-400" />
                 @endif
             </div>
             <div class="flex-1">
@@ -57,7 +57,7 @@
                     @csrf @method('DELETE')
                     <button type="submit" aria-label="Remove this item" title="Remove from cart"
                         class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-red-600 transition-colors">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                        <x-lucide-trash-2 class="w-4 h-4" />
                         Remove
                     </button>
                 </form>
@@ -171,7 +171,7 @@
                     @csrf
                     <button type="submit"
                         class="flex items-center justify-center gap-2 w-full py-2.5 rounded-full border border-brand-300 bg-brand-50/40 hover:bg-brand-50 text-brand-700 font-semibold text-sm transition-colors">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"/></svg>
+                        <x-lucide-share-2 class="w-4 h-4" />
                         Share this cart (Easy Purchase)
                     </button>
                 </form>

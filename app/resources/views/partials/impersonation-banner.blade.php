@@ -3,7 +3,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
             <p class="font-medium">
                 <span class="inline-flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                    <x-lucide-circle-alert class="w-4 h-4" />
                     Admin impersonation —
                 </span>
                 you're viewing as <strong>{{ auth()->user()->full_name ?? auth()->user()->email }}</strong>.

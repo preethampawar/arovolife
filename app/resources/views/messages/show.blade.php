@@ -10,9 +10,7 @@
 <div class="mb-4 flex items-center justify-between gap-3">
     <div>
         <a href="{{ route('messages.index') }}" class="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 mb-1">
-            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
-            </svg>
+            <x-lucide-chevron-left class="w-3.5 h-3.5" />
             All conversations
         </a>
         <h1 class="text-xl font-bold text-gray-900">{{ $otherName }}</h1>
@@ -76,9 +74,7 @@
         <button type="submit"
             class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
             Send
-            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/>
-            </svg>
+            <x-lucide-send class="w-4 h-4" />
         </button>
     </form>
 </div>

@@ -28,9 +28,7 @@
         <a href="{{ route('messages.index') }}"
             class="inline-flex items-center gap-1 mt-3 text-xs text-brand-700 hover:text-brand-800 font-medium">
             View all messages
-            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5 15.75 12l-7.5 7.5"/>
-            </svg>
+            <x-lucide-chevron-right class="w-3.5 h-3.5" />
         </a>
     @else
         <p class="text-sm text-gray-700">No messages yet.</p>
@@ -38,9 +36,7 @@
         <a href="{{ route('messages.index') }}"
             class="inline-flex items-center gap-1 mt-3 text-xs text-brand-700 hover:text-brand-800 font-medium">
             Open inbox
-            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5 15.75 12l-7.5 7.5"/>
-            </svg>
+            <x-lucide-chevron-right class="w-3.5 h-3.5" />
         </a>
     @endif
 </div>

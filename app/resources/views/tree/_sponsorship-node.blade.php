@@ -71,9 +71,7 @@
                 onclick="event.stopPropagation(); toggleNodeMenu(this);"
                 title="More actions"
                 class="w-4 h-4 inline-flex items-center justify-center rounded text-gray-600 hover:text-brand-800 hover:bg-white/80 transition-colors leading-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z"/>
-                </svg>
+                <x-lucide-ellipsis-vertical class="w-3.5 h-3.5" />
             </button>
             <div data-node-menu-panel hidden
                 class="absolute right-0 top-full mt-1 min-w-[180px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 z-50 text-left overflow-hidden">
@@ -86,9 +84,7 @@
                 --}}
                 <a href="{{ $pivotUrl }}"
                     class="flex items-start gap-2 px-3 py-2 text-xs text-gray-800 hover:bg-brand-50 hover:text-brand-800 border-b border-gray-100">
-                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15m5.25-11.25h-4.5m4.5 0v4.5m0-4.5L15 9"/>
-                    </svg>
+                    <x-lucide-expand class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" />
                     <span class="flex-1 min-w-0">
                         <span class="block font-semibold">Show only this person's tree</span>
                         <span class="block text-[11px] text-gray-600 mt-0.5">Hide ancestors; root here</span>
@@ -99,9 +95,7 @@
                     data-send-message="{{ $node->user_id }}"
                     data-send-message-name="{{ $node->user?->full_name ?: ('Distributor '.$node->adn) }}"
                     class="flex items-start gap-2 w-full text-left px-3 py-2 text-xs text-gray-800 hover:bg-brand-50 hover:text-brand-800 border-b border-gray-100">
-                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/>
-                    </svg>
+                    <x-lucide-send class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" />
                     <span class="flex-1 min-w-0">
                         <span class="block font-semibold">Send Message</span>
                         <span class="block text-[11px] text-gray-600 mt-0.5">Open a quick message popup</span>
@@ -111,9 +105,7 @@
                 <button type="button"
                     data-open-distributor-details="{{ $node->id }}"
                     class="flex items-start gap-2 w-full text-left px-3 py-2 text-xs text-gray-800 hover:bg-brand-50 hover:text-brand-800 {{ $adminContext ? 'border-b border-gray-100' : '' }}">
-                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/>
-                    </svg>
+                    <x-lucide-id-card class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" />
                     <span class="flex-1 min-w-0">
                         <span class="block font-semibold">Details</span>
                         <span class="block text-[11px] text-gray-600 mt-0.5">Full ID-card panel in a popup</span>
@@ -122,9 +114,7 @@
                 @if($adminContext)
                 <a href="{{ route('admin.distributors.show', $node->id) }}"
                     class="flex items-start gap-2 px-3 py-2 text-xs text-gray-800 hover:bg-brand-50 hover:text-brand-800 border-b border-gray-100">
-                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                    </svg>
+                    <x-lucide-circle-user-round class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" />
                     <span class="flex-1 min-w-0">
                         <span class="block font-semibold">View profile</span>
                         <span class="block text-[11px] text-gray-600 mt-0.5">Open the distributor profile</span>
@@ -135,9 +125,7 @@
                     @csrf
                     <button type="submit"
                         class="flex items-start gap-2 w-full text-left px-3 py-2 text-xs text-sunrise-700 hover:bg-sunrise-50">
-                        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-sunrise-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
-                        </svg>
+                        <x-lucide-users class="w-3.5 h-3.5 mt-0.5 shrink-0 text-sunrise-500" />
                         <span class="flex-1 min-w-0">
                             <span class="block font-semibold">Impersonate</span>
                             <span class="block text-[11px] text-sunrise-700/80 mt-0.5">Log in as this distributor for support</span>
@@ -160,9 +148,7 @@
                 onclick="copyAdn(this); event.stopPropagation();"
                 title="Copy ADN"
                 class="text-gray-600 hover:text-brand-800 transition-colors p-0.5 rounded leading-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
-                </svg>
+                <x-lucide-file-text class="w-3 h-3" />
             </button>
         </div>
 

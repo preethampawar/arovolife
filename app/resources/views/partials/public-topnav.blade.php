@@ -55,7 +55,7 @@
                         aria-haspopup="menu" aria-expanded="false">
                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white text-brand-700 text-[10px] font-bold leading-none">{{ $initials }}</span>
                     <span class="font-medium">{{ $name }}</span>
-                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                    <x-lucide-chevron-down class="w-3 h-3" />
                 </button>
                 <div data-profile-panel hidden
                      class="w-64 rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900"
@@ -74,18 +74,18 @@
                     <div class="py-1">
                         @if($isAdmin)
                             <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                                <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></svg>
+                                <x-lucide-layout-grid class="w-4 h-4 text-gray-600" />
                                 Admin Console
                             </a>
                         @else
                             <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                                <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+                                <x-lucide-house class="w-4 h-4 text-gray-600" />
                                 My Dashboard
                             </a>
                         @endif
                         @if(! $isAdmin && $user->distributor)
                         <a href="{{ route('my-business') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 6.006a2.18 2.18 0 0 1-.75.421 48.09 48.09 0 0 1-15 0 2.18 2.18 0 0 1-.75-.42m0 0a2.18 2.18 0 0 1-.75-1.661V8.706c0-1.081.768-2.015 1.837-2.175a48.11 48.11 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                            <x-lucide-briefcase class="w-4 h-4 text-gray-600" />
                             My Business
                         </a>
                         @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class) && auth()->user()?->distributor)
@@ -107,24 +107,24 @@
                         </a>
                         @endif
                         <a href="{{ route('orders.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2"/></svg>
+                            <x-lucide-clipboard-list class="w-4 h-4 text-gray-600" />
                             My Orders &amp; Sales
                         </a>
                         <a href="{{ route('bv-ledger.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+                            <x-lucide-chart-column class="w-4 h-4 text-gray-600" />
                             My BV Ledger
                         </a>
                         @endif
                         <a href="{{ route('addresses.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+                            <x-lucide-map-pin class="w-4 h-4 text-gray-600" />
                             My Addresses
                         </a>
                         <a href="{{ route('profile.show') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+                            <x-lucide-user class="w-4 h-4 text-gray-600" />
                             Edit profile
                         </a>
                         <a href="{{ route('profile.password.show') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+                            <x-lucide-lock class="w-4 h-4 text-gray-600" />
                             Change password
                         </a>
                     </div>
@@ -132,7 +132,7 @@
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit" class="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50" role="menuitem">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/></svg>
+                                <x-lucide-log-out class="w-4 h-4" />
                                 Sign out
                             </button>
                         </form>
@@ -256,7 +256,7 @@
                             class="py-5 font-medium transition-colors inline-flex items-center gap-1
                                    {{ $active ? 'text-white border-b-2 border-white -mb-px' : 'text-brand-50 hover:text-white' }}">
                             {{ $item['label'] }}
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                            <x-lucide-chevron-down class="w-3.5 h-3.5" />
                         </button>
                         <div data-nav-dd-panel="{{ $ddKey }}" hidden role="menu"
                             class="absolute left-0 top-full w-52 rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900 py-1 z-[60]">
@@ -283,7 +283,7 @@
                 <button type="button" data-cat-trigger aria-haspopup="menu" aria-expanded="false"
                     class="py-5 font-medium text-brand-50 hover:text-white transition-colors inline-flex items-center gap-1">
                     Categories
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                    <x-lucide-chevron-down class="w-3.5 h-3.5" />
                 </button>
                 <div data-cat-panel hidden role="menu"
                     class="absolute right-0 top-full w-56 rounded-xl bg-white shadow-lg ring-1 ring-gray-200 text-gray-900 py-1 z-[60]">
@@ -303,9 +303,7 @@
                class="relative flex items-center gap-2 {{ $cartItemCount > 0 ? 'text-white' : 'text-brand-50' }} hover:text-white transition-colors py-5"
                aria-label="Cart{{ $cartItemCount > 0 ? ' — '.$cartItemCount.' item'.($cartItemCount === 1 ? '' : 's') : '' }}">
                 <span class="relative inline-flex">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="{{ $cartItemCount > 0 ? '2.2' : '1.8' }}" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-                    </svg>
+                    <x-lucide-shopping-cart class="w-5 h-5" />
                     <span data-cart-count class="absolute -top-2 -right-2.5 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded-full bg-white text-brand-700 text-[10px] font-bold leading-none shadow ring-1 ring-brand-500/20 {{ $cartItemCount > 0 ? '' : 'hidden' }}">{{ $cartItemCount > 99 ? '99+' : $cartItemCount }}</span>
                 </span>
             </a>
@@ -326,9 +324,7 @@
                class="relative w-10 h-10 inline-flex items-center justify-center {{ ($cartItemCount ?? 0) > 0 ? 'text-white' : 'text-brand-50' }} hover:text-white transition-colors"
                aria-label="Cart{{ ($cartItemCount ?? 0) > 0 ? ' — '.$cartItemCount.' item'.($cartItemCount === 1 ? '' : 's') : '' }}">
                 <span class="relative inline-flex">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="{{ ($cartItemCount ?? 0) > 0 ? '2.2' : '1.8' }}" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-                    </svg>
+                    <x-lucide-shopping-cart class="w-5 h-5" />
                     <span data-cart-count class="absolute -top-2 -right-2.5 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded-full bg-white text-brand-700 text-[10px] font-bold leading-none shadow ring-1 ring-brand-500/20 {{ ($cartItemCount ?? 0) > 0 ? '' : 'hidden' }}">{{ ($cartItemCount ?? 0) > 99 ? '99+' : ($cartItemCount ?? 0) }}</span>
                 </span>
             </a>
@@ -336,9 +332,7 @@
                 onclick="document.getElementById('mobileNavDrawer').classList.toggle('hidden')"
                 class="w-10 h-10 inline-flex items-center justify-center text-white rounded-md hover:bg-brand-800 transition-colors"
                 aria-label="Open menu">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-                </svg>
+                <x-lucide-menu class="w-6 h-6" />
             </button>
         </div>
     </div>

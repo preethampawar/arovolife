@@ -9,34 +9,34 @@
 
     $groups = [
         'Overview' => [
-            ['label' => 'Dashboard',          'route' => 'dashboard',           'icon' => '⌂', 'prefix' => 'dashboard'],
-            ['label' => 'My Business',        'route' => 'my-business',         'icon' => '📊'],
-            ['label' => 'My Income',          'route' => 'income.dashboard',    'icon' => '💰', 'prefix' => 'income.'],
+            ['label' => 'Dashboard',          'route' => 'dashboard',           'icon' => 'house', 'prefix' => 'dashboard'],
+            ['label' => 'My Business',        'route' => 'my-business',         'icon' => 'chart-column'],
+            ['label' => 'My Income',          'route' => 'income.dashboard',    'icon' => 'banknote', 'prefix' => 'income.'],
         ],
         'My Network' => [
-            ['label' => 'My Genos',           'route' => 'tree.binary',         'icon' => '⌬'],
-            ['label' => 'Sponsorship Tree',   'route' => 'tree.sponsorship',    'icon' => '⌥'],
-            ['label' => 'Messages',           'route' => 'messages.index',      'icon' => '✉', 'prefix' => 'messages.'],
+            ['label' => 'My Genos',           'route' => 'tree.binary',         'icon' => 'network'],
+            ['label' => 'Sponsorship Tree',   'route' => 'tree.sponsorship',    'icon' => 'git-branch'],
+            ['label' => 'Messages',           'route' => 'messages.index',      'icon' => 'mail', 'prefix' => 'messages.'],
         ],
         'Shopping' => [
-            ['label' => 'Shop',               'route' => 'shop.index',          'icon' => '🛍'],
-            ['label' => 'My Orders & Sales',  'route' => 'orders.index',        'icon' => '📦', 'prefix' => 'orders.'],
-            ['label' => 'My BV Ledger',       'route' => 'bv-ledger.index',     'icon' => '📈', 'prefix' => 'bv-ledger.'],
-            ['label' => 'My Addresses',       'route' => 'addresses.index',     'icon' => '📍', 'prefix' => 'addresses.'],
+            ['label' => 'Shop',               'route' => 'shop.index',          'icon' => 'shopping-bag'],
+            ['label' => 'My Orders & Sales',  'route' => 'orders.index',        'icon' => 'package', 'prefix' => 'orders.'],
+            ['label' => 'My BV Ledger',       'route' => 'bv-ledger.index',     'icon' => 'trending-up', 'prefix' => 'bv-ledger.'],
+            ['label' => 'My Addresses',       'route' => 'addresses.index',     'icon' => 'map-pin', 'prefix' => 'addresses.'],
             ...($offersOn
-                ? [['label' => 'My Offers',   'route' => 'my.offers.index',     'icon' => '🎁', 'prefix' => 'my.offers.']]
+                ? [['label' => 'My Offers',   'route' => 'my.offers.index',     'icon' => 'gift', 'prefix' => 'my.offers.']]
                 : []),
         ],
         'My Account' => [
-            ['label' => 'My Profile',         'route' => 'profile.show',        'icon' => '👤', 'prefix' => 'profile.'],
-            ['label' => 'Arete Centres',      'route' => 'my.adc.directory',    'icon' => '🏛'],
+            ['label' => 'My Profile',         'route' => 'profile.show',        'icon' => 'user', 'prefix' => 'profile.'],
+            ['label' => 'Arete Centres',      'route' => 'my.adc.directory',    'icon' => 'landmark'],
             ...($adcApplicationsOn
-                ? [['label' => 'My Arete Centre', 'route' => 'my.adc.status',   'icon' => '🎓', 'prefix' => 'my.adc.status']]
+                ? [['label' => 'My Arete Centre', 'route' => 'my.adc.status',   'icon' => 'graduation-cap', 'prefix' => 'my.adc.status']]
                 : []),
             ...($requestsOn
-                ? [['label' => 'My Requests', 'route' => 'my.requests.index',   'icon' => '📝', 'prefix' => 'my.requests.']]
+                ? [['label' => 'My Requests', 'route' => 'my.requests.index',   'icon' => 'clipboard-list', 'prefix' => 'my.requests.']]
                 : []),
-            ['label' => 'My Grievances',      'route' => 'my.grievances.index', 'icon' => '📣', 'prefix' => 'my.grievances.'],
+            ['label' => 'My Grievances',      'route' => 'my.grievances.index', 'icon' => 'megaphone', 'prefix' => 'my.grievances.'],
         ],
     ];
 @endphp
@@ -52,9 +52,7 @@
 <div class="lg:hidden mb-4">
     <button type="button" id="distributorNavBtn"
         class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors">
-        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-        </svg>
+        <x-lucide-menu class="w-4 h-4" />
         My Account menu
     </button>
 </div>
@@ -68,9 +66,7 @@
         <p class="text-[11px] uppercase tracking-[0.2em] text-brand-700 font-semibold">My Account</p>
         <button type="button" id="distributorNavCloseBtn" aria-label="Close menu"
             class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-white/80 hover:text-gray-800 transition-colors">
-            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-            </svg>
+            <x-lucide-x class="w-5 h-5" />
         </button>
     </div>
     <div class="space-y-5 p-4 pt-2">

@@ -37,15 +37,15 @@
             <p class="text-gray-700 mb-5 max-w-xl">A small, curated range of nutraceuticals and personal care — every label transparent, every batch certified.</p>
             <div class="flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-leaf-700 text-xs font-semibold border border-leaf-200 shadow-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                    <x-lucide-check class="w-3.5 h-3.5" />
                     30-day returns
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-brand-700 text-xs font-semibold border border-brand-200 shadow-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                    <x-lucide-check class="w-3.5 h-3.5" />
                     GST invoice
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-sunrise-700 text-xs font-semibold border border-sunrise-200 shadow-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                    <x-lucide-check class="w-3.5 h-3.5" />
                     Free shipping ₹{{ \App\Modules\Shared\Support\IndianNumber::format($freeShippingThresholdRupees ?? 4000) }}+
                 </span>
             </div>

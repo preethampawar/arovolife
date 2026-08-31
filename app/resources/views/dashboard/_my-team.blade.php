@@ -120,12 +120,12 @@
             <div class="flex items-center gap-2">
                 <a id="team-roster-download" href="#"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    <x-lucide-download class="w-4 h-4" />
                     Download CSV
                 </a>
                 <button type="button" id="team-roster-close"
                     class="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <x-lucide-x class="w-5 h-5" />
                 </button>
             </div>
         </div>

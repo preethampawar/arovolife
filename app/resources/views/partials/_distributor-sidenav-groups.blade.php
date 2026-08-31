@@ -18,7 +18,7 @@
                 @if($active)
                 <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand-600"></span>
                 @endif
-                <span class="w-5 text-center {{ $active ? 'text-brand-700' : 'text-gray-500' }}" aria-hidden="true">{{ $item['icon'] }}</span>
+                <span class="w-5 flex justify-center {{ $active ? 'text-brand-700' : 'text-gray-500' }}" aria-hidden="true">{{ svg('lucide-'.$item['icon'], 'w-4 h-4') }}</span>
                 <span class="flex-1 truncate">{{ $item['label'] }}</span>
             </a>
         @endforeach

@@ -33,12 +33,12 @@
                 <img id="pdpMain" src="{{ $mainImage }}" alt="{{ $product->name }}" onclick="pdpOpen(pdpCurrent)"
                     class="w-full h-full object-cover rounded-2xl cursor-zoom-in">
                 <span class="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/50 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/></svg>
+                    <x-lucide-expand class="w-3.5 h-3.5" />
                     Tap to zoom
                 </span>
             @else
                 <div class="text-center text-brand-400 p-8">
-                    <svg class="w-24 h-24 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.41 11.59c.8-.8 2.1-.8 2.9 0l4.56 4.56m-1.5-1.5 1.66-1.66c.8-.8 2.1-.8 2.9 0l2.83 2.83M3 16.5V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5m-18 0A2.25 2.25 0 0 0 5.25 18.75h13.5A2.25 2.25 0 0 0 21 16.5m-18 0L7 12.5" /></svg>
+                    <x-lucide-image class="w-24 h-24 mx-auto mb-3" />
                     <p class="font-semibold">{{ $product->name }}</p>
                 </div>
             @endif
@@ -59,17 +59,17 @@
         {{-- Fullscreen lightbox (vanilla JS) --}}
         <div id="pdpLightbox" class="hidden fixed inset-0 z-50 bg-black/90 items-center justify-center" onclick="if(event.target===this)pdpClose()">
             <button type="button" onclick="pdpClose()" aria-label="Close" class="absolute top-4 right-4 text-white/80 hover:text-white p-2">
-                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                <x-lucide-x class="w-7 h-7" />
             </button>
             @if($images->count() > 1)
             <button type="button" onclick="pdpMove(-1)" aria-label="Previous" class="absolute left-2 sm:left-6 text-white/80 hover:text-white p-2">
-                <svg class="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                <x-lucide-chevron-left class="w-9 h-9" />
             </button>
             @endif
             <img id="pdpLightboxImg" src="{{ $mainImage }}" alt="{{ $product->name }}" class="max-h-[90vh] max-w-[92vw] object-contain rounded">
             @if($images->count() > 1)
             <button type="button" onclick="pdpMove(1)" aria-label="Next" class="absolute right-2 sm:right-6 text-white/80 hover:text-white p-2">
-                <svg class="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                <x-lucide-chevron-right class="w-9 h-9" />
             </button>
             <span id="pdpCounter" class="absolute bottom-4 text-white/70 text-sm"></span>
             @endif
@@ -165,7 +165,7 @@
                 </div>
                 <button type="submit"
                     class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors shadow-md shadow-brand-500/20">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75"/></svg>
+                    <x-lucide-shopping-cart class="w-5 h-5" />
                     Add to Cart
                 </button>
             </div>
@@ -180,7 +180,7 @@
         @php $shareUrl = route('shop.product', ['slug' => $product->slug]).'?ref='.$myAdn; @endphp
         <div class="mb-8 p-4 rounded-xl border border-dashed border-brand-300 bg-brand-50/40">
             <div class="flex items-center gap-2 mb-2">
-                <svg class="w-4 h-4 text-brand-700" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"/></svg>
+                <x-lucide-share-2 class="w-4 h-4 text-brand-700" />
                 <span class="text-sm font-semibold text-gray-800">Easy Purchase — share with a customer</span>
             </div>
             <p class="text-xs text-gray-600 mb-3">Send this link. Purchases made through it for the next 30 days are attributed to you (ADN {{ $myAdn }}).</p>
@@ -196,11 +196,11 @@
 
         <div class="grid grid-cols-2 gap-3 text-xs">
             <div class="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
-                <svg class="w-5 h-5 text-brand-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                <x-lucide-clock class="w-5 h-5 text-brand-700 shrink-0" />
                 <span><strong class="text-gray-900 block">30-day returns</strong><span class="text-gray-600">Cooling-off window on every order.</span></span>
             </div>
             <div class="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
-                <svg class="w-5 h-5 text-brand-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                <x-lucide-circle-check class="w-5 h-5 text-brand-700 shrink-0" />
                 <span><strong class="text-gray-900 block">GST invoice</strong><span class="text-gray-600">Issued for every order.</span></span>
             </div>
         </div>

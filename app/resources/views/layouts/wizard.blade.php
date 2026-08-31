@@ -106,9 +106,7 @@
                                     <span class="relative flex items-center justify-center w-9 h-9">
                                         @if($isDone)
                                             <span class="absolute inset-0 rounded-full bg-leaf-500 flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M3.5 8.5l3 3 6-6"/>
-                                                </svg>
+                                                <x-lucide-check class="w-4 h-4 text-white" />
                                             </span>
                                         @elseif($isActive)
                                             <span class="absolute inset-0 rounded-full bg-white ring-2 ring-brand-500 glow-pulse"></span>

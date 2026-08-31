@@ -13,6 +13,7 @@
         "laravel/pulse": "^1.8",
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "^3.0",
+        "mallardduck/blade-lucide-icons": "^2.0",
         "mews/purifier": "^3.4",
         "pragmarx/google2fa-laravel": "^3.0",
         "predis/predis": "^3.4",

@@ -22,9 +22,7 @@
                 <button type="button" data-modal-close
                     class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-600 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     aria-label="Close">
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                    </svg>
+                    <x-lucide-x class="w-5 h-5" />
                 </button>
             </div>
             <div class="px-6 py-5" data-modal-body>

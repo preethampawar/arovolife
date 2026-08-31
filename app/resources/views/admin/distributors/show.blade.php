@@ -10,17 +10,17 @@
     <div class="flex items-center gap-2">
         <a href="{{ route('admin.distributors.edit', $distributor->id) }}"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487 18.549 2.799a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>
+            <x-lucide-pencil class="w-3.5 h-3.5" />
             Edit profile
         </a>
         <a href="{{ route('admin.tree.show', $distributor->id) }}"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3"/></svg>
+            <x-lucide-layers class="w-3.5 h-3.5" />
             Tree View
         </a>
         <a href="{{ route('admin.commerce.bv-ledger.show', $distributor->id) }}"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+            <x-lucide-chart-column class="w-3.5 h-3.5" />
             BV Ledger
         </a>
         <a href="{{ route('admin.compensation.distributors.show', $distributor->id) }}"
@@ -30,7 +30,7 @@
 
         <button type="button" onclick="openResetPwdModal()"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z"/></svg>
+            <x-lucide-key-round class="w-3.5 h-3.5" />
             Reset password
         </button>
 
@@ -41,7 +41,7 @@
                 data-confirm-impact="You will browse arovolife as this distributor until you end the session. The switch is audit-logged and reversible by stopping impersonation.">
                 @csrf
                 <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sunrise-800 hover:bg-sunrise-900 text-white text-xs font-semibold transition-colors shadow-sm">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+                    <x-lucide-users class="w-3.5 h-3.5" />
                     Impersonate
                 </button>
             </form>

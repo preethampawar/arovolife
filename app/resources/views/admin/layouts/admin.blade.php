@@ -53,9 +53,7 @@
          sidebar drawer + backdrop via vanilla JS at the bottom of this file. --}}
     <button type="button" id="adminMobileMenuBtn" aria-label="Open menu"
         class="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors">
-        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-        </svg>
+        <x-lucide-menu class="w-5 h-5" />
     </button>
 
     {{-- Backdrop — only shown on mobile when sidebar is open. --}}
@@ -116,65 +114,65 @@
                     : 0;
 
                 $navItems = [
-                    ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => '⬡'],
-                    ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => '◉'],
+                    ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => 'layout-dashboard'],
+                    ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => 'users'],
                     // Staff register is super-staff only (route enforces role:admin|developer).
                     ...(auth()->user()?->isSuperStaff()
-                        ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => '👥', 'prefix' => 'admin.staff']]
+                        ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => 'users-round', 'prefix' => 'admin.staff']]
                         : []),
-                    ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => '⌬', 'prefix' => 'admin.tree'],
+                    ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => 'network', 'prefix' => 'admin.tree'],
                     // KYC is gated on `kyc.review` (R-17). Hiding the item
                     // rather than letting it 403 keeps admin-finance from
                     // walking into a wall on every shift.
                     ...(auth()->user()?->can('kyc.review')
-                        ? [['route' => 'admin.kyc.index',            'label' => 'KYC review',     'icon' => '✓', 'prefix' => 'admin.kyc']]
+                        ? [['route' => 'admin.kyc.index',            'label' => 'KYC review',     'icon' => 'file-check', 'prefix' => 'admin.kyc']]
                         : []),
-                    ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => '⇄', 'prefix' => 'admin.line-changes'],
+                    ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => 'arrow-right-left', 'prefix' => 'admin.line-changes'],
                     ...($distributorRequestsOn
-                        ? [['route' => 'admin.distributor-requests.index', 'label' => 'Distributor requests', 'icon' => '📝', 'prefix' => 'admin.distributor-requests', 'badge' => $openDistributorRequestCount]]
+                        ? [['route' => 'admin.distributor-requests.index', 'label' => 'Distributor requests', 'icon' => 'clipboard-list', 'prefix' => 'admin.distributor-requests', 'badge' => $openDistributorRequestCount]]
                         : []),
-                    ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => '✉', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
+                    ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => 'mail', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
                     // Grievances are gated on `grievance.handle` (R-17: not
                     // admin-finance). Hiding the item rather than letting it
                     // 403 also keeps the open-complaint count out of view.
                     ...(auth()->user()?->can('grievance.handle')
-                        ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => '📣', 'prefix' => 'admin.grievances', 'badge' => $openGrievanceCount]]
+                        ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => 'megaphone', 'prefix' => 'admin.grievances', 'badge' => $openGrievanceCount]]
                         : []),
                     // Agreement §21 dormancy. Account discipline, so it follows
                     // the same permission as freeze / terminate.
                     ...(auth()->user()?->can('compliance.discipline')
-                        ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => '⏳', 'prefix' => 'admin.dormancy']]
+                        ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => 'hourglass', 'prefix' => 'admin.dormancy']]
                         : []),
-                    ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => '🛒', 'prefix' => 'admin.commerce.orders'],
-                    ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => '📊', 'prefix' => 'admin.commerce.bv-ledger'],
+                    ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders'],
+                    ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger'],
                     ...(auth()->user()?->can('audit.read')
-                        ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => '📈', 'prefix' => 'admin.analytics']]
+                        ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => 'chart-line', 'prefix' => 'admin.analytics']]
                         : []),
-                    ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => '💰', 'prefix' => 'admin.compensation'],
+                    ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => 'banknote', 'prefix' => 'admin.compensation'],
                     // Arete Development Centres are entities in their own right
                     // (Step 11, profile, member directory); the ADC bonus is a
                     // layer on top and lives under Compensation.
-                    ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => '🏛', 'prefix' => 'admin.arete-centres', 'badge' => $openAdcApplicationCount],
-                    ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => '🏷', 'prefix' => 'admin.commerce.coupons'],
+                    ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => 'landmark', 'prefix' => 'admin.arete-centres', 'badge' => $openAdcApplicationCount],
+                    ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => 'tag', 'prefix' => 'admin.commerce.coupons'],
                     // Zero-trace: an unlaunched franchise programme leaves no
                     // menu item behind for anyone to wonder about.
                     ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FranchiseFeature::class)
-                        ? [['route' => 'admin.commerce.franchises.index', 'label' => 'Franchises', 'icon' => '🏪', 'prefix' => 'admin.commerce.franchises']]
+                        ? [['route' => 'admin.commerce.franchises.index', 'label' => 'Franchises', 'icon' => 'store', 'prefix' => 'admin.commerce.franchises']]
                         : []),
                     ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class)
-                        ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => '🎁', 'prefix' => 'admin.commerce.offers']]
+                        ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => 'gift', 'prefix' => 'admin.commerce.offers']]
                         : []),
-                    ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => '📦', 'prefix' => 'admin.catalog.products'],
-                    ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => '🗂', 'prefix' => 'admin.catalog.categories'],
-                    ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => '🖼', 'prefix' => 'admin.catalog.banners'],
-                    ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => '📄', 'prefix' => 'admin.content'],
-                    ['route' => 'admin.compliance-documents.index','label' => 'Compliance Docs', 'icon' => '🛡', 'prefix' => 'admin.compliance-documents'],
-                    ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => '⚙'],
-                    ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => '⚑', 'prefix' => 'admin.feature-flags'],
+                    ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => 'package', 'prefix' => 'admin.catalog.products'],
+                    ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => 'folder-tree', 'prefix' => 'admin.catalog.categories'],
+                    ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => 'image', 'prefix' => 'admin.catalog.banners'],
+                    ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => 'file-text', 'prefix' => 'admin.content'],
+                    ['route' => 'admin.compliance-documents.index','label' => 'Compliance Docs', 'icon' => 'shield-check', 'prefix' => 'admin.compliance-documents'],
+                    ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => 'settings'],
+                    ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => 'flag', 'prefix' => 'admin.feature-flags'],
                     ...(auth()->user()?->can('audit.read')
-                        ? [['route' => 'admin.audit-log',            'label' => 'Audit Log',      'icon' => '☰']]
+                        ? [['route' => 'admin.audit-log',            'label' => 'Audit Log',      'icon' => 'scroll-text']]
                         : []),
-                    ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => '❔', 'prefix' => 'admin.help'],
+                    ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => 'circle-help', 'prefix' => 'admin.help'],
                 ];
             @endphp
             @foreach($navItems as $item)
@@ -190,7 +188,7 @@
                     @if($active)
                     <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-sunrise-500"></span>
                     @endif
-                    <span class="text-base {{ $active ? 'text-sunrise-400' : 'text-slate-600' }}">{{ $item['icon'] }}</span>
+                    <span class="{{ $active ? 'text-sunrise-400' : 'text-slate-600' }}">{{ svg('lucide-'.$item['icon'], 'w-4 h-4') }}</span>
                     <span class="flex-1">{{ $item['label'] }}</span>
                     @if(!empty($item['badge']))
                         <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>

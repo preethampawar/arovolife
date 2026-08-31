@@ -15,12 +15,7 @@
          (ADR-0003). The user cannot edit them from inside the wizard. --}}
     @if(!empty($sponsorAdn))
     <div class="mb-6 flex items-center gap-3 rounded-xl border border-brand-200/70 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-brand-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 11H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h4"/>
-            <path d="M15 11h4a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-4"/>
-            <path d="M9 13h6"/>
-            <circle cx="12" cy="6" r="3"/>
-        </svg>
+        <x-lucide-link class="w-5 h-5 text-brand-700 shrink-0" />
         <div class="text-[13px] leading-snug flex-1">
             <p class="text-slate-600">You were referred by</p>
             @if(!empty($sponsorName))

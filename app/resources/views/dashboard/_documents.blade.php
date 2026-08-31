@@ -17,7 +17,7 @@
                 'accent'   => 'border-leaf-500',
                 'tile_bg'  => 'bg-leaf-50',
                 'tile_txt' => 'text-leaf-700',
-                'svg'      => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/>',
+                'icon'      => 'file-text',
             ],
             [
                 'title'    => 'Membership Card',
@@ -26,7 +26,7 @@
                 'accent'   => 'border-brand-500',
                 'tile_bg'  => 'bg-brand-50',
                 'tile_txt' => 'text-brand-700',
-                'svg'      => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 8.25V18a2.25 2.25 0 0 0 2.25 2.25h13.5A2.25 2.25 0 0 0 21 18V8.25m-18 0V6a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 6v2.25m-18 0h18M5.25 12h6m-6 3h3"/>',
+                'icon'      => 'credit-card',
             ],
             [
                 'title'    => 'TDS (Tax Statements)',
@@ -35,7 +35,7 @@
                 'accent'   => 'border-amber-500',
                 'tile_bg'  => 'bg-amber-50',
                 'tile_txt' => 'text-amber-700',
-                'svg'      => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/>',
+                'icon'      => 'trending-up',
             ],
         ];
     @endphp
@@ -47,7 +47,7 @@
                    class="group block rounded-2xl bg-white shadow-sm hover:shadow-lg p-5 border-t-4 {{ $doc['accent'] }} transition-all duration-300 hover:-translate-y-0.5">
                     <div class="flex items-start gap-3 mb-3">
                         <span class="shrink-0 w-10 h-10 rounded-lg {{ $doc['tile_bg'] }} {{ $doc['tile_txt'] }} flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">{!! $doc['svg'] !!}</svg>
+                            {{ svg('lucide-'.$doc['icon'], 'w-5 h-5') }}
                         </span>
                         <div class="min-w-0">
                             <p class="font-semibold text-gray-900 leading-snug">{{ $doc['title'] }}</p>
@@ -62,7 +62,7 @@
                 <div class="block rounded-2xl bg-white shadow-sm p-5 border-t-4 {{ $doc['accent'] }} opacity-80">
                     <div class="flex items-start gap-3 mb-3">
                         <span class="shrink-0 w-10 h-10 rounded-lg {{ $doc['tile_bg'] }} {{ $doc['tile_txt'] }} flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">{!! $doc['svg'] !!}</svg>
+                            {{ svg('lucide-'.$doc['icon'], 'w-5 h-5') }}
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="font-semibold text-gray-900 leading-snug">{{ $doc['title'] }}</p>

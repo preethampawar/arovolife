@@ -54,9 +54,7 @@
                 style="animation-delay: 440ms;">
                 <span class="inline-flex items-center justify-center gap-2.5">
                     Continue to consent
-                    <svg class="btn-arrow w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2 8h11M9 4l4 4-4 4"/>
-                    </svg>
+                    <x-lucide-arrow-right class="btn-arrow w-4 h-4" />
                 </span>
             </button>
         </div>

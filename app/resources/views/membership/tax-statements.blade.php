@@ -10,9 +10,7 @@
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center">
         <span class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-amber-50 text-amber-700 mb-4">
-            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/>
-            </svg>
+            <x-lucide-file-text class="w-7 h-7" />
         </span>
         <h2 class="text-lg font-semibold text-gray-900 mb-1">No tax statements yet</h2>
         <p class="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">

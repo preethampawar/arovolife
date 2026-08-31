@@ -82,10 +82,7 @@
                         class="w-full aspect-[3/4] object-cover rounded-lg border-2 border-gray-200">
                 @else
                     <div class="w-full aspect-[3/4] rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/40 flex flex-col items-center justify-center text-center p-3">
-                        <svg class="w-8 h-8 text-gray-600 mb-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.776 48.776 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
-                        </svg>
+                        <x-lucide-camera class="w-8 h-8 text-gray-600 mb-1.5" />
                         <span class="text-[11px] text-gray-700 leading-tight">No photo uploaded</span>
                     </div>
                 @endif
@@ -108,10 +105,7 @@
                         </span>
                     @else
                         <div class="w-full aspect-[3/4] rounded-lg border-2 border-dashed border-gray-300 group-hover:border-brand-400 group-hover:bg-brand-50/40 transition-colors flex flex-col items-center justify-center text-center p-3">
-                            <svg class="w-8 h-8 text-gray-600 group-hover:text-brand-800 mb-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.776 48.776 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
-                            </svg>
+                            <x-lucide-camera class="w-8 h-8 text-gray-600 group-hover:text-brand-800 mb-1.5" />
                             <span class="text-[11px] text-gray-800 group-hover:text-brand-800 font-medium leading-tight">
                                 Upload ID photo
                             </span>
@@ -160,12 +154,12 @@
                             <span class="text-xs text-gray-600 w-12 shrink-0">Rotate</span>
                             <button type="button" id="idPhotoRotateLeft" title="Rotate left 90°"
                                 class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 transition-colors">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                                <x-lucide-undo-2 class="w-4 h-4" />
                                 Left
                             </button>
                             <button type="button" id="idPhotoRotateRight" title="Rotate right 90°"
                                 class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 transition-colors">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"/></svg>
+                                <x-lucide-redo-2 class="w-4 h-4" />
                                 Right
                             </button>
                         </div>

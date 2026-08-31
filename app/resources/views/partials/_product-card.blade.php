@@ -14,9 +14,7 @@
             <img src="{{ $cardImage }}" alt="{{ $product->name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
         @else
             <div class="text-center {{ $tone['iconColor'] }}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mx-auto mb-2 opacity-70" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75 7.41 11.59c.8-.8 2.1-.8 2.9 0l4.56 4.56m-1.5-1.5 1.66-1.66c.8-.8 2.1-.8 2.9 0l2.83 2.83M3 16.5V6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5m-18 0A2.25 2.25 0 0 0 5.25 18.75h13.5A2.25 2.25 0 0 0 21 16.5m-18 0L7 12.5"/>
-                </svg>
+                <x-lucide-image class="w-12 h-12 mx-auto mb-2 opacity-70" />
             </div>
         @endif
         @if($variant->hasDiscount())
@@ -54,7 +52,7 @@
                 <input type="hidden" name="qty" value="1">
                 <button type="submit" aria-label="Add {{ $product->name }} to cart" title="Add to cart"
                     class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-brand-700 hover:bg-brand-800 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
+                    <x-lucide-shopping-cart class="w-5 h-5" />
                 </button>
             </form>
         </div>

@@ -8,7 +8,7 @@
     $lcAvailable         = $lcBusinessDaysSince <= 5;
     $isLeft = $distributor->placement_side === 'L';
     $linkClass = 'flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-brand-700 hover:bg-brand-50 hover:text-brand-800 transition';
-    $chev = '<svg class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>';
+    $chev = '<x-lucide-chevron-right class="w-3.5 h-3.5 shrink-0 opacity-60" />';
 @endphp
 <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
     <p class="text-xs text-gray-700 uppercase tracking-wider mb-3 font-semibold">Placement</p>

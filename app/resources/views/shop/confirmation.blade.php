@@ -6,7 +6,7 @@
 <div class="max-w-2xl mx-auto">
     <div class="bg-white rounded-2xl border border-green-200 p-8 mb-6 text-center">
         <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-50 flex items-center justify-center">
-            <svg class="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            <x-lucide-check class="w-10 h-10 text-green-600" />
         </div>
         <h1 class="text-2xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
         <p class="text-gray-600">Thank you for your order, {{ $order->customer->display_name }}.</p>

@@ -254,11 +254,11 @@
         {{-- Prev / Next arrows --}}
         <button type="button" data-slider-prev aria-label="Previous slide"
                 class="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-brand-700 hover:text-brand-900 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+            <x-lucide-chevron-left class="w-5 h-5" />
         </button>
         <button type="button" data-slider-next aria-label="Next slide"
                 class="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-brand-700 hover:text-brand-900 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+            <x-lucide-chevron-right class="w-5 h-5" />
         </button>
 
         {{-- Indicator dots --}}
@@ -369,14 +369,14 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-6">
                 @php
                     $pillars = [
-                        ['label' => 'Free to Register',   'tone' => 'brand',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />'],
-                        ['label' => '30-Day Cooling-Off', 'tone' => 'sky',    'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />'],
-                        ['label' => 'Mandatory Orientation','tone'=>'violet','icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />'],
-                        ['label' => 'DPDP-Compliant',     'tone' => 'green',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />'],
-                        ['label' => 'One PAN One ID',     'tone' => 'amber',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />'],
-                        ['label' => 'Audit-Logged',       'tone' => 'slate',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />'],
-                        ['label' => 'Grievance SLA',      'tone' => 'red',    'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.068.157 2.148.279 3.238.364.466.037.893.281 1.153.671L12 21l2.652-3.978c.26-.39.687-.634 1.153-.67 1.09-.086 2.17-.208 3.238-.365 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />'],
-                        ['label' => 'Direct Selling Only','tone' => 'brand',  'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12 5.25 9m-3 3 3 3m-3-3h19.5m-3-3 3 3m-3 3 3-3" />'],
+                        ['label' => 'Free to Register',   'tone' => 'brand',  'icon' => 'trending-up'],
+                        ['label' => '30-Day Cooling-Off', 'tone' => 'sky',    'icon' => 'clock'],
+                        ['label' => 'Mandatory Orientation','tone'=>'violet','icon' => 'graduation-cap'],
+                        ['label' => 'DPDP-Compliant',     'tone' => 'green',  'icon' => 'circle-check'],
+                        ['label' => 'One PAN One ID',     'tone' => 'amber',  'icon' => 'id-card'],
+                        ['label' => 'Audit-Logged',       'tone' => 'slate',  'icon' => 'file-text'],
+                        ['label' => 'Grievance SLA',      'tone' => 'red',    'icon' => 'messages-square'],
+                        ['label' => 'Direct Selling Only','tone' => 'brand',  'icon' => 'arrow-right-left'],
                     ];
                     $tones = [
                         'brand'  => 'bg-brand-50 text-brand-700',
@@ -391,9 +391,7 @@
                 @foreach($pillars as $p)
                 <div class="flex flex-col items-center text-center gap-2">
                     <div class="w-14 h-14 rounded-full flex items-center justify-center {{ $tones[$p['tone']] }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" class="w-7 h-7">
-                            {!! $p['icon'] !!}
-                        </svg>
+                        {{ svg('lucide-'.$p['icon'], 'w-7 h-7') }}
                     </div>
                     <span class="text-sm text-gray-700 font-medium leading-tight">{{ $p['label'] }}</span>
                 </div>
@@ -416,10 +414,10 @@
             @php
                 // Heroicons outline SVG paths. Stored as path-data only so
                 // currentColor stroke picks up the iconBg's text colour.
-                $iconGift     = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>';
-                $iconShield   = '<path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 2.25 2.25 6-6m-3.75 12c4.142 0 7.5-3.358 7.5-7.5 0-2.343-1.07-4.44-2.756-5.812L13.5 2.25 6.506 7.688A7.46 7.46 0 0 0 3.75 13.5c0 4.142 3.358 7.5 7.5 7.5Z"/>';
-                $iconClock    = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>';
-                $iconRupee    = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 8.25H9m6 3H9m3 6-3-3h1.5a3 3 0 1 0 0-6M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>';
+                $iconGift     = 'gift';
+                $iconShield   = 'shield-check';
+                $iconClock    = 'clock';
+                $iconRupee    = 'indian-rupee';
 
                 $whyCards = [
                     ['title' => 'Free Registration',    'body' => 'Zero joining fee. No payment required at signup — ever.',                      'icon' => $iconGift,   'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
@@ -432,9 +430,7 @@
                 @foreach($whyCards as $card)
                 <div class="rounded-2xl border-2 {{ $card['border'] }} {{ $card['bg'] }} p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $card['iconBg'] }} mb-4 shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-6 h-6" aria-hidden="true">
-                            {!! $card['icon'] !!}
-                        </svg>
+                        {{ svg('lucide-'.$card['icon'], 'w-6 h-6') }}
                     </div>
                     <h3 class="font-bold {{ $card['titleClr'] }} mb-1.5">{{ $card['title'] }}</h3>
                     <p class="text-sm text-gray-700 leading-relaxed">{{ $card['body'] }}</p>
@@ -458,11 +454,11 @@
             @php
                 // Heroicons outline SVG paths. Stroke = currentColor =
                 // white (the colored circle has `text-white`).
-                $iconUsers    = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>';
-                $iconUserPlus = '<path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/>';
-                $iconPlay     = '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>';
-                $iconId       = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/>';
-                $iconBadge    = '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>';
+                $iconUsers    = 'users';
+                $iconUserPlus = 'user-plus';
+                $iconPlay     = 'play';
+                $iconId       = 'id-card';
+                $iconBadge    = 'badge-check';
 
                 $steps = [
                     ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + group.',        'bg' => 'bg-brand-700',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
@@ -479,9 +475,7 @@
                          the sequence stays visible alongside the icon. --}}
                     <span class="absolute top-3 right-3 text-sm font-semibold text-gray-600">{{ $step['n'] }}</span>
                     <div class="w-10 h-10 rounded-full {{ $step['bg'] }} text-white flex items-center justify-center mb-3 shadow-lg {{ $step['shadow'] }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5" aria-hidden="true">
-                            {!! $step['icon'] !!}
-                        </svg>
+                        {{ svg('lucide-'.$step['icon'], 'w-5 h-5') }}
                     </div>
                     <h4 class="font-semibold text-gray-900 mb-1 text-sm">{{ $step['title'] }}</h4>
                     <p class="text-sm text-gray-800 leading-relaxed">{{ $step['body'] }}</p>
@@ -515,13 +509,13 @@
                 @php
                     // Heroicons outline paths. Stroke = currentColor, which the
                     // icon chip sets per-category (a soft tinted icon on a light card).
-                    $iconHeart    = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.099 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/>';
-                    $iconSparkles = '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>';
-                    $iconHome     = '<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>';
-                    $iconSun      = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>';
-                    $iconLeaf     = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 3s-6.75-.9-11.25 3.6S4.5 19.5 4.5 19.5m0 0s9 1.05 13.5-3.45S21 3 21 3zM4.5 19.5 12 12"/>';
+                    $iconHeart    = 'heart';
+                    $iconSparkles = 'sparkles';
+                    $iconHome     = 'house';
+                    $iconSun      = 'sun';
+                    $iconLeaf     = 'leaf';
                     // Comb — reads as hair / beauty grooming.
-                    $iconComb     = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5h16.5a0 0 0 0 1 0 0v3.75a5.25 5.25 0 0 1-5.25 5.25h-6A5.25 5.25 0 0 1 3.75 11.25V7.5zM7.5 16.5v3.75M12 16.5v3.75M16.5 16.5v3.75"/>';
+                    $iconComb     = 'brush';
 
                     // Six categories, each with a distinct hue across the
                     // brand + Tailwind palette so no two cards share a colour
@@ -591,16 +585,14 @@
                 <a href="{{ route('shop.index') }}" class="group relative rounded-3xl overflow-hidden border {{ $cat['card'] }} p-7 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 block">
                     <div class="relative">
                         <div class="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl {{ $cat['iconChip'] }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-7 h-7" aria-hidden="true">
-                                {!! $cat['icon'] !!}
-                            </svg>
+                            {{ svg('lucide-'.$cat['icon'], 'w-7 h-7') }}
                         </div>
                         <p class="text-[11px] uppercase tracking-wider {{ $cat['accent'] }} font-semibold mb-1">{{ $cat['subtitle'] }}</p>
                         <h3 class="text-2xl font-bold mb-3 leading-tight text-gray-900">{{ $cat['title'] }}</h3>
                         <p class="text-sm text-gray-600 leading-relaxed mb-5">{{ $cat['body'] }}</p>
                         <span class="inline-flex items-center gap-1.5 text-sm font-semibold {{ $cat['accent'] }} group-hover:translate-x-1 transition-transform">
                             Browse range
-                            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                            <x-lucide-arrow-right class="w-4 h-4" />
                         </span>
                     </div>
                 </a>
