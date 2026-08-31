@@ -2,7 +2,7 @@
 @section('title', 'Return order '.$order->order_no)
 
 @section('content')
-<div class="max-w-2xl mx-auto px-4 py-8">
+<div class="max-w-2xl">
     <a href="{{ route('orders.show', $order->order_no) }}" class="text-sm text-brand-700 hover:text-brand-800">← Back to order</a>
 
     <h1 class="text-2xl font-bold text-gray-900 mt-3 mb-2">Return order <span class="font-mono text-brand-700">{{ $order->order_no }}</span></h1>

@@ -3,7 +3,7 @@
 
 @section('content')
 
-<div class="max-w-xl mx-auto py-10">
+<div class="max-w-xl">
     <h1 class="text-2xl font-bold mb-2">Cancel your arovolife registration</h1>
     <p class="text-sm text-gray-600 mb-8">
         You may cancel your distributor registration at any time during your 30-day cooling-off

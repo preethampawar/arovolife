@@ -9,7 +9,7 @@
     $editInput = 'w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
     $lockTip = 'this is part of your verified identity and can only be changed by arovolife after KYC review.';
 @endphp
-<div class="max-w-2xl mx-auto">
+<div class="max-w-2xl">
     <h1 class="text-2xl font-bold text-gray-900 mb-1">My profile</h1>
     <p class="text-sm text-gray-600 mb-6">Your verified identity is shown for reference; update the contact details we use to reach you below.</p>
 

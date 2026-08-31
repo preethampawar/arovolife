@@ -2,7 +2,7 @@
 @section('title', 'Raise a grievance')
 
 @section('content')
-<div class="max-w-2xl mx-auto">
+<div class="max-w-2xl">
 
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Raise a grievance</h1>
 

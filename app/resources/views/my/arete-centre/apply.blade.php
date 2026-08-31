@@ -9,7 +9,7 @@
 
 @section('content')
 
-<div class="max-w-3xl mx-auto py-10">
+<div class="max-w-3xl">
     <div class="flex items-center gap-3 mb-2">
         <a href="{{ route('my.adc.status') }}" class="text-sm text-gray-600 hover:text-gray-700">← Back</a>
     </div>

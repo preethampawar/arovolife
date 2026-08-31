@@ -14,19 +14,34 @@
     @include('partials.impersonation-banner')
     @include('partials.public-topnav')
 
-    {{-- min-w-0 + max-w-full guarantee wide children (e.g. genealogy tree
-         canvas) stay inside their own overflow container instead of pushing
-         the document past the viewport. Padding scales: px-4 on phones,
-         sm:px-6 from 640px, lg:px-8 from 1024px. --}}
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 min-w-0 max-w-full">
-        @if(session('status'))
-        <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {{ session('status') }}
-        </div>
+    @php
+        // Signed-in distributors get the persistent left nav (lg+). Admins,
+        // guests and account-less users keep the plain centered column.
+        $showSideNav = auth()->check()
+            && auth()->user()->distributor !== null
+            && ! auth()->user()->isSuperStaff();
+    @endphp
+
+    {{-- min-w-0 + max-w-full + minmax(0,1fr) guarantee wide children (e.g.
+         the genealogy tree canvas) stay inside their own overflow container
+         instead of pushing the document past the viewport. Padding scales:
+         px-4 on phones, sm:px-6 from 640px, lg:px-8 from 1024px. --}}
+    <div class="{{ $showSideNav ? 'max-w-7xl lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-10' : 'max-w-6xl' }} mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 min-w-0 max-w-full">
+
+        @if($showSideNav)
+            @include('partials.distributor-sidenav')
         @endif
 
-        @yield('content')
-    </main>
+        <main class="min-w-0 max-w-full">
+            @if(session('status'))
+            <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                {{ session('status') }}
+            </div>
+            @endif
+
+            @yield('content')
+        </main>
+    </div>
 
     <footer class="border-t border-gray-200 mt-12 sm:mt-16 px-4 sm:px-6 py-6 text-center text-xs text-gray-700">
         <div class="flex flex-wrap justify-center gap-x-4 gap-y-1">

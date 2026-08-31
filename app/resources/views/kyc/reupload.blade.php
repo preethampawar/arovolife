@@ -2,7 +2,7 @@
 @section('title', 'Re-upload document')
 
 @section('content')
-<div class="max-w-xl mx-auto py-10">
+<div class="max-w-xl">
     <a href="{{ route('dashboard') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to dashboard</a>
 
     <h1 class="text-2xl font-bold text-gray-900 mt-4 mb-2">Re-upload your {{ $documentTypeHuman }}</h1>

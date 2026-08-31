@@ -9,7 +9,7 @@
     ];
     $ist = fn ($t) => $t?->timezone('Asia/Kolkata')->format('d M Y, H:i') ?? '—';
 @endphp
-<div class="max-w-3xl mx-auto">
+<div class="max-w-3xl">
     <div class="flex items-center gap-3 mb-2">
         <a href="{{ route('my.requests.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← My requests</a>
         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badge[$item->status] ?? 'bg-gray-100 text-gray-600' }}">{{ $item->statusLabel() }}</span>
