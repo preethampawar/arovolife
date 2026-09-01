@@ -36,6 +36,7 @@ use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Number;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
@@ -61,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->assertS3IsConfigured();
+        $this->warnOnMissingOpsEnv();
 
         // All human-facing numbers (BV, ₹) use Indian digit grouping
         // (24,30,000 not 2,430,000) — every display surface must format via
@@ -190,5 +192,32 @@ class AppServiceProvider extends ServiceProvider
             .implode(', ', $missing)
             .'. KYC documents are PII and falling back to local disk is not allowed.'
         );
+    }
+
+    /**
+     * EH-L9/LOG-6: surface deploy-time misconfiguration in the very first log
+     * entries instead of as a mystery three days later. Warn-only by design —
+     * the app must still boot so the warning has somewhere to land.
+     */
+    private function warnOnMissingOpsEnv(): void
+    {
+        if ($this->app->runningUnitTests()) {
+            return;
+        }
+
+        if ((string) config('logging.channels.slack.url', '') === '') {
+            Log::warning('Ops env check: LOG_SLACK_WEBHOOK_URL is empty — critical alerts will not reach Slack.');
+        }
+
+        if ((string) config('app.key', '') === '') {
+            Log::warning('Ops env check: APP_KEY is empty — encryption, sessions and signed URLs will fail.');
+        }
+
+        $queue = (string) config('queue.default', '');
+        if ($queue !== 'database') {
+            Log::warning('Ops env check: QUEUE_CONNECTION must be "database" (ADR-0011) — currently misconfigured.', [
+                'queue_connection' => $queue,
+            ]);
+        }
     }
 }
