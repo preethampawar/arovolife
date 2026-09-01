@@ -112,6 +112,7 @@
                         'pending'        => 'bg-amber-100 text-amber-700',
                         'kyc_pending'    => 'bg-amber-100 text-amber-700',
                         'no_bank_account' => 'bg-gray-100 text-gray-600',
+                        'bank_decrypt_failed' => 'bg-red-100 text-red-700',
                         'web_only'       => 'bg-gray-100 text-gray-600',
                     ];
                 @endphp

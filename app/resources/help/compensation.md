@@ -96,6 +96,8 @@ Distributors whose **KYC is not yet verified** (account not `active`) get a `kyc
 
 Distributors with **no bank account on file** get a `no_bank_account` line: nothing is debited or swept, the balance stays in the wallet, and the first batch after they add bank details pays it out. (Same rule in the monthly batch.)
 
+Distributors whose **stored bank account cannot be decrypted** get a `bank_decrypt_failed` line ("On hold — contact support" in the wallet): the ciphertext on file is unreadable, so the account number that would go into the NEFT file is not trustworthy. Nothing is debited or swept, a `critical` log is raised for engineering, and the first batch after the bank details are re-captured pays it out. Only that distributor is held — the rest of the batch runs normally. (Same rule in the monthly batch.)
+
 ## Growth Booster Bonus (GBB) — monthly AGP pool (KP 2026-08-05)
 
 A monthly bonus for early-stage distributors, funded from a share of the month's company BV and divided by the AGP everyone earned.

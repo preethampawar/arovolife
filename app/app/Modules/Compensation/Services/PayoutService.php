@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Enums\BonusType;
+use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -155,7 +156,32 @@ final class PayoutService
                     continue;
                 }
 
-                $bankLast4 = $this->bankLast4ForDistributor($distributorId);
+                try {
+                    $bankLast4 = $this->bankLast4ForDistributor($distributorId);
+                } catch (BankDecryptionException) {
+                    // Held exactly like the no-bank gate above: visible to
+                    // admins on the batch page, wallet never debited or
+                    // swept, picked up by the first batch after ops
+                    // re-capture the bank details. The critical log has
+                    // already fired inside bankLast4ForDistributor().
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_BANK_DECRYPT_FAILED,
+                            'failure_reason' => 'Bank account on file could not be decrypted — re-capture bank details.',
+                        ]);
+                    }
+
+                    continue;
+                }
 
                 DB::transaction(function () use (
                     $distributorId, $batch, $cycleEnd, $groupTypes, $bankLast4,
@@ -422,7 +448,32 @@ final class PayoutService
                     continue;
                 }
 
-                $bankLast4 = $this->bankLast4ForDistributor($distributorId);
+                try {
+                    $bankLast4 = $this->bankLast4ForDistributor($distributorId);
+                } catch (BankDecryptionException) {
+                    // Held exactly like the no-bank gate above: visible to
+                    // admins on the batch page, wallet never debited or
+                    // swept, picked up by the first batch after ops
+                    // re-capture the bank details. The critical log has
+                    // already fired inside bankLast4ForDistributor().
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_BANK_DECRYPT_FAILED,
+                            'failure_reason' => 'Bank account on file could not be decrypted — re-capture bank details.',
+                        ]);
+                    }
+
+                    continue;
+                }
 
                 DB::transaction(function () use (
                     $distributorId, $batch, $allMonthlyTypes, $incomeCapPaise, $month, $bankLast4,
@@ -788,11 +839,20 @@ final class PayoutService
 
         // The column holds PII ciphertext — the last 4 must come from the
         // DECRYPTED account number or the NEFT export shows garbage that
-        // finance cannot reconcile against the bank.
+        // finance cannot reconcile against the bank. A ciphertext that no
+        // longer decrypts is a hard stop for THIS distributor (LOG-2): a
+        // silent null here used to flow a blank account number into the
+        // NEFT file. Never log the ciphertext itself.
         try {
             $accountNumber = PiiCrypter::decryptString((string) $raw);
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $failure) {
+            Log::critical('Bank account decryption failed — payout held for distributor', [
+                'distributor_id' => $distributorId,
+                'context' => 'bank_decryption_failure',
+                'error' => $failure->getMessage(),
+            ]);
+
+            throw new BankDecryptionException($distributorId);
         }
 
         return mb_strlen($accountNumber) >= 4 ? mb_substr($accountNumber, -4) : null;

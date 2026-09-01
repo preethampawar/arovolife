@@ -42,6 +42,9 @@ final class PayoutLineItem extends Model
     /** KYC not yet verified (user.status !== 'active') — balance held in wallet, NEFT blocked until KYC approval. */
     public const STATUS_KYC_PENDING = 'kyc_pending';
 
+    /** Bank account on file but the ciphertext failed to decrypt (LOG-2) — held in wallet, never swept, NEFT blocked until bank details are re-captured. */
+    public const STATUS_BANK_DECRYPT_FAILED = 'bank_decrypt_failed';
+
     protected $table = 'payout_line_items';
 
     protected $fillable = [
