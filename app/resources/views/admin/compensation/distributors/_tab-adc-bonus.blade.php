@@ -33,8 +33,8 @@
             <tr>
                 <td class="px-3 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($row->month_start)->format('M Y') }}</td>
                 <td class="px-3 py-2">{{ $row->center?->name ?? '#'.$row->center_id }}</td>
-                <td class="px-3 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($row->member_count) }}</td>
-                <td class="px-3 py-2 text-right">@bv($row->total_member_bv_paise)</td>
+                <td class="px-3 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($row->order_count) }}</td>
+                <td class="px-3 py-2 text-right">@bv($row->total_attributed_bv_paise)</td>
                 <td class="px-3 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
                 <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>

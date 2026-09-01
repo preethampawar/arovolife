@@ -173,13 +173,13 @@ final class BonusCalculationSnapshots
         $rows = DB::table('adc_bonus_results as abr')
             ->leftJoin('arete_centers as ac', 'ac.id', '=', 'abr.center_id')
             ->whereIn('abr.month_start', $monthStarts)
-            ->select('abr.month_start', 'abr.total_member_bv_paise', 'abr.gross_paise', 'abr.created_at', 'ac.monthly_cap_override_paise')
+            ->select('abr.month_start', 'abr.total_attributed_bv_paise', 'abr.gross_paise', 'abr.created_at', 'ac.monthly_cap_override_paise')
             ->get();
 
         $out = [];
         foreach ($rows as $row) {
             $key = Carbon::parse((string) $row->month_start)->toDateString();
-            $bv = (int) $row->total_member_bv_paise;
+            $bv = (int) $row->total_attributed_bv_paise;
             $gross = (int) $row->gross_paise;
             // The engine's own arithmetic, so "before caps" can never drift
             // from what the run would pay.

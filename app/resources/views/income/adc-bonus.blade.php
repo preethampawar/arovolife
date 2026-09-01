@@ -76,8 +76,8 @@
                             {{ \Illuminate\Support\Carbon::parse($row->month_start)->format('F Y') }}
                         </td>
                         <td class="px-4 py-3 text-gray-700">{{ $row->center->name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-right text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($row->member_count) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-600">@bv($row->total_member_bv_paise)</td>
+                        <td class="px-4 py-3 text-right text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($row->order_count) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-600">@bv($row->total_attributed_bv_paise)</td>
                         <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
