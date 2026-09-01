@@ -89,9 +89,9 @@ final class AdminAdcCalculationController extends Controller
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-            $turnoverBv = number_format($row->total_member_bv_paise / 100, 2, '.', '');
-            $ratePct = $row->total_member_bv_paise > 0
-                ? number_format($row->gross_paise / $row->total_member_bv_paise * 100, 2, '.', '')
+            $turnoverBv = number_format($row->total_attributed_bv_paise / 100, 2, '.', '');
+            $ratePct = $row->total_attributed_bv_paise > 0
+                ? number_format($row->gross_paise / $row->total_attributed_bv_paise * 100, 2, '.', '')
                 : '0.00';
             $csv .= implode(',', [
                 $i + 1,
@@ -149,8 +149,8 @@ final class AdminAdcCalculationController extends Controller
                 'abr.distributor_id',
                 'abr.center_id',
                 'abr.month_start',
-                'abr.total_member_bv_paise',
-                'abr.member_count',
+                'abr.total_attributed_bv_paise',
+                'abr.order_count',
                 'abr.gross_paise',
                 'abr.admin_charge_paise',
                 'abr.tds_paise',
@@ -171,7 +171,7 @@ final class AdminAdcCalculationController extends Controller
                     ORDER BY rq2.rank_number DESC LIMIT 1) as rank_name'),
             )
             ->orderByDesc('abr.month_start')
-            ->orderByDesc('abr.total_member_bv_paise')
+            ->orderByDesc('abr.total_attributed_bv_paise')
             ->orderByDesc('abr.id');
     }
 

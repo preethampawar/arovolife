@@ -7,7 +7,7 @@
 @developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly ADC Bonus calculation table — one row per Arete centre per month.
-    <strong>Monthly Turnover BV</strong> = net BV of all members assigned to the centre (refunds deducted).
+    <strong>Monthly Turnover BV</strong> = net BV attributed from orders collected at the centre (refunds deducted).
     <strong>Rate %</strong> = gross ADC ÷ turnover BV × 100.
     Search by pincode, district or state to filter by centre area.
 </div>
@@ -63,7 +63,7 @@
                     <th class="px-3 py-2 text-left text-gray-600 font-medium">Month</th>
                     <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         Monthly Turnover BV
-                        <x-help-tip text="Total BV contributed by all members of this Arete centre in the month." />
+                        <x-help-tip text="Total BV from orders collected at this Arete centre in the month." />
                     </th>
                     <th class="px-3 py-2 text-center text-gray-600 font-medium">
                         Rate %
@@ -82,8 +82,8 @@
                 @php
                     $titleObj = $titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0);
                     $rowNumber = ($rows->currentPage() - 1) * $rows->perPage() + $i + 1;
-                    $ratePct = $row->total_member_bv_paise > 0
-                        ? round($row->gross_paise / $row->total_member_bv_paise * 100, 2)
+                    $ratePct = $row->total_attributed_bv_paise > 0
+                        ? round($row->gross_paise / $row->total_attributed_bv_paise * 100, 2)
                         : 0;
                     $statusBadges = [
                         'credited' => 'bg-green-100 text-green-700',
@@ -125,9 +125,9 @@
                         {{ \Illuminate\Support\Carbon::parse($row->month_start)->format('M Y') }}
                     </td>
                     <td class="px-3 py-2 text-right">
-                        <span class="font-medium text-gray-800">@bv($row->total_member_bv_paise)</span>
-                        @if($row->member_count > 0)
-                        <span class="block text-[10px] text-gray-600">{{ $row->member_count }} members</span>
+                        <span class="font-medium text-gray-800">@bv($row->total_attributed_bv_paise)</span>
+                        @if($row->order_count > 0)
+                        <span class="block text-[10px] text-gray-600">{{ $row->order_count }} orders</span>
                         @endif
                     </td>
                     <td class="px-3 py-2 text-center">
