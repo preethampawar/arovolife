@@ -181,3 +181,14 @@ it('accrues the buyer\'s personal BV on payment for the partly-linked case (end-
 
     expect((int) BvLedgerEntry::where('distributor_id', $distId)->where('type', 'accrual')->sum('bv_paise'))->toBe(50000);
 });
+
+it('SEC-B3: the generated order number carries a random, non-enumerable suffix', function (): void {
+    [$userId, $distId] = cscDistributor();
+
+    $a = cscPlace('ordno-a-'.uniqid().'@test.com', $distId, $userId, $distId);
+    $b = cscPlace('ordno-b-'.uniqid().'@test.com', $distId, $userId, $distId);
+
+    expect($a->order_no)->toMatch('/^ORD-\d{6}-[A-Z0-9]{6}$/')
+        ->and($b->order_no)->toMatch('/^ORD-\d{6}-[A-Z0-9]{6}$/')
+        ->and($a->order_no)->not->toBe($b->order_no);
+});

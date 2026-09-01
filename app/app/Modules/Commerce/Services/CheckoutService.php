@@ -353,11 +353,14 @@ final class CheckoutService
         );
     }
 
+    /**
+     * SEC-B3: date-sortable prefix + 6 random uppercase alphanumerics.
+     * The old timestamp-derived suffix was enumerable and leaked order
+     * volume. Collisions (~1 in 36^6 per day) are caught by the
+     * uniq_orders_order_no constraint and fail the checkout transaction.
+     */
     private function generateOrderNo(): string
     {
-        $date = Carbon::now()->format('ymd');
-        $seq = (int) (Carbon::now()->timestamp % 100000);
-
-        return sprintf('ORD-%s-%05d', $date, $seq);
+        return sprintf('ORD-%s-%s', Carbon::now()->format('ymd'), Str::upper(Str::random(6)));
     }
 }
