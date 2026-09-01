@@ -10,7 +10,7 @@ use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RankBonusFeature;
-use App\Modules\Shared\Support\IndianNumber as Number;
+use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -110,7 +110,7 @@ final class DistributorIdCardStats
                 'verification_label' => $user->verificationLabel(),
                 'verification_class' => $user->verificationClass(),
                 'activation_date' => $user->activated_at,
-                'total_personal_bv' => $paise > 0 ? Number::format($paise / 100, 0).' BV' : null,
+                'total_personal_bv' => $paise > 0 ? IndianNumber::format($paise / 100, 0).' BV' : null,
             ];
         }
 
@@ -264,7 +264,7 @@ final class DistributorIdCardStats
             return null;
         }
 
-        return $paise > 0 ? '₹'.Number::format($paise / 100, 2) : null;
+        return $paise > 0 ? '₹'.IndianNumber::format($paise / 100, 2) : null;
     }
 
     /**
