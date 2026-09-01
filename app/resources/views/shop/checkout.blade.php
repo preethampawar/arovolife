@@ -108,7 +108,58 @@
             </div>
         </div>
 
+        {{-- ── Delivery type toggle ──────────────────────────────────────── --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 class="font-semibold text-gray-900 mb-4">Delivery method</h2>
+            <input type="hidden" name="delivery_type" id="deliveryType" value="{{ old('delivery_type', 'ship') }}">
+            <div class="flex gap-3">
+                <button type="button" id="btnShip"
+                    class="flex-1 flex items-center gap-2.5 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-colors"
+                    onclick="setDelivery('ship')">
+                    <x-lucide-truck class="w-4 h-4 shrink-0" />
+                    Home delivery
+                </button>
+                @if(($areteCenters ?? collect())->isNotEmpty())
+                <button type="button" id="btnCollect"
+                    class="flex-1 flex items-center gap-2.5 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-colors"
+                    onclick="setDelivery('collect')">
+                    <x-lucide-store class="w-4 h-4 shrink-0" />
+                    Collect from Arete Centre
+                </button>
+                @endif
+            </div>
+        </div>
+
+        {{-- ── ADC collection picker (shown when delivery_type = collect) ── --}}
+        @if(($areteCenters ?? collect())->isNotEmpty())
+        <div id="adcSection" class="bg-white rounded-2xl border border-gray-200 p-6 hidden">
+            <h2 class="font-semibold text-gray-900 mb-1">Select Arete Development Centre</h2>
+            <p class="text-xs text-gray-600 mb-4">Your order will be held at the centre for collection. BV is attributed to that centre.</p>
+            @error('arete_center_id')
+            <p class="mb-3 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+            <div class="space-y-2">
+                @foreach($areteCenters as $ac)
+                <label class="flex items-start gap-3 rounded-xl border-2 border-gray-200 p-4 cursor-pointer hover:border-brand-400 has-[:checked]:border-brand-500 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
+                    <input type="radio" name="arete_center_id" value="{{ $ac->id }}"
+                        class="mt-0.5 text-brand-700 focus:ring-brand-500"
+                        {{ old('arete_center_id') == $ac->id ? 'checked' : '' }}>
+                    <span>
+                        <span class="block text-sm font-medium text-gray-900">{{ $ac->name }}</span>
+                        <span class="block text-xs text-gray-600 mt-0.5">
+                            {{ implode(', ', array_filter([$ac->city, $ac->state])) }}
+                            @if($ac->contact_number) · {{ $ac->contact_number }}@endif
+                            @if($ac->weekly_off) · Weekly off: {{ \App\Modules\Compensation\Models\AreteCenter::WEEKLY_OFF_OPTIONS[$ac->weekly_off] ?? $ac->weekly_off }}@endif
+                        </span>
+                    </span>
+                </label>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- ── Shipping Address (shown when delivery_type = ship) ────────── --}}
+        <div id="shipSection" class="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 class="font-semibold text-gray-900 mb-4">Shipping Address</h2>
 
             @auth
@@ -195,6 +246,7 @@
             </div>
             @endauth
         </div>
+        </div>{{-- /shipSection --}}
 
         {{-- Billing address --}}
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
@@ -453,6 +505,38 @@
         toggle.addEventListener('change', apply);
         apply(); // honour the restored checkbox state after a validation error
     })();
+
+    // Delivery method toggle — ship vs. collect from an Arete Centre.
+    window.setDelivery = function (mode) {
+        const dt = document.getElementById('deliveryType');
+        const shipSection = document.getElementById('shipSection');
+        const adcSection  = document.getElementById('adcSection');
+        const btnShip     = document.getElementById('btnShip');
+        const btnCollect  = document.getElementById('btnCollect');
+
+        if (dt) { dt.value = mode; }
+
+        const shipReqFields = shipSection
+            ? shipSection.querySelectorAll('input[name="ship_line1"], input[name="ship_city"], input[name="ship_state"], input[name="ship_pincode"]')
+            : [];
+
+        if (mode === 'collect') {
+            if (shipSection) { shipSection.classList.add('hidden'); }
+            if (adcSection)  { adcSection.classList.remove('hidden'); }
+            shipReqFields.forEach(function (el) { el.removeAttribute('required'); });
+            if (btnShip)    { btnShip.classList.remove('border-brand-500', 'bg-brand-50', 'text-brand-700'); btnShip.classList.add('border-gray-200', 'text-gray-600'); }
+            if (btnCollect) { btnCollect.classList.remove('border-gray-200', 'text-gray-600'); btnCollect.classList.add('border-brand-500', 'bg-brand-50', 'text-brand-700'); }
+        } else {
+            if (shipSection) { shipSection.classList.remove('hidden'); }
+            if (adcSection)  { adcSection.classList.add('hidden'); }
+            shipReqFields.forEach(function (el) { el.setAttribute('required', 'required'); });
+            if (btnShip)    { btnShip.classList.remove('border-gray-200', 'text-gray-600'); btnShip.classList.add('border-brand-500', 'bg-brand-50', 'text-brand-700'); }
+            if (btnCollect) { btnCollect.classList.remove('border-brand-500', 'bg-brand-50', 'text-brand-700'); btnCollect.classList.add('border-gray-200', 'text-gray-600'); }
+        }
+    };
+
+    // Initialise from old() value (restored after a validation error).
+    setDelivery(document.getElementById('deliveryType') ? document.getElementById('deliveryType').value : 'ship');
 </script>
 
 @endsection

@@ -10,7 +10,6 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
-use App\Modules\Shared\Features\FranchiseFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
@@ -268,23 +267,6 @@ final class AdminSettingsController extends Controller
                 'min' => 50,
                 'max' => 10240,
                 'default' => '500',
-            ],
-
-            // ── Franchise ──────────────────────────────────────────────────
-            // Feature-gated: while the franchise flag is off these keys are
-            // invisible on the settings page and 404 on update, so an
-            // unlaunched programme leaves no trace.
-            'comp.franchise.rate_bp' => [
-                'group' => 'compensation_plan',
-                'owner' => 'developer',
-                'feature' => FranchiseFeature::class,
-                'label' => 'Franchise commission rate (basis points)',
-                'description' => 'Share of the net product value handed over through a franchise, paid to its operating distributor. 300 bp = 3% (Product Owner, 2026-08-16). Base is subtotal LESS the GST included in it LESS discount — catalogue prices are GST-inclusive, so the tax must come out before the rate applies, and shipping is excluded as a pass-through cost. An order counts in the month its 30-day return window closes, so a returned order never enters the calculation. An individual franchise may carry its own rate on its register entry.',
-                'impact' => 'Changes what every franchise earns from the next monthly run. Already-credited months are unaffected: the rate is snapshotted on each result row.',
-                'type' => 'int',
-                'min' => 0,
-                'max' => 1000,
-                'default' => '300',
             ],
 
             // ── Termination (agreement §21 dormancy) ───────────────────────
@@ -818,14 +800,6 @@ final class AdminSettingsController extends Controller
                 'description' => 'When ON, the admin charge is deducted from ADC payouts. KP-confirmed ON (2026-06-27; previously exempt).',
                 'type' => 'bool',
                 'default' => 'true',
-            ],
-            'comp.admin_charge.applies_to_franchise' => [
-                'group' => 'compensation_plan',
-                'feature' => FranchiseFeature::class,
-                'label' => 'Admin charge: apply to franchise commission',
-                'description' => 'When ON, the admin charge is deducted from franchise commission payouts. Default OFF: the franchise commission pays for fulfilment work performed on identified sales, not for a position in the plan, and the agreement exempts it on the same footing as awards.',
-                'type' => 'bool',
-                'default' => 'false',
             ],
             'comp.admin_charge.applies_to_awards' => [
                 'group' => 'compensation_plan',

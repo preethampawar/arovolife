@@ -15,6 +15,7 @@ use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Commerce\Services\ShippingService;
+use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -90,6 +91,10 @@ final class CheckoutController extends Controller
             $repurchaseWalletBalancePaise = $this->walletService->repurchaseWalletBalancePaise($repurchaseDistributorId);
         }
 
+        $areteCenters = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)
+            ->orderBy('name')
+            ->get(['id', 'name', 'city', 'state', 'address_line1', 'contact_number', 'weekly_off']);
+
         return view('shop.checkout', [
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
@@ -106,6 +111,7 @@ final class CheckoutController extends Controller
             'presetLabels' => CustomerAddressService::PRESET_LABELS,
             'buyerDistributor' => $buyerDistributor,
             'repurchaseWalletBalancePaise' => $repurchaseWalletBalancePaise,
+            'areteCenters' => $areteCenters,
             // Redeem points the buyer could spend on this cart. Zero — and so
             // no field at all — unless the offers are live, they are signed in
             // as a distributor, and they actually hold points.
@@ -149,24 +155,34 @@ final class CheckoutController extends Controller
         $allowedMethods = [Order::PAYMENT_ONLINE];
 
         $billingSame = $request->boolean('billing_same');
+        $isCollection = $request->input('delivery_type') === 'collect';
 
         $validated = $request->validate([
+            'delivery_type' => ['required', Rule::in(['ship', 'collect'])],
+            // ADC collection: required when delivery_type = collect.
+            'arete_center_id' => [
+                Rule::requiredIf($isCollection),
+                'nullable',
+                'integer',
+                Rule::exists('arete_centers', 'id')->where('status', AreteCenter::STATUS_ACTIVE),
+            ],
             'buyer_name' => ['required', 'string', 'max:150'],
             'buyer_email' => ['required', 'email', 'max:255'],
             'buyer_phone' => ['required', 'regex:/^[6-9]\d{9}$/'],
-            'ship_line1' => ['required', 'string', 'max:255'],
+            // Shipping address fields — required only for home delivery.
+            'ship_line1' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:255'],
             'ship_line2' => ['nullable', 'string', 'max:255'],
-            'ship_city' => ['required', 'string', 'max:100'],
-            'ship_state' => ['required', 'string', 'max:64'],
-            'ship_pincode' => ['required', 'regex:/^\d{6}$/'],
+            'ship_city' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:100'],
+            'ship_state' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:64'],
+            'ship_pincode' => [Rule::requiredIf(! $isCollection), 'nullable', 'regex:/^\d{6}$/'],
             'payment_method' => ['required', Rule::in($allowedMethods)],
             'billing_same' => ['nullable', 'boolean'],
             // Billing fields are required only when "same as shipping" is OFF.
-            'bill_line1' => [Rule::requiredIf(! $billingSame), 'nullable', 'string', 'max:255'],
+            'bill_line1' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'string', 'max:255'],
             'bill_line2' => ['nullable', 'string', 'max:255'],
-            'bill_city' => [Rule::requiredIf(! $billingSame), 'nullable', 'string', 'max:100'],
-            'bill_state' => [Rule::requiredIf(! $billingSame), 'nullable', 'string', 'max:64'],
-            'bill_pincode' => [Rule::requiredIf(! $billingSame), 'nullable', 'regex:/^\d{6}$/'],
+            'bill_city' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'string', 'max:100'],
+            'bill_state' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'string', 'max:64'],
+            'bill_pincode' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'regex:/^\d{6}$/'],
             'save_address' => ['nullable', 'boolean'],
             'address_label' => ['nullable', 'string', 'max:40'],
             'accept_terms' => ['required', 'accepted'],
@@ -182,6 +198,8 @@ final class CheckoutController extends Controller
         ], [
             'buyer_gstin.regex' => 'That does not look like a GSTIN. It is 15 characters, e.g. 36ABCDE1234F1Z5.',
             'buyer_legal_name.required_with' => 'A GSTIN needs the registered business name it belongs to.',
+            'arete_center_id.required' => 'Please select an Arete Development Centre to collect from.',
+            'arete_center_id.exists' => 'The selected centre is not available.',
         ]);
 
         // Guard: the buyer_email must not belong to another registered user on
@@ -220,17 +238,32 @@ final class CheckoutController extends Controller
                 : null,
         );
 
-        $shipping = [
-            'name' => $validated['buyer_name'],
-            'phone' => '+91'.$validated['buyer_phone'],
-            'line1' => $validated['ship_line1'],
-            'line2' => $validated['ship_line2'] ?? null,
-            'city' => $validated['ship_city'],
-            'state' => $validated['ship_state'],
-            'pincode' => $validated['ship_pincode'],
-        ];
+        if ($isCollection) {
+            // For ADC collection orders the "shipping" address records
+            // the centre's address so the invoice has a delivery address.
+            $center = AreteCenter::find((int) $validated['arete_center_id']);
+            $shipping = [
+                'name' => $validated['buyer_name'],
+                'phone' => '+91'.$validated['buyer_phone'],
+                'line1' => $center?->address_line1 ?? ($center?->location ?? 'Arete Development Centre'),
+                'line2' => $center?->city ?? null,
+                'city' => $center?->city ?? $center?->district ?? '',
+                'state' => $center?->state ?? '',
+                'pincode' => $center?->pincode ?? '000000',
+            ];
+        } else {
+            $shipping = [
+                'name' => $validated['buyer_name'],
+                'phone' => '+91'.$validated['buyer_phone'],
+                'line1' => $validated['ship_line1'],
+                'line2' => $validated['ship_line2'] ?? null,
+                'city' => $validated['ship_city'],
+                'state' => $validated['ship_state'],
+                'pincode' => $validated['ship_pincode'],
+            ];
+        }
 
-        $billing = $billingSame ? $shipping : [
+        $billing = ($billingSame || $isCollection) ? $shipping : [
             'name' => $validated['buyer_name'],
             'phone' => '+91'.$validated['buyer_phone'],
             'line1' => $validated['bill_line1'],
@@ -258,9 +291,10 @@ final class CheckoutController extends Controller
                 buyerDistributorId: Auth::user()?->distributor?->id,
                 // Save the shipping address to the book only for a logged-in buyer
                 // who opted in (the checkbox defaults to on). Guests have no account
-                // to save against.
-                saveShippingAddress: Auth::check() && $request->boolean('save_address'),
+                // to save against. Collection orders have no home-delivery address to save.
+                saveShippingAddress: ! $isCollection && Auth::check() && $request->boolean('save_address'),
                 shippingLabel: $validated['address_label'] ?? null,
+                areteCenterId: $isCollection ? (int) $validated['arete_center_id'] : null,
                 redeemPoints: $this->resolveRedeemPoints($request, (int) ($validated['redeem_points'] ?? 0)),
                 buyerGstin: isset($validated['buyer_gstin']) && $validated['buyer_gstin'] !== ''
                     ? strtoupper($validated['buyer_gstin'])

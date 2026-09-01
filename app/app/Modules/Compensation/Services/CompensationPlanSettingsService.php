@@ -36,7 +36,7 @@ final class CompensationPlanSettingsService
 
     public const GROUP_C_TYPES = ['awards_credit'];
 
-    public const GROUP_D_TYPES = ['adc_credit', 'franchise_credit'];
+    public const GROUP_D_TYPES = ['adc_credit'];
 
     /**
      * All five cash-bonus types that count toward the ₹50L monthly gross cap

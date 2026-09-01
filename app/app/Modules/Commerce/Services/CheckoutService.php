@@ -41,13 +41,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $franchiseId = null, int $redeemPoints = 0, ?string $buyerGstin = null, ?string $buyerLegalName = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $areteCenterId = null, int $redeemPoints = 0, ?string $buyerGstin = null, ?string $buyerLegalName = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new \RuntimeException('Cart is empty.');
         }
 
-        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $franchiseId, $redeemPoints, $buyerGstin, $buyerLegalName) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $areteCenterId, $redeemPoints, $buyerGstin, $buyerLegalName) {
             // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
             //
             // A logged-in buyer is always resolved to THEIR OWN customer row,
@@ -206,7 +206,7 @@ final class CheckoutService
                 // Collection point, chosen per order at checkout. Null means
                 // central despatch. It never affects attribution: the sale
                 // still belongs to the referring distributor.
-                'franchise_id' => $franchiseId,
+                'arete_center_id' => $areteCenterId,
                 'attribution_source' => $attributionSource,
                 'payment_method' => $paymentMethod,
                 'status' => Order::STATUS_PLACED,

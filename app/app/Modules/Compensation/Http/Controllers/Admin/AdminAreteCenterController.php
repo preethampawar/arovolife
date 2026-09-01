@@ -14,7 +14,9 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -39,7 +41,7 @@ final class AdminAreteCenterController extends Controller
             'q' => trim((string) $request->query('q', '')),
         ];
 
-        $query = AreteCenter::with('assignedDistributor')->withCount('members');
+        $query = AreteCenter::with('assignedDistributor');
 
         if (in_array($filters['status'], [AreteCenter::STATUS_ACTIVE, AreteCenter::STATUS_INACTIVE], true)) {
             $query->where('status', $filters['status']);
@@ -65,10 +67,23 @@ final class AdminAreteCenterController extends Controller
 
         $centers = $query->orderBy('name')->paginate(30)->withQueryString();
 
+        // Live attributed BV for the current month — keyed by center id.
+        $monthStart = Carbon::today()->startOfMonth()->toDateString();
+        $monthEnd = Carbon::today()->endOfMonth()->toDateString();
+        $centerIds = $centers->pluck('id');
+        $currentMonthBv = DB::table('bv_ledger_entries')
+            ->join('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
+            ->whereIn('orders.arete_center_id', $centerIds)
+            ->whereBetween('bv_ledger_entries.effective_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
+            ->groupBy('orders.arete_center_id')
+            ->selectRaw('orders.arete_center_id, SUM(bv_ledger_entries.bv_paise) as bv_paise')
+            ->pluck('bv_paise', 'arete_center_id');
+
         return view('admin.arete-centres.index', [
             'centers' => $centers,
             'filters' => $filters,
             'states' => IndianStates::all(),
+            'currentMonthBv' => $currentMonthBv,
         ]);
     }
 

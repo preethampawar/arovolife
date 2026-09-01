@@ -23,11 +23,8 @@ use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
-use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseController;
-use App\Modules\Commerce\Http\Controllers\Admin\AdminFranchiseReportController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOfferController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
-use App\Modules\Commerce\Http\Controllers\DistributorFranchiseController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
@@ -660,32 +657,6 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/impersonate/{userId}/start', [AdminImpersonationController::class, 'start'])
         ->whereNumber('userId')->name('impersonate.start');
 
-    // ── Franchises (fulfilment network) ──────────────────────────────────────
-    // Feature-flagged in the controllers (`abort_unless(Feature::active(...))`,
-    // the convention the bonus reports already use): while the flag is off
-    // these routes 404 and the menu item is absent, leaving no trace of an
-    // unlaunched programme.
-    Route::group([], function (): void {
-        Route::get('/commerce/franchises', [AdminFranchiseController::class, 'index'])->name('commerce.franchises.index');
-        // Creating and editing set the payee and the commission rate, so they
-        // sit behind the same permission as approval. Without that, a role
-        // that cannot approve a franchise could still change who it pays and
-        // how much — which is the whole of the decision.
-        Route::get('/commerce/franchises/create', [AdminFranchiseController::class, 'create'])
-            ->middleware('can:compliance.discipline')->name('commerce.franchises.create');
-        Route::post('/commerce/franchises', [AdminFranchiseController::class, 'store'])
-            ->middleware('can:compliance.discipline')->name('commerce.franchises.store');
-        Route::get('/commerce/franchises/report', [AdminFranchiseReportController::class, 'index'])->name('commerce.franchises.report');
-        Route::get('/commerce/franchises/{id}/edit', [AdminFranchiseController::class, 'edit'])->whereNumber('id')->name('commerce.franchises.edit');
-        Route::patch('/commerce/franchises/{id}', [AdminFranchiseController::class, 'update'])
-            ->whereNumber('id')->middleware('can:compliance.discipline')->name('commerce.franchises.update');
-        Route::post('/commerce/franchises/{id}/approve', [AdminFranchiseController::class, 'approve'])
-            ->whereNumber('id')->middleware('can:compliance.discipline')->name('commerce.franchises.approve');
-        Route::post('/commerce/franchises/{id}/{action}', [AdminFranchiseController::class, 'changeStatus'])
-            ->whereNumber('id')->where('action', 'suspend|close|reinstate')
-            ->middleware('can:compliance.discipline')->name('commerce.franchises.status');
-    });
-
     // ── Purchase offers (KP 2026-06-26) ──────────────────────────────────────
     // Feature-gated in the controller; an unlaunched offer leaves no trace.
     Route::get('/commerce/offers', [AdminOfferController::class, 'index'])->name('commerce.offers.index');
@@ -1009,16 +980,6 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
         ->whereNumber('user')->name('messages.show');
     Route::post('/messages/{user}', [MessageController::class, 'store'])
         ->whereNumber('user')->name('messages.store');
-
-    // Franchise application — flag-gated inside the controller (FranchiseFeature).
-    // The flag check is inside the controller to preserve zero-trace behaviour:
-    // a disabled feature returns 403, not a missing route.
-    Route::get('/my/franchise/apply', [DistributorFranchiseController::class, 'showApply'])
-        ->name('franchise.apply');
-    Route::post('/my/franchise/apply', [DistributorFranchiseController::class, 'handleApply'])
-        ->name('franchise.apply.submit');
-    Route::get('/my/franchise/status', [DistributorFranchiseController::class, 'showStatus'])
-        ->name('franchise.status');
 
     // Arete Development Centre application — flag-gated inside the controller
     // (AreteCenterApplicationsFeature, 404 when off for zero trace).

@@ -154,11 +154,6 @@
                     // layer on top and lives under Compensation.
                     ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => 'landmark', 'prefix' => 'admin.arete-centres', 'badge' => $openAdcApplicationCount],
                     ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => 'tag', 'prefix' => 'admin.commerce.coupons'],
-                    // Zero-trace: an unlaunched franchise programme leaves no
-                    // menu item behind for anyone to wonder about.
-                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FranchiseFeature::class)
-                        ? [['route' => 'admin.commerce.franchises.index', 'label' => 'Franchises', 'icon' => 'store', 'prefix' => 'admin.commerce.franchises']]
-                        : []),
                     ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class)
                         ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => 'gift', 'prefix' => 'admin.commerce.offers']]
                         : []),

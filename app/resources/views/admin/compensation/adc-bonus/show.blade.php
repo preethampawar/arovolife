@@ -21,8 +21,8 @@
                 <tr>
                     <th class="px-4 py-2 text-left text-gray-600">Center</th>
                     <th class="px-4 py-2 text-left text-gray-600">Assigned distributor</th>
-                    <th class="px-4 py-2 text-right text-gray-600">Members</th>
-                    <th class="px-4 py-2 text-right text-gray-600">Total member BV</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Orders</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Attributed BV</th>
                     <th class="px-4 py-2 text-right text-gray-600">Gross (3%)</th>
                     <th class="px-4 py-2 text-right text-gray-600">TDS (5%)</th>
                     <th class="px-4 py-2 text-right text-gray-600">Net</th>
@@ -37,8 +37,8 @@
                 <tr>
                     <td class="px-4 py-2 font-medium">{{ $row->center->name ?? '—' }}</td>
                     <td class="px-4 py-2 font-mono">{{ $row->distributor->adn ?? '—' }}</td>
-                    <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($row->member_count) }}</td>
-                    <td class="px-4 py-2 text-right">@bv($row->total_member_bv_paise)</td>
+                    <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($row->order_count) }}</td>
+                    <td class="px-4 py-2 text-right">@bv($row->total_attributed_bv_paise)</td>
                     <td class="px-4 py-2 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">

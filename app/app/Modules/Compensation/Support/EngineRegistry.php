@@ -8,7 +8,6 @@ use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
-use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
@@ -18,7 +17,6 @@ use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
-use App\Modules\Shared\Features\FranchiseFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
@@ -221,21 +219,6 @@ final class EngineRegistry
                 featureFlagClass: PurchaseOffersFeature::class,
                 reportRouteName: 'admin.commerce.offers.index',
                 cadence: EngineCadence::monthlyOn(2, '06:00'),
-                defaultPeriod: 'prev-month',
-            ),
-
-            new EngineDefinition(
-                key: 'franchise.commission',
-                label: 'Franchise Commission',
-                description: "Credits each active franchise's operator 3% of the product value of the orders that franchise fulfilled in the month (subtotal less discount — GST and shipping are excluded, being tax collected for the government and a pass-through cost). Dated on delivery, so a franchise is paid in the month it did the work. Impact: writes franchise commission results and wallet credits. Idempotent — franchises already credited for the month are skipped. The company's own primary franchise has no operator and earns nothing. No dependency on ranks or BV: this is fulfilment work, not a downline earning.",
-                periodType: EnginePeriodType::Month,
-                commandClass: FranchiseMonthlyRunCommand::class,
-                commandSignature: 'franchise:monthly-run',
-                periodOption: '--month',
-                dependencies: [],
-                featureFlagClass: FranchiseFeature::class,
-                reportRouteName: 'admin.commerce.franchises.report',
-                cadence: EngineCadence::monthlyOn(8, '09:45'),
                 defaultPeriod: 'prev-month',
             ),
 

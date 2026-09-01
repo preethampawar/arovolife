@@ -56,9 +56,8 @@ final class CommissionHasProductSaleTest extends TestCase
         'gbb_credit' => 'gbb_monthly_results → the month\'s BV pool → bv_ledger_entries.order_id',
         'rank_credit' => 'rank_bonus_results → rank qualification, itself a BV threshold',
         'fortune_credit' => 'fortune_bonus_results → the month\'s BV pool',
-        'adc_credit' => 'adc_monthly_results → centre BV',
+        'adc_credit' => 'adc_monthly_results → centre BV (orders collected at the centre)',
         'awards_credit' => 'lifetime_award_milestones → lifetime BV thresholds',
-        'franchise_credit' => 'franchise_commission_result_orders.order_id → orders (a delivered order)',
     ];
 
     /**
@@ -173,7 +172,7 @@ final class CommissionHasProductSaleTest extends TestCase
         // And the other direction, which is the half that was missing. Every
         // type migration restates the whole enum by hand, so one of them can
         // silently drop a value another added -- exactly what happened to
-        // `franchise_credit` between 2026_08_16_130100 and 2026_08_28_200000.
+        // `franchise_credit` between 2026_08_16_130100 and 2026_09_01_200000 (now removed).
         // Asserting only that declared values are classified cannot see that:
         // a classified value absent from the enum is invisible by construction.
         // The engine writing it then fails with "1265 Data truncated" and

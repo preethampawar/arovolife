@@ -13,7 +13,7 @@
 @endphp
 
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Every Arete Development Centre is a training, product-demonstration and support centre — never a shop or outlet. A distributor centre is assigned to the distributor who earns the ADC Bonus (3% of member BV, capped at ₹1,00,000/month); a company centre has no owner. Only <strong>active</strong> centres appear in the registration Step 11 picker and on the profile page; the company default is pre-selected there.
+    Every Arete Development Centre is a training, product-demonstration and collection point — never a shop or outlet. A distributor centre is assigned to the distributor who earns the ADC Bonus (3% of attributed BV — orders collected here — capped at ₹1,00,000/month); a company centre has no owner. Only <strong>active</strong> centres appear in the checkout collection picker and on the profile page; the company default is pre-selected there.
 </div>
 
 @if(session('success'))
@@ -106,7 +106,7 @@
                     <th class="px-3 py-2 text-left text-gray-600">Contact</th>
                     <th class="px-3 py-2 text-left text-gray-600">Weekly off</th>
                     <th class="px-3 py-2 text-left text-gray-600 min-w-[14rem]">Address</th>
-                    <th class="px-3 py-2 text-right text-gray-600">Members</th>
+                    <th class="px-3 py-2 text-right text-gray-600">This month BV</th>
                     <th class="px-3 py-2 text-right text-gray-600">Actions</th>
                 </tr>
             </thead>
@@ -151,7 +151,7 @@
                     </td>
                     <td class="px-3 py-2 text-gray-600">{{ $center->weekly_off ? (AreteCenter::WEEKLY_OFF_OPTIONS[$center->weekly_off] ?? $center->weekly_off) : '—' }}</td>
                     <td class="px-3 py-2 text-gray-600 min-w-[14rem] max-w-[22rem] whitespace-normal break-words">{{ $address !== '' ? $address : '—' }}</td>
-                    <td class="px-3 py-2 text-right">{{ IndianNumber::format($center->members_count) }}</td>
+                    <td class="px-3 py-2 text-right font-mono">@bv($currentMonthBv[$center->id] ?? 0)</td>
                     <td class="px-3 py-2 text-right whitespace-nowrap">
                         <a href="{{ route('admin.arete-centres.edit', $center) }}" class="text-brand-700 hover:text-brand-800 font-medium">Edit</a>
                         @if($center->isActive())

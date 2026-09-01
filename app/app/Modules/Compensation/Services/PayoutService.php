@@ -527,17 +527,9 @@ final class PayoutService
                     // Group C: Awards.
                     $grossC = (int) $entries->where('type', 'awards_credit')->sum('amount_paise');
 
-                    // Group D: ADC + franchise commission.
-                    //
-                    // Both types are in GROUP_D_TYPES and are therefore SWEPT by
-                    // this batch. Summing only `adc_credit` here would mark a
-                    // franchise credit as paid while excluding it from the gross,
-                    // the debit and the line item — a franchise-only earner would
-                    // never be paid at all, and a mixed earner would carry a
-                    // phantom wallet balance no later batch could clear.
-                    $grossD = (int) $entries->whereIn('type', ['adc_credit', 'franchise_credit'])->sum('amount_paise');
-                    $grossAdc = (int) $entries->where('type', 'adc_credit')->sum('amount_paise');
-                    $grossFranchise = (int) $entries->where('type', 'franchise_credit')->sum('amount_paise');
+                    // Group D: ADC bonus (formerly also franchise commission).
+                    $grossD = (int) $entries->where('type', 'adc_credit')->sum('amount_paise');
+                    $grossAdc = $grossD;
 
                     $gross = $grossB + $grossC + $grossD;
 
@@ -554,13 +546,8 @@ final class PayoutService
                         [BonusType::Fortune, $fortuneEffective],
                     ], $adminRateBp, $adminCapPaise);
                     $adminC = $this->adminChargeFor([[BonusType::LifetimeAwards, $grossC]], $adminRateBp, $adminCapPaise);
-                    // Franchise commission is listed separately so its
-                    // `applies_to_franchise` toggle is honoured rather than
-                    // inheriting ADC's. It defaults to exempt — the commission
-                    // pays for fulfilment work, not for a position in the plan.
                     $adminD = $this->adminChargeFor([
                         [BonusType::Arete, $grossAdc],
-                        [BonusType::Franchise, $grossFranchise],
                     ], $adminRateBp, $adminCapPaise);
                     $adminCharge = $adminB + $adminC + $adminD;
 

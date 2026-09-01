@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Models;
 
+use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $shipping_paise
  * @property int $customer_id
  * @property int|null $attributed_distributor_id
- * @property int|null $franchise_id
+ * @property int|null $arete_center_id
  * @property int $redeem_points_paise
  * @property string|null $buyer_gstin
  * @property string|null $buyer_legal_name
@@ -61,7 +62,7 @@ final class Order extends Model
     public const PAYMENT_ONLINE = 'online';
 
     protected $fillable = [
-        'order_no', 'customer_id', 'attributed_distributor_id', 'franchise_id', 'attribution_source',
+        'order_no', 'customer_id', 'attributed_distributor_id', 'arete_center_id', 'attribution_source',
         'redeem_points_paise', 'buyer_gstin', 'buyer_legal_name',
         'payment_method', 'status', 'self_consumption',
         'subtotal_paise', 'gst_paise', 'discount_paise', 'shipping_paise', 'total_paise',
@@ -114,6 +115,12 @@ final class Order extends Model
     public function bvLedgerEntries(): HasMany
     {
         return $this->hasMany(BvLedgerEntry::class);
+    }
+
+    /** @return BelongsTo<AreteCenter, $this> */
+    public function areteCenter(): BelongsTo
+    {
+        return $this->belongsTo(AreteCenter::class);
     }
 
     public function displayTotal(): string

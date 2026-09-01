@@ -10,7 +10,6 @@ use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\DistributorRequestsFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
-use App\Modules\Shared\Features\FranchiseFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -133,13 +132,6 @@ final class AdminFeatureFlagController extends Controller
                 'owner' => 'developer',
                 'requires' => [],
             ],
-            'compensation.franchise' => [
-                'class' => FranchiseFeature::class,
-                'label' => 'Franchise programme (fulfilment network)',
-                'description' => 'Enables the franchise register, the collection-point picker at checkout, and the monthly 3% fulfilment commission. A franchise is a company-owned pickup point operated by a distributor: company consignment stock, sales still online and ADN-attributed, franchise code separate from the ADN and never in the Genos. OFF leaves no trace anywhere. Two gates before production: the DSA 6.2 thirty-day notice (it adds an earning stream to the plan), and R-24, a written counsel opinion on the combined binary-tree plus franchise surface.',
-                'owner' => 'developer',
-                'requires' => [],
-            ],
             'compensation.arete_development_center_bonus' => [
                 'class' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center Bonus (Phase 7)',
@@ -162,13 +154,6 @@ final class AdminFeatureFlagController extends Controller
                 'requires' => [],
             ],
 
-            // ── Franchise (parked — hard gate: DSA §6.2 notice + R-24 legal opinion) ──
-            'franchise' => [
-                'class' => FranchiseFeature::class,
-                'label' => 'Franchise application flow',
-                'description' => '⚠ COMPLIANCE GATE (R-21; DSA §6.2). When ON, distributors may submit franchise applications at /my/franchise/apply and the admin review queue is live at /admin/commerce/franchise. Must NOT be enabled until (1) the DSA §6.2 thirty-day written notice has run its course AND (2) legal counsel opinion (R-24) is on file. Keep OFF in all environments until then.',
-                'owner' => 'developer',
-            ],
         ];
     }
 

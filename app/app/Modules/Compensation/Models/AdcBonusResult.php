@@ -14,8 +14,8 @@ use Illuminate\Support\Carbon;
  * @property int $center_id
  * @property int $distributor_id
  * @property string $month_start
- * @property int $member_count
- * @property int $total_member_bv_paise
+ * @property int $order_count
+ * @property int $total_attributed_bv_paise
  * @property int $gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
@@ -38,8 +38,8 @@ final class AdcBonusResult extends Model
         'center_id',
         'distributor_id',
         'month_start',
-        'member_count',
-        'total_member_bv_paise',
+        'order_count',
+        'total_attributed_bv_paise',
         'gross_paise',
         'admin_charge_paise',
         'tds_paise',
@@ -51,8 +51,8 @@ final class AdcBonusResult extends Model
     protected function casts(): array
     {
         return [
-            'member_count' => 'integer',
-            'total_member_bv_paise' => 'integer',
+            'order_count' => 'integer',
+            'total_attributed_bv_paise' => 'integer',
             'gross_paise' => 'integer',
             'admin_charge_paise' => 'integer',
             'tds_paise' => 'integer',
