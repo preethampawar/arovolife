@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Controllers\Auth;
 
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,7 @@ final class LoginController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'login' => ['required', 'string'],
+            'login' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
         ]);
 
@@ -184,6 +185,33 @@ final class LoginController extends Controller
         // master plan's policy.
         RateLimiter::hit($key, decaySeconds: 900);
         RateLimiter::hit($ipKey, decaySeconds: 900);
+
+        // LOG-1: failed logins go to the tamper-evident audit log so a
+        // credential-stuffing run leaves a permanent, chained record even
+        // after the rate-limiter buckets decay. The password is never touched.
+        //
+        // The identifier is whatever an unauthenticated caller typed, and the
+        // login box is exactly where people paste the wrong secret — their
+        // password, or on this platform a 12-digit Aadhaar or a PAN, because
+        // distributors are trained to identify themselves with those. The
+        // audit log is hash-chained and deliberately un-redactable, so a
+        // secret captured here could never be erased (hard rule #8; DPDP
+        // §12). Only a well-formed ADN or email is therefore stored verbatim;
+        // anything else is reduced to a shape label plus a digest, which still
+        // correlates repeated attempts without retaining the value.
+        $isKnownIdentifierShape = preg_match('/^\d{9}$/', $loginInput) === 1
+            || filter_var($loginInput, FILTER_VALIDATE_EMAIL) !== false;
+
+        AuditLog::create([
+            'actor_id' => null,
+            'action' => 'auth.login_failed',
+            'subject_type' => 'user',
+            'subject_id' => $candidate?->id,
+            'details' => $isKnownIdentifierShape
+                ? ['login' => $loginInput]
+                : ['login' => 'malformed', 'login_sha256' => hash('sha256', $loginInput)],
+            'ip' => $request->ip(),
+        ]);
 
         // Defence-in-depth: rotate the session ID on every state change,
         // including failed credentials. Mitigates session-fixation where
