@@ -654,3 +654,42 @@ it('monthly batch: takes only the remainder when a weekly batch collected part o
 
     Carbon::setTestNow(null);
 });
+
+it('isolates a per-distributor failure: the rest are still paid and the batch lands partially_failed', function () {
+    $ok = makePayoutEligibleDistributor();
+    $bad = makePayoutEligibleDistributor();
+
+    $wallet = app(WalletService::class);
+    $wallet->credit($ok->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+    $wallet->credit($bad->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+
+    // Force exactly one distributor to throw inside the loop body.
+    $state = new stdClass;
+    $state->failing = true;
+    PayoutLineItem::creating(function (PayoutLineItem $line) use ($state, $bad): void {
+        if ($state->failing === true && $line->distributor_id === $bad->id) {
+            throw new RuntimeException('simulated per-distributor failure');
+        }
+    });
+
+    $svc = app(PayoutService::class);
+    $batch = $svc->runWeeklyBatch(Carbon::today());
+
+    // The healthy distributor was paid; the failing one wrote nothing.
+    expect($batch->status)->toBe(PayoutBatch::STATUS_PARTIALLY_FAILED);
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $ok->id)->exists())->toBeTrue();
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $bad->id)->exists())->toBeFalse();
+    expect($wallet->balancePaise($bad->id))->toBe(100_000);
+
+    // Re-running the same batch date retries only the failed distributor and
+    // promotes the batch back to pending.
+    $state->failing = false;
+    $rerun = $svc->runWeeklyBatch(Carbon::today());
+
+    expect($rerun->id)->toBe($batch->id);
+    expect($rerun->status)->toBe(PayoutBatch::STATUS_PENDING);
+    expect($rerun->distributor_count)->toBe(2);
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $ok->id)->count())->toBe(1);
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $bad->id)->count())->toBe(1);
+    expect($wallet->balancePaise($bad->id))->toBe(0);
+});

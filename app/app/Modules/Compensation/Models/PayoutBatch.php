@@ -33,6 +33,15 @@ final class PayoutBatch extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    /**
+     * At least one distributor threw during batch processing; every other
+     * distributor was still processed and their line items stand. Re-running
+     * the same batch date retries only the failed distributors (the
+     * per-distributor line-item guard skips the rest) and flips the batch
+     * back to pending once all succeed.
+     */
+    public const STATUS_PARTIALLY_FAILED = 'partially_failed';
+
     public const TYPE_GSB_WEEKLY = 'gsb_weekly';
 
     public const TYPE_MANUAL = 'manual';

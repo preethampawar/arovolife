@@ -39,6 +39,7 @@
                     $bc = [
                         'completed'  => 'bg-green-100 text-green-700',
                         'failed'     => 'bg-red-100 text-red-700',
+                        'partially_failed' => 'bg-red-100 text-red-700',
                         'processing' => 'bg-amber-100 text-amber-700',
                         'pending'    => 'bg-gray-100 text-gray-600',
                     ];
@@ -51,7 +52,7 @@
                     <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_net_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $bc[$b->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ ucfirst($b->status) }}
+                            {{ ucfirst(str_replace('_', ' ', $b->status)) }}
                         </span>
                     </td>
                     <td class="px-4 py-2">

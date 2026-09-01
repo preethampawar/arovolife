@@ -14,6 +14,7 @@ use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final class PayoutService
@@ -66,138 +67,163 @@ final class PayoutService
             ->distinct()
             ->pluck('distributor_id');
 
+        $failedCount = 0;
+
         foreach ($distributorIds as $rawId) {
             $distributorId = (int) $rawId;
 
-            // Crash-resume guard: a prior partial run of this batch may already
-            // have written this distributor's line item (paid lines are also
-            // protected by the sweep marker, but WEB_ONLY / BELOW_MINIMUM lines
-            // are not and would duplicate).
-            if (PayoutLineItem::where('payout_batch_id', $batch->id)
-                ->where('distributor_id', $distributorId)
-                ->exists()) {
-                continue;
-            }
-
-            $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
-
-            if ($personalBvPaise < $this->plan->neftMinBvPaise()) {
-                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
-                if ($grossForDisplay > 0) {
-                    PayoutLineItem::create([
-                        'payout_batch_id' => $batch->id,
-                        'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $grossForDisplay,
-                        'gross_paise' => $grossForDisplay,
-                        'repurchase_deduction_paise' => 0,
-                        'admin_charge_paise' => 0,
-                        'tds_paise' => 0,
-                        'net_transferred_paise' => 0,
-                        'status' => PayoutLineItem::STATUS_WEB_ONLY,
-                    ]);
+            try {
+                // Crash-resume guard: a prior partial run of this batch may already
+                // have written this distributor's line item (paid lines are also
+                // protected by the sweep marker, but WEB_ONLY / BELOW_MINIMUM lines
+                // are not and would duplicate).
+                if (PayoutLineItem::where('payout_batch_id', $batch->id)
+                    ->where('distributor_id', $distributorId)
+                    ->exists()) {
+                    continue;
                 }
 
-                continue;
-            }
+                $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
 
-            // KYC gate: income accrues and stays fully visible to every
-            // distributor, but the bank release is held until their KYC is
-            // verified (users.status === 'active' — the same definition
-            // RequireKycApproval uses). Partner instruction 2026-07-08: "the
-            // distributor should see everything but payouts should not happen
-            // unless their KYC is verified."
-            if (! $this->isKycVerified($distributorId)) {
-                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
-                if ($grossForDisplay > 0) {
-                    PayoutLineItem::create([
-                        'payout_batch_id' => $batch->id,
-                        'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $grossForDisplay,
-                        'gross_paise' => $grossForDisplay,
-                        'repurchase_deduction_paise' => 0,
-                        'admin_charge_paise' => 0,
-                        'tds_paise' => 0,
-                        'net_transferred_paise' => 0,
-                        'status' => PayoutLineItem::STATUS_KYC_PENDING,
-                    ]);
+                if ($personalBvPaise < $this->plan->neftMinBvPaise()) {
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_WEB_ONLY,
+                        ]);
+                    }
+
+                    continue;
                 }
 
-                continue;
-            }
+                // KYC gate: income accrues and stays fully visible to every
+                // distributor, but the bank release is held until their KYC is
+                // verified (users.status === 'active' — the same definition
+                // RequireKycApproval uses). Partner instruction 2026-07-08: "the
+                // distributor should see everything but payouts should not happen
+                // unless their KYC is verified."
+                if (! $this->isKycVerified($distributorId)) {
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_KYC_PENDING,
+                        ]);
+                    }
 
-            // Bank gate: every income gate passed but no bank account is on
-            // file (the optional registration step was skipped). Hold the
-            // balance in the wallet — no debit, no sweep — so the first batch
-            // after bank details arrive pays it out. Registration promises "we
-            // cannot release any commission payout until your bank account is
-            // on file"; without this gate the line would go out as pending and
-            // approve() would mark an impossible NEFT as transferred.
-            if (! $this->hasBankAccountOnFile($distributorId)) {
-                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
-                if ($grossForDisplay > 0) {
-                    PayoutLineItem::create([
-                        'payout_batch_id' => $batch->id,
-                        'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $grossForDisplay,
-                        'gross_paise' => $grossForDisplay,
-                        'repurchase_deduction_paise' => 0,
-                        'admin_charge_paise' => 0,
-                        'tds_paise' => 0,
-                        'net_transferred_paise' => 0,
-                        'status' => PayoutLineItem::STATUS_NO_BANK_ACCOUNT,
-                    ]);
+                    continue;
                 }
 
-                continue;
-            }
+                // Bank gate: every income gate passed but no bank account is on
+                // file (the optional registration step was skipped). Hold the
+                // balance in the wallet — no debit, no sweep — so the first batch
+                // after bank details arrive pays it out. Registration promises "we
+                // cannot release any commission payout until your bank account is
+                // on file"; without this gate the line would go out as pending and
+                // approve() would mark an impossible NEFT as transferred.
+                if (! $this->hasBankAccountOnFile($distributorId)) {
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $groupTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_NO_BANK_ACCOUNT,
+                        ]);
+                    }
 
-            $bankLast4 = $this->bankLast4ForDistributor($distributorId);
-
-            DB::transaction(function () use (
-                $distributorId, $batch, $cycleEnd, $groupTypes, $bankLast4,
-                $adminRateBp, $adminCapPaise, $tdsRateBp, $minPayoutPaise,
-            ): void {
-                $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
-                    ->whereIn('type', $groupTypes)
-                    ->whereNull('swept_by_payout_batch_id')
-                    ->where('amount_paise', '>', 0)
-                    ->lockForUpdate()
-                    ->get();
-
-                $gsbSum = (int) $entries->where('type', 'gsb_credit')->sum('amount_paise');
-                $mbSum = (int) $entries->where('type', 'mb_credit')->sum('amount_paise');
-
-                if ($gsbSum + $mbSum <= 0) {
-                    return;
+                    continue;
                 }
 
-                // ₹50L combined monthly cap (KP 2026-06-26): the five cash
-                // bonuses (GSB, MB, GBB, Rank, Fortune) share one monthly gross
-                // ceiling. Fill the remaining room GSB-first; whatever exceeds
-                // it is forfeited below with an explicit ledger debit.
-                $capRoom = max(0, $this->plan->monthlyIncomeCapPaise()
-                    - $this->monthToDateCappedGrossPaise($distributorId, $cycleEnd));
-                $gsbEffective = min($gsbSum, $capRoom);
-                $mbEffective = min($mbSum, $capRoom - $gsbEffective);
-                $gross = $gsbEffective + $mbEffective;
-                $capForfeit = ($gsbSum + $mbSum) - $gross;
+                $bankLast4 = $this->bankLast4ForDistributor($distributorId);
 
-                // Deduct at most this week's gross — an undeductable remainder
-                // stays uncollected and repurchaseDeductionPaise() picks it up
-                // on the next weekly run of the same month.
-                $repurchase = min($this->repurchaseDeductionPaise($distributorId, $cycleEnd), $gross);
-                // Admin charge honours the per-bonus applies_to toggles.
-                $adminCharge = $this->adminChargeFor(
-                    [[BonusType::Gsb, $gsbEffective], [BonusType::Mentorship, $mbEffective]],
-                    $adminRateBp,
-                    $adminCapPaise,
-                );
-                $payable = max(0, $gross - $repurchase - $adminCharge);
-                $tds = (int) round($payable * $tdsRateBp / 10_000);
-                $net = max(0, $payable - $tds);
+                DB::transaction(function () use (
+                    $distributorId, $batch, $cycleEnd, $groupTypes, $bankLast4,
+                    $adminRateBp, $adminCapPaise, $tdsRateBp, $minPayoutPaise,
+                ): void {
+                    $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
+                        ->whereIn('type', $groupTypes)
+                        ->whereNull('swept_by_payout_batch_id')
+                        ->where('amount_paise', '>', 0)
+                        ->lockForUpdate()
+                        ->get();
 
-                if ($net < $minPayoutPaise) {
-                    PayoutLineItem::create([
+                    $gsbSum = (int) $entries->where('type', 'gsb_credit')->sum('amount_paise');
+                    $mbSum = (int) $entries->where('type', 'mb_credit')->sum('amount_paise');
+
+                    if ($gsbSum + $mbSum <= 0) {
+                        return;
+                    }
+
+                    // ₹50L combined monthly cap (KP 2026-06-26): the five cash
+                    // bonuses (GSB, MB, GBB, Rank, Fortune) share one monthly gross
+                    // ceiling. Fill the remaining room GSB-first; whatever exceeds
+                    // it is forfeited below with an explicit ledger debit.
+                    $capRoom = max(0, $this->plan->monthlyIncomeCapPaise()
+                        - $this->monthToDateCappedGrossPaise($distributorId, $cycleEnd));
+                    $gsbEffective = min($gsbSum, $capRoom);
+                    $mbEffective = min($mbSum, $capRoom - $gsbEffective);
+                    $gross = $gsbEffective + $mbEffective;
+                    $capForfeit = ($gsbSum + $mbSum) - $gross;
+
+                    // Deduct at most this week's gross — an undeductable remainder
+                    // stays uncollected and repurchaseDeductionPaise() picks it up
+                    // on the next weekly run of the same month.
+                    $repurchase = min($this->repurchaseDeductionPaise($distributorId, $cycleEnd), $gross);
+                    // Admin charge honours the per-bonus applies_to toggles.
+                    $adminCharge = $this->adminChargeFor(
+                        [[BonusType::Gsb, $gsbEffective], [BonusType::Mentorship, $mbEffective]],
+                        $adminRateBp,
+                        $adminCapPaise,
+                    );
+                    $payable = max(0, $gross - $repurchase - $adminCharge);
+                    $tds = (int) round($payable * $tdsRateBp / 10_000);
+                    $net = max(0, $payable - $tds);
+
+                    if ($net < $minPayoutPaise) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $gross,
+                            'gross_paise' => $gross,
+                            'repurchase_deduction_paise' => $repurchase,
+                            'admin_charge_paise' => $adminCharge,
+                            'tds_paise' => $tds,
+                            'net_transferred_paise' => max(0, $net),
+                            'status' => PayoutLineItem::STATUS_BELOW_MINIMUM,
+                        ]);
+
+                        return;
+                    }
+
+                    WalletLedgerEntry::whereIn('id', $entries->pluck('id')->all())
+                        ->update(['swept_by_payout_batch_id' => $batch->id]);
+
+                    // The ledger enforces uniqueness on (type, reference_type,
+                    // reference_id), so the debit must reference this distributor's
+                    // LINE ITEM — referencing the shared batch id would collide on
+                    // the second paid distributor. Line item first, then the debit.
+                    $lineItem = PayoutLineItem::create([
                         'payout_batch_id' => $batch->id,
                         'distributor_id' => $distributorId,
                         'wallet_balance_paise' => $gross,
@@ -205,68 +231,66 @@ final class PayoutService
                         'repurchase_deduction_paise' => $repurchase,
                         'admin_charge_paise' => $adminCharge,
                         'tds_paise' => $tds,
-                        'net_transferred_paise' => max(0, $net),
-                        'status' => PayoutLineItem::STATUS_BELOW_MINIMUM,
+                        'net_transferred_paise' => $net,
+                        'bank_account_last4' => $bankLast4,
+                        'status' => PayoutLineItem::STATUS_PENDING,
                     ]);
 
-                    return;
-                }
-
-                WalletLedgerEntry::whereIn('id', $entries->pluck('id')->all())
-                    ->update(['swept_by_payout_batch_id' => $batch->id]);
-
-                // The ledger enforces uniqueness on (type, reference_type,
-                // reference_id), so the debit must reference this distributor's
-                // LINE ITEM — referencing the shared batch id would collide on
-                // the second paid distributor. Line item first, then the debit.
-                $lineItem = PayoutLineItem::create([
-                    'payout_batch_id' => $batch->id,
-                    'distributor_id' => $distributorId,
-                    'wallet_balance_paise' => $gross,
-                    'gross_paise' => $gross,
-                    'repurchase_deduction_paise' => $repurchase,
-                    'admin_charge_paise' => $adminCharge,
-                    'tds_paise' => $tds,
-                    'net_transferred_paise' => $net,
-                    'bank_account_last4' => $bankLast4,
-                    'status' => PayoutLineItem::STATUS_PENDING,
-                ]);
-
-                $this->wallet->debit(
-                    distributorId: $distributorId,
-                    amountPaise: $gross,
-                    type: 'payout_debit',
-                    referenceId: $lineItem->id,
-                    referenceType: 'payout_line_item',
-                );
-
-                // Credits above the monthly cap were swept with the rest, so an
-                // explicit debit is needed or the excess lingers as a phantom
-                // wallet balance forever.
-                if ($capForfeit > 0) {
                     $this->wallet->debit(
                         distributorId: $distributorId,
-                        amountPaise: $capForfeit,
-                        type: 'income_cap_forfeit',
+                        amountPaise: $gross,
+                        type: 'payout_debit',
                         referenceId: $lineItem->id,
                         referenceType: 'payout_line_item',
-                        memo: 'Cash income above the combined monthly income cap',
                     );
-                }
 
-                if ($repurchase > 0) {
-                    $this->wallet->credit(
-                        distributorId: $distributorId,
-                        amountPaise: $repurchase,
-                        type: 'repurchase_deduction',
-                        referenceId: $lineItem->id,
-                        referenceType: 'payout_line_item',
-                    );
-                }
-            });
+                    // Credits above the monthly cap were swept with the rest, so an
+                    // explicit debit is needed or the excess lingers as a phantom
+                    // wallet balance forever.
+                    if ($capForfeit > 0) {
+                        $this->wallet->debit(
+                            distributorId: $distributorId,
+                            amountPaise: $capForfeit,
+                            type: 'income_cap_forfeit',
+                            referenceId: $lineItem->id,
+                            referenceType: 'payout_line_item',
+                            memo: 'Cash income above the combined monthly income cap',
+                        );
+                    }
+
+                    if ($repurchase > 0) {
+                        $this->wallet->credit(
+                            distributorId: $distributorId,
+                            amountPaise: $repurchase,
+                            type: 'repurchase_deduction',
+                            referenceId: $lineItem->id,
+                            referenceType: 'payout_line_item',
+                        );
+                    }
+                });
+            } catch (Throwable $e) {
+                // One distributor's failure must not strand the whole batch in
+                // `processing` and block every other distributor's payout. The
+                // DB::transaction above rolled their partial writes back; a
+                // re-run of this batch date retries exactly these distributors
+                // (the line-item existence guard skips everyone already done).
+                Log::critical('Weekly payout batch: distributor failed — continuing with the rest', [
+                    'payout_batch_id' => $batch->id,
+                    'distributor_id' => $distributorId,
+                    'exception' => $e,
+                ]);
+                $failedCount++;
+            }
         }
 
-        $this->finalizeBatchTotals($batch);
+        $this->finalizeBatchTotals($batch, $failedCount);
+
+        if ($failedCount > 0) {
+            Log::critical('Weekly payout batch finished partially failed', [
+                'payout_batch_id' => $batch->id,
+                'failed_distributor_count' => $failedCount,
+            ]);
+        }
 
         return $batch;
     }
@@ -320,167 +344,191 @@ final class PayoutService
             ->distinct()
             ->pluck('distributor_id');
 
+        $failedCount = 0;
+
         foreach ($distributorIds as $rawId) {
             $distributorId = (int) $rawId;
 
-            // Crash-resume guard — see runWeeklyBatch().
-            if (PayoutLineItem::where('payout_batch_id', $batch->id)
-                ->where('distributor_id', $distributorId)
-                ->exists()) {
-                continue;
-            }
-
-            $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
-
-            if ($personalBvPaise < $this->plan->neftMinBvPaise()) {
-                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
-                if ($grossForDisplay > 0) {
-                    PayoutLineItem::create([
-                        'payout_batch_id' => $batch->id,
-                        'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $grossForDisplay,
-                        'gross_paise' => $grossForDisplay,
-                        'repurchase_deduction_paise' => 0,
-                        'admin_charge_paise' => 0,
-                        'tds_paise' => 0,
-                        'net_transferred_paise' => 0,
-                        'status' => PayoutLineItem::STATUS_WEB_ONLY,
-                    ]);
+            try {
+                // Crash-resume guard — see runWeeklyBatch().
+                if (PayoutLineItem::where('payout_batch_id', $batch->id)
+                    ->where('distributor_id', $distributorId)
+                    ->exists()) {
+                    continue;
                 }
 
-                continue;
-            }
+                $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
 
-            // KYC gate — same rule as the weekly batch: income accrues and is
-            // visible, but the bank release is held until KYC is verified
-            // (users.status === 'active'). Partner instruction 2026-07-08.
-            if (! $this->isKycVerified($distributorId)) {
-                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
-                if ($grossForDisplay > 0) {
-                    PayoutLineItem::create([
-                        'payout_batch_id' => $batch->id,
-                        'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $grossForDisplay,
-                        'gross_paise' => $grossForDisplay,
-                        'repurchase_deduction_paise' => 0,
-                        'admin_charge_paise' => 0,
-                        'tds_paise' => 0,
-                        'net_transferred_paise' => 0,
-                        'status' => PayoutLineItem::STATUS_KYC_PENDING,
-                    ]);
+                if ($personalBvPaise < $this->plan->neftMinBvPaise()) {
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_WEB_ONLY,
+                        ]);
+                    }
+
+                    continue;
                 }
 
-                continue;
-            }
+                // KYC gate — same rule as the weekly batch: income accrues and is
+                // visible, but the bank release is held until KYC is verified
+                // (users.status === 'active'). Partner instruction 2026-07-08.
+                if (! $this->isKycVerified($distributorId)) {
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_KYC_PENDING,
+                        ]);
+                    }
 
-            // Bank gate — same rule as the weekly batch: no bank account on
-            // file means the balance is held in the wallet, never debited or
-            // swept, until details arrive.
-            if (! $this->hasBankAccountOnFile($distributorId)) {
-                $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
-                if ($grossForDisplay > 0) {
-                    PayoutLineItem::create([
-                        'payout_batch_id' => $batch->id,
-                        'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $grossForDisplay,
-                        'gross_paise' => $grossForDisplay,
-                        'repurchase_deduction_paise' => 0,
-                        'admin_charge_paise' => 0,
-                        'tds_paise' => 0,
-                        'net_transferred_paise' => 0,
-                        'status' => PayoutLineItem::STATUS_NO_BANK_ACCOUNT,
-                    ]);
+                    continue;
                 }
 
-                continue;
-            }
+                // Bank gate — same rule as the weekly batch: no bank account on
+                // file means the balance is held in the wallet, never debited or
+                // swept, until details arrive.
+                if (! $this->hasBankAccountOnFile($distributorId)) {
+                    $grossForDisplay = $this->wallet->sumUnsweptByTypes($distributorId, $allMonthlyTypes);
+                    if ($grossForDisplay > 0) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $grossForDisplay,
+                            'gross_paise' => $grossForDisplay,
+                            'repurchase_deduction_paise' => 0,
+                            'admin_charge_paise' => 0,
+                            'tds_paise' => 0,
+                            'net_transferred_paise' => 0,
+                            'status' => PayoutLineItem::STATUS_NO_BANK_ACCOUNT,
+                        ]);
+                    }
 
-            $bankLast4 = $this->bankLast4ForDistributor($distributorId);
-
-            DB::transaction(function () use (
-                $distributorId, $batch, $allMonthlyTypes, $incomeCapPaise, $month, $bankLast4,
-                $adminRateBp, $adminCapPaise, $tdsRateBp, $minPayoutPaise,
-            ): void {
-                $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
-                    ->whereIn('type', $allMonthlyTypes)
-                    ->whereNull('swept_by_payout_batch_id')
-                    ->where('amount_paise', '>', 0)
-                    ->lockForUpdate()
-                    ->get();
-
-                if ($entries->isEmpty()) {
-                    return;
+                    continue;
                 }
 
-                // Group B: GBB + Rank + Fortune — all five cash bonuses share
-                // the combined ₹50L monthly cap (the month's weekly GSB/MB
-                // batches already consumed part of the room). Fill the
-                // remaining room Fortune → GBB → Rank, so rank (the largest
-                // pool) is forfeited first when the cap is breached.
-                $gbbSum = (int) $entries->where('type', 'gbb_credit')->sum('amount_paise');
-                $rankSum = (int) $entries->where('type', 'rank_credit')->sum('amount_paise');
-                $fortuneSum = (int) $entries->where('type', 'fortune_credit')->sum('amount_paise');
-                $capRoom = max(0, $incomeCapPaise - $this->monthToDateCappedGrossPaise($distributorId, $month));
-                $fortuneEffective = min($fortuneSum, $capRoom);
-                $gbbEffective = min($gbbSum, $capRoom - $fortuneEffective);
-                $rankEffective = min($rankSum, $capRoom - $fortuneEffective - $gbbEffective);
-                $grossB = $gbbEffective + $rankEffective + $fortuneEffective;
-                $capForfeit = ($gbbSum + $rankSum + $fortuneSum) - $grossB;
+                $bankLast4 = $this->bankLast4ForDistributor($distributorId);
 
-                // Group C: Awards.
-                $grossC = (int) $entries->where('type', 'awards_credit')->sum('amount_paise');
+                DB::transaction(function () use (
+                    $distributorId, $batch, $allMonthlyTypes, $incomeCapPaise, $month, $bankLast4,
+                    $adminRateBp, $adminCapPaise, $tdsRateBp, $minPayoutPaise,
+                ): void {
+                    $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
+                        ->whereIn('type', $allMonthlyTypes)
+                        ->whereNull('swept_by_payout_batch_id')
+                        ->where('amount_paise', '>', 0)
+                        ->lockForUpdate()
+                        ->get();
 
-                // Group D: ADC + franchise commission.
-                //
-                // Both types are in GROUP_D_TYPES and are therefore SWEPT by
-                // this batch. Summing only `adc_credit` here would mark a
-                // franchise credit as paid while excluding it from the gross,
-                // the debit and the line item — a franchise-only earner would
-                // never be paid at all, and a mixed earner would carry a
-                // phantom wallet balance no later batch could clear.
-                $grossD = (int) $entries->whereIn('type', ['adc_credit', 'franchise_credit'])->sum('amount_paise');
-                $grossAdc = (int) $entries->where('type', 'adc_credit')->sum('amount_paise');
-                $grossFranchise = (int) $entries->where('type', 'franchise_credit')->sum('amount_paise');
+                    if ($entries->isEmpty()) {
+                        return;
+                    }
 
-                $gross = $grossB + $grossC + $grossD;
+                    // Group B: GBB + Rank + Fortune — all five cash bonuses share
+                    // the combined ₹50L monthly cap (the month's weekly GSB/MB
+                    // batches already consumed part of the room). Fill the
+                    // remaining room Fortune → GBB → Rank, so rank (the largest
+                    // pool) is forfeited first when the cap is breached.
+                    $gbbSum = (int) $entries->where('type', 'gbb_credit')->sum('amount_paise');
+                    $rankSum = (int) $entries->where('type', 'rank_credit')->sum('amount_paise');
+                    $fortuneSum = (int) $entries->where('type', 'fortune_credit')->sum('amount_paise');
+                    $capRoom = max(0, $incomeCapPaise - $this->monthToDateCappedGrossPaise($distributorId, $month));
+                    $fortuneEffective = min($fortuneSum, $capRoom);
+                    $gbbEffective = min($gbbSum, $capRoom - $fortuneEffective);
+                    $rankEffective = min($rankSum, $capRoom - $fortuneEffective - $gbbEffective);
+                    $grossB = $gbbEffective + $rankEffective + $fortuneEffective;
+                    $capForfeit = ($gbbSum + $rankSum + $fortuneSum) - $grossB;
 
-                if ($gross <= 0) {
-                    return;
-                }
+                    // Group C: Awards.
+                    $grossC = (int) $entries->where('type', 'awards_credit')->sum('amount_paise');
 
-                // Per-group admin charge caps (each independent ₹25k ceiling).
-                // Within each group the charge honours the per-bonus applies_to
-                // toggles, so an exempt stream is excluded from the chargeable base.
-                $adminB = $this->adminChargeFor([
-                    [BonusType::GrowthBooster, $gbbEffective],
-                    [BonusType::Rank, $rankEffective],
-                    [BonusType::Fortune, $fortuneEffective],
-                ], $adminRateBp, $adminCapPaise);
-                $adminC = $this->adminChargeFor([[BonusType::LifetimeAwards, $grossC]], $adminRateBp, $adminCapPaise);
-                // Franchise commission is listed separately so its
-                // `applies_to_franchise` toggle is honoured rather than
-                // inheriting ADC's. It defaults to exempt — the commission
-                // pays for fulfilment work, not for a position in the plan.
-                $adminD = $this->adminChargeFor([
-                    [BonusType::Arete, $grossAdc],
-                    [BonusType::Franchise, $grossFranchise],
-                ], $adminRateBp, $adminCapPaise);
-                $adminCharge = $adminB + $adminC + $adminD;
+                    // Group D: ADC + franchise commission.
+                    //
+                    // Both types are in GROUP_D_TYPES and are therefore SWEPT by
+                    // this batch. Summing only `adc_credit` here would mark a
+                    // franchise credit as paid while excluding it from the gross,
+                    // the debit and the line item — a franchise-only earner would
+                    // never be paid at all, and a mixed earner would carry a
+                    // phantom wallet balance no later batch could clear.
+                    $grossD = (int) $entries->whereIn('type', ['adc_credit', 'franchise_credit'])->sum('amount_paise');
+                    $grossAdc = (int) $entries->where('type', 'adc_credit')->sum('amount_paise');
+                    $grossFranchise = (int) $entries->where('type', 'franchise_credit')->sum('amount_paise');
 
-                // Repurchase is a MONTHLY figure computed off prior-month bonus
-                // credits; repurchaseDeductionPaise() nets off whatever the
-                // month's weekly batches already collected, so only the
-                // remainder is taken here. Capped at this batch's gross — an
-                // undeductable remainder stays uncollected for the next run.
-                // Deduction order (KP-confirmed): gross → repurchase → admin → TDS.
-                $repurchase = min($this->repurchaseDeductionPaise($distributorId, $month), $gross);
+                    $gross = $grossB + $grossC + $grossD;
 
-                $payable = max(0, $gross - $repurchase - $adminCharge);
-                $tds = (int) round($payable * $tdsRateBp / 10_000);
-                $net = max(0, $payable - $tds);
+                    if ($gross <= 0) {
+                        return;
+                    }
 
-                if ($net < $minPayoutPaise) {
-                    PayoutLineItem::create([
+                    // Per-group admin charge caps (each independent ₹25k ceiling).
+                    // Within each group the charge honours the per-bonus applies_to
+                    // toggles, so an exempt stream is excluded from the chargeable base.
+                    $adminB = $this->adminChargeFor([
+                        [BonusType::GrowthBooster, $gbbEffective],
+                        [BonusType::Rank, $rankEffective],
+                        [BonusType::Fortune, $fortuneEffective],
+                    ], $adminRateBp, $adminCapPaise);
+                    $adminC = $this->adminChargeFor([[BonusType::LifetimeAwards, $grossC]], $adminRateBp, $adminCapPaise);
+                    // Franchise commission is listed separately so its
+                    // `applies_to_franchise` toggle is honoured rather than
+                    // inheriting ADC's. It defaults to exempt — the commission
+                    // pays for fulfilment work, not for a position in the plan.
+                    $adminD = $this->adminChargeFor([
+                        [BonusType::Arete, $grossAdc],
+                        [BonusType::Franchise, $grossFranchise],
+                    ], $adminRateBp, $adminCapPaise);
+                    $adminCharge = $adminB + $adminC + $adminD;
+
+                    // Repurchase is a MONTHLY figure computed off prior-month bonus
+                    // credits; repurchaseDeductionPaise() nets off whatever the
+                    // month's weekly batches already collected, so only the
+                    // remainder is taken here. Capped at this batch's gross — an
+                    // undeductable remainder stays uncollected for the next run.
+                    // Deduction order (KP-confirmed): gross → repurchase → admin → TDS.
+                    $repurchase = min($this->repurchaseDeductionPaise($distributorId, $month), $gross);
+
+                    $payable = max(0, $gross - $repurchase - $adminCharge);
+                    $tds = (int) round($payable * $tdsRateBp / 10_000);
+                    $net = max(0, $payable - $tds);
+
+                    if ($net < $minPayoutPaise) {
+                        PayoutLineItem::create([
+                            'payout_batch_id' => $batch->id,
+                            'distributor_id' => $distributorId,
+                            'wallet_balance_paise' => $gross,
+                            'gross_paise' => $gross,
+                            'repurchase_deduction_paise' => $repurchase,
+                            'admin_charge_paise' => $adminCharge,
+                            'tds_paise' => $tds,
+                            'net_transferred_paise' => max(0, $net),
+                            'status' => PayoutLineItem::STATUS_BELOW_MINIMUM,
+                        ]);
+
+                        return;
+                    }
+
+                    WalletLedgerEntry::whereIn('id', $entries->pluck('id')->all())
+                        ->update(['swept_by_payout_batch_id' => $batch->id]);
+
+                    // Line item first — the ledger's (type, reference_type,
+                    // reference_id) unique index requires the debit to reference
+                    // this distributor's line item, not the shared batch id.
+                    $lineItem = PayoutLineItem::create([
                         'payout_batch_id' => $batch->id,
                         'distributor_id' => $distributorId,
                         'wallet_balance_paise' => $gross,
@@ -488,68 +536,63 @@ final class PayoutService
                         'repurchase_deduction_paise' => $repurchase,
                         'admin_charge_paise' => $adminCharge,
                         'tds_paise' => $tds,
-                        'net_transferred_paise' => max(0, $net),
-                        'status' => PayoutLineItem::STATUS_BELOW_MINIMUM,
+                        'net_transferred_paise' => $net,
+                        'bank_account_last4' => $bankLast4,
+                        'status' => PayoutLineItem::STATUS_PENDING,
                     ]);
 
-                    return;
-                }
-
-                WalletLedgerEntry::whereIn('id', $entries->pluck('id')->all())
-                    ->update(['swept_by_payout_batch_id' => $batch->id]);
-
-                // Line item first — the ledger's (type, reference_type,
-                // reference_id) unique index requires the debit to reference
-                // this distributor's line item, not the shared batch id.
-                $lineItem = PayoutLineItem::create([
-                    'payout_batch_id' => $batch->id,
-                    'distributor_id' => $distributorId,
-                    'wallet_balance_paise' => $gross,
-                    'gross_paise' => $gross,
-                    'repurchase_deduction_paise' => $repurchase,
-                    'admin_charge_paise' => $adminCharge,
-                    'tds_paise' => $tds,
-                    'net_transferred_paise' => $net,
-                    'bank_account_last4' => $bankLast4,
-                    'status' => PayoutLineItem::STATUS_PENDING,
-                ]);
-
-                // Debit the effective gross (rank cap may reduce the actual debit).
-                $this->wallet->debit(
-                    distributorId: $distributorId,
-                    amountPaise: $gross,
-                    type: 'payout_debit',
-                    referenceId: $lineItem->id,
-                    referenceType: 'payout_line_item',
-                );
-
-                // Credits above the monthly cap are forfeited, not carried:
-                // their entries were swept above, so an explicit debit is needed
-                // or the excess would linger as a phantom wallet balance forever.
-                if ($capForfeit > 0) {
+                    // Debit the effective gross (rank cap may reduce the actual debit).
                     $this->wallet->debit(
                         distributorId: $distributorId,
-                        amountPaise: $capForfeit,
-                        type: 'income_cap_forfeit',
+                        amountPaise: $gross,
+                        type: 'payout_debit',
                         referenceId: $lineItem->id,
                         referenceType: 'payout_line_item',
-                        memo: 'Cash income above the combined monthly income cap',
                     );
-                }
 
-                if ($repurchase > 0) {
-                    $this->wallet->credit(
-                        distributorId: $distributorId,
-                        amountPaise: $repurchase,
-                        type: 'repurchase_deduction',
-                        referenceId: $lineItem->id,
-                        referenceType: 'payout_line_item',
-                    );
-                }
-            });
+                    // Credits above the monthly cap are forfeited, not carried:
+                    // their entries were swept above, so an explicit debit is needed
+                    // or the excess would linger as a phantom wallet balance forever.
+                    if ($capForfeit > 0) {
+                        $this->wallet->debit(
+                            distributorId: $distributorId,
+                            amountPaise: $capForfeit,
+                            type: 'income_cap_forfeit',
+                            referenceId: $lineItem->id,
+                            referenceType: 'payout_line_item',
+                            memo: 'Cash income above the combined monthly income cap',
+                        );
+                    }
+
+                    if ($repurchase > 0) {
+                        $this->wallet->credit(
+                            distributorId: $distributorId,
+                            amountPaise: $repurchase,
+                            type: 'repurchase_deduction',
+                            referenceId: $lineItem->id,
+                            referenceType: 'payout_line_item',
+                        );
+                    }
+                });
+            } catch (Throwable $e) {
+                // See runWeeklyBatch(): isolate the failure, keep paying the rest.
+                Log::critical('Monthly payout batch: distributor failed — continuing with the rest', [
+                    'payout_batch_id' => $batch->id,
+                    'distributor_id' => $distributorId,
+                    'exception' => $e,
+                ]);
+                $failedCount++;
+            }
         }
 
-        $this->finalizeBatchTotals($batch);
+        $this->finalizeBatchTotals($batch, $failedCount);
+
+        if ($failedCount > 0) {
+            Log::critical('Monthly payout batch finished partially failed', [
+                'payout_batch_id' => $batch->id,
+                'failed_distributor_count' => $failedCount,
+            ]);
+        }
 
         return $batch;
     }
@@ -559,8 +602,13 @@ final class PayoutService
      * only), not from in-memory accumulators — a crash-resumed run therefore
      * reports the full batch, not just the distributors processed after the
      * restart.
+     *
+     * A batch with any per-distributor failure lands in `partially_failed`
+     * instead of `pending`: it cannot be approved (approve() only accepts
+     * pending) and the run command exits non-zero, but a re-run retries only
+     * the failed distributors and promotes the batch to pending on success.
      */
-    private function finalizeBatchTotals(PayoutBatch $batch): void
+    private function finalizeBatchTotals(PayoutBatch $batch, int $failedCount = 0): void
     {
         $paid = PayoutLineItem::where('payout_batch_id', $batch->id)
             ->where('status', PayoutLineItem::STATUS_PENDING)
@@ -568,7 +616,9 @@ final class PayoutService
             ->first();
 
         $batch->update([
-            'status' => PayoutBatch::STATUS_PENDING,
+            'status' => $failedCount > 0
+                ? PayoutBatch::STATUS_PARTIALLY_FAILED
+                : PayoutBatch::STATUS_PENDING,
             'total_gross_paise' => (int) $paid->gross,
             'total_deductions_paise' => (int) $paid->deductions,
             'total_net_paise' => (int) $paid->net,
