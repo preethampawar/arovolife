@@ -10,6 +10,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 
 final class AdminOrderController extends Controller
 {
@@ -51,19 +52,39 @@ final class AdminOrderController extends Controller
             'ship_tracking_no' => ['nullable', 'string', 'max:120'],
         ]);
 
-        $this->stateMachine->markShipped(
-            $order,
-            auth()->id(),
-            $validated['ship_carrier'] ?? null,
-            $validated['ship_tracking_no'] ?? null,
-        );
+        try {
+            $this->stateMachine->markShipped(
+                $order,
+                auth()->id(),
+                $validated['ship_carrier'] ?? null,
+                $validated['ship_tracking_no'] ?? null,
+            );
+        } catch (\RuntimeException $e) {
+            Log::warning('Order ship transition refused', [
+                'order_id' => $order->id,
+                'order_no' => $order->order_no,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['ship' => $e->getMessage()]);
+        }
 
         return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} marked shipped.");
     }
 
     public function markDelivered(Order $order): RedirectResponse
     {
-        $this->stateMachine->markDelivered($order, auth()->id());
+        try {
+            $this->stateMachine->markDelivered($order, auth()->id());
+        } catch (\RuntimeException $e) {
+            Log::warning('Order deliver transition refused', [
+                'order_id' => $order->id,
+                'order_no' => $order->order_no,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['deliver' => $e->getMessage()]);
+        }
 
         return redirect()->route('admin.commerce.orders.show', $order)->with('status', 'Delivery recorded. 30-day cooling-off clock opened.');
     }
