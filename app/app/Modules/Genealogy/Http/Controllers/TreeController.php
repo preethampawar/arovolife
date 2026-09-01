@@ -223,22 +223,29 @@ final class TreeController extends Controller
         $phone = preg_replace('/\s+/', '', $q) ?? $q;
         $phoneDigits = preg_replace('/\D+/', '', $phone) ?? '';
 
+        // SEC-B5: escape LIKE metacharacters so a search for "%" or "_"
+        // matches those literal characters instead of every row. Exact-match
+        // comparisons below intentionally keep the raw $q. $phoneDigits is
+        // \D-stripped and cannot contain a wildcard.
+        $like = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
+        $phoneLike = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $phone);
+
         return Distributor::query()
-            ->where(function (Builder $w) use ($q, $phone, $phoneDigits, $partial): void {
+            ->where(function (Builder $w) use ($q, $like, $phoneLike, $phoneDigits, $partial): void {
                 if ($partial) {
-                    $w->where('distributors.adn', 'like', $q.'%');
+                    $w->where('distributors.adn', 'like', $like.'%');
                 } else {
                     $w->where('distributors.adn', $q);
                 }
 
-                $w->orWhereHas('user', function (Builder $u) use ($q, $phone, $phoneDigits, $partial): void {
-                    $u->where('full_name', 'like', '%'.$q.'%');
+                $w->orWhereHas('user', function (Builder $u) use ($q, $like, $phoneLike, $phoneDigits, $partial): void {
+                    $u->where('full_name', 'like', '%'.$like.'%');
                     if ($partial) {
-                        $u->orWhere('email', 'like', '%'.$q.'%');
+                        $u->orWhere('email', 'like', '%'.$like.'%');
                     } else {
                         $u->orWhere('email', $q);
                     }
-                    $u->orWhere('phone_e164', 'like', '%'.$phone.'%');
+                    $u->orWhere('phone_e164', 'like', '%'.$phoneLike.'%');
                     if ($phoneDigits !== '') {
                         // Match a bare 10-digit number against the stored
                         // +91XXXXXXXXXX form (and vice-versa) by comparing

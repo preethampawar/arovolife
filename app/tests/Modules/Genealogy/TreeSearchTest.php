@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -188,4 +189,14 @@ it('TS-05: empty query returns found:false', function () {
         ->getJson(route('tree.search', ['q' => '']))
         ->assertOk()
         ->assertExactJson(['found' => false]);
+});
+
+it('TS-06: LIKE wildcards in the query are escaped, not passed through (SEC-B5)', function () {
+    // A bare "%" must not become an everything-matcher — that would enumerate
+    // the whole distributor base through the typeahead.
+    $bindings = TreeController::buildMatchQuery('%', partial: true)
+        ->getBindings();
+
+    expect($bindings)->toContain('\%%')
+        ->and($bindings)->not->toContain('%%%');
 });
