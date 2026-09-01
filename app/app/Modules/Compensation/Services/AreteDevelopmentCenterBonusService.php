@@ -187,7 +187,7 @@ final class AreteDevelopmentCenterBonusService
             $capPaise = min($capPaise, $capOverridePaise);
         }
 
-        $flat = max(0, (int) floor($memberBvPaise * $this->plan->adcRateBp() / 10_000));
+        $flat = max(0, (int) (floor($memberBvPaise * $this->plan->adcRateBp() / 1_000_000) * 100));
 
         return [
             'flat_paise' => $flat,
