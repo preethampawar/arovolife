@@ -136,11 +136,8 @@ it('does not block a logged-in user from using their own email', function (): vo
     // The guard queries User WHERE email = buyer_email AND id != auth_user_id.
     // For a user's own email, no conflict row is found, so the guard never fires.
     // Without a cart, the response will be an error but NOT a buyer_email error.
-    $this->actingAs($member)
-        ->post(route('shop.checkout.place'), cdebPayload($member->email));
-
     // Must NOT have a buyer_email session error — the guard must have passed.
-    $errors = session('errors');
-    $hasBuyerEmailError = $errors !== null && $errors->has('buyer_email');
-    expect($hasBuyerEmailError)->toBeFalse();
+    $this->actingAs($member)
+        ->post(route('shop.checkout.place'), cdebPayload($member->email))
+        ->assertSessionDoesntHaveErrors('buyer_email');
 });

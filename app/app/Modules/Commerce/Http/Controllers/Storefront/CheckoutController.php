@@ -12,6 +12,7 @@ use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\CustomerAddressService;
+use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Compensation\Services\WalletService;
@@ -26,9 +27,11 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Laravel\Pennant\Feature;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Throwable;
 
 final class CheckoutController extends Controller
 {
@@ -43,6 +46,7 @@ final class CheckoutController extends Controller
         private readonly CustomerAddressService $addressBook,
         private readonly WalletService $walletService,
         private readonly RedeemPointsService $redeemPoints,
+        private readonly OrderStateMachine $orderStateMachine,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -236,42 +240,94 @@ final class CheckoutController extends Controller
             'pincode' => $validated['bill_pincode'],
         ];
 
-        $order = $this->checkoutService->place(
-            cart: $cart,
-            buyer: [
-                'name' => $validated['buyer_name'],
-                'email' => $validated['buyer_email'],
-                'phone' => '+91'.$validated['buyer_phone'],
-                'marketing_opt_in' => (bool) $request->boolean('marketing_opt_in'),
-            ],
-            shipping: $shipping,
-            billing: $billing,
-            attributedDistributorId: $attr['distributor_id'],
-            attributionSource: $attr['source'],
-            paymentMethod: $validated['payment_method'],
-            authUserId: Auth::id(),
-            buyerDistributorId: Auth::user()?->distributor?->id,
-            // Save the shipping address to the book only for a logged-in buyer
-            // who opted in (the checkbox defaults to on). Guests have no account
-            // to save against.
-            saveShippingAddress: Auth::check() && $request->boolean('save_address'),
-            shippingLabel: $validated['address_label'] ?? null,
-            redeemPoints: $this->resolveRedeemPoints($request, (int) ($validated['redeem_points'] ?? 0)),
-            buyerGstin: isset($validated['buyer_gstin']) && $validated['buyer_gstin'] !== ''
-                ? strtoupper($validated['buyer_gstin'])
-                : null,
-            buyerLegalName: $validated['buyer_legal_name'] ?? null,
-        );
+        try {
+            $order = $this->checkoutService->place(
+                cart: $cart,
+                buyer: [
+                    'name' => $validated['buyer_name'],
+                    'email' => $validated['buyer_email'],
+                    'phone' => '+91'.$validated['buyer_phone'],
+                    'marketing_opt_in' => (bool) $request->boolean('marketing_opt_in'),
+                ],
+                shipping: $shipping,
+                billing: $billing,
+                attributedDistributorId: $attr['distributor_id'],
+                attributionSource: $attr['source'],
+                paymentMethod: $validated['payment_method'],
+                authUserId: Auth::id(),
+                buyerDistributorId: Auth::user()?->distributor?->id,
+                // Save the shipping address to the book only for a logged-in buyer
+                // who opted in (the checkbox defaults to on). Guests have no account
+                // to save against.
+                saveShippingAddress: Auth::check() && $request->boolean('save_address'),
+                shippingLabel: $validated['address_label'] ?? null,
+                redeemPoints: $this->resolveRedeemPoints($request, (int) ($validated['redeem_points'] ?? 0)),
+                buyerGstin: isset($validated['buyer_gstin']) && $validated['buyer_gstin'] !== ''
+                    ? strtoupper($validated['buyer_gstin'])
+                    : null,
+                buyerLegalName: $validated['buyer_legal_name'] ?? null,
+            );
+        } catch (Throwable $e) {
+            // Placement failed before any money moved: the cart is intact, so
+            // send the buyer back with a retryable message instead of a 500.
+            Log::error('Checkout: order placement failed', [
+                'user_id' => Auth::id(),
+                'cart_id' => $cart->id,
+                'payment_method' => $validated['payment_method'],
+                'exception' => $e,
+            ]);
+
+            return back()->withErrors([
+                'checkout' => 'We could not place your order just now. Nothing has been charged — please try again in a moment.',
+            ])->withInput();
+        }
 
         // Capture immediately via the gateway (Phase 2 stub auto-captures → order paid).
         if ($order->payment_method === Order::PAYMENT_ONLINE) {
-            $intent = $this->gateway->createIntent($order, 'order:'.$order->id);
-            $this->gateway->capture($intent);
+            try {
+                $intent = $this->gateway->createIntent($order, 'order:'.$order->id);
+                $this->gateway->capture($intent);
+            } catch (Throwable $e) {
+                Log::error('Checkout: payment failed after order placement — cancelling order', [
+                    'order_id' => $order->id,
+                    'order_no' => $order->order_no,
+                    'exception' => $e,
+                ]);
+
+                // Release the placed-but-unpaid order: cancel() releases the
+                // reserved inventory, reverses any BV (a no-op here — nothing
+                // was paid) and audit-logs the cancellation. It is valid on
+                // STATUS_PLACED orders. capture()'s markPaid runs in its own
+                // transaction, so a mid-capture throw leaves the order unpaid.
+                try {
+                    $this->orderStateMachine->cancel($order->fresh(), 'payment_failed', Auth::id() === null ? null : (int) Auth::id());
+                } catch (Throwable $cancelError) {
+                    // The order is stuck placed-unpaid; ops must reconcile it.
+                    Log::critical('Checkout: failed to cancel order after payment failure', [
+                        'order_id' => $order->id,
+                        'exception' => $cancelError,
+                    ]);
+                }
+
+                return back()->withErrors([
+                    'checkout' => 'Your payment could not be completed and the order was not confirmed. You have not been charged — please try again.',
+                ])->withInput();
+            }
         }
 
-        // Generate the GST invoice for the order.
-        $order->load('items');
-        $this->invoiceGenerator->generate($order);
+        // Generate the GST invoice for the order. A failure here must NOT fail
+        // the order — the payment is already captured, and the invoice can be
+        // regenerated by ops. Log critical for manual follow-up instead.
+        try {
+            $order->load('items');
+            $this->invoiceGenerator->generate($order);
+        } catch (Throwable $e) {
+            Log::critical('Checkout: invoice generation failed for a paid order — regenerate manually', [
+                'order_id' => $order->id,
+                'order_no' => $order->order_no,
+                'exception' => $e,
+            ]);
+        }
 
         // Bind this order to the buyer's session so the confirmation page is
         // viewable by the person who just placed it (incl. guests) without
