@@ -39,6 +39,7 @@ final class SettingsSeeder extends Seeder
         ], ['key'], ['value', 'version', 'updated_at']);
 
         $this->seedCompensationPlanScalars($now);
+        $this->seedSecuritySettings($now);
     }
 
     /**
@@ -127,5 +128,31 @@ final class SettingsSeeder extends Seeder
                 'updated_at' => $now,
             ]);
         }
+    }
+
+    /**
+     * Security / rate-limiting defaults. insertOrIgnore so an admin who has
+     * already tuned these (e.g. after a bot wave) keeps their edit on re-seed.
+     */
+    private function seedSecuritySettings(string $now): void
+    {
+        DB::table('settings')->insertOrIgnore([
+            [
+                'key' => 'security.registration_throttle_requests',
+                'value' => '60',
+                'version' => 1,
+                'updated_by' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'key' => 'security.registration_throttle_window_minutes',
+                'value' => '60',
+                'version' => 1,
+                'updated_by' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        ]);
     }
 }

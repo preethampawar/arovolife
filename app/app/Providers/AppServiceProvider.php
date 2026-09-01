@@ -30,13 +30,18 @@ use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\User;
 use App\Modules\Returns\Events\OrderRefundApproved;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Number;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
@@ -72,6 +77,30 @@ class AppServiceProvider extends ServiceProvider
         // this locale is kept only as a sane default for third-party callers.
         // CSV exports are the exception: they stay ungrouped for spreadsheets.
         Number::useLocale('en_IN');
+
+        // Named rate limiter for the registration wizard (steps 1 & 2). Limits
+        // are DB-driven so operations can adjust them without a deploy. Values
+        // are cached for 5 minutes so a change takes effect quickly without a
+        // DB read on every request. Defaults are 60 requests per 60 minutes per
+        // IP — enough for a group-onboarding session, far below any useful flood.
+        RateLimiter::for('registration', function (Request $request): Limit {
+            /** @var array{requests: int, window: int} $limits */
+            $limits = Cache::remember('settings.registration_throttle', 300, function (): array {
+                $rows = DB::table('settings')
+                    ->whereIn('key', [
+                        'security.registration_throttle_requests',
+                        'security.registration_throttle_window_minutes',
+                    ])
+                    ->pluck('value', 'key');
+
+                return [
+                    'requests' => max(1, (int) ($rows['security.registration_throttle_requests'] ?? 60)),
+                    'window' => max(1, (int) ($rows['security.registration_throttle_window_minutes'] ?? 60)),
+                ];
+            });
+
+            return Limit::perMinutes($limits['window'], $limits['requests'])->by($request->ip());
+        });
 
         Event::listen(OrderStatusChanged::class, PropagateGroupBvOnOrderPaid::class);
         Event::listen(OrderStatusChanged::class, ReverseGroupBvOnOrderReversal::class);

@@ -21,6 +21,7 @@ use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
@@ -84,6 +85,30 @@ final class AdminSettingsController extends Controller
                 'description' => 'Override the default 18-year minimum registration age for specific states. JSON map of two-letter state code to age (e.g. {"MH":21}).',
                 'type' => 'json',
                 'default' => '{"MH":21}',
+            ],
+
+            // ── Security / rate-limiting ───────────────────────────────────
+            'security.registration_throttle_requests' => [
+                'group' => 'security',
+                'owner' => 'developer',
+                'label' => 'Registration rate-limit — max requests',
+                'description' => 'Maximum number of registration form submissions (steps 1 and 2) allowed from a single IP address within the configured window. Raise it when distributors onboard many people from the same office or carrier NAT; lower it when you suspect bot activity.',
+                'impact' => 'Effective within 5 minutes (cached). Existing blocked IPs are unblocked only when their current window expires.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 1000,
+                'default' => '60',
+            ],
+            'security.registration_throttle_window_minutes' => [
+                'group' => 'security',
+                'owner' => 'developer',
+                'label' => 'Registration rate-limit — window (minutes)',
+                'description' => 'Rolling time window over which the request count is measured. 60 means "60 requests per 60-minute rolling window per IP". Shorten it for tighter burst control; lengthen it to protect against slow floods.',
+                'impact' => 'Effective within 5 minutes (cached). Does not retroactively clear existing counters.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 1440,
+                'default' => '60',
             ],
 
             // ── Tax identity (GST invoicing) ───────────────────────────────
@@ -1168,6 +1193,10 @@ final class AdminSettingsController extends Controller
                 'label' => 'Registration & KYC',
                 'description' => 'Rules that govern who can register and on what terms.',
             ],
+            'security' => [
+                'label' => 'Security & rate-limiting',
+                'description' => 'Throttle limits and other security tunables. Developer-owned — changes here take effect within 5 minutes without a deploy.',
+            ],
             'placement' => [
                 'label' => 'Placement (Genos)',
                 'description' => 'How new joiners are positioned in the binary placement tree.',
@@ -1506,6 +1535,13 @@ final class AdminSettingsController extends Controller
                 key: $key,
                 actorId: $actorId !== null ? (int) $actorId : null,
             ));
+        }
+
+        // Security throttle settings are cached for 5 minutes in the named rate
+        // limiter. Clear the cache immediately on update so the new limit takes
+        // effect on the next request rather than waiting out the window.
+        if (str_starts_with($key, 'security.registration_throttle')) {
+            Cache::forget('settings.registration_throttle');
         }
     }
 
