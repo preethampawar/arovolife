@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Content\Models\ContentPage;
+use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\WizardStateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -42,6 +43,10 @@ function decWizardAtConsent(): void
     $wizard->start(sponsorId: 1, placementId: 1, sideOpt: 'L');
     $wizard->saveStepData(2, ['email' => 'joiner@example.com']);
     $wizard->saveStepData(3, ['quiz_passed' => true]);
+
+    // Steps ≥ 3 require an auth session (SEC-B2) — the account is created at
+    // step 2, so a real joiner reaching consent is signed in.
+    test()->actingAs(User::factory()->create());
 }
 
 /**

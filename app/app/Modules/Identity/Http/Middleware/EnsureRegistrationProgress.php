@@ -7,6 +7,7 @@ namespace App\Modules\Identity\Http\Middleware;
 use App\Modules\Identity\Services\WizardStateService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 final class EnsureRegistrationProgress
@@ -47,6 +48,19 @@ final class EnsureRegistrationProgress
             return redirect()->route('join.show')->with(
                 'status',
                 'Your registration session expired. Please re-enter your referral details to continue. If you already completed registration, sign in instead.'
+            );
+        }
+
+        // Steps ≥ 3 belong to an authenticated wizard user — the account was
+        // created at step 2. Wizard state alone is not proof of an auth
+        // session (logout in another tab, session partially expired), so
+        // check explicitly (SEC-B2). Ordered after the null-state branch —
+        // an anonymous visitor with no state at all gets the friendlier
+        // re-entry path above — and before the step-ordering check.
+        if (! Auth::check()) {
+            return redirect()->route('login')->with(
+                'status',
+                'Your session expired part-way through registration. Sign in with the account you created to continue from where you left off.'
             );
         }
 
