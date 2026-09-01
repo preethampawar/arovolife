@@ -83,6 +83,16 @@ it('PII-06: short numbers and ordinary text are left alone', function () {
     expect($rec->message)->toBe('login from 127.0.0.1, status 200, took 42ms');
 });
 
+it('PII-08: PAN in a nested previous exception is redacted (EH-M7)', function () {
+    $inner = new RuntimeException('bound param PAN ABCDE1234F');
+    $outer = new RuntimeException('outer', 0, $inner);
+
+    $rec = (new PiiScrubberProcessor)(makeRecord('query failed', ['exception' => $outer]));
+
+    expect($rec->context['exception']['previous'][0]['message'])
+        ->toBe('bound param PAN [REDACTED:PAN]');
+});
+
 it('PII-07: arovolife column / form-field keys are scrubbed by name', function () {
     $rec = (new PiiScrubberProcessor)(makeRecord('audit', [
         'pan_number' => 'ABCDE1234F',

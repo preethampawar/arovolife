@@ -62,8 +62,8 @@ final class PiiScrubberProcessor implements ProcessorInterface
     }
 
     /**
-     * @param  array<string, mixed>  $array
-     * @return array<string, mixed>
+     * @param  array<array-key, mixed>  $array
+     * @return array<array-key, mixed>
      */
     private function scrubArray(array $array): array
     {
@@ -88,17 +88,43 @@ final class PiiScrubberProcessor implements ProcessorInterface
                 // Replaced with a scrubbed array rather than mutated: a
                 // Throwable's message is read-only, and re-throwing a rewritten
                 // copy would lose the original type and its chain.
-                $array[$key] = $this->scrubArray([
-                    'class' => $value::class,
-                    'message' => $value->getMessage(),
-                    'file' => $value->getFile(),
-                    'line' => $value->getLine(),
-                    'trace' => $value->getTraceAsString(),
-                ]);
+                //
+                // The chain matters as much as the head (EH-M7): a
+                // QueryException wraps a PDOException whose message carries the
+                // bound parameters — exactly where a PAN or account number
+                // leaks. Walked with a loop, not recursion, capped at 10
+                // levels, so an artificially long chain cannot blow the stack.
+                $flat = $this->throwableToArray($value);
+
+                $previous = [];
+                $prev = $value->getPrevious();
+                for ($depth = 0; $prev !== null && $depth < 10; $depth++) {
+                    $previous[] = $this->throwableToArray($prev);
+                    $prev = $prev->getPrevious();
+                }
+                if ($previous !== []) {
+                    $flat['previous'] = $previous;
+                }
+
+                $array[$key] = $this->scrubArray($flat);
             }
         }
 
         return $array;
+    }
+
+    /**
+     * @return array{class: class-string, message: string, file: string, line: int, trace: string}
+     */
+    private function throwableToArray(Throwable $e): array
+    {
+        return [
+            'class' => $e::class,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ];
     }
 
     private function scrubString(string $value): string
