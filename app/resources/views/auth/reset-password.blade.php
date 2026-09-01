@@ -7,7 +7,9 @@
     <title>Choose a new password — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._font-size-fouc')
-    @include('partials._google-analytics')
+    {{-- GA intentionally excluded: the reset token is in the URL path and
+         GA4 captures page_location by default, which would ship a live
+         single-use credential to Google (SEC-B6 / FIX-5). --}}
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage">
 

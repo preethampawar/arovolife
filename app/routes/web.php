@@ -18,6 +18,7 @@ use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
 use App\Modules\Analytics\Http\Controllers\Admin\AdminAnalyticsController;
+use App\Modules\Analytics\Http\Controllers\AnalyticsConsentController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminBannerController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
@@ -804,6 +805,14 @@ Route::post('/find-my-id/verify', [FindMyIdController::class, 'verifyOtp'])
     ->middleware('throttle:10,5')->name('find-my-id.verify');
 Route::post('/find-my-id/resend', [FindMyIdController::class, 'resendOtp'])
     ->middleware('throttle:3,60')->name('find-my-id.resend');
+
+// ── Analytics consent (DPDP §5-§6) ──────────────────────────────────────────
+// Public, no auth required — guests must be able to record their decision
+// before they create an account. The session is used to correlate the log row
+// to a later registration. Throttled to prevent log spam.
+Route::post('/analytics-consent', [AnalyticsConsentController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('analytics.consent.store');
 
 // ── Public Storefront (Commerce) ─────────────────────────────────────────────
 
