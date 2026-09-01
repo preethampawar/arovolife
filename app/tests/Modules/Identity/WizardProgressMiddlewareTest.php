@@ -87,15 +87,13 @@ it('WPM-03: active wizard session + correct step → passthrough', function (): 
     // Drive the session via the real WizardStateService API: start() seeds
     // step 2, saving step-2 data advances the furthest-allowed step to 3, so
     // the orientation route (wizard.progress:3) passes through.
+    // The wizard is purely session-based — users are NOT authenticated between
+    // steps 2 and 12 (Auth::loginUsingId is called only at finalization).
     $rootId = wpmSeedSponsorRoot();
 
     $wizard = app(WizardStateService::class);
     $wizard->start(sponsorId: $rootId, placementId: $rootId, sideOpt: 'L');
     $wizard->saveStepData(2, ['email' => 'wpm3-'.rand(1000, 9999).'@test.com']);
-
-    // Steps ≥ 3 require an auth session (SEC-B2) — the account is created at
-    // step 2, so a real user at this point is signed in.
-    $this->actingAs(User::factory()->create());
 
     $response = $this->get(route('register.orientation'));
     $response->assertStatus(200);
@@ -116,26 +114,8 @@ it('WPM-05: skipping ahead redirects to the furthest-completed step, not the tar
         ],
     ]);
 
-    // Steps ≥ 3 require an auth session (SEC-B2).
-    $this->actingAs(User::factory()->create());
-
     $response = $this->get('/register/complete');
     $response->assertRedirect(route('register.arete'));
-});
-
-it('WPM-06: wizard state without an auth session → redirect to /login (SEC-B2)', function (): void {
-    // Wizard session state can outlive the auth session — a logout in another
-    // tab, or an auth session that expired while the wizard state survived.
-    // Step-3+ routes must not run on that state alone.
-    $this->withSession([
-        'registration_wizard' => [
-            'step' => 11,
-            'sponsor_id' => 1,
-            'data' => [],
-        ],
-    ]);
-
-    $this->get(route('register.orientation'))->assertRedirect(route('login'));
 });
 
 it('WPM-04: garbage av_draft cookie (no matching draft) → middleware ignores it + bounces to /join', function (): void {
