@@ -10,6 +10,7 @@ use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Middleware\RequireKycApproval;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Crypto\PiiCrypter;
@@ -47,12 +48,17 @@ final class PayoutService
         // stores 'Y-m-d 00:00:00', so a bare where() on the string misses.
         $batch = PayoutBatch::whereDate('batch_date', $dateStr)
             ->where('batch_type', PayoutBatch::TYPE_WEEKLY)
-            ->first()
-            ?? PayoutBatch::create([
+            ->first();
+
+        $wasCreated = false;
+        if ($batch === null) {
+            $batch = PayoutBatch::create([
                 'batch_type' => PayoutBatch::TYPE_WEEKLY,
                 'batch_date' => $dateStr,
                 'status' => PayoutBatch::STATUS_PENDING,
             ]);
+            $wasCreated = true;
+        }
 
         if ($batch->status === PayoutBatch::STATUS_PROCESSING
             || $batch->status === PayoutBatch::STATUS_COMPLETED
@@ -67,6 +73,10 @@ final class PayoutService
             ->where('amount_paise', '>', 0)
             ->distinct()
             ->pluck('distributor_id');
+
+        if ($wasCreated) {
+            $this->auditBatchCreated($batch, $dateStr, $distributorIds->count());
+        }
 
         $failedCount = 0;
 
@@ -349,12 +359,17 @@ final class PayoutService
         // date cast stores 'Y-m-d 00:00:00', so a bare where() on the string misses.
         $batch = PayoutBatch::whereDate('batch_date', $dateStr)
             ->where('batch_type', PayoutBatch::TYPE_MONTHLY)
-            ->first()
-            ?? PayoutBatch::create([
+            ->first();
+
+        $wasCreated = false;
+        if ($batch === null) {
+            $batch = PayoutBatch::create([
                 'batch_type' => PayoutBatch::TYPE_MONTHLY,
                 'batch_date' => $dateStr,
                 'status' => PayoutBatch::STATUS_PENDING,
             ]);
+            $wasCreated = true;
+        }
 
         if ($batch->status === PayoutBatch::STATUS_PROCESSING
             || $batch->status === PayoutBatch::STATUS_COMPLETED
@@ -369,6 +384,10 @@ final class PayoutService
             ->where('amount_paise', '>', 0)
             ->distinct()
             ->pluck('distributor_id');
+
+        if ($wasCreated) {
+            $this->auditBatchCreated($batch, $dateStr, $distributorIds->count());
+        }
 
         $failedCount = 0;
 
@@ -675,6 +694,44 @@ final class PayoutService
             'total_net_paise' => (int) $paid->net,
             'distributor_count' => (int) $paid->cnt,
             'processed_at' => now(),
+        ]);
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'payout.batch.finalised',
+            'subject_type' => 'payout_batch',
+            'subject_id' => $batch->id,
+            'details' => [
+                'batch_id' => $batch->id,
+                'batch_type' => $batch->batch_type,
+                'total_gross_paise' => (int) $paid->gross,
+                'total_net_paise' => (int) $paid->net,
+                'distributor_count' => (int) $paid->cnt,
+                'failed_distributor_count' => $failedCount,
+                'status' => $batch->status,
+            ],
+            'ip' => app()->runningInConsole() ? null : request()->ip(),
+        ]);
+    }
+
+    /**
+     * LOG-3: an audit_log row the moment a payout batch comes into existence —
+     * only on true creation, never on a crash-resume re-entry.
+     */
+    private function auditBatchCreated(PayoutBatch $batch, string $period, int $distributorCount): void
+    {
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'payout.batch.created',
+            'subject_type' => 'payout_batch',
+            'subject_id' => $batch->id,
+            'details' => [
+                'batch_id' => $batch->id,
+                'period' => $period,
+                'batch_type' => $batch->batch_type,
+                'distributor_count' => $distributorCount,
+            ],
+            'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);
     }
 

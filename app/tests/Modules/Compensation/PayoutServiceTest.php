@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -692,4 +693,27 @@ it('isolates a per-distributor failure: the rest are still paid and the batch la
     expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $ok->id)->count())->toBe(1);
     expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $bad->id)->count())->toBe(1);
     expect($wallet->balancePaise($bad->id))->toBe(0);
+});
+
+it('LOG-3/5: writes audit_log rows when a payout batch is created and finalised, once each', function () {
+    $dist = makePayoutEligibleDistributor();
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+
+    $svc = app(PayoutService::class);
+    $batch = $svc->runWeeklyBatch(Carbon::today());
+
+    $created = AuditLog::where('action', 'payout.batch.created')
+        ->where('subject_id', $batch->id);
+    $finalised = AuditLog::where('action', 'payout.batch.finalised')
+        ->where('subject_id', $batch->id);
+
+    expect($created->count())->toBe(1)
+        ->and($finalised->count())->toBe(1)
+        ->and($created->first()->details['batch_type'])->toBe(PayoutBatch::TYPE_WEEKLY);
+
+    // A crash-resume re-entry must not record a second creation.
+    $svc->runWeeklyBatch(Carbon::today());
+
+    expect(AuditLog::where('action', 'payout.batch.created')
+        ->where('subject_id', $batch->id)->count())->toBe(1);
 });
