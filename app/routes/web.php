@@ -126,10 +126,11 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/join', [RegistrationWizardController::class, 'showJoin'])->name('join.show');
     // Account creation is unauthenticated and writes rows. Without a limit,
     // one script can fill `users` and `distributors` with junk and burn the
-    // ADN sequence (T-6.1 finding L-7). 10/hour per IP is far above any real
-    // person and far below a useful flood.
+    // ADN sequence (T-6.1 finding L-7). 60/hour per IP allows a distributor
+    // to onboard many people from the same office/network while still well
+    // below a useful automated flood rate.
     Route::post('/join', [RegistrationWizardController::class, 'handleJoin'])
-        ->middleware('throttle:10,60')->name('join.submit');
+        ->middleware('throttle:60,60')->name('join.submit');
 
     // ADN-name lookup used by step 1's live name-resolution UI.
     Route::get('/join/lookup', [RegistrationWizardController::class, 'lookupAdn'])
@@ -138,7 +139,7 @@ Route::middleware('guest')->group(function (): void {
     // Step 2 — create account. Requires the intent from step 1.
     Route::get('/register/account', [RegistrationWizardController::class, 'showAccount'])->name('register.account.show');
     Route::post('/register/account', [RegistrationWizardController::class, 'handleAccount'])
-        ->middleware('throttle:10,60')->name('register.post');
+        ->middleware('throttle:60,60')->name('register.post');
 
     // Real-time availability check for email + phone uniqueness — called via
     // AJAX on blur from step 2 so users see "this email is already registered"
