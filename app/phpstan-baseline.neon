@@ -1839,7 +1839,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 10
 			path: tests/Modules/Admin/AdminRoleSeparationTest.php
 
 		-

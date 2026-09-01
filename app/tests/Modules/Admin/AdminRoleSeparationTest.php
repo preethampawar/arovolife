@@ -85,6 +85,51 @@ it('R17-http: admin-compliance passes the block gate (not forbidden)', function 
     expect($status)->not->toBe(403);
 });
 
+it('R17-http: admin-finance is forbidden from activate/deactivate (same discipline family as block)', function (): void {
+    $user = arsUser('admin-finance');
+
+    $this->actingAs($user)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.activate', 1))
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.deactivate', 1))
+        ->assertForbidden();
+});
+
+it('R17-http: admin-operations is forbidden from activate/deactivate', function (): void {
+    $user = arsUser('admin-operations');
+
+    $this->actingAs($user)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.activate', 1))
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.deactivate', 1))
+        ->assertForbidden();
+});
+
+it('R17-http: admin-compliance passes the activate/deactivate gate (not forbidden)', function (): void {
+    $user = arsUser('admin-compliance');
+
+    $activate = $this->actingAs($user)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.activate', 999999))
+        ->status();
+
+    $deactivate = $this->actingAs($user)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.deactivate', 999999))
+        ->status();
+
+    expect($activate)->not->toBe(403);
+    expect($deactivate)->not->toBe(403);
+});
+
 it('R17-http: a non-admin-family user cannot reach the admin area at all', function (): void {
     $user = User::create([
         'full_name' => 'Plain', 'email' => 'ars-plain-'.uniqid().'@test.com',
