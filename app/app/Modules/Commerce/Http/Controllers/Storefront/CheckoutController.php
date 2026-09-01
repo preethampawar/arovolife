@@ -93,7 +93,7 @@ final class CheckoutController extends Controller
 
         $areteCenters = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)
             ->orderBy('name')
-            ->get(['id', 'name', 'city', 'state', 'address_line1', 'contact_number', 'weekly_off']);
+            ->get(['id', 'name', 'city', 'state', 'address_line_1', 'address_line_2', 'pincode', 'contact_number', 'weekly_off']);
 
         return view('shop.checkout', [
             'cart' => $cart,
@@ -245,7 +245,7 @@ final class CheckoutController extends Controller
             $shipping = [
                 'name' => $validated['buyer_name'],
                 'phone' => '+91'.$validated['buyer_phone'],
-                'line1' => $center?->address_line1 ?? ($center?->location ?? 'Arete Development Centre'),
+                'line1' => $center?->address_line_1 ?? ($center?->location ?? 'Arete Development Centre'),
                 'line2' => $center?->city ?? null,
                 'city' => $center?->city ?? $center?->district ?? '',
                 'state' => $center?->state ?? '',
