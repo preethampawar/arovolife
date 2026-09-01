@@ -11,7 +11,6 @@ use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
-use App\Modules\Compensation\Console\Commands\CompensationRecomputeAllCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\FranchiseMonthlyRunCommand;
@@ -139,8 +138,6 @@ class AppServiceProvider extends ServiceProvider
                 PurchaseOffersMonthlyRunCommand::class,
                 MonthlyPayoutCommand::class,
                 RepurchaseEvaluateCommand::class,
-                // TESTING ONLY — removed with the recompute scaffold at sign-off.
-                CompensationRecomputeAllCommand::class,
             ]);
         }
 

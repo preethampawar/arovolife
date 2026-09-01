@@ -120,8 +120,7 @@
     </p>
     <p class="mt-1 text-xs text-red-700 max-w-4xl">
         Needs a queue worker that will let a job run for minutes —
-        <code class="font-mono bg-red-100 px-1 rounded">queue:work</code> or the
-        <code class="font-mono bg-red-100 px-1 rounded">compensation:recompute-all</code> command.
+        <code class="font-mono bg-red-100 px-1 rounded">queue:work</code>.
         <strong><code class="font-mono bg-red-100 px-1 rounded">queue:listen</code> cannot run this</strong>: it kills
         every job at 60 seconds, which leaves the database wiped and half-rebuilt.
     </p>

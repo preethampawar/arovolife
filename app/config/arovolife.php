@@ -70,14 +70,14 @@ return [
     |
     | While the client validates the plan end to end they need the opposite:
     | every run computed against live data. Setting this to true unlocks
-    | `compensation:recompute-all` and its admin button, which WIPE every
+    | the admin recompute button (Engine Runs page), which WIPES every
     | BV-derived row (bonuses, pools, carry-forwards, cycles, wallet credits,
     | payout batches) and replay the engines from the first BV date.
     |
     | NEVER set this in production. RecomputeGuard refuses there regardless,
     | but the env var should not exist in a production .env at all. The whole
     | feature is scheduled for deletion once the plan is signed off — see
-    | docs/runbooks/artisan-commands.md → compensation:recompute-all.
+    | docs/runbooks/artisan-commands.md (recompute scaffold revert checklist).
     */
     /*
     |--------------------------------------------------------------------------

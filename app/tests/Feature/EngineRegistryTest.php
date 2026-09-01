@@ -22,8 +22,6 @@ it('has exactly one registry entry per compensation console command', function (
     // period, produce no bonus, and must never appear on the Engine Runs page
     // or in a dependency chain.
     $notEngines = [
-        // TESTING ONLY — deleted with the recompute scaffold at client sign-off.
-        'CompensationRecomputeAllCommand',
         // DPDP retention housekeeping for ADC application documents (R-62):
         // deletes files, pays nothing, freezes nothing.
         'AdcPurgeRejectedDocumentsCommand',
