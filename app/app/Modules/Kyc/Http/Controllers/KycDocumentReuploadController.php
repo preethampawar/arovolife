@@ -24,10 +24,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * {@see KycDocumentFlaggedNotification}. Lets
  * the applicant re-upload only the flagged document — not the whole KYC.
  *
- * GET is gated by the 'signed' middleware (the URL itself is the auth for
- * the link). POST is auth + CSRF only; ownership and the flag still-active
- * check happen here, so a stale link cannot be replayed once the doc has
- * been re-uploaded.
+ * GET and POST are both gated by the 'signed' middleware (the URL itself is
+ * the auth for the link — SEC-B4); the form posts back to the signed URL the
+ * visitor arrived on. Ownership and the flag still-active check happen here
+ * too, so a stale link cannot be replayed once the doc has been re-uploaded.
  */
 final class KycDocumentReuploadController extends Controller
 {

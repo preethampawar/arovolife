@@ -18,7 +18,10 @@
             Upload a clearer version of your <strong>{{ $documentTypeHuman }}</strong>. The rest of your KYC submission is untouched — you only need to replace this one document.
         </p>
 
-        <form method="POST" action="{{ route('kyc.reupload.store', $document->id) }}" enctype="multipart/form-data" class="space-y-4">
+        {{-- Post back to the signed URL the visitor arrived on: the POST route
+             is also behind the `signed` middleware (SEC-B4), and GET/POST share
+             the path, so the signature + expires query params validate both. --}}
+        <form method="POST" action="{{ url()->full() }}" enctype="multipart/form-data" class="space-y-4">
             @csrf
 
             <div>

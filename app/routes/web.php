@@ -749,6 +749,7 @@ Route::middleware('auth')->group(function (): void {
         ->name('kyc.reupload.show');
     Route::post('/kyc/reupload/{document}', [KycDocumentReuploadController::class, 'store'])
         ->whereNumber('document')
+        ->middleware('signed')
         ->name('kyc.reupload.store');
 });
 
