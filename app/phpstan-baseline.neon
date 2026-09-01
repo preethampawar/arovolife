@@ -649,12 +649,6 @@ parameters:
 			path: app/Modules/Commerce/Services/CheckoutService.php
 
 		-
-			message: '#^Binary operation "%%" between float\|int\|string and 100000 results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: app/Modules/Commerce/Services/CheckoutService.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$max_discount_paise\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3387,7 +3381,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 4
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
 			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
 
 		-
@@ -3399,8 +3399,20 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withSession\(\)\.$#'
 			identifier: method.notFound
-			count: 1
+			count: 2
 			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/EligibilityDeclarationsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Kyc/KycDocumentReuploadSignedTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'

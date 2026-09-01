@@ -685,14 +685,18 @@ final class PayoutService
             ->selectRaw('COALESCE(SUM(gross_paise),0) AS gross, COALESCE(SUM(repurchase_deduction_paise + admin_charge_paise + tds_paise),0) AS deductions, COALESCE(SUM(net_transferred_paise),0) AS net, COUNT(*) AS cnt')
             ->first();
 
+        $grossPaise = (int) $paid->gross;
+        $netPaise = (int) $paid->net;
+        $distributorCount = (int) $paid->cnt;
+
         $batch->update([
             'status' => $failedCount > 0
                 ? PayoutBatch::STATUS_PARTIALLY_FAILED
                 : PayoutBatch::STATUS_PENDING,
-            'total_gross_paise' => (int) $paid->gross,
+            'total_gross_paise' => $grossPaise,
             'total_deductions_paise' => (int) $paid->deductions,
-            'total_net_paise' => (int) $paid->net,
-            'distributor_count' => (int) $paid->cnt,
+            'total_net_paise' => $netPaise,
+            'distributor_count' => $distributorCount,
             'processed_at' => now(),
         ]);
 
@@ -704,9 +708,9 @@ final class PayoutService
             'details' => [
                 'batch_id' => $batch->id,
                 'batch_type' => $batch->batch_type,
-                'total_gross_paise' => (int) $paid->gross,
-                'total_net_paise' => (int) $paid->net,
-                'distributor_count' => (int) $paid->cnt,
+                'total_gross_paise' => $grossPaise,
+                'total_net_paise' => $netPaise,
+                'distributor_count' => $distributorCount,
                 'failed_distributor_count' => $failedCount,
                 'status' => $batch->status,
             ],

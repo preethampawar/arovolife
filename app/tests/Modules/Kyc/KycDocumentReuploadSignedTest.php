@@ -19,6 +19,9 @@ uses(RefreshDatabase::class);
  * to it directly, forever. Both verbs are now behind the `signed` middleware
  * and the form posts back to the signed URL the visitor arrived on.
  */
+/**
+ * @return array{user: User, document: KycDocument}
+ */
 function kdrSeedFlaggedDocument(): array
 {
     $user = User::create([
