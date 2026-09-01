@@ -7,6 +7,8 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Services\DistributorIdCardStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
@@ -104,4 +106,13 @@ it('never exposes another distributor\'s withdrawal income (own data only)', fun
 
     $this->actingAs($me->user);
     expect(app(DistributorIdCardStats::class)->full($other)['total_withdrawal_income'])->toBeNull();
+});
+
+it('logs a warning when the downline-visibility switch cannot be read', function (): void {
+    Schema::drop('settings');
+
+    Log::shouldReceive('warning')->once()
+        ->with(Mockery::pattern('/downlineStatsVisible/'), Mockery::type('array'));
+
+    expect(app(DistributorIdCardStats::class)->downlineStatsVisible())->toBeFalse();
 });

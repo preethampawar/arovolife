@@ -13,6 +13,7 @@ use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
 
@@ -127,7 +128,11 @@ final class DistributorIdCardStats
             return DB::table('settings')
                 ->where('key', self::DOWNLINE_STATS_SETTING)
                 ->value('value') === 'true';
-        } catch (QueryException) {
+        } catch (QueryException $e) {
+            Log::warning('DistributorIdCardStats::downlineStatsVisible query failed — treating switch as OFF', [
+                'exception' => $e,
+            ]);
+
             return false;
         }
     }
@@ -198,7 +203,12 @@ final class DistributorIdCardStats
 
         try {
             return app(RankStatusService::class)->labelsForMany($ids);
-        } catch (QueryException) {
+        } catch (QueryException $e) {
+            Log::warning('DistributorIdCardStats::rankLabels query failed — hiding ranks', [
+                'distributor_ids' => $ids,
+                'exception' => $e,
+            ]);
+
             return [];
         }
     }
@@ -221,7 +231,12 @@ final class DistributorIdCardStats
             return app(PersonalBvTitleService::class)
                 ->forBvPaise($this->bvLedger->totalPersonalBvPaise($distributor->id))
                 ->title;
-        } catch (QueryException) {
+        } catch (QueryException $e) {
+            Log::warning('DistributorIdCardStats::ownPersonalTitle query failed — hiding title', [
+                'distributor_id' => $distributor->id,
+                'exception' => $e,
+            ]);
+
             return null;
         }
     }
@@ -240,7 +255,12 @@ final class DistributorIdCardStats
 
         try {
             $paise = app(PayoutService::class)->totalTransferredPaise((int) $distributor->id);
-        } catch (QueryException) {
+        } catch (QueryException $e) {
+            Log::warning('DistributorIdCardStats::ownTotalWithdrawalIncome query failed — hiding figure', [
+                'distributor_id' => $distributor->id,
+                'exception' => $e,
+            ]);
+
             return null;
         }
 
@@ -284,7 +304,12 @@ final class DistributorIdCardStats
 
         try {
             return Storage::disk('s3')->temporaryUrl($key, now()->addMinutes(15));
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('DistributorIdCardStats::photoUrl S3 temporary URL failed — omitting photo', [
+                'distributor_id' => $distributor->id,
+                'exception' => $e,
+            ]);
+
             return null;
         }
     }
