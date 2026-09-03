@@ -2271,30 +2271,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 6
-			path: tests/Modules/Commerce/FranchiseApplicationTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Commerce/FranchiseApplicationTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 8
-			path: tests/Modules/Commerce/FranchiseCommissionTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: tests/Modules/Commerce/FranchiseCommissionTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Commerce/MembersOnlyCheckoutTest.php
 

@@ -41,13 +41,21 @@ return new class extends Migration
         Schema::dropIfExists('franchises');
 
         // ── 4. Remove franchise_credit from wallet_ledger_entries.type enum ──
+        // MySQL-only DDL. SQLite (the test database) has no ENUM to narrow —
+        // the wider CHECK constraint left by the 2026-08-29 widen is harmless.
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         DB::statement("ALTER TABLE wallet_ledger_entries MODIFY COLUMN type ENUM('gsb_credit','mb_credit','gbb_credit','rank_credit','fortune_credit','adc_credit','awards_credit','payout_debit','repurchase_deduction','rank_cap_forfeit','income_cap_forfeit','manual_credit','reversal','repurchase_wallet_used') NOT NULL");
     }
 
     public function down(): void
     {
-        // Restore franchise_credit enum value
-        DB::statement("ALTER TABLE wallet_ledger_entries MODIFY COLUMN type ENUM('gsb_credit','mb_credit','gbb_credit','rank_credit','fortune_credit','adc_credit','awards_credit','franchise_credit','payout_debit','repurchase_deduction','rank_cap_forfeit','income_cap_forfeit','manual_credit','reversal','repurchase_wallet_used') NOT NULL");
+        // Restore franchise_credit enum value (MySQL only — see up()).
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE wallet_ledger_entries MODIFY COLUMN type ENUM('gsb_credit','mb_credit','gbb_credit','rank_credit','fortune_credit','adc_credit','awards_credit','franchise_credit','payout_debit','repurchase_deduction','rank_cap_forfeit','income_cap_forfeit','manual_credit','reversal','repurchase_wallet_used') NOT NULL");
+        }
 
         Schema::table('orders', function (Blueprint $table): void {
             $table->dropForeign('fk_orders_arete_center');
