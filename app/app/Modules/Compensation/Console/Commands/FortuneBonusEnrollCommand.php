@@ -48,6 +48,7 @@ final class FortuneBonusEnrollCommand extends Command
 
         $this->line('Enrolled: '.$result['enrolled']);
         $this->line('Skipped (ineligible or already enrolled): '.$result['skipped_ineligible']);
+        $this->line('  of which repurchase wallet not zero at month end: '.$result['skipped_wallet_nonzero']);
 
         return self::SUCCESS;
     }

@@ -690,3 +690,99 @@ it('runForMonth is idempotent — re-running does not double-credit', function (
     expect(FortuneBonusResult::where('distributor_id', $top->id)->count())->toBe(1);
     expect(WalletLedgerEntry::where('distributor_id', $top->id)->where('type', 'fortune_credit')->count())->toBe(1);
 });
+
+// ── "Repurchase Wallet zero" gate ──────────────────────────────────────────
+
+/** A repurchase-wallet ledger entry: a payout deduction credit or a checkout debit, at an explicit instant. */
+function seedRepurchaseWalletEntryForFortune(int $distributorId, int $amountPaise, string $type, string $createdAt): void
+{
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'type' => $type,
+        'amount_paise' => $type === 'repurchase_wallet_used' ? -abs($amountPaise) : abs($amountPaise),
+        'reference_id' => null,
+        'reference_type' => null,
+        'memo' => 'test',
+        'created_at' => $createdAt,
+    ]);
+}
+
+it('does not enroll a non-ranked distributor whose repurchase wallet is not zero at month end', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedTitleBvForFortune($dist->id);
+    seedPersonalBvForFortune($dist->id, 60_000);
+    seedGsbCredit($dist->id, '2026-06-05');
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-03 09:00:00');
+
+    $svc = app(FortuneBonusService::class);
+
+    expect($svc->enrollEligible($month)['enrolled'])->toBe(0);
+
+    // Spending the wallet down to ₹0 inside the month clears the gate.
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_wallet_used', '2026-06-20 18:30:00');
+
+    expect($svc->enrollEligible($month)['enrolled'])->toBe(1);
+    expect(FortuneBonusParticipant::where('distributor_id', $dist->id)->value('eligibility_tier'))->toBe('non_ranked');
+});
+
+it('judges the repurchase wallet as of the last day of the month, not the run date', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedTitleBvForFortune($dist->id);
+    seedPersonalBvForFortune($dist->id, 60_000);
+    seedGsbCredit($dist->id, '2026-06-05');
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-03 09:00:00');
+    // Spent only in July — too late for June's matrix, even though enrolment runs on the 9th.
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_wallet_used', '2026-07-02 10:00:00');
+
+    expect(app(FortuneBonusService::class)->enrollEligible($month)['enrolled'])->toBe(0);
+});
+
+it('exempts a month-1 joiner from the repurchase-wallet gate', function (): void {
+    $dist = registerDistributorForFortune('2026-06-02');
+    $month = Carbon::parse('2026-06-01');
+
+    seedPersonalBvForFortune($dist->id, 300_000);
+    seedGsbCredit($dist->id, '2026-06-05', slab: 1);
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
+
+    expect(app(FortuneBonusService::class)->enrollEligible($month)['enrolled'])->toBe(1);
+    expect(FortuneBonusParticipant::where('distributor_id', $dist->id)->value('eligibility_tier'))->toBe('new_joiner');
+});
+
+it('lets the developer switch the repurchase-wallet gate off', function (): void {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.fortune.require_repurchase_wallet_zero'],
+        ['value' => 'false', 'version' => 1, 'updated_at' => now()],
+    );
+
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedTitleBvForFortune($dist->id);
+    seedPersonalBvForFortune($dist->id, 60_000);
+    seedGsbCredit($dist->id, '2026-06-05');
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-03 09:00:00');
+
+    expect(app(FortuneBonusService::class)->enrollEligible($month)['enrolled'])->toBe(1);
+});
+
+it('gates a rank-1 distributor on the repurchase wallet too, and reports the exclusion', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedRankQualForFortune($dist->id, 1, '2026-06-01');
+    seedPersonalBvForFortune($dist->id, 100_000);
+    for ($day = 1; $day <= 8; $day++) {
+        seedGsbCredit($dist->id, sprintf('2026-06-%02d', $day));
+    }
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-03 09:00:00');
+
+    $result = app(FortuneBonusService::class)->enrollEligible($month);
+
+    expect($result['enrolled'])->toBe(0);
+    expect($result['skipped_wallet_nonzero'])->toBe(1);
+});

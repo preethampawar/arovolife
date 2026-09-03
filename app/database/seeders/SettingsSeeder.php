@@ -90,6 +90,7 @@ final class SettingsSeeder extends Seeder
             'comp.fortune.exclude_rank_7' => 'true',
             'comp.fortune.exclude_rank_8' => 'true',
             'comp.fortune.exclude_rank_9' => 'true',
+            'comp.fortune.require_repurchase_wallet_zero' => 'true', // "Repurchase Wallet zero" gate, month-end balance
         ];
 
         $records = [];

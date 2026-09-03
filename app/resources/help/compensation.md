@@ -175,7 +175,7 @@ The **FB Monthly Calculation** report shows one **month header** per month on vi
 
 ### Who is enrolled
 
-Every gate is assessed **per month**, and the distributor's repurchase wallet must be clear — missing the repurchase due date suspends the month's Fortune Bonus immediately (grace_days = 0; there is no held window).
+Every gate is assessed **per month**. **"Wallet zero"** means the distributor's **repurchase wallet balance was ₹0 on the last day of the month** — the 10% repurchase deduction credited to it at payout was spent on products before month end. Entries after month end do not count either way (enrolment runs on the 9th); a distributor who never received a deduction has a ₹0 balance and passes; month-1 joiners are exempt (rule 1 carries no wallet condition). Developer toggle **Fortune Bonus: require repurchase wallet zero** (Settings → Compensation plan), ON by default; this reading of the plan text is awaiting the client's confirmation. Switching the toggle off later does **not** re-enrol anyone into a month that is already frozen — exclusions are logged (`fortune.enroll.skipped_wallet_nonzero`, with the balance) and counted by the enrol command so a remediation list exists. Separately, missing the repurchase due date suspends the month's Fortune Bonus immediately (grace_days = 0; there is no held window).
 
 | Tier | Personal BV required | GSB slab achievements required in the month |
 |---|---|---|

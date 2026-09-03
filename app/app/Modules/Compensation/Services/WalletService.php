@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Support\EngineRunContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class WalletService
@@ -178,6 +179,45 @@ class WalletService
             ->sum('amount_paise'));
 
         return max(0, $credits - $debits);
+    }
+
+    /**
+     * Repurchase-wallet balance of many distributors at once, as it stood at
+     * the end of a given instant (entries created after `$asOf` are ignored).
+     * Same arithmetic as repurchaseWalletBalancePaise(); distributors with no
+     * entries are simply absent from the result (balance 0).
+     *
+     * Used by the Fortune enrolment gate, which runs on the 9th but has to
+     * judge the wallet as of the last day of the month being enrolled.
+     *
+     * Only the two repurchase entry types are counted: a repurchase deduction
+     * must be undone by a negative `repurchase_deduction` entry, never by a
+     * generic `reversal` row, or the balance here overstates and the gate
+     * excludes wrongly.
+     *
+     * @param  list<int>  $distributorIds
+     * @return array<int, int> distributor_id → balance in paise, floored at 0
+     */
+    public function repurchaseWalletBalancesAsOfPaise(array $distributorIds, \DateTimeInterface $asOf): array
+    {
+        if ($distributorIds === []) {
+            return [];
+        }
+
+        $rows = DB::table('wallet_ledger_entries')
+            ->whereIn('distributor_id', $distributorIds)
+            ->whereIn('type', ['repurchase_deduction', 'repurchase_wallet_used'])
+            ->where('created_at', '<=', $asOf)
+            ->groupBy('distributor_id')
+            ->selectRaw("distributor_id, COALESCE(SUM(CASE WHEN type = 'repurchase_deduction' THEN amount_paise ELSE 0 END), 0) AS credits, COALESCE(SUM(CASE WHEN type = 'repurchase_wallet_used' THEN ABS(amount_paise) ELSE 0 END), 0) AS debits")
+            ->get();
+
+        $balances = [];
+        foreach ($rows as $row) {
+            $balances[(int) $row->distributor_id] = max(0, (int) $row->credits - (int) $row->debits);
+        }
+
+        return $balances;
     }
 
     /**

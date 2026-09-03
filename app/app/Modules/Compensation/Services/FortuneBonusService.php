@@ -93,7 +93,7 @@ final class FortuneBonusService
      * denominator, so the month would pay out more than pool_paise. The month
      * is closed to new entrants the moment runForMonth() freezes it.
      *
-     * @return array{enrolled: int, skipped_ineligible: int, refused_pool_frozen: bool}
+     * @return array{enrolled: int, skipped_ineligible: int, skipped_wallet_nonzero: int, refused_pool_frozen: bool}
      */
     public function enrollEligible(Carbon $month): array
     {
@@ -109,6 +109,7 @@ final class FortuneBonusService
             return [
                 'enrolled' => 0,
                 'skipped_ineligible' => 0,
+                'skipped_wallet_nonzero' => 0,
                 'refused_pool_frozen' => true,
             ];
         }
@@ -139,6 +140,17 @@ final class FortuneBonusService
         // Highest rank per distributor for this month.
         $rankMap = $this->buildRankMap($monthStart);
 
+        // "Repurchase Wallet zero" (the client's rules 2–7): the repurchase
+        // wallet as it stood at the end of the month being enrolled. Enrolment
+        // runs on the 9th, so entries after month end must not count either way.
+        $requireWalletZero = $this->plan->fortuneRequiresRepurchaseWalletZero();
+        $walletBalances = $requireWalletZero
+            ? $this->wallet->repurchaseWalletBalancesAsOfPaise(
+                array_map(intval(...), array_keys($firstGsbDates)),
+                $month->copy()->endOfMonth(),
+            )
+            : [];
+
         // Determine next available position (existing participants claim positions already).
         $highestPosition = (int) DB::table('fortune_bonus_participants')
             ->where('month_start', $monthStart)
@@ -146,6 +158,7 @@ final class FortuneBonusService
         $nextPosition = $highestPosition + 1;
 
         $eligibles = [];
+        $skippedWalletNonzero = 0;
 
         foreach ($firstGsbDates as $distributorId => $firstGsbDate) {
             if (in_array($distributorId, $ineligibleRankIds, true)) {
@@ -194,6 +207,25 @@ final class FortuneBonusService
                 continue;
             }
 
+            // From the second month onward the repurchase wallet must have been
+            // spent down to ₹0 by the last day of the month (rule 1, the month of
+            // registration, carries no wallet condition — whatever tier the
+            // joiner lands in). A distributor who never received a deduction has
+            // a ₹0 balance and passes. The exclusion is irreversible once the
+            // month freezes, so it is logged with the balance that caused it.
+            $walletBalance = $walletBalances[(int) $distributorId] ?? 0;
+            if ($requireWalletZero && ! isset($newJoinerIds[$distributorId]) && $walletBalance > 0) {
+                Log::info('fortune.enroll.skipped_wallet_nonzero', [
+                    'distributor_id' => (int) $distributorId,
+                    'month_start' => $monthStart,
+                    'tier' => $tier,
+                    'repurchase_wallet_balance_paise' => $walletBalance,
+                ]);
+                $skippedWalletNonzero++;
+
+                continue;
+            }
+
             $eligibles[] = [
                 'distributor_id' => $distributorId,
                 'first_gsb_date' => $firstGsbDate,
@@ -229,6 +261,7 @@ final class FortuneBonusService
         return [
             'enrolled' => $enrolled,
             'skipped_ineligible' => count($firstGsbDates) - $enrolled,
+            'skipped_wallet_nonzero' => $skippedWalletNonzero,
             'refused_pool_frozen' => false,
         ];
     }

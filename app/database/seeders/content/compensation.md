@@ -1,4 +1,4 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-08-07. CONTAINS AN UNRESOLVED PLACEHOLDER: the §6.2 effective date in §5.4, §6.5 and §7.6 must be inserted before any of those pooled-pricing methods is switched on. -->
+<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-09-03 (amended §7.2 repurchase-wallet condition and §7.4 per-level maximums; previous v2026-08-07). CONTAINS AN UNRESOLVED PLACEHOLDER: the §6.2 effective date in §5.4, §6.5 and §7.6 must be inserted before any of those pooled-pricing methods is switched on. -->
 
 This page is the published Compensation Plan disclosure of Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife", "the Company"), required by §6.2 of the [Direct Seller Agreement](/p/terms) and by Rule 5 of the Consumer Protection (Direct Selling) Rules 2021 ("DSR 2021").
 
@@ -146,7 +146,7 @@ Positions are allocated **first-come, first-served**, in the order in which each
 
 ### 7.2 Participation conditions
 
-A Distributor is entered into a month's matrix only if they meet all of the conditions for their category in that month, and their repurchase wallet is cleared:
+A Distributor is entered into a month's matrix only if they meet all of the conditions for their category in that month and, from the second month onward, the repurchase wallet described in §8 stood at zero on the last day of that month. The repurchase wallet is credited with the 10% deduction under §8 and is applied automatically against the Distributor's own product purchases at checkout; it is cleared only by purchasing products, and its balance is shown on the Distributor's Wallet page. A balance remaining on the last day of a month cannot be cured afterwards and excludes the Distributor from that month's matrix only. The calendar month in which the Distributor registers carries no wallet condition.
 
 | Category | Personal BV required | Genos Sales Bonus slabs required in the month |
 |---|---|---|
@@ -199,7 +199,7 @@ The following are applied to bonuses before payment:
 |---|---|---|---|
 | Administrative charge | 3% | ₹25,000 per payout period | GSB, MSB, Rank Bonus, Growth Booster, Fortune and Arete Development Centre bonuses |
 | Tax Deducted at Source | 5% | — | All monetary bonuses, as required by the Income-tax Act 1961 |
-| Repurchase wallet | 10% of the prior period's GSB + MSB + Growth Booster + Rank Bonus + Fortune | ₹10,000 | Credited to your repurchase wallet for use against future product purchases |
+| Repurchase wallet | 10% of the prior period's GSB + MSB + Growth Booster + Rank Bonus + Fortune | ₹10,000 | Credited to your repurchase wallet and applied automatically against your own product purchases at checkout; not withdrawable as cash. From the second month onward, a balance remaining on the last day of a month excludes you from that month's Fortune Bonus matrix (§7.2) |
 
 Non-cash awards are not subject to the administrative charge. Applicable tax on non-cash awards is dealt with separately at the time of release. TDS rates are those in force on the date of payment.
 

@@ -52,8 +52,18 @@ Paid ₹12,02,430; leftover ₹14,57,570. Locked by `FortuneDistributionCalculat
 | ₹36cr example shift (L8 ₹624, leftover ₹24,576) | Intended |
 | Where caps live | Plan Settings — admin visible, developer editable |
 
+## Implemented pending the client's confirmation
+
+**"Repurchase Wallet zero" (built 2026-09-03).** Read as: the distributor's repurchase-wallet
+balance (10% payout deduction credits minus checkout debits) was ₹0 on the last day of the
+month being enrolled. Applies to the non-ranked and rank 1–5 tiers; month-1 joiners are exempt
+(rule 1 has no wallet condition); a distributor who never received a deduction passes. Entries
+after month end are ignored even though enrolment runs on the 9th. Developer toggle
+`comp.fortune.require_repurchase_wallet_zero` (default ON). If the client instead means "only
+the repurchase BV matters", switch it OFF; if they mean "the BV must be bought *with* the
+wallet", that is a further change.
+
 ## Still open with the client
 
-What "repurchase wallet zero" checks; FCFS vs Genos/sponsor-derived placement; rank of the
-month vs highest rank ever; positions beyond 29,524 (placed but ₹0?); new-distributor timing;
-the 9th as run date.
+FCFS vs Genos/sponsor-derived placement; rank of the month vs highest rank ever; positions
+beyond 29,524 (placed but ₹0?); new-distributor timing; the 9th as run date.

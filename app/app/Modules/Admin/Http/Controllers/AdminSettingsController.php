@@ -1047,6 +1047,14 @@ final class AdminSettingsController extends Controller
                 'type' => 'bool',
                 'default' => 'true',
             ],
+            'comp.fortune.require_repurchase_wallet_zero' => [
+                'group' => 'compensation_plan',
+                'feature' => FortuneBonusFeature::class,
+                'label' => 'Fortune Bonus: require repurchase wallet zero',
+                'description' => 'When ON, a non-ranked or rank 1–5 distributor is enrolled in the month\'s Fortune matrix only if their repurchase wallet balance was ₹0 on the last day of that month (the plan\'s "Repurchase Wallet zero" condition). Month-1 joiners are exempt. Awaiting the client\'s confirmation of this reading.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
 
             // ── Payments ───────────────────────────────────────────────────
             'payments.gateway.razorpay.enabled' => [

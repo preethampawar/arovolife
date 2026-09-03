@@ -131,6 +131,14 @@ final class CompensationPlanSettingsService
         'comp.fortune.exclude_rank_7' => true,
         'comp.fortune.exclude_rank_8' => true,
         'comp.fortune.exclude_rank_9' => true,
+        // "Repurchase Wallet zero" gate (the client's plan text, rules 2–7):
+        // a ranked or non-ranked distributor is enrolled only if their
+        // repurchase wallet stood at ₹0 on the last day of the month, i.e.
+        // the 10% deduction credited to it was spent on products. Month-1
+        // joiners are exempt (rule 1 carries no wallet condition). Reading (a)
+        // of the open question to the client — switch OFF if they rule that
+        // only the repurchase BV matters.
+        'comp.fortune.require_repurchase_wallet_zero' => true,
     ];
 
     /** @var array<string, string>|null Lazily-loaded settings key→value map. */
@@ -653,6 +661,15 @@ final class CompensationPlanSettingsService
     public function fortuneMinCommissionPaise(): int
     {
         return $this->scalarInt('comp.fortune.min_commission_paise');
+    }
+
+    /**
+     * Whether Fortune enrolment requires the repurchase wallet to be ₹0 at
+     * month end for every tier except the month-1 joiner.
+     */
+    public function fortuneRequiresRepurchaseWalletZero(): bool
+    {
+        return $this->scalarBool('comp.fortune.require_repurchase_wallet_zero');
     }
 
     /**
