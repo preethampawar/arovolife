@@ -141,7 +141,7 @@ function registerDistributorForFortune(string $effectiveDate): Distributor
 
 // ── Matrix geometry ─────────────────────────────────────────────────────────
 
-it('exposes the KP 2026-08-09 cascade config — depth points, modes, caps, ₹30 minimum', function (): void {
+it('exposes the 2026-09-03 cascade config — depth points, every level capped, ₹30 minimum', function (): void {
     $plan = app(CompensationPlanSettingsService::class);
 
     // Depth points 1L-9P … 9L-1P.
@@ -157,9 +157,11 @@ it('exposes the KP 2026-08-09 cascade config — depth points, modes, caps, ₹3
         ->and($configs[4]['cap_paise'])->toBe(2_000_000)
         ->and($configs[5]['cap_paise'])->toBe(1_000_000)
         ->and($configs[6]['cap_paise'])->toBe(500_000)
-        ->and($configs[7])->toBe(['payout_mode' => 'residual', 'cap_paise' => null, 'points_per_member' => 3])
-        ->and($configs[8]['payout_mode'])->toBe('residual')
-        ->and($configs[9])->toBe(['payout_mode' => 'flat_min', 'cap_paise' => null, 'points_per_member' => 1]);
+        // Client notes 2026-09-03: levels 7–9 are ordinary capped levels
+        // (₹2,500 / ₹1,500 / ₹30) — no residual sharing, no flat mode.
+        ->and($configs[7])->toBe(['payout_mode' => 'capped', 'cap_paise' => 250_000, 'points_per_member' => 3])
+        ->and($configs[8])->toBe(['payout_mode' => 'capped', 'cap_paise' => 150_000, 'points_per_member' => 2])
+        ->and($configs[9])->toBe(['payout_mode' => 'capped', 'cap_paise' => 3_000, 'points_per_member' => 1]);
 
     expect($plan->fortuneMinCommissionPaise())->toBe(3000);
 });
@@ -638,6 +640,38 @@ it('re-credits a deleted result at the frozen per-level value, not live config',
     $row = FortuneBonusResult::where('distributor_id', $top->id)->first();
     expect((int) $row->gross_paise)->toBe($paidGross)
         ->and((int) $row->point_value_paise)->toBe($frozenValue);
+});
+
+it('re-credits a month frozen under the legacy residual rule at its own snapshot, not the 2026-09-03 caps', function (): void {
+    $month = Carbon::parse('2026-06-01');
+
+    // A level-7 member (first position of level 7 is 1,094) with one level-8
+    // child (3 × 1,094 = 3,282 → parentPosition = 1,094): 9 points at L7.
+    $deep = Distributor::factory()->create();
+    placeFortuneParticipant($deep->id, 1094);
+    placeFortuneParticipant(Distributor::factory()->create()->id, 3282);
+
+    // The month was configured under the 2026-08-09 rule: L7–8 residual, L9 flat.
+    DB::table('fortune_bonus_levels')->whereIn('level', [7, 8])->update(['payout_mode' => 'residual', 'cap_paise' => null]);
+    DB::table('fortune_bonus_levels')->where('level', 9)->update(['payout_mode' => 'flat_min', 'cap_paise' => null]);
+
+    seedCompanyBvForFortunePool(20_00_000_00); // ₹1,00,000 pool
+
+    $svc = app(FortuneBonusService::class);
+    $svc->runForMonth($month);
+
+    // Uncapped residual: (1,00,000 − 60) ÷ 9 = ₹11,104 → 30 + 9 × 11,104 = ₹99,966.
+    $legacyGross = (int) FortuneBonusResult::where('distributor_id', $deep->id)->first()->gross_paise;
+    expect($legacyGross)->toBe(99_966_00)
+        ->and(DB::table('fortune_monthly_pool_levels')->where('matrix_level', 7)->value('payout_mode'))->toBe('residual');
+
+    // The 2026-09-03 migration lands afterwards: level 7 becomes capped ₹2,500.
+    DB::table('fortune_bonus_levels')->where('level', 7)->update(['payout_mode' => 'capped', 'cap_paise' => 250_000]);
+    FortuneBonusResult::where('distributor_id', $deep->id)->delete();
+
+    $svc->runForMonth($month);
+
+    expect((int) FortuneBonusResult::where('distributor_id', $deep->id)->first()->gross_paise)->toBe($legacyGross);
 });
 
 it('runForMonth is idempotent — re-running does not double-credit', function (): void {

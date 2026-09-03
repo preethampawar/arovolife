@@ -8,7 +8,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Seeds the Fortune Bonus per-level configuration (KP 2026-08-09 cascade).
+ * Seeds the Fortune Bonus per-level configuration (client notes 2026-09-03).
  *
  * The table does double duty:
  *  - `points_per_member` on row d is read by RELATIVE DEPTH: a participant
@@ -16,13 +16,16 @@ use Illuminate\Support\Facades\DB;
  *    depth 1 is worth 9 points, depth 2 → 8, … depth 9 → 1 (1L-9P … 9L-1P).
  *    Depth 0 is yourself and is worth nothing.
  *  - `payout_mode` / `cap_paise` on row L are read by ABSOLUTE MATRIX LEVEL:
- *    levels 0–6 are 'capped' with per-member ceilings ₹30k/₹30k/₹30k/₹30k/
- *    ₹20k/₹10k/₹5k (the cap INCLUDES the ₹30 minimum commission), levels 7–8
- *    are 'residual' (one shared point value over their combined points, no
- *    cap) and level 9 is 'flat_min' (the ₹30 minimum only).
+ *    every level is 'capped' — each level recomputes its own whole-rupee
+ *    point value from the pool and points carried forward from the level
+ *    above, and each member's income is limited to the level's ceiling
+ *    ₹30k/₹30k/₹30k/₹30k/₹20k/₹10k/₹5k/₹2,500/₹1,500/₹30. The cap INCLUDES
+ *    the ₹30 minimum commission, so level 9's ₹30 cap pays the minimum only.
  *
- * This supersedes the 2026-08-07 single-point-value engine (depth points
- * 9/9/9/8/7/6/5/4/3, one global value). Idempotent: upsert keyed on `level`.
+ * The 2026-09-03 notes supersede the 2026-08-09 cascade, which priced levels
+ * 7–8 together at one uncapped 'residual' value and paid level 9 as
+ * 'flat_min'; those modes remain understood by the engine for months frozen
+ * before the change. Idempotent: upsert keyed on `level`.
  */
 final class FortuneBonusLevelsSeeder extends Seeder
 {
@@ -39,9 +42,9 @@ final class FortuneBonusLevelsSeeder extends Seeder
             4 => [6, 'capped', 2_000_000],
             5 => [5, 'capped', 1_000_000],
             6 => [4, 'capped', 500_000],
-            7 => [3, 'residual', null],
-            8 => [2, 'residual', null],
-            9 => [1, 'flat_min', null],
+            7 => [3, 'capped', 250_000],
+            8 => [2, 'capped', 150_000],
+            9 => [1, 'capped', 3_000],
         ];
 
         $records = [];

@@ -21,7 +21,7 @@
             <x-help-tip text="The sum of every enrolled participant's FB points for the month — the denominator of the point value." />
             <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) : '—' }}</strong></span>
         <span class="text-gray-600">Point value
-            <x-help-tip text="Cascade months price each capped level against the remaining pool and share one value across the residual levels — see the per-level table below. Months run before the cascade carry one month-wide value." />
+            <x-help-tip text="Cascade months price every level against the pool and points carried forward from the level above, each with its own per-member cap — see the per-level table below. Months run before the cascade carry one month-wide value." />
             <strong class="text-gray-700">{{ $pool ? ($pool->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : 'Per level') : '—' }}</strong></span>
         <span class="text-gray-600">Minimum guarantee
             <x-help-tip text="Every qualifier's guaranteed minimum × the number of qualifiers, reserved off the pool before the cascade distributes." />
@@ -50,7 +50,7 @@
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-800">
         Frozen per-level economics
-        <x-help-tip text="Capped levels settle top-down, each at the whole-rupee floor of the remaining pool over all remaining points, with a per-member ceiling that includes the guaranteed minimum. Residual levels share one value over their combined points, uncapped. Flat-minimum levels receive the minimum only." />
+        <x-help-tip text="Levels settle top-down, each at the whole-rupee floor of the remaining pool over all remaining points, with a per-member ceiling that includes the guaranteed minimum (₹30 at level 9 = the minimum only). Legacy months may show Residual (one shared value, uncapped) or Flat-minimum levels from the rule in force before 03 Sep 2026." />
     </div>
     <div class="overflow-x-auto">
         <table class="min-w-full text-xs">

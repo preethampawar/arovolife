@@ -18,7 +18,7 @@
     Value = the whole-rupee point value applied at the distributor's matrix level in the month's
     cascade (the pool is 5% of company BV). Income includes the ₹30 minimum every qualifier
     receives and is capped per level (₹30,000 at levels 0–3, ₹20,000 / ₹10,000 / ₹5,000 at
-    levels 4–6; levels 7–8 share the residual pool; level 9 gets the minimum). Level = matrix
+    levels 4–6, ₹2,500 / ₹1,500 at levels 7–8, ₹30 at level 9). Level = matrix
     depth (0 = top); Date = the first GSB credit that enrolled them. Rows written before the
     cascade rework show "—" for points and value. Search by ADN or name.
 </div>
@@ -152,6 +152,7 @@
             </tbody>
         </table>
     </div>
+    <p class="px-4 py-2 text-xs text-gray-500 border-t border-gray-100">Income = ₹30 minimum (funded from the month's pool, pro-rated on a shortfall month) + FB Points × Value, limited to the level's maximum. The ₹30 is included in the single wallet credit and in the Income column; it is not a separate line.</p>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
 </div>

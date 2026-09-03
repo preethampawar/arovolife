@@ -143,9 +143,9 @@ The distributor's own **My Income → Rank Bonus** page opens with a **My rank s
 
 Below it, an **AO-GO offer** panel appears for anyone the offer can apply to (a rank achieved at least once): lifetime uses ("Used 1 of 3"), the points a grant is worth, and this month's conditions as a tick-list — a rank achieved in an earlier month, no rank held this month, lifetime uses remaining, plus (once the offer has been used) not used last month and a rank re-achieved since the last use, and always the month's requalification conditions. When the monthly run has already created the grant, the panel says so with the points recorded. Points only — no rupee figure, and no suggestion the grant will be made.
 
-## Fortune Bonus — monthly pool, downline points & level cascade (KP 2026-08-09)
+## Fortune Bonus — monthly pool, downline points & level cascade (client notes 2026-09-03)
 
-A monthly bonus funded from a share of the month's company BV, distributed through a level cascade: a guaranteed ₹30 minimum for every qualifier, per-level point values with per-member caps at the top of the matrix, a shared residual value deeper down, and the flat minimum at the bottom.
+A monthly bonus funded from a share of the month's company BV, distributed through a level cascade: a guaranteed ₹30 minimum for every qualifier and, level by level from 0 to 9, a point value recomputed from the pool and points carried forward with a per-member cap at every level (₹30 at level 9, i.e. the minimum only).
 
 ### The matrix
 
@@ -163,13 +163,13 @@ Members deeper than level 9 earn nothing. All nine figures are **admin-editable*
 
 ### Monthly pool & the level cascade
 
-The **FB Monthly Calculation** report shows one **month header** per month on view — month total BV, Fortune pool and rate, qualifiers, the minimum guarantee, total points, a Shortfall badge when the pool could not cover the guarantee, and Computed — followed by the cascade formula symbolically (pool; minimum guarantee = minimum × qualifiers; remaining = pool − guarantee; capped levels ascending at ⌊remaining ÷ points not yet paid⌋ with income = minimum + min(points × value, cap − minimum); residual levels at one shared value; minimum-only levels) and then with that month's frozen per-level values (mode, participants × points, point value, cap, paid) plus the payout and leftover.
+The **FB Monthly Calculation** report shows one **month header** per month on view — month total BV, Fortune pool and rate, qualifiers, the minimum guarantee, total points, a Shortfall badge when the pool could not cover the guarantee, and Computed — followed by the cascade formula symbolically (pool; minimum guarantee = minimum × qualifiers; remaining = pool − guarantee; every level ascending at ⌊remaining ÷ points not yet paid⌋ with income = minimum + min(points × value, cap − minimum), the paid amount and the level's points carried forward) and then with that month's frozen per-level values (mode, participants × points, point value, cap, paid) plus the payout and leftover.
 
 1. **Pool** = the *Fortune monthly pool rate* (Settings → Compensation plan, default **5%**) of the month's company-wide **BV** — the same signed BV-ledger sum the GSB, MSB and GBB pools use.
 2. **Minimum commission** — every qualifier is guaranteed the configured minimum (default **₹30**), reserved off the pool before anything else. If a month's pool cannot cover the guarantees, every qualifier gets the same pro-rated whole-rupee share (`floor(pool ÷ qualifiers)`) and nothing else that month; a ₹0 pool credits nothing.
 3. **Capped levels** (matrix levels 0–6 by default) settle top-down. Each level prices at `floor-to-whole-rupee(remaining pool ÷ ALL remaining points)`, and each member receives `minimum + points × value`, limited by the level's per-member cap — **₹30,000** at levels 0–3, **₹20,000** at level 4, **₹10,000** at level 5, **₹5,000** at level 6, every cap **including** the ₹30. What a level actually consumed is deducted before the next level's value is computed.
-4. **Residual levels** (7–8 by default) share **one** value computed over their **combined** points from whatever pool remains, uncapped: `minimum + points × value`.
-5. **Flat level** (9) receives the minimum only.
+4. **Levels 7–9** are ordinary capped levels since 03 Sep 2026 (client notes): ₹2,500 / ₹1,500 / ₹30 — the ₹30 cap at level 9 pays the minimum only. (Until then levels 7–8 shared one uncapped "residual" value and level 9 was a "flat" level; months frozen under that rule keep their own snapshot and reconstruct unchanged.)
+5. **Nobody below → minimum only.** A qualifier with no enrolled downline has no points and receives the ₹30 only; whatever the cascade does not pay stays with the company as leftover — it is never redistributed.
 6. Payout modes, caps and the minimum are all admin-editable (Plan settings → Fortune levels; the minimum under Settings → Compensation plan). There is **no manual override** of any computed value. Whatever the cascade cannot distribute — flooring remainders and cap headroom — stays unspent with the company.
 7. The month's economics — the pool row **and one row per matrix level** (`fortune_monthly_pool_levels`: mode, cap, participants, points, value, paid) — are frozen **before any credit** and never recomputed, so re-runs and single-distributor retries reconstruct incomes from the same snapshot (`fortune.pool.frozen` audit entry) — the same auditable design as the GSB, MSB and GBB pools. Sparse months keep the **absolute-level** treatment: caps stay glued to levels 0–6 even when deeper levels are empty.
 

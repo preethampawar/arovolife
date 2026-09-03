@@ -7,21 +7,30 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Shared\Support\Money;
 
 /**
- * Pure Fortune Bonus cascade allocator (KP 2026-08-09). No DB, no clock —
- * everything it needs arrives as arguments, so KP's full ₹36cr worked example
- * is unit-testable and a frozen month's allocation is exactly reproducible.
+ * Pure Fortune Bonus cascade allocator (client notes 2026-09-03). No DB, no
+ * clock — everything it needs arrives as arguments, so the client's ₹36cr and
+ * September (121-qualifier) worked examples are unit-testable and a frozen
+ * month's allocation is exactly reproducible.
  *
  * The minimum commission (₹30 × qualifiers) is reserved off the pool first;
- * every income below already includes it. Then absolute matrix levels pay in
- * three modes:
+ * every income below already includes it. Then absolute matrix levels settle
+ * top-down, level 0 to level 9, each carrying the unspent pool and the unpaid
+ * points forward to the next:
  *
  *  - capped:   value = floor_rupee(remaining pool ÷ ALL remaining points),
- *              recomputed per level ascending; a member earns
+ *              recomputed per level; a member earns
  *              min(points × value, cap − minimum) on top of the minimum.
- *              The cap INCLUDES the minimum ("₹30,000 including their ₹30").
- *  - residual: ONE shared value computed over ALL residual levels' combined
- *              points after the capped levels are settled; no cap.
- *  - flat_min: the minimum only (the bottom of the matrix).
+ *              The cap INCLUDES the minimum ("₹30,000 including their ₹30");
+ *              level 9's ₹30 cap therefore pays the minimum only. Members
+ *              with nobody below them have no points and receive the minimum
+ *              only — the unspent pool stays as leftover, never redistributed.
+ *
+ * Legacy modes, kept so months frozen under the 2026-08-09 cascade still
+ * reconstruct (no live level uses them since 2026-09-03):
+ *
+ *  - residual: ONE shared value over all residual levels' combined points
+ *              after the capped levels are settled; no cap.
+ *  - flat_min: the minimum only.
  *
  * When the pool cannot cover the guarantees, everyone gets
  * floor_rupee(pool ÷ qualifiers) and nothing else (user decision 2026-08-09
@@ -81,8 +90,9 @@ final class FortuneDistributionCalculator
         $residualLevels = [];
 
         // Capped levels settle ascending, each against a value recomputed over
-        // ALL points not yet paid (KP's example: 13/13/14/15/16/18/19).
-        // Residual and flat levels are only collected here and settle after.
+        // ALL points not yet paid (the client's ₹36cr example: 13/13/14/15/16/
+        // 18/19/20/22). Legacy residual levels are only collected here and
+        // settle after.
         foreach ($byLevel as $level => $members) {
             $mode = $levelConfigs[$level]['payout_mode'] ?? 'capped';
 

@@ -39,9 +39,9 @@
                 <li><span class="text-gray-500">1.</span> Fortune pool = Month total BV × Fortune pool %</li>
                 <li><span class="text-gray-500">2.</span> Minimum guarantee = Minimum commission × Qualifiers <span class="font-sans text-gray-500">(reserved off the pool first)</span></li>
                 <li><span class="text-gray-500">3.</span> Remaining pool = Fortune pool − Minimum guarantee</li>
-                <li><span class="text-gray-500">4.</span> Capped levels (ascending): Point value = ⌊ Remaining pool ÷ Points not yet paid ⌋; Income = Minimum + min( Points × Point value, Cap − Minimum )</li>
-                <li><span class="text-gray-500">5.</span> Residual levels: one shared Point value = ⌊ Remaining pool ÷ Residual points ⌋; Income = Minimum + Points × Point value</li>
-                <li><span class="text-gray-500">6.</span> Minimum-only levels: Income = Minimum</li>
+                <li><span class="text-gray-500">4.</span> Each level, 0 → 9: Point value = ⌊ Remaining pool ÷ Points not yet paid ⌋; Income = Minimum + min( Points × Point value, Cap − Minimum )</li>
+                <li><span class="text-gray-500">5.</span> Carry forward: Remaining pool −= what the level was paid above the minimum; Points not yet paid −= the level's points</li>
+                <li class="font-sans text-gray-500">Every level has its own per-member cap (₹30,000 / ₹30,000 / ₹30,000 / ₹30,000 / ₹20,000 / ₹10,000 / ₹5,000 / ₹2,500 / ₹1,500 / ₹30, including the minimum). A member with nobody below has no points and receives the minimum only; the unspent pool is leftover. Months frozen before 03 Sep 2026 may show legacy "Residual" (one shared value, uncapped) or "Minimum only" levels.</li>
                 <li class="font-sans text-gray-500">If the pool cannot cover the minimum guarantee, every qualifier gets ⌊ Fortune pool ÷ Qualifiers ⌋ and nothing else.</li>
             </ol>
         </div>

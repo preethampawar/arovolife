@@ -505,7 +505,7 @@
 @if($activeTab === 'fortune')
 <section class="mb-10">
     <h2 class="text-base font-semibold text-gray-800 mb-3">Fortune Bonus — matrix levels</h2>
-    <p class="text-xs text-gray-600 mb-3">Points per member apply by <strong>relative depth</strong> below a participant; payout mode and cap apply to the <strong>absolute matrix level</strong> in the monthly cascade. Caps include the guaranteed minimum commission (edited under Settings → Compensation plan).</p>
+    <p class="text-xs text-gray-600 mb-3">Points per member apply by <strong>relative depth</strong> below a participant; payout mode and cap apply to the <strong>absolute matrix level</strong> in the monthly cascade. Since 03 Sep 2026 every level is <strong>Capped</strong> with its own per-member ceiling (₹30,000 ×4, ₹20,000, ₹10,000, ₹5,000, ₹2,500, ₹1,500, ₹30); Residual and Minimum-only remain only for months frozen earlier. Caps include the guaranteed minimum commission (edited under Settings → Compensation plan).</p>
     <div class="grid grid-cols-1 gap-3">
         @foreach($fortuneLevels as $row)
         <form method="POST" action="{{ route('admin.compensation.plan-settings.fortune-level.update', $row->level) }}"
@@ -534,12 +534,12 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Payout mode (level {{ $row->level }}) <x-help-tip text="How this ABSOLUTE matrix level pays in the monthly cascade. Capped: per-level point value with a per-member ceiling. Residual: shares one point value with the other residual levels over their combined points, no cap. Flat minimum: the guaranteed minimum only." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Payout mode (level {{ $row->level }}) <x-help-tip text="How this ABSOLUTE matrix level pays in the monthly cascade. Capped (the plan rule for every level since 03 Sep 2026): per-level point value with a per-member ceiling. Residual and Flat minimum are legacy modes from the earlier cascade — shown only so months frozen under them stay readable; do not select them for a live level." /></label>
                     <select name="payout_mode" data-field-label="Payout mode at level {{ $row->level }}"
                             class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                         <option value="capped" @selected($row->payout_mode === 'capped')>Capped</option>
-                        <option value="residual" @selected($row->payout_mode === 'residual')>Residual</option>
-                        <option value="flat_min" @selected($row->payout_mode === 'flat_min')>Flat minimum</option>
+                        <option value="residual" @selected($row->payout_mode === 'residual')>Residual (legacy — frozen months only)</option>
+                        <option value="flat_min" @selected($row->payout_mode === 'flat_min')>Flat minimum (legacy — frozen months only)</option>
                     </select>
                 </div>
                 <div>
