@@ -93,6 +93,7 @@ function cdebPayload(string $email): array
         'ship_state' => 'Telangana',
         'ship_pincode' => '500001',
         'billing_same' => '1',
+        'delivery_type' => 'ship',
         'payment_method' => 'online',
         'accept_terms' => '1',
     ];

@@ -59,6 +59,7 @@ function cfhPayload(): array
         'ship_city' => 'Pune',
         'ship_state' => 'MH',
         'ship_pincode' => '411001',
+        'delivery_type' => 'ship',
         'payment_method' => 'online',
         'billing_same' => '1',
         'accept_terms' => '1',
