@@ -142,11 +142,11 @@ The Fortune Bonus is a monthly participation-based bonus. It is funded from **5%
 
 Participation is recorded in a matrix that is **three positions wide and nine levels deep**. The matrix is **rebuilt from empty every calendar month**; no position, level or point carries over from one month to the next.
 
-Positions are allocated **first-come, first-served**, in the order in which each qualifying Distributor first earned a Genos Sales Bonus that month. A Distributor's position depends only on that order and on how many Distributors qualified before them.
+Positions are allocated **first-come, first-served**, in the order in which each qualifying Distributor first earned a Genos Sales Bonus that month. A Distributor's position depends only on that order and on how many Distributors qualified before them. Where two Distributors first earned a Genos Sales Bonus on the same day, the Distributor who registered earlier is placed first. The matrix has 29,524 positions in total; if a month's positions are all taken, later qualifying Distributors are not entered into that month's matrix.
 
 ### 7.2 Participation conditions
 
-A Distributor is entered into a month's matrix only if they meet all of the conditions for their category in that month and, from the second month onward, the repurchase wallet described in §8 stood at zero on the last day of that month. The repurchase wallet is credited with the 10% deduction under §8 and is applied automatically against the Distributor's own product purchases at checkout; it is cleared only by purchasing products, and its balance is shown on the Distributor's Wallet page. A balance remaining on the last day of a month cannot be cured afterwards and excludes the Distributor from that month's matrix only. The calendar month in which the Distributor registers carries no wallet condition.
+A Distributor is entered into a month's matrix only if they meet all of the conditions for their category in that month and, from the second month onward, the repurchase wallet described in §8 stood at zero on the last day of that month. The repurchase wallet is credited with the 10% deduction under §8 and is applied automatically against the Distributor's own product purchases at checkout; it is cleared only by purchasing products, and its balance is shown on the Distributor's Wallet page. A balance remaining on the last day of a month cannot be cured afterwards and excludes the Distributor from that month's matrix only. The calendar month in which the Distributor registers carries no wallet condition. Meeting these conditions does not guarantee entry: positions are limited and allocated first-come, first-served (§7.1). A Distributor who meets every condition but for whom no position remains receives no Fortune Bonus for that month, and cannot know in advance whether a position will remain.
 
 | Category | Personal BV required | Genos Sales Bonus slabs required in the month |
 |---|---|---|
@@ -170,7 +170,7 @@ A Distributor earns points from the Distributors placed **below** them in that m
 |---|---|---|---|---|---|---|---|---|---|
 | Points per Distributor | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
 
-Nothing is earned from a Distributor more than nine levels below, and nothing is earned from one's own position. A Distributor who entered the matrix late in the month may therefore hold no points at all for that month; such a Distributor receives only the minimum amount described in §7.4, if the month's pool covers it.
+Nothing is earned from a Distributor more than nine levels below, and nothing is earned from one's own position. A Distributor who entered the matrix late in the month may therefore hold no points at all for that month; such a Distributor receives only the minimum amount described in §7.4, if the month's pool covers it. The matrix holds 29,524 positions (levels 0 to 9). Once every position is filled for a month, no further Distributor is entered into that month's matrix.
 
 ### 7.4 How the bonus is calculated
 

@@ -182,6 +182,7 @@ it('levelFromPosition returns correct matrix level', function (): void {
     expect(FortuneBonusParticipant::levelFromPosition(1094))->toBe(7);
     expect(FortuneBonusParticipant::levelFromPosition(3281))->toBe(8);
     expect(FortuneBonusParticipant::levelFromPosition(9842))->toBe(9);
+    expect(FortuneBonusParticipant::levelFromPosition(29_524))->toBe(9);
 });
 
 it('parentPosition inverts the sequential 3-wide fill and agrees with levelFromPosition', function (): void {
@@ -785,4 +786,86 @@ it('gates a rank-1 distributor on the repurchase wallet too, and reports the exc
 
     expect($result['enrolled'])->toBe(0);
     expect($result['skipped_wallet_nonzero'])->toBe(1);
+});
+
+// ── The matrix is levels 0–9 only ───────────────────────────────────────────
+
+it('enters the 29,524th qualifier at level 9 and refuses the 29,525th', function (): void {
+    $month = Carbon::parse('2026-06-01');
+
+    // Fill every position but the last with placeholder participants.
+    $now = now()->toDateTimeString();
+    foreach (array_chunk(range(1, FortuneBonusParticipant::MAX_POSITIONS - 1), 2000) as $chunk) {
+        DB::table('fortune_bonus_participants')->insert(array_map(fn (int $position): array => [
+            'distributor_id' => 500_000 + $position,
+            'month_start' => '2026-06-01',
+            'position' => $position,
+            'matrix_level' => FortuneBonusParticipant::levelFromPosition($position),
+            'eligibility_tier' => 'non_ranked',
+            'first_gsb_date' => '2026-06-02',
+            'enrolled_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $chunk));
+    }
+
+    $last = Distributor::factory()->create();
+    $shutOut = Distributor::factory()->create();
+    foreach ([$last, $shutOut] as $dist) {
+        seedTitleBvForFortune($dist->id);
+        seedPersonalBvForFortune($dist->id, 60_000);
+    }
+    seedGsbCredit($last->id, '2026-06-20');
+    seedGsbCredit($shutOut->id, '2026-06-21');
+
+    $result = app(FortuneBonusService::class)->enrollEligible($month);
+
+    expect($result['enrolled'])->toBe(1)
+        ->and($result['skipped_matrix_full'])->toBe(1);
+
+    $lastRow = FortuneBonusParticipant::where('distributor_id', $last->id)->first();
+    expect($lastRow->position)->toBe(FortuneBonusParticipant::MAX_POSITIONS)
+        ->and($lastRow->matrix_level)->toBe(9);
+    expect(FortuneBonusParticipant::where('distributor_id', $shutOut->id)->exists())->toBeFalse();
+    expect(DB::table('audit_log')->where('action', 'fortune.enroll.matrix_full')->where('subject_id', $shutOut->id)->exists())->toBeTrue();
+
+    // A second run changes nothing.
+    $again = app(FortuneBonusService::class)->enrollEligible($month);
+    expect($again['enrolled'])->toBe(0)->and($again['skipped_matrix_full'])->toBe(1);
+});
+
+it('refuses to compute a level for a position outside the matrix', function (): void {
+    expect(fn () => FortuneBonusParticipant::levelFromPosition(29_525))->toThrow(InvalidArgumentException::class);
+});
+
+it('stops entering qualifiers once the 29,524-position matrix is full', function (): void {
+    $month = Carbon::parse('2026-06-01');
+
+    // Fill every position with placeholder participants.
+    $now = now()->toDateTimeString();
+    foreach (array_chunk(range(1, FortuneBonusParticipant::MAX_POSITIONS), 2000) as $chunk) {
+        DB::table('fortune_bonus_participants')->insert(array_map(fn (int $position): array => [
+            'distributor_id' => 500_000 + $position,
+            'month_start' => '2026-06-01',
+            'position' => $position,
+            'matrix_level' => FortuneBonusParticipant::levelFromPosition($position),
+            'eligibility_tier' => 'non_ranked',
+            'first_gsb_date' => '2026-06-02',
+            'enrolled_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $chunk));
+    }
+
+    $late = Distributor::factory()->create();
+    seedTitleBvForFortune($late->id);
+    seedPersonalBvForFortune($late->id, 60_000);
+    seedGsbCredit($late->id, '2026-06-20');
+
+    $result = app(FortuneBonusService::class)->enrollEligible($month);
+
+    expect($result['enrolled'])->toBe(0)
+        ->and($result['skipped_matrix_full'])->toBe(1)
+        ->and(FortuneBonusParticipant::where('distributor_id', $late->id)->exists())->toBeFalse()
+        ->and((int) FortuneBonusParticipant::where('month_start', '2026-06-01')->max('position'))->toBe(FortuneBonusParticipant::MAX_POSITIONS);
 });

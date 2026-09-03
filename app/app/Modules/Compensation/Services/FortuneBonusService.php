@@ -60,7 +60,9 @@ use Illuminate\Support\Facades\Log;
  * Per-level points, eligibility tiers, and ineligible ranks are all
  * admin-editable via CompensationPlanSettingsService.
  *
- * Position → level: floor(log(2*position - 1, 3)).
+ * Position → level: floor(log(2*position - 1, 3)). The matrix is levels 0–9
+ * only — 29,524 positions; once a month's matrix is full, no further qualifier
+ * is entered for that month (the client, 2026-09-03).
  */
 final class FortuneBonusService
 {
@@ -93,7 +95,7 @@ final class FortuneBonusService
      * denominator, so the month would pay out more than pool_paise. The month
      * is closed to new entrants the moment runForMonth() freezes it.
      *
-     * @return array{enrolled: int, skipped_ineligible: int, skipped_wallet_nonzero: int, refused_pool_frozen: bool}
+     * @return array{enrolled: int, skipped_ineligible: int, skipped_wallet_nonzero: int, skipped_matrix_full: int, refused_pool_frozen: bool}
      */
     public function enrollEligible(Carbon $month): array
     {
@@ -110,6 +112,7 @@ final class FortuneBonusService
                 'enrolled' => 0,
                 'skipped_ineligible' => 0,
                 'skipped_wallet_nonzero' => 0,
+                'skipped_matrix_full' => 0,
                 'refused_pool_frozen' => true,
             ];
         }
@@ -238,9 +241,36 @@ final class FortuneBonusService
         );
 
         $enrolled = 0;
+        $skippedMatrixFull = 0;
 
-        DB::transaction(function () use ($eligibles, $monthStart, &$nextPosition, &$enrolled): void {
+        DB::transaction(function () use ($eligibles, $monthStart, &$nextPosition, &$enrolled, &$skippedMatrixFull): void {
             foreach ($eligibles as $eligible) {
+                // The matrix is levels 0–9 only. Once its 29,524 positions are
+                // taken, later qualifiers (by FCFS order) are not entered this
+                // month at all — logged, since the month cannot be reopened.
+                if ($nextPosition > FortuneBonusParticipant::MAX_POSITIONS) {
+                    // A qualifier shut out by capacity has met every gate, so
+                    // the exclusion gets a retention-guaranteed audit row a
+                    // grievance officer can query, not just a log line.
+                    $details = [
+                        'distributor_id' => $eligible['distributor_id'],
+                        'month_start' => $monthStart,
+                        'first_gsb_date' => $eligible['first_gsb_date'],
+                        'tier' => $eligible['tier'],
+                        'next_position' => $nextPosition,
+                    ];
+                    Log::info('fortune.enroll.matrix_full', $details);
+                    AuditLog::create([
+                        'action' => 'fortune.enroll.matrix_full',
+                        'subject_type' => 'distributor',
+                        'subject_id' => $eligible['distributor_id'],
+                        'details' => $details,
+                    ]);
+                    $skippedMatrixFull++;
+
+                    continue;
+                }
+
                 $level = FortuneBonusParticipant::levelFromPosition($nextPosition);
 
                 FortuneBonusParticipant::create([
@@ -262,6 +292,7 @@ final class FortuneBonusService
             'enrolled' => $enrolled,
             'skipped_ineligible' => count($firstGsbDates) - $enrolled,
             'skipped_wallet_nonzero' => $skippedWalletNonzero,
+            'skipped_matrix_full' => $skippedMatrixFull,
             'refused_pool_frozen' => false,
         ];
     }

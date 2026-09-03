@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 
 /**
  * @property int $id
@@ -44,6 +45,13 @@ final class FortuneBonusParticipant extends Model
         ];
     }
 
+    /**
+     * The matrix is levels 0–9 only: 3^0 + … + 3^9 = 29,524 positions. Once
+     * a month's matrix is full, no further qualifier is entered for that
+     * month (the client, 2026-09-03).
+     */
+    public const int MAX_POSITIONS = 29_524;
+
     /** @return BelongsTo<Distributor, $this> */
     public function distributor(): BelongsTo
     {
@@ -69,13 +77,22 @@ final class FortuneBonusParticipant extends Model
     }
 
     /**
-     * Compute the matrix level (0-9) for a 1-indexed FCFS position.
-     * Uses cumulative node count per level to avoid floating-point errors.
+     * Compute the matrix level (0–9) for a 1-indexed FCFS position: level L
+     * holds 3^L positions. Uses cumulative node counts to avoid floating-point
+     * errors. There is no level 10 — a position past MAX_POSITIONS is refused,
+     * so the ruling that the matrix ends at level 9 is enforced here as well
+     * as at enrolment.
+     *
+     * @throws InvalidArgumentException for a position outside the matrix
      */
     public static function levelFromPosition(int $position): int
     {
         if ($position <= 0) {
             return 0;
+        }
+
+        if ($position > self::MAX_POSITIONS) {
+            throw new InvalidArgumentException('Position '.$position.' is outside the 29,524-position Fortune matrix.');
         }
 
         $cumulative = 0;

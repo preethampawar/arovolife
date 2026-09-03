@@ -51,6 +51,8 @@ Paid ₹12,02,430; leftover ₹14,57,570. Locked by `FortuneDistributionCalculat
 | Income below the cap | ₹30 + points × value (e.g. 99 × ₹20 + ₹30 = ₹2,010) |
 | ₹36cr example shift (L8 ₹624, leftover ₹24,576) | Intended |
 | Where caps live | Plan Settings — admin visible, developer editable |
+| Placement (asked again) | FCFS stays — confirmed 2026-09-03 |
+| Positions beyond 29,524 | There is no level 10: the matrix is levels 0–9 only. Once its 29,524 positions are full, later qualifiers are not entered for that month and receive nothing, not even ₹30 (confirmed 2026-09-03) |
 
 ## Implemented pending the client's confirmation
 
@@ -65,5 +67,5 @@ wallet", that is a further change.
 
 ## Still open with the client
 
-FCFS vs Genos/sponsor-derived placement; rank of the month vs highest rank ever; positions
-beyond 29,524 (placed but ₹0?); new-distributor timing; the 9th as run date.
+Rank of the month vs highest rank ever ("not yet clear", 2026-09-03); new-distributor timing;
+the 9th as run date.
