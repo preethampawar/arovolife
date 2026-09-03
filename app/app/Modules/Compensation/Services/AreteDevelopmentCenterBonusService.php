@@ -175,19 +175,19 @@ final class AreteDevelopmentCenterBonusService
 
     /**
      * The ADC arithmetic, in one place for the engine and the admin report:
-     * flat = ⌊ member BV × rate ⌋, gross = min(flat, cap), where a centre's
+     * flat = ⌊ collected BV × rate ⌋, gross = min(flat, cap), where a centre's
      * own override may only LOWER the plan cap (the plan cap is a ceiling).
      *
      * @return array{flat_paise: int, cap_paise: int, gross_paise: int}
      */
-    public function grossFor(int $memberBvPaise, ?int $capOverridePaise): array
+    public function grossFor(int $collectedBvPaise, ?int $capOverridePaise): array
     {
         $capPaise = $this->plan->adcCapPaise();
         if ($capOverridePaise !== null) {
             $capPaise = min($capPaise, $capOverridePaise);
         }
 
-        $flat = max(0, (int) (floor($memberBvPaise * $this->plan->adcRateBp() / 1_000_000) * 100));
+        $flat = max(0, (int) (floor($collectedBvPaise * $this->plan->adcRateBp() / 1_000_000) * 100));
 
         return [
             'flat_paise' => $flat,

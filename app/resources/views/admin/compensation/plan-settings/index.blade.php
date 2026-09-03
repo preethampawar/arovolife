@@ -230,9 +230,9 @@
 
     <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
         <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-            <li>Each approved Arete Development Center earns the ADC rate (3%) of the month's <strong>net member BV</strong> served by that centre — refunds are deducted first.</li>
+            <li>Each approved Arete Development Center earns the ADC rate (3%) of the month's <strong>net BV collected at that centre</strong> — orders whose buyers chose it as their collection point at checkout, with refunds deducted first.</li>
             <li>The credit is limited by the centre's <strong>monthly cap</strong> — ₹1,00,000 as standard, or the lower cap override applied while a development-phase upgrade is unproven.</li>
-            <li>A centre whose members net to <strong>zero or negative</strong> BV for the month is skipped — a centre is never credited a negative amount.</li>
+            <li>A centre whose collected BV nets to <strong>zero or negative</strong> for the month is skipped — a centre is never credited a negative amount.</li>
             <li>The bonus is credited to the centre owner in the monthly payout; ADC sits outside the ₹50 lakh combined income ceiling under its own cap.</li>
         </ol>
     </div>
@@ -241,7 +241,7 @@
         <p class="font-semibold mb-1">Worked example — one centre's month</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
         <p>
-            A centre's members generate 21,00,000 BV with 1,00,000 BV refunded — <strong>20,00,000 net BV</strong>.
+            Orders collected at a centre carry 21,00,000 BV with 1,00,000 BV refunded — <strong>20,00,000 net BV</strong>.
             ADC = 3% = <strong>₹60,000</strong>, under the ₹1,00,000 cap, so ₹60,000 is credited to the centre owner.
         </p>
     </div>

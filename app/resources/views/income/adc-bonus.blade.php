@@ -49,7 +49,7 @@
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-600 font-medium">No ADC Bonus yet.</p>
-            <p class="text-sm text-gray-600 mt-1">ADC Bonus is credited when you are assigned to an approved Arete Development Center and your center's members generate BV.</p>
+            <p class="text-sm text-gray-600 mt-1">ADC Bonus is credited when you are assigned to an approved Arete Development Center and buyers collect their orders at your center.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -58,8 +58,8 @@
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Month</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Center</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Members</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Member BV</th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Orders</th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Collected BV</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Gross</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">TDS (5%)</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Net</th>

@@ -11,8 +11,8 @@
         <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform group-open:rotate-90" aria-hidden="true" />
         <span class="font-semibold text-gray-800">{{ \Illuminate\Support\Carbon::parse($monthStart)->format('F Y') }}</span>
         <span class="text-gray-500">Centres paid <strong class="text-gray-700">{{ $num($adc['centers']) }}</strong></span>
-        <span class="text-gray-500">Member BV (all centres) <strong class="text-gray-700">@bv($adc['member_bv_paise'])</strong>
-            <x-help-tip text="Net BV (refunds deducted) of every active member of each paid centre this month, as frozen on the rows below, summed across centres." /></span>
+        <span class="text-gray-500">Collected BV (all centres) <strong class="text-gray-700">@bv($adc['collected_bv_paise'])</strong>
+            <x-help-tip text="Net BV (refunds deducted) of every order collected at each paid centre this month, as frozen on the rows below, summed across centres." /></span>
         <span class="text-gray-500">ADC rate ({{ $pct }})
             <x-help-tip text="The ADC rate and the monthly cap are CURRENT plan settings; the per-centre bonus on each row is what the engine froze on the run." />
             <strong class="text-gray-700">{{ $inr($adc['uncapped_paise']) }}</strong> <span class="text-gray-400">before caps</span></span>
@@ -26,8 +26,8 @@
         <div>
             <p class="font-semibold text-gray-800 mb-2">How each centre's ADC bonus is calculated</p>
             <ol class="space-y-1.5 font-mono text-gray-700">
-                <li><span class="text-gray-500">1.</span> Member BV = Σ net BV of the centre's active members this month <span class="font-sans text-gray-500">(refunds deducted)</span></li>
-                <li><span class="text-gray-500">2.</span> Flat bonus = ⌊ Member BV × ADC rate % ⌋</li>
+                <li><span class="text-gray-500">1.</span> Collected BV = Σ net BV of orders collected at the centre this month <span class="font-sans text-gray-500">(refunds deducted)</span></li>
+                <li><span class="text-gray-500">2.</span> Flat bonus = ⌊ Collected BV × ADC rate % ⌋</li>
                 <li><span class="text-gray-500">3.</span> ADC bonus = min( Flat bonus, Monthly cap ) <span class="font-sans text-gray-500">(a centre's own lower cap override, if set, replaces the monthly cap)</span></li>
                 <li><span class="text-gray-500">4.</span> Paid to the centre's assigned distributor; admin charge and TDS apply at payout</li>
             </ol>
@@ -35,10 +35,10 @@
         <div>
             <p class="font-semibold text-gray-800 mb-2">With this month's values (all centres together)</p>
             <ol class="space-y-1.5 font-mono text-gray-700">
-                <li><span class="text-gray-500">1.</span> Member BV = <strong>@bv($adc['member_bv_paise'])</strong> across {{ $num($adc['centers']) }} centre{{ $adc['centers'] === 1 ? '' : 's' }}</li>
-                <li><span class="text-gray-500">2.</span> @bv($adc['member_bv_paise']) × {{ $pct }} = <strong>{{ $inr($adc['uncapped_paise']) }}</strong></li>
+                <li><span class="text-gray-500">1.</span> Collected BV = <strong>@bv($adc['collected_bv_paise'])</strong> across {{ $num($adc['centers']) }} centre{{ $adc['centers'] === 1 ? '' : 's' }}</li>
+                <li><span class="text-gray-500">2.</span> @bv($adc['collected_bv_paise']) × {{ $pct }} = <strong>{{ $inr($adc['uncapped_paise']) }}</strong></li>
                 <li><span class="text-gray-500">3.</span> after the {{ $inr($adc['cap_paise'], 0) }} cap on {{ $num($adc['capped_centers']) }} centre{{ $adc['capped_centers'] === 1 ? '' : 's' }} = <strong>{{ $inr($adc['gross_paise']) }}</strong></li>
-                <li class="font-sans text-gray-500">Each row below shows the same formula for one centre: its Member BV × {{ $pct }}, capped.</li>
+                <li class="font-sans text-gray-500">Each row below shows the same formula for one centre: its Collected BV × {{ $pct }}, capped.</li>
             </ol>
         </div>
     </div>

@@ -53,7 +53,7 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="{{ $lbl }}">Type <span class="text-red-500">*</span> <x-help-tip text="A company centre has no owner and earns nothing. A distributor centre is owned by the ADN below, who earns the ADC Bonus on its members' BV." /></label>
+                    <label class="{{ $lbl }}">Type <span class="text-red-500">*</span> <x-help-tip text="A company centre has no owner and earns nothing. A distributor centre is owned by the ADN below, who earns the ADC Bonus on the BV of orders collected at it." /></label>
                     <select name="centre_type" required class="{{ $inp }}">
                         @foreach(AreteCenter::TYPES as $key => $label)
                         <option value="{{ $key }}" @selected($v('centre_type', AreteCenter::TYPE_COMPANY) === $key)>{{ $label }}</option>

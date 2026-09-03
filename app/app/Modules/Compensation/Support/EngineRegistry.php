@@ -194,7 +194,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'adc.bonus',
                 label: 'ADC Bonus',
-                description: "Calculates each Arete Development Center's bonus from its members' BV for the month, applies the centre's monthly cap, and credits the centre owner. Impact: writes the ADC results and wallet credits. Idempotent — centres already credited for the month are skipped. It does not depend on rank qualifications.",
+                description: "Calculates each Arete Development Center's bonus from the net BV of orders collected at it in the month, applies the centre's monthly cap, and credits the centre owner. Impact: writes the ADC results and wallet credits. Idempotent — centres already credited for the month are skipped. It does not depend on rank qualifications.",
                 periodType: EnginePeriodType::Month,
                 commandClass: AdcBonusRunCommand::class,
                 commandSignature: 'adc:monthly-run',

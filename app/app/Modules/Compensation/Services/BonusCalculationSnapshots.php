@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
-use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Models\MsbDailyPool;
+use App\Modules\Compensation\Models\RankAogoGrant;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -151,13 +151,13 @@ final class BonusCalculationSnapshots
 
     /**
      * Per-month ADC aggregate: how many centres were paid, their combined net
-     * member BV, what the flat rate would have paid before caps and what was
+     * collected BV (orders collected at the centre), what the flat rate would have paid before caps and what was
      * actually paid after each centre's cap. Rate and cap are the CURRENT plan
      * settings; the per-row gross is what the engine froze.
      *
      * @param  array<int, string>  $monthStarts  Y-m-d
      * @return array<string, array{
-     *     centers: int, member_bv_paise: int, uncapped_paise: int, gross_paise: int,
+     *     centers: int, collected_bv_paise: int, uncapped_paise: int, gross_paise: int,
      *     capped_centers: int, rate_bp: int, cap_paise: int, computed_at: ?Carbon
      * }>
      */
@@ -190,11 +190,11 @@ final class BonusCalculationSnapshots
             $createdAt = $row->created_at !== null ? Carbon::parse((string) $row->created_at) : null;
 
             $agg = $out[$key] ?? [
-                'centers' => 0, 'member_bv_paise' => 0, 'uncapped_paise' => 0, 'gross_paise' => 0,
+                'centers' => 0, 'collected_bv_paise' => 0, 'uncapped_paise' => 0, 'gross_paise' => 0,
                 'capped_centers' => 0, 'rate_bp' => $rateBp, 'cap_paise' => $capPaise, 'computed_at' => null,
             ];
             $agg['centers']++;
-            $agg['member_bv_paise'] += $bv;
+            $agg['collected_bv_paise'] += $bv;
             $agg['uncapped_paise'] += $economics['flat_paise'];
             $agg['gross_paise'] += $gross;
             if ($gross < $economics['flat_paise']) {

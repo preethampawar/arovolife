@@ -1,6 +1,6 @@
 @developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    Monthly Arete Development Centre (ADC) bonus earned by this distributor as a centre holder — a share of the centre's members' BV for the month, subject to the centre's phase and cap.
+    Monthly Arete Development Centre (ADC) bonus earned by this distributor as a centre holder — a share of the net BV of orders collected at the centre for the month, subject to the centre's phase and cap.
 </div>
 @enddeveloper
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -12,8 +12,8 @@
             <tr>
                 <th class="px-3 py-2 text-left text-gray-600">Month</th>
                 <th class="px-3 py-2 text-left text-gray-600">Centre</th>
-                <th class="px-3 py-2 text-right text-gray-600">Members</th>
-                <th class="px-3 py-2 text-right text-gray-600">Member BV</th>
+                <th class="px-3 py-2 text-right text-gray-600">Orders</th>
+                <th class="px-3 py-2 text-right text-gray-600">Collected BV</th>
                 <th class="px-3 py-2 text-right text-gray-600">Gross</th>
                 <th class="px-3 py-2 text-right text-gray-600">Admin</th>
                 <th class="px-3 py-2 text-right text-gray-600">TDS</th>
