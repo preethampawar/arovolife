@@ -50,12 +50,12 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers twelve engines with unique keys and signatures', function (): void {
+it('registers eleven engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(12);
+    expect($all)->toHaveCount(11);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(12);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(11);
 });
 
 it('points every registry entry at a real artisan command with the declared period option', function (): void {
