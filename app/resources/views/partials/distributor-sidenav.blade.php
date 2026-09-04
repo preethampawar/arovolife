@@ -41,9 +41,12 @@
     ];
 @endphp
 
-{{-- Desktop (lg+): sticky column --}}
+{{-- Desktop (lg+): sticky column. When the list is taller than the
+     viewport the script below lowers the sticky offset so the column
+     scrolls with the page until its bottom edge meets the viewport, then
+     pins there — every entry stays reachable, no inner scrollbar. --}}
 <aside class="hidden lg:block" aria-label="My account navigation">
-    <div class="lg:sticky lg:top-28 space-y-5 rounded-2xl border border-brand-100/80 bg-gradient-to-b from-white via-brand-50/50 to-leaf-50/40 shadow-sm p-4">
+    <div id="distributorSidenavSticky" class="lg:sticky lg:top-28 space-y-5 rounded-2xl border border-brand-100/80 bg-gradient-to-b from-white via-brand-50/50 to-leaf-50/40 shadow-sm p-4">
         @include('partials._distributor-sidenav-groups')
     </div>
 </aside>
@@ -111,5 +114,29 @@
         const mql = window.matchMedia('(min-width: 1024px)');
         const onChange = (e) => { if (e.matches) close(); };
         mql.addEventListener ? mql.addEventListener('change', onChange) : mql.addListener(onChange);
+    })();
+
+    // Desktop sticky offset. Default is 7rem below the viewport top (matches
+    // lg:top-28). If the column is taller than the space below that, the
+    // offset goes negative by the overflow so the column pins with its
+    // bottom edge 1rem above the viewport bottom instead. Re-fitted on
+    // resize and whenever the column's height changes (font-size toggle,
+    // feature-gated entries).
+    (function () {
+        const el = document.getElementById('distributorSidenavSticky');
+        if (! el) return;
+
+        const fit = () => {
+            const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const defaultTop = 7 * rem;
+            const bottomGap = rem;
+            const available = window.innerHeight - defaultTop - bottomGap;
+            const overflow = el.offsetHeight - available;
+            el.style.top = overflow > 0 ? `${defaultTop - overflow}px` : '';
+        };
+
+        fit();
+        window.addEventListener('resize', fit);
+        if ('ResizeObserver' in window) new ResizeObserver(fit).observe(el);
     })();
 </script>
