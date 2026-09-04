@@ -69,13 +69,39 @@ final class SecurityHeaders
         ."form-action 'self'; "
         ."frame-ancestors 'none'";
 
+    /**
+     * The Razorpay pay page alone. Standard Checkout loads `checkout.js` from
+     * Razorpay's origin, opens the payment form in an iframe on
+     * `api.razorpay.com`, and talks to it over XHR — every one of which the
+     * site-wide policy blocks. Widened only for the one route that needs it;
+     * the card form itself never renders on our origin (PCI-DSS SAQ-A), and
+     * `form-action` stays `'self'` because the modal hands back to our own
+     * callback rather than redirecting.
+     */
+    private const CSP_PAY = "default-src 'self'; "
+        ."script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; "
+        ."style-src 'self' 'unsafe-inline'; "
+        ."img-src 'self' data: blob: https:; "
+        ."font-src 'self' data:; "
+        ."connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://lumberjack-cx.razorpay.com; "
+        .'frame-src https://api.razorpay.com https://checkout.razorpay.com; '
+        ."media-src 'self'; "
+        ."object-src 'none'; "
+        ."base-uri 'self'; "
+        ."form-action 'self'; "
+        ."frame-ancestors 'none'";
+
     public function handle(Request $request, Closure $next): Response
     {
         /** @var Response $response */
         $response = $next($request);
 
         $headers = [
-            'Content-Security-Policy' => $this->isPulseDashboard($request) ? self::CSP_PULSE : self::CSP,
+            'Content-Security-Policy' => match (true) {
+                $this->isPulseDashboard($request) => self::CSP_PULSE,
+                $this->isPayPage($request) => self::CSP_PAY,
+                default => self::CSP,
+            },
             'X-Frame-Options' => 'DENY',
             // Stops a browser second-guessing a declared content type, which
             // is how an uploaded file served as text/plain becomes script.
@@ -105,6 +131,11 @@ final class SecurityHeaders
         }
 
         return $response;
+    }
+
+    private function isPayPage(Request $request): bool
+    {
+        return $request->route()?->getName() === 'shop.pay';
     }
 
     private function isPulseDashboard(Request $request): bool

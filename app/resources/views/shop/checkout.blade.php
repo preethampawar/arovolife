@@ -391,6 +391,17 @@
             $finalTotal = max(0, $cart->totalPaise() - $couponDiscount) + $shippingPaise;
             $repurchaseCredit = min($repurchaseWalletBalancePaise ?? 0, $finalTotal);
             $finalTotal = max(0, $finalTotal - $repurchaseCredit);
+            // Same ₹1 floor the order will carry: a 1–99 paise payable is
+            // taken up to ₹1 by applying a little less credit (or coupon).
+            try {
+                $floor = \App\Modules\Commerce\Services\CheckoutService::floorPayable($finalTotal, $repurchaseCredit, $couponDiscount);
+            } catch (\RuntimeException) {
+                $floor = ['total' => $finalTotal, 'credit' => $repurchaseCredit, 'discount' => $couponDiscount, 'adjustment' => 0];
+            }
+            $floorAdjustment = $floor['adjustment'];
+            $finalTotal = $floor['total'];
+            $repurchaseCredit = $floor['credit'];
+            $couponDiscount = $floor['discount'];
         @endphp
         @auth
             @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
@@ -417,6 +428,12 @@
             @if($repurchaseCredit > 0)
             <div class="flex justify-between text-green-700"><span>Repurchase Credit</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseCredit / 100, 2) }}</span></div>
             @endif
+            @if($floorAdjustment > 0)
+            <p class="text-xs text-gray-600 pt-1">
+                The minimum online payment is ₹1, so ₹{{ \App\Modules\Shared\Support\IndianNumber::format($floorAdjustment / 100, 2) }} of your
+                {{ $floor['credit'] < min($repurchaseWalletBalancePaise ?? 0, $cart->totalPaise()) ? 'repurchase credit stays in your wallet' : 'coupon discount is not applied' }}.
+            </p>
+            @endif
         </div>
 
         <div class="flex justify-between mb-5">
@@ -428,7 +445,11 @@
            class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
             Place Order
         </button>
-        <p class="text-xs text-gray-600 mt-3 text-center">Test gateway — no real money moves.</p>
+        @if(($gatewayState ?? '') === \App\Modules\Payments\Services\PaymentGatewayResolver::STATE_RAZORPAY)
+            <p class="text-xs text-gray-600 mt-3 text-center">You will be taken to a secure payment page. Payments are processed by Razorpay.</p>
+        @elseif(($gatewayState ?? '') === \App\Modules\Payments\Services\PaymentGatewayResolver::STATE_STUB)
+            <p class="text-xs text-gray-600 mt-3 text-center">Test gateway — no real money moves.</p>
+        @endif
     </div>
 </form>
 

@@ -40,9 +40,12 @@ final class PaymentSettings
         return $this->raw(self::KEY_RAZORPAY_ENABLED) === 'true';
     }
 
+    /** Absent means the registry default, which is on — the stub is for dev builds. */
     public function stubEnabled(): bool
     {
-        return $this->raw(self::KEY_STUB_ENABLED) === 'true';
+        $raw = $this->raw(self::KEY_STUB_ENABLED);
+
+        return $raw === null || $raw === 'true';
     }
 
     public function unpaidExpiryMinutes(): int

@@ -34,13 +34,28 @@ final class OrderStateMachine
         private readonly WalletService $wallet,
     ) {}
 
-    public function markPaid(Order $order, ?int $actorUserId = null): void
+    /**
+     * The only entry point that turns an order into a sale: it accrues BV and
+     * fires the compensation engines behind it. Its sole caller is
+     * `PaymentConfirmationService` (an architecture test enforces this), and
+     * `$evidence` is what that service verified — the intent, the gateway
+     * payment id, the confirming event — so the audit row ties the BV to a
+     * verified payment rather than to a status flip (DSR Rule 5(1)(c)).
+     *
+     * @param  array<string, mixed>  $evidence
+     */
+    public function markPaid(Order $order, ?int $actorUserId = null, array $evidence = []): void
     {
-        if ($order->status !== Order::STATUS_PLACED) {
-            throw new RuntimeException("Cannot mark paid from status {$order->status}");
-        }
+        $this->db->transaction(function () use ($order, $actorUserId, $evidence): void {
+            // Re-read under a row lock: the callback, the webhook, the
+            // reconciler and the expiry sweeper can all reach this order
+            // within the same second, and the status on the caller's model
+            // may be seconds old.
+            $locked = Order::lockForUpdate()->findOrFail($order->id);
+            if ($locked->status !== Order::STATUS_PLACED) {
+                throw new RuntimeException("Cannot mark paid from status {$locked->status}");
+            }
 
-        $this->db->transaction(function () use ($order, $actorUserId): void {
             $order->update([
                 'status' => Order::STATUS_PAID,
                 'paid_at' => Carbon::now(),
@@ -51,7 +66,12 @@ final class OrderStateMachine
                 'action' => 'order.paid',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,
-                'details' => ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise, 'payment_method' => $order->payment_method],
+                'before_hash' => hash('sha256', Order::STATUS_PLACED),
+                'after_hash' => hash('sha256', Order::STATUS_PAID),
+                'details' => array_merge(
+                    ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise, 'payment_method' => $order->payment_method],
+                    $evidence,
+                ),
             ]);
 
             // BV accrues as soon as payment is received (product-owner decision,
@@ -85,9 +105,18 @@ final class OrderStateMachine
             if ($order->subtotal_paise > 0) {
                 $taxable = $order->subtotal_paise - $order->gst_paise;
                 $lines = [
-                    ['account' => 'liability.customer_prepayment', 'side' => 'debit',  'amount_paise' => $order->total_paise],
-                    ['account' => 'revenue.sales',                 'side' => 'credit', 'amount_paise' => $taxable],
+                    ['account' => 'revenue.sales', 'side' => 'credit', 'amount_paise' => $taxable],
                 ];
+
+                // Only when cash was actually collected. An order settled
+                // entirely in points and repurchase credit has total_paise = 0
+                // and no prepayment was ever posted; the LedgerPoster rejects a
+                // zero-amount line, so unguarded this threw and a zero-cash
+                // order could never leave the warehouse. The entry balances
+                // without it: the contra-revenue debits below carry the value.
+                if ($order->total_paise > 0) {
+                    $lines[] = ['account' => 'liability.customer_prepayment', 'side' => 'debit', 'amount_paise' => $order->total_paise];
+                }
 
                 // Only when GST was actually charged. A zero-rated cart (every
                 // line at gst_rate_bp = 0 — exempt agricultural goods, for
@@ -255,7 +284,19 @@ final class OrderStateMachine
 
         $oldStatus = $order->status;
 
-        $this->db->transaction(function () use ($order, $reason, $actorUserId): void {
+        $this->db->transaction(function () use ($order, $reason, $actorUserId, &$oldStatus): void {
+            // Re-read under a row lock. The expiry sweeper decides "still
+            // unpaid" from a model it loaded a moment ago, and a webhook can
+            // mark the order paid in between; without the lock the sweeper
+            // would cancel a paid order and reverse the prepayment as though
+            // nothing had been collected, with the money still at the gateway.
+            $locked = Order::lockForUpdate()->findOrFail($order->id);
+            if (in_array($locked->status, [Order::STATUS_SHIPPED, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED, Order::STATUS_REFUNDED, Order::STATUS_CANCELLED], true)) {
+                throw new RuntimeException("Cannot cancel order in status {$locked->status}");
+            }
+            $order->setRawAttributes($locked->getAttributes(), true);
+            $oldStatus = $locked->status;
+
             $order->update([
                 'status' => Order::STATUS_CANCELLED,
                 'cancelled_at' => Carbon::now(),

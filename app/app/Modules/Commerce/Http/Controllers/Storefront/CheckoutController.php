@@ -19,12 +19,15 @@ use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Payments\Services\PaymentConfirmationService;
+use App\Modules\Payments\Services\PaymentGatewayResolver;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +44,8 @@ final class CheckoutController extends Controller
         private readonly AttributionService $attribution,
         private readonly CheckoutService $checkoutService,
         private readonly CouponService $coupons,
-        private readonly StubGateway $gateway,
+        private readonly PaymentGatewayResolver $gateways,
+        private readonly PaymentConfirmationService $confirmation,
         private readonly InvoiceGenerator $invoiceGenerator,
         private readonly ShippingService $shipping,
         private readonly CustomerAddressService $addressBook,
@@ -50,12 +54,20 @@ final class CheckoutController extends Controller
         private readonly OrderStateMachine $orderStateMachine,
     ) {}
 
-    public function show(Request $request): View|RedirectResponse
+    public function show(Request $request): View|RedirectResponse|Response
     {
         $this->ensureCheckoutEnabled();
 
         if ($redirect = $this->membersOnlyRedirect($request)) {
             return $redirect;
+        }
+
+        // Razorpay switched on but unable to run (keys missing, malformed, or
+        // of the wrong mode for this host): nobody may place an order until
+        // it is fixed. Scoped to placement only — My Orders, returns and the
+        // cooling-off cancellation stay up whatever the gateway's state.
+        if ($this->gateways->checkoutClosed()) {
+            return response()->view('shop.checkout-closed', [], 503);
         }
 
         $cart = $this->cartService->currentCart($request);
@@ -101,6 +113,7 @@ final class CheckoutController extends Controller
             'shippingPaise' => $this->shipping->feePaise($cart->subtotalPaise()),
             'guestAllowed' => $guestAllowed,
             'onlineEnabled' => $this->onlineEnabled(),
+            'gatewayState' => $this->gateways->state(),
             // A logged-in distributor's own purchase is always attributed to
             // them (AttributionService::resolveForCheckout precedence), so a
             // lingering ?ref cookie must not show a misleading banner.
@@ -141,6 +154,10 @@ final class CheckoutController extends Controller
 
         if ($redirect = $this->membersOnlyRedirect($request)) {
             return $redirect;
+        }
+
+        if ($this->gateways->checkoutClosed()) {
+            return redirect()->route('shop.checkout');
         }
 
         // Refuse before the gateway can throw: with the stub outside its
@@ -321,64 +338,108 @@ final class CheckoutController extends Controller
             ])->withInput();
         }
 
-        // Capture immediately via the gateway (Phase 2 stub auto-captures → order paid).
-        if ($order->payment_method === Order::PAYMENT_ONLINE) {
-            try {
-                $intent = $this->gateway->createIntent($order, 'order:'.$order->id);
-                $this->gateway->capture($intent);
-            } catch (Throwable $e) {
-                Log::error('Checkout: payment failed after order placement — cancelling order', [
-                    'order_id' => $order->id,
-                    'order_no' => $order->order_no,
-                    'exception' => $e,
-                ]);
+        // Bind this order to the buyer's session before anything else: the
+        // pay page and the confirmation page both authorise on it, and a guest
+        // sent to pay without it would be 404'd off their own order (IDOR
+        // guard, see confirmation()). Close the shared-cart guest pass with
+        // it — the pass covered that one shared purchase only.
+        $request->session()->push('recent_order_nos', $order->order_no);
+        $request->session()->forget(SharedCart::SESSION_DISTRIBUTOR_KEY);
 
-                // Release the placed-but-unpaid order: cancel() releases the
-                // reserved inventory, reverses any BV (a no-op here — nothing
-                // was paid) and audit-logs the cancellation. It is valid on
-                // STATUS_PLACED orders. capture()'s markPaid runs in its own
-                // transaction, so a mid-capture throw leaves the order unpaid.
-                try {
-                    $this->orderStateMachine->cancel($order->fresh(), 'payment_failed', Auth::id() === null ? null : (int) Auth::id());
-                } catch (Throwable $cancelError) {
-                    // The order is stuck placed-unpaid; ops must reconcile it.
-                    Log::critical('Checkout: failed to cancel order after payment failure', [
-                        'order_id' => $order->id,
-                        'exception' => $cancelError,
-                    ]);
-                }
+        if ($order->payment_method !== Order::PAYMENT_ONLINE) {
+            // Cash on delivery, if it is ever offered: nothing to collect now,
+            // so the invoice is issued at placement as before.
+            $this->generateInvoiceOrLog($order);
 
-                return back()->withErrors([
-                    'checkout' => 'Your payment could not be completed and the order was not confirmed. You have not been charged — please try again.',
-                ])->withInput();
-            }
+            return redirect()->route('shop.confirmation', $order->order_no);
         }
 
-        // Generate the GST invoice for the order. A failure here must NOT fail
-        // the order — the payment is already captured, and the invoice can be
-        // regenerated by ops. Log critical for manual follow-up instead.
+        // Settled entirely in redeemed points and repurchase credit: there is
+        // nothing to collect, and the gateway would refuse a zero anyway. The
+        // confirmation service re-derives that from the ledgers and records
+        // the consideration; it never reads this request.
+        if ($order->total_paise === 0) {
+            try {
+                $this->confirmation->confirmZeroCash($order, Auth::id() === null ? null : (int) Auth::id());
+            } catch (Throwable $e) {
+                return $this->cancelAfterPaymentFailure($order, 'zero_cash_confirmation_failed', $e);
+            }
+
+            return redirect()->route('shop.confirmation', $order->order_no);
+        }
+
+        $gateway = $this->gateways->active();
+        if ($gateway === null) {
+            return $this->cancelAfterPaymentFailure($order, 'no_gateway', new \RuntimeException('No payment gateway is available'));
+        }
+
+        try {
+            $intent = $gateway->createIntent($order, 'order:'.$order->id);
+        } catch (Throwable $e) {
+            return $this->cancelAfterPaymentFailure($order, 'payment_setup_failed', $e);
+        }
+
+        if ($gateway instanceof StubGateway) {
+            // Development only: captures without money, refused outside its
+            // allow-list. The invoice is issued by the confirmation service.
+            try {
+                $gateway->capture($intent);
+            } catch (Throwable $e) {
+                return $this->cancelAfterPaymentFailure($order, 'payment_failed', $e);
+            }
+
+            return redirect()->route('shop.confirmation', $order->order_no);
+        }
+
+        // Razorpay: the buyer pays on the next page. The order stays placed
+        // (stock reserved, prepayment posted) until a verified capture marks
+        // it paid, or the expiry sweeper releases it.
+        return redirect()->route('shop.pay', $order->order_no);
+    }
+
+    /**
+     * The order was placed but payment could not even start: release it and
+     * send the buyer back with a retryable message. cancel() releases the
+     * reserved inventory, restores points and credit, reverses the placement
+     * ledger entry and audit-logs the cancellation.
+     */
+    private function cancelAfterPaymentFailure(Order $order, string $reason, Throwable $e): RedirectResponse
+    {
+        Log::error('Checkout: payment could not start after order placement — cancelling order', [
+            'order_id' => $order->id,
+            'order_no' => $order->order_no,
+            'reason' => $reason,
+            'exception' => $e,
+        ]);
+
+        try {
+            $this->orderStateMachine->cancel($order->fresh(), $reason, Auth::id() === null ? null : (int) Auth::id());
+        } catch (Throwable $cancelError) {
+            // The order is stuck placed-unpaid; the expiry sweeper will release it.
+            Log::critical('Checkout: failed to cancel order after payment failure', [
+                'order_id' => $order->id,
+                'exception' => $cancelError,
+            ]);
+        }
+
+        return back()->withErrors([
+            'checkout' => 'Your payment could not be started and the order was not confirmed. You have not been charged — please try again.',
+        ])->withInput();
+    }
+
+    /** A failure here must not fail a placed order; ops can regenerate. */
+    private function generateInvoiceOrLog(Order $order): void
+    {
         try {
             $order->load('items');
             $this->invoiceGenerator->generate($order);
         } catch (Throwable $e) {
-            Log::critical('Checkout: invoice generation failed for a paid order — regenerate manually', [
+            Log::critical('Checkout: invoice generation failed for a placed order — regenerate manually', [
                 'order_id' => $order->id,
                 'order_no' => $order->order_no,
                 'exception' => $e,
             ]);
         }
-
-        // Bind this order to the buyer's session so the confirmation page is
-        // viewable by the person who just placed it (incl. guests) without
-        // exposing it to anyone who can guess the order number (IDOR).
-        $request->session()->push('recent_order_nos', $order->order_no);
-
-        // Close the shared-cart guest pass once the order is placed. The pass is
-        // scoped to that one shared purchase — it must not keep the members-only
-        // gate open for a later, unrelated cart the guest builds themselves.
-        $request->session()->forget(SharedCart::SESSION_DISTRIBUTOR_KEY);
-
-        return redirect()->route('shop.confirmation', $order->order_no);
     }
 
     /**
@@ -537,22 +598,14 @@ final class CheckoutController extends Controller
         return DB::table('settings')->where('key', $key)->value('value') === 'true';
     }
 
-    /**
-     * Online payment is available if any online gateway is enabled AND can
-     * actually run here. The stub flag alone is not enough: StubGateway
-     * refuses outside its environment allow-list, and offering a method the
-     * gateway will throw on turns a settings mismatch into a 500 at the
-     * moment the buyer presses "Place order".
-     */
+    /** Some gateway can take an online order here — Razorpay, or the stub in its allow-list. */
     private function onlineEnabled(): bool
     {
-        return ($this->flag('payments.gateway.stub.enabled') && $this->gateway->permitted())
-            || $this->flag('payments.gateway.razorpay.enabled');
+        return $this->gateways->onlineAvailable();
     }
 
-    /** Some gateway can actually capture an online order in this environment. */
     private function onlinePermitted(): bool
     {
-        return $this->gateway->permitted() || $this->flag('payments.gateway.razorpay.enabled');
+        return $this->gateways->onlineAvailable();
     }
 }

@@ -16,6 +16,7 @@ use App\Modules\Ledger\Services\LedgerPoster;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Creates an Order from a Cart atomically.
@@ -27,6 +28,9 @@ use Illuminate\Support\Str;
  */
 final class CheckoutService
 {
+    /** Razorpay's floor for an order: ₹1. */
+    public const MIN_ONLINE_PAYABLE_PAISE = 100;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LedgerPoster $ledger,
@@ -44,7 +48,7 @@ final class CheckoutService
     public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $areteCenterId = null, int $redeemPoints = 0, ?string $buyerGstin = null, ?string $buyerLegalName = null): Order
     {
         if ($cart->items->isEmpty()) {
-            throw new \RuntimeException('Cart is empty.');
+            throw new RuntimeException('Cart is empty.');
         }
 
         $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $areteCenterId, $redeemPoints, $buyerGstin, $buyerLegalName) {
@@ -204,6 +208,21 @@ final class CheckoutService
             }
             $finalTotalPaise = max(0, $totalPaise - $repurchaseCreditPaise);
 
+            // A payable of 1–99 paise is below the gateway's ₹1 floor. Either
+            // the buyer pays nothing (the order is confirmed on the
+            // entitlement alone) or at least ₹1; never something in between.
+            // The credit is applied a little less so ₹1 remains payable and
+            // the residue stays in the wallet; failing that the coupon gives
+            // way. Nothing ever marks an order paid over a gap.
+            $floor = self::floorPayable($finalTotalPaise, $repurchaseCreditPaise, $discountPaise);
+            $payableFloorAdjustmentPaise = $floor['adjustment'];
+            if ($payableFloorAdjustmentPaise > 0) {
+                $repurchaseCreditPaise = $floor['credit'];
+                $discountPaise = $floor['discount'];
+                $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $shippingPaise;
+                $finalTotalPaise = $floor['total'];
+            }
+
             $order = Order::create([
                 'order_no' => $orderNo,
                 'customer_id' => $customer->id,
@@ -332,6 +351,7 @@ final class CheckoutService
                     'payment_method' => $paymentMethod,
                     'redeem_points_paise' => $redeemPointsPaise,
                     'repurchase_credit_paise' => $repurchaseCreditPaise,
+                    'payable_floor_adjustment_paise' => $payableFloorAdjustmentPaise,
                 ],
             ]);
 
@@ -383,6 +403,48 @@ final class CheckoutService
      * volume. Collisions (~1 in 36^6 per day) are caught by the
      * uniq_orders_order_no constraint and fail the checkout transaction.
      */
+    /**
+     * Razorpay refuses anything under 100 paise, so a payable of 1–99 paise
+     * cannot be taken online — and it must not be waved through as "paid"
+     * either. Shared by checkout and the order-summary view so the buyer sees
+     * the same number the order will carry.
+     *
+     * Order of adjustment: the repurchase credit gives way first (the buyer
+     * keeps the residue in their wallet), then the coupon. Points are whole
+     * rupees and cannot produce a residue.
+     *
+     * @return array{total: int, credit: int, discount: int, adjustment: int}
+     */
+    public static function floorPayable(int $totalPaise, int $creditPaise, int $discountPaise): array
+    {
+        if ($totalPaise <= 0 || $totalPaise >= self::MIN_ONLINE_PAYABLE_PAISE) {
+            return ['total' => $totalPaise, 'credit' => $creditPaise, 'discount' => $discountPaise, 'adjustment' => 0];
+        }
+
+        $needed = self::MIN_ONLINE_PAYABLE_PAISE - $totalPaise;
+
+        $fromCredit = min($creditPaise, $needed);
+        $creditPaise -= $fromCredit;
+        $needed -= $fromCredit;
+
+        $fromDiscount = min($discountPaise, $needed);
+        $discountPaise -= $fromDiscount;
+        $needed -= $fromDiscount;
+
+        if ($needed > 0) {
+            // No credit and no coupon to give way: the cart itself is priced
+            // under ₹1, which no catalogue entry can produce.
+            throw new RuntimeException('The amount payable is below the ₹1 minimum for an online order.');
+        }
+
+        return [
+            'total' => self::MIN_ONLINE_PAYABLE_PAISE,
+            'credit' => $creditPaise,
+            'discount' => $discountPaise,
+            'adjustment' => $fromCredit + $fromDiscount,
+        ];
+    }
+
     private function generateOrderNo(): string
     {
         return sprintf('ORD-%s-%s', Carbon::now()->format('ymd'), Str::upper(Str::random(6)));

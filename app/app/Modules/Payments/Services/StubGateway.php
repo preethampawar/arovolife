@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Payments\Services;
 
 use App\Modules\Commerce\Models\Order;
-use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Payments\Contracts\PaymentGateway;
 use App\Modules\Payments\Data\GatewayPayment;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Support\PaymentSettings;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -35,7 +33,7 @@ use RuntimeException;
 final class StubGateway implements PaymentGateway
 {
     public function __construct(
-        private readonly OrderStateMachine $orderStateMachine,
+        private readonly PaymentConfirmationService $confirmation,
         private readonly PaymentSettings $settings,
     ) {}
 
@@ -126,13 +124,9 @@ final class StubGateway implements PaymentGateway
             return $intent;
         }
 
-        $intent->update([
-            'status' => PaymentIntent::STATUS_CAPTURED,
-            'captured_at' => Carbon::now(),
-            'confirmed_via' => PaymentIntent::CONFIRMED_VIA_STUB,
-        ]);
-
-        $this->orderStateMachine->markPaid($intent->order);
+        // Even the stub goes through the single choke point, so the
+        // architecture test that pins markPaid() to one caller stays honest.
+        $this->confirmation->confirmStub($intent);
 
         return $intent->fresh();
     }

@@ -99,6 +99,7 @@ use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
+use App\Modules\Payments\Http\Controllers\PaymentController;
 use App\Modules\Public\Http\Controllers\ContactController;
 use App\Modules\Public\Http\Controllers\FindMyIdController;
 use App\Modules\Returns\Http\Controllers\Admin\AdminReturnController;
@@ -802,6 +803,18 @@ Route::middleware('capture.attribution')->group(function (): void {
     Route::post('/shop/checkout', [CheckoutController::class, 'place'])
         ->middleware('throttle:20,60')->name('shop.checkout.place');
     Route::get('/shop/confirmation/{orderNo}', [CheckoutController::class, 'confirmation'])->name('shop.confirmation');
+
+    // Razorpay Standard Checkout. All four are 404 unless Razorpay is the
+    // active gateway, and all authorise like the confirmation page does. The
+    // callback shares checkout's budget; the status poll gets its own, since
+    // a 3-second poll would exhaust 20/hour in a minute.
+    Route::get('/shop/pay/{orderNo}', [PaymentController::class, 'pay'])->name('shop.pay');
+    Route::post('/shop/pay/{orderNo}/callback', [PaymentController::class, 'callback'])
+        ->middleware('throttle:20,60')->name('shop.pay.callback');
+    Route::post('/shop/pay/{orderNo}/failure', [PaymentController::class, 'failure'])
+        ->middleware('throttle:30,60')->name('shop.pay.failure');
+    Route::get('/shop/pay/{orderNo}/status', [PaymentController::class, 'status'])
+        ->middleware('throttle:120,1')->name('shop.pay.status');
 });
 
 // ── Authenticated App ────────────────────────────────────────────────────────

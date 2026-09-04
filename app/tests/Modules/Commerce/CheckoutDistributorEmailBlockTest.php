@@ -23,7 +23,9 @@ beforeEach(function (): void {
     $this->seed(LedgerAccountSeeder::class);
     DB::table('settings')->updateOrInsert(['key' => 'commerce.checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
     DB::table('settings')->updateOrInsert(['key' => 'commerce.guest_checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
-    DB::table('settings')->updateOrInsert(['key' => 'payments.gateway.stub.enabled'], ['value' => 'false', 'version' => 1, 'updated_at' => now()]);
+    // The stub must be selectable: with no gateway at all, checkout now fails
+    // closed before it reaches the email guard under test.
+    DB::table('settings')->updateOrInsert(['key' => 'payments.gateway.stub.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
 });
 
 function cdebDistributor(): User

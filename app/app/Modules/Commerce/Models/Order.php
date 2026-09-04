@@ -7,6 +7,7 @@ namespace App\Modules\Commerce\Models;
 use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Support\IndianNumber as Number;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,6 +17,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $order_no
  * @property string $status
  * @property string $payment_method
+ * @property Carbon|null $paid_at
+ * @property Carbon|null $placed_at
+ * @property Carbon|null $cancelled_at
  * @property string $ship_name
  * @property int $subtotal_paise
  * @property int $gst_paise
