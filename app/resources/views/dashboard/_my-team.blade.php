@@ -13,38 +13,6 @@
         </div>
     </div>
 
-    {{-- Top row: the four headline numbers. Each card is a button —
-         clicking it opens a modal with the underlying roster (S.No, ADN,
-         name, state, status) and a Download CSV button. JSON +
-         CSV come from TeamRosterController. --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <button type="button" data-team-roster="total"
-            class="text-left rounded-xl border border-brand-200 bg-brand-50/60 p-4 hover:bg-brand-50 hover:border-brand-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500">
-            <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total team</p>
-            <p class="text-3xl font-bold text-brand-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['total_team']) }}</p>
-            <p class="text-[11px] text-gray-700 mt-1.5">members in your Genos downline</p>
-        </button>
-        <button type="button" data-team-roster="direct"
-            class="text-left rounded-xl border border-leaf-200 bg-leaf-50/60 p-4 hover:bg-leaf-50 hover:border-leaf-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-leaf-500">
-            <p class="text-[11px] text-leaf-700 uppercase tracking-wider font-semibold mb-1">Direct referrals</p>
-            <p class="text-3xl font-bold text-leaf-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['direct_referrals']) }}</p>
-            <p class="text-[11px] text-gray-700 mt-1.5">people you personally invited</p>
-        </button>
-        <button type="button" data-team-roster="left"
-            class="text-left rounded-xl border border-sky-200 bg-sky-50/60 p-4 hover:bg-sky-50 hover:border-sky-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500">
-            <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
-            <p class="text-3xl font-bold text-sky-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['left_team']) }}</p>
-            <p class="text-[11px] text-gray-700 mt-1.5">members under your left group</p>
-        </button>
-        <button type="button" data-team-roster="right"
-            class="text-left rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 hover:bg-indigo-50 hover:border-indigo-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <p class="text-[11px] text-indigo-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
-            <p class="text-3xl font-bold text-indigo-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['right_team']) }}</p>
-            <p class="text-[11px] text-gray-700 mt-1.5">members under your right group</p>
-        </button>
-    </div>
-
-    {{-- Status breakdown row --}}
     @php
         $statuses = [
             ['key' => 'active',     'label' => 'Active',     'count' => $teamStats['active'],     'cls' => 'bg-green-50 text-green-700 border-green-200',     'dot' => 'bg-green-500'],
@@ -52,35 +20,79 @@
             ['key' => 'frozen',     'label' => 'Blocked',    'count' => $teamStats['frozen'],     'cls' => 'bg-red-50 text-red-700 border-red-200', 'dot' => 'bg-red-500'],
             ['key' => 'terminated', 'label' => 'Terminated', 'count' => $teamStats['terminated'], 'cls' => 'bg-gray-100 text-gray-600 border-gray-200',       'dot' => 'bg-gray-400'],
         ];
+        $activity = [
+            ['label' => 'Registered this week',  'count' => $teamStats['joined_this_week']],
+            ['label' => 'Registered this month', 'count' => $teamStats['joined_this_month']],
+            ['label' => 'Cooling-off active',    'count' => $teamStats['cooling_off']],
+        ];
     @endphp
-    <div class="border-t border-gray-100 pt-4">
-        <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-3">By status</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-            @foreach($statuses as $s)
-                <div class="flex items-center justify-between gap-3 rounded-lg border {{ $s['cls'] }} px-3 py-2.5">
-                    <span class="inline-flex items-center gap-2 text-xs font-semibold">
-                        <span class="w-2 h-2 rounded-full {{ $s['dot'] }}"></span>
-                        {{ $s['label'] }}
-                    </span>
-                    <span class="text-lg font-bold leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($s['count']) }}</span>
-                </div>
-            @endforeach
-        </div>
-    </div>
 
-    {{-- Activity row --}}
-    <div class="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-        <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
-            <span class="text-xs text-gray-800 font-medium">Registered this week</span>
-            <span class="text-base font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['joined_this_week']) }}</span>
+    {{-- Two columns on wide screens: headline numbers on the left, the
+         status + activity breakdown on the right. Stacks on mobile. --}}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-0 lg:divide-x lg:divide-gray-100">
+
+        {{-- Left column: the four headline numbers. Each card is a button —
+             clicking it opens a modal with the underlying roster (S.No, ADN,
+             name, state, status) and a Download CSV button. JSON +
+             CSV come from TeamRosterController. --}}
+        <div class="lg:pr-6">
+            <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-3">Team size</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" data-team-roster="total"
+                    class="text-left rounded-xl border border-brand-200 bg-brand-50/60 p-4 hover:bg-brand-50 hover:border-brand-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total team</p>
+                    <p class="text-3xl font-bold text-brand-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['total_team']) }}</p>
+                    <p class="text-[11px] text-gray-700 mt-1.5">members in your Genos downline</p>
+                </button>
+                <button type="button" data-team-roster="direct"
+                    class="text-left rounded-xl border border-leaf-200 bg-leaf-50/60 p-4 hover:bg-leaf-50 hover:border-leaf-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-leaf-500">
+                    <p class="text-[11px] text-leaf-700 uppercase tracking-wider font-semibold mb-1">Direct referrals</p>
+                    <p class="text-3xl font-bold text-leaf-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['direct_referrals']) }}</p>
+                    <p class="text-[11px] text-gray-700 mt-1.5">people you personally invited</p>
+                </button>
+                <button type="button" data-team-roster="left"
+                    class="text-left rounded-xl border border-sky-200 bg-sky-50/60 p-4 hover:bg-sky-50 hover:border-sky-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
+                    <p class="text-3xl font-bold text-sky-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['left_team']) }}</p>
+                    <p class="text-[11px] text-gray-700 mt-1.5">members under your left group</p>
+                </button>
+                <button type="button" data-team-roster="right"
+                    class="text-left rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 hover:bg-indigo-50 hover:border-indigo-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <p class="text-[11px] text-indigo-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
+                    <p class="text-3xl font-bold text-indigo-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['right_team']) }}</p>
+                    <p class="text-[11px] text-gray-700 mt-1.5">members under your right group</p>
+                </button>
+            </div>
         </div>
-        <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
-            <span class="text-xs text-gray-800 font-medium">Registered this month</span>
-            <span class="text-base font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['joined_this_month']) }}</span>
-        </div>
-        <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
-            <span class="text-xs text-gray-800 font-medium">Cooling-off active</span>
-            <span class="text-base font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['cooling_off']) }}</span>
+
+        {{-- Right column: status breakdown, then recent activity. --}}
+        <div class="lg:pl-6 flex flex-col gap-5">
+            <div>
+                <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-3">By status</p>
+                <div class="grid grid-cols-2 gap-2">
+                    @foreach($statuses as $s)
+                        <div class="flex items-center justify-between gap-3 rounded-lg border {{ $s['cls'] }} px-3 py-2.5">
+                            <span class="inline-flex items-center gap-2 text-xs font-semibold">
+                                <span class="w-2 h-2 rounded-full {{ $s['dot'] }}"></span>
+                                {{ $s['label'] }}
+                            </span>
+                            <span class="text-lg font-bold leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($s['count']) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="border-t border-gray-100 pt-4">
+                <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-3">Recent activity</p>
+                <div class="flex flex-col gap-2">
+                    @foreach($activity as $a)
+                        <div class="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
+                            <span class="text-xs text-gray-800 font-medium">{{ $a['label'] }}</span>
+                            <span class="text-base font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($a['count']) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
         </div>
     </div>
 </div>
