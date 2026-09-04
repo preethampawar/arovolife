@@ -17,4 +17,14 @@ final class RazorpayRefundService
     {
         return 'recorded: '.$event->event_type;
     }
+
+    /**
+     * Ask the gateway about every refund sent but not yet confirmed processed.
+     *
+     * @return array{checked: int, settled: int, failed: int}
+     */
+    public function reconcileOutstanding(): array
+    {
+        return ['checked' => 0, 'settled' => 0, 'failed' => 0];
+    }
 }

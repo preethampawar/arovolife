@@ -12,6 +12,9 @@ use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
+use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
+use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
+use App\Modules\Payments\Console\Commands\PaymentsRedactEventsCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -128,6 +131,29 @@ Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
 // distributor sees what they earned before the payout cycle starts.
 Schedule::command(PurchaseOffersMonthlyRunCommand::class)
     ->monthlyOn(2, '06:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// ── Payments ─────────────────────────────────────────────────────────────────
+// Every five minutes: ask Razorpay about open intents older than three
+// minutes and confirm from its answer — the backstop for a lost callback or
+// a delayed webhook. Never cancels.
+Schedule::command(PaymentsReconcileCommand::class)
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Every five minutes, offset from the reconciler: release online orders left
+// unpaid past the expiry window, after a final check with the gateway.
+Schedule::command(ExpireUnpaidOrdersCommand::class)
+    ->cron('2-59/5 * * * *')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Daily 03:15 IST: drop gateway payloads older than the dispute window.
+Schedule::command(PaymentsRedactEventsCommand::class)
+    ->dailyAt('03:15')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

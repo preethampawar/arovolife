@@ -29,6 +29,9 @@ use App\Modules\Compensation\Listeners\ReleaseHeldGsbOnReactivation;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\User;
+use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
+use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
+use App\Modules\Payments\Console\Commands\PaymentsRedactEventsCommand;
 use App\Modules\Returns\Events\OrderRefundApproved;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
@@ -169,6 +172,9 @@ class AppServiceProvider extends ServiceProvider
                 PurchaseOffersMonthlyRunCommand::class,
                 MonthlyPayoutCommand::class,
                 RepurchaseEvaluateCommand::class,
+                PaymentsReconcileCommand::class,
+                ExpireUnpaidOrdersCommand::class,
+                PaymentsRedactEventsCommand::class,
             ]);
         }
 
