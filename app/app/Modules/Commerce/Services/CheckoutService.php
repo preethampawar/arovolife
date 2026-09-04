@@ -190,10 +190,15 @@ final class CheckoutService
             // Auto-apply repurchase wallet credit for logged-in distributors.
             // Capped at the order total so the payable amount never goes below
             // zero. Guests ($buyerDistributorId === null) have no wallet.
+            //
+            // lockForUpdate: the balance is read and spent in the same breath,
+            // so the read has to be serialised against a concurrent checkout by
+            // the same distributor (two tabs, a double-submit). Without the lock
+            // both orders see the full balance and both consume it.
             $repurchaseCreditPaise = 0;
             if ($buyerDistributorId !== null) {
                 $repurchaseCreditPaise = min(
-                    $this->walletService->repurchaseWalletBalancePaise($buyerDistributorId),
+                    $this->walletService->repurchaseWalletBalancePaise($buyerDistributorId, lockForUpdate: true),
                     $totalPaise,
                 );
             }

@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Commerce\Services\RedeemPointsService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Returns\Events\OrderRefundApproved;
@@ -53,6 +54,10 @@ use RuntimeException;
  * they were spent. When they cover the whole net product value the payable is
  * zero and its line is omitted rather than posted — see below.
  *
+ * Repurchase-wallet credit applied at checkout is treated identically: out of
+ * the cash payable, credited back to revenue.discounts, and returned to the
+ * repurchase wallet in repurchase credit (R-60).
+ *
  * Every case is balanced by construction (verified by LedgerPoster).
  */
 final class RefundOrder
@@ -62,6 +67,7 @@ final class RefundOrder
         private readonly LedgerPoster $ledger,
         private readonly BvLedgerService $bvLedger,
         private readonly BuybackMatrix $matrix,
+        private readonly WalletService $wallet,
     ) {}
 
     public function execute(
@@ -101,14 +107,32 @@ final class RefundOrder
         // route, and moving company money against consideration never received.
         // The points side is returned in points below.
         $redeemPointsPaise = (int) ($order->redeem_points_paise ?? 0);
-        $netRefundPaise = $taxable + $gstRefundPaise + $shippingRefundPaise - $discountPaise - $redeemPointsPaise;
+        // Same reasoning for the repurchase wallet, and the stakes are higher:
+        // that balance was withheld from a bonus payout to fund the mandatory
+        // monthly repurchase and is non-withdrawable by design. Refunding it as
+        // cash would convert it into a withdrawal route and pay out money the
+        // buyer never handed over (R-60). It goes back as repurchase credit
+        // inside the transaction below.
+        //
+        // Capped at what is left of the refundable value after the points,
+        // because the credit may have paid for things this policy does not
+        // refund — most often the shipping, which only cooling-off returns.
+        // Uncapped, a fully credit-paid order refunded without its shipping
+        // would drive the payable negative, its line would be omitted, and the
+        // whole entry would fail the LedgerPoster's balance check.
+        $refundableGrossPaise = $taxable + $gstRefundPaise + $shippingRefundPaise - $discountPaise;
+        $repurchaseCreditPaise = min(
+            $this->wallet->repurchaseCreditAppliedToOrder($order->id),
+            max(0, $refundableGrossPaise - $redeemPointsPaise),
+        );
+        $netRefundPaise = $refundableGrossPaise - $redeemPointsPaise - $repurchaseCreditPaise;
 
         $idempotencyKey = "refund:{$order->id}";
 
         $this->db->transaction(function () use (
             $order, $returnRequest, $reason, $isCoolingOff,
             $taxable, $gstRefundPaise, $shippingRefundPaise, $discountPaise, $netRefundPaise,
-            $redeemPointsPaise, $idempotencyKey, $actorUserId,
+            $redeemPointsPaise, $repurchaseCreditPaise, $idempotencyKey, $actorUserId,
         ): void {
             // Give the points back, in points, inside the same transaction that
             // reverses the money. Idempotent, so a retried refund cannot mint
@@ -117,6 +141,16 @@ final class RefundOrder
             if ($redeemPointsPaise > 0) {
                 app(RedeemPointsService::class)->refundForOrder(
                     $order->id,
+                    'Restored on refund of order '.$order->order_no,
+                );
+            }
+
+            // And the repurchase credit back to the repurchase wallet, in
+            // repurchase credit. Idempotent for the same reason.
+            if ($repurchaseCreditPaise > 0) {
+                $this->wallet->restoreRepurchaseCreditForOrder(
+                    $order->id,
+                    $repurchaseCreditPaise,
                     'Restored on refund of order '.$order->order_no,
                 );
             }
@@ -153,6 +187,14 @@ final class RefundOrder
             // for those orders.
             if ($redeemPointsPaise > 0) {
                 $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $redeemPointsPaise];
+            }
+
+            // The repurchase credit's contra-reversal, unconditional for the
+            // same reason as the points one: `markShipped` debited
+            // revenue.discounts when it settled part of the sale, and the cash
+            // reduction above is unconditional, so the credit must be too.
+            if ($repurchaseCreditPaise > 0) {
+                $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $repurchaseCreditPaise];
             }
 
             // No cash went out, so no cash comes back. Not a corner case:
@@ -208,6 +250,8 @@ final class RefundOrder
                     'order_no' => $order->order_no,
                     'reason' => $reason,
                     'net_refund_paise' => $netRefundPaise,
+                    'redeem_points_paise' => $redeemPointsPaise,
+                    'repurchase_credit_restored_paise' => $repurchaseCreditPaise,
                     'idempotency_key' => $idempotencyKey,
                 ],
             ]);

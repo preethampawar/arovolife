@@ -167,18 +167,84 @@ class WalletService
      *          stored as abs() by WalletService::debit()).
      *
      * Returns the net balance, floored at 0. Cannot go negative.
+     *
+     * `$lockForUpdate` takes a row lock on the entries the sum is read from and
+     * MUST be used by any caller that spends against the figure it gets back
+     * (mirrors RedeemPointsService::redeem()). Without it two concurrent
+     * checkouts by the same distributor both read the same balance and both
+     * apply it in full: the debits then exceed the credits and the max(0, …)
+     * floor below hides the overspend instead of surfacing it. Read-only
+     * callers (dashboards, the checkout screen's preview) leave it false.
      */
-    public function repurchaseWalletBalancePaise(int $distributorId): int
+    public function repurchaseWalletBalancePaise(int $distributorId, bool $lockForUpdate = false): int
     {
         $credits = (int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->where('type', 'repurchase_deduction')
+            ->when($lockForUpdate, fn ($q) => $q->lockForUpdate())
             ->sum('amount_paise');
 
         $debits = abs((int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->where('type', 'repurchase_wallet_used')
+            ->when($lockForUpdate, fn ($q) => $q->lockForUpdate())
             ->sum('amount_paise'));
 
         return max(0, $credits - $debits);
+    }
+
+    /**
+     * Give the repurchase-wallet credit back when the order it was spent on is
+     * refunded. The restoration is a fresh `repurchase_deduction` credit tied to
+     * the order, because the balance is defined as deductions − usages: undoing
+     * the usage row itself would break the audit trail of what was spent when.
+     *
+     * The money must come back as repurchase credit and never as cash — it was
+     * withheld from a bonus payout to fund the mandatory monthly repurchase and
+     * is explicitly non-withdrawable, so returning it in cash would turn it into
+     * a cash-out route (R-60). {@see RefundOrder} keeps the cash side out of the
+     * refund payable; this puts the entitlement back in the wallet.
+     *
+     * `$amountPaise` is what the refund is actually giving back, which can be
+     * less than what was spent: a return that does not refund shipping does not
+     * return the part of the credit that paid the shipping either. It is capped
+     * at the original usage so a refund can never restore more than was taken.
+     *
+     * Idempotent: a second call for the same order finds the existing
+     * restoration and does nothing, so a retried refund cannot mint credit.
+     */
+    public function restoreRepurchaseCreditForOrder(int $orderId, int $amountPaise, string $memo): ?WalletLedgerEntry
+    {
+        if ($amountPaise <= 0) {
+            return null;
+        }
+
+        $spent = WalletLedgerEntry::where('reference_type', 'order')
+            ->where('reference_id', $orderId)
+            ->where('type', 'repurchase_wallet_used')
+            ->first();
+
+        if ($spent === null) {
+            return null;
+        }
+
+        $amountPaise = min($amountPaise, abs((int) $spent->amount_paise));
+
+        $alreadyRestored = WalletLedgerEntry::where('reference_type', 'order')
+            ->where('reference_id', $orderId)
+            ->where('type', 'repurchase_deduction')
+            ->exists();
+
+        if ($alreadyRestored) {
+            return null;
+        }
+
+        return $this->credit(
+            distributorId: (int) $spent->distributor_id,
+            amountPaise: $amountPaise,
+            type: 'repurchase_deduction',
+            referenceId: $orderId,
+            referenceType: 'order',
+            memo: $memo,
+        );
     }
 
     /**
