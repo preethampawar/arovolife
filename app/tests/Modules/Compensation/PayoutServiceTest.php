@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutsJob;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -14,6 +15,7 @@ use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -72,7 +74,12 @@ it('generates a PENDING batch after run — wallets debited, awaiting admin appr
     expect($walletSvc->balancePaise($dist->id))->toBe(0);
 });
 
-it('approve() marks batch COMPLETED and line items TRANSFERRED', function () {
+it('approve() in manual NEFT mode holds the batch at APPROVED and leaves line items PENDING', function () {
+    // Approval is finance signing the amount off; it is not the bank moving
+    // money. Marking a line transferred here would put an unpaid amount on the
+    // distributor's Total Withdrawal Income and tax statement.
+    setPayoutSetting('payout.gateway', 'manual_neft');
+
     $admin = User::factory()->create();
     $dist = makePayoutEligibleDistributor();
 
@@ -84,12 +91,60 @@ it('approve() marks batch COMPLETED and line items TRANSFERRED', function () {
 
     $approved = $svc->approve($batch, $admin->id);
 
-    expect($approved->status)->toBe(PayoutBatch::STATUS_COMPLETED);
+    expect($approved->status)->toBe(PayoutBatch::STATUS_APPROVED);
     expect($approved->approved_by)->toBe($admin->id);
     expect($approved->approved_at)->not->toBeNull();
 
+    // Settled only by the bank response import.
     $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
-    expect($line->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED);
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING);
+});
+
+it('approve() in Razorpay mode marks the batch DISPATCHED and queues the dispatch job', function () {
+    setPayoutSetting('payout.gateway', 'razorpay');
+    Queue::fake();
+
+    $admin = User::factory()->create();
+    $dist = makePayoutEligibleDistributor();
+
+    $walletSvc = app(WalletService::class);
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+
+    $svc = app(PayoutService::class);
+    $batch = $svc->runWeeklyBatch(Carbon::today());
+
+    $approved = $svc->approve($batch, $admin->id);
+
+    expect($approved->status)->toBe(PayoutBatch::STATUS_DISPATCHED);
+    Queue::assertPushed(DispatchRazorpayPayoutsJob::class);
+
+    // Still pending: the payout webhook, not the approval, marks it transferred.
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING);
+});
+
+it('a re-run never appends line items to an already-approved batch', function () {
+    setPayoutSetting('payout.gateway', 'manual_neft');
+
+    $admin = User::factory()->create();
+    $first = makePayoutEligibleDistributor();
+
+    $walletSvc = app(WalletService::class);
+    $walletSvc->credit($first->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+
+    $svc = app(PayoutService::class);
+    $batch = $svc->runWeeklyBatch(Carbon::today());
+    $svc->approve($batch, $admin->id);
+
+    // A second distributor earns after the batch was signed off. Re-running the
+    // same date must not slip them into an amount finance already approved.
+    $second = makePayoutEligibleDistributor();
+    $walletSvc->credit($second->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+
+    $svc->runWeeklyBatch(Carbon::today());
+
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->count())->toBe(1);
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_APPROVED);
 });
 
 it('skips wallet below minimum payout threshold', function () {

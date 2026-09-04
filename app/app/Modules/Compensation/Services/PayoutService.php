@@ -7,12 +7,12 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Exceptions\BankDecryptionException;
+use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutsJob;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Middleware\RequireKycApproval;
-use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +25,23 @@ final class PayoutService
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
         private readonly CompensationPlanSettingsService $plan,
+        private readonly PayoutGatewaySettings $payoutSettings,
     ) {}
+
+    /**
+     * Batch states a re-run must never touch. A batch that has been approved
+     * — whether it is waiting for the bank response file (`approved`) or for
+     * Razorpay's webhooks (`dispatched`) — is closed: appending fresh line
+     * items to it would pay money outside the amount finance signed off.
+     *
+     * @var list<string>
+     */
+    private const CLOSED_BATCH_STATUSES = [
+        PayoutBatch::STATUS_PROCESSING,
+        PayoutBatch::STATUS_COMPLETED,
+        PayoutBatch::STATUS_APPROVED,
+        PayoutBatch::STATUS_DISPATCHED,
+    ];
 
     /**
      * Weekly payout batch (Group A: GSB + Mentorship).
@@ -60,8 +76,7 @@ final class PayoutService
             $wasCreated = true;
         }
 
-        if ($batch->status === PayoutBatch::STATUS_PROCESSING
-            || $batch->status === PayoutBatch::STATUS_COMPLETED
+        if (in_array($batch->status, self::CLOSED_BATCH_STATUSES, true)
             || ($batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null)) {
             return $batch;
         }
@@ -371,8 +386,7 @@ final class PayoutService
             $wasCreated = true;
         }
 
-        if ($batch->status === PayoutBatch::STATUS_PROCESSING
-            || $batch->status === PayoutBatch::STATUS_COMPLETED
+        if (in_array($batch->status, self::CLOSED_BATCH_STATUSES, true)
             || ($batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null)) {
             return $batch;
         }
@@ -747,8 +761,20 @@ final class PayoutService
     }
 
     /**
-     * Admin-initiated approval: mark the batch as completed and all pending
-     * line items as transferred. Records who approved and when.
+     * Admin-initiated approval. What follows depends on how payouts leave the
+     * company (`payout.gateway`):
+     *
+     *   razorpay    — the batch goes to `dispatched` and a queued job hands
+     *                 every line item to RazorpayX. Line items stay `pending`
+     *                 until each payout webhook confirms settlement.
+     *   manual_neft — the batch goes to `approved` and waits. Finance
+     *                 downloads the NEFT CSV, uploads it to the bank, and
+     *                 imports the bank's response file, which is what marks
+     *                 each line transferred or failed.
+     *
+     * In neither mode does approval itself mark a line transferred. It used
+     * to, which meant "an admin clicked a button" and "the distributor has
+     * the money" were the same recorded fact — they are not.
      */
     public function approve(PayoutBatch $batch, int $approvedByUserId): PayoutBatch
     {
@@ -756,17 +782,37 @@ final class PayoutService
             return $batch;
         }
 
-        DB::transaction(function () use ($batch, $approvedByUserId): void {
-            $batch->lineItems()
-                ->where('status', PayoutLineItem::STATUS_PENDING)
-                ->update(['status' => PayoutLineItem::STATUS_TRANSFERRED]);
+        $razorpay = $this->payoutSettings->isRazorpay();
 
+        DB::transaction(function () use ($batch, $approvedByUserId, $razorpay): void {
             $batch->update([
-                'status' => PayoutBatch::STATUS_COMPLETED,
+                'status' => $razorpay ? PayoutBatch::STATUS_DISPATCHED : PayoutBatch::STATUS_APPROVED,
                 'approved_by' => $approvedByUserId,
                 'approved_at' => now(),
             ]);
         });
+
+        AuditLog::create([
+            'actor_id' => $approvedByUserId,
+            'action' => 'payout.batch.approved',
+            'subject_type' => 'payout_batch',
+            'subject_id' => (int) $batch->id,
+            'details' => [
+                'batch_type' => $batch->batch_type,
+                'batch_date' => $batch->batch_date->toDateString(),
+                'gateway' => $this->payoutSettings->gateway(),
+                'status' => $batch->status,
+                'distributor_count' => $batch->distributor_count,
+                'total_net_paise' => $batch->total_net_paise,
+            ],
+            'ip' => app()->runningInConsole() ? null : request()->ip(),
+        ]);
+
+        if ($razorpay) {
+            // Dispatched outside the transaction: the compensation worker must
+            // not pick the job up before the batch row it reads is committed.
+            DispatchRazorpayPayoutsJob::dispatch((int) $batch->id, $approvedByUserId);
+        }
 
         return $batch->refresh();
     }

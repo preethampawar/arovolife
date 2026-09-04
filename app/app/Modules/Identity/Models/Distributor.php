@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $aadhaar_encrypted
  * @property string $bank_account_enc
  * @property string $bank_ifsc
+ * @property string|null $razorpay_contact_id
  * @property int $sponsor_id
  * @property int|null $placement_id_at_registration
  * @property int $placement_parent_id
@@ -76,6 +77,9 @@ final class Distributor extends Model
         'aadhaar_encrypted',
         'bank_account_enc',
         'bank_ifsc',
+        // Opaque RazorpayX contact id (`cont_...`), cached on first payout
+        // dispatch so later batches reuse it. Not PII.
+        'razorpay_contact_id',
         'sponsor_id',
         'placement_id_at_registration',
         'placement_parent_id',

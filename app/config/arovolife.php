@@ -110,6 +110,22 @@ return [
             'base_url' => (string) env('RAZORPAY_BASE_URL', 'https://api.razorpay.com/v1'),
             'timeout_seconds' => (int) env('RAZORPAY_TIMEOUT_SECONDS', 15),
         ],
+
+        // RazorpayX Payouts — money going OUT to distributors. A separate
+        // credential set from the inbound Razorpay checkout keys above: these
+        // can move company funds, so they are never shared with the storefront.
+        // `account_number` is the company's RazorpayX current account the
+        // transfers are debited from. Business levers (which gateway is live,
+        // transfer rail, retry policy, narration) live in the settings table.
+        // See resources/help/payout-operations.md.
+        'razorpay_payouts' => [
+            'key_id' => (string) env('RAZORPAYX_KEY_ID', ''),
+            'key_secret' => (string) env('RAZORPAYX_KEY_SECRET', ''),
+            'webhook_secret' => (string) env('RAZORPAYX_WEBHOOK_SECRET', ''),
+            'account_number' => (string) env('RAZORPAYX_ACCOUNT_NUMBER', ''),
+            'base_url' => (string) env('RAZORPAYX_BASE_URL', 'https://api.razorpay.com/v1'),
+            'timeout_seconds' => (int) env('RAZORPAYX_TIMEOUT_SECONDS', 20),
+        ],
     ],
 
     'recompute' => [

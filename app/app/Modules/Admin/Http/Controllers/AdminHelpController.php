@@ -51,6 +51,11 @@ final class AdminHelpController extends Controller
             'description' => "What to do when you can't sign in — the self-service reset, why a password can never be looked up for you, and how to reset a distributor's password.",
             'file' => 'staff-access-recovery.md',
         ],
+        'payout-operations' => [
+            'title' => 'Payout Operations',
+            'description' => 'How commission money reaches a distributor\'s bank — the two gateway modes, approving and dispatching a batch, importing a bank response file, what every line-item status means, and what to do when a transfer fails.',
+            'file' => 'payout-operations.md',
+        ],
         'payments' => [
             'title' => 'Payments & Refunds',
             'description' => 'How an online payment is confirmed (never on our word, only on Razorpay\'s), what the Payments screen shows, the unsettled-refunds worklist, the return-receipt gate on a cooling-off refund, and what to do when a refund fails.',

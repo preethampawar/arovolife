@@ -11,6 +11,7 @@ use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
+use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\FortuneStagingE2ESeedCommand;
@@ -171,6 +172,7 @@ class AppServiceProvider extends ServiceProvider
                 AdcPurgeRejectedDocumentsCommand::class,
                 PurchaseOffersMonthlyRunCommand::class,
                 MonthlyPayoutCommand::class,
+                AutoRetryFailedPayoutsCommand::class,
                 RepurchaseEvaluateCommand::class,
                 PaymentsReconcileCommand::class,
                 ExpireUnpaidOrdersCommand::class,

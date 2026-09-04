@@ -42,6 +42,21 @@ final class PayoutBatch extends Model
      */
     public const STATUS_PARTIALLY_FAILED = 'partially_failed';
 
+    /**
+     * Finance signed the batch off; no money has moved yet.
+     *
+     * In manual-NEFT mode this is where a batch waits while the CSV is
+     * downloaded, uploaded to the bank, and the bank's response file imported
+     * back — which is what promotes it to completed / partially_failed.
+     */
+    public const STATUS_APPROVED = 'approved';
+
+    /**
+     * Razorpay mode: every line item has been handed to the gateway and the
+     * batch is waiting for the payout webhooks that finalise each transfer.
+     */
+    public const STATUS_DISPATCHED = 'dispatched';
+
     public const TYPE_GSB_WEEKLY = 'gsb_weekly';
 
     public const TYPE_MANUAL = 'manual';

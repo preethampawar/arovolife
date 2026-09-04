@@ -81,6 +81,7 @@
             $gsbOn ? ['label' => 'Manual Controls', 'route' => 'admin.compensation.manual-controls.index', 'match' => 'admin.compensation.manual-controls'] : null,
             ['label' => 'Engine Runs', 'route' => 'admin.compensation.engine-runs.index', 'match' => 'admin.compensation.engine-runs'],
             ['label' => 'Plan Settings', 'route' => 'admin.compensation.plan-settings.index', 'match' => 'admin.compensation.plan-settings'],
+            ['label' => 'Payout Settings', 'route' => 'admin.compensation.payout-settings.index', 'match' => 'admin.compensation.payout-settings'],
         ]))],
     ];
 

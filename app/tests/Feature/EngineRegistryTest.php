@@ -25,6 +25,10 @@ it('has exactly one registry entry per compensation console command', function (
         // DPDP retention housekeeping for ADC application documents (R-62):
         // deletes files, pays nothing, freezes nothing.
         'AdcPurgeRejectedDocumentsCommand',
+        // Re-sends bank transfers an engine already computed and a human
+        // already approved. It takes no period, produces no bonus and cannot
+        // change what anyone is owed — only whether it has reached them yet.
+        'AutoRetryFailedPayoutsCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])

@@ -53,6 +53,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupContr
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbInputOutputController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminPayoutSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusController;
@@ -63,6 +64,7 @@ use App\Modules\Compensation\Http\Controllers\AreteCenterDirectoryController;
 use App\Modules\Compensation\Http\Controllers\DistributorAreteCenterApplicationController;
 use App\Modules\Compensation\Http\Controllers\IncomeController;
 use App\Modules\Compensation\Http\Controllers\MyBusinessController;
+use App\Modules\Compensation\Http\Controllers\RazorpayPayoutWebhookController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentController;
 use App\Modules\Compliance\Http\Controllers\Admin\AdminDormancyController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
@@ -508,6 +510,24 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::post('/{batch}/approve', [AdminWeeklyPayoutController::class, 'approve'])
                 ->middleware('can:finance.record')->name('approve')->whereNumber('batch');
             Route::get('/{batch}/neft', [AdminWeeklyPayoutController::class, 'exportNeft'])->name('neft')->whereNumber('batch');
+            // Settling a batch is the same authority as approving it: these
+            // decide whether a distributor is recorded as paid.
+            Route::post('/{batch}/reconcile', [AdminWeeklyPayoutController::class, 'reconcile'])
+                ->middleware('can:finance.record')->name('reconcile')->whereNumber('batch');
+            Route::post('/{batch}/retry-failed', [AdminWeeklyPayoutController::class, 'retryFailedLineItems'])
+                ->middleware('can:finance.record')->name('retry-failed')->whereNumber('batch');
+            Route::post('/{batch}/line-items/{line}/retry', [AdminWeeklyPayoutController::class, 'retryLineItem'])
+                ->middleware('can:finance.record')->name('line-items.retry')
+                ->whereNumber('batch')->whereNumber('line');
+        });
+
+        // How money leaves the platform: the gateway in use, the RazorpayX
+        // credential status, and a live connection check. The five levers
+        // themselves are edited through the platform settings registry.
+        Route::prefix('payout-settings')->name('payout-settings.')->group(function (): void {
+            Route::get('/', [AdminPayoutSettingsController::class, 'index'])->name('index');
+            Route::post('/test-connection', [AdminPayoutSettingsController::class, 'testConnection'])
+                ->middleware('can:finance.record')->name('test-connection');
         });
 
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
@@ -804,6 +824,12 @@ Route::post('/find-my-id/resend', [FindMyIdController::class, 'resendOtp'])
 // 404 unless Razorpay credentials are configured.
 Route::post('/webhooks/razorpay', RazorpayWebhookController::class)
     ->middleware('throttle:600,1')->name('webhooks.razorpay');
+
+// RazorpayX Payouts — money going out. Same contract as above: signature over
+// the raw body is the only authentication, and an unverifiable request is
+// answered 200 so Razorpay stops redelivering it.
+Route::post('/webhooks/razorpay/payouts', [RazorpayPayoutWebhookController::class, 'handle'])
+    ->middleware('throttle:600,1')->name('webhooks.razorpay.payouts');
 
 // ── Public Storefront (Commerce) ─────────────────────────────────────────────
 

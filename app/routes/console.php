@@ -3,6 +3,7 @@
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
+use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
@@ -98,6 +99,17 @@ Schedule::command(AdcBonusRunCommand::class)
 // engines (GBB 2nd, Rank 8th, Fortune 9th 09:00, ADC 8th) have completed.
 Schedule::command(MonthlyPayoutCommand::class)
     ->monthlyOn(9, '10:30')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Failed payouts are re-sent daily at 11:00 IST — two hours after the Tuesday
+// weekly batch, so a transfer that failed on this morning's dispatch gets its
+// first automatic second chance the next day rather than a week later. Only
+// line items past the configured staleness window and under the retry limit
+// are picked up; the command is a no-op in Manual NEFT mode.
+Schedule::command(AutoRetryFailedPayoutsCommand::class)
+    ->dailyAt('11:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

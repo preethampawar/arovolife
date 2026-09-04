@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // that, not a session token, is what authenticates the request.
         $middleware->preventRequestForgery(except: [
             'webhooks/razorpay',
+            'webhooks/razorpay/payouts',
         ]);
 
         $middleware->alias([

@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Models;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -22,6 +23,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $utr_number
  * @property string $status
  * @property string|null $failure_reason
+ * @property string|null $razorpay_payout_id
+ * @property string|null $razorpay_contact_id
+ * @property string|null $razorpay_fund_account_id
+ * @property string|null $transfer_mode
+ * @property int $retry_count
+ * @property Carbon|null $last_retried_at
+ * @property Carbon|null $dispatched_at
  */
 final class PayoutLineItem extends Model
 {
@@ -52,6 +60,8 @@ final class PayoutLineItem extends Model
         'gross_paise', 'admin_charge_paise', 'tds_paise',
         'wallet_balance_paise', 'repurchase_deduction_paise', 'net_transferred_paise',
         'bank_account_last4', 'utr_number', 'status', 'failure_reason',
+        'razorpay_payout_id', 'razorpay_contact_id', 'razorpay_fund_account_id',
+        'transfer_mode', 'retry_count', 'last_retried_at', 'dispatched_at',
     ];
 
     protected function casts(): array
@@ -63,6 +73,9 @@ final class PayoutLineItem extends Model
             'wallet_balance_paise' => 'integer',
             'repurchase_deduction_paise' => 'integer',
             'net_transferred_paise' => 'integer',
+            'retry_count' => 'integer',
+            'last_retried_at' => 'datetime',
+            'dispatched_at' => 'datetime',
         ];
     }
 
