@@ -114,6 +114,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: arovolife-queue
+    # A `queue:restart` signal makes the worker exit cleanly; this brings it
+    # straight back on the new code instead of leaving the queue undrained.
+    restart: unless-stopped
     working_dir: /var/www/html
     # Distributor-facing work only. `otp` is listed first so a verification
     # code always drains ahead of bulk notification traffic. Mirrors the two
@@ -141,6 +144,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: arovolife-queue-compensation
+    # A `queue:restart` signal makes the worker exit cleanly; this brings it
+    # straight back on the new code instead of leaving the queue undrained.
+    restart: unless-stopped
     working_dir: /var/www/html
     # One process, deliberately. Serialising the ledger writes means a
     # released job can never be re-reserved by a second worker while the
