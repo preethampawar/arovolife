@@ -13,6 +13,7 @@ use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
 use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\FortuneStagingE2ESeedCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
@@ -162,6 +163,7 @@ class AppServiceProvider extends ServiceProvider
                 RankCheckCommand::class,
                 FortuneBonusRunCommand::class,
                 FortuneBonusEnrollCommand::class,
+                FortuneStagingE2ESeedCommand::class,
                 AdcBonusRunCommand::class,
                 AdcPurgeRejectedDocumentsCommand::class,
                 PurchaseOffersMonthlyRunCommand::class,
