@@ -2,43 +2,60 @@
 @section('title', 'Settings')
 @section('heading', 'Platform Settings')
 
+@php
+use App\Modules\Shared\Support\IndianNumber;
+
+$formatSettingDisplay = static function (string $rawValue, array $meta): ?string {
+    if ($meta['type'] !== 'int') { return null; }
+    $unit = $meta['display_unit'] ?? null;
+    if ($unit === null) { return null; }
+    $n = (int) $rawValue;
+    if ($unit === 'rupees') {
+        return IndianNumber::rupees($n, 0);
+    }
+    if ($unit === 'bv') {
+        return IndianNumber::format($n / 100, 0) . ' BV';
+    }
+    return null;
+};
+@endphp
+
 @section('content')
 
 @include('partials._toast-container')
 
 <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900 max-w-3xl">
     <p class="font-semibold mb-1">Platform settings</p>
-    <p class="leading-relaxed">These values affect the whole arovolife platform and all users. Change with care; every change is audit-logged.</p>
+    <p>These values affect the whole arovolife platform and all users. Every change is audit-logged. Monetary values marked <strong>edit in paise</strong> store 100 paise per ₹1 — the current ₹ equivalent is shown below each field.</p>
 </div>
 
-<div class="max-w-3xl space-y-8">
-
-    {{-- Placement rule (see also the Placement settings group below) --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 class="font-semibold text-gray-900">Placement rule</h2>
-        <p class="text-sm text-gray-600 mt-1">
-            Every new registrant arrives via a referral link carrying
-            <code class="bg-gray-100 px-1 rounded text-xs">sponsor</code>,
-            <code class="bg-gray-100 px-1 rounded text-xs">placement</code>, and an optional
-            <code class="bg-gray-100 px-1 rounded text-xs">side</code>. By default (ADR-0003) the
-            engine places exactly at <code class="bg-gray-100 px-1 rounded text-xs">placement.&lt;side&gt;</code>
-            (left preferred, right the fallback) and a full target is rejected. When
-            <strong>Binary spillover</strong> (Placement settings below) is enabled, a full target
-            instead spills into the next open slot below it, using the selected
-            <strong>fill strategy</strong> (ADR-0007).
-        </p>
-    </div>
+<div class="max-w-3xl space-y-4">
 
     @foreach($grouped as $groupKey => $group)
-    <section class="space-y-3">
-        <header class="px-1">
-            <h2 class="text-lg font-semibold text-gray-900">{{ $group['meta']['label'] }}</h2>
-            @if(!empty($group['meta']['description']))
-            <p class="text-sm text-gray-600 mt-0.5">{{ $group['meta']['description'] }}</p>
-            @endif
-        </header>
+    @php
+        $groupHasError = collect($group['items'])->contains(function($item) use ($errors) {
+            $errorKey = $item['meta']['type'] === 'json' ? 'state_age_minimums' : 'value';
+            return $errors->has($errorKey) && session('saved_key') === $item['key'];
+        });
+        $groupHasSaved = collect($group['items'])->contains(fn($item) => session('saved_key') === $item['key']);
+        $autoOpen = $groupHasError || $groupHasSaved;
+    @endphp
 
-        <div class="space-y-3">
+    <details {{ $autoOpen ? 'open' : '' }} class="group bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <summary class="flex items-center justify-between px-5 py-4 cursor-pointer select-none list-none hover:bg-gray-50 transition-colors">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900">{{ $group['meta']['label'] }}</h2>
+                @if(!empty($group['meta']['description']))
+                    <p class="text-xs text-gray-500 mt-0.5 leading-snug">{{ $group['meta']['description'] }}</p>
+                @endif
+            </div>
+            <div class="flex items-center gap-2 ml-4 shrink-0">
+                <span class="text-xs text-gray-400">{{ count($group['items']) }} {{ Str::plural('setting', count($group['items'])) }}</span>
+                <x-lucide-chevron-down class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" />
+            </div>
+        </summary>
+
+        <div class="divide-y divide-gray-100 border-t border-gray-100">
             @foreach($group['items'] as $item)
                 @php
                     $key = $item['key'];
@@ -48,31 +65,29 @@
                     $fieldId = 'setting_' . str_replace('.', '_', $key);
                     $errorKey = $meta['type'] === 'json' ? 'state_age_minimums' : 'value';
                     $hasError = $errors->has($errorKey) && session('saved_key') === $key;
+                    $displayValue = $formatSettingDisplay($value, $meta);
                 @endphp
 
                 <div data-setting-card data-setting-key="{{ $key }}"
-                     class="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 {{ $readOnly ? 'opacity-95' : '' }}">
+                     class="px-5 py-4 {{ $readOnly ? 'bg-gray-50/50' : 'bg-white' }}">
 
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        {{-- Label + description as tooltip --}}
                         <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <label for="{{ $fieldId }}" class="text-base font-semibold text-gray-900">{{ $meta['label'] }} <x-help-tip :text="($meta['impact'] ?? null) ? $meta['description'] . ' — ' . $meta['impact'] : $meta['description']" /></label>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <label for="{{ $fieldId }}" class="text-sm font-medium text-gray-900 leading-tight">{{ $meta['label'] }}</label>
+                                <x-help-tip :text="($meta['impact'] ?? null) ? $meta['description'] . ' — ' . $meta['impact'] : $meta['description']" />
                                 @if($readOnly)
-                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800">Read-only</span>
+                                    <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800">Read-only</span>
                                 @endif
-                                <code class="text-[11px] text-gray-600 font-mono break-all">{{ $key }}</code>
                             </div>
-                            <p class="text-sm text-gray-600 mt-1.5">{{ $meta['description'] }}</p>
-
                             @if($readOnly && !empty($meta['read_only_reason']))
-                                <p class="text-xs text-amber-800 mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                                    {{ $meta['read_only_reason'] }}
-                                </p>
+                                <p class="text-xs text-amber-700 mt-1">{{ $meta['read_only_reason'] }}</p>
                             @endif
                         </div>
 
-                        {{-- Input region: type-specific renderer. --}}
-                        <div class="shrink-0 w-full sm:w-auto sm:min-w-[180px]">
+                        {{-- Input region --}}
+                        <div class="shrink-0">
                             @if($meta['type'] === 'bool')
                                 @include('admin.settings._toggle', [
                                     'fieldId' => $fieldId,
@@ -83,28 +98,33 @@
                                 ])
 
                             @elseif($meta['type'] === 'int')
-                                <form method="POST" action="{{ route('admin.settings.update', $key) }}"
-                                      data-setting-form @if(!$readOnly) data-editable @endif class="flex items-center gap-2"
-                                      data-confirm="Save the &lsquo;{{ $meta['label'] }}&rsquo; setting?"
-                                      data-confirm-title="Confirm setting change"
-                                      data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
-                                    @csrf
-                                    <input type="number"
-                                           id="{{ $fieldId }}"
-                                           name="value"
-                                           data-field-label="{{ $meta['label'] }}"
-                                           value="{{ old('value', $value) }}"
-                                           min="{{ $meta['min'] ?? '' }}"
-                                           max="{{ $meta['max'] ?? '' }}"
-                                           step="1"
-                                           {{ $readOnly ? 'disabled' : '' }}
-                                           class="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-right focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-600">
-                                    <button type="submit"
-                                            {{ $readOnly ? 'disabled' : '' }}
-                                            class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
-                                        Save
-                                    </button>
-                                </form>
+                                <div class="flex flex-col items-end gap-1">
+                                    <form method="POST" action="{{ route('admin.settings.update', $key) }}"
+                                          data-setting-form @if(!$readOnly) data-editable @endif class="flex items-center gap-2"
+                                          data-confirm="Save the &lsquo;{{ $meta['label'] }}&rsquo; setting?"
+                                          data-confirm-title="Confirm setting change"
+                                          data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
+                                        @csrf
+                                        <input type="number"
+                                               id="{{ $fieldId }}"
+                                               name="value"
+                                               data-field-label="{{ $meta['label'] }}"
+                                               value="{{ old('value', $value) }}"
+                                               min="{{ $meta['min'] ?? '' }}"
+                                               max="{{ $meta['max'] ?? '' }}"
+                                               step="1"
+                                               {{ $readOnly ? 'disabled' : '' }}
+                                               class="w-28 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-right focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-500 font-mono">
+                                        <button type="submit"
+                                                {{ $readOnly ? 'disabled' : '' }}
+                                                class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            Save
+                                        </button>
+                                    </form>
+                                    @if($displayValue !== null)
+                                        <span class="text-xs text-gray-500 font-medium">= {{ $displayValue }}</span>
+                                    @endif
+                                </div>
 
                             @elseif($meta['type'] === 'string')
                                 <form method="POST" action="{{ route('admin.settings.update', $key) }}"
@@ -120,65 +140,64 @@
                                            value="{{ old('value', $value) }}"
                                            maxlength="{{ $meta['max'] ?? 255 }}"
                                            {{ $readOnly ? 'disabled' : '' }}
-                                           class="w-72 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-600">
+                                           class="w-60 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-500">
                                     <button type="submit"
                                             {{ $readOnly ? 'disabled' : '' }}
-                                            class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
                                         Save
                                     </button>
                                 </form>
 
                             @elseif($meta['type'] === 'enum')
-                                <form method="POST" action="{{ route('admin.settings.update', $key) }}"
-                                      data-setting-form @if(!$readOnly) data-editable @endif class="flex items-center gap-2"
-                                      data-confirm="Save the &lsquo;{{ $meta['label'] }}&rsquo; setting?"
-                                      data-confirm-title="Confirm setting change"
-                                      data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
-                                    @csrf
-                                    <select id="{{ $fieldId }}" name="value"
-                                            data-field-label="{{ $meta['label'] }}"
-                                            {{ $readOnly ? 'disabled' : '' }}
-                                            class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100">
-                                        @foreach($meta['options'] ?? [] as $opt)
-                                            <option value="{{ $opt['value'] }}" @selected($opt['value'] === $value)>{{ $opt['label'] }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="submit"
-                                            {{ $readOnly ? 'disabled' : '' }}
-                                            class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
-                                        Save
-                                    </button>
-                                </form>
+                                <div class="space-y-2">
+                                    <form method="POST" action="{{ route('admin.settings.update', $key) }}"
+                                          data-setting-form @if(!$readOnly) data-editable @endif class="flex items-center gap-2"
+                                          data-confirm="Save the &lsquo;{{ $meta['label'] }}&rsquo; setting?"
+                                          data-confirm-title="Confirm setting change"
+                                          data-confirm-impact="Changes a platform-wide setting that affects all users on arovolife. The change is audit-logged and can be edited again later.">
+                                        @csrf
+                                        <select id="{{ $fieldId }}" name="value"
+                                                data-field-label="{{ $meta['label'] }}"
+                                                {{ $readOnly ? 'disabled' : '' }}
+                                                class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100">
+                                            @foreach($meta['options'] ?? [] as $opt)
+                                                <option value="{{ $opt['value'] }}" @selected($opt['value'] === $value)>{{ $opt['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit"
+                                                {{ $readOnly ? 'disabled' : '' }}
+                                                class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            Save
+                                        </button>
+                                    </form>
 
-                                {{-- Per-option behaviour notes, so the admin sees what each choice does. --}}
-                                @if(collect($meta['options'] ?? [])->contains(fn ($o) => ! empty($o['note'])))
-                                <ul class="mt-2 space-y-1 text-xs text-gray-600 max-w-prose">
-                                    @foreach($meta['options'] ?? [] as $opt)
-                                        @if(! empty($opt['note']))
-                                        <li class="{{ $opt['value'] === $value ? 'text-gray-700' : '' }}">
-                                            <span class="font-semibold {{ $opt['value'] === $value ? 'text-brand-700' : 'text-gray-700' }}">{{ $opt['label'] }}@if($opt['value'] === $value) (current)@endif:</span>
-                                            {{ $opt['note'] }}
-                                        </li>
-                                        @endif
-                                    @endforeach
-                                </ul>
-                                @endif
+                                    @if(collect($meta['options'] ?? [])->contains(fn ($o) => ! empty($o['note'])))
+                                    <ul class="space-y-0.5 text-xs text-gray-500 max-w-xs">
+                                        @foreach($meta['options'] ?? [] as $opt)
+                                            @if(! empty($opt['note']))
+                                            <li class="{{ $opt['value'] === $value ? 'text-gray-700 font-medium' : '' }}">
+                                                <span class="{{ $opt['value'] === $value ? 'text-brand-700' : 'text-gray-600' }}">{{ $opt['label'] }}@if($opt['value'] === $value) ✓@endif:</span>
+                                                {{ $opt['note'] }}
+                                            </li>
+                                            @endif
+                                        @endforeach
+                                    </ul>
+                                    @endif
+                                </div>
 
                             @elseif($meta['type'] === 'json')
-                                {{-- JSON settings still post to the legacy endpoint that knows
-                                     how to validate the structure (state-code regex, age range). --}}
                                 <form method="POST" action="{{ route('admin.settings.age-rules') }}"
-                                      data-setting-form @if(!$readOnly) data-editable @endif class="w-full sm:w-[260px]"
+                                      data-setting-form @if(!$readOnly) data-editable @endif class="w-full sm:w-56"
                                       data-confirm="Save the state age-minimum rules?"
                                       data-confirm-title="Confirm setting change"
                                       data-confirm-impact="Changes the per-state minimum-age rules platform-wide, affecting who can register on arovolife. The change is audit-logged and can be edited again later.">
                                     @csrf
                                     <textarea id="{{ $fieldId }}" name="state_age_minimums" data-field-label="State age minimums" rows="3" maxlength="2048"
                                               {{ $readOnly ? 'disabled' : '' }}
-                                              class="w-full font-mono text-sm rounded-lg border border-gray-300 px-3 py-2 focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100">{{ old('state_age_minimums', $value) }}</textarea>
+                                              class="w-full font-mono text-xs rounded-lg border border-gray-300 px-3 py-2 focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100">{{ old('state_age_minimums', $value) }}</textarea>
                                     <button type="submit"
                                             {{ $readOnly ? 'disabled' : '' }}
-                                            class="mt-2 w-full px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                            class="mt-1 w-full px-4 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
                                         Save
                                     </button>
                                 </form>
@@ -187,44 +206,41 @@
                     </div>
 
                     @if($hasError)
-                        <div class="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                        <div class="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
                             {{ $errors->first($errorKey) }}
                         </div>
                     @endif
                 </div>
             @endforeach
         </div>
-    </section>
+    </details>
     @endforeach
 
-    {{-- Advanced / engineer view — closed by default. Lets engineers see the
-         raw key/value/version table when needed without cluttering the
-         operator-facing view above. The controller only supplies rows to
-         viewers who own every key, so the whole block stays hidden otherwise. --}}
+    {{-- Engineer raw view --}}
     @if($settings->isNotEmpty())
-    <details class="bg-white rounded-2xl border border-gray-200 p-6">
-        <summary class="font-semibold text-gray-800 cursor-pointer select-none">
-            Show advanced settings (engineer view)
+    <details class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <summary class="flex items-center justify-between px-5 py-4 cursor-pointer select-none list-none hover:bg-gray-50 transition-colors group">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900">Raw settings table</h2>
+                <p class="text-xs text-gray-500 mt-0.5">All edits flow through the cards above — this is read-only.</p>
+            </div>
+            <x-lucide-chevron-down class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180 shrink-0" />
         </summary>
-        <p class="text-xs text-gray-600 mt-2 mb-4">
-            Raw <code class="bg-gray-100 px-1 rounded">settings</code> table contents.
-            All edits flow through the friendly cards above; this view is read-only.
-        </p>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+        <div class="border-t border-gray-100 overflow-x-auto">
+            <table class="w-full text-xs">
                 <thead>
-                    <tr class="border-b border-gray-200">
-                        <th class="text-left py-2 text-xs text-gray-600">Key</th>
-                        <th class="text-left py-2 text-xs text-gray-600">Value</th>
-                        <th class="text-left py-2 text-xs text-gray-600">Version</th>
+                    <tr class="border-b border-gray-200 bg-gray-50">
+                        <th class="text-left px-5 py-2 text-gray-500 font-medium">Key</th>
+                        <th class="text-left px-5 py-2 text-gray-500 font-medium">Value</th>
+                        <th class="text-left px-5 py-2 text-gray-500 font-medium">Ver</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($settings as $setting)
                     <tr>
-                        <td class="py-2 pr-3 font-mono text-xs text-gray-600 break-all">{{ $setting->key }}</td>
-                        <td class="py-2 pr-3 font-mono text-xs text-brand-700 break-all">{{ $setting->value }}</td>
-                        <td class="py-2 text-xs text-gray-600">v{{ $setting->version }}</td>
+                        <td class="px-5 py-2 font-mono text-gray-500 break-all">{{ $setting->key }}</td>
+                        <td class="px-5 py-2 font-mono text-brand-700 break-all">{{ $setting->value }}</td>
+                        <td class="px-5 py-2 text-gray-400">v{{ $setting->version }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -236,21 +252,17 @@
 
 @push('scripts')
 <script>
-    // Surface a success toast when a setting was just saved (server set the
-    // 'saved_key' flash key). The session('status') banner from the layout
-    // also fires; the toast is the lighter-weight confirmation per the
-    // settings-redesign spec.
     @if(session('saved_key'))
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.showToast === 'function') {
             window.showToast(@json(session('status', 'Saved.')), 'success');
         }
+        // Scroll saved card into view
+        const card = document.querySelector('[data-setting-key="{{ session('saved_key') }}"]');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     @endif
 
-    // Toggle behaviour: clicking a boolean toggle posts immediately. The
-    // hidden <input name="value"> carries the new state so the controller
-    // can read it without depending on checkbox semantics.
     document.querySelectorAll('[data-toggle-switch]').forEach((btn) => {
         if (btn.disabled) return;
         btn.addEventListener('click', () => {
@@ -258,14 +270,10 @@
             const input = form.querySelector('input[name="value"]');
             const currentlyOn = btn.getAttribute('aria-checked') === 'true';
             input.value = currentlyOn ? 'false' : 'true';
-            // Feed the confirm modal an On → Off (or Off → On) change line.
             const label = btn.getAttribute('data-toggle-label') || 'Setting';
             form.dataset.confirmChanges = JSON.stringify([
                 { label, from: currentlyOn ? 'On' : 'Off', to: currentlyOn ? 'Off' : 'On' },
             ]);
-            // requestSubmit() fires a real (cancelable) submit event so the
-            // global confirmation modal can intercept it; plain .submit() would
-            // bypass the modal. The modal submits the form on confirm.
             form.requestSubmit();
         });
     });

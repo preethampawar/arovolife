@@ -76,7 +76,7 @@ it('AS-01: GET /admin/settings renders friendly section headers, not just a raw 
     $response->assertSee('Cooling-off period (days)');
     $response->assertSee('Self-purchase earns BV');
     // The engineer view is still present but collapsed.
-    $response->assertSee('Show advanced settings (engineer view)');
+    $response->assertSee('Raw settings table');
 });
 
 it('AS-02: toggling a boolean setting via POST flips the stored value', function (): void {
@@ -168,7 +168,7 @@ it('AS-05c: a business admin sees only the settings it owns', function (): void 
 
     // Everything else the admin does not own is absent entirely.
     $response->assertDontSee('Admin charge cap — weekly batch (paise)');
-    $response->assertDontSee('Show advanced settings (engineer view)');
+    $response->assertDontSee('Raw settings table');
 });
 
 it('AS-05d: an admin cannot write the statutory values it can see', function (): void {
@@ -189,9 +189,9 @@ it('AS-05b: the Round-5 payout caps render and are admin-editable end-to-end', f
     // These render from registry defaults even with no DB row present.
     $response = $this->get('/admin/settings');
     $response->assertStatus(200);
-    $response->assertSee('Admin charge cap — weekly batch (paise)');
-    $response->assertSee('Admin charge cap — monthly batch (paise)');
-    $response->assertSee('Monthly income cap (paise)');
+    $response->assertSee('Admin charge cap — weekly batch');
+    $response->assertSee('Admin charge cap — monthly batch');
+    $response->assertSee('Monthly income cap');
 
     // Editing one persists AND is read back by the engine's settings service —
     // proving the registry ⇄ CompensationPlanSettingsService wiring is closed
