@@ -45,7 +45,7 @@
      so each block renders identically for every console role, but a block only
      exists while its bonus's feature flag is on (zero-trace rule). --}}
 @if($gsbOn || $msbOn)
-<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4" open>
+<details class="mb-4 rounded-xl border border-gray-200 bg-white p-4">
     <summary class="cursor-pointer text-sm font-semibold text-gray-800">How {{ $gsbOn && $msbOn ? 'GSB and MSB are' : ($gsbOn ? 'GSB is' : 'MSB is') }} calculated</summary>
 
     <div class="mt-4 grid gap-4 md:grid-cols-2">
@@ -527,7 +527,7 @@
                     Active <x-help-tip text="Marks the level as in force in the ladder. To stop a depth earning points, set its points per member to 0." />
                 </label>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Points per member (depth {{ $row->level }}) <x-help-tip text="FB points a participant earns for each enrolled distributor sitting this many levels below them in the month's matrix. The rupee value of a point is not set here — each level's value is derived from the pool at the monthly run." /></label>
                     <input type="number" name="points_per_member" data-field-label="Points per member at depth {{ $row->level }}" value="{{ $row->points_per_member }}" required min="0"
@@ -548,7 +548,7 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                     <span class="text-[11px] text-gray-600">{{ $row->cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->cap_paise / 100, 2) : '—' }}</span>
                 </div>
-                <div class="flex items-end">
+                <div class="flex items-end mt-5">
                     @if($canEdit)
                     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
                     @endif
