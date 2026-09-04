@@ -71,7 +71,7 @@ Refund amount depends on the case and whether goods are **saleable** (unopened,
 2. **Cooling-off** is processed **immediately, one-click** (non-discretionary — hard rule #5). No admin gate.
 3. **All other reasons**: admin receives a refund review task, records the physical inspection (saleable/non-saleable/damaged), and approves or rejects.
 4. On approval: the platform posts a double-entry ledger reversal and reverses BV. Order status → `refund_approved`.
-5. Customer receives the refund within **7 working days** to the original payment method. (Phase-2 stub — gateway settlement wires in Phase 3.)
+5. The refund is sent to Razorpay automatically — after inspection for a reviewed return, or once the return is marked **received** for a cooling-off cancellation — and the customer receives it within **7 working days** of that, to the original payment method. `refund_payable` is cleared only when Razorpay confirms it processed or finance records a manual NEFT.
 
 **Admin permissions:**
 - Viewing return requests: any admin role.
@@ -82,7 +82,8 @@ Refund amount depends on the case and whether goods are **saleable** (unopened,
 - **Do** verify physical condition before approving a damage/dissatisfaction/buyback return.
 - **Don't** use an inspection requirement to delay or block a cooling-off refund — inspection is post-facto only for cooling-off.
 - **Don't** approve a refund for non-eligible cases (e.g. cooling-off on non-saleable goods).
-- **Don't** tell a customer "refund complete" until Phase 3 confirms the gateway settlement. Use the phrase *"Refund initiated — credited within 7 working days."*
+- **Don't** tell a customer "refund complete" until the order shows `refunded` (Razorpay confirmed it). For a cooling-off return still in transit say *"Once we receive the returned product, the refund is credited within 7 working days."*
+- **Don't** mark a return received without the goods in hand — that action releases the cash, the points and the repurchase credit together, and it is audit-logged against your user.
 
 ---
 

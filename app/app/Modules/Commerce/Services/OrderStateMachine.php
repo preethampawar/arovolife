@@ -13,6 +13,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Models\LedgerEntry;
 use App\Modules\Ledger\Models\LedgerTx;
 use App\Modules\Ledger\Services\LedgerPoster;
+use App\Modules\Payments\Services\RazorpayRefundService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 use RuntimeException;
@@ -32,6 +33,7 @@ final class OrderStateMachine
         private readonly LedgerPoster $ledger,
         private readonly BvLedgerService $bvLedger,
         private readonly WalletService $wallet,
+        private readonly RazorpayRefundService $refunds,
     ) {}
 
     /**
@@ -361,6 +363,7 @@ final class OrderStateMachine
                     ->where('side', 'debit')
                     ->sum('amount_paise');
 
+            $wasPaid = $order->getAttribute('paid_at') !== null;
             if ($prepaymentPaise > 0) {
                 $this->ledger->transfer(
                     sourceModule: 'Commerce',
@@ -368,13 +371,20 @@ final class OrderStateMachine
                     sourceId: $order->id,
                     idempotencyKey: "order.cancelled:{$order->id}",
                     debitAccount: 'liability.customer_prepayment',
-                    creditAccount: $order->getAttribute('paid_at') !== null
+                    creditAccount: $wasPaid
                         ? 'liability.refund_payable'
                         : 'asset.cash.gateway.razorpay',
                     amountPaise: $prepaymentPaise,
                     memo: "Cancelled order {$order->order_no}",
                     createdByUserId: $actorUserId,
                 );
+
+                // The money really was collected: send it back through the
+                // gateway, for exactly the prepayment read back above — the
+                // cash the buyer handed over, never the order total.
+                if ($wasPaid) {
+                    $this->refunds->createForCancellation($order, $prepaymentPaise, $actorUserId);
+                }
             }
 
             // Release the inventory reserved at placement so the stock is

@@ -46,7 +46,10 @@ and the account must be **Active** (not already Blocked/Terminated).
 - A confirmation is sent by email and SMS.
 
 > The cancellation itself is recorded immediately (within ~2 seconds of the
-> request). The **refund** target is **7 working days** back-to-source.
+> request). The **refund** — the cash, and any points or repurchase credit used
+> on the order — is released once the returned product is **received** (Admin →
+> Returns → *Mark received*), and the cash target is **7 working days from
+> receipt**, back to the original payment method (T&C §8).
 
 > **Note:** joining is free, so there's nothing to refund for registration
 > itself. A cooling-off refund applies only where the distributor has made
@@ -71,11 +74,15 @@ immediately (ADR-0009):
 - Cr `revenue.discounts` (if a coupon was used — reversal of the contra-revenue)
 - Cr `liability.refund_payable` (what we now owe the customer)
 
-The `refund_payable` liability is **settled in Phase 3** when the Razorpay refund
-is processed. Until then, the order status is `refund_approved` — meaning:
-*"refund initiated in our ledger, money will be returned to the customer within
-7 working days."* The order does **not** show `refunded` until the gateway
-confirms the money has been returned.
+The `refund_payable` liability is settled only when Razorpay confirms the
+refund **processed** (webhook, or the reconciler), or when finance records a
+manual NEFT settlement. Until then the order status is `refund_approved`. For a
+cooling-off return the gateway refund is **held** until an operations user marks
+the return received; the buyer is told the clock starts at receipt. The order
+does **not** show `refunded` until the gateway confirms the money has moved.
+Unsettled refunds — held, failed, or ageing — are listed at Admin → Payments →
+Unsettled refunds, with alerts at 10 days without receipt and an escalation to
+the Grievance Officer at 21.
 
 > **Admin note:** "refund_approved" in the ledger ≠ "money back in the customer's
 > bank." Phase 3 wires the Razorpay refund and moves the order to `refunded`.

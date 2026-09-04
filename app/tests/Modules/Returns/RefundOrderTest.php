@@ -11,6 +11,7 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Returns\Events\OrderRefundApproved;
 use App\Modules\Returns\Models\ReturnRequest;
 use App\Modules\Returns\Services\RefundOrder;
+use App\Modules\Returns\Services\ReturnReceiptService;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -346,7 +347,22 @@ it('RFO-20: repurchase credit is refunded as repurchase credit, never as cash', 
 
     Event::assertDispatched(OrderRefundApproved::class, fn ($e) => $e->netRefundPaise === 100000);
 
-    // …and the entitlement is back in the repurchase wallet, tied to the order.
+    // A cooling-off return: the entitlement is HELD with the cash until the
+    // goods are received (terms §8), recorded on the return request so the
+    // release restores exactly this amount…
+    $rq->refresh();
+    expect($rq->entitlement_credit_paise)->toBe(23000)
+        ->and($rq->entitlements_held_at)->not->toBeNull()
+        ->and($rq->entitlements_restored_at)->toBeNull()
+        ->and(app(WalletService::class)->repurchaseWalletBalancePaise($distId))->toBe(0);
+
+    // …and comes back, tied to the order, the moment the return is received.
+    $staff = (int) DB::table('users')->insertGetId([
+        'full_name' => 'Ops', 'email' => 'ops-'.uniqid().'@test.com', 'phone_e164' => '+9170001'.rand(10000, 99999),
+        'password_hash' => bcrypt('x'), 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    app(ReturnReceiptService::class)->markReceived($rq, actorUserId: $staff, outcome: ReturnRequest::RECEIPT_RECEIVED);
+
     $restored = WalletLedgerEntry::where('type', 'repurchase_deduction')
         ->where('reference_type', 'order')
         ->where('reference_id', $order->id)
@@ -354,6 +370,30 @@ it('RFO-20: repurchase credit is refunded as repurchase credit, never as cash', 
     expect($restored)->not->toBeNull();
     expect((int) $restored->amount_paise)->toBe(23000);
     expect(app(WalletService::class)->repurchaseWalletBalancePaise($distId))->toBe(23000);
+    expect($rq->fresh()->entitlements_restored_at)->not->toBeNull();
+});
+
+it('RFO-24: a coupon comes off the refund for every reason, and the entry still balances', function (): void {
+    Event::fake([OrderRefundApproved::class]);
+    ['order' => $order, 'returnRequest' => $rq] = refundOrderFixture();
+    // ₹200 coupon on the ₹1,180 product side: the buyer paid ₹980 + ₹50 shipping.
+    DB::table('orders')->where('id', $order->id)->update(['discount_paise' => 20000, 'total_paise' => 103000]);
+
+    // `damage` + saleable refunds product + GST but not shipping — and never the coupon.
+    app(RefundOrder::class)->execute($order->fresh(), $rq, 'damage', true, actorUserId: null);
+
+    Event::assertDispatched(OrderRefundApproved::class, fn ($e) => $e->netRefundPaise === 98000);
+
+    $tx = DB::table('ledger_tx')->where('idempotency_key', "refund:{$order->id}")->first();
+    $entries = DB::table('ledger_entries')->where('ledger_tx_id', $tx->id)->get();
+    expect((int) $entries->where('side', 'debit')->sum('amount_paise'))->toBe((int) $entries->where('side', 'credit')->sum('amount_paise'));
+
+    $payable = DB::table('ledger_entries')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->where('ledger_entries.ledger_tx_id', $tx->id)
+        ->where('ledger_accounts.code', 'liability.refund_payable')
+        ->sum('ledger_entries.amount_paise');
+    expect((int) $payable)->toBe(98000);
 });
 
 it('RFO-21: the refund ledger still balances when repurchase credit was applied', function (): void {

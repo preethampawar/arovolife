@@ -57,7 +57,7 @@ function pswOrder(int $minutesAgo, string $method = Order::PAYMENT_ONLINE): Orde
     InventoryLevel::create(['product_variant_id' => $variant->id, 'warehouse_code' => 'DEFAULT', 'on_hand' => 10, 'reserved' => 1]);
     OrderItem::create([
         'order_id' => $order->id, 'product_variant_id' => $variant->id, 'qty' => 1,
-        'product_name_snapshot' => $product->name, 'variant_sku_snapshot' => $variant->variant_sku, 'hsn_code_snapshot' => '3004',
+        'product_name_snapshot' => "PSW {$n}", 'variant_sku_snapshot' => "PSW-{$n}-V1", 'hsn_code_snapshot' => '3004',
         'unit_price_paise' => 118000, 'taxable_value_paise' => 118000, 'line_total_paise' => 118000, 'bv_paise' => 0, 'gst_rate_bp' => 0, 'gst_paise' => 0,
     ]);
 
@@ -131,7 +131,7 @@ it('PSW-03: expire cancels an old unpaid order, releases stock, closes the inten
     expect($order->status)->toBe(Order::STATUS_CANCELLED)
         ->and($intent->fresh()->status)->toBe(PaymentIntent::STATUS_CANCELLED)
         ->and($intent->fresh()->cancel_reason)->toBe('payment_expired')
-        ->and($order->items->first()->variant->inventory->reserved)->toBe(0);
+        ->and((int) InventoryLevel::whereIn('product_variant_id', OrderItem::where('order_id', $order->id)->pluck('product_variant_id'))->sum('reserved'))->toBe(0);
 
     $audit = AuditLog::where('action', 'order.expired_by_sweeper')->where('subject_id', $order->id)->sole();
     expect($audit->actor_id)->toBeNull()

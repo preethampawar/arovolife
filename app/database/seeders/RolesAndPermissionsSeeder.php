@@ -44,6 +44,13 @@ final class RolesAndPermissionsSeeder extends Seeder
         // against a staff login with no MFA.
         'kyc.review' => 'admin-operations',         // approve / reject / terminate a KYC submission
         'commerce.order.manage' => 'admin-operations', // ship / deliver / cancel an order
+
+        // Added 2026-09-04 with the Razorpay refunds. Marking a return as
+        // received releases the held cooling-off refund — real money — and
+        // must never sit with the role that can also settle a refund by hand
+        // (`finance.record`): whoever confirms the goods are back is not the
+        // person who can then write the payable off or pay it out.
+        'returns.receive' => 'admin-operations',    // mark a return received / not returned
     ];
 
     /**

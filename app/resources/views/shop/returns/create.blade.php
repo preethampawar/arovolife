@@ -72,7 +72,7 @@
             <div class="mb-6 rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-600">
                 <p class="font-medium text-gray-800 mb-1">What happens next?</p>
                 <ul class="space-y-1 list-disc list-inside">
-                    <li><strong>Cooling-off:</strong> refund is initiated immediately, credited to your original payment method within 7 working days.</li>
+                    <li><strong>Cooling-off:</strong> your cancellation takes effect immediately. Once we receive the returned product, the refund is credited to your original payment method within 7 working days.</li>
                     <li><strong>All other reasons:</strong> our team reviews the request and may contact you to arrange collection of the product. Refund decision is communicated by email within 5 working days.</li>
                 </ul>
             </div>

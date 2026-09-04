@@ -41,6 +41,7 @@ use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Returns\Models\ReturnRequest;
 use App\Modules\Returns\Services\RefundOrder;
+use App\Modules\Returns\Services\ReturnReceiptService;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -509,9 +510,19 @@ it('OFR-016: a points-paid order refunded in cooling-off returns no more cash th
     expect($payable)->toBe(18_000)
         ->and($payable)->toBeLessThanOrEqual((int) $order->total_paise);
 
-    // And the points side comes back in points, exactly once — a retried
-    // refund returns early and cannot mint them.
+    // The points side comes back in points — but for a cooling-off return
+    // only once the goods are received (terms §8), and exactly once: a
+    // retried refund returns early and cannot mint them.
     app(RefundOrder::class)->execute($order->refresh(), $rq, 'cooling_off', true, actorUserId: null);
+    expect(ofrPoints()->balance($distributor->id))->toBe(0)
+        ->and($rq->fresh()->entitlement_points_paise)->toBe(100_000);
+
+    $staff = (int) DB::table('users')->insertGetId([
+        'full_name' => 'Ops', 'email' => 'ops-'.uniqid().'@test.com', 'phone_e164' => '+9170002'.rand(10000, 99999),
+        'password_hash' => bcrypt('x'), 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    app(ReturnReceiptService::class)->markReceived($rq->fresh(), $staff, ReturnRequest::RECEIPT_RECEIVED);
+    app(ReturnReceiptService::class)->markReceived($rq->fresh(), $staff, ReturnRequest::RECEIPT_RECEIVED);
 
     expect(ofrPoints()->balance($distributor->id))->toBe(1000);
 });

@@ -109,8 +109,8 @@ themselves carry **flag columns** rather than a status enum:
 | `cancelled` | Cancelled before fulfilment. |
 | `refund_requested` | Customer has opened a return request; awaiting admin inspection (non-cooling-off) or auto-processing (cooling-off). |
 | `refund_inspection` | Admin has recorded the physical inspection; awaiting approve/reject decision. |
-| `refund_approved` | **Phase-2 terminal refund state.** Ledger reversed, BV reversed. Refund initiated; money credited within 7 working days once Phase-3 gateway settlement runs. Customer copy: *"Refund initiated."* |
-| `refunded` | Gateway has confirmed money returned (Phase 3). |
+| `refund_approved` | Ledger reversed, BV reversed, refund created. Sent to Razorpay at once after an inspection; for a cooling-off return it is **held** until the return is marked received, and the points / repurchase credit are returned at the same moment. Customer copy: *"Refund approved — once we receive the returned product, credited within 7 working days."* |
+| `refunded` | Razorpay confirmed the refund processed (or finance recorded a manual NEFT). Customer copy: *"Refund complete."* |
 
 | Other field | Values | Default | Meaning |
 |---|---|---|---|

@@ -13,6 +13,7 @@ use App\Modules\Payments\Data\ConfirmationResult;
 use App\Modules\Payments\Data\GatewayPayment;
 use App\Modules\Payments\Exceptions\PaymentMismatchException;
 use App\Modules\Payments\Exceptions\SignatureVerificationException;
+use App\Modules\Payments\Jobs\SendRazorpayRefundJob;
 use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
@@ -390,10 +391,11 @@ final class PaymentConfirmationService
             'refund_intent_id' => $refund->id,
         ]);
 
-        // The refund itself is dispatched by RazorpayRefundService (Chunk 5),
-        // which picks up every unsent RefundIntent; nothing here needs it to
-        // exist for the books to be right.
-        RefundDispatch::afterCommit($refund);
+        // Sent once this transaction commits; the reconciler re-queues any
+        // intent that was never sent, so the books stay right either way.
+        if ($refund->wasRecentlyCreated) {
+            SendRazorpayRefundJob::dispatch($refund->id)->afterCommit();
+        }
 
         return new ConfirmationResult(ConfirmationResult::LATE_CAPTURE, 'refund '.$refund->id.' queued');
     }

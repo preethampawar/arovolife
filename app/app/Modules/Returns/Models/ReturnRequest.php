@@ -7,6 +7,7 @@ namespace App\Modules\Returns\Models;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -18,6 +19,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int|null $qty null for order-level returns
  * @property string $reason BuybackMatrix::REASONS value
  * @property string $status
+ * @property Carbon|null $received_at
+ * @property int|null $received_by_user_id
+ * @property string|null $receipt_outcome
+ * @property string|null $receipt_note
+ * @property int $entitlement_points_paise
+ * @property int $entitlement_credit_paise
+ * @property Carbon|null $entitlements_held_at
+ * @property Carbon|null $entitlements_restored_at
  */
 final class ReturnRequest extends Model
 {
@@ -40,10 +49,38 @@ final class ReturnRequest extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
+    public const STATUS_REFUNDED = 'refunded';
+
+    public const RECEIPT_RECEIVED = 'received';
+
+    public const RECEIPT_COURIER_LOST = 'courier_lost';
+
+    public const RECEIPT_NOT_RETURNED = 'not_returned';
+
     protected $fillable = [
         'rma_no', 'order_id', 'order_item_id', 'qty', 'reason',
         'opened_by_customer_id', 'notes', 'status',
+        'received_at', 'received_by_user_id', 'receipt_outcome', 'receipt_note',
+        'entitlement_points_paise', 'entitlement_credit_paise', 'entitlements_held_at', 'entitlements_restored_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'qty' => 'int',
+            'received_at' => 'datetime',
+            'entitlement_points_paise' => 'int',
+            'entitlement_credit_paise' => 'int',
+            'entitlements_held_at' => 'datetime',
+            'entitlements_restored_at' => 'datetime',
+        ];
+    }
+
+    /** The refund (cash, points, credit) is waiting for the goods to come back. */
+    public function isAwaitingReceipt(): bool
+    {
+        return $this->entitlements_held_at !== null && $this->received_at === null && $this->receipt_outcome === null;
+    }
 
     public function order(): BelongsTo
     {

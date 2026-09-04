@@ -31,6 +31,7 @@ use App\Modules\Payments\Data\ConfirmationResult;
 use App\Modules\Payments\Data\GatewayPayment;
 use App\Modules\Payments\Exceptions\PaymentMismatchException;
 use App\Modules\Payments\Exceptions\SignatureVerificationException;
+use App\Modules\Payments\Jobs\SendRazorpayRefundJob;
 use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
@@ -40,6 +41,7 @@ use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -200,6 +202,7 @@ it('PCS-08: a failed payment leaves the order placed and records the reason', fu
 });
 
 it('PCS-09: a capture on an already-cancelled order posts the cash as owed back and queues a full refund', function () {
+    Queue::fake();
     $order = pcsOrder();
     $intent = pcsIntent($order);
     app(OrderStateMachine::class)->cancel($order, 'payment_expired');
@@ -229,6 +232,7 @@ it('PCS-09: a capture on an already-cancelled order posts the cash as owed back 
     expect($again->status)->toBe(ConfirmationResult::LATE_CAPTURE)
         ->and(RefundIntent::where('order_id', $order->id)->count())->toBe(1)
         ->and(LedgerTx::where('idempotency_key', 'order.late_capture:'.$order->id)->count())->toBe(1);
+    Queue::assertPushed(SendRazorpayRefundJob::class, 1);
 });
 
 it('PCS-10: the callback refuses a bad signature and an order id that is not the intent\'s', function () {

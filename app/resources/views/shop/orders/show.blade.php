@@ -143,7 +143,12 @@
         @elseif($order->status === 'refund_inspection')
         <p class="text-sm text-amber-800">Your return is being inspected. A decision will be communicated shortly.</p>
         @elseif($order->status === 'refund_approved')
-        <p class="text-sm text-green-800 font-medium">Refund initiated — you will receive the amount within 7 working days to your original payment method.</p>
+        @php $awaitingReceipt = $order->returnRequests()->whereNotNull('entitlements_held_at')->whereNull('received_at')->whereNull('receipt_outcome')->exists(); @endphp
+        @if($awaitingReceipt)
+        <p class="text-sm text-green-800 font-medium">Refund approved. Once we receive the returned product, the amount is credited to your original payment method within 7 working days, and any points or repurchase credit used on this order are returned to you at the same time.</p>
+        @else
+        <p class="text-sm text-green-800 font-medium">Refund sent to your original payment method — usually credited within 7 working days.</p>
+        @endif
         @elseif($order->status === 'refunded')
         <p class="text-sm text-green-800 font-medium">Refund complete.</p>
         @endif

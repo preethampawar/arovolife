@@ -11,6 +11,7 @@ use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Services\LedgerPoster;
+use App\Modules\Payments\Services\RazorpayRefundService;
 use App\Modules\Returns\Events\OrderRefundApproved;
 use App\Modules\Returns\Models\ReturnRequest;
 use Illuminate\Database\DatabaseManager;
@@ -68,6 +69,7 @@ final class RefundOrder
         private readonly BvLedgerService $bvLedger,
         private readonly BuybackMatrix $matrix,
         private readonly WalletService $wallet,
+        private readonly RazorpayRefundService $refunds,
     ) {}
 
     public function execute(
@@ -99,7 +101,13 @@ final class RefundOrder
         $isCoolingOff = $reason === ReturnRequest::REASON_COOLING_OFF;
         $gstRefundPaise = $policy['refund_gst'] ? $order->gst_paise : 0;
         $shippingRefundPaise = $isCoolingOff ? $order->shipping_paise : 0;
-        $discountPaise = $isCoolingOff ? $order->discount_paise : 0;
+        // The coupon comes off for every reason: a discount the buyer never
+        // paid cannot be refunded as cash. It used to be unwound only inside
+        // cooling-off, which on a damage or dissatisfaction return refunded
+        // `discount − shipping` more cash than was ever collected — the same
+        // conversion of a non-cash element into cash that R-60 closed for the
+        // repurchase wallet.
+        $discountPaise = $order->discount_paise;
         // Redeem points were never cash, so they must never come back as cash.
         // Without this line a buyer could pay ₹180 cash plus 1,000 points on a
         // ₹1,180 order, cancel inside the cooling-off window and receive ₹1,180
@@ -134,25 +142,35 @@ final class RefundOrder
             $taxable, $gstRefundPaise, $shippingRefundPaise, $discountPaise, $netRefundPaise,
             $redeemPointsPaise, $repurchaseCreditPaise, $idempotencyKey, $actorUserId,
         ): void {
-            // Give the points back, in points, inside the same transaction that
-            // reverses the money. Idempotent, so a retried refund cannot mint
-            // them. Published §11.2 promises restoration; before this nothing
-            // called it and the points were simply destroyed.
-            if ($redeemPointsPaise > 0) {
-                app(RedeemPointsService::class)->refundForOrder(
-                    $order->id,
-                    'Restored on refund of order '.$order->order_no,
-                );
-            }
+            // Everything of value goes back to the buyer in the form it was
+            // paid: points as points, repurchase credit as credit, cash as
+            // cash. For a cooling-off cancellation all three wait for the
+            // returned goods (terms §8; ReturnReceiptService releases them
+            // together) — the cancellation itself, the ledger and BV reversal
+            // below, and the closing of the clock are instant. For every
+            // inspected return the goods are already in hand, so the
+            // entitlements are restored here. Idempotent either way.
+            if ($isCoolingOff) {
+                $returnRequest->update([
+                    'entitlement_points_paise' => $redeemPointsPaise,
+                    'entitlement_credit_paise' => $repurchaseCreditPaise,
+                    'entitlements_held_at' => Carbon::now(),
+                ]);
+            } else {
+                if ($redeemPointsPaise > 0) {
+                    app(RedeemPointsService::class)->refundForOrder(
+                        $order->id,
+                        'Restored on refund of order '.$order->order_no,
+                    );
+                }
 
-            // And the repurchase credit back to the repurchase wallet, in
-            // repurchase credit. Idempotent for the same reason.
-            if ($repurchaseCreditPaise > 0) {
-                $this->wallet->restoreRepurchaseCreditForOrder(
-                    $order->id,
-                    $repurchaseCreditPaise,
-                    'Restored on refund of order '.$order->order_no,
-                );
+                if ($repurchaseCreditPaise > 0) {
+                    $this->wallet->restoreRepurchaseCreditForOrder(
+                        $order->id,
+                        $repurchaseCreditPaise,
+                        'Restored on refund of order '.$order->order_no,
+                    );
+                }
             }
 
             // Build balanced ledger reversal lines.
@@ -173,18 +191,12 @@ final class RefundOrder
                 $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $discountPaise];
             }
 
-            // The same reversal for points. `markShipped` debited
+            // The same reversal for points: `markShipped` debited
             // revenue.discounts when they were spent, so the refund credits it
-            // back — and the asymmetry with $discountPaise above is deliberate:
-            // the coupon is only unwound inside the cooling-off window, while
-            // the cash reduction for points is unconditional, so its
-            // contra-reversal must be unconditional too.
-            //
-            // Without this line debits and credits differ by exactly
-            // $redeemPointsPaise, LedgerPoster throws inside the transaction,
-            // and a distributor who paid partly in points cannot cancel at all
-            // — the statutory one-click cooling-off refund would fail outright
-            // for those orders.
+            // back. Coupon, points and credit are all unconditional here, as
+            // their cash reductions are — a missing contra line leaves the
+            // entry short by exactly that amount, LedgerPoster throws inside
+            // the transaction, and the refund cannot be executed at all.
             if ($redeemPointsPaise > 0) {
                 $lines[] = ['account' => 'revenue.discounts', 'side' => 'credit', 'amount_paise' => $redeemPointsPaise];
             }
@@ -223,6 +235,13 @@ final class RefundOrder
             // Reverse BV — a refunded order must leave no BV behind (hard rule #2).
             $this->bvLedger->reverse($order);
 
+            // The cash back through the gateway it came in by — the net cash
+            // only, never the order total (I4). Held for a cooling-off return
+            // until the goods are received; sent at once after an inspection.
+            // Null when nothing was collected through a gateway (COD): the
+            // refund_payable stands and finance settles it by hand.
+            $this->refunds->createForReturn($order, $netRefundPaise, $reason, hold: $isCoolingOff, actorUserId: $actorUserId);
+
             // Close the per-order cooling-off clock (if applicable).
             if ($isCoolingOff) {
                 $coolingOff = $order->coolingOff;
@@ -251,7 +270,9 @@ final class RefundOrder
                     'reason' => $reason,
                     'net_refund_paise' => $netRefundPaise,
                     'redeem_points_paise' => $redeemPointsPaise,
-                    'repurchase_credit_restored_paise' => $repurchaseCreditPaise,
+                    'repurchase_credit_paise' => $repurchaseCreditPaise,
+                    'discount_paise' => $discountPaise,
+                    'entitlements' => $isCoolingOff ? 'held_pending_receipt' : 'restored',
                     'idempotency_key' => $idempotencyKey,
                 ],
             ]);
