@@ -54,9 +54,6 @@
         <div class="lg:col-span-2 flex flex-col gap-6 min-w-0">
             @include('dashboard._genos-balance')
             @include('dashboard._team-growth')
-            @if($bonusSummary !== [])
-                @include('dashboard._income-snapshot')
-            @endif
         </div>
         <div class="flex flex-col gap-6 min-w-0">
             @include('dashboard._placement')
@@ -64,6 +61,10 @@
             @include('dashboard._messages')
         </div>
     </div>
+
+    @if($bonusSummary !== [])
+        @include('dashboard._income-snapshot')
+    @endif
 
     @include('dashboard._my-team')
 @else

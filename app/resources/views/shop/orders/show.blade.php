@@ -120,7 +120,7 @@
             <h2 class="font-semibold text-gray-900 mb-1">Returns &amp; Refunds</h2>
             @if($order->coolingOff && $order->coolingOff->status === 'open' && $order->coolingOff->ends_at->isFuture())
             <p class="text-sm text-blue-700 mb-3">
-                Your <strong>30-day cooling-off window</strong> is open — {{ $order->coolingOff->daysRemaining() }} day{{ $order->coolingOff->daysRemaining() === 1 ? '' : 's' }} remaining. You can return this order for a full refund.
+                Your <strong>30-day cooling-off window</strong> is open — {{ $order->coolingOff->daysRemaining() }} day{{ $order->coolingOff->daysRemaining() === 1 ? '' : 's' }} remaining. You can return this order for a refund.
             </p>
             @else
             <p class="text-sm text-gray-600 mb-3">You may be eligible to return this order under our buyback / refund policy (damage, dissatisfaction, general buyback).</p>
