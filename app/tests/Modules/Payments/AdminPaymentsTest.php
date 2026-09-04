@@ -13,6 +13,9 @@ declare(strict_types=1);
  * APT-06: finance can settle and retry; operations cannot
  * APT-07: the worklist sweep alerts at 10 days and opens a grievance ticket at 21 — once each
  * APT-08: the help page renders and the nav badge counts refunds needing attention
+ * APT-09: a forfeited refund is off the worklist and can be neither retried nor settled
+ * APT-10: a paid order without an invoice is listed; finance issues it, operations cannot
+ * APT-11: a refund owed outside the gateway is listed; finance settles it against the order
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -20,12 +23,15 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Grievance\Models\Ticket;
 use App\Modules\Identity\Models\User;
+use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Payments\Jobs\SendRazorpayRefundJob;
 use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
+use App\Modules\Payments\Support\InvoiceGapWorklist;
 use App\Modules\Payments\Support\RefundWorklist;
 use App\Modules\Returns\Models\ReturnRequest;
+use App\Modules\Tax\Models\Invoice;
 use Database\Seeders\LedgerAccountSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -244,4 +250,68 @@ it('APT-08: the help page renders and the nav badge counts refunds needing atten
     $this->actingAs($operations)->get(route('admin.help.show', 'payments'))->assertOk()->assertSee('never marked paid on anyone');
     expect(app(RefundWorklist::class)->attentionCount())->toBe(1);
     $this->actingAs($operations)->get(route('admin.payments.index'))->assertOk()->assertSee('attention');
+});
+
+it('APT-09: a forfeited refund is off the worklist and can be neither retried nor settled', function () {
+    Queue::fake();
+    $order = aptOrder(Order::STATUS_DELIVERED);
+    $intent = aptIntent($order, PaymentIntent::STATUS_CAPTURED);
+    $refund = RefundIntent::create(['order_id' => $order->id, 'payment_intent_id' => $intent->id, 'gateway' => 'razorpay', 'mode' => 'test',
+        'amount_paise' => 118000, 'status' => RefundIntent::STATUS_FAILED, 'reason_code' => 'cooling_off', 'idempotency_key' => 'refund:'.$order->id,
+        'failed_at' => now(), 'error_code' => RefundIntent::ERROR_GOODS_NOT_RETURNED, 'held_at' => now()->subDays(30), 'hold_reason' => RefundIntent::HOLD_AWAITING_RETURN]);
+    $finance = aptUser('admin-finance');
+
+    expect(app(RefundWorklist::class)->outstandingRefunds()->pluck('id')->all())->not->toContain($refund->id)
+        ->and(app(RefundWorklist::class)->attentionCount())->toBe(0);
+    $this->actingAs($finance)->get(route('admin.payments.refunds'))->assertOk()->assertDontSee($order->order_no);
+
+    $this->actingAs($finance)->post(route('admin.payments.refunds.retry', $refund))->assertSessionHasErrors('refund');
+    $this->actingAs($finance)->post(route('admin.payments.refunds.settle', $refund), ['reference' => 'UTR123456789'])->assertSessionHasErrors('refund');
+    expect($refund->fresh()->status)->toBe(RefundIntent::STATUS_FAILED)
+        ->and($refund->fresh()->error_code)->toBe(RefundIntent::ERROR_GOODS_NOT_RETURNED)
+        ->and($order->fresh()->status)->toBe(Order::STATUS_DELIVERED);
+    Queue::assertNothingPushed();
+});
+
+it('APT-10: a paid order without an invoice is listed; finance issues it, operations cannot', function () {
+    $order = aptOrder(Order::STATUS_PAID);
+    $finance = aptUser('admin-finance');
+    $operations = aptUser('admin-operations');
+
+    expect(app(InvoiceGapWorklist::class)->count())->toBe(1);
+    $this->actingAs($operations)->get(route('admin.payments.index'))->assertOk()->assertSee('without a GST invoice')->assertSee($order->order_no);
+    $this->actingAs($operations)->post(route('admin.payments.invoices.generate', $order))->assertForbidden();
+
+    $this->actingAs($finance)->post(route('admin.payments.invoices.generate', $order))->assertRedirect(route('admin.payments.index'));
+
+    $invoice = Invoice::where('order_id', $order->id)->sole();
+    expect(app(InvoiceGapWorklist::class)->count())->toBe(0)
+        ->and(AuditLog::where('action', 'invoice.generated_manually')->where('subject_id', $order->id)->sole()->details['invoice_no'])->toBe($invoice->invoice_no);
+
+    // Again is a no-op: the same invoice, never a second number.
+    $this->actingAs($finance)->post(route('admin.payments.invoices.generate', $order))->assertRedirect();
+    expect(Invoice::where('order_id', $order->id)->count())->toBe(1);
+
+    // Unpaid orders are refused outright.
+    $this->actingAs($finance)->post(route('admin.payments.invoices.generate', aptOrder()))->assertSessionHasErrors('invoice');
+});
+
+it('APT-11: a refund owed outside the gateway is listed; finance settles it against the order', function () {
+    $order = aptOrder(Order::STATUS_REFUND_APPROVED);
+    $order->update(['payment_method' => 'cod', 'refund_approved_at' => now()->subDays(2)]);
+    app(LedgerPoster::class)->transfer('Returns', 'order.refund_approved', $order->id, 'refund:'.$order->id, 'revenue.sales', 'liability.refund_payable', 118000);
+    $finance = aptUser('admin-finance');
+    $operations = aptUser('admin-operations');
+
+    expect(app(RefundWorklist::class)->manualRefunds()->pluck('id')->all())->toBe([$order->id])
+        ->and(app(RefundWorklist::class)->attentionCount())->toBe(1);
+    $this->actingAs($finance)->get(route('admin.payments.refunds'))->assertOk()->assertSee('owed outside the gateway')->assertSee($order->order_no)->assertSee('1,180.00');
+
+    $this->actingAs($operations)->post(route('admin.payments.orders.settle', $order), ['reference' => 'UTR-COD-123456'])->assertForbidden();
+    $this->actingAs($finance)->post(route('admin.payments.orders.settle', $order), ['reference' => 'UTR-COD-123456', 'note' => 'bank transfer done'])
+        ->assertRedirect(route('admin.payments.refunds'));
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_REFUNDED)
+        ->and(app(RefundWorklist::class)->manualRefunds())->toHaveCount(0)
+        ->and(AuditLog::where('action', 'refund.manual_settlement')->where('subject_type', 'order')->where('subject_id', $order->id)->sole()->actor_id)->toBe($finance->id);
 });

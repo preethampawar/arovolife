@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Payments\Http\Controllers\Admin;
 
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Payments\Data\ConfirmationResult;
 use App\Modules\Payments\Jobs\SendRazorpayRefundJob;
@@ -12,11 +13,16 @@ use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
 use App\Modules\Payments\Services\PaymentConfirmationService;
 use App\Modules\Payments\Services\RazorpayRefundService;
+use App\Modules\Payments\Support\InvoiceGapWorklist;
+use App\Modules\Payments\Support\RefundPayable;
 use App\Modules\Payments\Support\RefundWorklist;
+use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -32,6 +38,8 @@ final class AdminPaymentController extends Controller
         private readonly PaymentConfirmationService $confirmation,
         private readonly RazorpayRefundService $refunds,
         private readonly RefundWorklist $worklist,
+        private readonly InvoiceGapWorklist $invoiceGaps,
+        private readonly InvoiceGenerator $invoices,
     ) {}
 
     public function index(Request $request): View
@@ -62,7 +70,42 @@ final class AdminPaymentController extends Controller
             'statusCounts' => $statusCounts,
             'filters' => ['status' => $status, 'gateway' => $gateway, 'q' => $q],
             'attention' => $this->worklist->attentionCount(),
+            'invoiceGaps' => $this->invoiceGaps->orders(),
+            'invoiceGapCount' => $this->invoiceGaps->count(),
         ]);
+    }
+
+    /**
+     * Issue the invoice a confirmed payment failed to produce. The generator
+     * is idempotent (an existing invoice is returned, never a second one)
+     * and allocates the next consecutive number under its own lock.
+     */
+    public function generateInvoice(Request $request, Order $order): RedirectResponse
+    {
+        if ($order->paid_at === null) {
+            return back()->withErrors(['invoice' => 'This order has not been paid; an invoice is issued only on payment.']);
+        }
+
+        try {
+            $invoice = $this->invoices->generate($order);
+        } catch (Throwable $e) {
+            Log::channel('payments')->error('manual invoice generation failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+
+            return back()->withErrors(['invoice' => 'Invoice generation failed again: '.$e->getMessage()]);
+        }
+
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'invoice.generated_manually',
+            'subject_type' => 'order',
+            'subject_id' => $order->id,
+            'before_hash' => hash('sha256', 'no_invoice'),
+            'after_hash' => hash('sha256', (string) $invoice->invoice_no),
+            'details' => ['order_no' => $order->order_no, 'invoice_id' => $invoice->id, 'invoice_no' => $invoice->invoice_no],
+            'ip' => $request->ip(),
+        ]);
+
+        return redirect()->route('admin.payments.index')->with('status', "Invoice {$invoice->invoice_no} issued for {$order->order_no}.");
     }
 
     public function show(PaymentIntent $intent): View
@@ -124,8 +167,27 @@ final class AdminPaymentController extends Controller
         return view('admin.payments.refunds', [
             'refunds' => $refunds,
             'awaitingReceipt' => $this->worklist->awaitingReceipt(),
+            'manualRefunds' => $this->worklist->manualRefunds(),
+            'owed' => fn (Order $o): int => RefundPayable::owedOutsideGateway($o),
             'classify' => fn (RefundIntent $r): array => $this->worklist->classify($r),
         ]);
+    }
+
+    /** A refund with no gateway payment behind it (R-68): finance made the NEFT, records it here. */
+    public function settleOrderRefund(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reference' => ['required', 'string', 'min:6', 'max:64'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->refunds->settleOrderManually($order, (int) $request->user()->id, $validated['reference'], $validated['note'] ?? null);
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['refund' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.payments.refunds')->with('status', 'Manual settlement recorded against the settlement bank account; the refund payable is discharged and the order is marked refunded.');
     }
 
     /** Re-drive the SAME refund intent — never a new one. */
@@ -136,6 +198,9 @@ final class AdminPaymentController extends Controller
         }
         if ($refund->isHeld()) {
             return back()->withErrors(['refund' => 'This refund is held until the return is received; release it from the return, not here.']);
+        }
+        if ($refund->isForfeited()) {
+            return back()->withErrors(['refund' => 'This refund was forfeited — the goods never came back. Nothing is owed and it cannot be re-sent.']);
         }
 
         $before = $refund->status;
@@ -173,7 +238,11 @@ final class AdminPaymentController extends Controller
             return back()->withErrors(['refund' => 'This refund is already settled.']);
         }
 
-        $this->refunds->settleManually($refund, (int) $request->user()->id, $validated['reference'], $validated['note'] ?? null);
+        try {
+            $this->refunds->settleManually($refund, (int) $request->user()->id, $validated['reference'], $validated['note'] ?? null);
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['refund' => $e->getMessage()]);
+        }
 
         return redirect()->route('admin.payments.refunds')->with('status', 'Manual settlement recorded against the settlement bank account; the refund payable is discharged and the order is marked refunded.');
     }

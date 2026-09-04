@@ -114,9 +114,9 @@ it('PAY-C04: an idempotent GET retries a 5xx and never retries a 4xx', function 
 it('PAY-C05: createRefund carries the idempotency header and receipt', function () {
     Http::fake(['api.razorpay.com/v1/payments/pay_1/refund' => Http::response(['id' => 'rfnd_1', 'status' => 'processed', 'amount' => 500], 200)]);
 
-    app(RazorpayClient::class)->createRefund('pay_1', 500, 'normal', 'refund:42', ['arovolife_order_id' => '42']);
+    app(RazorpayClient::class)->createRefund('pay_1', 500, 'normal', 'refund:42', 'arv-refund-42', ['arovolife_order_id' => '42']);
 
-    Http::assertSent(fn (Request $r): bool => $r->hasHeader('X-Refund-Idempotency', 'refund:42')
+    Http::assertSent(fn (Request $r): bool => $r->hasHeader('X-Refund-Idempotency', 'arv-refund-42')
         && $r->data()['receipt'] === 'refund:42'
         && $r->data()['speed'] === 'normal'
         && $r->data()['amount'] === 500);

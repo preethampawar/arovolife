@@ -99,6 +99,11 @@ final class ReturnReceiptService
         if ($returnRequest->received_at !== null) {
             throw new RuntimeException('This return was already received.');
         }
+        if ($returnRequest->entitlements_held_at === null) {
+            // An inspected return's refund is already on its way; only a
+            // cooling-off return still waiting for its goods can be closed.
+            throw new RuntimeException('Only a cooling-off return awaiting receipt can be closed as not returned.');
+        }
         if ($returnRequest->receipt_outcome === ReturnRequest::RECEIPT_NOT_RETURNED) {
             return; // idempotent
         }
@@ -113,10 +118,9 @@ final class ReturnReceiptService
                 'status' => ReturnRequest::STATUS_REJECTED,
             ]);
 
-            $refund = RefundIntent::where('idempotency_key', "refund:{$order->id}")->first();
-            if ($refund !== null) {
-                $this->refunds->forfeit($refund, $actorUserId, $reason);
-            }
+            // Keyed on the order: a cash-on-delivery return has the same
+            // refund entry to write back and no refund intent behind it.
+            $this->refunds->forfeit($order, $actorUserId, $reason);
 
             if ($order->status === Order::STATUS_REFUND_APPROVED) {
                 $order->update(['status' => Order::STATUS_DELIVERED]);
@@ -133,7 +137,7 @@ final class ReturnReceiptService
                     'order_no' => $order->order_no,
                     'rma_no' => $returnRequest->rma_no,
                     'reason' => $reason,
-                    'refund_intent_id' => $refund?->id,
+                    'refund_intent_id' => RefundIntent::where('idempotency_key', "refund:{$order->id}")->value('id'),
                     'entitlements_withheld' => [
                         'points_paise' => $returnRequest->entitlement_points_paise,
                         'repurchase_credit_paise' => $returnRequest->entitlement_credit_paise,

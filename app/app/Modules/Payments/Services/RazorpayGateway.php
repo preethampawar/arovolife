@@ -125,8 +125,8 @@ final class RazorpayGateway implements PaymentGateway
 
         $attempts = $this->client->fetchPaymentsForOrder($intent->gateway_order_id, $intent->order_id, $intent->id);
 
-        // Prefer a captured attempt, then an authorised one, then the most
-        // recent failure — so a failed retry never hides a success.
+        // Prefer a captured attempt, then an authorised one, then the first
+        // failed attempt seen — so a failed retry never hides a success.
         $chosen = null;
         foreach ($attempts as $attempt) {
             $status = (string) ($attempt['status'] ?? '');

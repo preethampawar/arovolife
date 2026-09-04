@@ -11,6 +11,8 @@ declare(strict_types=1);
  * RRS-03: courier-lost is treated as received
  * RRS-04: not-returned forfeits the refund, keeps the entitlements withheld, and reverts the order to delivered
  * RRS-05: an unknown outcome is refused; a closed return cannot be received
+ * RRS-06: a cash-on-delivery return closed as not returned writes the same entry back with no refund intent
+ * RRS-07: only a cooling-off return awaiting receipt can be closed as not returned; a refund already at the gateway cannot be forfeited
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -23,6 +25,7 @@ use App\Modules\Ledger\Models\LedgerTx;
 use App\Modules\Payments\Jobs\SendRazorpayRefundJob;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
+use App\Modules\Payments\Services\RazorpayRefundService;
 use App\Modules\Returns\Models\ReturnRequest;
 use App\Modules\Returns\Services\RefundOrder;
 use App\Modules\Returns\Services\ReturnReceiptService;
@@ -30,6 +33,7 @@ use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -43,7 +47,7 @@ function rrsStaff(): int
 }
 
 /** @return array{order: Order, rq: ReturnRequest, distributorId: int} */
-function rrsCoolingOffOrder(int $creditPaise = 23000): array
+function rrsCoolingOffOrder(int $creditPaise = 23000, bool $gateway = true): array
 {
     $user = User::create([
         'full_name' => 'RRS Dist', 'email' => 'rrs-'.uniqid().'@test.com',
@@ -67,7 +71,7 @@ function rrsCoolingOffOrder(int $creditPaise = 23000): array
     $customer = Customer::create(['display_name' => 'RRS Buyer', 'user_id' => $user->id, 'distributor_id' => $distributorId]);
     $order = Order::create([
         'order_no' => 'ORD-RRS-'.random_int(100000, 999999),
-        'customer_id' => $customer->id, 'attribution_source' => 'direct', 'payment_method' => Order::PAYMENT_ONLINE,
+        'customer_id' => $customer->id, 'attribution_source' => 'direct', 'payment_method' => $gateway ? Order::PAYMENT_ONLINE : 'cod',
         'status' => Order::STATUS_DELIVERED, 'self_consumption' => true,
         'subtotal_paise' => 118000, 'gst_paise' => 18000, 'discount_paise' => 0, 'shipping_paise' => 5000,
         'total_paise' => 123000 - $creditPaise,
@@ -77,11 +81,13 @@ function rrsCoolingOffOrder(int $creditPaise = 23000): array
         'idempotency_key' => 'rrs-'.uniqid(),
     ]);
     OrderCoolingOff::create(['order_id' => $order->id, 'opened_at' => now()->subDays(10), 'ends_at' => now()->addDays(20), 'status' => OrderCoolingOff::STATUS_OPEN]);
-    PaymentIntent::create([
-        'order_id' => $order->id, 'gateway' => 'razorpay', 'gateway_order_id' => 'order_rrs'.$order->id, 'gateway_payment_id' => 'pay_rrs'.$order->id,
-        'mode' => 'test', 'amount_paise' => $order->total_paise, 'status' => PaymentIntent::STATUS_CAPTURED, 'captured_at' => now()->subDays(20),
-        'idempotency_key' => 'order:'.$order->id,
-    ]);
+    if ($gateway) {
+        PaymentIntent::create([
+            'order_id' => $order->id, 'gateway' => 'razorpay', 'gateway_order_id' => 'order_rrs'.$order->id, 'gateway_payment_id' => 'pay_rrs'.$order->id,
+            'mode' => 'test', 'amount_paise' => $order->total_paise, 'status' => PaymentIntent::STATUS_CAPTURED, 'captured_at' => now()->subDays(20),
+            'idempotency_key' => 'order:'.$order->id,
+        ]);
+    }
 
     // The credit the buyer spent on this order.
     $wallet = app(WalletService::class);
@@ -93,6 +99,33 @@ function rrsCoolingOffOrder(int $creditPaise = 23000): array
     $order->update(['status' => Order::STATUS_REFUND_REQUESTED]);
 
     return ['order' => $order, 'rq' => $rq, 'distributorId' => $distributorId];
+}
+
+/** True when every line of $originalKey has its opposite in $mirrorKey, and nothing else. */
+function rrsMirrors(string $originalKey, string $mirrorKey): bool
+{
+    $lines = fn (string $key): array => DB::table('ledger_entries')
+        ->join('ledger_tx', 'ledger_tx.id', '=', 'ledger_entries.ledger_tx_id')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->where('ledger_tx.idempotency_key', $key)
+        ->orderBy('ledger_accounts.code')->orderBy('ledger_entries.side')
+        ->get(['ledger_accounts.code', 'ledger_entries.side', 'ledger_entries.amount_paise'])
+        ->map(fn ($e) => [$e->code, $e->side, (int) $e->amount_paise])->all();
+
+    $flipped = array_map(fn (array $l) => [$l[0], $l[1] === 'debit' ? 'credit' : 'debit', $l[2]], $lines($originalKey));
+    usort($flipped, fn ($a, $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+    return $flipped !== [] && $flipped === $lines($mirrorKey);
+}
+
+/** Credits minus debits on an account across the whole test ledger. */
+function rrsAccountNet(string $code): int
+{
+    $q = fn (string $side): int => (int) DB::table('ledger_entries')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->where('ledger_accounts.code', $code)->where('ledger_entries.side', $side)->sum('ledger_entries.amount_paise');
+
+    return $q('credit') - $q('debit');
 }
 
 beforeEach(function () {
@@ -162,14 +195,50 @@ it('RRS-04: not-returned forfeits the refund, withholds the entitlements, and re
     $refund = RefundIntent::where('idempotency_key', 'refund:'.$order->id)->sole();
     expect($refund->status)->toBe(RefundIntent::STATUS_FAILED)
         ->and($refund->error_code)->toBe('goods_not_returned')
-        ->and(LedgerTx::where('idempotency_key', 'refund.forfeited:'.$refund->id)->exists())->toBeTrue()
+        ->and($refund->isForfeited())->toBeTrue()
+        ->and(rrsMirrors('refund:'.$order->id, 'refund.forfeited:'.$order->id))->toBeTrue()
+        ->and(rrsAccountNet('liability.refund_payable'))->toBe(0)
+        ->and(rrsAccountNet('liability.gst_output'))->toBe(0)
+        ->and(rrsAccountNet('revenue.shipping'))->toBe(0)
         ->and(app(WalletService::class)->repurchaseWalletBalancePaise($distributorId))->toBe(0)
         ->and($order->fresh()->status)->toBe(Order::STATUS_DELIVERED)
         ->and($rq->fresh()->status)->toBe(ReturnRequest::STATUS_REJECTED)
         ->and($rq->fresh()->receipt_outcome)->toBe(ReturnRequest::RECEIPT_NOT_RETURNED);
     Queue::assertNotPushed(SendRazorpayRefundJob::class);
     expect(AuditLog::where('action', 'return.not_returned')->where('subject_id', $rq->id)->exists())->toBeTrue()
-        ->and(AuditLog::where('action', 'refund.forfeited')->where('subject_id', $refund->id)->exists())->toBeTrue();
+        ->and(AuditLog::where('action', 'refund.forfeited')->where('subject_type', 'order')->where('subject_id', $order->id)->sole()->details['refund_intent_id'])->toBe($refund->id);
+});
+
+it('RRS-06: a cash-on-delivery return closed as not returned writes the same entry back with no refund intent', function () {
+    ['order' => $order, 'rq' => $rq, 'distributorId' => $distributorId] = rrsCoolingOffOrder(gateway: false);
+    app(RefundOrder::class)->execute($order->fresh(), $rq, 'cooling_off', true, actorUserId: null);
+    expect(RefundIntent::where('order_id', $order->id)->exists())->toBeFalse()
+        ->and(rrsAccountNet('liability.refund_payable'))->toBe($order->total_paise);
+
+    app(ReturnReceiptService::class)->markNotReturned($rq->fresh(), actorUserId: rrsStaff(), reason: 'never posted');
+
+    expect(rrsMirrors('refund:'.$order->id, 'refund.forfeited:'.$order->id))->toBeTrue()
+        ->and(rrsAccountNet('liability.refund_payable'))->toBe(0)
+        ->and(app(WalletService::class)->repurchaseWalletBalancePaise($distributorId))->toBe(0)
+        ->and($order->fresh()->status)->toBe(Order::STATUS_DELIVERED)
+        ->and(AuditLog::where('action', 'refund.forfeited')->where('subject_id', $order->id)->sole()->details['refund_intent_id'])->toBeNull();
+});
+
+it('RRS-07: only a cooling-off return awaiting receipt can be closed as not returned; a refund at the gateway cannot be forfeited', function () {
+    ['order' => $order, 'rq' => $rq] = rrsCoolingOffOrder();
+    $staff = rrsStaff();
+    $service = app(ReturnReceiptService::class);
+
+    // Not yet refunded at all: nothing is held, nothing can be forfeited.
+    expect(fn () => $service->markNotReturned($rq->fresh(), $staff, 'too early'))->toThrow(RuntimeException::class, 'awaiting receipt');
+
+    app(RefundOrder::class)->execute($order->fresh(), $rq, 'cooling_off', true, actorUserId: null);
+    $service->markReceived($rq->fresh(), $staff, ReturnRequest::RECEIPT_RECEIVED); // releases the refund
+    RefundIntent::where('order_id', $order->id)->update(['gateway_refund_id' => 'rfnd_sent']);
+
+    expect(fn () => $service->markNotReturned($rq->fresh(), $staff, 'changed my mind'))->toThrow(RuntimeException::class, 'already received');
+    expect(fn () => app(RazorpayRefundService::class)->forfeit($order->fresh(), $staff, 'late'))->toThrow(RuntimeException::class, 'already gone to the gateway');
+    expect(LedgerTx::where('idempotency_key', 'refund.forfeited:'.$order->id)->exists())->toBeFalse();
 });
 
 it('RRS-05: an unknown outcome is refused and a closed return cannot be received', function () {

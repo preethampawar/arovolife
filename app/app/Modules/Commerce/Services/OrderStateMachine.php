@@ -13,6 +13,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Models\LedgerEntry;
 use App\Modules\Ledger\Models\LedgerTx;
 use App\Modules\Ledger\Services\LedgerPoster;
+use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Services\RazorpayRefundService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -273,6 +274,9 @@ final class OrderStateMachine
         event(new OrderStatusChanged($order->id, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED));
     }
 
+    /** The expiry sweeper's reason; cancel() refuses it on an order that was paid meanwhile. */
+    public const CANCEL_REASON_PAYMENT_EXPIRED = 'payment_expired';
+
     public function cancel(Order $order, string $reason, ?int $actorUserId = null): void
     {
         // Only pre-shipment orders can be cancelled. Once shipped/delivered the
@@ -296,6 +300,13 @@ final class OrderStateMachine
             if (in_array($locked->status, [Order::STATUS_SHIPPED, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED, Order::STATUS_REFUNDED, Order::STATUS_CANCELLED], true)) {
                 throw new RuntimeException("Cannot cancel order in status {$locked->status}");
             }
+            // "Unpaid past the window" is the sweeper's premise, and it was
+            // decided from a row read before this lock. A capture that landed
+            // in between makes it false: the buyer paid and must get goods,
+            // not a cancellation and a refund.
+            if ($reason === self::CANCEL_REASON_PAYMENT_EXPIRED && $locked->getAttribute('paid_at') !== null) {
+                throw new RuntimeException("Order {$locked->order_no} was paid before it could expire");
+            }
             $order->setRawAttributes($locked->getAttributes(), true);
             $oldStatus = $locked->status;
 
@@ -303,6 +314,15 @@ final class OrderStateMachine
                 'status' => Order::STATUS_CANCELLED,
                 'cancelled_at' => Carbon::now(),
             ]);
+
+            // Close any payment attempt still open against it, whoever
+            // cancelled: an open intent on a cancelled order would be polled
+            // by the reconciler for ever, and a capture on it is a late
+            // capture — which the confirmation service still handles from
+            // the order's status, not the intent's.
+            PaymentIntent::where('order_id', $order->id)
+                ->whereIn('status', [PaymentIntent::STATUS_CREATED, PaymentIntent::STATUS_AUTHORISED])
+                ->update(['status' => PaymentIntent::STATUS_CANCELLED, 'cancel_reason' => $reason]);
 
             // Reverse any BV accrued at payment — a cancelled order is not a
             // completed sale, so no BV may remain against it (hard rule #2).

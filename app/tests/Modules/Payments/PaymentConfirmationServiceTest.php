@@ -153,6 +153,7 @@ it('PCS-04: a payment for a different amount is refused', function () {
     expect(fn () => app(PaymentConfirmationService::class)->confirmPayment($intent, pcsPayment(['amount' => 117900]), 'webhook'))
         ->toThrow(PaymentMismatchException::class, '117900 paise');
     expect($order->fresh()->status)->toBe(Order::STATUS_PLACED);
+    expect(PaymentEvent::where('event_type', 'confirmation.refused')->where('payment_intent_id', $intent->id)->count())->toBe(1);
 });
 
 it('PCS-05: a non-INR payment is refused', function () {
@@ -205,9 +206,9 @@ it('PCS-09: a capture on an already-cancelled order posts the cash as owed back 
     Queue::fake();
     $order = pcsOrder();
     $intent = pcsIntent($order);
-    app(OrderStateMachine::class)->cancel($order, 'payment_expired');
-    // Alerted on every sighting — the retry below is the second one.
-    Log::shouldReceive('critical')->twice();
+    app(OrderStateMachine::class)->cancel($order, 'buyer_changed_mind');
+    // Alerted once; the retry below finds the refund already queued and stays silent.
+    Log::shouldReceive('critical')->once();
     Log::shouldReceive('channel')->andReturnSelf();
     Log::shouldReceive('error', 'info', 'warning');
 
@@ -231,7 +232,8 @@ it('PCS-09: a capture on an already-cancelled order posts the cash as owed back 
     $again = $service->confirmPayment($intent->fresh(), pcsPayment(), 'webhook');
     expect($again->status)->toBe(ConfirmationResult::LATE_CAPTURE)
         ->and(RefundIntent::where('order_id', $order->id)->count())->toBe(1)
-        ->and(LedgerTx::where('idempotency_key', 'order.late_capture:'.$order->id)->count())->toBe(1);
+        ->and(LedgerTx::where('idempotency_key', 'order.late_capture:'.$order->id)->count())->toBe(1)
+        ->and(AuditLog::where('action', 'payment.late_capture')->where('subject_id', $order->id)->count())->toBe(1);
     Queue::assertPushed(SendRazorpayRefundJob::class, 1);
 });
 

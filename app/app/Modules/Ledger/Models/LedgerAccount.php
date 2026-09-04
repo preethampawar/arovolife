@@ -6,6 +6,10 @@ namespace App\Modules\Ledger\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $code
+ */
 final class LedgerAccount extends Model
 {
     protected $table = 'ledger_accounts';

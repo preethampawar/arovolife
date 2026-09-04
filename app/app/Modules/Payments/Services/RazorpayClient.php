@@ -13,6 +13,7 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 use Throwable;
 
 /**
@@ -158,12 +159,18 @@ final class RazorpayClient
      * @param  array<string, string>  $notes
      * @return array<string, mixed>
      */
-    public function createRefund(string $paymentId, int $amountPaise, string $speed, string $idempotencyKey, array $notes, ?int $orderId = null, ?int $refundIntentId = null): array
+    public function createRefund(string $paymentId, int $amountPaise, string $speed, string $receipt, string $idempotencyKey, array $notes, ?int $orderId = null, ?int $refundIntentId = null): array
     {
+        // Razorpay's rule for X-Refund-Idempotency; a key outside it is a 400
+        // on every attempt, which would strand the refund on the worklist.
+        if (preg_match('/^[A-Za-z0-9_-]{10,100}$/', $idempotencyKey) !== 1) {
+            throw new InvalidArgumentException('Refund idempotency key must be 10–100 letters, digits, hyphens or underscores.');
+        }
+
         return $this->request('POST', '/payments/'.$paymentId.'/refund', [
             'amount' => $amountPaise,
             'speed' => $speed,
-            'receipt' => $idempotencyKey,
+            'receipt' => $receipt,
             'notes' => $notes,
         ], idempotent: true, eventType: 'refunds.create', orderId: $orderId, refundIntentId: $refundIntentId,
             gatewayPaymentId: $paymentId, headers: ['X-Refund-Idempotency' => $idempotencyKey]);

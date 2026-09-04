@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Payments\Support;
 
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Grievance\DTOs\FileGrievanceData;
 use App\Modules\Grievance\Enums\TicketCategory;
@@ -12,6 +13,7 @@ use App\Modules\Grievance\Services\GrievanceService;
 use App\Modules\Payments\Models\RefundIntent;
 use App\Modules\Returns\Models\ReturnRequest;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -44,7 +46,26 @@ final class RefundWorklist
         return RefundIntent::query()
             ->with(['order.customer', 'paymentIntent'])
             ->where('status', '!=', RefundIntent::STATUS_PROCESSED)
+            // A forfeited refund is closed, not failed: nothing is owed.
+            ->whereNot(fn ($q) => $q->where('status', RefundIntent::STATUS_FAILED)->where('error_code', RefundIntent::ERROR_GOODS_NOT_RETURNED))
             ->orderBy('created_at')
+            ->get();
+    }
+
+    /**
+     * Refunds owed with no gateway payment behind them — cash on delivery, or
+     * a payment recorded outside the platform (R-68). The obligation is in the
+     * ledger; the only discharge is finance recording the NEFT it made.
+     *
+     * @return Collection<int, Order> oldest first
+     */
+    public function manualRefunds(): Collection
+    {
+        return Order::query()
+            ->with('customer')
+            ->where('status', Order::STATUS_REFUND_APPROVED)
+            ->whereNotExists(fn (QueryBuilder $q) => $q->selectRaw('1')->from('refund_intents')->whereColumn('refund_intents.order_id', 'orders.id'))
+            ->orderBy('refund_approved_at')
             ->get();
     }
 
@@ -97,10 +118,17 @@ final class RefundWorklist
         ];
     }
 
-    /** Held refunds that have crossed the alert threshold, plus failed ones. */
+    /** Held refunds past the alert threshold, failed ones, and refunds owed outside the gateway. */
     public function attentionCount(): int
     {
-        $count = RefundIntent::where('status', RefundIntent::STATUS_FAILED)->count();
+        $count = RefundIntent::where('status', RefundIntent::STATUS_FAILED)
+            ->where(fn ($q) => $q->whereNull('error_code')->orWhere('error_code', '!=', RefundIntent::ERROR_GOODS_NOT_RETURNED))
+            ->count();
+
+        $count += Order::query()
+            ->where('status', Order::STATUS_REFUND_APPROVED)
+            ->whereNotExists(fn (QueryBuilder $q) => $q->selectRaw('1')->from('refund_intents')->whereColumn('refund_intents.order_id', 'orders.id'))
+            ->count();
 
         return $count + ReturnRequest::query()
             ->whereNotNull('entitlements_held_at')

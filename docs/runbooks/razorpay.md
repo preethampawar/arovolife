@@ -89,6 +89,10 @@ There is deliberately no fallback from Razorpay to the stub.
 | Refund failed at the gateway | Payments → Unsettled refunds | **Retry** re-drives the same refund; if Razorpay refuses (balance settled out, payment > 6 months old), pay by NEFT and **Settle by NEFT** with the UTR. |
 | Cooling-off return not coming back | Unsettled refunds → awaiting receipt | Chase at 10 days (alert); at 21 a grievance ticket exists. Decide: received / courier lost / not returned — on the return page. |
 | `payment_events` growing | daily `payments:redact-events` | Payloads are dropped after 180 days; the record stays. |
+| Paid order with no invoice | Admin → Payments (red block at the top); `payments:reconcile` tally | Invoice generation runs after the confirmation commits so it can never roll a captured payment back. Finance presses **Issue invoice** — next consecutive number, audit-logged. |
+| Refund owed on a COD / off-platform payment | Payments → Unsettled refunds → "Refunds owed outside the gateway" | No gateway refund exists. Make the NEFT, then **Settle by NEFT** against the order with the UTR. |
+| Return closed as "not returned" | Payments → Unsettled refunds | The refund is forfeited and leaves the worklist; it cannot be retried or settled. The books are written back to the pre-refund position (BV stays reversed by design). |
+| Refund rejected with `BAD_REQUEST_ERROR` mentioning the idempotency key | `payments.log` | The `X-Refund-Idempotency` header is `arv-refund-{id}` (Razorpay allows only letters, digits, `-`, `_`, 10–100 chars); our ledger key travels as `receipt`. If this ever appears, the header format was changed. |
 
 Logs: `storage/logs/payments-YYYY-MM-DD.log` (180 days), every call/callback/webhook, scrubbed.
 
@@ -102,5 +106,5 @@ Logs: `storage/logs/payments-YYYY-MM-DD.log` (180 days), every call/callback/web
 
 - Dispute / chargeback webhooks.
 - Buyer notifications on refund settled and on a held return (the order page shows the state).
-- COD refunds remain manual (see R-68).
+- COD refunds are settled by hand from the worklist (R-68 mitigated); no automatic payout exists for them.
 - Coupon value on a non-cooling-off refund is not returned in any form (see R-69).

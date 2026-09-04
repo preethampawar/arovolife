@@ -85,9 +85,9 @@ Unsettled refunds, with alerts at 10 days without receipt and an escalation to
 the Grievance Officer at 21.
 
 > **Admin note:** "refund_approved" in the ledger ≠ "money back in the customer's
-> bank." Phase 3 wires the Razorpay refund and moves the order to `refunded`.
-> Until then, communicate to customers: *"Refund initiated — credited within 7
-> working days."*
+> bank." The order moves to `refunded` only when Razorpay confirms the refund
+> processed, or finance records a manual NEFT. Communicate to customers:
+> *"Refund initiated — credited within 7 working days."*
 
 ### BV treatment
 

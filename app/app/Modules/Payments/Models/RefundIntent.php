@@ -54,6 +54,9 @@ final class RefundIntent extends Model
 
     public const SETTLED_VIA_MANUAL_NEFT = 'manual_neft';
 
+    /** error_code of a forfeited refund — a decision, not a gateway answer. */
+    public const ERROR_GOODS_NOT_RETURNED = 'goods_not_returned';
+
     protected $fillable = [
         'order_id', 'payment_intent_id', 'gateway', 'gateway_refund_id', 'mode', 'speed',
         'amount_paise', 'status', 'reason_code', 'idempotency_key',
@@ -79,6 +82,12 @@ final class RefundIntent extends Model
     public function isHeld(): bool
     {
         return $this->held_at !== null && $this->released_at === null;
+    }
+
+    /** Closed without payment: the goods never came back (not a gateway failure). */
+    public function isForfeited(): bool
+    {
+        return $this->status === self::STATUS_FAILED && $this->error_code === self::ERROR_GOODS_NOT_RETURNED;
     }
 
     /** Sent (or sendable) and not yet confirmed processed by the gateway. */

@@ -1087,7 +1087,7 @@ final class AdminSettingsController extends Controller
             'payments.unpaid_order_expiry_minutes' => [
                 'group' => 'payments',
                 'label' => 'Payments: unpaid order expiry (minutes)',
-                'description' => 'How long an online order holds its stock while unpaid. The Razorpay checkout closes at this timeout and the expiry sweeper cancels the order after it — but only after asking the gateway one more time, so a payment that landed late is confirmed rather than cancelled. Floor 15 minutes (a UPI collect request can take 5–10).',
+                'description' => 'How long an online order holds its stock while unpaid. The checkout modal closes at this timeout (a Razorpay order itself has no expiry) and the expiry sweeper cancels the order after it — but only after asking the gateway one more time, so a payment that landed late is confirmed rather than cancelled. Floor 15 minutes (a UPI collect request can take 5–10).',
                 'impact' => 'Effective on the next sweep (every 5 minutes). Does not touch orders already cancelled.',
                 'type' => 'int',
                 'default' => '30',

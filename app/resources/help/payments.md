@@ -92,8 +92,22 @@ Payments → *Unsettled refunds* lists every refund not yet in the buyer's hands
   (it cannot create a duplicate), and **Settle by NEFT** records a bank
   transfer you have already made, with its UTR, and discharges the payable.
 
-Cash-on-delivery orders never go through the gateway; a refund on one always
-needs a manual NEFT settlement.
+- **Owed outside the gateway** — a refund on an order that was never paid
+  through the gateway (cash on delivery, or a payment recorded outside the
+  platform). There is no gateway refund to send; finance makes the NEFT and
+  records it against the *order* with its UTR. Same 7-working-day promise.
+
+A refund closed as **not returned** (the buyer never sent the goods back) is
+forfeited: the original refund entry is written back line for line, nothing is
+owed, and it leaves the worklist. It cannot be retried or settled by NEFT —
+that would pay a buyer who kept the goods.
+
+### Paid orders without an invoice
+
+The GST invoice is issued after a payment is confirmed. If that step fails the
+order stays paid but has no invoice — a gap the Payments screen lists at the
+top in red. Finance presses **Issue invoice**: the next consecutive number is
+allocated, never a duplicate, and the action is audit-logged.
 
 ## When something looks wrong
 
@@ -102,6 +116,8 @@ needs a manual NEFT settlement.
 - *Payment captured for the wrong amount, or for a different order.* The
   confirmation refuses it, logs a critical alert, and the money stays where it
   is until finance looks. It is never applied.
+- *A paid order has no invoice.* It is listed on the Payments screen; issue it
+  there. The `payments:reconcile` sweep also counts these every five minutes.
 - *Checkout shows "temporarily unavailable".* The Razorpay gateway is switched
   on but its keys are missing, malformed, or the wrong mode for this host
   (test keys on production, live keys anywhere else). Nobody can order until

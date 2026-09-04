@@ -250,8 +250,9 @@ final class RefundOrder
                 }
             }
 
-            // Advance order to refund_approved (Phase-2 terminal: ledger moved,
-            // gateway settlement deferred to Phase 3).
+            // Advance order to refund_approved: the ledger has moved; the
+            // order becomes `refunded` only when the gateway (or a manual
+            // NEFT) settles the payable.
             $order->update([
                 'status' => Order::STATUS_REFUND_APPROVED,
                 'refund_approved_at' => Carbon::now(),

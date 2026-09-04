@@ -21,13 +21,16 @@ use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Tax\Models\Invoice;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -198,4 +201,33 @@ it('PSW-08: redact drops old payloads and keeps the derived record', function ()
         ->and($old->fresh()->gateway_payment_id)->toBe('pay_old')
         ->and($old->fresh()->event_type)->toBe('payment.captured')
         ->and($recent->fresh()->payload)->toBe(['id' => 'pay_new']);
+});
+
+it('PSW-09: expiry never cancels an order paid meanwhile, and any cancellation closes the open intent', function () {
+    $orders = app(OrderStateMachine::class);
+
+    // Paid between the sweeper's read and its lock: the expiry reason is refused.
+    $paid = pswOrder(45);
+    $paid->update(['status' => Order::STATUS_PAID, 'paid_at' => now()]);
+    expect(fn () => $orders->cancel($paid->fresh(), ExpireUnpaidOrdersCommand::REASON, null))->toThrow(RuntimeException::class, 'was paid before it could expire');
+    expect($paid->fresh()->status)->toBe(Order::STATUS_PAID);
+
+    // An admin cancellation of an unpaid order closes its open gateway intent too.
+    $unpaid = pswOrder(5);
+    $intent = pswIntent($unpaid, 5, 'order_psw_admin');
+    $orders->cancel($unpaid->fresh(), 'buyer_changed_mind', null);
+    expect($intent->fresh()->status)->toBe(PaymentIntent::STATUS_CANCELLED)
+        ->and($intent->fresh()->cancel_reason)->toBe('buyer_changed_mind');
+});
+
+it('PSW-10: reconcile skips intents whose order is no longer placed', function () {
+    $order = pswOrder(20);
+    $intent = pswIntent($order, 20, 'order_psw_gone');
+    $order->update(['status' => Order::STATUS_CANCELLED, 'cancelled_at' => now()]); // legacy row: intent still open
+    Http::fake();
+
+    $this->artisan('payments:reconcile', ['--minutes' => 3])->assertSuccessful();
+
+    Http::assertNothingSent();
+    expect($intent->fresh()->status)->toBe(PaymentIntent::STATUS_CREATED);
 });

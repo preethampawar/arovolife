@@ -17,6 +17,9 @@ declare(strict_types=1);
  * RRF-09: nothing is created for an order with no captured gateway payment
  * RRF-10: cancelling a paid order queues a refund for exactly the reversed prepayment
  * RRF-11: a held refund is not sent until released
+ * RRF-12: the gateway idempotency key is Razorpay-legal and the speed is frozen at creation
+ * RRF-13: a manual NEFT settlement is refused on a held or forfeited refund
+ * RRF-14: a refund owed with no gateway payment is settled by NEFT against the order (R-68)
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -33,6 +36,7 @@ use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
 use App\Modules\Payments\Services\RazorpayRefundService;
+use App\Modules\Payments\Support\RefundPayable;
 use App\Modules\Returns\Models\ReturnRequest;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,6 +45,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -138,7 +143,8 @@ it('RRF-01: send creates the gateway refund with the idempotency key and settles
     app(RazorpayRefundService::class)->send($refund);
 
     Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/payments/pay_rrf/refund')
-        && $r->hasHeader('X-Refund-Idempotency', 'refund:'.$order->id)
+        && $r->hasHeader('X-Refund-Idempotency', 'arv-refund-'.$refund->id)
+        && $r->data()['receipt'] === 'refund:'.$order->id
         && $r->data()['amount'] === 118000
         && $r->data()['speed'] === 'optimum');
 
@@ -328,4 +334,69 @@ it('RRF-11: a held refund is not sent until released', function () {
         ->and($refund->fresh()->released_by_user_id)->toBe($staff);
     Queue::assertPushed(SendRazorpayRefundJob::class, 1);
     expect(AuditLog::where('action', 'refund.released')->where('subject_id', $refund->id)->exists())->toBeTrue();
+});
+
+it('RRF-12: the gateway idempotency key is Razorpay-legal and the speed is frozen at creation', function () {
+    Queue::fake();
+    $order = rrfOrder();
+    $payment = rrfCaptured($order);
+    rrfOwed($order, 118000);
+    $refund = app(RazorpayRefundService::class)->createForReturn($order, 118000, 'damage', hold: false, actorUserId: null);
+    expect($refund)->not->toBeNull()->and($refund->speed)->toBe('optimum')
+        ->and(RazorpayRefundService::gatewayIdempotencyKey($refund))->toMatch('/^[A-Za-z0-9_-]{10,100}$/');
+
+    // The developer flips the setting after creation: the retry must still send the frozen body.
+    DB::table('settings')->updateOrInsert(['key' => 'payments.razorpay.refund_speed'], ['value' => 'normal', 'version' => 1, 'updated_at' => now()]);
+    Http::fake([
+        'api.razorpay.com/v1/payments/pay_rrf/refunds' => Http::response(['entity' => 'collection', 'count' => 0, 'items' => []], 200),
+        'api.razorpay.com/v1/payments/pay_rrf' => Http::response(['id' => 'pay_rrf', 'amount' => 118000, 'amount_refunded' => 0, 'status' => 'captured'], 200),
+        'api.razorpay.com/v1/payments/pay_rrf/refund' => Http::response(rrfRefundEntity('pending', receipt: 'refund:'.$order->id), 200),
+    ]);
+
+    app(RazorpayRefundService::class)->send($refund);
+
+    Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/payments/pay_rrf/refund')
+        && $r->data()['speed'] === 'optimum'
+        && preg_match('/^[A-Za-z0-9_-]{10,100}$/', $r->header('X-Refund-Idempotency')[0]) === 1);
+});
+
+it('RRF-13: a manual NEFT settlement is refused on a held or forfeited refund', function () {
+    $staff = rrfStaff();
+    $service = app(RazorpayRefundService::class);
+
+    $held = rrfRefund(rrfOrder(), rrfCaptured(rrfOrder(), 'pay_held'), held: true);
+    expect(fn () => $service->settleManually($held, $staff, 'NEFT-UTR-1', null))->toThrow(RuntimeException::class, 'held until the return is received');
+
+    $forfeitedOrder = rrfOrder();
+    $forfeited = rrfRefund($forfeitedOrder, rrfCaptured($forfeitedOrder, 'pay_forfeit'));
+    $forfeited->update(['status' => RefundIntent::STATUS_FAILED, 'error_code' => RefundIntent::ERROR_GOODS_NOT_RETURNED, 'failed_at' => now()]);
+    expect(fn () => $service->settleManually($forfeited, $staff, 'NEFT-UTR-2', null))->toThrow(RuntimeException::class, 'forfeited');
+
+    expect(rrfBalance('asset.cash.bank.settlement'))->toBe(0)
+        ->and($held->fresh()->status)->toBe(RefundIntent::STATUS_CREATED)
+        ->and($forfeited->fresh()->status)->toBe(RefundIntent::STATUS_FAILED);
+});
+
+it('RRF-14: a refund owed with no gateway payment is settled by NEFT against the order', function () {
+    $order = rrfOrder();
+    $order->update(['payment_method' => 'cod', 'refund_approved_at' => now()->subDays(3)]);
+    // The obligation as RefundOrder books it, under the order's refund key.
+    app(LedgerPoster::class)->transfer('Returns', 'order.refund_approved', $order->id, 'refund:'.$order->id, 'revenue.sales', 'liability.refund_payable', 45000);
+    ReturnRequest::create(['rma_no' => 'RMA-COD', 'order_id' => $order->id, 'reason' => 'damage', 'opened_by_customer_id' => $order->customer_id, 'status' => ReturnRequest::STATUS_APPROVED]);
+    $staff = rrfStaff();
+
+    expect(RefundPayable::owedOutsideGateway($order))->toBe(45000);
+
+    app(RazorpayRefundService::class)->settleOrderManually($order, $staff, 'NEFT-UTR-COD', 'paid by bank');
+
+    expect(rrfBalance('liability.refund_payable'))->toBe(0)
+        ->and(rrfBalance('asset.cash.bank.settlement'))->toBe(45000)
+        ->and($order->fresh()->status)->toBe(Order::STATUS_REFUNDED)
+        ->and(ReturnRequest::where('order_id', $order->id)->sole()->status)->toBe(ReturnRequest::STATUS_REFUNDED);
+    $audit = AuditLog::where('action', 'refund.manual_settlement')->where('subject_type', 'order')->where('subject_id', $order->id)->sole();
+    expect($audit->actor_id)->toBe($staff)->and($audit->details['amount_paise'])->toBe(45000)->and($audit->details['reference'])->toBe('NEFT-UTR-COD');
+
+    // Twice is refused, and the ledger did not move again.
+    expect(fn () => app(RazorpayRefundService::class)->settleOrderManually($order->fresh(), $staff, 'NEFT-UTR-COD', null))->toThrow(RuntimeException::class, 'not awaiting a refund');
+    expect(rrfBalance('asset.cash.bank.settlement'))->toBe(45000);
 });

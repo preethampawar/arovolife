@@ -401,6 +401,8 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::get('/refunds', [AdminPaymentController::class, 'refunds'])->name('refunds');
         Route::post('/refunds/{refund}/retry', [AdminPaymentController::class, 'retryRefund'])->middleware('can:finance.record')->whereNumber('refund')->name('refunds.retry');
         Route::post('/refunds/{refund}/settle', [AdminPaymentController::class, 'settleRefund'])->middleware('can:finance.record')->whereNumber('refund')->name('refunds.settle');
+        Route::post('/orders/{order}/settle', [AdminPaymentController::class, 'settleOrderRefund'])->middleware('can:finance.record')->whereNumber('order')->name('orders.settle');
+        Route::post('/orders/{order}/invoice', [AdminPaymentController::class, 'generateInvoice'])->middleware('can:finance.record')->whereNumber('order')->name('invoices.generate');
         Route::get('/{intent}', [AdminPaymentController::class, 'show'])->whereNumber('intent')->name('show');
         Route::post('/{intent}/sync', [AdminPaymentController::class, 'sync'])->middleware('can:finance.record')->whereNumber('intent')->name('sync');
     });

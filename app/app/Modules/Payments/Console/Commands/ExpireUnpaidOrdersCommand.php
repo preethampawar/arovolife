@@ -32,7 +32,7 @@ use Throwable;
  */
 final class ExpireUnpaidOrdersCommand extends Command
 {
-    public const REASON = 'payment_expired';
+    public const REASON = OrderStateMachine::CANCEL_REASON_PAYMENT_EXPIRED;
 
     protected $signature = 'orders:expire-unpaid {--dry-run : Report what would be released without changing anything}';
 
@@ -108,17 +108,13 @@ final class ExpireUnpaidOrdersCommand extends Command
         }
 
         try {
+            // cancel() re-reads under a row lock and refuses this reason on
+            // an order paid meanwhile; it also closes the open intent.
             $orders->cancel($order->fresh(), self::REASON, null);
         } catch (Throwable $e) {
-            // Paid in the same instant (the lock inside cancel() saw it), or
-            // otherwise moved on. Leave it.
             Log::channel('payments')->info('expire: cancel declined', ['order_id' => $order->id, 'error' => $e->getMessage()]);
 
             return 'left';
-        }
-
-        if ($intent !== null && $intent->status !== PaymentIntent::STATUS_CAPTURED) {
-            $intent->update(['status' => PaymentIntent::STATUS_CANCELLED, 'cancel_reason' => self::REASON]);
         }
 
         AuditLog::create([

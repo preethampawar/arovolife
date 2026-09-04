@@ -42,9 +42,12 @@ use RuntimeException;
  *     two confirmations (callback + webhook) cannot both fire, and the expiry
  *     sweeper cannot cancel an order in the same instant it is paid.
  *
- * The GST invoice is issued here too, after `markPaid()` and inside the same
- * transaction — an invoice number is consecutive and must never be burned
- * on an order that expires unpaid.
+ * The GST invoice is issued here too, after `markPaid()` — an invoice number
+ * is consecutive and must never be burned on an order that expires unpaid —
+ * but AFTER the confirmation commits, not inside it: a failed invoice must
+ * never roll back a confirmation whose money is already captured. A paid
+ * order left without an invoice surfaces on Admin → Payments and in the
+ * `payments:reconcile` tally, where finance issues it by hand.
  */
 final class PaymentConfirmationService
 {
@@ -145,6 +148,20 @@ final class PaymentConfirmationService
             $this->refuse($intent, "payment {$payment->id} already has {$payment->amountRefundedPaise} paise refunded");
         }
 
+        try {
+            return $this->confirmLocked($intent, $payment, $via, $actorUserId);
+        } catch (PaymentMismatchException $e) {
+            // The refusal inside the transaction rolled its own evidence row
+            // back with everything else; write it again now that nothing can.
+            $this->event($intent, PaymentEvent::DIRECTION_SYSTEM, 'confirmation.refused', [], error: $e->getMessage());
+
+            throw $e;
+        }
+    }
+
+    /** @throws PaymentMismatchException */
+    private function confirmLocked(PaymentIntent $intent, GatewayPayment $payment, string $via, ?int $actorUserId): ConfirmationResult
+    {
         return $this->db->transaction(function () use ($intent, $payment, $via, $actorUserId): ConfirmationResult {
             /** @var PaymentIntent $locked */
             $locked = PaymentIntent::lockForUpdate()->findOrFail($intent->id);
@@ -365,6 +382,12 @@ final class PaymentConfirmationService
             ],
         );
 
+        if (! $refund->wasRecentlyCreated) {
+            // A redelivered event or a later sync for the same capture: the
+            // books and the refund already exist; do not alert twice.
+            return new ConfirmationResult(ConfirmationResult::LATE_CAPTURE, 'refund '.$refund->id.' already queued');
+        }
+
         $this->event($intent, PaymentEvent::DIRECTION_SYSTEM, 'payment.late_capture', $payment->scrubbed,
             signatureVerified: $via === PaymentIntent::CONFIRMED_VIA_CALLBACK, gatewayPaymentId: $payment->id,
             error: 'captured after cancellation; refund '.$refund->id.' created');
@@ -393,9 +416,7 @@ final class PaymentConfirmationService
 
         // Sent once this transaction commits; the reconciler re-queues any
         // intent that was never sent, so the books stay right either way.
-        if ($refund->wasRecentlyCreated) {
-            SendRazorpayRefundJob::dispatch($refund->id)->afterCommit();
-        }
+        SendRazorpayRefundJob::dispatch($refund->id)->afterCommit();
 
         return new ConfirmationResult(ConfirmationResult::LATE_CAPTURE, 'refund '.$refund->id.' queued');
     }

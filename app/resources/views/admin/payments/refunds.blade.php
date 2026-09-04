@@ -70,6 +70,54 @@
     </table>
 </div>
 
+<h2 class="font-semibold text-gray-900 mb-3">Refunds owed outside the gateway</h2>
+<p class="text-xs text-gray-600 mb-3">Approved refunds on orders with no gateway payment to refund against — cash on delivery, or a payment recorded outside the platform. The obligation is in the ledger; the only discharge is the NEFT finance makes, recorded here with its UTR. The same 7-working-day promise applies.</p>
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto mb-8">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Order</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Customer</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Paid by</th>
+                <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase">Owed</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Approved</th>
+                <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase">Days</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            @forelse($manualRefunds as $manualOrder)
+            @php $owedPaise = $owed($manualOrder); $manualDays = (int) ($manualOrder->refund_approved_at ?? $manualOrder->updated_at)->diffInWeekdays(now()); @endphp
+            <tr class="{{ $manualDays >= \App\Modules\Payments\Support\RefundWorklist::PROMISE_BUSINESS_DAYS ? 'bg-amber-50' : 'hover:bg-gray-50' }}">
+                <td class="px-4 py-3"><a href="{{ route('admin.commerce.orders.show', $manualOrder) }}" class="text-brand-700 font-mono text-xs">{{ $manualOrder->order_no }}</a></td>
+                <td class="px-4 py-3 text-gray-700">{{ $manualOrder->customer->display_name ?? '—' }}</td>
+                <td class="px-4 py-3 text-gray-700">{{ str_replace('_', ' ', $manualOrder->payment_method) }}</td>
+                <td class="px-4 py-3 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($owedPaise / 100, 2) }}</td>
+                <td class="px-4 py-3 text-gray-600 text-xs">{{ $manualOrder->refund_approved_at?->format('d M Y') ?? '—' }}</td>
+                <td class="px-4 py-3 text-right {{ $manualDays >= \App\Modules\Payments\Support\RefundWorklist::PROMISE_BUSINESS_DAYS ? 'text-red-700 font-semibold' : 'text-gray-700' }}">{{ $manualDays }}</td>
+                <td class="px-4 py-3 text-right">
+                    @can('finance.record')
+                    <details class="inline-block text-left">
+                        <summary class="text-sm text-gray-700 cursor-pointer hover:underline">{{ $owedPaise > 0 ? 'Settle by NEFT' : 'Close as refunded' }}</summary>
+                        <form method="POST" action="{{ route('admin.payments.orders.settle', $manualOrder) }}" class="mt-2 space-y-2 w-64"
+                              data-confirm="{{ $owedPaise > 0 ? 'Record a manual NEFT settlement?' : 'Close this refund with nothing owed in cash?' }}" data-confirm-title="Manual settlement"
+                              data-confirm-impact="Impact: {{ $owedPaise > 0 ? 'discharges the refund payable against the settlement bank account and' : 'no cash was owed (settled in points or credit);' }} marks the order refunded. Only do this after any transfer has actually been made. Audit-logged against your user.">
+                            @csrf
+                            <input type="text" name="reference" required minlength="6" maxlength="64" placeholder="{{ $owedPaise > 0 ? 'NEFT / UTR reference' : 'Reference or reason' }}" class="w-full rounded-lg border-gray-300 text-sm">
+                            <input type="text" name="note" maxlength="500" placeholder="Note (optional)" class="w-full rounded-lg border-gray-300 text-sm">
+                            <button type="submit" class="w-full py-1.5 rounded-lg bg-gray-800 text-white text-sm">Record settlement</button>
+                        </form>
+                    </details>
+                    @endcan
+                </td>
+            </tr>
+            @empty
+            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-600">None owed outside the gateway.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
 <h2 class="font-semibold text-gray-900 mb-3">Cooling-off returns awaiting receipt</h2>
 <p class="text-xs text-gray-600 mb-3">The buyer has cancelled; the goods are not yet marked received. Points, repurchase credit and any cash refund are all held until they are. Mark receipt from the return itself (Admin → Returns).</p>
 <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">

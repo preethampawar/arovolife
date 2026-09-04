@@ -1273,18 +1273,6 @@ parameters:
 			path: app/Modules/Kyc/Http/Controllers/KycDocumentReuploadController.php
 
 		-
-			message: '#^Method App\\Modules\\Ledger\\Models\\LedgerEntry\:\:account\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Ledger/Models/LedgerEntry.php
-
-		-
-			message: '#^Method App\\Modules\\Ledger\\Models\\LedgerEntry\:\:tx\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Ledger/Models/LedgerEntry.php
-
-		-
 			message: '#^Method App\\Modules\\Ledger\\Models\\LedgerTx\:\:entries\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -3543,7 +3531,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 16
+			count: 27
 			path: tests/Modules/Payments/AdminPaymentsTest.php
 
 		-
@@ -3591,7 +3579,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 9
 			path: tests/Modules/Payments/PaymentsSweepCommandsTest.php
 
 		-

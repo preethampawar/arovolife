@@ -6,6 +6,8 @@ namespace App\Modules\Payments\Services;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Ledger\Models\LedgerEntry;
+use App\Modules\Ledger\Models\LedgerTx;
 use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Payments\Exceptions\RazorpayApiException;
 use App\Modules\Payments\Jobs\SendRazorpayRefundJob;
@@ -13,10 +15,12 @@ use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
 use App\Modules\Payments\Support\PaymentSettings;
+use App\Modules\Payments\Support\RefundPayable;
 use App\Modules\Returns\Models\ReturnRequest;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 /**
  * Sending refunds to Razorpay, and settling the ledger on the gateway's word.
@@ -88,6 +92,9 @@ final class RazorpayRefundService
             'amount_paise' => $cashPaise,
             'status' => RefundIntent::STATUS_CREATED,
             'reason_code' => $reasonCode,
+            // Frozen now: a retry must send the same body under the same
+            // idempotency key, whatever the setting says by then.
+            'speed' => $this->settings->refundSpeed(),
             'held_at' => $hold ? Carbon::now() : null,
             'hold_reason' => $hold ? RefundIntent::HOLD_AWAITING_RETURN : null,
         ]);
@@ -191,12 +198,17 @@ final class RazorpayRefundService
             return;
         }
 
+        if ($refund->speed === null) {
+            $refund->update(['speed' => $this->settings->refundSpeed()]);
+        }
+
         try {
             $response = $this->client->createRefund(
                 paymentId: $payment->gateway_payment_id,
                 amountPaise: $refund->amount_paise,
-                speed: $this->settings->refundSpeed(),
-                idempotencyKey: $refund->idempotency_key,
+                speed: (string) $refund->speed,
+                receipt: $refund->idempotency_key,
+                idempotencyKey: self::gatewayIdempotencyKey($refund),
                 notes: ['arovolife_order_id' => (string) $refund->order_id, 'arovolife_refund_intent_id' => (string) $refund->id],
                 orderId: $refund->order_id,
                 refundIntentId: $refund->id,
@@ -220,6 +232,17 @@ final class RazorpayRefundService
         }
 
         $this->adopt($refund, $response);
+    }
+
+    /**
+     * The key sent as `X-Refund-Idempotency`. Razorpay accepts only letters,
+     * digits, hyphens and underscores, 10–100 characters — our ledger keys
+     * (`refund:{id}`) are neither, so they travel as the `receipt` instead
+     * and this derived key, fixed by the row id, guards the create.
+     */
+    public static function gatewayIdempotencyKey(RefundIntent $refund): string
+    {
+        return sprintf('arv-refund-%d', $refund->id);
     }
 
     /** @param  array<string, mixed>  $entity  a Razorpay refund entity */
@@ -261,13 +284,18 @@ final class RazorpayRefundService
                 return false;
             }
 
+            $before = (string) $locked->status;
+
+            // The stub settles against the same gateway cash account: it only
+            // runs where no money exists, and a second account would leave
+            // the dev books unreadable for no gain.
             $this->ledger->transfer(
                 sourceModule: 'Payments',
                 sourceType: 'refund.settled',
                 sourceId: $locked->order_id,
                 idempotencyKey: "refund.settled:{$locked->id}",
                 debitAccount: 'liability.refund_payable',
-                creditAccount: $via === 'stub' ? 'asset.cash.gateway.razorpay' : 'asset.cash.gateway.razorpay',
+                creditAccount: 'asset.cash.gateway.razorpay',
                 amountPaise: $locked->amount_paise,
                 memo: "Refund {$locked->idempotency_key} settled via {$via}",
             );
@@ -287,7 +315,7 @@ final class RazorpayRefundService
                 'action' => 'refund.settled',
                 'subject_type' => 'refund_intent',
                 'subject_id' => $locked->id,
-                'before_hash' => hash('sha256', RefundIntent::STATUS_CREATED),
+                'before_hash' => hash('sha256', $before),
                 'after_hash' => hash('sha256', RefundIntent::STATUS_PROCESSED),
                 'details' => [
                     'order_id' => $locked->order_id,
@@ -315,6 +343,16 @@ final class RazorpayRefundService
             $locked = RefundIntent::lockForUpdate()->findOrFail($refund->id);
             if ($locked->status === RefundIntent::STATUS_PROCESSED) {
                 return;
+            }
+            // Finance cannot pay out around the return-receipt gate, and a
+            // forfeited refund has no payable left to discharge — settling it
+            // would pay a buyer who kept the goods and drive the payable
+            // negative.
+            if ($locked->isHeld()) {
+                throw new RuntimeException("Refund {$locked->idempotency_key} is held until the return is received; release it from the return first.");
+            }
+            if ($locked->isForfeited()) {
+                throw new RuntimeException("Refund {$locked->idempotency_key} was forfeited — the goods never came back; nothing is owed.");
             }
 
             $this->ledger->transfer(
@@ -398,47 +436,132 @@ final class RazorpayRefundService
         return ! $alreadyFailed;
     }
 
-    /** A refund that will never be made: the goods never came back. */
-    public function forfeit(RefundIntent $refund, int $actorUserId, string $reason): void
+    /**
+     * A refund that will never be made: the goods never came back.
+     *
+     * The sale stands exactly as it was first recorded, so the
+     * `order.refund_approved` entry is mirrored line for line — revenue,
+     * output GST, shipping and the discount contras all return to their
+     * pre-refund position and the payable is extinguished with them. Keyed
+     * on the ORDER, because a cash-on-delivery return carries the same entry
+     * with no refund intent behind it. BV is left reversed on purpose: paying
+     * less commission cannot break hard rule 2, and ADR-0010 forbids taking
+     * anything back from an upline that was already reversed.
+     */
+    public function forfeit(Order $order, int $actorUserId, string $reason): void
     {
-        $this->db->transaction(function () use ($refund, $actorUserId, $reason): void {
-            /** @var RefundIntent $locked */
-            $locked = RefundIntent::lockForUpdate()->findOrFail($refund->id);
-            if ($locked->status === RefundIntent::STATUS_PROCESSED) {
-                return;
+        $this->db->transaction(function () use ($order, $actorUserId, $reason): void {
+            /** @var RefundIntent|null $refund */
+            $refund = RefundIntent::lockForUpdate()->where('idempotency_key', "refund:{$order->id}")->first();
+            if ($refund !== null && ($refund->status === RefundIntent::STATUS_PROCESSED || $refund->gateway_refund_id !== null)) {
+                throw new RuntimeException("The refund on {$order->order_no} has already gone to the gateway; it cannot be forfeited.");
             }
 
-            // The sale stands: the payable is written back to revenue.
-            $this->ledger->transfer(
+            /** @var LedgerTx|null $approved */
+            $approved = LedgerTx::with('entries.account')->where('idempotency_key', "refund:{$order->id}")->first();
+            if ($approved === null) {
+                throw new RuntimeException("No refund entry exists for {$order->order_no}; nothing to forfeit.");
+            }
+
+            $lines = [];
+            foreach ($approved->entries as $entry) {
+                /** @var LedgerEntry $entry */
+                $lines[] = [
+                    'account' => (string) $entry->account->code,
+                    'side' => $entry->side === 'debit' ? 'credit' : 'debit',
+                    'amount_paise' => (int) $entry->amount_paise,
+                ];
+            }
+
+            $this->ledger->post(
                 sourceModule: 'Payments',
                 sourceType: 'refund.forfeited',
-                sourceId: $locked->order_id,
-                idempotencyKey: "refund.forfeited:{$locked->id}",
-                debitAccount: 'liability.refund_payable',
-                creditAccount: 'revenue.sales',
-                amountPaise: $locked->amount_paise,
-                memo: "Refund {$locked->idempotency_key} forfeited: {$reason}",
+                sourceId: $order->id,
+                idempotencyKey: "refund.forfeited:{$order->id}",
+                lines: $lines,
+                memo: "Refund on {$order->order_no} forfeited — goods not returned: {$reason}",
                 createdByUserId: $actorUserId,
             );
 
-            $locked->update([
+            $before = $refund?->status;
+            $refund?->update([
                 'status' => RefundIntent::STATUS_FAILED,
                 'failed_at' => Carbon::now(),
-                'error_code' => 'goods_not_returned',
+                'error_code' => RefundIntent::ERROR_GOODS_NOT_RETURNED,
                 'error_description' => mb_substr($reason, 0, 255),
             ]);
 
             AuditLog::create([
                 'actor_id' => $actorUserId,
                 'action' => 'refund.forfeited',
-                'subject_type' => 'refund_intent',
-                'subject_id' => $locked->id,
-                'before_hash' => hash('sha256', (string) $refund->status),
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'before_hash' => hash('sha256', (string) ($before ?? 'no_refund_intent')),
                 'after_hash' => hash('sha256', 'forfeited'),
-                'details' => ['order_id' => $locked->order_id, 'amount_paise' => $locked->amount_paise, 'reason' => $reason],
+                'details' => [
+                    'order_id' => $order->id,
+                    'refund_intent_id' => $refund?->id,
+                    'lines' => $lines,
+                    'reason' => $reason,
+                ],
+            ]);
+        });
+    }
+
+    /**
+     * Finance paid a buyer by NEFT for a refund that never had a gateway
+     * payment behind it — cash on delivery, or a payment recorded outside the
+     * platform (R-68). The payable is read from the `order.refund_approved`
+     * entry itself, so the amount discharged is exactly the amount owed, and
+     * the same settlement bank account is credited as for a gateway refund
+     * settled by hand.
+     */
+    public function settleOrderManually(Order $order, int $actorUserId, string $reference, ?string $note): void
+    {
+        $this->db->transaction(function () use ($order, $actorUserId, $reference, $note): void {
+            /** @var Order $locked */
+            $locked = Order::lockForUpdate()->findOrFail($order->id);
+            if ($locked->status !== Order::STATUS_REFUND_APPROVED) {
+                throw new RuntimeException("Order {$locked->order_no} is not awaiting a refund.");
+            }
+            if (RefundIntent::where('order_id', $locked->id)->exists()) {
+                throw new RuntimeException("Order {$locked->order_no} has a gateway refund; settle that refund, not the order.");
+            }
+
+            $owed = RefundPayable::owedOutsideGateway($locked);
+            if ($owed > 0) {
+                $this->ledger->transfer(
+                    sourceModule: 'Payments',
+                    sourceType: 'refund.manual_settlement',
+                    sourceId: $locked->id,
+                    idempotencyKey: "refund.manual.order:{$locked->id}",
+                    debitAccount: 'liability.refund_payable',
+                    creditAccount: 'asset.cash.bank.settlement',
+                    amountPaise: $owed,
+                    memo: "Refund on {$locked->order_no} settled by NEFT {$reference} (no gateway payment)",
+                    createdByUserId: $actorUserId,
+                );
+            }
+
+            $this->closeOrderRecord($locked);
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'refund.manual_settlement',
+                'subject_type' => 'order',
+                'subject_id' => $locked->id,
+                'before_hash' => hash('sha256', Order::STATUS_REFUND_APPROVED),
+                'after_hash' => hash('sha256', Order::STATUS_REFUNDED),
+                'details' => [
+                    'order_id' => $locked->id,
+                    'amount_paise' => $owed,
+                    'reference' => $reference,
+                    'note' => $note,
+                    'gateway' => 'none',
+                ],
             ]);
 
-            $refund->setRawAttributes($locked->fresh()->getAttributes(), true);
+            $order->setRawAttributes($locked->fresh()->getAttributes(), true);
         });
     }
 
@@ -449,6 +572,11 @@ final class RazorpayRefundService
             return;
         }
 
+        $this->closeOrderRecord($order);
+    }
+
+    private function closeOrderRecord(Order $order): void
+    {
         if ($order->status === Order::STATUS_REFUND_APPROVED) {
             $order->update(['status' => Order::STATUS_REFUNDED, 'refunded_at' => Carbon::now()]);
             ReturnRequest::where('order_id', $order->id)
@@ -517,6 +645,9 @@ final class RazorpayRefundService
                     $tally['checked']++;
                     try {
                         if ($refund->gateway_refund_id === null) {
+                            // Stamped so a job still in its backoff is not
+                            // shadowed by a fresh one every five minutes.
+                            $refund->update(['last_synced_at' => Carbon::now()]);
                             $this->dispatch($refund);
 
                             continue;

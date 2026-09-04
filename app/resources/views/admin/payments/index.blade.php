@@ -6,12 +6,44 @@
 
 <p class="text-sm text-gray-600 mb-4">Every online payment attempt, what the gateway said about it, and where it stands. Nothing here is marked paid by hand: <em>Sync</em> asks Razorpay and confirms only from its answer.</p>
 
+@if(session('status'))<div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</div>@endif
+@error('invoice')<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{{ $message }}</div>@enderror
+
 @if($attention > 0)
 <a href="{{ route('admin.payments.refunds') }}" class="block mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 hover:bg-amber-100">
-    <strong>{{ $attention }}</strong> refund{{ $attention === 1 ? '' : 's' }} need{{ $attention === 1 ? 's' : '' }} attention — failed at the gateway, or held more than {{ \App\Modules\Payments\Support\RefundWorklist::ALERT_AFTER_DAYS }} days without the return being received. Open the unsettled refunds worklist →
+    <strong>{{ $attention }}</strong> refund{{ $attention === 1 ? '' : 's' }} need{{ $attention === 1 ? 's' : '' }} attention — failed at the gateway, held more than {{ \App\Modules\Payments\Support\RefundWorklist::ALERT_AFTER_DAYS }} days without the return being received, or owed on an order with no gateway payment to refund against. Open the unsettled refunds worklist →
 </a>
 @else
 <a href="{{ route('admin.payments.refunds') }}" class="inline-block mb-5 text-sm text-brand-700 hover:underline">Unsettled refunds worklist →</a>
+@endif
+
+@if($invoiceGapCount > 0)
+<div class="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
+    <p class="font-semibold mb-2"><strong>{{ $invoiceGapCount }}</strong> paid order{{ $invoiceGapCount === 1 ? '' : 's' }} without a GST invoice</p>
+    <p class="text-xs text-red-800 mb-3">The payment was confirmed but the invoice failed to generate. A tax invoice must be issued for every supply (CGST §31); issue it here — the next consecutive number is allocated, never a duplicate.</p>
+    <table class="w-full text-sm bg-white rounded-lg border border-red-200">
+        <thead><tr class="text-left text-xs text-gray-600 uppercase border-b border-red-200"><th class="px-3 py-2">Order</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Paid</th><th class="px-3 py-2 text-right">Total</th><th></th></tr></thead>
+        <tbody class="divide-y divide-red-100">
+        @foreach($invoiceGaps as $gapOrder)
+            <tr>
+                <td class="px-3 py-2"><a href="{{ route('admin.commerce.orders.show', $gapOrder) }}" class="text-brand-700 font-mono text-xs">{{ $gapOrder->order_no }}</a></td>
+                <td class="px-3 py-2 text-gray-700">{{ $gapOrder->customer->display_name ?? '—' }}</td>
+                <td class="px-3 py-2 text-xs text-gray-600">{{ $gapOrder->paid_at?->format('d M Y H:i') }}</td>
+                <td class="px-3 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gapOrder->total_paise / 100, 2) }}</td>
+                <td class="px-3 py-2 text-right">
+                    @can('finance.record')
+                    <form method="POST" action="{{ route('admin.payments.invoices.generate', $gapOrder) }}" class="inline"
+                          data-confirm="Issue the GST invoice for this order now?" data-confirm-title="Issue invoice"
+                          data-confirm-impact="Impact: allocates the next consecutive invoice number and dates the invoice today. Audit-logged against your user.">
+                        @csrf<button type="submit" class="text-sm text-brand-700 hover:underline">Issue invoice</button>
+                    </form>
+                    @endcan
+                </td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+</div>
 @endif
 
 @php
