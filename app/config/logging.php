@@ -95,6 +95,19 @@ return [
             'tap' => [TapPiiScrubber::class],
         ],
 
+        // Every gateway call, callback and webhook, already scrubbed by the
+        // payments allow-list before it gets here; the PII tap is belt and
+        // braces. Kept longer than the app log because a payment dispute can
+        // arrive months later.
+        'payments' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments.log'),
+            'level' => env('LOG_PAYMENTS_LEVEL', 'info'),
+            'days' => env('LOG_PAYMENTS_DAYS', 180),
+            'replace_placeholders' => true,
+            'tap' => [TapPiiScrubber::class],
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

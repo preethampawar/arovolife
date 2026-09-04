@@ -1315,18 +1315,6 @@ parameters:
 			path: app/Modules/Payments/Models/RefundIntent.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Payments\\Models\\PaymentIntent\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Payments/Services/StubGateway.php
-
-		-
-			message: '#^Parameter \#1 \$order of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markPaid\(\) expects App\\Modules\\Commerce\\Models\\Order, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Modules/Payments/Services/StubGateway.php
-
-		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 1

@@ -6,7 +6,10 @@ namespace App\Modules\Payments\Services;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Payments\Contracts\PaymentGateway;
+use App\Modules\Payments\Data\GatewayPayment;
 use App\Modules\Payments\Models\PaymentIntent;
+use App\Modules\Payments\Support\PaymentSettings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -29,9 +32,17 @@ use RuntimeException;
  * `markPaid()` reachable only from a server-side webhook whose signature has
  * been verified. Do not make the webhook trust anything the browser sends.
  */
-final class StubGateway
+final class StubGateway implements PaymentGateway
 {
-    public function __construct(private readonly OrderStateMachine $orderStateMachine) {}
+    public function __construct(
+        private readonly OrderStateMachine $orderStateMachine,
+        private readonly PaymentSettings $settings,
+    ) {}
+
+    public function name(): string
+    {
+        return PaymentIntent::GATEWAY_STUB;
+    }
 
     /**
      * Whether the stub may run in the current environment.
@@ -44,6 +55,17 @@ final class StubGateway
     public function permitted(): bool
     {
         if (app()->environment('production')) {
+            return false;
+        }
+
+        // Second, independent guard (compliance C-2): the moment Razorpay is
+        // switched on, or a live key is present at all, the stub is out of
+        // the picture whatever the environment allow-list says. There is no
+        // fallback from the real gateway to the free one.
+        if ($this->settings->razorpayEnabled()) {
+            return false;
+        }
+        if (str_starts_with((string) config('arovolife.payments.razorpay.key_id', ''), 'rzp_live_')) {
             return false;
         }
 
@@ -81,12 +103,19 @@ final class StubGateway
 
         return PaymentIntent::create([
             'order_id' => $order->id,
-            'gateway' => 'stub',
+            'gateway' => $this->name(),
             'gateway_intent_id' => 'STUB-'.strtoupper(Str::random(12)),
+            'mode' => 'test',
             'amount_paise' => $order->total_paise,
             'status' => PaymentIntent::STATUS_CREATED,
             'idempotency_key' => $idempotencyKey,
         ]);
+    }
+
+    /** The stub has nothing to ask: whatever it captured, it captured. */
+    public function syncStatus(PaymentIntent $intent): ?GatewayPayment
+    {
+        return null;
     }
 
     public function capture(PaymentIntent $intent): PaymentIntent
@@ -100,6 +129,7 @@ final class StubGateway
         $intent->update([
             'status' => PaymentIntent::STATUS_CAPTURED,
             'captured_at' => Carbon::now(),
+            'confirmed_via' => PaymentIntent::CONFIRMED_VIA_STUB,
         ]);
 
         $this->orderStateMachine->markPaid($intent->order);

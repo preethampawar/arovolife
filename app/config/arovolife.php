@@ -97,6 +97,19 @@ return [
                 explode(',', (string) env('PAYMENT_STUB_ENVIRONMENTS', 'local,testing')),
             ), static fn (string $name): bool => $name !== '')),
         ],
+
+        // Razorpay credentials. Secrets only — business levers (expiry window,
+        // refund speed, the on/off flag) live in the settings table. The key
+        // prefix (`rzp_test_` / `rzp_live_`) decides the mode; production
+        // refuses test keys and every other environment refuses live ones.
+        // See docs/runbooks/razorpay.md.
+        'razorpay' => [
+            'key_id' => (string) env('RAZORPAY_KEY_ID', ''),
+            'key_secret' => (string) env('RAZORPAY_KEY_SECRET', ''),
+            'webhook_secret' => (string) env('RAZORPAY_WEBHOOK_SECRET', ''),
+            'base_url' => (string) env('RAZORPAY_BASE_URL', 'https://api.razorpay.com/v1'),
+            'timeout_seconds' => (int) env('RAZORPAY_TIMEOUT_SECONDS', 15),
+        ],
     ],
 
     'recompute' => [
