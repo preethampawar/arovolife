@@ -179,6 +179,8 @@
                 @if(auth()->user()->distributor)
                     <span class="text-brand-400">|</span>
                     <a href="{{ route('my-business') }}" class="hover:text-brand-50 transition-colors">My Business</a>
+                    <span class="text-brand-400">|</span>
+                    <a href="{{ route('orders.index') }}" class="hover:text-brand-50 transition-colors">My Orders</a>
                 @endif
             @endif
         @else
@@ -448,6 +450,7 @@
                 @endif
                 @if(! auth()->user()->isSuperStaff() && auth()->user()->distributor)
                 <a href="{{ route('my-business') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Business</a>
+                <a href="{{ route('orders.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Orders</a>
                 @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class) && auth()->user()?->distributor)
                 <a href="{{ route('my.offers.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Offers</a>
                 @endif
