@@ -1477,6 +1477,54 @@ parameters:
 			path: database/seeders/SettingsSeeder.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Commerce/AdminOrderTransitionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Commerce/AdminOrderTransitionTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$appResult\.$#'
+			identifier: property.notFound
+			count: 10
+			path: tests/Feature/Compensation/FortuneBonusVerificationTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$calculator\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Feature/Compensation/FortuneBonusVerificationTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$oracle\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Feature/Compensation/FortuneBonusVerificationTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$oracleResult\.$#'
+			identifier: property.notFound
+			count: 11
+			path: tests/Feature/Compensation/FortuneBonusVerificationTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$result\.$#'
+			identifier: property.notFound
+			count: 25
+			path: tests/Feature/Compensation/FortuneBonusVerificationTest.php
+
+		-
+			message: '#^Call to an undefined static method Illuminate\\Support\\Facades\\Log\:\:shouldHaveReceived\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Feature/Compensation/PayoutBankDecryptionTest.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$opened_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1519,6 +1567,12 @@ parameters:
 			path: tests/Feature/Console/PlatformResetTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Console/ProductionSeederReservedTreeTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
 			identifier: method.notFound
 			count: 4
@@ -1529,6 +1583,12 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Feature/Console/PurchaseDataResetTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Identity/LoginAuditTest.php
 
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
@@ -1555,9 +1615,33 @@ parameters:
 			path: tests/Feature/Security/PolicyBackstopTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:from\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Shared/ExceptionHandlingTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Shared/ExceptionHandlingTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:getJson\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Shared/ExceptionHandlingTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutVite\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Shared/ExceptionHandlingTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 23
+			count: 24
 			path: tests/Modules/Admin/AdminAdcReportsTest.php
 
 		-
@@ -1911,7 +1995,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 15
+			count: 17
 			path: tests/Modules/Admin/DeveloperRoleTest.php
 
 		-
@@ -1923,7 +2007,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 13
+			count: 15
 			path: tests/Modules/Admin/DeveloperRoleTest.php
 
 		-
@@ -1936,6 +2020,12 @@ parameters:
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
 			count: 5
+			path: tests/Modules/Admin/DeveloperRoleTest.php
+
+		-
+			message: '#^Unable to resolve the template type TComponent in call to method Livewire\\LivewireManager\:\:test\(\)$#'
+			identifier: argument.templateType
+			count: 2
 			path: tests/Modules/Admin/DeveloperRoleTest.php
 
 		-
@@ -2131,6 +2221,30 @@ parameters:
 			path: tests/Modules/Commerce/CartQuantityTest.php
 
 		-
+			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Cart\:\:\$anonymous_key\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Modules/Commerce/CheckoutCollectionCentreTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Commerce/CheckoutCollectionCentreTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutCollectionCentreTest.php
+
+		-
+			message: '#^Function cccCollectPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Commerce/CheckoutCollectionCentreTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 2
@@ -2151,6 +2265,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
+
+		-
+			message: '#^Function cdebPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
 
@@ -2177,12 +2297,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Commerce/CheckoutFailureHandlingTest.php
-
-		-
-			message: '#^Function cdebPayload\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: tests/Modules/Commerce/CheckoutDistributorEmailBlockTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
@@ -2231,6 +2345,12 @@ parameters:
 			identifier: argument.templateType
 			count: 4
 			path: tests/Modules/Commerce/CheckoutSelfConsumptionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Commerce/CheckoutZeroCashFloorTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Coupon\:\:\$code\.$#'
@@ -2487,7 +2607,19 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 2
+			path: tests/Modules/Compensation/AdminAwRwCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminAwRwCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 10
 			path: tests/Modules/Compensation/AdminCompensationNavTest.php
 
 		-
@@ -2519,12 +2651,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Compensation/AdminDistributorCompTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: tests/Modules/Compensation/PayoutCommandFailureTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -2541,7 +2667,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 12
+			count: 14
 			path: tests/Modules/Compensation/AdminFortuneReportsTest.php
 
 		-
@@ -2553,7 +2679,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 13
+			count: 15
 			path: tests/Modules/Compensation/AdminGbbCalculationTest.php
 
 		-
@@ -2565,7 +2691,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 10
 			path: tests/Modules/Compensation/AdminGbbInputOutputTest.php
 
 		-
@@ -2573,23 +2699,23 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Compensation/AdminGbbInputOutputTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 9
+			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 7
-			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 5
 			path: tests/Modules/Compensation/AdminGsbInputOutputTest.php
 
 		-
@@ -2601,7 +2727,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 9
+			count: 10
 			path: tests/Modules/Compensation/AdminMsbCalculationTest.php
 
 		-
@@ -2613,7 +2739,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 9
+			count: 11
 			path: tests/Modules/Compensation/AdminMsbInputOutputTest.php
 
 		-
@@ -2637,7 +2763,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 13
 			path: tests/Modules/Compensation/AdminRankBonusInputOutputTest.php
 
 		-
@@ -2661,7 +2787,61 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 47
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Function adcAppPayload\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Function adcAppPhotos\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Function adcAppSubmit\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 5
+			path: tests/Modules/Compensation/CompensationRecomputeTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:fail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
 			path: tests/Modules/Compensation/CompensationRecomputeTest.php
 
 		-
@@ -2757,6 +2937,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
 			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Compensation/PayoutCommandFailureTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
 			count: 6
 			path: tests/Modules/Compliance/AuditLogChainTest.php
 
@@ -2841,7 +3027,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 9
+			path: tests/Modules/Content/PublicContentPagesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
 			path: tests/Modules/Content/PublicContentPagesTest.php
 
 		-
@@ -2867,12 +3059,12 @@ parameters:
 			identifier: method.notFound
 			count: 8
 			path: tests/Modules/Genealogy/TreeCardStatsTest.php
+
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Genealogy/TreeCardStatsTest.php
-
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -2913,7 +3105,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 27
+			count: 29
 			path: tests/Modules/Grievance/GrievanceWorkflowTest.php
 
 		-
@@ -2973,7 +3165,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 5
+			count: 8
 			path: tests/Modules/Identity/DashboardRenderTest.php
 
 		-
@@ -2993,6 +3185,18 @@ parameters:
 			identifier: method.notFound
 			count: 6
 			path: tests/Modules/Identity/DistributorIdCardStatsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 23
+			path: tests/Modules/Identity/DistributorRequestTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Identity/DistributorRequestTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:post\(\)\.$#'
@@ -3345,13 +3549,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 4
-			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 2
+			count: 3
 			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
 
 		-
@@ -3363,14 +3561,8 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withSession\(\)\.$#'
 			identifier: method.notFound
-			count: 2
-			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
 			count: 1
-			path: tests/Modules/Identity/EligibilityDeclarationsTest.php
+			path: tests/Modules/Identity/WizardProgressMiddlewareTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -3391,32 +3583,56 @@ parameters:
 			path: tests/Modules/Messaging/MessageFlowTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$paid_at\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Modules/Payments/StubGatewayGuardTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Payments\\Models\\PaymentIntent\:\:\$status\.$#'
-			identifier: property.notFound
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
 			count: 1
-			path: tests/Modules/Payments/StubGatewayGuardTest.php
+			path: tests/Modules/Payments/PaymentConfirmationServiceTest.php
 
 		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<\(Closure\)\|null\>\:\:and\(\)$#'
-			identifier: argument.templateType
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 1
-			path: tests/Modules/Payments/StubGatewayGuardTest.php
+			path: tests/Modules/Payments/PaymentControllerTest.php
 
 		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
-			identifier: argument.templateType
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Payments/PaymentControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
 			count: 1
-			path: tests/Modules/Payments/StubGatewayGuardTest.php
+			path: tests/Modules/Payments/PaymentControllerTest.php
 
 		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withSession\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: tests/Modules/Payments/PaymentControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Payments/PaymentControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Payments/RazorpayWebhookTest.php
+
+		-
+			message: '#^Parameter \#1 \$test of function pwhPost expects Tests\\TestCase, Pest\\PendingCalls\\TestCall given\.$#'
+			identifier: argument.type
+			count: 10
+			path: tests/Modules/Payments/RazorpayWebhookTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Payments/StubGatewayGuardTest.php
 
@@ -3587,6 +3803,18 @@ parameters:
 			identifier: missingType.return
 			count: 1
 			path: tests/Pest.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: tests/Support/FortuneBonusOracle.php
+
+		-
+			message: '#^Method Tests\\Support\\FortuneBonusOracle\:\:run\(\) should return array\{pool_paise\: int, guaranteed_total_paise\: int, available_paise\: int, total_points\: int, levels\: array\<int, array\{participants\: int, level_points\: int, point_value_paise\: int, bonus_paise\: int, derived_per_member_paise\: int, capped_per_member_paise\: int, income_per_member_paise\: int, wallet_credit_each_paise\: int, \.\.\.\}\>, incomes\: array\<int, int\>, total_credited_paise\: int, leftover_paise\: int, \.\.\.\} but returns array\<string, mixed\>\.$#'
+			identifier: return.type
+			count: 2
+			path: tests/Support/FortuneBonusOracle.php
 
 		-
 			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'

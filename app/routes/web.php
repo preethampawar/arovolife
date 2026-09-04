@@ -100,6 +100,7 @@ use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
 use App\Modules\Payments\Http\Controllers\PaymentController;
+use App\Modules\Payments\Http\Controllers\RazorpayWebhookController;
 use App\Modules\Public\Http\Controllers\ContactController;
 use App\Modules\Public\Http\Controllers\FindMyIdController;
 use App\Modules\Returns\Http\Controllers\Admin\AdminReturnController;
@@ -778,6 +779,12 @@ Route::post('/find-my-id/resend', [FindMyIdController::class, 'resendOtp'])
     ->middleware('throttle:3,60')->name('find-my-id.resend');
 
 // ── Analytics consent (DPDP §5-§6) ──────────────────────────────────────────
+// ── Payment gateway webhooks ─────────────────────────────────────────────────
+// Signature-verified, CSRF-exempt (bootstrap/app.php), no session needed.
+// 404 unless Razorpay credentials are configured.
+Route::post('/webhooks/razorpay', RazorpayWebhookController::class)
+    ->middleware('throttle:600,1')->name('webhooks.razorpay');
+
 // ── Public Storefront (Commerce) ─────────────────────────────────────────────
 
 Route::middleware('capture.attribution')->group(function (): void {

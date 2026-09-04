@@ -32,6 +32,9 @@ return new class extends Migration
             $table->unsignedInteger('duration_ms')->nullable();
             $table->json('payload')->nullable();
             $table->text('error')->nullable();
+            // Webhooks only: when the queued handler applied the event, or why it could not.
+            $table->dateTime('processed_at', 3)->nullable();
+            $table->text('processing_error')->nullable();
             $table->dateTime('created_at', 3)->useCurrent();
 
             $table->unique(['gateway', 'gateway_event_id'], 'uniq_payment_events_gateway_event');

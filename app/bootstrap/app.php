@@ -38,6 +38,12 @@ return Application::configure(basePath: dirname(__DIR__))
             | Request::HEADER_X_FORWARDED_PORT
             | Request::HEADER_X_FORWARDED_PROTO);
 
+        // Razorpay signs its webhooks with a shared secret over the raw body;
+        // that, not a session token, is what authenticates the request.
+        $middleware->preventRequestForgery(except: [
+            'webhooks/razorpay',
+        ]);
+
         $middleware->alias([
             'wizard.progress' => EnsureRegistrationProgress::class,
             'kyc.approved' => RequireKycApproval::class,

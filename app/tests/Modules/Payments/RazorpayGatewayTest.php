@@ -44,6 +44,7 @@ function razorpayOrder(int $totalPaise = 118000): Order
     ]);
 }
 
+/** @return array{entity: string, count: int, items: list<mixed>} */
 function emptyOrders(): array
 {
     return ['entity' => 'collection', 'count' => 0, 'items' => []];

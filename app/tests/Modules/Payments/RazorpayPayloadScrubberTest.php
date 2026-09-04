@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 use App\Modules\Payments\Support\RazorpayPayloadScrubber;
 
+/** @return array<string, mixed> */
 function razorpayPaymentEntity(): array
 {
     return [

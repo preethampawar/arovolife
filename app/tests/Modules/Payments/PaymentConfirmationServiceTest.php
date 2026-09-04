@@ -43,6 +43,7 @@ use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
+/** @param  array<string, mixed>  $overrides */
 function pcsOrder(int $totalPaise = 118000, array $overrides = []): Order
 {
     $customer = Customer::create(['display_name' => 'PCS Buyer']);
@@ -130,7 +131,8 @@ it('PCS-03: a payment for a different gateway order is refused', function () {
     $order = pcsOrder();
     $intent = pcsIntent($order);
     Log::shouldReceive('critical')->once();
-    Log::shouldReceive('channel')->andReturnSelf()->shouldReceive('error', 'info', 'warning');
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('error', 'info', 'warning');
 
     expect(fn () => app(PaymentConfirmationService::class)->confirmPayment($intent, pcsPayment(['order_id' => 'order_other']), 'webhook'))
         ->toThrow(PaymentMismatchException::class, 'order_other');
@@ -143,7 +145,8 @@ it('PCS-04: a payment for a different amount is refused', function () {
     $order = pcsOrder(118000);
     $intent = pcsIntent($order);
     Log::shouldReceive('critical')->once();
-    Log::shouldReceive('channel')->andReturnSelf()->shouldReceive('error', 'info', 'warning');
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('error', 'info', 'warning');
 
     expect(fn () => app(PaymentConfirmationService::class)->confirmPayment($intent, pcsPayment(['amount' => 117900]), 'webhook'))
         ->toThrow(PaymentMismatchException::class, '117900 paise');
@@ -154,7 +157,8 @@ it('PCS-05: a non-INR payment is refused', function () {
     $order = pcsOrder();
     $intent = pcsIntent($order);
     Log::shouldReceive('critical')->once();
-    Log::shouldReceive('channel')->andReturnSelf()->shouldReceive('error', 'info', 'warning');
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('error', 'info', 'warning');
 
     expect(fn () => app(PaymentConfirmationService::class)->confirmPayment($intent, pcsPayment(['currency' => 'USD']), 'webhook'))
         ->toThrow(PaymentMismatchException::class, 'USD');
@@ -164,7 +168,8 @@ it('PCS-06: a partly refunded payment is refused', function () {
     $order = pcsOrder();
     $intent = pcsIntent($order);
     Log::shouldReceive('critical')->once();
-    Log::shouldReceive('channel')->andReturnSelf()->shouldReceive('error', 'info', 'warning');
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('error', 'info', 'warning');
 
     expect(fn () => app(PaymentConfirmationService::class)->confirmPayment($intent, pcsPayment(['amount_refunded' => 100]), 'webhook'))
         ->toThrow(PaymentMismatchException::class, 'refunded');
@@ -200,7 +205,8 @@ it('PCS-09: a capture on an already-cancelled order posts the cash as owed back 
     app(OrderStateMachine::class)->cancel($order, 'payment_expired');
     // Alerted on every sighting — the retry below is the second one.
     Log::shouldReceive('critical')->twice();
-    Log::shouldReceive('channel')->andReturnSelf()->shouldReceive('error', 'info', 'warning');
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('error', 'info', 'warning');
 
     $service = app(PaymentConfirmationService::class);
     $result = $service->confirmPayment($intent, pcsPayment(), 'webhook');
@@ -215,9 +221,8 @@ it('PCS-09: a capture on an already-cancelled order posts the cash as owed back 
         ->and($refund->status)->toBe(RefundIntent::STATUS_CREATED);
 
     $tx = LedgerTx::where('idempotency_key', 'order.late_capture:'.$order->id)->sole();
-    $entries = LedgerEntry::where('ledger_tx_id', $tx->id)->get();
-    expect($entries->firstWhere('side', 'debit')->amount_paise)->toBe(118000)
-        ->and($entries->firstWhere('side', 'credit')->amount_paise)->toBe(118000);
+    expect((int) LedgerEntry::where('ledger_tx_id', $tx->id)->where('side', 'debit')->sum('amount_paise'))->toBe(118000)
+        ->and((int) LedgerEntry::where('ledger_tx_id', $tx->id)->where('side', 'credit')->sum('amount_paise'))->toBe(118000);
 
     // A retry (the webhook after the callback) changes nothing.
     $again = $service->confirmPayment($intent->fresh(), pcsPayment(), 'webhook');
@@ -238,7 +243,8 @@ it('PCS-10: the callback refuses a bad signature and an order id that is not the
     // A valid signature for a pair that belongs to another order.
     $sig = hash_hmac('sha256', 'order_other|pay_other', 'secret-xyz');
     Log::shouldReceive('critical')->once();
-    Log::shouldReceive('channel')->andReturnSelf()->shouldReceive('error', 'info', 'warning');
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('error', 'info', 'warning');
     expect(fn () => $service->confirmFromCallback($intent, 'order_other', 'pay_other', $sig))
         ->toThrow(PaymentMismatchException::class);
     expect($order->fresh()->status)->toBe(Order::STATUS_PLACED);

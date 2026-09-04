@@ -26,6 +26,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $duration_ms
  * @property array<string, mixed>|null $payload
  * @property string|null $error
+ * @property Carbon|null $processed_at
+ * @property string|null $processing_error
  * @property Carbon $created_at
  */
 final class PaymentEvent extends Model
@@ -46,6 +48,7 @@ final class PaymentEvent extends Model
         'order_id', 'payment_intent_id', 'refund_intent_id',
         'gateway', 'direction', 'event_type', 'gateway_event_id', 'gateway_payment_id',
         'signature_verified', 'http_status', 'duration_ms', 'payload', 'error',
+        'processed_at', 'processing_error',
     ];
 
     protected function casts(): array
@@ -55,6 +58,7 @@ final class PaymentEvent extends Model
             'signature_verified' => 'bool',
             'http_status' => 'int',
             'duration_ms' => 'int',
+            'processed_at' => 'datetime',
             'created_at' => 'datetime',
         ];
     }

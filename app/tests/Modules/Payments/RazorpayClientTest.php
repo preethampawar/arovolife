@@ -69,14 +69,16 @@ it('PAY-C02: a 4xx becomes RazorpayApiException carrying the gateway code and is
         'error' => ['code' => 'BAD_REQUEST_ERROR', 'description' => 'Order amount less than minimum amount allowed'],
     ], 400)]);
 
+    $caught = null;
     try {
         app(RazorpayClient::class)->createOrder(50, 'ORD-2', [], 'optimum');
-        $this->fail('expected RazorpayApiException');
     } catch (RazorpayApiException $e) {
-        expect($e->httpStatus)->toBe(400)
-            ->and($e->gatewayCode)->toBe('BAD_REQUEST_ERROR')
-            ->and($e->gatewayDescription)->toContain('minimum amount');
+        $caught = $e;
     }
+    expect($caught)->toBeInstanceOf(RazorpayApiException::class)
+        ->and($caught?->httpStatus)->toBe(400)
+        ->and($caught?->gatewayCode)->toBe('BAD_REQUEST_ERROR')
+        ->and($caught?->gatewayDescription)->toContain('minimum amount');
 
     $event = PaymentEvent::sole();
     expect($event->http_status)->toBe(400)->and($event->error)->toContain('BAD_REQUEST_ERROR');
@@ -183,7 +185,8 @@ it('PAY-C11: nothing personal reaches payment_events', function () {
     app(RazorpayClient::class)->fetchPayment('pay_p');
 
     $json = json_encode(PaymentEvent::sole()->payload, JSON_THROW_ON_ERROR);
-    expect($json)->not->toContain('buyer@example.com')->not->toContain('+919999999999')
-        ->not->toContain('buyer@upi')->not->toContain('Buyer Name')
-        ->toContain('1111')->toContain('Visa');
+    foreach (['buyer@example.com', '+919999999999', 'buyer@upi', 'Buyer Name'] as $needle) {
+        expect($json)->not->toContain($needle);
+    }
+    expect($json)->toContain('1111')->toContain('Visa');
 });
