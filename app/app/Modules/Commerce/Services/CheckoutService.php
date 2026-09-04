@@ -316,6 +316,25 @@ final class CheckoutService
                 );
             }
 
+            // 4b. Audit the placement, and with it the two non-cash
+            // settlements. Both are already in their own append-only ledgers,
+            // but only the restoration side (cancel, refund) was reaching
+            // audit_log, so an auditor reading that trail alone saw credit and
+            // points come back with no record of them ever going out.
+            AuditLog::create([
+                'actor_id' => $authUserId,
+                'action' => 'order.placed',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => [
+                    'order_no' => $orderNo,
+                    'total_paise' => $order->total_paise,
+                    'payment_method' => $paymentMethod,
+                    'redeem_points_paise' => $redeemPointsPaise,
+                    'repurchase_credit_paise' => $repurchaseCreditPaise,
+                ],
+            ]);
+
             // 5. Clear the cart
             $cart->items()->delete();
             $cart->delete();
