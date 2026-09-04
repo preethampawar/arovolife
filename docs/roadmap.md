@@ -26,6 +26,7 @@
 | 6 | Compensation — Fortune Bonus cascade (replaced Auto Pool) | ✅ shipped |
 | 7 | Arete Development Center bonus | ✅ shipped |
 | — | Operations build-out (grievance, termination, franchise, offers, analytics, GST invoice) | ✅ shipped |
+| — | Razorpay payment gateway (R-56) | ⏳ built 2026-09-04, flag OFF, awaiting credentials + live smoke test |
 | 12 | Production hardening (MFA, observability, Redis, couple follow-ups) | ⏸ deferred |
 | — | Final sign-off gate | ⏳ batched to launch |
 
@@ -420,6 +421,26 @@ value: checkout and the shipment journal carry GST on the full sale value, and
 the invoice is the source for GSTR-1, so all three now agree. Whether to claim
 the §15(3)(a) reduction instead is a question for counsel (R-48 gate (c),
 R-28).
+
+### 7. Razorpay payment gateway (R-56) ⏳ built, flag OFF
+
+**Built 2026-09-04** behind `payments.gateway.razorpay.enabled` (default OFF),
+six commits `da62103…f31fbb2`. Standard Checkout on `/shop/pay/{orderNo}`; the
+order is marked paid only by `PaymentConfirmationService`, from a payment
+fetched from Razorpay's API (architecture test pins the single caller of
+`markPaid()`). Fails closed — a misconfigured gateway closes checkout, never
+falls back to the stub. Webhooks signed and deduplicated; reconciler and
+expiry sweeper as backstops; late captures auto-refunded. Refunds sent for the
+cash portion only, held on cooling-off returns until the goods are marked
+received (`returns.receive`, operations), settled only on the gateway's
+`refund.processed` or a manual NEFT; unsettled-refunds worklist with the
+10-day alert and 21-day grievance escalation. Admin → Payments; help page;
+`docs/runbooks/razorpay.md`. 120+ tests.
+
+**Awaiting credentials.** R-56 stays Open until the live smoke test on
+production passes (runbook checklist). Follow-ups: R-68 (COD refunds manual),
+R-69 (coupon value on non-cooling-off refunds — client policy), dispute /
+chargeback webhooks, buyer notifications on refund settled.
 
 ### Still open in this build-out
 
