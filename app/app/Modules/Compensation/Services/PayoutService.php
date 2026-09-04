@@ -838,8 +838,17 @@ final class PayoutService
             $this->plan->repurchaseCapPaise(),
         ));
 
+        // Only what a payout batch actually withheld counts as collected. The
+        // same credit type is also written when a cancelled or refunded order
+        // returns repurchase credit to the wallet (OrderStateMachine::cancel,
+        // RefundOrder), and those carry reference_type = 'order'. Counting one
+        // of those as a collection would let the restoration stand in for this
+        // month's deduction: the batch would withhold that much less cash,
+        // paying out money that was never collected for the repurchase — the
+        // R-60 leak again, one step removed.
         $alreadyCollectedThisMonth = (int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->where('type', 'repurchase_deduction')
+            ->where('reference_type', 'payout_line_item')
             ->where('amount_paise', '>', 0)
             ->whereBetween('created_at', [
                 $batchDate->copy()->startOfMonth(),

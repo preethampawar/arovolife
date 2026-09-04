@@ -717,3 +717,37 @@ it('LOG-3/5: writes audit_log rows when a payout batch is created and finalised,
     expect(AuditLog::where('action', 'payout.batch.created')
         ->where('subject_id', $batch->id)->count())->toBe(1);
 });
+
+it('repurchase credit restored by a cancelled or refunded order is not counted as collected', function () {
+    // The restoration writes the same credit type a payout batch writes. If it
+    // counted as this month's collection, the batch would withhold that much
+    // less cash and pay out money never collected for the repurchase (R-60).
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    // Prior-month GSB ₹2,000 → July repurchase target = 20,000 paise.
+    Carbon::setTestNow(Carbon::create(2026, 6, 15, 12));
+    $wallet->credit($dist->id, 200_000, 'gsb_credit', walletRef(), 'test_reference');
+
+    // Early July: an order that spent repurchase credit is cancelled, so the
+    // credit goes back to the wallet — reference_type 'order', not a batch.
+    Carbon::setTestNow(Carbon::create(2026, 7, 2, 9));
+    $wallet->credit(
+        distributorId: $dist->id,
+        amountPaise: 15_000,
+        type: 'repurchase_deduction',
+        referenceId: 4242,
+        referenceType: 'order',
+        memo: 'Restored on cancellation of order TEST-1',
+    );
+
+    Carbon::setTestNow(Carbon::create(2026, 7, 7, 9));
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+    $weekly = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+
+    // The full target is still withheld — the restoration collected nothing.
+    $line = PayoutLineItem::where('payout_batch_id', $weekly->id)->where('distributor_id', $dist->id)->first();
+    expect($line->repurchase_deduction_paise)->toBe(20_000);
+
+    Carbon::setTestNow(null);
+});
