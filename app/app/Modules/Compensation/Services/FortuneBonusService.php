@@ -31,16 +31,18 @@ use Illuminate\Support\Facades\Log;
  * fortunePointsForDepth(d) points (KP 2026-08-09: 9/8/7/6/5/4/3/2/1 for
  * depths 1–9, nothing deeper).
  *
- * DISTRIBUTION (KP 2026-08-09 level cascade, FortuneDistributionCalculator) —
- * every qualifier is guaranteed the ₹30 minimum commission, reserved off the
- * pool first. Then absolute matrix levels settle ascending: capped levels
- * (0–6 by default) each price at floor_rupee(remaining pool ÷ all remaining
- * points) with per-member ceilings (₹30k/₹30k/₹30k/₹30k/₹20k/₹10k/₹5k,
- * ceilings INCLUDE the ₹30); residual levels (7–8) share one value over their
- * combined points, uncapped; the flat level (9) gets the ₹30 only. When the
- * pool cannot cover the guarantees, everyone gets the same whole-rupee share
- * and nothing else. Sparse months keep the ABSOLUTE-level treatment (user
- * decision 2026-08-09) — the unspent remainder stays as leftover.
+ * DISTRIBUTION (KP 2026-08-09 level cascade, updated 2026-09-03,
+ * FortuneDistributionCalculator) — every qualifier is guaranteed the ₹30
+ * minimum commission, reserved off the pool first. Then absolute matrix
+ * levels settle ascending: every level (0–9) is capped with its own
+ * per-member ceiling (₹30k/₹30k/₹30k/₹30k/₹20k/₹10k/₹5k/₹2,500/₹1,500/₹30,
+ * caps INCLUDE the ₹30 minimum). The residual (7–8) and flat-minimum (9)
+ * payout modes were retired 2026-09-03; those mode names survive only in
+ * incomeFromFrozenEconomics to honour pool snapshots frozen before that date.
+ * When the pool cannot cover the guarantees, everyone gets the same
+ * whole-rupee share and nothing else. Sparse months keep the ABSOLUTE-level
+ * treatment (user decision 2026-08-09) — the unspent remainder stays as
+ * leftover.
  *
  * FROZEN ECONOMICS — the month's pool row and its per-level economics
  * (fortune_monthly_pool_levels) are written once BEFORE any credit and never
