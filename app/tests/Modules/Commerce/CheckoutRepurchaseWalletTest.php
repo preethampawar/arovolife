@@ -9,6 +9,8 @@ use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\CheckoutService;
+use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\User;
@@ -74,7 +76,7 @@ function crwDistributor(): array
  * Default ₹5,000 (500_000 paise) so the free-shipping threshold (₹4,000) is
  * met and shipping = 0, keeping the test totals clean.
  */
-function crwCart(int $pricePaise = 500000): Cart
+function crwCart(int $pricePaise = 500000, int $gstRateBp = 0): Cart
 {
     $n = random_int(10000, 99999);
     $product = Product::create([
@@ -90,7 +92,7 @@ function crwCart(int $pricePaise = 500000): Cart
         'name' => 'Default',
         'mrp_paise' => $pricePaise,
         'sale_price_paise' => $pricePaise,
-        'gst_rate_bp' => 0,
+        'gst_rate_bp' => $gstRateBp,
         'inventory_policy' => 'track',
         'status' => 'active',
     ]);
@@ -107,7 +109,7 @@ function crwCart(int $pricePaise = 500000): Cart
         'qty' => 1,
         'unit_price_paise' => $pricePaise,
         'bv_paise' => 0,
-        'gst_rate_bp' => 0,
+        'gst_rate_bp' => $gstRateBp,
     ]);
 
     return $cart->load('items.variant.product');
@@ -313,4 +315,192 @@ it('CRW-07: repurchaseCreditAppliedToOrder returns the absolute debit amount for
     $applied = app(WalletService::class)->repurchaseCreditAppliedToOrder($order->id);
 
     expect($applied)->toBe(15000);
+});
+
+it('CRW-08: an order paid partly from the repurchase wallet can be marked shipped and its ledger balances', function (): void {
+    [$userId, $distributorId] = crwDistributor();
+    crwSeedCredit($distributorId, 20000);
+
+    // The ordinary case: a taxed cart. CRW-09 covers the zero-rated one.
+    $order = app(CheckoutService::class)->place(
+        cart: crwCart(gstRateBp: 1800),
+        buyer: crwBuyer(),
+        shipping: crwAddr(),
+        billing: crwAddr(),
+        attributedDistributorId: $distributorId,
+        attributionSource: 'direct',
+        paymentMethod: Order::PAYMENT_ONLINE,
+        authUserId: $userId,
+        buyerDistributorId: $distributorId,
+    );
+
+    $stateMachine = app(OrderStateMachine::class);
+    $stateMachine->markPaid($order);
+    $stateMachine->markShipped($order->fresh());
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_SHIPPED);
+
+    // The credit settled part of the sale without cash, so it needs a
+    // contra-revenue debit or the revenue-recognition entry is short by it.
+    $tx = DB::table('ledger_tx')->where('idempotency_key', "order.shipped:{$order->id}")->first();
+    $entries = DB::table('ledger_entries')->where('ledger_tx_id', $tx->id)->get();
+
+    expect((int) $entries->where('side', 'debit')->sum('amount_paise'))
+        ->toBe((int) $entries->where('side', 'credit')->sum('amount_paise'));
+});
+
+it('CRW-09: a zero-rated order can be marked shipped and its ledger balances', function (): void {
+    // Exempt goods (gst_rate_bp = 0) give gst_paise = 0, and the LedgerPoster
+    // rejects a zero-amount line, so an unguarded gst_output credit meant such
+    // an order could never leave the warehouse.
+    [$userId, $distributorId] = crwDistributor();
+
+    $order = app(CheckoutService::class)->place(
+        cart: crwCart(),
+        buyer: crwBuyer(),
+        shipping: crwAddr(),
+        billing: crwAddr(),
+        attributedDistributorId: $distributorId,
+        attributionSource: 'direct',
+        paymentMethod: Order::PAYMENT_ONLINE,
+        authUserId: $userId,
+        buyerDistributorId: $distributorId,
+    );
+    expect($order->gst_paise)->toBe(0);
+
+    $stateMachine = app(OrderStateMachine::class);
+    $stateMachine->markPaid($order);
+    $stateMachine->markShipped($order->fresh());
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_SHIPPED);
+
+    $tx = DB::table('ledger_tx')->where('idempotency_key', "order.shipped:{$order->id}")->first();
+    $entries = DB::table('ledger_entries')->where('ledger_tx_id', $tx->id)->get();
+
+    // No GST line at all, and the entry still balances on revenue.sales alone.
+    expect($entries->where('account_id', DB::table('ledger_accounts')->where('code', 'liability.gst_output')->value('id'))->count())->toBe(0)
+        ->and((int) $entries->where('side', 'debit')->sum('amount_paise'))
+        ->toBe((int) $entries->where('side', 'credit')->sum('amount_paise'));
+});
+
+it('CRW-10: cancelling an order returns its repurchase credit to the wallet', function (): void {
+    [$userId, $distributorId] = crwDistributor();
+    crwSeedCredit($distributorId, 20000);
+
+    $order = app(CheckoutService::class)->place(
+        cart: crwCart(),
+        buyer: crwBuyer(),
+        shipping: crwAddr(),
+        billing: crwAddr(),
+        attributedDistributorId: $distributorId,
+        attributionSource: 'direct',
+        paymentMethod: Order::PAYMENT_ONLINE,
+        authUserId: $userId,
+        buyerDistributorId: $distributorId,
+    );
+
+    $wallet = app(WalletService::class);
+    expect($wallet->repurchaseWalletBalancePaise($distributorId))->toBe(0); // fully spent
+
+    app(OrderStateMachine::class)->cancel($order->fresh(), 'changed mind');
+
+    // The credit was never cash and the goods were never sold, so it goes back
+    // whole. Before this it was simply destroyed.
+    expect($order->fresh()->status)->toBe(Order::STATUS_CANCELLED)
+        ->and($wallet->repurchaseWalletBalancePaise($distributorId))->toBe(20000);
+});
+
+it('CRW-11: cancelling an order returns its redeemed points', function (): void {
+    [$userId, $distributorId] = crwDistributor();
+    app(RedeemPointsService::class)->accrue(
+        distributorId: $distributorId,
+        points: 100,
+        referenceType: 'test',
+        referenceId: null,
+        memo: 'Test seed points',
+    );
+
+    $order = app(CheckoutService::class)->place(
+        cart: crwCart(),
+        buyer: crwBuyer(),
+        shipping: crwAddr(),
+        billing: crwAddr(),
+        attributedDistributorId: $distributorId,
+        attributionSource: 'direct',
+        paymentMethod: Order::PAYMENT_ONLINE,
+        authUserId: $userId,
+        buyerDistributorId: $distributorId,
+        redeemPoints: 60,
+    );
+
+    $points = app(RedeemPointsService::class);
+    expect($order->redeem_points_paise)->toBe(6000)
+        ->and($points->balance($distributorId))->toBe(40);
+
+    app(OrderStateMachine::class)->cancel($order->fresh(), 'changed mind');
+
+    expect($points->balance($distributorId))->toBe(100);
+});
+
+it('CRW-12: a re-run cancellation cannot restore the credit or the points twice', function (): void {
+    [$userId, $distributorId] = crwDistributor();
+    crwSeedCredit($distributorId, 20000);
+    app(RedeemPointsService::class)->accrue(
+        distributorId: $distributorId,
+        points: 100,
+        referenceType: 'test',
+        referenceId: null,
+        memo: 'Test seed points',
+    );
+
+    $order = app(CheckoutService::class)->place(
+        cart: crwCart(),
+        buyer: crwBuyer(),
+        shipping: crwAddr(),
+        billing: crwAddr(),
+        attributedDistributorId: $distributorId,
+        attributionSource: 'direct',
+        paymentMethod: Order::PAYMENT_ONLINE,
+        authUserId: $userId,
+        buyerDistributorId: $distributorId,
+        redeemPoints: 60,
+    );
+
+    app(OrderStateMachine::class)->cancel($order->fresh(), 'changed mind');
+
+    // A second pass over the same order — a retried job, a double-clicked
+    // admin button — must mint nothing.
+    app(WalletService::class)->restoreRepurchaseCreditForOrder($order->id, 20000, 'retry');
+    app(RedeemPointsService::class)->refundForOrder($order->id, 'retry');
+
+    expect(app(WalletService::class)->repurchaseWalletBalancePaise($distributorId))->toBe(20000)
+        ->and(app(RedeemPointsService::class)->balance($distributorId))->toBe(100);
+});
+
+it('CRW-13: an order fully covered by repurchase credit has no prepayment to unwind', function (): void {
+    [$userId, $distributorId] = crwDistributor();
+    crwSeedCredit($distributorId, 1000000);
+
+    $order = app(CheckoutService::class)->place(
+        cart: crwCart(),
+        buyer: crwBuyer(),
+        shipping: crwAddr(),
+        billing: crwAddr(),
+        attributedDistributorId: $distributorId,
+        attributionSource: 'direct',
+        paymentMethod: Order::PAYMENT_ONLINE,
+        authUserId: $userId,
+        buyerDistributorId: $distributorId,
+    );
+
+    // Nothing is owed at the gateway, so checkout posts no placement entry...
+    expect($order->total_paise)->toBe(0)
+        ->and(DB::table('ledger_tx')->where('idempotency_key', "order.placed:{$order->id}")->count())->toBe(0);
+
+    app(OrderStateMachine::class)->cancel($order->fresh(), 'changed mind');
+
+    // ...and cancel must not invent one on the way back out. The credit still
+    // returns to the wallet — that is where the whole settlement lived.
+    expect(DB::table('ledger_tx')->where('idempotency_key', "order.cancelled:{$order->id}")->count())->toBe(0)
+        ->and(app(WalletService::class)->repurchaseWalletBalancePaise($distributorId))->toBe(1000000);
 });

@@ -12,6 +12,7 @@ use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,4 +160,72 @@ it('CANCEL-05: a customer cannot cancel an order that has shipped', function ():
     $this->actingAs($user)->post(route('orders.cancel', $order->order_no))
         ->assertSessionHasErrors('cancel');
     expect($order->fresh()->status)->toBe('shipped');
+});
+
+/**
+ * The lines of a transaction, keyed "account.code|side".
+ *
+ * @return array<string, int>
+ */
+function ocTxLines(string $idempotencyKey): array
+{
+    $tx = DB::table('ledger_tx')->where('idempotency_key', $idempotencyKey)->first();
+    if ($tx === null) {
+        return [];
+    }
+
+    return DB::table('ledger_entries')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->where('ledger_entries.ledger_tx_id', $tx->id)
+        ->get(['ledger_accounts.code', 'ledger_entries.side', 'ledger_entries.amount_paise'])
+        ->mapWithKeys(fn ($row): array => ["{$row->code}|{$row->side}" => (int) $row->amount_paise])
+        ->all();
+}
+
+it('CANCEL-06: cancelling an unpaid online order undoes the placement entry outright', function (): void {
+    $user = ocUser();
+    $order = ocPlace($user);
+
+    expect(ocTxLines("order.placed:{$order->id}"))->toEqualCanonicalizing([
+        'asset.cash.gateway.razorpay|debit' => $order->total_paise,
+        'liability.customer_prepayment|credit' => $order->total_paise,
+    ]);
+
+    app(OrderStateMachine::class)->cancel($order->fresh(), 'changed mind', $user->id);
+
+    // Never paid, so nothing was ever collected: the gateway cash goes back
+    // out the same way it came in and no refund is payable.
+    expect(ocTxLines("order.cancelled:{$order->id}"))->toEqualCanonicalizing([
+        'liability.customer_prepayment|debit' => $order->total_paise,
+        'asset.cash.gateway.razorpay|credit' => $order->total_paise,
+    ]);
+});
+
+it('CANCEL-07: cancelling a paid online order turns the prepayment into a refund payable', function (): void {
+    $user = ocUser();
+    $order = ocPlace($user);
+    $sm = app(OrderStateMachine::class);
+    $sm->markPaid($order->fresh());
+
+    $sm->cancel($order->fresh(), 'changed mind', $user->id);
+
+    // The money really is at the gateway, so the obligation to deliver becomes
+    // an obligation to refund — settled in Phase 3, exactly as RefundOrder does.
+    expect(ocTxLines("order.cancelled:{$order->id}"))->toEqualCanonicalizing([
+        'liability.customer_prepayment|debit' => $order->total_paise,
+        'liability.refund_payable|credit' => $order->total_paise,
+    ]);
+
+    // And the prepayment account nets to zero across both transactions.
+    $net = DB::table('ledger_entries')
+        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+        ->join('ledger_tx', 'ledger_tx.id', '=', 'ledger_entries.ledger_tx_id')
+        ->where('ledger_accounts.code', 'liability.customer_prepayment')
+        ->where('ledger_tx.source_id', $order->id)
+        ->get(['ledger_entries.side', 'ledger_entries.amount_paise'])
+        ->sum(fn ($row): int => $row->side === 'credit' ? (int) $row->amount_paise : -(int) $row->amount_paise);
+
+    expect($net)->toBe(0)
+        ->and(AuditLog::where('subject_id', $order->id)->where('action', 'order.cancelled')->value('details')['prepayment_reversed_paise'])
+        ->toBe($order->total_paise);
 });

@@ -8,7 +8,10 @@ use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Ledger\Models\LedgerEntry;
+use App\Modules\Ledger\Models\LedgerTx;
 use App\Modules\Ledger\Services\LedgerPoster;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -28,6 +31,7 @@ final class OrderStateMachine
         private readonly DatabaseManager $db,
         private readonly LedgerPoster $ledger,
         private readonly BvLedgerService $bvLedger,
+        private readonly WalletService $wallet,
     ) {}
 
     public function markPaid(Order $order, ?int $actorUserId = null): void
@@ -83,8 +87,19 @@ final class OrderStateMachine
                 $lines = [
                     ['account' => 'liability.customer_prepayment', 'side' => 'debit',  'amount_paise' => $order->total_paise],
                     ['account' => 'revenue.sales',                 'side' => 'credit', 'amount_paise' => $taxable],
-                    ['account' => 'liability.gst_output',          'side' => 'credit', 'amount_paise' => $order->gst_paise],
                 ];
+
+                // Only when GST was actually charged. A zero-rated cart (every
+                // line at gst_rate_bp = 0 — exempt agricultural goods, for
+                // instance) produces gst_paise = 0, and the LedgerPoster rejects
+                // a zero-amount line, so posting this unguarded meant such an
+                // order could never be marked shipped. The entry balances
+                // without it: taxable already equals the full subtotal when
+                // there is no tax. Mirrors the guard RefundOrder applies to the
+                // same account on the way back out.
+                if ($order->gst_paise > 0) {
+                    $lines[] = ['account' => 'liability.gst_output', 'side' => 'credit', 'amount_paise' => $order->gst_paise];
+                }
 
                 // Shipping the customer paid is recognised as shipping revenue
                 // on the credit side. It sits inside total_paise (the debit), so
@@ -115,6 +130,18 @@ final class OrderStateMachine
                 // note above records having already happened once.
                 if (($order->redeem_points_paise ?? 0) > 0) {
                     $lines[] = ['account' => 'revenue.discounts', 'side' => 'debit', 'amount_paise' => $order->redeem_points_paise];
+                }
+
+                // Repurchase-wallet credit settles part of the sale without
+                // cash exactly as points do, and CheckoutService already took it
+                // out of total_paise, so it needs the same contra-revenue debit.
+                // Without it the entry is short by the credit amount, the
+                // LedgerPoster rejects it, and an order paid partly from the
+                // repurchase wallet can never be marked shipped — the third
+                // instance of the failure the two notes above record.
+                $repurchaseCreditPaise = $this->wallet->repurchaseCreditAppliedToOrder($order->id);
+                if ($repurchaseCreditPaise > 0) {
+                    $lines[] = ['account' => 'revenue.discounts', 'side' => 'debit', 'amount_paise' => $repurchaseCreditPaise];
                 }
 
                 $this->ledger->post(
@@ -218,9 +245,10 @@ final class OrderStateMachine
     public function cancel(Order $order, string $reason, ?int $actorUserId = null): void
     {
         // Only pre-shipment orders can be cancelled. Once shipped/delivered the
-        // statutory return/refund path applies instead (Phase 3). No money has
-        // moved yet for COD (unpaid) and the online prepayment liability is
-        // settled by the refund flow later, so cancel only releases the goods.
+        // statutory return/refund path applies instead (Phase 3). Nothing is
+        // owed for COD (nothing was collected), so cancel releases the goods,
+        // returns the non-cash settlements (points, repurchase credit) and
+        // unwinds the online prepayment liability.
         if (in_array($order->status, [Order::STATUS_SHIPPED, Order::STATUS_DELIVERED, Order::STATUS_CONFIRMED, Order::STATUS_REFUNDED, Order::STATUS_CANCELLED], true)) {
             throw new RuntimeException("Cannot cancel order in status {$order->status}");
         }
@@ -237,6 +265,76 @@ final class OrderStateMachine
             // completed sale, so no BV may remain against it (hard rule #2).
             // Idempotent + a no-op when nothing was accrued (e.g. unpaid COD).
             $this->bvLedger->reverse($order);
+
+            // Give back whatever was settled without cash, in the form it was
+            // spent — the same restoration RefundOrder performs, for the same
+            // reason. A cancelled order is not a sale, so the buyer must not be
+            // left out of pocket in points or repurchase credit; before this,
+            // cancelling silently destroyed both. Nothing is unwound in the
+            // general ledger here because nothing was posted: the
+            // contra-revenue debits are written at ship time, and cancel is
+            // only reachable pre-shipment.
+            //
+            // Both helpers are idempotent and no-op when the order used none.
+            $redeemPointsPaise = (int) ($order->redeem_points_paise ?? 0);
+            if ($redeemPointsPaise > 0) {
+                app(RedeemPointsService::class)->refundForOrder(
+                    $order->id,
+                    'Restored on cancellation of order '.$order->order_no,
+                );
+            }
+
+            $repurchaseCreditPaise = $this->wallet->repurchaseCreditAppliedToOrder($order->id);
+            if ($repurchaseCreditPaise > 0) {
+                $this->wallet->restoreRepurchaseCreditForOrder(
+                    $order->id,
+                    $repurchaseCreditPaise,
+                    'Restored on cancellation of order '.$order->order_no,
+                );
+            }
+
+            // Unwind the prepayment liability. Placement posts
+            // Dr asset.cash.gateway.razorpay / Cr liability.customer_prepayment
+            // for every online order; without this the credit stood for ever,
+            // so the books read "money held, goods still owed" against an order
+            // that will never ship. Where it goes depends on whether the money
+            // actually arrived:
+            //
+            //   paid   -> Cr liability.refund_payable. The cash really is at the
+            //             gateway, so the obligation becomes a refund pending
+            //             settlement — the same account, and the same Phase-3
+            //             hand-off, that RefundOrder uses.
+            //   unpaid -> Cr asset.cash.gateway.razorpay. Checkout posts the
+            //             entry at placement, before the gateway confirms, so
+            //             nothing was ever collected: the placement entry is
+            //             simply undone and there is nothing to refund.
+            //
+            // The amount is read back from the placement transaction rather than
+            // recomputed, so the reversal can never disagree with what was
+            // posted; its absence (COD, or a total fully covered by points and
+            // repurchase credit) means there is nothing to unwind.
+            $placementTx = LedgerTx::where('idempotency_key', "order.placed:{$order->id}")->first();
+            $prepaymentPaise = $placementTx === null
+                ? 0
+                : (int) LedgerEntry::where('ledger_tx_id', $placementTx->id)
+                    ->where('side', 'debit')
+                    ->sum('amount_paise');
+
+            if ($prepaymentPaise > 0) {
+                $this->ledger->transfer(
+                    sourceModule: 'Commerce',
+                    sourceType: 'order.cancelled',
+                    sourceId: $order->id,
+                    idempotencyKey: "order.cancelled:{$order->id}",
+                    debitAccount: 'liability.customer_prepayment',
+                    creditAccount: $order->getAttribute('paid_at') !== null
+                        ? 'liability.refund_payable'
+                        : 'asset.cash.gateway.razorpay',
+                    amountPaise: $prepaymentPaise,
+                    memo: "Cancelled order {$order->order_no}",
+                    createdByUserId: $actorUserId,
+                );
+            }
 
             // Release the inventory reserved at placement so the stock is
             // available again (tracked variants only; mirrors CheckoutService).
@@ -257,7 +355,13 @@ final class OrderStateMachine
                 'action' => 'order.cancelled',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,
-                'details' => ['order_no' => $order->order_no, 'reason' => $reason],
+                'details' => [
+                    'order_no' => $order->order_no,
+                    'reason' => $reason,
+                    'redeem_points_restored_paise' => $redeemPointsPaise,
+                    'repurchase_credit_restored_paise' => $repurchaseCreditPaise,
+                    'prepayment_reversed_paise' => $prepaymentPaise,
+                ],
             ]);
         });
 
