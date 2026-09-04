@@ -158,8 +158,8 @@
         @elseif($return->isCoolingOff())
         <div class="bg-blue-50 rounded-2xl border border-blue-200 p-5">
             <p class="text-sm text-blue-800 font-medium">Full refund</p>
-            <p class="text-xl font-bold text-blue-900 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->total_paise / 100, 2) }}</p>
-            <p class="text-xs text-blue-700 mt-1">Cooling-off: full order total (including shipping; hard rule #5).</p>
+            <p class="text-xl font-bold text-blue-900 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->total_paise / 100, 2) }} <span class="text-sm font-medium">in cash</span></p>
+            <p class="text-xs text-blue-700 mt-1">Cooling-off: everything the buyer paid comes back in the form it was paid — cash to the original payment method, points as points, repurchase credit as credit (hard rule #5; R-60).</p>
         </div>
         @endif
 
@@ -171,7 +171,7 @@
             <form method="POST" action="{{ route('admin.returns.approve', $return) }}"
                 data-confirm="Approve this refund?"
                 data-confirm-title="Approve refund"
-                data-confirm-impact="Impact: posts ledger reversal (Dr revenue.sales/GST Cr liability.refund_payable), reverses BV accrual, moves order to refund_approved. Stub gateway records intent (Phase-3 will settle with Razorpay). This cannot be undone from here.">
+                data-confirm-impact="Impact: posts ledger reversal (Dr revenue.sales/GST Cr liability.refund_payable), reverses BV accrual, moves order to refund_approved. The refund is sent to Razorpay automatically and settled when the gateway confirms it. This cannot be undone from here.">
                 @csrf
                 <button type="submit" class="w-full py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold">Approve refund ₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->net_refund_paise / 100, 2) }}</button>
             </form>
@@ -190,12 +190,54 @@
         @endcan
         @endif
 
-        {{-- Cooling-off: auto-processed, show outcome --}}
-        @if($return->isCoolingOff() && $return->status === 'approved')
+        @if(session('status'))<div class="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</div>@endif
+        @error('receive')<div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{{ $message }}</div>@enderror
+
+        {{-- Cooling-off: auto-processed; the refund waits for the goods --}}
+        @if($return->isCoolingOff() && in_array($return->status, ['approved', 'refunded', 'rejected'], true))
         <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
-            <p class="text-sm font-semibold text-green-800">Refund auto-approved (cooling-off, non-discretionary).</p>
-            <p class="text-xs text-green-700 mt-1">Ledger reversed. BV reversed. Customer notified. Gateway settlement: Phase 3.</p>
+            <p class="text-sm font-semibold text-green-800">Cancellation recorded (cooling-off, non-discretionary).</p>
+            <p class="text-xs text-green-700 mt-1">Ledger reversed. BV reversed. Cooling-off clock closed. Customer notified.</p>
         </div>
+
+        @if($return->isAwaitingReceipt())
+        <div class="bg-white rounded-2xl border border-amber-200 p-5 shadow-sm space-y-3">
+            <h3 class="font-semibold text-gray-900">Return receipt</h3>
+            <p class="text-xs text-gray-600">Held since {{ $return->entitlements_held_at->format('d M Y') }} ({{ (int) $return->entitlements_held_at->diffInDays(now()) }} days). The cash refund
+                @if($return->entitlement_points_paise > 0 || $return->entitlement_credit_paise > 0), the redeemed points (₹{{ \App\Modules\Shared\Support\IndianNumber::format($return->entitlement_points_paise / 100, 2) }}) and the repurchase credit (₹{{ \App\Modules\Shared\Support\IndianNumber::format($return->entitlement_credit_paise / 100, 2) }})@endif
+                go back to the buyer together the moment the return is marked received (T&amp;C §8).
+                @if($return->hold_escalated_at)<span class="block mt-1 text-red-700 font-medium">Escalated to the Grievance Officer on {{ $return->hold_escalated_at->format('d M Y') }}.</span>@elseif($return->hold_alert_sent_at)<span class="block mt-1 text-amber-700 font-medium">Alerted on {{ $return->hold_alert_sent_at->format('d M Y') }} — please chase the return.</span>@endif
+            </p>
+            @can('returns.receive')
+            <form method="POST" action="{{ route('admin.returns.receive', $return) }}"
+                data-confirm="Mark this return as received?" data-confirm-title="Return received"
+                data-confirm-impact="Impact: restores the buyer's points and repurchase credit and releases the cash refund to the gateway — all three together. Only do this with the goods in hand (or if our courier lost them). Audit-logged against your user.">
+                @csrf
+                <label class="block text-sm font-medium text-gray-700 mb-1">Outcome <x-help-tip text="Received: the goods are back. Lost by our courier: the reverse pickup was collected but never arrived — treated as received." /></label>
+                <select name="outcome" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-2">
+                    <option value="received">Received — goods are back</option>
+                    <option value="courier_lost">Lost by our courier — treat as received</option>
+                </select>
+                <input type="text" name="note" maxlength="500" placeholder="Note (optional)" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-3">
+                <button type="submit" class="w-full py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold">Mark received &amp; release refund</button>
+            </form>
+            <form method="POST" action="{{ route('admin.returns.not-returned', $return) }}" class="pt-3 border-t border-gray-100"
+                data-confirm="Close this return as not returned?" data-confirm-title="Not returned"
+                data-confirm-impact="Impact: the refund is forfeited, the points and repurchase credit stay withheld, and the order goes back to delivered. This is the buyer's money — only after the buyer has been told and given a reasonable chance to send the goods. Audit-logged against your user.">
+                @csrf
+                <input type="text" name="reason" required minlength="10" maxlength="500" placeholder="Reason (required, min 10 characters)" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-2">
+                <button type="submit" class="w-full py-2 rounded-lg bg-white hover:bg-red-50 border border-red-300 text-red-600 text-sm font-medium">Close as not returned</button>
+            </form>
+            @else
+            <p class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">You need the <strong>returns.receive</strong> permission (operations) to mark a return received.</p>
+            @endcan
+        </div>
+        @elseif($return->receipt_outcome !== null)
+        <div class="rounded-2xl border {{ $return->receipt_outcome === 'not_returned' ? 'border-red-200 bg-red-50' : 'border-blue-200 bg-blue-50' }} p-5 text-sm">
+            <p class="font-semibold {{ $return->receipt_outcome === 'not_returned' ? 'text-red-800' : 'text-blue-800' }}">{{ match($return->receipt_outcome) { 'received' => 'Return received', 'courier_lost' => 'Lost by our courier — treated as received', default => 'Closed as not returned' } }}</p>
+            <p class="text-xs mt-1 {{ $return->receipt_outcome === 'not_returned' ? 'text-red-700' : 'text-blue-700' }}">{{ $return->received_at?->format('d M Y H:i') ?? $return->updated_at->format('d M Y H:i') }}@if($return->receipt_note) · {{ $return->receipt_note }}@endif</p>
+        </div>
+        @endif
         @endif
 
     </div>

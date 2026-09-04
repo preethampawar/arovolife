@@ -1321,12 +1321,6 @@ parameters:
 			path: app/Modules/Public/Http/Controllers/ContactController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Returns/Http/Controllers/Admin/AdminReturnController.php
-
-		-
 			message: '#^Method App\\Modules\\Returns\\Models\\BuybackDecision\:\:returnRequest\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1357,12 +1351,6 @@ parameters:
 			path: app/Modules/Returns/Models/ReturnRequest.php
 
 		-
-			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Returns/Models/ReturnRequest.php
-
-		-
 			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:orderItem\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1375,38 +1363,8 @@ parameters:
 			path: app/Modules/Returns/Services/InspectReturn.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$gst_paise\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Returns/Services/InspectReturn.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$net_refund_paise\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Modules/Returns/Services/InspectReturn.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$order_no\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Modules/Returns/Services/InspectReturn.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Returns/Services/InspectReturn.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$subtotal_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Returns/Services/InspectReturn.php
-
-		-
-			message: '#^Parameter \$order of method App\\Modules\\Returns\\Services\\RefundOrder\:\:execute\(\) expects App\\Modules\\Commerce\\Models\\Order, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Modules/Returns/Services/InspectReturn.php
 
@@ -3581,6 +3539,18 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Messaging/MessageFlowTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 16
+			path: tests/Modules/Payments/AdminPaymentsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Payments/AdminPaymentsTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'

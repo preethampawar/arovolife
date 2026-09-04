@@ -27,6 +27,10 @@ return new class extends Migration
             $table->bigInteger('entitlement_credit_paise')->default(0)->after('entitlement_points_paise');
             $table->dateTime('entitlements_held_at', 3)->nullable()->after('entitlement_credit_paise');
             $table->dateTime('entitlements_restored_at', 3)->nullable()->after('entitlements_held_at');
+            // The two clocks on a held refund: ops alerted at 10 days without
+            // receipt, escalated to the Grievance Officer at 21.
+            $table->dateTime('hold_alert_sent_at', 3)->nullable()->after('entitlements_restored_at');
+            $table->dateTime('hold_escalated_at', 3)->nullable()->after('hold_alert_sent_at');
         });
     }
 
@@ -37,6 +41,7 @@ return new class extends Migration
             $table->dropColumn([
                 'received_at', 'receipt_outcome', 'receipt_note',
                 'entitlement_points_paise', 'entitlement_credit_paise', 'entitlements_held_at', 'entitlements_restored_at',
+                'hold_alert_sent_at', 'hold_escalated_at',
             ]);
         });
     }

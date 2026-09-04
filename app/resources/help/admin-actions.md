@@ -66,8 +66,8 @@ super-admin plus three scoped roles:
 | Role | Can do | Cannot do |
 |---|---|---|
 | **`admin`** (super-admin) | Everything | — |
-| **`admin-operations`** | Approve/reject line-change | Block/terminate accounts, record payments |
-| **`admin-finance`** | Record payments (e.g. mark COD paid), refunds | Block/terminate accounts, decide line-change |
+| **`admin-operations`** | Approve/reject line-change; mark a return **received / not returned** (releases or forfeits the held cooling-off refund) | Block/terminate accounts, record payments, settle or retry a refund |
+| **`admin-finance`** | Record payments (e.g. mark COD paid), approve inspected refunds, **sync a payment with the gateway**, retry a failed refund, record a manual NEFT settlement | Block/terminate accounts, decide line-change, mark a return received |
 | **`admin-compliance`** | Block / unblock / terminate accounts | Record payments, decide line-change |
 
 So **admin-finance cannot block** an account and **admin-compliance cannot

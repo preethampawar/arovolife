@@ -19,6 +19,7 @@ declare(strict_types=1);
  * SOD-06: admin-operations CAN do its own job — the gates are scoped, not shut
  * SOD-07: admin-compliance still cannot record finance actions (the original R-17)
  * SOD-08: no scoped role can change credentials — that is admin/developer only
+ * SOD-09: no scoped role can both mark a return received and settle its refund — the two halves of a cooling-off refund sit with different people
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -150,4 +151,17 @@ it('SOD-08: no scoped role can change credentials — admin and developer only',
     // And the super roles can, or the feature would be unreachable.
     expect($this->actingAs(sodUser('admin'))->post('/admin/distributors/1/set-password')->status())
         ->not->toBe(403);
+});
+
+it('SOD-09: no scoped role can both mark a return received and settle its refund', function () {
+    // Marking receipt releases a held refund; settling by NEFT or retrying
+    // pays it. One person holding both could release and pay out a refund on
+    // goods that never came back.
+    foreach (['admin-operations', 'admin-finance', 'admin-compliance'] as $role) {
+        $user = sodUser($role);
+        expect($user->can('returns.receive') && $user->can('finance.record'))->toBeFalse($role.' holds both returns.receive and finance.record');
+    }
+
+    expect(sodUser('admin-operations')->can('returns.receive'))->toBeTrue()
+        ->and(sodUser('admin-finance')->can('finance.record'))->toBeTrue();
 });

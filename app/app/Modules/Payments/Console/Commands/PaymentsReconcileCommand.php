@@ -9,6 +9,7 @@ use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Services\PaymentConfirmationService;
 use App\Modules\Payments\Services\RazorpayClient;
 use App\Modules\Payments\Services\RazorpayRefundService;
+use App\Modules\Payments\Support\RefundWorklist;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -37,10 +38,13 @@ final class PaymentsReconcileCommand extends Command
 
     protected $description = 'Ask Razorpay about every open payment intent and confirm, fail or leave it from the gateway\'s answer';
 
-    public function handle(PaymentConfirmationService $confirmation, RazorpayClient $client, RazorpayRefundService $refunds): int
+    public function handle(PaymentConfirmationService $confirmation, RazorpayClient $client, RazorpayRefundService $refunds, RefundWorklist $worklist): int
     {
         if (! $client->configured()) {
-            $this->line('Razorpay is not configured; nothing to reconcile.');
+            // The hold clocks run whatever the gateway's state: a held refund
+            // ages whether or not Razorpay is reachable.
+            $clocks = (bool) $this->option('dry-run') ? ['alerted' => 0, 'escalated' => 0] : $worklist->sweep();
+            $this->line(sprintf('Razorpay is not configured; nothing to reconcile. Holds: %d alerted, %d escalated.', $clocks['alerted'], $clocks['escalated']));
 
             return self::SUCCESS;
         }
@@ -87,12 +91,14 @@ final class PaymentsReconcileCommand extends Command
             });
 
         $refundTally = $dryRun ? ['checked' => 0, 'settled' => 0, 'failed' => 0] : $refunds->reconcileOutstanding();
+        $clocks = $dryRun ? ['alerted' => 0, 'escalated' => 0] : $worklist->sweep();
 
         $this->info(sprintf(
-            '%s%d intent(s) checked: %d confirmed, %d pending, %d failed, %d late capture, %d error(s). Refunds: %d checked, %d settled, %d failed.',
+            '%s%d intent(s) checked: %d confirmed, %d pending, %d failed, %d late capture, %d error(s). Refunds: %d checked, %d settled, %d failed; holds: %d alerted, %d escalated.',
             $dryRun ? '[dry run] ' : '',
             $tally['checked'], $tally['confirmed'], $tally['pending'], $tally['failed'], $tally['late_capture'], $tally['errors'],
             $refundTally['checked'], $refundTally['settled'], $refundTally['failed'],
+            $clocks['alerted'], $clocks['escalated'],
         ));
 
         return self::SUCCESS;

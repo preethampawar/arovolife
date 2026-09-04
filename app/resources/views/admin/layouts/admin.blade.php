@@ -144,6 +144,14 @@
                         ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => 'hourglass', 'prefix' => 'admin.dormancy']]
                         : []),
                     ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders'],
+                    // Payments and the unsettled-refunds worklist. Monitoring
+                    // (`audit.read`), so every scoped role sees it; the badge
+                    // is refunds needing a human — failed, or held past the
+                    // 10-day return-receipt alert.
+                    ...(auth()->user()?->can('audit.read')
+                        ? [['route' => 'admin.payments.index', 'label' => 'Payments', 'icon' => 'credit-card', 'prefix' => 'admin.payments',
+                            'badge' => \Illuminate\Support\Facades\Cache::remember('admin.payments.attention_count', 60, fn () => app(\App\Modules\Payments\Support\RefundWorklist::class)->attentionCount())]]
+                        : []),
                     ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger'],
                     ...(auth()->user()?->can('audit.read')
                         ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => 'chart-line', 'prefix' => 'admin.analytics']]

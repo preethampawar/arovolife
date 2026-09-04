@@ -51,6 +51,11 @@ final class AdminHelpController extends Controller
             'description' => "What to do when you can't sign in — the self-service reset, why a password can never be looked up for you, and how to reset a distributor's password.",
             'file' => 'staff-access-recovery.md',
         ],
+        'payments' => [
+            'title' => 'Payments & Refunds',
+            'description' => 'How an online payment is confirmed (never on our word, only on Razorpay\'s), what the Payments screen shows, the unsettled-refunds worklist, the return-receipt gate on a cooling-off refund, and what to do when a refund fails.',
+            'file' => 'payments.md',
+        ],
         'cooling-off' => [
             'title' => 'Cooling-off & Cancellation',
             'description' => 'The statutory 30-day cancellation window, the one-click refund flow, reminders, and edge cases.',

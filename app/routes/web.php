@@ -99,6 +99,7 @@ use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
+use App\Modules\Payments\Http\Controllers\Admin\AdminPaymentController;
 use App\Modules\Payments\Http\Controllers\PaymentController;
 use App\Modules\Payments\Http\Controllers\RazorpayWebhookController;
 use App\Modules\Public\Http\Controllers\ContactController;
@@ -386,6 +387,23 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/returns/{return}/inspect', [AdminReturnController::class, 'inspect'])->middleware('can:finance.record')->whereNumber('return')->name('returns.inspect');
     Route::post('/returns/{return}/approve', [AdminReturnController::class, 'approve'])->middleware('can:finance.record')->whereNumber('return')->name('returns.approve');
     Route::post('/returns/{return}/reject', [AdminReturnController::class, 'reject'])->middleware('can:finance.record')->whereNumber('return')->name('returns.reject');
+    // Marking a return received releases the held cooling-off refund — real
+    // money — so it sits with operations (`returns.receive`), never with the
+    // role that can settle or write a refund off (`finance.record`).
+    Route::post('/returns/{return}/receive', [AdminReturnController::class, 'receive'])->middleware('can:returns.receive')->whereNumber('return')->name('returns.receive');
+    Route::post('/returns/{return}/not-returned', [AdminReturnController::class, 'notReturned'])->middleware('can:returns.receive')->whereNumber('return')->name('returns.not-returned');
+
+    // Payments — gateway intents, the event timeline and the unsettled-refunds
+    // worklist. Reading is monitoring (`audit.read`, every scoped role); the
+    // actions that move or create money are `finance.record` (R-17).
+    Route::prefix('payments')->name('payments.')->middleware('can:audit.read')->group(function (): void {
+        Route::get('/', [AdminPaymentController::class, 'index'])->name('index');
+        Route::get('/refunds', [AdminPaymentController::class, 'refunds'])->name('refunds');
+        Route::post('/refunds/{refund}/retry', [AdminPaymentController::class, 'retryRefund'])->middleware('can:finance.record')->whereNumber('refund')->name('refunds.retry');
+        Route::post('/refunds/{refund}/settle', [AdminPaymentController::class, 'settleRefund'])->middleware('can:finance.record')->whereNumber('refund')->name('refunds.settle');
+        Route::get('/{intent}', [AdminPaymentController::class, 'show'])->whereNumber('intent')->name('show');
+        Route::post('/{intent}/sync', [AdminPaymentController::class, 'sync'])->middleware('can:finance.record')->whereNumber('intent')->name('sync');
+    });
 
     // Analytics — read-only funnels and retention over data other modules own.
     //

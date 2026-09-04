@@ -6,6 +6,7 @@ namespace App\Modules\Returns\Http\Controllers\Admin;
 
 use App\Modules\Returns\Models\ReturnRequest;
 use App\Modules\Returns\Services\InspectReturn;
+use App\Modules\Returns\Services\ReturnReceiptService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,10 @@ use Illuminate\Routing\Controller;
  */
 final class AdminReturnController extends Controller
 {
-    public function __construct(private readonly InspectReturn $inspect) {}
+    public function __construct(
+        private readonly InspectReturn $inspect,
+        private readonly ReturnReceiptService $receipt,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -85,7 +89,46 @@ final class AdminReturnController extends Controller
         $orderNo = $return->order->order_no;
 
         return redirect()->route('admin.returns.show', $return)
-            ->with('status', "Refund approved for order {$orderNo}. Ledger reversed and BV reversed. Customer will receive refund within 7 working days (Phase-2 stub — gateway settlement is Phase 3).");
+            ->with('status', "Refund approved for order {$orderNo}. Ledger reversed, BV reversed, and the refund sent to the gateway; the customer receives it within 7 working days once the gateway confirms.");
+    }
+
+    /**
+     * The goods are back (or our courier lost them): restores the points and
+     * repurchase credit and releases the held gateway refund together.
+     * Gated by `can:returns.receive` — deliberately not `finance.record`.
+     */
+    public function receive(Request $request, ReturnRequest $return): RedirectResponse
+    {
+        $validated = $request->validate([
+            'outcome' => ['required', 'string', 'in:received,courier_lost'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->receipt->markReceived($return, (int) $request->user()->id, $validated['outcome'], $validated['note'] ?? null);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.returns.show', $return)->withErrors(['receive' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.returns.show', $return)->with('status', $validated['outcome'] === 'courier_lost'
+            ? 'Recorded as lost by our courier. Points and repurchase credit restored; the refund has been released to the gateway.'
+            : 'Return received. Points and repurchase credit restored; the refund has been released to the gateway.');
+    }
+
+    /** The buyer never sent the goods back: an explicit, audited decision. */
+    public function notReturned(Request $request, ReturnRequest $return): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:10', 'max:500'],
+        ]);
+
+        try {
+            $this->receipt->markNotReturned($return, (int) $request->user()->id, $validated['reason']);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.returns.show', $return)->withErrors(['receive' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.returns.show', $return)->with('status', 'Closed as not returned. The refund is forfeited, the entitlements stay withheld and the order is back to delivered.');
     }
 
     public function reject(Request $request, ReturnRequest $return): RedirectResponse

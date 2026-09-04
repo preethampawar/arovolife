@@ -1080,9 +1080,29 @@ final class AdminSettingsController extends Controller
             'payments.gateway.stub.enabled' => [
                 'group' => 'payments',
                 'label' => 'Payments: stub gateway (dev)',
-                'description' => 'Accept payments via the in-process stub. Useful for local development; never enable on production.',
+                'description' => 'Accept payments via the in-process stub. Useful for local development; never enable on production. Ignored the moment the Razorpay gateway is switched on or a live key is present.',
                 'type' => 'bool',
                 'default' => 'true',
+            ],
+            'payments.unpaid_order_expiry_minutes' => [
+                'group' => 'payments',
+                'label' => 'Payments: unpaid order expiry (minutes)',
+                'description' => 'How long an online order holds its stock while unpaid. The Razorpay checkout closes at this timeout and the expiry sweeper cancels the order after it — but only after asking the gateway one more time, so a payment that landed late is confirmed rather than cancelled. Floor 15 minutes (a UPI collect request can take 5–10).',
+                'impact' => 'Effective on the next sweep (every 5 minutes). Does not touch orders already cancelled.',
+                'type' => 'int',
+                'default' => '30',
+            ],
+            'payments.razorpay.refund_speed' => [
+                'group' => 'payments',
+                'label' => 'Payments: Razorpay refund speed',
+                'description' => 'Optimum: instant where the payment method supports it, automatic fallback to normal (Razorpay charges a fee per instant refund). Normal: free, credited in 5–7 working days after initiation — which leaves little headroom against the published 7-working-day promise.',
+                'impact' => 'Applies to refunds created after the change; refunds already sent keep the speed they were sent with.',
+                'type' => 'enum',
+                'default' => 'optimum',
+                'options' => [
+                    ['value' => 'optimum', 'label' => 'Optimum — instant where possible', 'note' => 'Razorpay charges a fee per instant refund; falls back to normal automatically.'],
+                    ['value' => 'normal', 'label' => 'Normal — 5–7 working days', 'note' => 'No fee. Little headroom against the published 7-working-day promise.'],
+                ],
             ],
         ];
     }

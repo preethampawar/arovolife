@@ -27,6 +27,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $entitlement_credit_paise
  * @property Carbon|null $entitlements_held_at
  * @property Carbon|null $entitlements_restored_at
+ * @property Carbon|null $hold_alert_sent_at
+ * @property Carbon|null $hold_escalated_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read Order $order
  */
 final class ReturnRequest extends Model
 {
@@ -62,6 +67,7 @@ final class ReturnRequest extends Model
         'opened_by_customer_id', 'notes', 'status',
         'received_at', 'received_by_user_id', 'receipt_outcome', 'receipt_note',
         'entitlement_points_paise', 'entitlement_credit_paise', 'entitlements_held_at', 'entitlements_restored_at',
+        'hold_alert_sent_at', 'hold_escalated_at',
     ];
 
     protected function casts(): array
@@ -73,6 +79,8 @@ final class ReturnRequest extends Model
             'entitlement_credit_paise' => 'int',
             'entitlements_held_at' => 'datetime',
             'entitlements_restored_at' => 'datetime',
+            'hold_alert_sent_at' => 'datetime',
+            'hold_escalated_at' => 'datetime',
         ];
     }
 
@@ -82,6 +90,7 @@ final class ReturnRequest extends Model
         return $this->entitlements_held_at !== null && $this->received_at === null && $this->receipt_outcome === null;
     }
 
+    /** @return BelongsTo<Order, $this> */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
