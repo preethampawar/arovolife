@@ -73,8 +73,8 @@ final class ReturnReceiptService
                 'action' => 'return.received',
                 'subject_type' => 'return_request',
                 'subject_id' => $returnRequest->id,
-                'before_hash' => hash('sha256', 'awaiting_receipt'),
-                'after_hash' => hash('sha256', $outcome),
+                'before_hash' => AuditLog::digest('awaiting_receipt'),
+                'after_hash' => AuditLog::digest($outcome),
                 'details' => [
                     'order_no' => $order->order_no,
                     'rma_no' => $returnRequest->rma_no,
@@ -131,8 +131,8 @@ final class ReturnReceiptService
                 'action' => 'return.not_returned',
                 'subject_type' => 'return_request',
                 'subject_id' => $returnRequest->id,
-                'before_hash' => hash('sha256', 'awaiting_receipt'),
-                'after_hash' => hash('sha256', ReturnRequest::RECEIPT_NOT_RETURNED),
+                'before_hash' => AuditLog::digest('awaiting_receipt'),
+                'after_hash' => AuditLog::digest(ReturnRequest::RECEIPT_NOT_RETURNED),
                 'details' => [
                     'order_no' => $order->order_no,
                     'rma_no' => $returnRequest->rma_no,

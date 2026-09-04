@@ -137,8 +137,8 @@ final class RazorpayRefundService
             'action' => 'refund.released',
             'subject_type' => 'refund_intent',
             'subject_id' => $refund->id,
-            'before_hash' => hash('sha256', 'held'),
-            'after_hash' => hash('sha256', 'released'),
+            'before_hash' => AuditLog::digest('held'),
+            'after_hash' => AuditLog::digest('released'),
             'details' => ['order_id' => $refund->order_id, 'amount_paise' => $refund->amount_paise, 'reason' => $reason],
         ]);
 
@@ -315,8 +315,8 @@ final class RazorpayRefundService
                 'action' => 'refund.settled',
                 'subject_type' => 'refund_intent',
                 'subject_id' => $locked->id,
-                'before_hash' => hash('sha256', $before),
-                'after_hash' => hash('sha256', RefundIntent::STATUS_PROCESSED),
+                'before_hash' => AuditLog::digest($before),
+                'after_hash' => AuditLog::digest(RefundIntent::STATUS_PROCESSED),
                 'details' => [
                     'order_id' => $locked->order_id,
                     'amount_paise' => $locked->amount_paise,
@@ -385,8 +385,8 @@ final class RazorpayRefundService
                 'action' => 'refund.manual_settlement',
                 'subject_type' => 'refund_intent',
                 'subject_id' => $locked->id,
-                'before_hash' => hash('sha256', (string) $refund->status),
-                'after_hash' => hash('sha256', RefundIntent::STATUS_PROCESSED),
+                'before_hash' => AuditLog::digest((string) $refund->status),
+                'after_hash' => AuditLog::digest(RefundIntent::STATUS_PROCESSED),
                 'details' => [
                     'order_id' => $locked->order_id,
                     'amount_paise' => $locked->amount_paise,
@@ -496,8 +496,8 @@ final class RazorpayRefundService
                 'action' => 'refund.forfeited',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,
-                'before_hash' => hash('sha256', (string) ($before ?? 'no_refund_intent')),
-                'after_hash' => hash('sha256', 'forfeited'),
+                'before_hash' => AuditLog::digest((string) ($before ?? 'no_refund_intent')),
+                'after_hash' => AuditLog::digest('forfeited'),
                 'details' => [
                     'order_id' => $order->id,
                     'refund_intent_id' => $refund?->id,
@@ -550,8 +550,8 @@ final class RazorpayRefundService
                 'action' => 'refund.manual_settlement',
                 'subject_type' => 'order',
                 'subject_id' => $locked->id,
-                'before_hash' => hash('sha256', Order::STATUS_REFUND_APPROVED),
-                'after_hash' => hash('sha256', Order::STATUS_REFUNDED),
+                'before_hash' => AuditLog::digest(Order::STATUS_REFUND_APPROVED),
+                'after_hash' => AuditLog::digest(Order::STATUS_REFUNDED),
                 'details' => [
                     'order_id' => $locked->id,
                     'amount_paise' => $owed,

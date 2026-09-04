@@ -99,8 +99,8 @@ final class AdminPaymentController extends Controller
             'action' => 'invoice.generated_manually',
             'subject_type' => 'order',
             'subject_id' => $order->id,
-            'before_hash' => hash('sha256', 'no_invoice'),
-            'after_hash' => hash('sha256', (string) $invoice->invoice_no),
+            'before_hash' => AuditLog::digest('no_invoice'),
+            'after_hash' => AuditLog::digest((string) $invoice->invoice_no),
             'details' => ['order_no' => $order->order_no, 'invoice_id' => $invoice->id, 'invoice_no' => $invoice->invoice_no],
             'ip' => $request->ip(),
         ]);
@@ -143,8 +143,8 @@ final class AdminPaymentController extends Controller
             'action' => 'payment.synced_by_admin',
             'subject_type' => 'payment_intent',
             'subject_id' => $intent->id,
-            'before_hash' => hash('sha256', $before),
-            'after_hash' => hash('sha256', $intent->fresh()->status),
+            'before_hash' => AuditLog::digest($before),
+            'after_hash' => AuditLog::digest($intent->fresh()->status),
             'details' => ['order_id' => $intent->order_id, 'result' => $result->status, 'message' => $result->message, 'gateway_payment_id' => $intent->fresh()->gateway_payment_id],
             'ip' => $request->ip(),
         ]);
@@ -217,8 +217,8 @@ final class AdminPaymentController extends Controller
             'action' => 'refund.retried',
             'subject_type' => 'refund_intent',
             'subject_id' => $refund->id,
-            'before_hash' => hash('sha256', $before),
-            'after_hash' => hash('sha256', RefundIntent::STATUS_CREATED),
+            'before_hash' => AuditLog::digest($before),
+            'after_hash' => AuditLog::digest(RefundIntent::STATUS_CREATED),
             'details' => ['order_id' => $refund->order_id, 'amount_paise' => $refund->amount_paise],
             'ip' => $request->ip(),
         ]);

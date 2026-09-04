@@ -158,7 +158,7 @@ final class Order extends Model
      * other orders carry no personal BV and return 'none'. Requires `items` and
      * `bvLedgerEntries` to be loaded.
      *
-     * @return array{state: 'none'|'pending'|'accumulated'|'reversed', label: string}
+     * @return array{state: 'none'|'pending'|'accumulated'|'reversed'|'cancelled', label: string}
      */
     public function personalBvStatus(): array
     {
@@ -174,7 +174,7 @@ final class Order extends Model
      * shows whether BV from a customer-attributed order has been credited.
      * Requires `items` and `bvLedgerEntries` to be loaded.
      *
-     * @return array{state: 'none'|'pending'|'accumulated'|'reversed', label: string}
+     * @return array{state: 'none'|'pending'|'accumulated'|'reversed'|'cancelled', label: string}
      */
     public function salesBvStatus(): array
     {
@@ -186,7 +186,7 @@ final class Order extends Model
     }
 
     /**
-     * @return array{state: 'none'|'pending'|'accumulated'|'reversed', label: string}
+     * @return array{state: 'none'|'pending'|'accumulated'|'reversed'|'cancelled', label: string}
      */
     private function bvAccrualState(): array
     {
@@ -196,6 +196,12 @@ final class Order extends Model
 
         if ($this->bvLedgerEntries->firstWhere('type', BvLedgerEntry::TYPE_ACCRUAL) !== null) {
             return ['state' => 'accumulated', 'label' => 'Accumulated'];
+        }
+
+        // Cancelled before any payment arrived: nothing is coming, so it is
+        // not "awaiting" anything — say so rather than leave the buyer waiting.
+        if ($this->status === self::STATUS_CANCELLED) {
+            return ['state' => 'cancelled', 'label' => 'Not counted (order cancelled)'];
         }
 
         return ['state' => 'pending', 'label' => 'Awaiting payment'];

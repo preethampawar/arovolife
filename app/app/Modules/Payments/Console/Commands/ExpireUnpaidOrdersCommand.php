@@ -122,8 +122,8 @@ final class ExpireUnpaidOrdersCommand extends Command
             'action' => 'order.expired_by_sweeper',
             'subject_type' => 'order',
             'subject_id' => $order->id,
-            'before_hash' => hash('sha256', Order::STATUS_PLACED),
-            'after_hash' => hash('sha256', Order::STATUS_CANCELLED),
+            'before_hash' => AuditLog::digest(Order::STATUS_PLACED),
+            'after_hash' => AuditLog::digest(Order::STATUS_CANCELLED),
             'details' => [
                 'order_no' => $order->order_no,
                 'payment_intent_id' => $intent?->id,

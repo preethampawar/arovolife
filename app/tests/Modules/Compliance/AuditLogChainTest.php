@@ -11,6 +11,7 @@ declare(strict_types=1);
  * ALC-04: deleting a row breaks the chain
  * ALC-05: rows written before the chain existed are skipped, not failed
  * ALC-06: a rewritten chain is caught by the recorded head
+ * ALC-07: before/after digests are stored as 32 raw bytes, hex or not
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -115,4 +116,31 @@ it('ALC-06: a wholesale rewrite is caught by the recorded head', function () {
     $this->artisan('compliance:verify-audit-log', ['--head' => $head])
         ->expectsOutputToContain('The head does not match')
         ->assertExitCode(1);
+});
+
+it('ALC-07: stores before/after digests as 32 raw bytes whether given raw or hex', function () {
+    // The columns are BINARY(32). A hex SHA-256 is 64 chars and MySQL refuses
+    // it — which cancelled a paid order when markPaid()'s audit row failed.
+    // SQLite never enforces the width, so this pins the model-level guard.
+    expect(strlen(AuditLog::digest('placed')))->toBe(32);
+
+    $raw = AuditLog::create([
+        'actor_id' => null, 'action' => 'order.paid', 'subject_type' => 'order', 'subject_id' => 1,
+        'before_hash' => AuditLog::digest('placed'), 'after_hash' => AuditLog::digest('paid'),
+        'details' => [], 'ip' => '127.0.0.1',
+    ]);
+    $hex = AuditLog::create([
+        'actor_id' => null, 'action' => 'order.paid', 'subject_type' => 'order', 'subject_id' => 2,
+        'before_hash' => hash('sha256', 'placed'), 'after_hash' => hash('sha256', 'paid'),
+        'details' => [], 'ip' => '127.0.0.1',
+    ]);
+
+    foreach ([$raw, $hex] as $row) {
+        $stored = DB::table('audit_log')->where('id', $row->id)->first();
+        expect(strlen((string) $stored->before_hash))->toBe(32)
+            ->and(strlen((string) $stored->after_hash))->toBe(32)
+            ->and($stored->before_hash)->toBe(AuditLog::digest('placed'))
+            ->and($stored->after_hash)->toBe(AuditLog::digest('paid'));
+    }
+
 });

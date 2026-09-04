@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $subject_id
  * @property array<string, mixed>|null $details
  * @property string|null $ip
+ * @property string|null $before_hash
+ * @property string|null $after_hash
  * @property string|null $row_hash
  * @property string|null $prev_hash
  * @property Carbon $created_at
@@ -79,6 +81,14 @@ final class AuditLog extends Model
     protected static function booted(): void
     {
         self::creating(function (self $entry): void {
+            // before/after are BINARY(32). A caller that hands over the hex
+            // form of a SHA-256 (64 chars) meant the same digest; store the
+            // bytes rather than let MySQL refuse the row — an audit insert
+            // that fails inside markPaid() cancels a paid order, which is how
+            // this was found. SQLite (the test driver) enforces no length.
+            $entry->before_hash = static::normaliseDigest($entry->before_hash);
+            $entry->after_hash = static::normaliseDigest($entry->after_hash);
+
             // A row that already carries a hash is being replayed (a restore,
             // a test fixture); do not overwrite what it brought with it.
             if ($entry->row_hash !== null) {
@@ -95,6 +105,31 @@ final class AuditLog extends Model
             $entry->prev_hash = $previous;
             $entry->row_hash = static::computeRowHash($entry, $previous);
         });
+    }
+
+    /**
+     * The before/after digest of a subject state, in the raw 32-byte form the
+     * columns hold. Every call site that records a state change should use
+     * this rather than `hash('sha256', ...)`, whose default hex output is
+     * twice the column width.
+     */
+    public static function digest(string $value): string
+    {
+        return hash('sha256', $value, true);
+    }
+
+    /** Accept a 64-char hex SHA-256 as the same digest as its 32 raw bytes. */
+    private static function normaliseDigest(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $value = (string) $value;
+        if (strlen($value) === 64 && ctype_xdigit($value)) {
+            return (string) hex2bin($value);
+        }
+
+        return $value;
     }
 
     /**

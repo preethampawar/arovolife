@@ -214,3 +214,19 @@ it('personalBvStatus transitions none → pending → accumulated → reversed',
     BvLedgerEntry::create(['distributor_id' => $distId, 'order_id' => $order->id, 'bv_paise' => -50000, 'type' => 'reversal', 'effective_at' => now()]);
     expect($order->load('bvLedgerEntries')->personalBvStatus()['state'])->toBe('reversed');
 });
+
+it('personalBvStatus says "not counted" on an order cancelled before payment, not "awaiting payment"', function (): void {
+    [$user, $distId] = moUserWithDistributor();
+
+    $order = moOrder($user->id, $distId, self: true);
+    $order->update(['status' => Order::STATUS_CANCELLED, 'cancelled_at' => now(), 'paid_at' => null]);
+
+    $status = $order->load('bvLedgerEntries')->personalBvStatus();
+    expect($status['state'])->toBe('cancelled')
+        ->and($status['label'])->toBe('Not counted (order cancelled)');
+
+    $this->actingAs($user)->get(route('orders.show', $order->order_no))
+        ->assertOk()
+        ->assertSee('Not counted (order cancelled)')
+        ->assertDontSee('Awaiting payment');
+});

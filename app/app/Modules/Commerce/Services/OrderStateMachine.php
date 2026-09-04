@@ -69,8 +69,8 @@ final class OrderStateMachine
                 'action' => 'order.paid',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,
-                'before_hash' => hash('sha256', Order::STATUS_PLACED),
-                'after_hash' => hash('sha256', Order::STATUS_PAID),
+                'before_hash' => AuditLog::digest(Order::STATUS_PLACED),
+                'after_hash' => AuditLog::digest(Order::STATUS_PAID),
                 'details' => array_merge(
                     ['order_no' => $order->order_no, 'amount_paise' => $order->total_paise, 'payment_method' => $order->payment_method],
                     $evidence,
