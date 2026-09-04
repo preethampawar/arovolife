@@ -25,7 +25,7 @@
     </div>
 
     {{-- Stat cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
         <div class="rounded-xl border border-gray-200 p-3">
             <p class="text-[10px] uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 Personal BV
@@ -60,6 +60,13 @@
                 <x-help-tip text="{{ $gsbOn ? 'Net GSB and MB credits not yet paid out.' : 'Net bonus credits not yet paid out.' }}" />
             </p>
             <p class="text-lg font-bold text-blue-700 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBalance / 100, 2) }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 p-3">
+            <p class="text-[10px] uppercase tracking-wider text-gray-600 flex items-center gap-1">
+                Repurchase wallet
+                <x-help-tip text="10% of prior-month bonus income (max ₹10,000) withheld each payout into this wallet. Applied automatically at checkout toward the monthly repurchase obligation. Cannot be withdrawn." />
+            </p>
+            <p class="text-lg font-bold {{ $repurchaseWalletBalance > 0 ? 'text-green-700' : 'text-gray-700' }} mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseWalletBalance / 100, 2) }}</p>
         </div>
     </div>
 

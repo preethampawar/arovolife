@@ -406,6 +406,12 @@ final class IncomeController extends Controller
         }
 
         try {
+            $repurchaseLedgerRows = $walletService->repurchaseLedger($distributor->id);
+        } catch (QueryException) {
+            $repurchaseLedgerRows = collect();
+        }
+
+        try {
             $payoutRows = PayoutLineItem::where('distributor_id', $distributor->id)
                 ->orderByDesc('created_at')
                 ->get();
@@ -426,7 +432,7 @@ final class IncomeController extends Controller
         $minThresholdPaise = app(CompensationPlanSettingsService::class)->minPayoutPaise();
 
         return view('income.wallet', compact(
-            'distributor', 'ledgerRows', 'payoutRows',
+            'distributor', 'ledgerRows', 'repurchaseLedgerRows', 'payoutRows',
             'walletBalancePaise', 'repurchaseWalletBalancePaise', 'totalPaidOutPaise', 'nextPayout', 'minThresholdPaise',
         ));
     }

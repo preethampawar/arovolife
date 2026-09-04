@@ -13,9 +13,13 @@ use InvalidArgumentException;
 
 class WalletService
 {
+    /** Repurchase wallet entry types that must never be counted in the main wallet balance. */
+    public const REPURCHASE_TYPES = ['repurchase_deduction', 'repurchase_wallet_used'];
+
     public function balancePaise(int $distributorId): int
     {
         return (int) WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->whereNotIn('type', self::REPURCHASE_TYPES)
             ->sum('amount_paise');
     }
 
@@ -321,6 +325,7 @@ class WalletService
     public function ledgerWithRunningBalance(int $distributorId, int $limit = 500): Collection
     {
         $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->whereNotIn('type', self::REPURCHASE_TYPES)
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit($limit)
@@ -335,5 +340,16 @@ class WalletService
 
             return ['entry' => $e, 'running_balance_paise' => $running];
         });
+    }
+
+    /** Repurchase wallet ledger entries (credits deducted from payouts, debits applied at checkout). */
+    public function repurchaseLedger(int $distributorId, int $limit = 200): Collection
+    {
+        return WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->whereIn('type', self::REPURCHASE_TYPES)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
     }
 }

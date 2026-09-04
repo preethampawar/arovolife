@@ -107,6 +107,7 @@ final class AdminDistributorCompController extends Controller
         $genosBvEligible = $personalBvPaise >= $gsbMinBvPaise;
         $cf = $gsbOn ? GsbCarryforward::where('distributor_id', $distributor->id)->first() : null;
         $walletBalance = $this->wallet->balancePaise($distributor->id);
+        $repurchaseWalletBalance = $this->wallet->repurchaseWalletBalancePaise($distributor->id);
 
         $failedToday = $gsbOn
             ? GsbCutoffResult::where('distributor_id', $distributor->id)
@@ -144,6 +145,7 @@ final class AdminDistributorCompController extends Controller
             ],
             'wallet' => [
                 'ledger' => $this->wallet->ledgerWithRunningBalance($distributor->id),
+                'repurchaseLedger' => $this->wallet->repurchaseLedger($distributor->id),
             ],
             'payouts' => [
                 'rows' => PayoutLineItem::where('distributor_id', $distributor->id)
@@ -197,6 +199,7 @@ final class AdminDistributorCompController extends Controller
             'gsbMinBvPaise' => $gsbMinBvPaise,
             'cf' => $cf,
             'walletBalance' => $walletBalance,
+            'repurchaseWalletBalance' => $repurchaseWalletBalance,
             'failedToday' => $failedToday,
             'gsbOn' => $gsbOn,
             'visibleTabs' => $visibleTabs,

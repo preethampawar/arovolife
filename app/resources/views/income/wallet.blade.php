@@ -112,8 +112,6 @@
                             'fortune_credit' => 'Fortune Bonus',
                             'adc_credit' => 'ADC Bonus',
                             'payout_debit' => 'Payout to bank',
-                            'repurchase_deduction' => 'Repurchase deduction',
-                            'repurchase_wallet_used' => 'Repurchase credit applied',
                             'income_cap_forfeit' => 'Monthly income cap',
                             'manual_credit' => 'Manual adjustment',
                         ];
@@ -133,6 +131,48 @@
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-blue-700">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($runningBalance / 100, 2) }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    {{-- Repurchase wallet ledger --}}
+    <h2 class="text-base font-semibold text-gray-800 mb-3 flex items-center gap-1">
+        Repurchase Wallet Ledger
+        <x-help-tip text="Each payout, 10% of your previous month's bonus income (max ₹10,000) is moved here. The balance is automatically applied at checkout toward your monthly repurchase obligation. It cannot be withdrawn." />
+    </h2>
+    @if($repurchaseLedgerRows->isEmpty())
+        <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
+            <p class="text-gray-600 font-medium">No repurchase wallet activity yet.</p>
+            <p class="text-sm text-gray-600 mt-1">Deductions appear here after your first payout is processed.</p>
+        </div>
+    @else
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto mb-6">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center gap-1">Type <x-help-tip text="Deduction = withheld from payout into this wallet. Credit applied = used at checkout." /></span>
+                        </th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($repurchaseLedgerRows as $entry)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-gray-700">
+                            {{ $entry->type === 'repurchase_deduction' ? 'Deduction from payout' : 'Credit applied at checkout' }}
+                            @if($entry->memo)
+                                <span class="block text-xs text-gray-500">{{ $entry->memo }}</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">
+                            {{ $entry->amount_paise >= 0 ? '+' : '-' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($entry->amount_paise) / 100, 2) }}
                         </td>
                     </tr>
                     @endforeach
