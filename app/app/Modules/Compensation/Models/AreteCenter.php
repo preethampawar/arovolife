@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Models;
 
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -181,6 +182,38 @@ final class AreteCenter extends Model
             ->orderBy('state')
             ->orderByDesc('is_company_default')
             ->orderBy('name');
+    }
+
+    /**
+     * The centres a buyer may collect an order from: the company default and,
+     * for a distributor, the centre they are currently a member of (chosen at
+     * registration or changed later from My Profile). Never the full registry
+     * — a buyer picks between "my centre" and "the company centre", nothing
+     * else. Preferred centre first; both must be active; de-duplicated when
+     * they are the same centre.
+     *
+     * @return Collection<int, AreteCenter>
+     */
+    public static function collectionChoicesFor(?int $distributorId): Collection
+    {
+        $preferredId = $distributorId === null
+            ? null
+            : AreteCenterMember::where('distributor_id', $distributorId)
+                ->whereNull('effective_to')
+                ->latest()
+                ->value('center_id');
+
+        return self::query()
+            ->active()
+            ->where(function (Builder $q) use ($preferredId): void {
+                $q->where('is_company_default', true);
+                if ($preferredId !== null) {
+                    $q->orWhere('id', (int) $preferredId);
+                }
+            })
+            ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [(int) ($preferredId ?? 0)])
+            ->orderBy('name')
+            ->get(['id', 'name', 'city', 'state', 'address_line_1', 'address_line_2', 'pincode', 'contact_number', 'weekly_off', 'is_company_default']);
     }
 
     public function isActive(): bool

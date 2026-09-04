@@ -134,7 +134,13 @@
         @if(($areteCenters ?? collect())->isNotEmpty())
         <div id="adcSection" class="bg-white rounded-2xl border border-gray-200 p-6 hidden">
             <h2 class="font-semibold text-gray-900 mb-1">Select Arete Development Centre</h2>
-            <p class="text-xs text-gray-600 mb-4">Your order will be held at the centre for collection. BV is attributed to that centre.</p>
+            <p class="text-xs text-gray-600 mb-4">Your order will be held at the centre for collection and its BV is collected at that centre.
+                @auth
+                    @if(auth()->user()->distributor)
+                        You can collect from your own centre or the company centre. To change your centre, update it from <a href="{{ route('profile.show') }}" class="text-brand-700 underline">My Profile</a>.
+                    @endif
+                @endauth
+            </p>
             @error('arete_center_id')
             <p class="mb-3 text-sm text-red-600">{{ $message }}</p>
             @enderror
@@ -143,9 +149,12 @@
                 <label class="flex items-start gap-3 rounded-xl border-2 border-gray-200 p-4 cursor-pointer hover:border-brand-400 has-[:checked]:border-brand-500 has-[:checked]:ring-1 has-[:checked]:ring-brand-300">
                     <input type="radio" name="arete_center_id" value="{{ $ac->id }}"
                         class="mt-0.5 text-brand-700 focus:ring-brand-500"
-                        {{ old('arete_center_id') == $ac->id ? 'checked' : '' }}>
+                        {{ old('arete_center_id', $areteCenters->first()?->id) == $ac->id ? 'checked' : '' }}>
                     <span>
-                        <span class="block text-sm font-medium text-gray-900">{{ $ac->name }}</span>
+                        <span class="block text-sm font-medium text-gray-900">{{ $ac->name }}
+                            @if($loop->first && ! $ac->is_company_default)<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-brand-50 text-brand-700">Your centre</span>@endif
+                            @if($ac->is_company_default)<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700">Company centre</span>@endif
+                        </span>
                         <span class="block text-xs text-gray-600 mt-0.5">
                             {{ implode(', ', array_filter([$ac->city, $ac->state])) }}
                             @if($ac->contact_number) · {{ $ac->contact_number }}@endif

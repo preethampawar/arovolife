@@ -91,9 +91,9 @@ final class CheckoutController extends Controller
             $repurchaseWalletBalancePaise = $this->walletService->repurchaseWalletBalancePaise($repurchaseDistributorId);
         }
 
-        $areteCenters = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)
-            ->orderBy('name')
-            ->get(['id', 'name', 'city', 'state', 'address_line_1', 'address_line_2', 'pincode', 'contact_number', 'weekly_off']);
+        // Collection points on offer: the buyer's own centre and the company
+        // default only — never the whole registry.
+        $areteCenters = AreteCenter::collectionChoicesFor($repurchaseDistributorId);
 
         return view('shop.checkout', [
             'cart' => $cart,
@@ -160,11 +160,13 @@ final class CheckoutController extends Controller
         $validated = $request->validate([
             'delivery_type' => ['required', Rule::in(['ship', 'collect'])],
             // ADC collection: required when delivery_type = collect.
+            // Only the centres offered on the page (the buyer's own centre and
+            // the company default) are accepted, not any active centre.
             'arete_center_id' => [
                 Rule::requiredIf($isCollection),
                 'nullable',
                 'integer',
-                Rule::exists('arete_centers', 'id')->where('status', AreteCenter::STATUS_ACTIVE),
+                Rule::in(AreteCenter::collectionChoicesFor($request->user()?->distributor?->id)->pluck('id')->all()),
             ],
             'buyer_name' => ['required', 'string', 'max:150'],
             'buyer_email' => ['required', 'email', 'max:255'],
@@ -199,7 +201,7 @@ final class CheckoutController extends Controller
             'buyer_gstin.regex' => 'That does not look like a GSTIN. It is 15 characters, e.g. 36ABCDE1234F1Z5.',
             'buyer_legal_name.required_with' => 'A GSTIN needs the registered business name it belongs to.',
             'arete_center_id.required' => 'Please select an Arete Development Centre to collect from.',
-            'arete_center_id.exists' => 'The selected centre is not available.',
+            'arete_center_id.in' => 'The selected centre is not available.',
         ]);
 
         // Guard: the buyer_email must not belong to another registered user on
@@ -241,15 +243,18 @@ final class CheckoutController extends Controller
         if ($isCollection) {
             // For ADC collection orders the "shipping" address records
             // the centre's address so the invoice has a delivery address.
-            $center = AreteCenter::find((int) $validated['arete_center_id']);
+            // Validation has already confirmed the id is one of the offered
+            // centres, so a miss here is a genuine race (centre deactivated
+            // between page and submit) and a 404 is the honest answer.
+            $center = AreteCenter::findOrFail((int) $validated['arete_center_id']);
             $shipping = [
                 'name' => $validated['buyer_name'],
                 'phone' => '+91'.$validated['buyer_phone'],
-                'line1' => $center?->address_line_1 ?? ($center?->location ?? 'Arete Development Centre'),
-                'line2' => $center?->city ?? null,
-                'city' => $center?->city ?? $center?->district ?? '',
-                'state' => $center?->state ?? '',
-                'pincode' => $center?->pincode ?? '000000',
+                'line1' => $center->address_line_1 ?? ($center->location ?? 'Arete Development Centre'),
+                'line2' => $center->city,
+                'city' => $center->city ?? $center->district ?? '',
+                'state' => $center->state ?? '',
+                'pincode' => $center->pincode ?? '000000',
             ];
         } else {
             $shipping = [
