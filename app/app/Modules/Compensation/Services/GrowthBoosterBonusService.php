@@ -91,6 +91,31 @@ final class GrowthBoosterBonusService
 
         [$payable, $held, $suspended] = $this->partitionByRepurchase($agpMap);
 
+        // Repurchase wallet = 0 is a mandatory qualification gate for GBB (spec
+        // 17-8-2026): the distributor must have spent their repurchase wallet down
+        // to zero via checkout purchases before GBB is credited this month.
+        // New joiners (no prior payout → no deduction ever) have a ₹0 balance and
+        // pass automatically. Wallet balances are taken at month-end so late
+        // checkout purchases count.
+        $walletBalances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
+            $payable->keys()->map(intval(...))->all(),
+            $monthEnd,
+        );
+        $skippedWalletNonzero = 0;
+        $payable = $payable->filter(function (int $_agp, int $distributorId) use ($walletBalances, &$skippedWalletNonzero): bool {
+            if (($walletBalances[$distributorId] ?? 0) > 0) {
+                Log::info('gbb.skipped_wallet_nonzero', [
+                    'distributor_id' => $distributorId,
+                    'repurchase_wallet_balance_paise' => $walletBalances[$distributorId],
+                ]);
+                $skippedWalletNonzero++;
+
+                return false;
+            }
+
+            return true;
+        });
+
         // Suspended AGP can never be paid for this month, so it is kept out of
         // the denominator; held AGP stays in because a release can still pay it.
         $totalAgp = (int) $payable->sum() + (int) $held->sum();
@@ -156,6 +181,7 @@ final class GrowthBoosterBonusService
             'held' => $heldCount,
             'suspended' => $suspendedCount,
             'skipped_no_agp' => $skippedNoAgp,
+            'skipped_wallet_nonzero' => $skippedWalletNonzero,
         ];
     }
 

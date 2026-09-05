@@ -754,7 +754,9 @@ it('exempts a month-1 joiner from the repurchase-wallet gate', function (): void
     expect(FortuneBonusParticipant::where('distributor_id', $dist->id)->value('eligibility_tier'))->toBe('new_joiner');
 });
 
-it('lets the developer switch the repurchase-wallet gate off', function (): void {
+it('keeps the repurchase-wallet gate on even when the legacy setting is disabled', function (): void {
+    // The gate is now unconditional (spec 17-8-2026). The setting no longer
+    // suppresses it — a distributor with a non-zero wallet is always excluded.
     DB::table('settings')->updateOrInsert(
         ['key' => 'comp.fortune.require_repurchase_wallet_zero'],
         ['value' => 'false', 'version' => 1, 'updated_at' => now()],
@@ -768,7 +770,10 @@ it('lets the developer switch the repurchase-wallet gate off', function (): void
     seedGsbCredit($dist->id, '2026-06-05');
     seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-03 09:00:00');
 
-    expect(app(FortuneBonusService::class)->enrollEligible($month)['enrolled'])->toBe(1);
+    $result = app(FortuneBonusService::class)->enrollEligible($month);
+
+    expect($result['enrolled'])->toBe(0);
+    expect($result['skipped_wallet_nonzero'])->toBe(1);
 });
 
 it('gates a rank-1 distributor on the repurchase wallet too, and reports the exclusion', function (): void {

@@ -145,16 +145,14 @@ final class FortuneBonusService
         // Highest rank per distributor for this month.
         $rankMap = $this->buildRankMap($monthStart);
 
-        // "Repurchase Wallet zero" (the client's rules 2–7): the repurchase
+        // "Repurchase Wallet zero" (mandatory per spec, rules 2–7): the repurchase
         // wallet as it stood at the end of the month being enrolled. Enrolment
         // runs on the 9th, so entries after month end must not count either way.
-        $requireWalletZero = $this->plan->fortuneRequiresRepurchaseWalletZero();
-        $walletBalances = $requireWalletZero
-            ? $this->wallet->repurchaseWalletBalancesAsOfPaise(
-                array_map(intval(...), array_keys($firstGsbDates)),
-                $month->copy()->endOfMonth(),
-            )
-            : [];
+        // This gate is unconditional — the spec makes it non-configurable.
+        $walletBalances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
+            array_map(intval(...), array_keys($firstGsbDates)),
+            $month->copy()->endOfMonth(),
+        );
 
         // Determine next available position (existing participants claim positions already).
         $highestPosition = (int) DB::table('fortune_bonus_participants')
@@ -219,7 +217,7 @@ final class FortuneBonusService
             // a ₹0 balance and passes. The exclusion is irreversible once the
             // month freezes, so it is logged with the balance that caused it.
             $walletBalance = $walletBalances[(int) $distributorId] ?? 0;
-            if ($requireWalletZero && ! isset($newJoinerIds[$distributorId]) && $walletBalance > 0) {
+            if (! isset($newJoinerIds[$distributorId]) && $walletBalance > 0) {
                 Log::info('fortune.enroll.skipped_wallet_nonzero', [
                     'distributor_id' => (int) $distributorId,
                     'month_start' => $monthStart,
