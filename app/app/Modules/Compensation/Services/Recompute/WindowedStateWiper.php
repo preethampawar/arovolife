@@ -48,8 +48,8 @@ final class WindowedStateWiper
     /**
      * The row each kind of wallet entry was created from.
      *
-     * A monthly engine runs in ARREARS — GBB on the 2nd and the Rank Bonus on
-     * the 8th, both for the month before — so July's bonus is credited to the
+     * A monthly engine runs in ARREARS — all monthly bonuses run on the 1st,
+     * both for the month before — so July's bonus is credited to the
      * wallet in August. Deleting wallet entries purely by created_at therefore
      * removes credits whose source row sits safely before the window and is
      * never recomputed, and the re-run skips that period as already computed:

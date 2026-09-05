@@ -54,7 +54,7 @@ php artisan gsb:daily-cutoff --date=2026-07-04 --distributor=59
 
 Aggregates all `CREDITED` GSB cut-off results since the last payout into a weekly payout batch, deducts admin charge (3 %, capped ₹25,000 per batch across four groups) and TDS (5 %), and credits each distributor's wallet.
 
-**Scheduled:** Every **Tuesday at 09:00 IST**.
+**Scheduled:** Every **Tuesday at 03:00 IST**.
 
 **Options:**
 
@@ -145,7 +145,7 @@ wrong month. Always pass `--month=` explicitly when running these by hand.
 
 Evaluates each distributor's repurchase cycle for the current month and updates their income-eligibility flag (`income_eligible` on the distributor). Distributors who have not met their monthly repurchase BV threshold have GSB payouts held until the requirement is met.
 
-**Scheduled:** Daily at **00:30 IST** — runs before the GSB cut-off (00:10 runs for yesterday, so this updates today's eligibility for use in tonight's cut-off).
+**Scheduled:** Daily at **00:05 IST** — runs before the GSB cut-off (00:10 runs for yesterday, so this updates today's eligibility for use in tonight's cut-off).
 
 **Options:**
 
@@ -386,6 +386,22 @@ database moved off RDS (2026-08-29) the stale RDS name here hid the tool. The
 the old list refuses the job and the admin page sits on "Queued" (the job's
 `failed()` hook now surfaces that refusal on the progress bar instead).
 
+**Stale-worker guard.** A `queue:work` process loads its classes once, so a
+worker that booted before the current code was deployed runs the OLD engines —
+silently, and with no error anywhere. Local, 5 Sep 2026: the compensation
+worker had booted before the repurchase-deduction-at-credit-time change landed,
+and an admin-triggered Rank Bonus run credited ₹6,30,644.28 with zero
+deduction. `App\Modules\Compensation\Support\WorkerFreshness` now compares the
+worker's boot time against the newest mtime under `app/`: a stale worker
+refuses both the engine chain (recorded as a skipped run with reason
+`stale_worker`) and the full recompute (surfaced on the progress bar) rather
+than moving money. `app:deploy` already runs `queue:restart`; locally, restart
+the workers yourself:
+
+```bash
+docker compose -f docker/docker-compose.yml restart queue queue-compensation scheduler
+```
+
 #### Replay only what you need — `--windowed` and `--only`
 
 A full replay costs the same whatever you actually want to look at, and on a
@@ -496,50 +512,69 @@ publishes the same progress, so the admin page's bar still tracks it:
 nohup php artisan compensation:recompute-all --force > storage/logs/recompute.log 2>&1 &
 ```
 
-#### The period in flight is included — testing only
+#### Catch-up pass — testing only
 
-A replay that ends today would still leave the current period uncomputed if it
-only fired each engine on the calendar day the scheduler fires it. On a Thursday
-the weekly payout last ran on Tuesday; August's bonuses are not due until
-September. You would click Recompute and see nothing at all for the days since
-the last scheduled run — which is useless when the point is to check what the
-plan pays on the data as it stands.
+The day loop fires each engine on the calendar day the scheduler would have fired
+it. That leaves two gaps:
 
-So after the day loop, and **only when the window runs right up to today**, each
-scheduled engine runs once more for the period still open:
+1. **The period still in flight at the horizon** — the cut-off for today, the
+   payout for this week, this month's bonuses for the monthly engines.
+2. **Closed months whose scheduled run day has not arrived yet** — all monthly
+   engines run on the 1st. If you click Recompute at 00:20 on 1 September, the
+   Rank Bonus at 00:30 has not fired yet; August's Rank Bonus would be missing.
+   If you click on 5 September, August's Rank Bonus ran on 1 September so the day
+   loop covered it — but any month-engine moved back to the 1st of a later month
+   in the future would still fall into this gap.
 
-| Engine | Period the catch-up runs |
-|---|---|
-| GSB daily cut-off (incl. MSB), Repurchase evaluation | today |
-| GSB weekly payout | today — i.e. this week so far, not last Tuesday |
-| GBB, Rank Bonus, ADC, Fortune (enrol + payout), Monthly payout | this month so far |
+So after the day loop, **whenever the window reaches today or later**, a catch-up
+pass runs for both categories:
 
-Skipped when the day loop already covered that exact period, so nothing runs
-twice: on a Tuesday the weekly payout is not re-run, and August's payout batch
-created on the 9th is not duplicated. Unscheduled prerequisites (the rank
-qualification check) are pulled in ahead of whichever engine declares them, as
-everywhere else in the replay.
+| Engine | In-flight period | Arrears (next firing is still ahead) |
+|---|---|---|
+| GSB daily cut-off (incl. MSB), Repurchase evaluation | today | — (daily: never an arrears gap) |
+| GSB weekly payout | this week (the Tuesday batch) | — (weekly: same) |
+| GBB, Rank Bonus, ADC, Fortune (enrol + payout), Monthly payout | this month | the closed month the next 1st-of-month run would process, if that run is still ahead |
 
-Two consequences worth knowing:
+Skipped when the day loop already covered that exact period (`rank.bonus @
+2026-08-01` flagged as invoked when the loop hit 1 Sep 00:30). Unscheduled
+prerequisites (the rank qualification check) are pulled in first.
 
-- **These results are partial and they freeze like any other run.** That is only
-  safe because this tool wipes everything before each replay — "partial" means
-  "as at the moment you clicked", and the next click supersedes it.
-- **The next real scheduled run for that period will find it already computed
-  and skip.** After a replay, tomorrow's 00:10 cut-off has nothing to do for
-  today, and the 9th's payout batch already exists. On a testing database that is
-  fine; recompute again to move the picture forward. It is one more reason this
-  command never runs anywhere real.
+**Stamp time:** catch-up rows whose window ends today are stamped at the real
+clock (existing behaviour). A future-horizon catch-up is stamped at 23:59 of the
+last simulated day so the rows sort after every loop-stamped row (PayoutService
+windows on `wallet_ledger_entries.created_at`).
 
-`--to` fixes the window explicitly and turns the catch-up off, so
-`--from=2026-07-01 --to=2026-07-31` replays July exactly as the scheduler ran it
-and touches nothing in the current period.
+#### Future horizon — testing only
+
+`--to` / the **To** field may extend **up to the last day of next calendar month**.
+The loop simulates future days on a future fake clock — each engine fires at its
+scheduled instant (e.g. Rank Bonus at 00:30 on 1 Oct for September's data) —
+then the catch-up pass fills any remaining gaps. Use this to preview "how the
+next 1st-of-month will look on the orders that exist right now" without waiting
+for the scheduler.
+
+Three consequences:
+
+- **Future rows carry future timestamps.** PayoutService windows on
+  `created_at`, so a payout batch dated 1 Oct exists in the wallet before that
+  date. On a testing database that is fine.
+- **The real scheduler will skip those periods as already computed.** After a
+  future-horizon replay, the 1 Oct run finds Rank Bonus already done and moves on.
+  Recompute again with **To empty** (defaults to today) to return to the live
+  picture.
+- **Repurchase state reflects the simulated horizon.** `repurchase:evaluate`
+  runs at the real clock at the end of every recompute, so the dashboard shows
+  today's eligibility — but the wallet ledger carries future-dated rows.
+
+A historical `--to` (before today) turns the catch-up pass off entirely, so
+`--from=2026-07-01 --to=2026-07-31` replays July exactly as the scheduler ran
+it and touches nothing in the current period.
 
 **None of this changes the schedule.** `routes/console.php` is untouched: the
 00:10 cut-off still processes the previous day, the payout still lands on
-Tuesday, the monthly engines still fire on the 2nd, 8th and 9th for the month
-that closed, and every production run still freezes its period permanently. The
-catch-up exists inside the replay and nowhere else.
+Tuesday, the monthly engines still fire on the 1st for the month that closed,
+and every production run still freezes its period permanently. The catch-up and
+future simulation exist inside the replay and nowhere else.
 
 There is also a button on **Admin → Compensation → Engine Runs**, visible to
 `admin` and `developer`, which queues the same work in the background. It is
@@ -633,12 +668,15 @@ recomputation.
 
 | Command | Schedule (IST) | Notes |
 |---|---|---|
-| `repurchase:evaluate` | Daily 00:30 | Must run before the GSB cut-off |
+| `repurchase:evaluate` | Daily 00:05 | Must run before the GSB cut-off |
 | `gsb:daily-cutoff` | Daily 00:10 (processes yesterday) | Core GSB engine |
 | `cooling-off:remind` | Daily 09:00 | Statutory D-7/D-1 |
-| `gsb:weekly-payout` | Tuesday 09:00 | Aggregates credited cut-offs |
-| `payout:monthly-run` (GBB) | 2nd of month 08:00 | Growth Booster Bonus |
-| `payout:monthly-run` (Rank) | 8th of month 08:00 | Rank Bonus |
-| `payout:monthly-run` (ADC) | 8th of month 09:30 | ADC Bonus |
-| `payout:monthly-run` (Fortune) | 9th of month 09:00 | Fortune Bonus |
-| `payout:monthly-run` | 9th of month 10:30 | Credits wallet for B/C/D bonuses |
+| `compensation:repurchase-snapshot` | 1st of month 00:06 | Freezes repurchase balances for gates |
+| `rank:monthly-run` | 1st of month 00:30 | Rank Bonus (prev month) |
+| `gbb:monthly-run` | 1st of month 00:45 | Growth Booster Bonus (prev month) |
+| `fortune:enroll-eligible` | 1st of month 01:00 | Fortune Bonus enrolment (prev month) |
+| `adc:monthly-run` | 1st of month 01:15 | ADC Bonus (prev month) |
+| `fortune:monthly-run` | 1st of month 03:15 | Fortune Bonus payout (prev month) |
+| `gsb:weekly-payout` | Tuesday 03:00 | Aggregates credited cut-offs |
+| `payout:monthly-run` | 1st of month 03:30 | Credits wallet for B/C/D bonuses |
+| `offers:monthly-run` | 1st of month 04:00 | Purchase offers (prev month) |

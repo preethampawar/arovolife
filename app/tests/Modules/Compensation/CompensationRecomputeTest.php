@@ -380,8 +380,8 @@ it('leaves no scheduled engine uncomputed for the period in flight', function ()
     $report = app(CompensationRecomputeRunner::class)->run(from: Carbon::today()->subDay());
 
     // The day loop alone cannot produce these: the weekly payout only fires on
-    // Tuesdays and the monthly engines only on the 2nd, 8th and 9th, so a
-    // two-day window reaches them only through the catch-up pass.
+    // Tuesdays and the monthly engines only on the 1st, so a two-day window
+    // reaches them only through the catch-up pass.
     foreach (EngineRegistry::all() as $definition) {
         if ($definition->cadence->isScheduled()) {
             expect($report->enginesRun)->toHaveKey($definition->commandSignature);
@@ -395,7 +395,7 @@ it('computes the month in flight, not only the months that have closed', functio
 
     app(CompensationRecomputeRunner::class)->run(from: Carbon::today());
 
-    // GBB fires on the 2nd for the *previous* month, so a run whose period is
+    // GBB fires on the 1st for the *previous* month, so a run whose period is
     // the current month can only have come from the catch-up.
     expect(DB::table('engine_runs')
         ->where('engine_key', 'gbb.monthly')
@@ -412,8 +412,8 @@ it('does not catch up the current period when replaying a historical window', fu
         to: Carbon::parse('2026-06-08'),
     );
 
-    // 5–8 June contains no 2nd, 8th or 9th and the window does not reach today,
-    // so no monthly engine should have run at all.
+    // 5–8 June contains no 1st and the window does not reach today, so no
+    // monthly engine should have run at all.
     expect($report->enginesRun)->not->toHaveKey('gbb:monthly-run');
     expect($report->enginesRun)->not->toHaveKey('payout:monthly-run');
 });
@@ -440,7 +440,7 @@ it('freezes the period in flight at the real clock, not the simulated schedule i
     expect(Carbon::parse($run->started_at)->lte(Carbon::now()))->toBeTrue();
 });
 
-it('never stamps a replayed run in the future', function (): void {
+it('never stamps a replayed run in the future when the window ends today', function (): void {
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(0, 1)->toDateTimeString(), 100_000);
 
@@ -449,6 +449,115 @@ it('never stamps a replayed run in the future', function (): void {
     // Today's engines are due at scheduled times that may not have arrived yet
     // (the cut-off at 00:10, the payout at 09:00); those are clamped to now.
     expect(DB::table('engine_runs')->where('started_at', '>', Carbon::now()->addMinute())->count())->toBe(0);
+});
+
+it('catches up a closed month whose scheduled run has not happened yet', function (): void {
+    // Pin clock to 00:20 on 1 Sep — after the 00:06 snapshot and the 00:10
+    // cut-off, but before the 00:30 Rank Bonus. The day loop reaches 1 Sep and
+    // fires the snapshot + cut-off; Rank Bonus, GBB, ADC, Fortune and the
+    // monthly payout are all due at later instants on the 1st and are deferred
+    // to the catch-up pass (because they are in-flight at the horizon).
+    Carbon::setTestNow('2026-09-01 00:20:00');
+
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, '2026-08-20 10:00:00', 100_000);
+
+    app(CompensationRecomputeRunner::class)->run(from: Carbon::parse('2026-08-20'));
+
+    // The catch-up pass stamps rows at the real clock (00:20), not at the
+    // simulated 00:30/00:45/… schedule instants.
+    $catchUpEngines = ['rank.bonus', 'gbb.monthly', 'adc.bonus', 'fortune.payout'];
+    foreach ($catchUpEngines as $key) {
+        $run = DB::table('engine_runs')
+            ->where('engine_key', $key)
+            ->whereDate('period_start', '2026-08-01')
+            ->first();
+        expect($run)->not->toBeNull("engine_runs missing {$key} for 2026-08-01");
+
+        // Stamped at the real clock, not the future 00:30 schedule instant.
+        expect(Carbon::parse($run->started_at)->toDateString())->toBe('2026-09-01');
+    }
+
+    // The day loop DID reach the GSB cut-off for 2026-08-31 and stamped it at 00:10.
+    $cutoffRun = DB::table('engine_runs')
+        ->where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '2026-08-31')
+        ->first();
+    expect($cutoffRun)->not->toBeNull();
+    expect(Carbon::parse($cutoffRun->started_at)->format('H:i'))->toBe('00:10');
+
+    Carbon::setTestNow();
+});
+
+it('replays into a future horizon, firing engines on their future scheduled instants', function (): void {
+    Carbon::setTestNow('2026-09-05 12:00:00');
+
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, '2026-09-01 10:00:00', 100_000);
+
+    $report = app(CompensationRecomputeRunner::class)->run(
+        from: Carbon::parse('2026-09-01'),
+        to: Carbon::parse('2026-10-31'),
+    );
+
+    // Rank Bonus for September fires on 1 Oct at 00:30.
+    $rb = DB::table('engine_runs')
+        ->where('engine_key', 'rank.bonus')
+        ->whereDate('period_start', '2026-09-01')
+        ->first();
+    expect($rb)->not->toBeNull('rank.bonus for 2026-09-01 missing');
+    expect(Carbon::parse($rb->started_at)->format('Y-m-d H:i'))->toBe('2026-10-01 00:30');
+
+    // Monthly payout for October is in-flight at the 31-Oct horizon (same month),
+    // so the day loop skips it and the catch-up stamps it at 23:59 31 Oct.
+    $payout = DB::table('engine_runs')
+        ->where('engine_key', 'payout.monthly')
+        ->whereDate('period_start', '2026-10-01')
+        ->first();
+    expect($payout)->not->toBeNull('payout.monthly for 2026-10-01 missing');
+    expect(Carbon::parse($payout->started_at)->format('Y-m-d H:i'))->toBe('2026-10-31 23:59');
+
+    // GSB cut-off for a mid-October day stamps at the scheduled 00:10 instant.
+    $cutoff = DB::table('engine_runs')
+        ->where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '2026-10-15')
+        ->first();
+    expect($cutoff)->not->toBeNull('gsb.daily-cutoff for 2026-10-15 missing');
+    expect(Carbon::parse($cutoff->started_at)->format('Y-m-d H:i'))->toBe('2026-10-15 00:10');
+
+    // Catch-up: GBB for Oct (in-flight at the horizon 31 Oct) stamped at 23:59.
+    $gbbCatchUp = DB::table('engine_runs')
+        ->where('engine_key', 'gbb.monthly')
+        ->whereDate('period_start', '2026-10-01')
+        ->first();
+    expect($gbbCatchUp)->not->toBeNull('catch-up gbb.monthly for 2026-10-01 missing');
+    expect(Carbon::parse($gbbCatchUp->started_at)->format('Y-m-d H:i'))->toBe('2026-10-31 23:59');
+
+    expect($report->to->toDateString())->toBe('2026-10-31');
+    expect(
+        collect($report->warnings)->contains(fn ($w) => str_contains($w, 'future'))
+    )->toBeTrue('Expected a future-window warning');
+
+    Carbon::setTestNow();
+});
+
+it('caps the horizon at the end of next month', function (): void {
+    Carbon::setTestNow('2026-09-05 12:00:00');
+
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, '2026-09-01 10:00:00', 100_000);
+
+    $report = app(CompensationRecomputeRunner::class)->run(
+        from: Carbon::parse('2026-09-01'),
+        to: Carbon::parse('2026-12-15'),
+    );
+
+    expect($report->to->toDateString())->toBe('2026-10-31');
+    expect(
+        collect($report->warnings)->contains(fn ($w) => str_contains($w, 'capped'))
+    )->toBeTrue('Expected a "capped" warning');
+
+    Carbon::setTestNow();
 });
 
 /*
@@ -460,11 +569,11 @@ it('never stamps a replayed run in the future', function (): void {
 it('fires monthly engines only on their scheduled day of month', function (): void {
     $gbb = EngineRegistry::get('gbb.monthly');
 
-    expect($gbb->cadence->runsOn(Carbon::parse('2026-07-02')))->toBeTrue();
-    expect($gbb->cadence->runsOn(Carbon::parse('2026-07-03')))->toBeFalse();
+    expect($gbb->cadence->runsOn(Carbon::parse('2026-07-01')))->toBeTrue();
+    expect($gbb->cadence->runsOn(Carbon::parse('2026-07-02')))->toBeFalse();
 
     // ...and works on the previous month, as its defaultPeriod declares.
-    expect($gbb->periodRelativeTo(Carbon::parse('2026-07-02'))->toDateString())->toBe('2026-06-01');
+    expect($gbb->periodRelativeTo(Carbon::parse('2026-07-01'))->toDateString())->toBe('2026-06-01');
 });
 
 it('fires the weekly payout only on Tuesdays', function (): void {
@@ -474,11 +583,16 @@ it('fires the weekly payout only on Tuesdays', function (): void {
     expect($weekly->cadence->runsOn(Carbon::parse('2026-07-08')))->toBeFalse(); // Wednesday
 });
 
-it('never fires a manual-only engine from the day loop', function (): void {
+it('fires the rank qualification check on the 1st, for the month that just closed', function (): void {
     $rankCheck = EngineRegistry::get('rank.check');
 
-    expect($rankCheck->cadence->isScheduled())->toBeFalse();
+    // Nothing else writes rank_qualifications and Rank Bonus only reads them,
+    // so the check must fire on the 1st ahead of it rather than wait for a
+    // human — see routes/console.php.
+    expect($rankCheck->cadence->isScheduled())->toBeTrue();
+    expect($rankCheck->cadence->runsOn(Carbon::parse('2026-07-01')))->toBeTrue();
     expect($rankCheck->cadence->runsOn(Carbon::parse('2026-07-02')))->toBeFalse();
+    expect($rankCheck->periodRelativeTo(Carbon::parse('2026-07-01'))->toDateString())->toBe('2026-06-01');
 });
 
 it('really invokes the engines rather than passing vacuously', function (): void {

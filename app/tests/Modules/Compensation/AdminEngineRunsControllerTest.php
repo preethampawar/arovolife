@@ -59,7 +59,6 @@ it('renders the engine runs index with every engine, its schedule and dependenci
         ->assertSee('Growth Booster Bonus')
         ->assertSee('GSB Daily Cut-off (incl. MSB)')
         ->assertSee('Rank Qualification Check')
-        ->assertSee('Not scheduled — manual only')
         ->assertSee('Scheduler-only.')
         ->assertSee('Runs first:')
         ->assertSee(route('admin.compensation.engine-runs.events', ['engine' => 'gbb.monthly']), false);
@@ -645,4 +644,60 @@ it('requires the operator to acknowledge the engines a partial replay will not r
         ->assertSessionHas('status');
 
     Queue::assertPushed(RecomputeAllJob::class);
+});
+
+it('accepts a To date through the end of next month and rejects later ones', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+
+    $nextMonthEnd = Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), [
+            'to' => $nextMonthEnd,
+        ])
+        ->assertSessionDoesntHaveErrors('to');
+
+    Queue::assertPushed(RecomputeAllJob::class);
+
+    Queue::clearResolvedInstances();
+    Queue::fake();
+
+    $tooFar = Carbon::today()->addMonthNoOverflow()->endOfMonth()->addDay()->toDateString();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), [
+            'to' => $tooFar,
+        ])
+        ->assertSessionHasErrors('to');
+
+    Queue::assertNothingPushed();
+});
+
+it('allows in-flight and future periods for economics-freezing engines while the recompute gate is open', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+    Feature::activate(GrowthBoosterBonusFeature::class);
+
+    $user = engineRunsUser('admin');
+
+    // Current month (in-flight for GBB which requiresClosedPeriod).
+    $this->actingAs($user)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gbb.monthly',
+            'period' => Carbon::now()->format('Y-m'),
+            'reason' => 'Testing gate open — previewing in-flight period',
+        ])
+        ->assertSessionHas('status');
+
+    // Next month (future period).
+    $this->actingAs($user)
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gbb.monthly',
+            'period' => Carbon::now()->addMonthNoOverflow()->format('Y-m'),
+            'reason' => 'Testing gate open — previewing future period',
+        ])
+        ->assertSessionHas('status');
+
+    Queue::assertPushed(RunEngineChainJob::class, 2);
 });

@@ -170,7 +170,7 @@ final class CompensationRecomputeRunner
     /**
      * The window to replay: from the first BV or first paid order (whichever is
      * earlier, since propagation keys on paid_at while the pools key on
-     * effective_at), through today.
+     * effective_at), through $to (default: today).
      *
      * Today is included even though it is a partial day. Production stops at
      * yesterday because a frozen result is never recomputed, so freezing half a
@@ -178,6 +178,13 @@ final class CompensationRecomputeRunner
      * the lot, so "partial" only ever means "as at the moment you clicked", and
      * the next click supersedes it. Testing the plan on data up to and including
      * today is the entire point of the tool.
+     *
+     * $to may extend up to the end of next calendar month — one month ahead is
+     * enough to verify the next 1st-of-month run without letting runaway inputs
+     * spin the replay for years. The cap is applied silently if the engine run
+     * page validates the field correctly; a warning is added if the caller sends
+     * a future $to, because a future-window replay uses simulated engine runs
+     * and produces partial, not-yet-final results.
      *
      * @return array{0: Carbon, 1: Carbon, 2: list<string>}
      */
@@ -200,6 +207,24 @@ final class CompensationRecomputeRunner
         }
 
         $to ??= Carbon::today()->startOfDay();
+
+        // Cap at the last day of next calendar month.
+        $maxTo = Carbon::today()->addMonthNoOverflow()->endOfMonth()->startOfDay();
+
+        if ($to->gt($maxTo)) {
+            $to = $maxTo->copy();
+            $warnings[] = sprintf(
+                'Replay horizon capped at %s (the last day of next month). Simulated runs beyond that date are not supported.',
+                $maxTo->toDateString(),
+            );
+        }
+
+        if ($to->gt(Carbon::today()->startOfDay())) {
+            $warnings[] = sprintf(
+                'Replay window extends into the future (%s). Engine runs after today are simulated at their scheduled instants and produce partial, not-yet-final results. Do not use these figures for payouts.',
+                $to->toDateString(),
+            );
+        }
 
         if ($to->lt($from)) {
             $warnings[] = sprintf(

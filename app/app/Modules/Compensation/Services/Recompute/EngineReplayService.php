@@ -38,6 +38,13 @@ use RuntimeException;
  * PayoutService windows the monthly income cap and the repurchase deduction on
  * wallet_ledger_entries.created_at, so replaying six weeks under one wall-clock
  * date would collapse them into a single capped month.
+ *
+ * Catch-up: when the window reaches today or later, a second pass runs after
+ * the day loop and fires every scheduled engine for the periods the loop could
+ * not cover: (i) the period still in flight at the horizon, and (ii) closed
+ * months whose scheduled run day lies beyond the horizon. Future days are
+ * simulated at their scheduled instants; the real scheduler finds those periods
+ * already computed and skips them. The scheduler itself is untouched.
  */
 final class EngineReplayService
 {
@@ -87,19 +94,17 @@ final class EngineReplayService
             $log('  Skipping (not selected): '.implode(', ', $skipped));
         }
 
-        // Read before the first travel. The window now ends today, so the last
-        // day's engines are routinely due at an hour that has not arrived yet —
-        // 00:10 when it is 00:04 — and a scheduled instant beyond this point
-        // would stamp rows into the future.
+        // Read before the first travel. The last day's engines may be due at an
+        // hour that has not arrived yet — 00:10 when it is 00:04. A future day
+        // is simulated deliberately and keeps its scheduled instant.
         $realNow = Carbon::now();
+        $horizon = $to->copy()->startOfDay();
 
-        // When the window runs right up to today, the catch-up pass below owns
-        // every period still in flight: it computes them on the real clock, so
-        // their frozen rows say when they were actually frozen. The day loop
-        // stepping onto one of those periods would freeze it hours early, at
-        // the simulated schedule instant, and the catch-up would then skip it
-        // as already covered.
-        $catchUpWillRun = $to->isSameDay($realNow);
+        // The catch-up pass runs whenever the window reaches today or later. It
+        // covers (i) the period in flight at the horizon and (ii) closed months
+        // whose scheduled run day lies beyond the horizon. A window ending before
+        // today has no partial periods to catch up and turns the pass off.
+        $catchUpWillRun = $horizon->gte($realNow->copy()->startOfDay());
 
         $this->progress->daysTotal((int) $from->diffInDays($to) + 1);
 
@@ -120,12 +125,19 @@ final class EngineReplayService
             foreach ($due as $definition) {
                 $period = $definition->periodRelativeTo($day);
 
-                if ($catchUpWillRun && $this->isInFlight($definition, $period, $realNow)) {
+                if ($catchUpWillRun && $this->isInFlight($definition, $period, $horizon)) {
                     continue;
                 }
 
                 $at = $definition->cadence->atOn($day);
-                $at = $at->gt($realNow) ? $realNow->copy() : $at;
+                // Today's engines may be due at an hour that has not arrived
+                // (00:10 when it is 00:04): clamp those to the wall clock. A
+                // future day is simulated deliberately and keeps its scheduled
+                // instant, so its rows say when the scheduler would have written
+                // them.
+                if ($at->gt($realNow) && $day->lte($realNow)) {
+                    $at = $realNow->copy();
+                }
 
                 foreach ($this->unscheduledPrerequisites($definition, $period) as $key => $prerequisite) {
                     if (isset($this->invoked[$key])) {
@@ -148,8 +160,8 @@ final class EngineReplayService
             );
         }
 
-        if ($to->isSameDay($realNow)) {
-            $this->catchUpCurrentPeriods($realNow, $log);
+        if ($catchUpWillRun) {
+            $this->catchUpPendingPeriods($horizon, $realNow, $log);
         }
 
         Carbon::setTestNow();
@@ -158,74 +170,120 @@ final class EngineReplayService
     }
 
     /**
-     * Bring every engine up to the period that is still in flight — testing
-     * only, and only when the replay runs right up to today.
+     * Compute every period the scheduler has not yet reached, as at the horizon.
      *
-     * The day loop fires an engine on the calendar day the scheduler would have
-     * fired it, which leaves the current period uncomputed: on a Thursday the
-     * weekly payout last ran on Tuesday, and this month's bonuses are not due
-     * until next month. That is correct in production — you cannot pay out a
-     * period that has not closed, and a frozen result is never recomputed. It is
-     * useless in a replay, where the whole point is to see what the plan pays on
-     * the data as it stands right now.
+     * Two categories:
      *
-     * So each scheduled engine runs once more for the period in flight — today
-     * for the date engines, this month for the month engines. The day loop
-     * deliberately steps around those periods (see replay()), so this pass owns
-     * them outright and stamps their rows with the real clock: a frozen row for
-     * an unfinished period must say when it was actually frozen, not the
-     * simulated schedule instant the replay was pretending it was. The results
-     * are partial by construction and freeze exactly like any other run, which
-     * is only safe because this tool wipes and rebuilds every derived row on
-     * each use. The
-     * scheduler itself is untouched: nothing here changes when or for which
-     * period a production run fires.
+     * (i)  **In-flight period at the horizon** — today for date engines, the
+     *      horizon's month for month engines. The day loop deliberately stepped
+     *      around these so the catch-up owns them outright and stamps them at the
+     *      correct clock instant.
+     *
+     * (ii) **Arrears period** — month-type engines only. The period whose data
+     *      is complete (its month has ended) but whose scheduled run day lies
+     *      after the horizon. Example: horizon is 2026-09-01 00:20 (after the
+     *      snapshot at 00:06 but before Rank Bonus at 00:30). Rank Bonus would
+     *      next fire at 00:30 on 2026-10-01 and would work on September — but
+     *      September is the in-flight month and therefore already covered by
+     *      (i). A better example: horizon is 2026-09-05. Rank Bonus next fires
+     *      2026-10-01, period = September. September's month has not ended, so
+     *      `periodStart(p).lte(horizon)` is true but September is the in-flight
+     *      month — this dedupes naturally because (i) already adds it.
+     *      The real arrears case: horizon 2026-09-01 00:20, next Rank Bonus
+     *      firing is 00:30 the same day, period = August. August ended; the
+     *      loop could not reach 00:30; this pass fills the gap.
+     *
+     * The catch-up stamp is the real clock when the window ends today (existing
+     * behaviour, tested); a future horizon stamps its catch-up rows at 23:59 of
+     * the last simulated day so they sort after every loop-stamped row —
+     * PayoutService windows on wallet_ledger_entries.created_at.
      *
      * @param  Closure(string): void  $log
      */
-    private function catchUpCurrentPeriods(Carbon $now, Closure $log): void
+    private function catchUpPendingPeriods(Carbon $horizon, Carbon $realNow, Closure $log): void
     {
+        $stampAt = $horizon->isSameDay($realNow)
+            ? $realNow->copy()
+            : $horizon->copy()->setTime(23, 59);
+
         $pending = [];
 
         foreach (EngineRegistry::all() as $definition) {
-            // Manual-only engines have no period of their own to catch up; they
-            // ride along below as prerequisites of the engines that need them.
             if (! $definition->cadence->isScheduled() || ! $this->isSelected($definition)) {
                 continue;
             }
 
-            $period = $definition->periodType === EnginePeriodType::Month
-                ? $now->copy()->startOfMonth()
-                : $now->copy()->startOfDay();
+            // (i) In-flight period at the horizon.
+            $inFlight = $definition->periodType === EnginePeriodType::Month
+                ? $horizon->copy()->startOfMonth()
+                : $horizon->copy()->startOfDay();
 
-            if (isset($this->invoked[$this->invocationKey($definition, $period)])) {
-                continue;
+            if (! isset($this->invoked[$this->invocationKey($definition, $inFlight)])) {
+                $pending[] = ['definition' => $definition, 'period' => $inFlight];
             }
 
-            $pending[] = ['definition' => $definition, 'period' => $period];
+            // (ii) Arrears period — month engines only: the period the *next*
+            // scheduled firing after the horizon would work on, if that period
+            // has already begun.
+            if ($definition->periodType === EnginePeriodType::Month) {
+                $candidate = $horizon->copy()->addDay();
+                $arrearsAdded = false;
+
+                for ($i = 0; $i < 31 && ! $arrearsAdded; $i++, $candidate->addDay()) {
+                    if (! $definition->cadence->runsOn($candidate)) {
+                        continue;
+                    }
+
+                    $arrearsPeriod = $definition->periodRelativeTo($candidate);
+
+                    // Only include if the period has begun by the horizon and is
+                    // not a duplicate of the in-flight entry.
+                    if ($definition->periodStart($arrearsPeriod)->lte($horizon)
+                        && ! isset($this->invoked[$this->invocationKey($definition, $arrearsPeriod)])
+                        && ! $arrearsPeriod->isSameMonth($inFlight)
+                    ) {
+                        $pending[] = ['definition' => $definition, 'period' => $arrearsPeriod];
+                    }
+
+                    $arrearsAdded = true;
+                }
+            }
         }
+
+        // Dedup invocation keys (a period may have been added from (i) and (ii)
+        // if the logic overlaps on the same period).
+        $seen = [];
+        $pending = array_filter($pending, function (array $entry) use (&$seen): bool {
+            $key = $this->invocationKey($entry['definition'], $entry['period']);
+            if (isset($seen[$key])) {
+                return false;
+            }
+            $seen[$key] = true;
+
+            return true;
+        });
+        $pending = array_values($pending);
 
         if ($pending === []) {
             return;
         }
 
-        // Ordered as the calendar orders them — the 2nd's engine before the
-        // 8th's before the 9th's — because that sequence is the dependency
-        // order the month was designed around: rank gate, GBB, rank bonus, ADC,
-        // fortune, then the payout batch that settles what they credited.
+        // Sort by period date ascending, then by monthPosition (time within the
+        // day on the 1st). August's credits must land in the wallet before
+        // September's payout batch sweeps.
         usort(
             $pending,
-            static fn (array $a, array $b): int => self::monthPosition($a['definition'])
-                <=> self::monthPosition($b['definition']),
+            static fn (array $a, array $b): int => $a['period']->timestamp <=> $b['period']->timestamp
+                ?: self::monthPosition($a['definition']) <=> self::monthPosition($b['definition']),
         );
 
         $signatures = implode(', ', array_map(
-            static fn (array $entry): string => $entry['definition']->commandSignature,
+            static fn (array $entry): string => $entry['definition']->commandSignature.'@'.$entry['definition']->formatPeriod($entry['period']),
             $pending,
         ));
 
-        $log('  Catching up the period in flight: '.$signatures);
-        $this->progress->phase('Catching up the period in flight', $signatures);
+        $log('  Catching up periods the scheduler has not reached: '.$signatures);
+        $this->progress->phase('Catching up periods the scheduler has not reached', $signatures);
 
         foreach ($pending as $entry) {
             foreach ($this->unscheduledPrerequisites($entry['definition'], $entry['period']) as $key => $prerequisite) {
@@ -233,10 +291,10 @@ final class EngineReplayService
                     continue;
                 }
 
-                $this->invoke($prerequisite['definition'], $prerequisite['period'], $now);
+                $this->invoke($prerequisite['definition'], $prerequisite['period'], $stampAt);
             }
 
-            $this->invoke($entry['definition'], $entry['period'], $now);
+            $this->invoke($entry['definition'], $entry['period'], $stampAt);
         }
     }
 

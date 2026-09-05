@@ -110,6 +110,9 @@ final class AdminEngineRunsController extends Controller
             'recomputePresets' => [
                 'today' => Carbon::today()->toDateString(),
                 'month_start' => Carbon::today()->startOfMonth()->toDateString(),
+                'month_end' => Carbon::today()->endOfMonth()->toDateString(),
+                'next_month_end' => Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString(),
+                'max_to' => Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString(),
             ],
         ]);
     }
@@ -127,7 +130,12 @@ final class AdminEngineRunsController extends Controller
 
         $validated = $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
-            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'to' => [
+                'nullable',
+                'date_format:Y-m-d',
+                'after_or_equal:from',
+                'before_or_equal:'.Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString(),
+            ],
             'windowed' => ['nullable', 'boolean'],
             'engines' => ['nullable', 'array'],
             'engines.*' => ['string', Rule::in(array_keys(EngineRegistry::all()))],
@@ -140,6 +148,7 @@ final class AdminEngineRunsController extends Controller
         ], [
             'accept_missing_engines.accepted' => 'Replaying only some engines deletes the other engines\' '
                 .'results for this window without rebuilding them. Tick the acknowledgement to proceed.',
+            'to.before_or_equal' => 'The replay can run at most through the end of next month.',
         ]);
 
         $from = $validated['from'] ?? null;
@@ -432,14 +441,31 @@ final class AdminEngineRunsController extends Controller
             : $default->format('Y-m-d');
     }
 
-    /** The <input max> attribute — the browser-side twin of {@see parsePeriodOrFail()}'s limit. */
+    /**
+     * The `<input max>` attribute — the browser-side twin of parsePeriodOrFail()'s limit.
+     * With the recompute gate open the closed-period rule is lifted but the
+     * horizon is not: the ceiling drops to the same end-of-next-month the
+     * replay uses.
+     */
     private function periodInputMax(EngineDefinition $definition): string
     {
-        $limit = $definition->latestManualPeriod();
+        $limit = $this->recomputeGuard->isPermitted()
+            ? self::testingPeriodCeiling()
+            : $definition->latestManualPeriod();
 
         return $definition->periodType === EnginePeriodType::Month
             ? $limit->format('Y-m')
             : $limit->format('Y-m-d');
+    }
+
+    /**
+     * The furthest period any manual run may target while the testing gate is
+     * open — the same end-of-next-month horizon CompensationRecomputeRunner
+     * caps its replay window at, so the two testing tools cannot disagree.
+     */
+    private static function testingPeriodCeiling(): Carbon
+    {
+        return Carbon::today()->addMonthNoOverflow()->endOfMonth()->startOfDay();
     }
 
     private function parsePeriodOrFail(EngineDefinition $engine, string $input): Carbon
@@ -452,6 +478,27 @@ final class AdminEngineRunsController extends Controller
                     ? 'Enter the period as YYYY-MM.'
                     : 'Enter the period as YYYY-MM-DD.',
             ]);
+        }
+
+        // The closed-period rule protects real money from being frozen before it
+        // has landed. On a gated testing database the recompute tool wipes and
+        // rebuilds everything, so an operator may run any period to preview it —
+        // but only inside the replay's own horizon. Rank Bonus, GBB, ADC and
+        // Fortune have no premature-freeze self-heal to fall back on, so an
+        // unbounded future period would freeze a pool no re-run can reopen.
+        if ($this->recomputeGuard->isPermitted()) {
+            $ceiling = self::testingPeriodCeiling();
+
+            if ($engine->periodStart($period)->gt($ceiling)) {
+                throw ValidationException::withMessages([
+                    'period' => sprintf(
+                        'Even with the testing gate open, runs are capped at %s (the last day of next month) — the same horizon as the replay.',
+                        $ceiling->format('d M Y'),
+                    ),
+                ]);
+            }
+
+            return $period;
         }
 
         // A future period has no sales data — and an economics-freezing engine

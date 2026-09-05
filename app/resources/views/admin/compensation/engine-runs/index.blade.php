@@ -107,6 +107,10 @@
         and replays every engine from the first BV date up to right now — including today's cut-off, this week's
         payout and this month's bonuses, computed as at this moment. Orders, the BV ledger, distributors, the Genos
         and the plan settings are kept.
+        Set a <strong>To</strong> date after today (up to the end of next month) to see how the coming weeks
+        would pay: the engines run on their future scheduled instants — e.g. September's Rank Bonus at 00:30 on
+        1 October — on the orders that exist right now. A closed month whose run the scheduler has not reached
+        yet is always computed, whatever the To date.
     </p>
     <p class="mt-1 text-xs text-red-800 max-w-4xl">
         <strong>Replaying everything takes the longest possible time.</strong> To check only what today or this month
@@ -199,6 +203,7 @@
                 <div>
                     <label for="recompute-to" class="block text-xs font-medium text-gray-700 mb-1">To</label>
                     <input type="date" name="to" id="recompute-to" value="{{ old('to') }}"
+                           max="{{ $recomputePresets['max_to'] }}"
                            class="rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500">
                 </div>
                 <label class="flex items-center gap-2 pb-2 text-xs text-gray-700">
@@ -207,12 +212,18 @@
                     Keep earlier history (rebuild only the window)
                 </label>
                 <div class="flex flex-wrap gap-2 pb-1">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 self-center">From:</span>
                     <button type="button" data-preset-from="{{ $recomputePresets['today'] }}"
                             class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Today</button>
                     <button type="button" data-preset-from="{{ $recomputePresets['month_start'] }}"
                             class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">This month</button>
                     <button type="button" data-preset-from=""
                             class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Everything (slow)</button>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 self-center ml-2">To:</span>
+                    <button type="button" data-preset-to="{{ $recomputePresets['month_end'] }}"
+                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Through this month</button>
+                    <button type="button" data-preset-to="{{ $recomputePresets['next_month_end'] }}"
+                            class="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50">Through next month</button>
                 </div>
             </div>
 
@@ -289,11 +300,21 @@
     var windowed = document.getElementById('recompute-windowed');
     if (!from || !to || !windowed) { return; }
 
+    var today = @json($recomputePresets['today']);
+
     document.querySelectorAll('[data-preset-from]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             from.value = btn.dataset.presetFrom;
             to.value = '';
             windowed.checked = from.value !== '';
+            describe();
+        });
+    });
+
+    document.querySelectorAll('[data-preset-to]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            to.value = btn.dataset.presetTo;
+            describe();
         });
     });
 
@@ -321,6 +342,16 @@
             + 'and payouts inside this window are deleted and NOT rebuilt.';
     }
 
+    function futureWindowNote() {
+        if (to.value && to.value > today) {
+            return ' The window runs beyond today (to ' + to.value + '): future days are simulated on a'
+                + ' future clock, the monthly engines fire on their future scheduled days, and the real'
+                + ' scheduler will then skip those periods as already computed. Recompute again with'
+                + ' To ≤ today to return to the live picture.';
+        }
+        return '';
+    }
+
     function describe() {
         if (!form) { return; }
 
@@ -330,18 +361,19 @@
                 + from.value + ' onwards?';
             form.dataset.confirmImpact = 'This cannot be undone, but it is limited to the window: '
                 + 'anything before ' + from.value + ' is left exactly as it is. A start date inside a '
-                + 'closed month is widened to that month\u2019s first day. The replay runs in the background.'
-                + missingEngineWarning();
+                + 'closed month is widened to that month’s first day. The replay runs in the background.'
+                + missingEngineWarning() + futureWindowNote();
 
             return;
         }
 
         form.dataset.confirmTitle = form.dataset.confirmFullTitle;
         form.dataset.confirm = form.dataset.confirmFullBody;
-        form.dataset.confirmImpact = form.dataset.confirmFull + missingEngineWarning();
+        form.dataset.confirmImpact = form.dataset.confirmFull + missingEngineWarning() + futureWindowNote();
     }
 
     from.addEventListener('change', describe);
+    to.addEventListener('change', describe);
     document.querySelectorAll('[data-preset-from]').forEach(function (btn) {
         btn.addEventListener('click', describe);
     });
@@ -541,18 +573,22 @@
                 <div class="mb-2">
                     <label class="block text-xs font-medium text-gray-700 mb-1">
                         {{ $isMonth ? 'Month' : 'Date' }}
+                        @if($recomputeAllowed)
+                        <x-help-tip text="Testing gate open — any month/day may be chosen, including the current or a future one. The results are as partial as the data at that moment; a recompute supersedes them. In production only a period that has already ended can be chosen." />
+                        @else
                         <x-help-tip :text="$definition->requiresClosedPeriod
                             ? ($isMonth ? 'The month this engine should process. Only a month that has already ended can be chosen — this engine freezes the month\'s pool economics permanently, so running it mid-month would price the month on partial sales.' : 'The day this engine should process. Only a day that has already ended can be chosen — this engine freezes the day\'s pool economics permanently, so running it before the day closes would price the day on partial sales.')
                             : ($isMonth ? 'The month this engine should process. Pre-filled with the month the scheduler would use.' : 'The day this engine should process. Pre-filled with the day the scheduler would use.')" />
+                        @endif
                     </label>
-                    <input type="{{ $isMonth ? 'month' : 'date' }}" name="period" value="{{ old('engine') === $definition->key ? old('period') : $engine['defaultPeriodValue'] }}" max="{{ $engine['maxPeriodValue'] }}" required
+                    <input type="{{ $isMonth ? 'month' : 'date' }}" name="period" value="{{ old('engine') === $definition->key ? old('period') : $engine['defaultPeriodValue'] }}" @if($engine['maxPeriodValue'] !== '') max="{{ $engine['maxPeriodValue'] }}" @endif required
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">
                 </div>
                 <div class="mb-3">
                     <label class="block text-xs font-medium text-gray-700 mb-1">Reason (required, min 10 chars)
                         <x-help-tip text="Why this engine is being run manually. Recorded in the audit log." />
                     </label>
-                    <textarea name="reason" rows="2" required placeholder="e.g. Scheduled run on the 2nd failed — re-running after fix"
+                    <textarea name="reason" rows="2" required placeholder="e.g. Scheduled run on the 1st failed — re-running after fix"
                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">{{ old('engine') === $definition->key ? old('reason') : '' }}</textarea>
                 </div>
                 <button type="submit" class="w-full px-4 py-2 rounded-lg bg-brand-700 text-white text-sm font-medium hover:bg-brand-800">
