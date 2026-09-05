@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
@@ -524,6 +525,23 @@ it('shows the key-dates strip and per-bonus wallet summary on the dashboard', fu
         ->assertSee('₹2,945');
 });
 
+it('keyDates rolls the monthly payout forward once the 03:30 batch has run, not at midnight', function (): void {
+    // Before the batch on the 1st: today really is the next payout.
+    Carbon::setTestNow('2026-09-01 02:30:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-09-01');
+    Carbon::setTestNow();
+
+    // Later the same day the transfer has already gone out — saying "today"
+    // for the remaining 20 hours of the 1st was simply wrong.
+    Carbon::setTestNow('2026-09-01 06:00:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-10-01');
+    Carbon::setTestNow();
+
+    Carbon::setTestNow('2026-09-02 06:00:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-10-01');
+    Carbon::setTestNow();
+});
+
 it('hides the monthly payout card and flag-gated bonuses when no monthly bonus is active', function (): void {
     ['user' => $user] = incomeDistributor();
 
@@ -696,4 +714,24 @@ it('shows the repurchase deduction and the credited amount on the gsb history pa
         ->toContain('Credited to Wallet (₹)')
         ->toContain('2000.00,200.00,1800.00')
         ->not->toContain('TDS');
+});
+
+it('shows the repurchase alert traffic-light on the wallet page while a balance is outstanding', function (): void {
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $id, 'type' => 'repurchase_deduction', 'amount_paise' => 50_000, 'created_at' => now()],
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-25 10:00:00'));
+
+    try {
+        $this->actingAs($user)
+            ->get(route('income.wallet'))
+            ->assertOk()
+            ->assertSee('Clear now')
+            ->assertSee('Bring this to ₹0 by');
+    } finally {
+        Carbon::setTestNow();
+    }
 });

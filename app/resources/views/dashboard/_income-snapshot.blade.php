@@ -73,7 +73,7 @@
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next monthly</p>
-                        <x-help-tip text="Monthly bonuses transfer to your bank on the 9th of each month, provided your balance meets the minimum payout." />
+                        <x-help-tip text="Monthly bonuses transfer to your bank on the 1st of each month, provided your balance meets the minimum payout." />
                     </div>
                     @if($keyDates['hasMonthlyBonuses'] ?? false)
                         <p class="text-xl font-bold text-gray-900 leading-tight">{{ $keyDates['nextMonthlyPayout']->format('D, d M') }}</p>
@@ -82,6 +82,19 @@
                     @endif
                     <p class="text-[11px] text-gray-500 mt-0.5">Payout date</p>
                 </div>
+
+                {{-- Repurchase alert — urgency of clearing the repurchase wallet before month end --}}
+                @if(($repurchaseWalletStatus ?? null) !== null)
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 col-span-2">
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Repurchase alert</p>
+                    </div>
+                    <p class="text-xl font-bold text-gray-900 leading-tight">{{ $fmt::rupees($repurchaseWalletStatus->balancePaise) }}</p>
+                    <div class="mt-1">
+                        <x-repurchase-wallet-status :status="$repurchaseWalletStatus" />
+                    </div>
+                </div>
+                @endif
             </div>
 
             {{-- Six-month credits chart --}}

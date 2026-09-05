@@ -68,6 +68,9 @@
                 <x-help-tip text="10% of bonus income withheld at credit time into this wallet. Applied automatically at checkout toward the monthly repurchase obligation. Cannot be withdrawn." />
             </p>
             <p class="text-lg font-bold {{ $repurchaseWalletBalance > 0 ? 'text-green-700' : 'text-gray-700' }} mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseWalletBalance / 100, 2) }}</p>
+            <div class="mt-1">
+                <x-repurchase-wallet-status :status="$repurchaseWalletStatus" />
+            </div>
         </div>
         @endif
     </div>

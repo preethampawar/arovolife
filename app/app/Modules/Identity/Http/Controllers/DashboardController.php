@@ -12,6 +12,7 @@ use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Compensation\Support\RepurchaseWalletStatus;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Services\DistributorIdCardStats;
 use App\Modules\Identity\Services\TeamStatsService;
@@ -83,6 +84,7 @@ final class DashboardController extends Controller
         $genosBvEligible = true;
         $gsbMinBvPaise = null;
         $walletBalancePaise = null;
+        $repurchaseWalletStatus = null;
         $dailyBv = null;
         $slabProgress = null;
         $rankStatus = null;
@@ -121,6 +123,19 @@ final class DashboardController extends Controller
 
                 $walletBalancePaise = app(WalletService::class)->balancePaise($distributorId);
 
+                // Deliberately NOT gated on RepurchaseEngineFeature. That flag
+                // governs the GSB cut-off's repurchase suspension; it governs
+                // neither mechanism this pill describes — the 10% deduction
+                // (WalletService::creditWithRepurchaseDeduction) and the
+                // month-end wallet = ₹0 gate on Fortune / GBB / rank
+                // requalification both run unconditionally. Gating it here
+                // withheld the warning on the surface most distributors use
+                // while the money was really being held back, and contradicted
+                // the same pill rendering ungated on /income/wallet.
+                $repurchaseWalletStatus = RepurchaseWalletStatus::for(
+                    app(WalletService::class)->repurchaseWalletBalancePaise($distributorId),
+                );
+
                 $today = Carbon::today('Asia/Kolkata')->toDateString();
                 $dailyBv = ($gsbOn && $genosBvEligible)
                     ? GroupBvDaily::where('distributor_id', $distributorId)->whereDate('date', $today)->first()
@@ -143,6 +158,7 @@ final class DashboardController extends Controller
                 $genosBvEligible = true;
                 $gsbMinBvPaise = null;
                 $walletBalancePaise = null;
+                $repurchaseWalletStatus = null;
                 $dailyBv = null;
                 $slabProgress = null;
                 $rankStatus = null;
@@ -188,6 +204,7 @@ final class DashboardController extends Controller
             'genosBvEligible' => $genosBvEligible,
             'gsbMinBvPaise' => $gsbMinBvPaise,
             'walletBalancePaise' => $walletBalancePaise,
+            'repurchaseWalletStatus' => $repurchaseWalletStatus,
             'dailyBv' => $dailyBv,
             'slabProgress' => $slabProgress,
             'rankStatus' => $rankStatus,

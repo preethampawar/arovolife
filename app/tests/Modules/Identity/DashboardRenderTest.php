@@ -19,7 +19,9 @@ use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Pennant\Feature;
@@ -212,4 +214,54 @@ it('DSH-06: flag-gated dashboard surfaces appear with wallet-credited figures on
         ->assertSee('leading-tight">My Requests</span>', false)
         ->assertDontSee('Power side', false)
         ->assertDontSee('Weaker side', false);
+});
+
+it('DSH-07: shows the repurchase alert tile with its traffic-light while the repurchase flag is on', function () {
+    $user = dshUser('active');
+    $id = dshDistributor($user);
+
+    // The income snapshot only renders when a bonus engine is on, so the
+    // repurchase tile needs one alongside the repurchase flag.
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $id, 'type' => 'repurchase_deduction', 'amount_paise' => 50_000, 'created_at' => now()],
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-25 10:00:00'));
+
+    try {
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Repurchase alert')
+            ->assertSee('Clear now');
+    } finally {
+        Carbon::setTestNow();
+    }
+});
+
+it('DSH-08: shows the repurchase alert even with the repurchase engine flag off', function () {
+    $user = dshUser('active');
+    $id = dshDistributor($user);
+
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->deactivate(RepurchaseEngineFeature::class);
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $id, 'type' => 'repurchase_deduction', 'amount_paise' => 50_000, 'created_at' => now()],
+    ]);
+
+    // The zero-trace rule applies to features the flag governs. This one does
+    // not: RepurchaseEngineFeature gates the GSB cut-off's repurchase
+    // suspension, while the 10% deduction and the month-end wallet = ₹0 gate
+    // run unconditionally. Hiding the warning here left the distributor's money
+    // genuinely held back with nothing on the dashboard saying so — and the
+    // same pill showing regardless on /income/wallet.
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Repurchase alert')
+        ->assertSee('Bring this to ₹0 by');
 });

@@ -23,6 +23,7 @@ use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Compensation\Support\RepurchaseWalletStatus;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -200,6 +201,7 @@ final class AdminDistributorCompController extends Controller
             'cf' => $cf,
             'walletBalance' => $walletBalance,
             'repurchaseWalletBalance' => $repurchaseWalletBalance,
+            'repurchaseWalletStatus' => RepurchaseWalletStatus::for($repurchaseWalletBalance),
             'failedToday' => $failedToday,
             'gsbOn' => $gsbOn,
             'repurchaseOn' => $repurchaseOn,

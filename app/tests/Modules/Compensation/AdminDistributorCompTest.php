@@ -9,6 +9,7 @@ use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Spatie\Permission\PermissionRegistrar;
@@ -273,4 +274,23 @@ it('opens the Rank Bonus tab the RB calculation report links to', function (): v
         ->assertSessionHasNoErrors()
         ->assertSee('Rank qualifications')
         ->assertSee('12,880.00');
+});
+
+it('shows the repurchase alert traffic-light in the header while the repurchase flag is on', function (): void {
+    $distributorId = compDistributor();
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $distributorId, 'type' => 'repurchase_deduction', 'amount_paise' => 50_000, 'created_at' => now()],
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-25 10:00:00'));
+
+    try {
+        $this->actingAs(compAdmin())
+            ->get(route('admin.compensation.distributors.show', $distributorId))
+            ->assertOk()
+            ->assertSee('Clear now');
+    } finally {
+        Carbon::setTestNow();
+    }
 });
