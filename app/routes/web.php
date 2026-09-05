@@ -528,12 +528,12 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         });
 
         // How money leaves the platform: the gateway in use, the RazorpayX
-        // credential status, and a live connection check. The five levers
-        // themselves are edited through the platform settings registry.
-        Route::prefix('payout-settings')->name('payout-settings.')->group(function (): void {
+        // credential status, and a live connection check. Developer-only because
+        // it exposes live gateway credentials and kill-switch controls.
+        Route::middleware('role:developer')->prefix('payout-settings')->name('payout-settings.')->group(function (): void {
             Route::get('/', [AdminPayoutSettingsController::class, 'index'])->name('index');
             Route::post('/test-connection', [AdminPayoutSettingsController::class, 'testConnection'])
-                ->middleware('can:finance.record')->name('test-connection');
+                ->name('test-connection');
         });
 
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
