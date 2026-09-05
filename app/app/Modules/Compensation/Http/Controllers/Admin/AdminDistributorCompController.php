@@ -202,6 +202,7 @@ final class AdminDistributorCompController extends Controller
             'repurchaseWalletBalance' => $repurchaseWalletBalance,
             'failedToday' => $failedToday,
             'gsbOn' => $gsbOn,
+            'repurchaseOn' => $repurchaseOn,
             'visibleTabs' => $visibleTabs,
             'tab' => $tab,
             'from' => $request->query('from'),

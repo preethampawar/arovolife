@@ -139,10 +139,10 @@ final class GrowthBoosterBonusService
                 }
 
                 if ($result->gbb_gross_paise > 0) {
-                    $this->wallet->credit(
+                    $this->wallet->creditWithRepurchaseDeduction(
                         distributorId: (int) $distributorId,
-                        amountPaise: (int) $result->gbb_gross_paise,
-                        type: 'gbb_credit',
+                        grossPaise: (int) $result->gbb_gross_paise,
+                        bonusType: 'gbb_credit',
                         referenceId: $result->id,
                         referenceType: 'gbb_monthly_result',
                         memo: 'Growth Booster Bonus '.$yearMonth,

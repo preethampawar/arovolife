@@ -29,6 +29,9 @@ it('has exactly one registry entry per compensation console command', function (
         // already approved. It takes no period, produces no bonus and cannot
         // change what anyone is owed — only whether it has reached them yet.
         'AutoRetryFailedPayoutsCommand',
+        // Dev/staging seed that populates the Fortune matrix for local
+        // end-to-end testing. Never runs in production; produces no bonus.
+        'FortuneStagingE2ESeedCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])
@@ -54,12 +57,12 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers eleven engines with unique keys and signatures', function (): void {
+it('registers twelve engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(11);
+    expect($all)->toHaveCount(12);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(11);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(12);
 });
 
 it('points every registry entry at a real artisan command with the declared period option', function (): void {

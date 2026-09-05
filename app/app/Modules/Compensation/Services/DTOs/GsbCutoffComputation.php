@@ -28,6 +28,14 @@ final class GsbCutoffComputation
 
     public const OUTCOME_MATCHED = 'matched';
 
+    /**
+     * A slab matched, but the distributor's repurchase wallet was not spent
+     * down to ₹0 by the end of the previous calendar month. Settled exactly
+     * like the repurchase-suspended path: carry-forward advances, the result
+     * row records the match, no wallet credit.
+     */
+    public const OUTCOME_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
+
     /** Rupee-per-score value actually used to price grossPaise (set by price()). */
     public ?int $pricedScoreValuePaise = null;
 

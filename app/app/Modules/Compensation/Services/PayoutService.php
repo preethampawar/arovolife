@@ -43,13 +43,19 @@ final class PayoutService
         PayoutBatch::STATUS_DISPATCHED,
     ];
 
+    /** reference_type values that produce repurchase_transfer debits from the weekly (Group A) engines. */
+    private const WEEKLY_REPURCHASE_REF_TYPES = ['gsb_cutoff_result'];
+
+    /** reference_type values that produce repurchase_transfer debits from the monthly (Group B) engines. */
+    private const MONTHLY_REPURCHASE_REF_TYPES = ['gbb_monthly_result', 'rank_bonus_result', 'fortune_bonus_result'];
+
     /**
      * Weekly payout batch (Group A: GSB + Mentorship).
      *
-     * Sweeps all unswept gsb_credit and mb_credit entries. Deductions, in order:
-     * repurchase (10% of prior-month Group A+B credits, shared month-wide with
-     * the monthly batch), Group-A admin charge (3%, capped at ₹25k), TDS (5% of
-     * payable).
+     * Sweeps all unswept gsb_credit, mb_credit, and associated repurchase_transfer
+     * entries. Deductions, in order: repurchase (already deducted at credit time
+     * and held in the repurchase wallet), Group-A admin charge (3%, capped at ₹25k),
+     * TDS (5% of payable).
      */
     public function runWeeklyBatch(Carbon $cycleEnd): PayoutBatch
     {
@@ -237,17 +243,26 @@ final class PayoutService
                     $gross = $gsbEffective + $mbEffective;
                     $capForfeit = ($gsbSum + $mbSum) - $gross;
 
-                    // Deduct at most this week's gross — an undeductable remainder
-                    // stays uncollected and repurchaseDeductionPaise() picks it up
-                    // on the next weekly run of the same month.
-                    $repurchase = min($this->repurchaseDeductionPaise($distributorId, $cycleEnd), $gross);
+                    // Repurchase was deducted at credit time: each gsb_credit has a
+                    // matching repurchase_transfer debit already in the main wallet.
+                    // Sweep those entries alongside the bonus credits so the balance
+                    // closes to zero; the payout_debit uses effectiveGross (post-
+                    // repurchase), not the full gross, to match what actually remains.
+                    $repurchaseTransfers = WalletLedgerEntry::where('distributor_id', $distributorId)
+                        ->where('type', 'repurchase_transfer')
+                        ->whereIn('reference_type', self::WEEKLY_REPURCHASE_REF_TYPES)
+                        ->whereNull('swept_by_payout_batch_id')
+                        ->lockForUpdate()
+                        ->get();
+                    $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
+                    $effectiveGross = max(0, $gross - $repurchase);
                     // Admin charge honours the per-bonus applies_to toggles.
                     $adminCharge = $this->adminChargeFor(
                         [[BonusType::Gsb, $gsbEffective], [BonusType::Mentorship, $mbEffective]],
                         $adminRateBp,
                         $adminCapPaise,
                     );
-                    $payable = max(0, $gross - $repurchase - $adminCharge);
+                    $payable = max(0, $effectiveGross - $adminCharge);
                     $tds = (int) round($payable * $tdsRateBp / 10_000);
                     $net = max(0, $payable - $tds);
 
@@ -255,7 +270,7 @@ final class PayoutService
                         PayoutLineItem::create([
                             'payout_batch_id' => $batch->id,
                             'distributor_id' => $distributorId,
-                            'wallet_balance_paise' => $gross,
+                            'wallet_balance_paise' => $effectiveGross,
                             'gross_paise' => $gross,
                             'repurchase_deduction_paise' => $repurchase,
                             'admin_charge_paise' => $adminCharge,
@@ -267,7 +282,9 @@ final class PayoutService
                         return;
                     }
 
-                    WalletLedgerEntry::whereIn('id', $entries->pluck('id')->all())
+                    // Sweep bonus credits AND their associated repurchase_transfer
+                    // debits in one pass so the main wallet balance closes to zero.
+                    WalletLedgerEntry::whereIn('id', $entries->merge($repurchaseTransfers)->pluck('id')->all())
                         ->update(['swept_by_payout_batch_id' => $batch->id]);
 
                     // The ledger enforces uniqueness on (type, reference_type,
@@ -277,7 +294,7 @@ final class PayoutService
                     $lineItem = PayoutLineItem::create([
                         'payout_batch_id' => $batch->id,
                         'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $gross,
+                        'wallet_balance_paise' => $effectiveGross,
                         'gross_paise' => $gross,
                         'repurchase_deduction_paise' => $repurchase,
                         'admin_charge_paise' => $adminCharge,
@@ -287,9 +304,11 @@ final class PayoutService
                         'status' => PayoutLineItem::STATUS_PENDING,
                     ]);
 
+                    // Debit effectiveGross (gross minus credit-time repurchase),
+                    // which is exactly what remains in the main wallet.
                     $this->wallet->debit(
                         distributorId: $distributorId,
-                        amountPaise: $gross,
+                        amountPaise: $effectiveGross,
                         type: 'payout_debit',
                         referenceId: $lineItem->id,
                         referenceType: 'payout_line_item',
@@ -306,16 +325,6 @@ final class PayoutService
                             referenceId: $lineItem->id,
                             referenceType: 'payout_line_item',
                             memo: 'Cash income above the combined monthly income cap',
-                        );
-                    }
-
-                    if ($repurchase > 0) {
-                        $this->wallet->credit(
-                            distributorId: $distributorId,
-                            amountPaise: $repurchase,
-                            type: 'repurchase_deduction',
-                            referenceId: $lineItem->id,
-                            referenceType: 'payout_line_item',
                         );
                     }
                 });
@@ -565,15 +574,21 @@ final class PayoutService
                     ], $adminRateBp, $adminCapPaise);
                     $adminCharge = $adminB + $adminC + $adminD;
 
-                    // Repurchase is a MONTHLY figure computed off prior-month bonus
-                    // credits; repurchaseDeductionPaise() nets off whatever the
-                    // month's weekly batches already collected, so only the
-                    // remainder is taken here. Capped at this batch's gross — an
-                    // undeductable remainder stays uncollected for the next run.
-                    // Deduction order (KP-confirmed): gross → repurchase → admin → TDS.
-                    $repurchase = min($this->repurchaseDeductionPaise($distributorId, $month), $gross);
+                    // Repurchase was deducted at credit time for Group B bonuses
+                    // (GBB, Rank, Fortune). Sweep their repurchase_transfer debits
+                    // alongside the bonus credits; payout_debit uses effectiveGross
+                    // so the main wallet balance closes to zero exactly.
+                    // Awards (Group C) and ADC (Group D) carry no repurchase deduction.
+                    $repurchaseTransfers = WalletLedgerEntry::where('distributor_id', $distributorId)
+                        ->where('type', 'repurchase_transfer')
+                        ->whereIn('reference_type', self::MONTHLY_REPURCHASE_REF_TYPES)
+                        ->whereNull('swept_by_payout_batch_id')
+                        ->lockForUpdate()
+                        ->get();
+                    $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
+                    $effectiveGross = max(0, $gross - $repurchase);
 
-                    $payable = max(0, $gross - $repurchase - $adminCharge);
+                    $payable = max(0, $effectiveGross - $adminCharge);
                     $tds = (int) round($payable * $tdsRateBp / 10_000);
                     $net = max(0, $payable - $tds);
 
@@ -581,7 +596,7 @@ final class PayoutService
                         PayoutLineItem::create([
                             'payout_batch_id' => $batch->id,
                             'distributor_id' => $distributorId,
-                            'wallet_balance_paise' => $gross,
+                            'wallet_balance_paise' => $effectiveGross,
                             'gross_paise' => $gross,
                             'repurchase_deduction_paise' => $repurchase,
                             'admin_charge_paise' => $adminCharge,
@@ -593,7 +608,9 @@ final class PayoutService
                         return;
                     }
 
-                    WalletLedgerEntry::whereIn('id', $entries->pluck('id')->all())
+                    // Sweep bonus credits AND their associated repurchase_transfer
+                    // debits so the main wallet balance closes to zero exactly.
+                    WalletLedgerEntry::whereIn('id', $entries->merge($repurchaseTransfers)->pluck('id')->all())
                         ->update(['swept_by_payout_batch_id' => $batch->id]);
 
                     // Line item first — the ledger's (type, reference_type,
@@ -602,7 +619,7 @@ final class PayoutService
                     $lineItem = PayoutLineItem::create([
                         'payout_batch_id' => $batch->id,
                         'distributor_id' => $distributorId,
-                        'wallet_balance_paise' => $gross,
+                        'wallet_balance_paise' => $effectiveGross,
                         'gross_paise' => $gross,
                         'repurchase_deduction_paise' => $repurchase,
                         'admin_charge_paise' => $adminCharge,
@@ -612,10 +629,11 @@ final class PayoutService
                         'status' => PayoutLineItem::STATUS_PENDING,
                     ]);
 
-                    // Debit the effective gross (rank cap may reduce the actual debit).
+                    // Debit effectiveGross (gross minus credit-time repurchase),
+                    // which is exactly what remains in the main wallet.
                     $this->wallet->debit(
                         distributorId: $distributorId,
-                        amountPaise: $gross,
+                        amountPaise: $effectiveGross,
                         type: 'payout_debit',
                         referenceId: $lineItem->id,
                         referenceType: 'payout_line_item',
@@ -632,16 +650,6 @@ final class PayoutService
                             referenceId: $lineItem->id,
                             referenceType: 'payout_line_item',
                             memo: 'Cash income above the combined monthly income cap',
-                        );
-                    }
-
-                    if ($repurchase > 0) {
-                        $this->wallet->credit(
-                            distributorId: $distributorId,
-                            amountPaise: $repurchase,
-                            type: 'repurchase_deduction',
-                            referenceId: $lineItem->id,
-                            referenceType: 'payout_line_item',
                         );
                     }
                 });
@@ -849,60 +857,6 @@ final class PayoutService
         }
 
         return (int) min((int) round($chargeableBase * $rateBp / 10_000), $capPaise);
-    }
-
-    /**
-     * Configurable % of prior month's bonus credits, capped. KP-confirmed pool:
-     * GSB + Mentorship + Growth Booster + Fortune + Rank net credits.
-     *
-     * The deduction is a MONTHLY figure but the weekly batch runs 4–5 times a
-     * month and the monthly batch once more, so whatever was already collected
-     * this month (the repurchase_deduction credits posted by earlier batches of
-     * either type) is subtracted — only the remainder is taken. Without this,
-     * the same 10% would be re-deducted every Tuesday and again month-end.
-     *
-     * Only positive amount_paise entries are summed — reversal entries of the
-     * same types carry negative values and must not reduce the deduction.
-     */
-    private function repurchaseDeductionPaise(int $distributorId, Carbon $batchDate): int
-    {
-        // startOfMonth() BEFORE subMonth(), never after: PHP's relative-month
-        // arithmetic overflows, so 31 Jul − 1 month is 31 Jun → 1 Jul, and the
-        // "prior month" window would land back on the current month and deduct
-        // repurchase against this very batch's credits. Day 1 can never overflow.
-        $priorMonthStart = $batchDate->copy()->startOfMonth()->subMonth();
-        $priorMonthEnd = $priorMonthStart->copy()->endOfMonth();
-
-        $earned = (int) WalletLedgerEntry::where('distributor_id', $distributorId)
-            ->whereIn('type', ['gsb_credit', 'mb_credit', 'gbb_credit', 'fortune_credit', 'rank_credit'])
-            ->where('amount_paise', '>', 0)
-            ->whereBetween('created_at', [$priorMonthStart, $priorMonthEnd])
-            ->sum('amount_paise');
-
-        $monthlyTarget = max(0, min(
-            (int) round($earned * $this->plan->repurchaseRateBp() / 10_000),
-            $this->plan->repurchaseCapPaise(),
-        ));
-
-        // Only what a payout batch actually withheld counts as collected. The
-        // same credit type is also written when a cancelled or refunded order
-        // returns repurchase credit to the wallet (OrderStateMachine::cancel,
-        // RefundOrder), and those carry reference_type = 'order'. Counting one
-        // of those as a collection would let the restoration stand in for this
-        // month's deduction: the batch would withhold that much less cash,
-        // paying out money that was never collected for the repurchase — the
-        // R-60 leak again, one step removed.
-        $alreadyCollectedThisMonth = (int) WalletLedgerEntry::where('distributor_id', $distributorId)
-            ->where('type', 'repurchase_deduction')
-            ->where('reference_type', 'payout_line_item')
-            ->where('amount_paise', '>', 0)
-            ->whereBetween('created_at', [
-                $batchDate->copy()->startOfMonth(),
-                $batchDate->copy()->endOfMonth(),
-            ])
-            ->sum('amount_paise');
-
-        return max(0, $monthlyTarget - $alreadyCollectedThisMonth);
     }
 
     /**

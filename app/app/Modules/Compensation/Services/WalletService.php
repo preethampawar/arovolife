@@ -13,8 +13,18 @@ use InvalidArgumentException;
 
 class WalletService
 {
-    /** Repurchase wallet entry types that must never be counted in the main wallet balance. */
+    /**
+     * Repurchase wallet entry types that must never be counted in the main wallet balance.
+     *
+     * `repurchase_transfer` is deliberately absent: it is the debit that moves
+     * the deduction OUT of the main wallet, so it has to keep reducing the main
+     * balance. Adding it here would leave the main wallet showing the gross.
+     */
     public const REPURCHASE_TYPES = ['repurchase_deduction', 'repurchase_wallet_used'];
+
+    public function __construct(
+        private readonly CompensationPlanSettingsService $planSettings,
+    ) {}
 
     public function balancePaise(int $distributorId): int
     {
@@ -147,6 +157,107 @@ class WalletService
             'memo' => $memo,
             'engine_run_id' => $this->activeEngineRunId(),
         ]);
+    }
+
+    /**
+     * Credit a bonus and take the repurchase deduction out of it in the same
+     * breath: the gross lands in the main wallet, a `repurchase_transfer` debit
+     * takes the deduction back out of it, and a matching `repurchase_deduction`
+     * credit puts that amount in the repurchase wallet. Three entries, so the
+     * distributor's statement shows what was earned, what was withheld and
+     * where it went, rather than a single netted figure nobody can reconcile.
+     *
+     * The deduction is `comp.repurchase.rate_bp` of the gross, floored, and is
+     * capped at whatever is left of `comp.repurchase.cap_paise` for the current
+     * IST calendar month — a distributor who has already hit the monthly ceiling
+     * is credited gross with no deduction at all.
+     *
+     * Returns the gross credit entry, so callers can treat it exactly as they
+     * treated {@see credit()}.
+     */
+    public function creditWithRepurchaseDeduction(
+        int $distributorId,
+        int $grossPaise,
+        string $bonusType,
+        int $referenceId,
+        string $referenceType,
+        ?string $memo = null,
+    ): WalletLedgerEntry {
+        return DB::transaction(function () use (
+            $distributorId, $grossPaise, $bonusType, $referenceId, $referenceType, $memo,
+        ): WalletLedgerEntry {
+            $deductionPaise = (int) floor(abs($grossPaise) * $this->planSettings->repurchaseRateBp() / 10_000);
+
+            $alreadyDeducted = $this->repurchaseDeductionThisMonthPaise($distributorId);
+
+            $deductionPaise = min(
+                $deductionPaise,
+                max(0, $this->planSettings->repurchaseCapPaise() - $alreadyDeducted),
+            );
+
+            $grossEntry = $this->credit(
+                distributorId: $distributorId,
+                amountPaise: $grossPaise,
+                type: $bonusType,
+                referenceId: $referenceId,
+                referenceType: $referenceType,
+                memo: $memo,
+            );
+
+            if ($deductionPaise > 0) {
+                $deductionMemo = 'Repurchase deduction from '.$bonusType;
+
+                $this->debit(
+                    distributorId: $distributorId,
+                    amountPaise: $deductionPaise,
+                    type: 'repurchase_transfer',
+                    referenceId: $referenceId,
+                    referenceType: $referenceType,
+                    memo: $deductionMemo,
+                );
+
+                $this->credit(
+                    distributorId: $distributorId,
+                    amountPaise: $deductionPaise,
+                    type: 'repurchase_deduction',
+                    referenceId: $referenceId,
+                    referenceType: $referenceType,
+                    memo: $deductionMemo,
+                );
+            }
+
+            return $grossEntry;
+        });
+    }
+
+    /**
+     * Repurchase deduction already taken from this distributor's bonuses in the
+     * current IST calendar month — what the monthly cap has to be measured
+     * against.
+     *
+     * `reference_type = 'order'` rows are excluded: those are refund
+     * restorations put back by {@see restoreRepurchaseCreditForOrder()}, not
+     * money withheld from a bonus, and counting them would let a refund eat
+     * into the month's deduction ceiling.
+     *
+     * The window is the IST month expressed in UTC, because created_at is
+     * stored in UTC — whereMonth() would cut the month at the wrong instant and
+     * mis-bill 5½ hours at each boundary.
+     */
+    public function repurchaseDeductionThisMonthPaise(int $distributorId): int
+    {
+        $nowIst = Carbon::now('Asia/Kolkata');
+
+        return (int) WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->where('type', 'repurchase_deduction')
+            ->where(function ($q): void {
+                $q->whereNull('reference_type')->orWhere('reference_type', '!=', 'order');
+            })
+            ->whereBetween('created_at', [
+                $nowIst->copy()->startOfMonth()->setTimezone('UTC'),
+                $nowIst->copy()->endOfMonth()->setTimezone('UTC'),
+            ])
+            ->sum('amount_paise');
     }
 
     /**

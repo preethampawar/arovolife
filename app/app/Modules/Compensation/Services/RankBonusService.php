@@ -64,6 +64,7 @@ final class RankBonusService
         private readonly AogoOfferService $aogo,
         private readonly RankRequalificationGateService $gate,
         private readonly GsbDailyPoolService $gsbPool,
+        private readonly IncomeEligibilityService $eligibility,
     ) {}
 
     /**
@@ -177,6 +178,16 @@ final class RankBonusService
                         continue;
                     }
 
+                    // Repurchase wallet gate: the month being paid must have
+                    // closed with the wallet spent down to ₹0. Recorded as an
+                    // audit row with a ₹0 gross — the qualification happened,
+                    // the money did not, and it is never back-paid.
+                    if (! $this->eligibility->repurchaseWalletZeroedForMonth($distributorId, $monthStart)) {
+                        $this->recordWalletBlocked($distributorId, $monthStart, $rank, $turnoverPaise, $poolPaise, count($payableIds));
+
+                        continue;
+                    }
+
                     $result = RankBonusResult::updateOrCreate(
                         [
                             'distributor_id' => $distributorId,
@@ -201,10 +212,10 @@ final class RankBonusService
 
                     if ($grossPerQualifier > 0) {
                         $rankName = $this->plan->rankName($rank);
-                        $this->wallet->credit(
+                        $this->wallet->creditWithRepurchaseDeduction(
                             distributorId: $distributorId,
-                            amountPaise: $grossPerQualifier,
-                            type: 'rank_credit',
+                            grossPaise: $grossPerQualifier,
+                            bonusType: 'rank_credit',
                             referenceId: $result->id,
                             referenceType: 'rank_bonus_result',
                             memo: $rankName.' Bonus '.$monthStart,
@@ -326,6 +337,42 @@ final class RankBonusService
     }
 
     /**
+     * Record a repurchase-wallet-blocked result: the rank was qualified for the
+     * month but the month closed with an unspent repurchase wallet. Visible in
+     * reports, never credited, never back-paid.
+     */
+    private function recordWalletBlocked(
+        int $distributorId,
+        string $monthStart,
+        int $rank,
+        int $turnoverPaise,
+        int $poolPaise,
+        int $payableCount,
+    ): void {
+        RankBonusResult::updateOrCreate(
+            [
+                'distributor_id' => $distributorId,
+                'month_start' => $monthStart,
+                'rank_number' => $rank,
+            ],
+            [
+                'company_turnover_paise' => $turnoverPaise,
+                'pool_paise' => $poolPaise,
+                'qualifier_count' => $payableCount,
+                'rap_points' => null,
+                'aogo_points' => null,
+                'total_points' => null,
+                'point_value_paise' => null,
+                'gross_paise' => 0,
+                'admin_charge_paise' => 0,
+                'tds_paise' => 0,
+                'net_paise' => 0,
+                'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+            ],
+        );
+    }
+
+    /**
      * Credit one AO-GO grant from the Rank-1 pool: points × point value.
      * Returns the paise credited (0 when already credited or value is 0).
      */
@@ -370,10 +417,10 @@ final class RankBonusService
             return 0;
         }
 
-        $this->wallet->credit(
+        $this->wallet->creditWithRepurchaseDeduction(
             distributorId: $grant->distributor_id,
-            amountPaise: $grossPaise,
-            type: 'rank_credit',
+            grossPaise: $grossPaise,
+            bonusType: 'rank_credit',
             referenceId: $result->id,
             referenceType: 'rank_bonus_result',
             memo: 'AO-GO Offer '.$monthStart,

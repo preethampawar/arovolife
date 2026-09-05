@@ -48,9 +48,16 @@ it('leaves no compensation job untagged', function () {
 
     expect($files)->not->toBeEmpty();
 
+    // Jobs that legitimately run on 'default': they never move money and a
+    // dropped job here causes a status delay, not a missed credit.
+    $defaultQueueJobs = [
+        'ProcessRazorpayPayoutWebhookJob.php', // reconciliation only — see job docblock
+    ];
+
     $untagged = array_values(array_filter(
         $files,
-        fn (string $f) => ! str_contains((string) file_get_contents($f), "onQueue('compensation')")
+        fn (string $f) => ! in_array(basename($f), $defaultQueueJobs, true)
+            && ! str_contains((string) file_get_contents($f), "onQueue('compensation')")
     ));
 
     expect($untagged)->toBe([], 'Compensation jobs missing onQueue(\'compensation\'): '.implode(', ', array_map('basename', $untagged)));

@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\RepurchaseCycle;
+use App\Modules\Compensation\Models\RepurchaseMonthlySnapshot;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Laravel\Pennant\Feature;
 
@@ -99,5 +100,25 @@ final class IncomeEligibilityService
             RepurchaseCycle::STATUS_SUSPENDED => self::BLOCKED,
             default => self::ELIGIBLE,
         };
+    }
+
+    /**
+     * Whether the distributor's repurchase wallet stood at ₹0 at the end of
+     * $cycleMonth, read off the frozen month-end snapshot rather than the live
+     * balance so a re-run of a month's engine can never reach a different
+     * verdict than the run that paid it.
+     *
+     * @param  string  $cycleMonth  first day of the month being judged (YYYY-MM-DD)
+     */
+    public function repurchaseWalletZeroedForMonth(int $distributorId, string $cycleMonth): bool
+    {
+        $snapshot = RepurchaseMonthlySnapshot::query()
+            ->where('distributor_id', $distributorId)
+            ->whereDate('cycle_month', $cycleMonth)
+            ->first();
+
+        // Fail open: a month with no snapshot (the command has not run yet, or
+        // the month predates it) must not silently withhold everyone's income.
+        return $snapshot === null || $snapshot->was_zeroed;
     }
 }

@@ -39,6 +39,9 @@ final class RankBonusResult extends Model
     /** Re-qualified but failed KP §8's requalification conditions — recorded, never credited. */
     public const string STATUS_REQUALIFICATION_HELD = 'requalification_held';
 
+    /** Qualified, but the month closed with an unspent repurchase wallet — recorded, never credited. */
+    public const string STATUS_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
+
     protected $fillable = [
         'distributor_id',
         'month_start',

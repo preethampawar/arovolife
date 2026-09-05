@@ -15,6 +15,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Compensation\Console\Commands\RepurchaseMonthlySnapshotCommand;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -99,6 +100,21 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.carry-forwards.index',
                 cadence: EngineCadence::daily('00:30'),
                 defaultPeriod: 'today',
+            ),
+
+            new EngineDefinition(
+                key: 'repurchase.snapshot',
+                label: 'Repurchase Wallet Snapshot',
+                description: 'Freezes every distributor\'s repurchase wallet balance as it stood at month end. The bonus engines gate on "was the repurchase wallet spent down to ₹0 for that month?". Answering that from the live balance gives a different verdict every time a month is re-run, so the answer is written once on the 1st and every engine reads the same row afterwards. Impact: upserts one repurchase_monthly_snapshots row per distributor with a non-zero repurchase history; changes nothing in the wallet itself.',
+                periodType: EnginePeriodType::Date,
+                commandClass: RepurchaseMonthlySnapshotCommand::class,
+                commandSignature: 'compensation:repurchase-snapshot',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: RepurchaseEngineFeature::class,
+                reportRouteName: 'admin.compensation.carry-forwards.index',
+                cadence: EngineCadence::monthlyOn(1, '00:05'),
+                defaultPeriod: 'prev-month',
             ),
 
             new EngineDefinition(

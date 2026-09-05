@@ -22,6 +22,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Compensation\Console\Commands\RepurchaseMonthlySnapshotCommand;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
@@ -174,6 +175,7 @@ class AppServiceProvider extends ServiceProvider
                 MonthlyPayoutCommand::class,
                 AutoRetryFailedPayoutsCommand::class,
                 RepurchaseEvaluateCommand::class,
+                RepurchaseMonthlySnapshotCommand::class,
                 PaymentsReconcileCommand::class,
                 ExpireUnpaidOrdersCommand::class,
                 PaymentsRedactEventsCommand::class,

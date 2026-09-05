@@ -388,10 +388,10 @@ final class FortuneBonusService
                         .' '.$monthStart;
                 }
 
-                $this->wallet->credit(
+                $this->wallet->creditWithRepurchaseDeduction(
                     distributorId: $distributorId,
-                    amountPaise: $gross,
-                    type: 'fortune_credit',
+                    grossPaise: $gross,
+                    bonusType: 'fortune_credit',
                     referenceId: $result->id,
                     referenceType: 'fortune_bonus_result',
                     memo: $memo,

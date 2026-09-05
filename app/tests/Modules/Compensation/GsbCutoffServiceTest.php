@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
@@ -240,7 +241,9 @@ it('is idempotent — second call returns existing credited result', function ()
     $r2 = $svc->runForDistributor($dist->id, Carbon::today());
 
     expect($r1->id)->toBe($r2->id);
-    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
+    // One gross credit only; the accompanying repurchase transfer/deduction
+    // pair rides on the same credit and is not a second bonus.
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gsb_credit')->count())->toBe(1);
 });
 
 it('frozen run advances carry-forward so unfreeze does not double-credit', function () {
@@ -281,8 +284,8 @@ it('frozen run advances carry-forward so unfreeze does not double-credit', funct
 
     $credited = $svc->runForDistributor($dist->id, $tomorrow);
     expect($credited->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
-    // Exactly one wallet entry — no double-credit.
-    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
+    // Exactly one gross credit — no double-credit.
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gsb_credit')->count())->toBe(1);
 });
 
 it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
@@ -371,14 +374,14 @@ it('retries after failure and credits exactly once', function () {
 
     app()->bind(WalletService::class, function () use (&$shouldThrow) {
         if ($shouldThrow) {
-            return new class extends WalletService
+            return new class(app(CompensationPlanSettingsService::class)) extends WalletService
             {
-                public function credit(
+                public function creditWithRepurchaseDeduction(
                     int $distributorId,
-                    int $amountPaise,
-                    string $type,
-                    ?int $referenceId = null,
-                    ?string $referenceType = null,
+                    int $grossPaise,
+                    string $bonusType,
+                    int $referenceId,
+                    string $referenceType,
                     ?string $memo = null,
                 ): WalletLedgerEntry {
                     throw new RuntimeException('Payment gateway timeout');
@@ -386,7 +389,7 @@ it('retries after failure and credits exactly once', function () {
             };
         }
 
-        return new WalletService;
+        return new WalletService(app(CompensationPlanSettingsService::class));
     });
 
     $svc = app(GsbCutoffService::class);
@@ -407,7 +410,7 @@ it('retries after failure and credits exactly once', function () {
     $svc2 = app(GsbCutoffService::class);
     $credited = $svc2->runForDistributor($dist->id, Carbon::today());
     expect($credited->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
-    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(1);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gsb_credit')->count())->toBe(1);
 });
 
 it('re-running a no_match day does not compound carry-forward (retry is idempotent)', function () {

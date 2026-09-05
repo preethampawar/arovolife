@@ -307,11 +307,23 @@ final class GsbCutoffService
             ? IncomeEligibilityService::ELIGIBLE
             : $this->eligibility->statusFor($distributorId, BonusType::Gsb);
 
+        // Repurchase wallet gate: the wallet must have been spent down to ₹0 by
+        // the end of the PREVIOUS calendar month. Read off the frozen month-end
+        // snapshot, and fail-open while no snapshot exists. Frozen distributors
+        // are exempt for the same reason they skip the eligibility read — their
+        // branch never credits anyway.
+        $walletBlocked = ! $isFrozen && ! $this->eligibility->repurchaseWalletZeroedForMonth(
+            $distributorId,
+            $date->copy()->timezone('Asia/Kolkata')->startOfMonth()->subMonthNoOverflow()->toDateString(),
+        );
+
         return new GsbCutoffComputation(
             distributorId: $distributorId,
             date: $date,
             existing: $existing,
-            outcome: GsbCutoffComputation::OUTCOME_MATCHED,
+            outcome: $walletBlocked
+                ? GsbCutoffComputation::OUTCOME_REPURCHASE_WALLET_BLOCKED
+                : GsbCutoffComputation::OUTCOME_MATCHED,
             isFrozen: $isFrozen,
             eligibility: $eligibility,
             personalBvPaise: $personalBvPaise,
@@ -501,6 +513,26 @@ final class GsbCutoffService
             });
         }
 
+        // Repurchase wallet gate: the previous calendar month closed with an
+        // unspent repurchase wallet, so the day's match is recorded but not
+        // paid. CF advances exactly as in the frozen path — the weaker side has
+        // been consumed by the match either way, and letting it phantom-
+        // accumulate would double-credit it the day the gate clears.
+        if ($computation->outcome === GsbCutoffComputation::OUTCOME_REPURCHASE_WALLET_BLOCKED) {
+            return DB::transaction(function () use ($cf, $computation, $existing, $baseData): GsbCutoffResult {
+                $cf->update([
+                    'power_side_bv_paise' => $computation->newPowerCf,
+                    'power_side' => $computation->strongerSide,
+                    'slab1_weaker_bv_paise' => 0,
+                ]);
+
+                return $this->saveResult($existing, [
+                    ...$baseData,
+                    'status' => GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
+                ]);
+            });
+        }
+
         // Repurchase engine (flag-gated): if the distributor missed their
         // repurchase, calculate but do not credit — held during grace,
         // suspended after. CF is advanced identically to the frozen path so the
@@ -543,10 +575,10 @@ final class GsbCutoffService
                 // A starved pool day can price a matched slab 3–7 at ₹0 — the
                 // weaker leg is still consumed, but a zero wallet entry is noise.
                 if ($gross > 0) {
-                    $this->wallet->credit(
+                    $this->wallet->creditWithRepurchaseDeduction(
                         distributorId: $distributorId,
-                        amountPaise: $gross,
-                        type: 'gsb_credit',
+                        grossPaise: $gross,
+                        bonusType: 'gsb_credit',
                         referenceId: $savedResult->id,
                         referenceType: 'gsb_cutoff_result',
                     );

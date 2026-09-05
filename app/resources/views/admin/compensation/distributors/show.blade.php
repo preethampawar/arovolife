@@ -61,13 +61,15 @@
             </p>
             <p class="text-lg font-bold text-blue-700 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBalance / 100, 2) }}</p>
         </div>
+        @if($repurchaseOn)
         <div class="rounded-xl border border-gray-200 p-3">
             <p class="text-[10px] uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 Repurchase wallet
-                <x-help-tip text="10% of prior-month bonus income (max ₹10,000) withheld each payout into this wallet. Applied automatically at checkout toward the monthly repurchase obligation. Cannot be withdrawn." />
+                <x-help-tip text="10% of bonus income withheld at credit time into this wallet. Applied automatically at checkout toward the monthly repurchase obligation. Cannot be withdrawn." />
             </p>
             <p class="text-lg font-bold {{ $repurchaseWalletBalance > 0 ? 'text-green-700' : 'text-gray-700' }} mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseWalletBalance / 100, 2) }}</p>
         </div>
+        @endif
     </div>
 
     {{-- Carry-forward state (GSB engine concept — hidden with the flag) --}}

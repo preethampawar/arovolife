@@ -112,6 +112,7 @@
                             'fortune_credit' => 'Fortune Bonus',
                             'adc_credit' => 'ADC Bonus',
                             'payout_debit' => 'Payout to bank',
+                            'repurchase_transfer' => 'Repurchase obligation (bonus deduction)',
                             'income_cap_forfeit' => 'Monthly income cap',
                             'manual_credit' => 'Manual adjustment',
                         ];
@@ -166,7 +167,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-gray-700">
-                            {{ $entry->type === 'repurchase_deduction' ? 'Deduction from payout' : 'Credit applied at checkout' }}
+                            {{ $entry->type === 'repurchase_deduction' ? 'Repurchase deduction' : 'Credit applied at checkout' }}
                             @if($entry->memo)
                                 <span class="block text-xs text-gray-500">{{ $entry->memo }}</span>
                             @endif

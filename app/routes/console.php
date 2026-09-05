@@ -12,6 +12,7 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Compensation\Console\Commands\RepurchaseMonthlySnapshotCommand;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
 use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
@@ -31,6 +32,17 @@ Artisan::command('inspire', function () {
 // command.
 Schedule::command(RepurchaseEvaluateCommand::class)
     ->dailyAt('00:30')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Repurchase wallet month-end snapshot — 1st of each month at 00:05 IST, for
+// the month that has just closed. It runs before every engine that reads it:
+// the GSB cut-off at 00:10 the same morning, GBB on the 2nd, Rank on the 8th,
+// Fortune on the 9th. Without the row the gate fails open, so the ordering is
+// what makes the gate mean anything at all.
+Schedule::command(RepurchaseMonthlySnapshotCommand::class)
+    ->monthlyOn(1, '00:05')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
