@@ -56,6 +56,7 @@
             <table class="w-full text-sm min-w-[700px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center gap-1">Sponsee ADN <x-help-tip text="Your directly sponsored distributor's ADN, partially masked for privacy." /></span>
                         </th>
@@ -74,6 +75,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($rows as $row)
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-mono text-gray-700">
                             {{ $row->sponsee_adn }}
                         </td>

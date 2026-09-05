@@ -33,6 +33,7 @@
     <table class="min-w-full text-xs">
         <thead>
             <tr class="border-b border-gray-100 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                <th class="px-4 py-3 text-left w-12">S.No.</th>
                 <th class="px-4 py-3">Engine</th>
                 <th class="px-4 py-3">Period</th>
                 <th class="px-4 py-3">Status</th>
@@ -63,6 +64,7 @@
                 $ledgerCommittedByFailedRun = $ledgerEntries > 0 && $run->status === EngineRun::STATUS_FAILED;
             @endphp
             <tr class="text-gray-600 align-top">
+                <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $runs->firstItem() + $loop->index }}</td>
                 <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ $definition?->label ?? $run->engine_key }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ $definition?->displayPeriod($run->period_start) ?? $run->period_start->toDateString() }}</td>
                 <td class="px-4 py-3"><span class="inline-flex px-2 py-0.5 rounded font-medium {{ $pill[0] }}">{{ $pill[1] }}</span></td>

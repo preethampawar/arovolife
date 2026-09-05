@@ -42,6 +42,7 @@
             <table class="w-full text-xs">
                 @foreach($purchaseResetRowCounts as $table => $count)
                 <tr>
+                    <td class="py-0.5 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="py-0.5 font-mono text-gray-600">{{ $table }}</td>
                     <td class="py-0.5 text-right font-medium text-gray-900">
                         {{ \App\Modules\Shared\Support\IndianNumber::format($count) }}
@@ -132,6 +133,7 @@
             <table class="w-full text-xs">
                 @foreach($recomputeRowCounts as $table => $count)
                 <tr>
+                    <td class="py-0.5 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="py-0.5 font-mono text-gray-600">{{ $table }}</td>
                     <td class="py-0.5 text-right font-medium text-gray-900">
                         {{ \App\Modules\Shared\Support\IndianNumber::format($count) }}

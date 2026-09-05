@@ -36,6 +36,7 @@
             <table class="w-full font-mono text-gray-700">
                 <thead>
                     <tr class="text-gray-500 font-sans">
+                        <th class="text-left font-medium pb-1 w-12">S.No.</th>
                         <th class="text-left font-medium pb-1">Rank</th>
                         <th class="text-right font-medium pb-1">Milestones</th>
                         <th class="text-right font-medium pb-1">Budget each</th>
@@ -46,6 +47,7 @@
                 <tbody>
                     @foreach($aw['ranks'] as $r)
                     <tr>
+                        <td class="py-0.5 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="py-0.5">{{ $r['name'] }}</td>
                         <td class="py-0.5 text-right">{{ $num($r['milestones']) }}</td>
                         <td class="py-0.5 text-right">{{ $inr($r['budget_paise'], 0) }}</td>

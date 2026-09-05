@@ -10,6 +10,7 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Date &amp; Time</th>
                 <th class="px-3 py-2 text-left text-gray-600">Type</th>
                 <th class="px-3 py-2 text-left text-gray-600">Order</th>
@@ -19,6 +20,7 @@
         <tbody class="divide-y divide-gray-50">
             @foreach($rows as $row)
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                 <td class="px-3 py-2 font-medium">{{ $row->effective_at->format('d M Y, H:i') }}</td>
                 <td class="px-3 py-2">
                     @if($row->type === 'accrual')

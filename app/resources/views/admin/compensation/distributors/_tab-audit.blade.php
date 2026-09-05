@@ -10,6 +10,7 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">When</th>
                 <th class="px-3 py-2 text-left text-gray-600">Action</th>
                 <th class="px-3 py-2 text-left text-gray-600">By</th>
@@ -19,6 +20,7 @@
         <tbody class="divide-y divide-gray-50">
             @foreach($auditRows as $row)
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $auditRows->firstItem() + $loop->index }}</td>
                 <td class="px-3 py-2 text-gray-600">{{ $row->created_at?->diffForHumans() }}</td>
                 <td class="px-3 py-2 font-mono">{{ $row->action }}</td>
                 <td class="px-3 py-2">{{ $row->actor?->full_name ?? $row->actor_id ?? '—' }}</td>

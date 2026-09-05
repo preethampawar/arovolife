@@ -42,6 +42,7 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Entry</th>
                 <th class="px-3 py-2 text-left text-gray-600">Order</th>
                 <th class="px-3 py-2 text-left text-gray-600">Buyer</th>
@@ -52,7 +53,7 @@
         <tbody class="divide-y divide-gray-50">
             @foreach($days as $day)
             <tr class="bg-gray-50/70">
-                <td colspan="5" class="px-3 py-1.5 font-semibold text-gray-600">
+                <td colspan="6" class="px-3 py-1.5 font-semibold text-gray-600">
                     {{ \Illuminate\Support\Carbon::parse($day->date)->format('d M Y') }}
                 </td>
             </tr>
@@ -60,15 +61,17 @@
                 $showCredits  = ($entryType ?? null) !== 'reversals';
                 $showReversals = ($entryType ?? null) !== 'credits';
                 $visibleCount = ($showCredits ? count($day->credits) : 0) + ($showReversals ? count($day->reversals) : 0);
+                $entryNo = 0;
             @endphp
             @if($visibleCount === 0)
             <tr>
-                <td colspan="5" class="px-3 py-2 text-gray-600 italic">No {{ ($entryType ?? null) === 'credits' ? 'credit' : (($entryType ?? null) === 'reversals' ? 'reversal' : 'Genos BV') }} entries this day.</td>
+                <td colspan="6" class="px-3 py-2 text-gray-600 italic">No {{ ($entryType ?? null) === 'credits' ? 'credit' : (($entryType ?? null) === 'reversals' ? 'reversal' : 'Genos BV') }} entries this day.</td>
             </tr>
             @endif
             @if($showCredits)
             @foreach($day->credits as $credit)
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ ++$entryNo }}</td>
                 <td class="px-3 py-2 text-gray-600">
                     Order BV credit
                     @if($credit->debt_consumed_paise > 0)
@@ -96,6 +99,7 @@
             @if($showReversals)
             @foreach($day->reversals as $reversal)
             <tr class="bg-red-50/40">
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ ++$entryNo }}</td>
                 <td class="px-3 py-2 text-red-700">
                     Order BV reversal
                     @if($reversal->debt_paise > 0)
@@ -126,7 +130,7 @@
                 $b = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'failed' => 'bg-red-100 text-red-700', 'no_match' => 'bg-gray-100 text-gray-600', 'frozen' => 'bg-blue-100 text-blue-700', 'below_600bv' => 'bg-amber-100 text-amber-700'];
             @endphp
             <tr class="bg-purple-50/60">
-                <td colspan="3" class="px-3 py-2 text-purple-800">
+                <td colspan="4" class="px-3 py-2 text-purple-800">
                     <span class="font-semibold">Cut-off settlement</span>
                     <span class="inline-flex ml-2 px-2 py-0.5 rounded text-[10px] font-medium {{ $b[$c->status] ?? 'bg-gray-100 text-gray-600' }}">{{ str_replace('_', ' ', $c->status) }}</span>
                     @if($c->slab)
@@ -141,7 +145,7 @@
             </tr>
             @else
             <tr class="bg-purple-50/40">
-                <td colspan="5" class="px-3 py-2 text-purple-400 italic">Cut-off not run yet for this day.</td>
+                <td colspan="6" class="px-3 py-2 text-purple-400 italic">Cut-off not run yet for this day.</td>
             </tr>
             @endif
             @endforeach

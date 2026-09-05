@@ -36,6 +36,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-3 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-600">Name</th>
                     <th class="px-3 py-2 text-right text-gray-600">Order</th>
@@ -52,6 +53,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($rows as $row)
                 <tr class="{{ $row->reversed_at ? 'bg-red-50/40' : '' }}">
+                    <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
                            class="text-brand-700 hover:underline">

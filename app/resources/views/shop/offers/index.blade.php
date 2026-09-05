@@ -86,6 +86,7 @@
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="text-left text-xs uppercase tracking-wider text-gray-600">
                         <tr>
+                            <th class="py-2 pr-4 w-12">S.No.</th>
                             <th class="py-2 pr-4">Month</th>
                             <th class="py-2 pr-4">Offer</th>
                             <th class="py-2 pr-4">Earned on</th>
@@ -95,6 +96,7 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach ($grants as $grant)
                             <tr>
+                                <td class="py-2 pr-4 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                                 <td class="py-2 pr-4 text-gray-900">{{ $grant->month_start->format('M Y') }}</td>
                                 <td class="py-2 pr-4 text-gray-700">{{ $grant->offer_type->label() }}</td>
                                 <td class="py-2 pr-4 text-gray-600">@bv($grant->qualifying_bv_paise / 100) BV</td>

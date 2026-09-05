@@ -16,6 +16,7 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-200">
+                        <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
                         <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase">Product</th>
                         <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Qty</th>
                         <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Price</th>
@@ -27,6 +28,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($order->items as $it)
                     <tr>
+                        <td class="py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="py-2">
                             <p class="text-gray-900 font-medium">{{ $it->product_name_snapshot }}</p>
                             <p class="text-xs text-gray-600 font-mono">{{ $it->variant_sku_snapshot }} · HSN {{ $it->hsn_code_snapshot }}</p>

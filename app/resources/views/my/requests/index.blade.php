@@ -37,6 +37,7 @@
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                     <tr>
+                        <th class="px-4 py-3 w-12">S.No.</th>
                         <th class="px-4 py-3">Number</th>
                         <th class="px-4 py-3">Request</th>
                         <th class="px-4 py-3">Requested</th>
@@ -47,6 +48,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($requests as $item)
                     <tr>
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 font-mono"><a href="{{ route('my.requests.show', $item) }}" class="text-brand-700 hover:text-brand-800">{{ $item->request_no }}</a></td>
                         <td class="px-4 py-3">{{ $item->typeLabel() }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $item->requestedSummary() }}</td>

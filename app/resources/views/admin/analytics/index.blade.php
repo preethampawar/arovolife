@@ -139,6 +139,7 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead>
                 <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600">
+                    <th class="py-2 pr-4 w-12">S.No.</th>
                     <th class="py-2 pr-4">Month</th>
                     <th class="py-2 pr-4">Buyers</th>
                     <th class="py-2 pr-4">Returning</th>
@@ -148,6 +149,7 @@
             <tbody class="divide-y divide-gray-100">
                 @foreach ($retention as $row)
                     <tr>
+                        <td class="py-2 pr-4 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="py-2 pr-4 font-medium text-gray-800">{{ $row['month'] }}</td>
                         <td class="py-2 pr-4 text-gray-600">{{ IndianNumber::format($row['buyers']) }}</td>
                         <td class="py-2 pr-4 text-gray-600">{{ IndianNumber::format($row['returning']) }}</td>
@@ -180,6 +182,7 @@
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead>
                     <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600">
+                        <th class="py-2 pr-4 w-12">S.No.</th>
                         <th class="py-2 pr-4">ADN</th>
                         <th class="py-2 pr-4">Name</th>
                         <th class="py-2 pr-4">BV</th>
@@ -190,6 +193,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($topByVolume as $row)
                         <tr class="hover:bg-gray-50">
+                            <td class="py-2 pr-4 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                             <td class="py-2 pr-4 font-mono text-xs">
                                 <a href="{{ route('admin.distributors.show', $row['distributor_id']) }}"
                                    class="text-brand-700 hover:underline">{{ $row['adn'] }}</a>

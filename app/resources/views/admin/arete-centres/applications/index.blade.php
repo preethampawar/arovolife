@@ -58,6 +58,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Submitted</th>
                     <th class="px-4 py-2 text-left text-gray-600">Proposed centre</th>
                     <th class="px-4 py-2 text-left text-gray-600">City · State</th>
@@ -70,6 +71,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($applications as $app)
                 <tr>
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $applications->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 text-gray-600 whitespace-nowrap">{{ $app->submitted_at?->timezone('Asia/Kolkata')->format('d M Y') ?? '—' }}</td>
                     <td class="px-4 py-2 font-medium">{{ $app->centre_name }}</td>
                     <td class="px-4 py-2 text-gray-600">{{ $app->city }} · {{ $app->state }}</td>

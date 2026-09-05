@@ -10,6 +10,7 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Date</th>
                 <th class="px-3 py-2 text-left text-gray-600">Sponsee ADN <x-help-tip text="The downline distributor whose GSB slab achievement triggered this Mentorship Bonus." /></th>
                 <th class="px-3 py-2 text-center text-gray-600">Slab <x-help-tip text="The GSB slab the sponsee matched on this date." /></th>
@@ -22,6 +23,7 @@
         <tbody class="divide-y divide-gray-50">
             @foreach($rows as $row)
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                 <td class="px-3 py-2 font-medium">{{ $row->cutoff_date->format('d M Y') }}</td>
                 <td class="px-3 py-2 font-mono">{{ $row->sponsee->adn ?? '—' }}</td>
                 <td class="px-3 py-2 text-center">

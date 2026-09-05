@@ -31,6 +31,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-3 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-3 py-2 text-right text-gray-600">
                         Power-side CF
@@ -58,6 +59,7 @@
                     $atCap = $row->power_side_bv_paise >= $cap;
                 @endphp
                 <tr class="{{ $atCap ? 'bg-red-50' : '' }}">
+                    <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
                            class="text-brand-700 hover:underline">

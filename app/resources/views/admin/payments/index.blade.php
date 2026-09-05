@@ -22,10 +22,11 @@
     <p class="font-semibold mb-2"><strong>{{ $invoiceGapCount }}</strong> paid order{{ $invoiceGapCount === 1 ? '' : 's' }} without a GST invoice</p>
     <p class="text-xs text-red-800 mb-3">The payment was confirmed but the invoice failed to generate. A tax invoice must be issued for every supply (CGST §31); issue it here — the next consecutive number is allocated, never a duplicate.</p>
     <table class="w-full text-sm bg-white rounded-lg border border-red-200">
-        <thead><tr class="text-left text-xs text-gray-600 uppercase border-b border-red-200"><th class="px-3 py-2">Order</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Paid</th><th class="px-3 py-2 text-right">Total</th><th></th></tr></thead>
+        <thead><tr class="text-left text-xs text-gray-600 uppercase border-b border-red-200"><th class="px-3 py-2 w-12">S.No.</th><th class="px-3 py-2">Order</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Paid</th><th class="px-3 py-2 text-right">Total</th><th></th></tr></thead>
         <tbody class="divide-y divide-red-100">
         @foreach($invoiceGaps as $gapOrder)
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-3 py-2"><a href="{{ route('admin.commerce.orders.show', $gapOrder) }}" class="text-brand-700 font-mono text-xs">{{ $gapOrder->order_no }}</a></td>
                 <td class="px-3 py-2 text-gray-700">{{ $gapOrder->customer->display_name ?? '—' }}</td>
                 <td class="px-3 py-2 text-xs text-gray-600">{{ $gapOrder->paid_at?->format('d M Y H:i') }}</td>
@@ -70,6 +71,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Order</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Customer</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Gateway</th>
@@ -92,6 +94,7 @@
                 };
             @endphp
             <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $intents->firstItem() + $loop->index }}</td>
                 <td class="px-4 py-3">
                     <a href="{{ route('admin.commerce.orders.show', $intent->order) }}" class="text-brand-700 hover:text-brand-800 font-mono text-xs">{{ $intent->order->order_no }}</a>
                 </td>
@@ -108,7 +111,7 @@
                 <td class="px-4 py-3 text-right"><a href="{{ route('admin.payments.show', $intent) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Timeline →</a></td>
             </tr>
             @empty
-            <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-600">No payment intents match.</td></tr>
+            <tr><td colspan="10" class="px-4 py-8 text-center text-sm text-gray-600">No payment intents match.</td></tr>
             @endforelse
         </tbody>
     </table>

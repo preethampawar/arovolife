@@ -31,6 +31,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">RMA</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Order</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Customer</th>
@@ -60,6 +61,7 @@
                 };
             @endphp
             <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $returns->firstItem() + $loop->index }}</td>
                 <td class="px-4 py-3 font-mono text-xs">{{ $rtn->rma_no }}</td>
                 <td class="px-4 py-3">
                     <a href="{{ route('admin.commerce.orders.show', $rtn->order) }}"
@@ -87,7 +89,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">No return requests found.</td>
+                <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-600">No return requests found.</td>
             </tr>
             @endforelse
         </tbody>

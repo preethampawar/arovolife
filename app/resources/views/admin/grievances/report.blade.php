@@ -103,6 +103,7 @@
     <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
             <tr>
+                <th class="px-4 py-3 w-12">S.No.</th>
                 <th class="px-4 py-3">Month</th>
                 <th class="px-4 py-3">Received</th>
                 <th class="px-4 py-3">Resolved</th>
@@ -116,6 +117,7 @@
         <tbody class="divide-y divide-gray-100">
             @foreach ($trailing as $row)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="px-4 py-3 font-medium text-gray-800">{{ $row['month'] }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $row['received'] }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $row['resolved'] }}</td>

@@ -38,6 +38,7 @@
             <table class="w-full text-sm min-w-[540px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Order</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Type</th>
@@ -54,6 +55,7 @@
                         $isReversal = $entry->type === 'reversal';
                     @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $entries->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ $entry->effective_at->format('d M Y') }}</td>
                         <td class="px-4 py-3">
                             @if($entry->order !== null)

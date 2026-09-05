@@ -18,6 +18,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Month</th>
                     <th class="px-4 py-2 text-right text-gray-600">
                         Distributors <x-help-tip text="Number of eligible distributors who earned at least 1 AGP." />
@@ -33,6 +34,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($months as $m)
                 <tr>
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->year_month)->format('F Y') }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->distributor_count) }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_agp) }}</td>

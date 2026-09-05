@@ -14,6 +14,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Order</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Customer</th>
                 <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase">Amount</th>
@@ -28,6 +29,7 @@
             @forelse($refunds as $refund)
             @php $c = $classify($refund); @endphp
             <tr class="{{ $c['escalated'] ? 'bg-red-50' : ($c['overdue'] ? 'bg-amber-50' : 'hover:bg-gray-50') }}">
+                <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-4 py-3"><a href="{{ route('admin.commerce.orders.show', $refund->order) }}" class="text-brand-700 font-mono text-xs">{{ $refund->order->order_no }}</a></td>
                 <td class="px-4 py-3 text-gray-700">{{ $refund->order->customer->display_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($refund->amount_paise / 100, 2) }}</td>
@@ -64,7 +66,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">No unsettled refunds.</td></tr>
+            <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-600">No unsettled refunds.</td></tr>
             @endforelse
         </tbody>
     </table>
@@ -76,6 +78,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Order</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Customer</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Paid by</th>
@@ -89,6 +92,7 @@
             @forelse($manualRefunds as $manualOrder)
             @php $owedPaise = $owed($manualOrder); $manualDays = (int) ($manualOrder->refund_approved_at ?? $manualOrder->updated_at)->diffInWeekdays(now()); @endphp
             <tr class="{{ $manualDays >= \App\Modules\Payments\Support\RefundWorklist::PROMISE_BUSINESS_DAYS ? 'bg-amber-50' : 'hover:bg-gray-50' }}">
+                <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-4 py-3"><a href="{{ route('admin.commerce.orders.show', $manualOrder) }}" class="text-brand-700 font-mono text-xs">{{ $manualOrder->order_no }}</a></td>
                 <td class="px-4 py-3 text-gray-700">{{ $manualOrder->customer->display_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-gray-700">{{ str_replace('_', ' ', $manualOrder->payment_method) }}</td>
@@ -112,7 +116,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-600">None owed outside the gateway.</td></tr>
+            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">None owed outside the gateway.</td></tr>
             @endforelse
         </tbody>
     </table>
@@ -124,6 +128,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">RMA</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Order</th>
                 <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Customer</th>
@@ -137,6 +142,7 @@
             @forelse($awaitingReceipt as $rq)
             @php $days = (int) $rq->entitlements_held_at->diffInDays(now()); @endphp
             <tr class="{{ $rq->hold_escalated_at ? 'bg-red-50' : ($rq->hold_alert_sent_at ? 'bg-amber-50' : 'hover:bg-gray-50') }}">
+                <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-4 py-3 font-mono text-xs">{{ $rq->rma_no }}</td>
                 <td class="px-4 py-3"><a href="{{ route('admin.commerce.orders.show', $rq->order) }}" class="text-brand-700 font-mono text-xs">{{ $rq->order->order_no }}</a></td>
                 <td class="px-4 py-3 text-gray-700">{{ $rq->order->customer->display_name ?? '—' }}</td>
@@ -146,7 +152,7 @@
                 <td class="px-4 py-3 text-right"><a href="{{ route('admin.returns.show', $rq) }}" class="text-sm text-brand-700 hover:underline">Open return →</a></td>
             </tr>
             @empty
-            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-600">None waiting.</td></tr>
+            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">None waiting.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -62,6 +62,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50">
+                    <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider w-12">S.No.</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">When</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Order #</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
@@ -74,6 +75,7 @@
                 @forelse($entries as $e)
                 @php $running += $e->bv_paise; @endphp
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $entries->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{{ $e->effective_at?->format('d M Y H:i') ?? '—' }}</td>
                     <td class="px-4 py-3 font-mono text-xs">
                         @if($e->order)
@@ -93,7 +95,7 @@
                     <td class="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">@bv($running)</td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-600">No BV entries for this distributor{{ $ranged ? ' in this range' : '' }}.</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-sm text-gray-600">No BV entries for this distributor{{ $ranged ? ' in this range' : '' }}.</td></tr>
                 @endforelse
             </tbody>
         </table>

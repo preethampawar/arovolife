@@ -49,6 +49,7 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Cycle</th>
                 <th class="px-3 py-2 text-left text-gray-600">Due</th>
                 <th class="px-3 py-2 text-left text-gray-600">Grace ends</th>
@@ -60,6 +61,7 @@
         <tbody class="divide-y divide-gray-50">
             @foreach($rows as $cycle)
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                 <td class="px-3 py-2 font-medium">{{ $cycle->cycle_start_date?->format('d M Y') ?? '—' }}</td>
                 <td class="px-3 py-2">{{ $cycle->due_date?->format('d M Y') ?? '—' }}</td>
                 <td class="px-3 py-2 text-gray-600">{{ $cycle->grace_end_date?->format('d M Y') ?? '—' }}</td>

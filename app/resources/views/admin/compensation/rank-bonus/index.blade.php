@@ -18,6 +18,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Month</th>
                     <th class="px-4 py-2 text-right text-gray-600">Distributors credited</th>
                     <th class="px-4 py-2 text-right text-gray-600">Net credited</th>
@@ -28,6 +29,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($months as $m)
                 <tr>
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->month_start)->format('F Y') }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->qualifier_count) }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_net_paise / 100, 2) }}</td>

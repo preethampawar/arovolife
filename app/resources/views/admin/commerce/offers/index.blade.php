@@ -127,6 +127,7 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                 <tr>
+                    <th class="px-4 py-3 w-12">S.No.</th>
                     <th class="px-4 py-3">ADN</th>
                     <th class="px-4 py-3">Distributor</th>
                     <th class="px-4 py-3">Offer</th>
@@ -138,6 +139,7 @@
             <tbody class="divide-y divide-gray-100">
                 @foreach ($grants as $grant)
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $grants->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-mono text-xs">
                             <a href="{{ route('admin.distributors.show', $grant->distributor_id) }}"
                                class="text-brand-700 underline hover:text-brand-800">{{ $grant->distributor?->adn }}</a>

@@ -86,6 +86,7 @@
             <table class="w-full text-sm border-t border-gray-200">
                 <thead>
                     <tr class="text-[11px] uppercase tracking-wider text-gray-600">
+                        <th class="text-left font-semibold py-2 w-12">S.No.</th>
                         <th class="text-left font-semibold py-2">Item</th>
                         <th class="text-left font-semibold py-2">HSN</th>
                         <th class="text-right font-semibold py-2">Qty</th>
@@ -97,6 +98,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($order->items as $item)
                     <tr>
+                        <td class="py-2 pr-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="py-2 pr-2 text-gray-900">
                             {{ $item->product_name_snapshot }}
                             <span class="block text-[11px] text-gray-600 font-mono">{{ $item->variant_sku_snapshot }}</span>
@@ -139,6 +141,7 @@
                     <table class="min-w-full text-xs border border-gray-200">
                         <thead class="bg-gray-50 text-left text-gray-600">
                             <tr>
+                                <th class="px-2 py-1.5 border-b border-gray-200 w-12">S.No.</th>
                                 <th class="px-2 py-1.5 border-b border-gray-200">HSN</th>
                                 <th class="px-2 py-1.5 border-b border-gray-200 text-right">Qty</th>
                                 <th class="px-2 py-1.5 border-b border-gray-200 text-right">Taxable value</th>
@@ -154,6 +157,7 @@
                         <tbody>
                             @foreach ($invoice->lines as $line)
                                 <tr>
+                                    <td class="px-2 py-1.5 border-b border-gray-100 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                                     <td class="px-2 py-1.5 border-b border-gray-100 font-mono">{{ $line->hsn_code }}</td>
                                     <td class="px-2 py-1.5 border-b border-gray-100 text-right">{{ $line->qty }}</td>
                                     <td class="px-2 py-1.5 border-b border-gray-100 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($line->taxable_value_paise / 100, 2) }}</td>

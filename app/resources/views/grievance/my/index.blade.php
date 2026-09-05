@@ -33,6 +33,7 @@
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                     <tr>
+                        <th class="px-4 py-3 w-12">S.No.</th>
                         <th class="px-4 py-3">Number</th>
                         <th class="px-4 py-3">Subject</th>
                         <th class="px-4 py-3">Category</th>
@@ -44,6 +45,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach ($tickets as $ticket)
                         <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $tickets->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3 font-mono text-xs">
                                 <a href="{{ route('my.grievances.show', $ticket->id) }}" class="font-semibold text-brand-700 underline">
                                     {{ $ticket->ticket_no }}

@@ -230,6 +230,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
             <table class="w-full text-xs">
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50">
+                        <th class="text-left px-5 py-2 text-gray-500 font-medium w-12">S.No.</th>
                         <th class="text-left px-5 py-2 text-gray-500 font-medium">Key</th>
                         <th class="text-left px-5 py-2 text-gray-500 font-medium">Value</th>
                         <th class="text-left px-5 py-2 text-gray-500 font-medium">Ver</th>
@@ -238,6 +239,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                 <tbody class="divide-y divide-gray-100">
                     @foreach($settings as $setting)
                     <tr>
+                        <td class="px-5 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="px-5 py-2 font-mono text-gray-500 break-all">{{ $setting->key }}</td>
                         <td class="px-5 py-2 font-mono text-brand-700 break-all">{{ $setting->value }}</td>
                         <td class="px-5 py-2 text-gray-400">v{{ $setting->version }}</td>

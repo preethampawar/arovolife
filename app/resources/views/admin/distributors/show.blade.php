@@ -472,6 +472,7 @@ function unmaskNomineeAadhaar(btn) {
     <table class="w-full text-sm">
         <thead>
             <tr class="border-b border-gray-200 bg-gray-50/50">
+                <th class="text-left px-4 py-2 text-xs text-gray-700 w-12">S.No.</th>
                 <th class="text-left px-4 py-2 text-xs text-gray-700">Document</th>
                 <th class="text-left px-4 py-2 text-xs text-gray-700">Version</th>
                 <th class="text-left px-4 py-2 text-xs text-gray-700">Accepted At</th>
@@ -481,6 +482,7 @@ function unmaskNomineeAadhaar(btn) {
         <tbody class="divide-y divide-gray-800">
             @foreach($consents as $c)
             <tr>
+                <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-4 py-2 font-medium text-gray-800">{{ strtoupper($c->document_type) }}</td>
                 <td class="px-4 py-2 font-mono text-gray-800 text-xs">{{ $c->document_version }}</td>
                 <td class="px-4 py-2 text-gray-800 text-xs">{{ $c->accepted_at }}</td>

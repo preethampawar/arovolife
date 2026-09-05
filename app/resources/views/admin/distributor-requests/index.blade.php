@@ -55,6 +55,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Filed</th>
                     <th class="px-4 py-2 text-left text-gray-600">Number</th>
                     <th class="px-4 py-2 text-left text-gray-600">Type</th>
@@ -67,6 +68,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($requests as $item)
                 <tr>
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $requests->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 text-gray-600 whitespace-nowrap">{{ $item->submitted_at?->timezone('Asia/Kolkata')->format('d M Y') ?? '—' }}</td>
                     <td class="px-4 py-2 font-mono">{{ $item->request_no }}</td>
                     <td class="px-4 py-2 font-medium">{{ $item->typeLabel() }}</td>

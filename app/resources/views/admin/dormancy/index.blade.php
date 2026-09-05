@@ -64,6 +64,7 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-600">
                 <tr>
+                    <th class="px-4 py-3 w-12">S.No.</th>
                     <th class="px-4 py-3">ADN</th>
                     <th class="px-4 py-3">Name</th>
                     <th class="px-4 py-3">Last sale</th>
@@ -82,6 +83,7 @@
                 @foreach ($distributors as $distributor)
                     @php $assessment = $assessments[$distributor->id]; @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $distributors->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-mono text-xs">
                             <a href="{{ route('admin.distributors.show', $distributor->id) }}"
                                class="font-semibold text-brand-700 hover:text-brand-800 underline">{{ $distributor->adn }}</a>

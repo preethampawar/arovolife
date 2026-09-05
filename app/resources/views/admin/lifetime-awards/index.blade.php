@@ -38,6 +38,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-4 py-2 text-left text-gray-600">Rank</th>
                     <th class="px-4 py-2 text-left text-gray-600">Triggered</th>
@@ -59,6 +60,7 @@
                 $releasable = $milestone->isReleasable();
                 @endphp
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $milestones->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 font-mono">{{ $milestone->distributor?->adn ?? '—' }}</td>
                     <td class="px-4 py-2">
                         <span class="inline-flex px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">
