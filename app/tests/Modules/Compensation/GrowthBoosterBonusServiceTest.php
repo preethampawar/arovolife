@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Events\IncomeReactivated;
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -10,9 +11,12 @@ use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\GrowthBoosterBonusService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
+use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 
@@ -461,4 +465,114 @@ it('excludes a suspended distributor from the denominator and never releases the
     $suspendedRow->refresh();
     expect($suspendedRow->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED);
     expect(WalletLedgerEntry::where('distributor_id', $d2->id)->where('type', 'gbb_credit')->count())->toBe(0);
+});
+
+it('re-freezes a pool that was frozen before the month closed, and discards the rows it produced', function () {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+    gbbSeedCompanyBv(200_000, '2026-06-03');
+
+    $svc = app(GrowthBoosterBonusService::class);
+
+    // A manual run made WHILE June was still open, before anyone had earned
+    // AGP: the month freezes at a zero denominator, which would otherwise pay
+    // ₹0 for June for ever.
+    Carbon::setTestNow('2026-06-10 12:00:00');
+    $svc->runForMonth($month);
+    expect(GbbMonthlyPool::first()->total_agp)->toBe(0);
+
+    // June closes; the earner's cut-off is in the books; the scheduled run fires.
+    Carbon::setTestNow('2026-07-01 00:45:00');
+    gbbSeedCutoff($dist->id, '2026-06-05', 1);  // 12 AGP
+    $result = $svc->runForMonth($month);
+
+    $pool = GbbMonthlyPool::first();
+
+    expect(GbbMonthlyPool::count())->toBe(1);
+    expect($pool->total_agp)->toBe(12);
+    expect($pool->point_value_paise)->toBe(800);
+    expect($result['credited'])->toBe(1);
+    expect(GbbMonthlyResult::where('distributor_id', $dist->id)->first()->gbb_gross_paise)->toBe(9_600);
+
+    // R-35: the replacement is an audit fact, not just a log line.
+    expect(DB::table('audit_log')->where('action', 'gbb.pool.refrozen')->count())->toBe(1);
+});
+
+it('keeps a premature pool once a distributor has been paid against it', function () {
+    $d1 = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+    gbbSeedCompanyBv(200_000, '2026-06-03');
+    gbbSeedCutoff($d1->id, '2026-06-05', 1);  // 12 AGP
+
+    $svc = app(GrowthBoosterBonusService::class);
+
+    // Mid-month run that DID pay: those economics can never move again.
+    Carbon::setTestNow('2026-06-10 12:00:00');
+    $svc->runForMonth($month);
+    $paidPool = GbbMonthlyPool::first();
+    expect($paidPool->total_agp)->toBe(12);
+
+    // More AGP lands, and the month closes.
+    Carbon::setTestNow('2026-07-01 00:45:00');
+    $d2 = Distributor::factory()->create();
+    gbbSeedCutoff($d2->id, '2026-06-26', 1);
+    $svc->runForMonth($month);
+
+    $pool = GbbMonthlyPool::first();
+
+    expect(GbbMonthlyPool::count())->toBe(1);
+    expect($pool->id)->toBe($paidPool->id);
+    expect($pool->total_agp)->toBe(12);
+    expect(DB::table('audit_log')->where('action', 'gbb.pool.refrozen')->count())->toBe(0);
+    // The newcomer is priced at the frozen value, exactly as a normal re-run.
+    expect(GbbMonthlyResult::where('distributor_id', $d2->id)->first()->gbb_gross_paise)->toBe(9_600);
+});
+
+it('refuses the monthly run when the previous month rank check never succeeded', function () {
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+
+    // GBB for July reads JUNE's qualifications to exclude last month's rankers.
+    // A succeeded check for July is the wrong month and must not open the gate.
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => '2026-07-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+
+    $dist = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000, '2026-07-03');
+    gbbSeedCutoff($dist->id, '2026-07-05', 1);
+    gbbSeedRank($dist->id, '2026-06-01');   // ranked in June — the plan bars them
+
+    $exit = Artisan::call('gbb:monthly-run', ['--month' => '2026-07']);
+
+    expect($exit)->toBe(Command::FAILURE);
+    expect(Artisan::output())->toContain('rank:check-qualifications --month=2026-06');
+    // The barred distributor was NOT credited behind an empty exclusion list.
+    expect(GbbMonthlyResult::where('year_month', '2026-07-01')->count())->toBe(0);
+    expect(GbbMonthlyPool::count())->toBe(0);
+});
+
+it('runs once the previous month rank check has succeeded, still excluding last month rankers', function () {
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => '2026-06-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+
+    $dist = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000, '2026-07-03');
+    gbbSeedCutoff($dist->id, '2026-07-05', 1);
+    gbbSeedRank($dist->id, '2026-06-01');
+
+    expect(Artisan::call('gbb:monthly-run', ['--month' => '2026-07']))->toBe(Command::SUCCESS);
+    expect(GbbMonthlyResult::where('distributor_id', $dist->id)->count())->toBe(0);
 });

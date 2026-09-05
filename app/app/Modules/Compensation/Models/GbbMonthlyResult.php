@@ -50,6 +50,18 @@ final class GbbMonthlyResult extends Model
      */
     public const STATUS_REPURCHASE_SUSPENDED = 'repurchase_suspended';
 
+    /**
+     * Statuses whose gross was priced against the month's frozen pool. Used by
+     * GrowthBoosterBonusService to decide whether a prematurely frozen pool row
+     * may still be safely replaced. Suspended rows carry gross 0 and their AGP
+     * is excluded from the denominator, so they never consumed the pool.
+     */
+    public const POOL_FUNDED_STATUSES = [
+        self::STATUS_CREDITED,
+        self::STATUS_REPURCHASE_HELD,
+        self::STATUS_REVERSED,
+    ];
+
     // AGP cap and per-slab AGP now live in the admin-editable `gsb_slabs` table
     // (agp_per_occurrence column) and the `comp.gbb.agp_cap` setting — read them
     // through CompensationPlanSettingsService, not constants on this model.

@@ -98,7 +98,7 @@ final class GrowthBoosterBonusService
         // pass automatically. Wallet balances are taken at month-end so late
         // checkout purchases count.
         $walletBalances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
-            $payable->keys()->map(intval(...))->all(),
+            array_values($payable->keys()->map(intval(...))->all()),
             $monthEnd,
         );
         $skippedWalletNonzero = 0;
@@ -244,7 +244,7 @@ final class GrowthBoosterBonusService
     private function freezePoolForMonth(Carbon $monthStart, Carbon $monthEnd, int $totalAgp): GbbMonthlyPool
     {
         $existing = GbbMonthlyPool::where('month_start', $monthStart->toDateString())->first();
-        if ($existing !== null) {
+        if ($existing !== null && ! $this->replacePrematureFreeze($existing, $monthEnd)) {
             return $existing;
         }
 
@@ -293,6 +293,81 @@ final class GrowthBoosterBonusService
         ]);
 
         return $pool;
+    }
+
+    /**
+     * Delete a pool row that was frozen before its month had closed so the
+     * caller can freeze the month afresh. Returns true when the row was
+     * removed. The monthly twin of
+     * {@see GsbDailyPoolService::replacePrematureFreeze()}.
+     *
+     * "Frozen economics" assumes the freeze happened once the month's BV and
+     * its AGP earners were final — the scheduler guarantees that by running on
+     * the 1st. A freeze whose created_at falls BEFORE the month ended broke
+     * that assumption (a mid-month manual run from the Engine Runs page, or the
+     * recompute tool catching up the period in flight): it snapshotted partial
+     * company BV and a partial denominator, and every later run for the month
+     * would silently price against it. Local, Aug 2026: a run made while every
+     * earner still failed the wallet gate froze total_agp = 0, and the next run
+     * wrote 22 result rows carrying real AGP against a zero denominator — the
+     * report showed "Total AGP 0" over 545 AGP of rows.
+     *
+     * Replacement is only safe while NOTHING was funded by the row: once any
+     * result for the month carries pool-priced gross, re-freezing would change
+     * economics that money already moved on, so the row is kept and the
+     * inconsistency surfaced loudly instead. Zero-gross rows are not funding —
+     * they moved no money — but they DO block the re-run (a `credited` row is
+     * the idempotency guard in {@see writeResult()}), so they are cleared
+     * along with the pool and recomputed from the fresh snapshot.
+     */
+    private function replacePrematureFreeze(GbbMonthlyPool $existing, Carbon $monthEnd): bool
+    {
+        $monthClosedAt = $monthEnd->copy()->addDay()->startOfDay();
+        if ($existing->created_at === null || $existing->created_at->gte($monthClosedAt)) {
+            return false; // Frozen after the month closed — the normal, final row.
+        }
+
+        $details = [
+            'month_start' => $existing->month_start,
+            'frozen_at' => $existing->created_at->toDateTimeString(),
+            'company_bv_paise' => $existing->company_bv_paise,
+            'pool_paise' => $existing->pool_paise,
+            'total_agp' => $existing->total_agp,
+            'point_value_paise' => $existing->point_value_paise,
+        ];
+
+        $results = GbbMonthlyResult::where('year_month', $existing->month_start);
+
+        if ((clone $results)
+            ->whereIn('status', GbbMonthlyResult::POOL_FUNDED_STATUSES)
+            ->where('gbb_gross_paise', '>', 0)
+            ->exists()) {
+            Log::warning('gbb.pool.premature_freeze_kept', $details + [
+                'reason' => 'results were already priced against this pool; re-freezing would change economics money moved on',
+            ]);
+
+            return false;
+        }
+
+        $discardedResults = (clone $results)->delete();
+
+        Log::warning('gbb.pool.premature_freeze_replaced', $details + [
+            'discarded_results' => $discardedResults,
+        ]);
+
+        AuditLog::create([
+            'action' => 'gbb.pool.refrozen',
+            'subject_type' => 'gbb_monthly_pool',
+            'subject_id' => $existing->id,
+            'details' => $details + [
+                'discarded_results' => $discardedResults,
+                'reason' => 'pool was frozen before the month ended and nothing was priced against it',
+            ],
+        ]);
+
+        $existing->delete();
+
+        return true;
     }
 
     /**
