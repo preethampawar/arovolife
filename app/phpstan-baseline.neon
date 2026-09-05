@@ -835,6 +835,18 @@ parameters:
 			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
 
 		-
+			message: '#^Parameter \#1 \$batch of method App\\Modules\\Compensation\\Services\\RazorpayPayoutDispatchService\:\:refreshBatchStatus\(\) expects App\\Modules\\Compensation\\Models\\PayoutBatch, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Compensation/Jobs/ProcessRazorpayPayoutWebhookJob.php
+
+		-
+			message: '#^Parameter \#1 \$batch of method App\\Modules\\Compensation\\Services\\RazorpayPayoutDispatchService\:\:refreshBatchStatus\(\) expects App\\Modules\\Compensation\\Models\\PayoutBatch, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Compensation/Jobs/RetryRazorpayPayoutJob.php
+
+		-
 			message: '#^Method App\\Modules\\Compensation\\Models\\GbbMonthlyResult\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -869,6 +881,18 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Compensation/Models/PayoutBatch.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\PayoutGatewayEvent\:\:batch\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/PayoutGatewayEvent.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Models\\PayoutGatewayEvent\:\:lineItem\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Models/PayoutGatewayEvent.php
 
 		-
 			message: '#^Method App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
@@ -931,6 +955,12 @@ parameters:
 			path: app/Modules/Compensation/Services/GsbCutoffService.php
 
 		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-list\<string\|null\> and array\{\} will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Modules/Compensation/Services/PayoutReconciliationService.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\PayoutLineItem\:\:\$cnt\.$#'
 			identifier: property.notFound
 			count: 1
@@ -955,7 +985,31 @@ parameters:
 			path: app/Modules/Compensation/Services/PayoutService.php
 
 		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Services/RazorpayPayoutGateway.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Services/RazorpayPayoutGateway.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>phone_e164" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Compensation/Services/RazorpayPayoutGateway.php
+
+		-
 			message: '#^Method App\\Modules\\Compensation\\Services\\WalletService\:\:ledgerWithRunningBalance\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Modules/Compensation/Services/WalletService.php
+
+		-
+			message: '#^Method App\\Modules\\Compensation\\Services\\WalletService\:\:repurchaseLedger\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Compensation/Services/WalletService.php
@@ -1465,10 +1519,70 @@ parameters:
 			path: tests/Feature/Compensation/FortuneBonusVerificationTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
+
+		-
 			message: '#^Call to an undefined static method Illuminate\\Support\\Facades\\Log\:\:shouldHaveReceived\(\)\.$#'
 			identifier: staticMethod.notFound
 			count: 1
 			path: tests/Feature/Compensation/PayoutBankDecryptionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:call\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:call\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
+
+		-
+			message: '#^Function dispatchedFixture\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
+
+		-
+			message: '#^Function payoutEvent\(\) has parameter \$entity with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
+
+		-
+			message: '#^Function payoutEvent\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
+
+		-
+			message: '#^Function postPayoutWebhook\(\) has parameter \$body with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
+
+		-
+			message: '#^Function postPayoutWebhook\(\) return type with generic class Illuminate\\Testing\\TestResponse does not specify its types\: TResponse$#'
+			identifier: missingType.generics
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
+
+		-
+			message: '#^Function reconcileFixture\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Feature/Compensation/PayoutGatewayGuardsTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$opened_at\.$#'
@@ -1559,6 +1673,36 @@ parameters:
 			identifier: method.notFound
 			count: 6
 			path: tests/Feature/Security/PolicyBackstopTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Seeders/DevBankAccountSeederTest.php
+
+		-
+			message: '#^Cannot access property \$bank_account_enc on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 3
+			path: tests/Feature/Seeders/DevBankAccountSeederTest.php
+
+		-
+			message: '#^Cannot access property \$bank_ifsc on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: tests/Feature/Seeders/DevBankAccountSeederTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<string\|null\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 2
+			path: tests/Feature/Seeders/DevBankAccountSeederTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Seeders/DevBankAccountSeederTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:from\(\)\.$#'
@@ -2577,7 +2721,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 2
+			count: 3
 			path: tests/Modules/Compensation/AdminDailyCutoffTest.php
 
 		-
@@ -2589,7 +2733,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 8
 			path: tests/Modules/Compensation/AdminDistributorCompTest.php
 
 		-
@@ -2601,7 +2745,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 36
+			count: 40
 			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
 
 		-
@@ -2609,23 +2753,23 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 14
-			path: tests/Modules/Compensation/AdminFortuneReportsTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Modules/Compensation/AdminFortuneReportsTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 15
+			path: tests/Modules/Compensation/AdminFortuneReportsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminFortuneReportsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 16
 			path: tests/Modules/Compensation/AdminGbbCalculationTest.php
 
 		-
@@ -2637,7 +2781,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 12
 			path: tests/Modules/Compensation/AdminGbbInputOutputTest.php
 
 		-
@@ -2661,7 +2805,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 7
+			count: 9
 			path: tests/Modules/Compensation/AdminGsbInputOutputTest.php
 
 		-
@@ -2709,7 +2853,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 13
+			count: 18
 			path: tests/Modules/Compensation/AdminRankBonusInputOutputTest.php
 
 		-
@@ -2777,6 +2921,36 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Compensation/AreteCenterApplicationTest.php
+
+		-
+			message: '#^Call to an undefined method object\:\:up\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Compensation/BackfillRepurchaseDeductionMigrationTest.php
+
+		-
+			message: '#^Cannot access property \$admin_charge_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Modules/Compensation/BackfillRepurchaseDeductionMigrationTest.php
+
+		-
+			message: '#^Cannot access property \$net_gsb_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: tests/Modules/Compensation/BackfillRepurchaseDeductionMigrationTest.php
+
+		-
+			message: '#^Cannot access property \$repurchase_deduction_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: tests/Modules/Compensation/BackfillRepurchaseDeductionMigrationTest.php
+
+		-
+			message: '#^Cannot access property \$tds_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Modules/Compensation/BackfillRepurchaseDeductionMigrationTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -2851,15 +3025,21 @@ parameters:
 			path: tests/Modules/Compensation/GsbCutoffServiceTest.php
 
 		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Compensation/IncomeControllerTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 27
+			count: 29
 			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 30
+			count: 32
 			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
@@ -2885,6 +3065,30 @@ parameters:
 			identifier: method.notFound
 			count: 2
 			path: tests/Modules/Compensation/PayoutCommandFailureTest.php
+
+		-
+			message: '#^Cannot access property \$admin_charge_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Modules/Compensation/PayoutServiceTest.php
+
+		-
+			message: '#^Cannot access property \$net_gsb_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Modules/Compensation/PayoutServiceTest.php
+
+		-
+			message: '#^Cannot access property \$repurchase_deduction_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Modules/Compensation/PayoutServiceTest.php
+
+		-
+			message: '#^Cannot access property \$tds_paise on array\<mixed\>\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: tests/Modules/Compensation/PayoutServiceTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
@@ -3111,7 +3315,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 10
 			path: tests/Modules/Identity/DashboardRenderTest.php
 
 		-
