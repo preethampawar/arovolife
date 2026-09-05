@@ -144,7 +144,7 @@ it('floors a refund-heavy (negative company BV) month to a zero pool and credits
     expect(RankBonusResult::where('status', RankBonusResult::STATUS_CREDITED)->count())->toBe(0);
 });
 
-it('applies admin charge as min(3% of gross, ₹30,000)', function (): void {
+it('freezes the repurchase deduction on the row and credits gross minus it', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
     $monthStart = '2026-06-01';
@@ -158,9 +158,12 @@ it('applies admin charge as min(3% of gross, ₹30,000)', function (): void {
 
     $result = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
 
-    // Deductions are applied at payout time, not at credit time.
+    // 14,000 gross → 10% repurchase = 1,400 taken at credit time; admin
+    // charge and TDS are payout-time figures and stay at zero here.
+    expect($result->gross_paise)->toBe(14_000);
+    expect($result->repurchase_deduction_paise)->toBe(1_400);
+    expect($result->net_paise)->toBe(12_600);
     expect($result->admin_charge_paise)->toBe(0);
-    expect($result->net_paise)->toBe($result->gross_paise);
 });
 
 it('records zero admin charge and tds in the result (deductions are deferred to payout)', function (): void {
@@ -180,7 +183,7 @@ it('records zero admin charge and tds in the result (deductions are deferred to 
     expect($result->tds_paise)->toBe(0);
 });
 
-it('credits net_paise equal to gross_paise (deductions deferred to payout)', function (): void {
+it('credits net_paise equal to gross_paise minus the repurchase deduction', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
     $monthStart = '2026-06-01';
@@ -194,7 +197,8 @@ it('credits net_paise equal to gross_paise (deductions deferred to payout)', fun
     $result = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
 
     expect($result->tds_paise)->toBe(0);
-    expect($result->net_paise)->toBe($result->gross_paise);
+    expect($result->net_paise)->toBe($result->gross_paise - $result->repurchase_deduction_paise);
+    expect($result->repurchase_deduction_paise)->toBe((int) floor($result->gross_paise / 10));
 });
 
 it('credits wallet with rank_credit type', function (): void {
@@ -325,7 +329,7 @@ it('divides the rank-1 pool by points — KP worked example: ₹14,000 pool, 40 
     }
 
     // Whole pool spent: 3 × 3,500 + 2 × 1,750 = ₹14,000.
-    expect($result['by_rank'][1]['net_total'])->toBe(1_400_000);
+    expect($result['by_rank'][1]['gross_total'])->toBe(1_400_000);
 
     // Idempotent rerun: nobody is double-credited.
     $svc->runForMonth($month);
@@ -449,10 +453,13 @@ it('pays only the highest qualified rank when a distributor cleared several', fu
     expect($silverRow->rank_number)->toBe(1)
         ->and($silverRow->rap_points)->toBe(10)
         ->and((int) $silverRow->point_value_paise)->toBe(140_000)
-        ->and((int) $silverRow->net_paise)->toBe(1_400_000);
+        ->and((int) $silverRow->gross_paise)->toBe(1_400_000)
+        // 10% repurchase deduction frozen on the row at credit time.
+        ->and((int) $silverRow->repurchase_deduction_paise)->toBe(140_000)
+        ->and((int) $silverRow->net_paise)->toBe(1_260_000);
 
     // Rank-2 pool = 100,000,000 × 20% × 3.4% = ₹6,800, sole achiever takes it.
-    expect((int) $pearlRows->first()->net_paise)->toBe(680_000)
+    expect((int) $pearlRows->first()->gross_paise)->toBe(680_000)
         ->and($result['credited'])->toBe(2);
 });
 
@@ -486,5 +493,6 @@ it('pays every cleared rank when pay_highest_rank_only is switched off', functio
     // R1 pool ₹14,000 across 2 achievers × 10 RAP = 20 points → ₹700/point.
     $silverRow = RankBonusResult::where('distributor_id', $silverOnly->id)->firstOrFail();
     expect((int) $silverRow->point_value_paise)->toBe(70_000)
-        ->and((int) $silverRow->net_paise)->toBe(700_000);
+        ->and((int) $silverRow->gross_paise)->toBe(700_000)
+        ->and((int) $silverRow->net_paise)->toBe(630_000);
 });

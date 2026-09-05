@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PayoutGatewaySettings;
 use App\Modules\Shared\Support\IndianNumber as Number;
@@ -15,7 +16,10 @@ final class AdminMonthlyPayoutController extends Controller
 {
     public function index(CompensationPlanSettingsService $plan): View
     {
+        // distributor_count is the paying lines only; the held count sits
+        // beside it so a batch full of KYC-pending income never reads as empty.
         $batches = PayoutBatch::where('batch_type', PayoutBatch::TYPE_MONTHLY)
+            ->withCount(['lineItems as held_count' => fn ($q) => $q->whereIn('status', PayoutLineItem::HELD_STATUSES)])
             ->orderByDesc('batch_date')
             ->paginate(20);
         $minPayout = Number::format($plan->minPayoutPaise() / 100, 0);

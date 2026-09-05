@@ -112,9 +112,9 @@
                         <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
-                        @if($row->tds_paise > 0)
+                        @if($row->repurchase_deduction_paise > 0)
                         <span class="block text-[10px] text-gray-600 font-normal">
-                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }} · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
+                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }} · repurchase ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->repurchase_deduction_paise / 100, 2) }}
                         </span>
                         @endif
                     </td>
@@ -149,7 +149,7 @@
                     <th class="px-3 py-2 text-left text-gray-600 font-medium">Title</th>
                     <th class="px-3 py-2 text-left text-gray-600 font-medium">Month</th>
                     <th class="px-3 py-2 text-center text-gray-600 font-medium">Rank</th>
-                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium"><span class="flex items-center justify-end gap-1">Income (credited) <x-help-tip text="Gross minus the repurchase deduction taken at credit time. Admin charge and TDS are applied at payout." /></span></th>
                     <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
@@ -190,9 +190,9 @@
                         <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
-                        @if($row->tds_paise > 0)
+                        @if($row->repurchase_deduction_paise > 0)
                         <span class="block text-[10px] text-gray-600 font-normal">
-                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }} · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
+                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }} · repurchase ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->repurchase_deduction_paise / 100, 2) }}
                         </span>
                         @endif
                     </td>

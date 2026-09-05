@@ -306,3 +306,19 @@ it('omits the formula strip for a month with no Rank 1 rows', function () {
         ->assertSee('June 2026')
         ->assertDontSee('point value was calculated');
 });
+
+it('shows gross, the credit-time repurchase deduction and the credited amount on the rank bonus month screen — never TDS or admin charge', function () {
+    $dist = Distributor::factory()->create();
+    $row = rbIoResult($dist->id, '2026-07-01', 1, 1_400_000, 1, 1_400_000);
+    $row->update(['repurchase_deduction_paise' => 140_000, 'net_paise' => 1_260_000]);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', ['month' => '2026-07']))
+        ->assertOk()
+        ->assertSee('Repurchase deduction')
+        ->assertSee('Credited to wallet')
+        ->assertSee('-₹1,400.00')
+        ->assertSee('₹12,600.00')
+        ->assertDontSee('TDS (5%)')
+        ->assertDontSee('₹25,000 per monthly batch');
+});

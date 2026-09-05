@@ -39,6 +39,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-3 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-600">Name</th>
                     <th class="px-3 py-2 text-left text-gray-600">
@@ -53,18 +54,7 @@
                     <th class="px-3 py-2 text-center text-gray-600">
                         Slab <x-help-tip :text="$slabThresholdTip" />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-600">
-                        Gross GSB <x-help-tip text="Before admin charge and TDS." />
-                    </th>
-                    <th class="px-3 py-2 text-right text-gray-600">
-                        Admin 3% <x-help-tip text="3% of gross or ₹25,000 per weekly batch — whichever is lower." />
-                    </th>
-                    <th class="px-3 py-2 text-right text-gray-600">
-                        TDS 5% <x-help-tip text="5% of (gross − admin charge)." />
-                    </th>
-                    <th class="px-3 py-2 text-right text-gray-600">
-                        Net GSB <x-help-tip text="Amount credited to wallet." />
-                    </th>
+                    <x-bonus-credit-head gross-label="Gross GSB" th-class="px-3 py-2 text-right text-gray-600" />
                     <th class="px-3 py-2 text-center text-gray-600">Status</th>
                     <th class="px-3 py-2"></th>
                 </tr>
@@ -83,6 +73,7 @@
                     ];
                 @endphp
                 <tr class="{{ $row->status === 'failed' ? 'bg-red-50' : '' }}">
+                    <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
                            class="text-brand-700 hover:underline">
@@ -98,18 +89,7 @@
                     <td class="px-3 py-2 text-right">@bv($row->left_bv_paise)</td>
                     <td class="px-3 py-2 text-right">@bv($row->right_bv_paise)</td>
                     <td class="px-3 py-2 text-center">{{ $row->slab ?? '—' }}</td>
-                    <td class="px-3 py-2 text-right">
-                        {{ $row->gross_gsb_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->gross_gsb_paise / 100, 2) : '—' }}
-                    </td>
-                    <td class="px-3 py-2 text-right text-gray-600">
-                        {{ $row->admin_charge_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) : '—' }}
-                    </td>
-                    <td class="px-3 py-2 text-right text-gray-600">
-                        {{ $row->tds_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) : '—' }}
-                    </td>
-                    <td class="px-3 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
-                        {{ $row->net_gsb_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->net_gsb_paise / 100, 2) : '—' }}
-                    </td>
+                    <x-bonus-credit-cells td-class="px-3 py-2 text-right" :dash-when-zero="true" :gross="$row->gross_gsb_paise ?? 0" :deduction="$row->repurchase_deduction_paise ?? 0" :credited="$row->net_gsb_paise ?? 0" :is-credited="$row->status === 'credited'" />
                     <td class="px-3 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ str_replace('_', ' ', $row->status) }}

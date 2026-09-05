@@ -24,7 +24,10 @@ final class AdminWeeklyPayoutController extends Controller
 {
     public function index(CompensationPlanSettingsService $plan): View
     {
+        // distributor_count is the paying lines only; the held count sits
+        // beside it so a batch full of KYC-pending income never reads as empty.
         $batches = PayoutBatch::whereIn('batch_type', [PayoutBatch::TYPE_WEEKLY, PayoutBatch::TYPE_GSB_WEEKLY])
+            ->withCount(['lineItems as held_count' => fn ($q) => $q->whereIn('status', PayoutLineItem::HELD_STATUSES)])
             ->orderByDesc('batch_date')
             ->paginate(20);
         // Computed here, not in the view: `::class` inside a @php(...) Blade

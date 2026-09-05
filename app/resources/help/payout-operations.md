@@ -42,7 +42,8 @@ Nobody creates a payout batch by hand.
    unpaid GSB and Mentorship credits. The **monthly payout** runs on the 9th at
    10:30 IST for Growth Booster, Rank, Fortune, Awards and ADC.
 3. Each run computes one line item per distributor: gross → repurchase
-   deduction → admin charge → TDS → net. The wallet is debited at this moment,
+   deduction (already taken at credit time; the batch only sweeps and reports
+   it) → admin charge → TDS → net. The wallet is debited at this moment,
    not at approval — the money is already committed before anyone clicks
    anything.
 4. The batch lands in **Pending approval**.

@@ -54,7 +54,7 @@
         <p class="text-lg font-bold text-indigo-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_gross_paise / 100, 0) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-        <p class="text-xs text-gray-600 mb-1">Net</p>
+        <p class="text-xs text-gray-600 mb-1">Credited to wallets <x-help-tip text="Sum of every credited row's gross minus its repurchase deduction. Admin charge and TDS are taken at payout." /></p>
         <p class="text-lg font-bold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 0) }}</p>
     </div>
 </div>
@@ -69,21 +69,19 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-4 py-2 text-right text-gray-600">
                         AGP <x-help-tip text="Arovolife Growth Points earned: Slab 1 = 12 AGP, Slab 2 = 5 AGP, Slab 3 = 2 AGP. Capped at 120." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-600">Gross GBB</th>
-                    <th class="px-4 py-2 text-right text-gray-600">
-                        TDS (5%) <x-help-tip text="Income Tax deduction at source. A 3% admin charge (Group B, capped) is also deducted at payout." />
-                    </th>
-                    <th class="px-4 py-2 text-right text-gray-600">Net GBB</th>
+                    <x-bonus-credit-head gross-label="Gross GBB" />
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
                 @foreach($rows as $row)
                 <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
                            class="text-brand-700 hover:underline font-mono">{{ $row->distributor?->adn ?? '—' }}</a>
@@ -93,9 +91,7 @@
                             {{ $row->agp_earned }} AGP
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}</td>
+                    <x-bonus-credit-cells td-class="px-4 py-2 text-right" :gross="$row->gbb_gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->gbb_net_paise" :is-credited="$row->status === 'credited'" />
                     <td class="px-4 py-2 text-center">
                         @php
                         $sc = [

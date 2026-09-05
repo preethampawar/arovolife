@@ -53,6 +53,20 @@ final class PayoutLineItem extends Model
     /** Bank account on file but the ciphertext failed to decrypt (LOG-2) — held in wallet, never swept, NEFT blocked until bank details are re-captured. */
     public const STATUS_BANK_DECRYPT_FAILED = 'bank_decrypt_failed';
 
+    /**
+     * Statuses whose income stays in the wallet this batch — nothing debited,
+     * nothing swept, net ₹0. Distinct from below_minimum, which is a paying
+     * distributor whose net simply did not reach the floor.
+     *
+     * @var list<string>
+     */
+    public const HELD_STATUSES = [
+        self::STATUS_WEB_ONLY,
+        self::STATUS_KYC_PENDING,
+        self::STATUS_NO_BANK_ACCOUNT,
+        self::STATUS_BANK_DECRYPT_FAILED,
+    ];
+
     protected $table = 'payout_line_items';
 
     protected $fillable = [

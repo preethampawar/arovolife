@@ -161,7 +161,7 @@
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
-            Total gross <x-help-tip text="Sum of wallet balances before repurchase deduction." />
+            Total gross <x-help-tip text="Sum of the bonus credits swept by this batch, before the repurchase deduction already taken at credit time." />
         </p>
         <p class="mt-1 text-lg font-bold text-gray-900">{{ $rupees($batch->total_gross_paise) }}</p>
     </div>
@@ -202,6 +202,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-3 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-600">Name</th>
                     <th class="px-3 py-2 text-right text-gray-600">
@@ -211,7 +212,7 @@
                         Gross <x-help-tip text="Bonus income swept into this batch, before any deduction." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
-                        Repurchase deduction <x-help-tip text="10% of prior month GSB+MB+RB, capped ₹10,000. Already taken at credit time — shown so the row reconciles." />
+                        Repurchase deduction <x-help-tip text="10% of each bonus, capped ₹10,000 per calendar month. Already taken at credit time — shown so the row reconciles." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
                         Admin charge <x-help-tip text="3% of gross, capped at ₹25,000 per bonus group per cycle." />
@@ -238,6 +239,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($lines as $line)
                 <tr>
+                    <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $lines->firstItem() + $loop->index }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $line->distributor_id) }}"
                            class="text-brand-700 hover:underline">

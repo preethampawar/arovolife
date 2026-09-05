@@ -10,16 +10,14 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Month</th>
                 <th class="px-3 py-2 text-center text-gray-600">Position <x-help-tip text="The distributor's FCFS position in the month's Fortune matrix." /></th>
                 <th class="px-3 py-2 text-center text-gray-600">Level</th>
                 <th class="px-3 py-2 text-right text-gray-600">Points</th>
                 <th class="px-3 py-2 text-right text-gray-600">Point value</th>
                 <th class="px-3 py-2 text-right text-gray-600">Cap</th>
-                <th class="px-3 py-2 text-right text-gray-600">Gross</th>
-                <th class="px-3 py-2 text-right text-gray-600">Admin</th>
-                <th class="px-3 py-2 text-right text-gray-600">TDS</th>
-                <th class="px-3 py-2 text-right text-gray-600">Net</th>
+                <x-bonus-credit-head th-class="px-3 py-2 text-right text-gray-600" />
                 <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
@@ -34,6 +32,7 @@
                 };
             @endphp
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                 <td class="px-3 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($row->month_start)->format('M Y') }}</td>
                 <td class="px-3 py-2 text-center">#{{ $row->position }}</td>
                 <td class="px-3 py-2 text-center">
@@ -46,10 +45,7 @@
                 <td class="px-3 py-2 text-right text-gray-600">
                     @if($row->cap_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->cap_paise / 100, 0) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
-                <td class="px-3 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
+                <x-bonus-credit-cells td-class="px-3 py-2 text-right" :gross="$row->gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_paise" />
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusClass }}">{{ str_replace('_', ' ', $row->status) }}</span>
                 </td>

@@ -30,14 +30,12 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Date</th>
                 <th class="px-3 py-2 text-right text-gray-600">Left BV <x-help-tip text="Left Genos BV today (fresh, no carry-forward)." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Right BV</th>
                 <th class="px-3 py-2 text-center text-gray-600">Slab</th>
-                <th class="px-3 py-2 text-right text-gray-600">Gross GSB</th>
-                <th class="px-3 py-2 text-right text-gray-600">Admin 3%</th>
-                <th class="px-3 py-2 text-right text-gray-600">TDS 5%</th>
-                <th class="px-3 py-2 text-right text-gray-600">Net GSB</th>
+                <x-bonus-credit-head gross-label="Gross GSB" th-class="px-3 py-2 text-right text-gray-600" />
                 <th class="px-3 py-2 text-center text-gray-600">Status</th>
                 <th></th>
             </tr>
@@ -46,14 +44,12 @@
             @foreach($rows as $row)
             @php $b = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'failed' => 'bg-red-100 text-red-700', 'no_match' => 'bg-gray-100 text-gray-600', 'frozen' => 'bg-blue-100 text-blue-700', 'below_600bv' => 'bg-amber-100 text-amber-700']; @endphp
             <tr class="{{ $row->status === 'failed' ? 'bg-red-50' : '' }}">
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                 <td class="px-3 py-2 font-medium">{{ $row->cutoff_date->format('d M Y') }}</td>
                 <td class="px-3 py-2 text-right">@bv($row->left_bv_paise)</td>
                 <td class="px-3 py-2 text-right">@bv($row->right_bv_paise)</td>
                 <td class="px-3 py-2 text-center">{{ $row->slab ?? '—' }}</td>
-                <td class="px-3 py-2 text-right font-semibold">{{ $row->gross_gsb_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->gross_gsb_paise / 100, 2) : '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-600">{{ $row->admin_charge_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) : '—' }}</td>
-                <td class="px-3 py-2 text-right text-gray-600">{{ $row->tds_paise ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) : '—' }}</td>
-                <td class="px-3 py-2 text-right font-semibold {{ $row->net_gsb_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">{{ $row->net_gsb_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->net_gsb_paise / 100, 2) : '—' }}</td>
+                <x-bonus-credit-cells td-class="px-3 py-2 text-right" :dash-when-zero="true" :gross="$row->gross_gsb_paise ?? 0" :deduction="$row->repurchase_deduction_paise ?? 0" :credited="$row->net_gsb_paise ?? 0" :is-credited="$row->status === 'credited'" />
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $b[$row->status] ?? 'bg-gray-100 text-gray-600' }}">{{ str_replace('_', ' ', $row->status) }}</span>
                 </td>

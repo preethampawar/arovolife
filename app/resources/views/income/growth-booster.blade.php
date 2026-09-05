@@ -51,8 +51,8 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">
-                Net credited (this page)
-                <x-help-tip text="Total Growth Booster Bonus credited to you across the months listed on this page. Held and non-payable months are excluded." />
+                Credited to wallet (this page)
+                <x-help-tip text="Growth Booster Bonus that landed in your main wallet across the months listed on this page — gross minus the repurchase deduction. Held and non-payable months are excluded." />
             </p>
             <p class="text-2xl font-bold text-gray-900">{{ $creditedRows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($creditedNetPaise / 100, 0) }}</p>
         </div>
@@ -95,6 +95,7 @@
             <table class="w-full text-sm min-w-[760px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Month</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">
@@ -108,14 +109,7 @@
                                 <x-help-tip text="That month's Growth Booster pool divided by the AGP of every distributor eligible in it, floored to the rupee. It is fixed once the month is calculated." />
                             </span>
                         </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">
-                                Gross GBB
-                                <x-help-tip text="Your AGP for the month multiplied by that month's point value." />
-                            </span>
-                        </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">TDS (5%)</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Net GBB</th>
+                        <x-bonus-credit-head gross-label="Gross GBB" th-class="text-right px-4 py-3 font-semibold text-gray-600" />
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
                     </tr>
                 </thead>
@@ -126,6 +120,7 @@
                         $isPayable = $row->status !== 'repurchase_suspended';
                     @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             {{ \Illuminate\Support\Carbon::parse($row->year_month)->format('F Y') }}
                         </td>
@@ -137,16 +132,13 @@
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
                             {{ $pointValuePaise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pointValuePaise / 100, 2) : '—' }}
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">
-                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_gross_paise / 100, 2) }}
+                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :gross="$row->gbb_gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->gbb_net_paise" :is-credited="$row->status === 'credited'">
                             @if($isPayable && $pointValuePaise !== null && $row->agp_earned > 0)
                             <span class="block text-[11px] text-gray-600 font-sans">
                                 {{ \App\Modules\Shared\Support\IndianNumber::format($row->agp_earned) }} AGP × ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pointValuePaise / 100, 2) }}
                             </span>
                             @endif
-                        </td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold {{ $row->status === 'credited' ? 'text-green-700' : 'text-gray-600' }}">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}</td>
+                        </x-bonus-credit-cells>
                         <td class="px-4 py-3">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $statusBadges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ $statusLabels[$row->status] ?? ucfirst(str_replace('_', ' ', $row->status)) }}

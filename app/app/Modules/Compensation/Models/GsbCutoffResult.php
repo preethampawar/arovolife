@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property int $gross_gsb_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
+ * @property int $repurchase_deduction_paise
  * @property int $net_gsb_paise
  * @property int $power_cf_before_paise
  * @property string|null $power_side_before
@@ -74,7 +75,7 @@ final class GsbCutoffResult extends Model
     protected $fillable = [
         'distributor_id', 'cutoff_date',
         'left_bv_paise', 'right_bv_paise', 'weaker_bv_paise',
-        'slab', 'score', 'score_value_paise', 'gross_gsb_paise', 'admin_charge_paise', 'tds_paise', 'net_gsb_paise',
+        'slab', 'score', 'score_value_paise', 'gross_gsb_paise', 'admin_charge_paise', 'tds_paise', 'repurchase_deduction_paise', 'net_gsb_paise',
         'power_cf_before_paise', 'power_side_before', 'power_cf_after_paise', 'power_side_after',
         'slab1_weaker_cf_before_paise', 'slab1_weaker_cf_after_paise',
         'status', 'failure_reason',
@@ -119,6 +120,7 @@ final class GsbCutoffResult extends Model
             'gross_gsb_paise' => 'integer',
             'admin_charge_paise' => 'integer',
             'tds_paise' => 'integer',
+            'repurchase_deduction_paise' => 'integer',
             'net_gsb_paise' => 'integer',
             'power_cf_before_paise' => 'integer',
             'power_cf_after_paise' => 'integer',

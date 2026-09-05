@@ -661,3 +661,39 @@ it('keeps the rank status panel out of every surface while the Rank Bonus flag i
         ->assertOk()
         ->assertDontSee('Rank Bonus');
 });
+
+it('shows the repurchase deduction and the credited amount on the gsb history page and csv — never admin charge or TDS', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('gsb_cutoff_results')->insert([
+        'distributor_id' => $distributorId,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 2_000_000,
+        'right_bv_paise' => 1_600_000,
+        'weaker_bv_paise' => 1_600_000,
+        'slab' => 1,
+        'score' => 8,
+        'gross_gsb_paise' => 200_000,
+        'repurchase_deduction_paise' => 20_000,
+        'net_gsb_paise' => 180_000,
+        'status' => 'credited',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+
+    $this->get(route('income.gsb-history'))
+        ->assertOk()
+        ->assertSee('Repurchase deduction')
+        ->assertSee('Credited to wallet')
+        ->assertSee('-₹200.00')
+        ->assertSee('₹1,800.00')
+        ->assertDontSee('TDS 5%')
+        ->assertDontSee('Admin 3%');
+
+    $csv = $this->get(route('income.gsb-history.export'))->assertOk()->streamedContent();
+    expect($csv)->toContain('Repurchase Deduction (₹)')
+        ->toContain('Credited to Wallet (₹)')
+        ->toContain('2000.00,200.00,1800.00')
+        ->not->toContain('TDS');
+});

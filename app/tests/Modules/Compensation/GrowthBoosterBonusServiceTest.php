@@ -257,8 +257,7 @@ it('freezes the month economics — later BV and cut-offs never reprice it', fun
     expect(GbbMonthlyResult::where('distributor_id', $d2->id)->first()->gbb_gross_paise)->toBe(9_600);
 });
 
-it('deducts 3% admin charge and 5% TDS', function () {
-    // KP 2026-06-26: GBB is now within the admin-charge scope.
+it('freezes the repurchase deduction on the row; admin charge and TDS are left to the payout', function () {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
     gbbSeedCompanyBv(200_000);
@@ -266,12 +265,12 @@ it('deducts 3% admin charge and 5% TDS', function () {
 
     app(GrowthBoosterBonusService::class)->runForMonth($month);
 
-    // Deductions are applied at payout time, not at credit time.
     $row = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
 
     expect($row->admin_charge_paise)->toBe(0);
     expect($row->tds_paise)->toBe(0);
-    expect($row->gbb_net_paise)->toBe($row->gbb_gross_paise);
+    expect($row->repurchase_deduction_paise)->toBe((int) floor($row->gbb_gross_paise / 10));
+    expect($row->gbb_net_paise)->toBe($row->gbb_gross_paise - $row->repurchase_deduction_paise);
 });
 
 it('credits wallet via gbb_credit type', function () {

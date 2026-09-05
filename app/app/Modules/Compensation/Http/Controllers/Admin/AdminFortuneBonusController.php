@@ -55,7 +55,6 @@ final class AdminFortuneBonusController extends Controller
                 COUNT(*) as participant_count,
                 SUM(points) as total_points,
                 SUM(gross_paise) as total_gross_paise,
-                SUM(tds_paise) as total_tds_paise,
                 SUM(net_paise) as total_net_paise
             ')
             ->where('month_start', $monthStart)

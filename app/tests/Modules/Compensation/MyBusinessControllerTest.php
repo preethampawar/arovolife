@@ -140,7 +140,7 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         // Group 2
         ->assertSee('Personal BV (lifetime)')
         ->assertSee('No title yet')
-        ->assertSee('Transferred after 3% admin charge + 5% TDS + repurchase deduction.')
+        ->assertSee('Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.')
         // Group 3 — Left before Right
         ->assertSee('Left carry forward')
         ->assertSee('Carried-over Left Genos BV')

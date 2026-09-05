@@ -19,7 +19,7 @@
         'sub'   => 'Credited from your product sales',
         'href'  => route('income.wallet'),
         'tone'  => 'brand',
-        'tip'   => 'Bonus income already credited to your wallet from product sales. It transfers to your bank on payout days after the 3% admin charge, 5% TDS and any repurchase deduction.',
+        'tip'   => 'Bonus income already credited to your wallet from product sales. The repurchase deduction was taken when each bonus was credited; it transfers to your bank on payout days after the 3% admin charge and 5% TDS.',
         'icon'   => 'wallet',
     ];
     if ($gsbOn) {

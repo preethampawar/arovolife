@@ -138,20 +138,24 @@ final class GrowthBoosterBonusService
                     continue;
                 }
 
+                $repurchaseDeduction = 0;
+
                 if ($result->gbb_gross_paise > 0) {
-                    $this->wallet->creditWithRepurchaseDeduction(
+                    $repurchaseDeduction = $this->wallet->creditWithRepurchaseDeduction(
                         distributorId: (int) $distributorId,
                         grossPaise: (int) $result->gbb_gross_paise,
                         bonusType: 'gbb_credit',
                         referenceId: $result->id,
                         referenceType: 'gbb_monthly_result',
                         memo: 'Growth Booster Bonus '.$yearMonth,
-                    );
+                    )->repurchaseDeductionPaise;
                 }
 
                 $result->update([
                     'status' => GbbMonthlyResult::STATUS_CREDITED,
                     'credited_at' => now(),
+                    'repurchase_deduction_paise' => $repurchaseDeduction,
+                    'gbb_net_paise' => (int) $result->gbb_gross_paise - $repurchaseDeduction,
                 ]);
 
                 $credited++;

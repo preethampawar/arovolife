@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\DTOs\BonusCreditOutcome;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
@@ -140,10 +141,12 @@ it('credits slab 1 when weaker side meets 15,000 BV threshold', function () {
     expect($result->slab)->toBe(1);
     expect($result->gross_gsb_paise)->toBe(200_000);   // slab 1 = ₹1,800 (KP, score 5 × ₹360)
 
-    // Deductions are applied at payout time, not at credit time.
+    // The 10% repurchase deduction is frozen on the row at credit time; admin
+    // charge and TDS are payout-time figures and never touch this row.
     expect($result->admin_charge_paise)->toBe(0);
     expect($result->tds_paise)->toBe(0);
-    expect($result->net_gsb_paise)->toBe(200_000);
+    expect($result->repurchase_deduction_paise)->toBe(20_000);
+    expect($result->net_gsb_paise)->toBe(180_000);
 
     // Power CF = stronger (2,000,000) - weaker (1,600,000) = 400,000
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
@@ -219,9 +222,10 @@ it('marks status as frozen when distributor GSB is frozen', function () {
     expect($result->status)->toBe(GsbCutoffResult::STATUS_FROZEN);
     expect($result->slab)->toBe(3);
     expect($result->gross_gsb_paise)->toBe(800_000);     // slab 3 = ₹7,200 (KP, score 20 × ₹360)
-    // Deductions applied at payout time, not credit time.
+    // Nothing was credited, so no repurchase deduction was taken either.
     expect($result->admin_charge_paise)->toBe(0);
     expect($result->tds_paise)->toBe(0);
+    expect($result->repurchase_deduction_paise)->toBe(0);
     expect($result->net_gsb_paise)->toBe(800_000);
     // Wallet should NOT have been credited
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->count())->toBe(0);
@@ -383,7 +387,7 @@ it('retries after failure and credits exactly once', function () {
                     int $referenceId,
                     string $referenceType,
                     ?string $memo = null,
-                ): WalletLedgerEntry {
+                ): BonusCreditOutcome {
                     throw new RuntimeException('Payment gateway timeout');
                 }
             };

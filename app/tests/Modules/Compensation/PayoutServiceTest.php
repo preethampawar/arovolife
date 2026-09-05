@@ -852,45 +852,38 @@ it('weekly batch: writes the admin charge and TDS as their own ledger debits', f
     expect($wallet->balancePaise($dist->id))->toBe(0);
 });
 
-it('weekly batch: backfills the admin charge and TDS onto the GSB cut-off result rows', function () {
-    // The engines credit gross and leave the deduction columns at zero; the
-    // payout is what knows the (capped, per-group) admin charge and the TDS, so
-    // it writes them back for the GSB history page.
+it('weekly batch: leaves the GSB cut-off result rows untouched — admin charge and TDS live only on the payout line', function () {
+    // The engines freeze gross, the credit-time repurchase deduction and the
+    // credited amount on the result row; the payout must not rewrite any of it,
+    // or the bonus pages would show a figure that is neither what landed in
+    // the wallet nor what reached the bank.
     $dist = makePayoutEligibleDistributor();
     $wallet = app(WalletService::class);
 
-    $firstId = walletRef();
-    $secondId = walletRef();
-    foreach ([[$firstId, 60_000, 2], [$secondId, 40_000, 1]] as [$resultId, $gross, $daysAgo]) {
-        DB::table('gsb_cutoff_results')->insert([
-            'id' => $resultId,
-            'distributor_id' => $dist->id,
-            'cutoff_date' => now()->subDays($daysAgo)->toDateString(),
-            'gross_gsb_paise' => $gross,
-            'net_gsb_paise' => $gross,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $wallet->credit($dist->id, $gross, 'gsb_credit', $resultId, 'gsb_cutoff_result');
-    }
+    $resultId = walletRef();
+    DB::table('gsb_cutoff_results')->insert([
+        'id' => $resultId,
+        'distributor_id' => $dist->id,
+        'cutoff_date' => now()->subDays(2)->toDateString(),
+        'gross_gsb_paise' => 100_000,
+        'repurchase_deduction_paise' => 10_000,
+        'net_gsb_paise' => 90_000,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $wallet->creditWithRepurchaseDeduction($dist->id, 100_000, 'gsb_credit', $resultId, 'gsb_cutoff_result');
 
     app(PayoutService::class)->runWeeklyBatch(Carbon::today());
 
-    // Total gross 100,000 → admin 3,000, TDS 4,850, apportioned 60/40.
-    $rows = DB::table('gsb_cutoff_results')->orderBy('id')->get()->keyBy('id');
-    expect((int) $rows[$firstId]->admin_charge_paise)->toBe(1_800);
-    expect((int) $rows[$firstId]->tds_paise)->toBe(2_910);
-    expect((int) $rows[$firstId]->net_gsb_paise)->toBe(55_290);
-    expect((int) $rows[$secondId]->admin_charge_paise)->toBe(1_200);
-    expect((int) $rows[$secondId]->tds_paise)->toBe(1_940);
-    expect((int) $rows[$secondId]->net_gsb_paise)->toBe(36_860);
+    $row = DB::table('gsb_cutoff_results')->find($resultId);
+    expect((int) $row->admin_charge_paise)->toBe(0);
+    expect((int) $row->tds_paise)->toBe(0);
+    expect((int) $row->repurchase_deduction_paise)->toBe(10_000);
+    expect((int) $row->net_gsb_paise)->toBe(90_000);
 
-    // Apportionment is exact — the shares add back up to what was deducted.
     $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
-    expect((int) $rows[$firstId]->admin_charge_paise + (int) $rows[$secondId]->admin_charge_paise)
-        ->toBe($line->admin_charge_paise);
-    expect((int) $rows[$firstId]->tds_paise + (int) $rows[$secondId]->tds_paise)
-        ->toBe($line->tds_paise);
+    expect($line->admin_charge_paise)->toBeGreaterThan(0);
+    expect($line->tds_paise)->toBeGreaterThan(0);
 });
 
 it('weekly batch: never charges more admin than the wallet actually holds', function () {
@@ -940,4 +933,68 @@ it('monthly batch: does not tax lifetime award cash a second time', function () 
     expect($line->tds_paise)->toBe(0);
     expect($line->net_transferred_paise)->toBe(100_000);
     expect($wallet->balancePaise($dist->id))->toBe(0);
+});
+
+it('weekly batch: a held line reports the credit-time repurchase deduction and the batch totals include held income', function () {
+    $dist = makePayoutEligibleDistributor();
+    $dist->update(['bank_account_enc' => null]);  // held as no_bank_account
+
+    $walletSvc = app(WalletService::class);
+
+    // ₹2,000 GSB: 10% = 20,000 paise already moved to the repurchase wallet at credit time.
+    $walletSvc->creditWithRepurchaseDeduction(
+        distributorId: $dist->id,
+        grossPaise: 200_000,
+        bonusType: 'gsb_credit',
+        referenceId: walletRef(),
+        referenceType: 'gsb_cutoff_result',
+    );
+
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::today()->startOfMonth()->addDays(7));
+
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_NO_BANK_ACCOUNT);
+    expect($line->gross_paise)->toBe(200_000);
+    expect($line->repurchase_deduction_paise)->toBe(20_000);
+    expect($line->wallet_balance_paise)->toBe(180_000);  // what is actually still in the main wallet
+    expect($line->net_transferred_paise)->toBe(0);
+
+    // Nothing swept or debited while held.
+    expect($walletSvc->balancePaise($dist->id))->toBe(180_000);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->whereNull('swept_by_payout_batch_id')->count())->toBe(3);
+
+    // Gross and deductions cover every line item; count and net cover only what goes to the bank.
+    $batch->refresh();
+    expect($batch->total_gross_paise)->toBe(200_000);
+    expect($batch->total_deductions_paise)->toBe(20_000);
+    expect($batch->distributor_count)->toBe(0);
+    expect($batch->total_net_paise)->toBe(0);
+});
+
+it('monthly batch: a KYC-held line reports the credit-time repurchase deduction', function () {
+    $dist = makePayoutEligibleDistributor();
+    $dist->user->update(['status' => 'pending_kyc']);
+
+    $walletSvc = app(WalletService::class);
+    $walletSvc->creditWithRepurchaseDeduction(
+        distributorId: $dist->id,
+        grossPaise: 300_000,
+        bonusType: 'rank_credit',
+        referenceId: walletRef(),
+        referenceType: 'rank_bonus_result',
+    );
+
+    $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::today()->startOfMonth()->addDays(7));
+
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_KYC_PENDING);
+    expect($line->gross_paise)->toBe(300_000);
+    expect($line->repurchase_deduction_paise)->toBe(30_000);
+    expect($line->wallet_balance_paise)->toBe(270_000);
+    expect($walletSvc->balancePaise($dist->id))->toBe(270_000);
+
+    $batch->refresh();
+    expect($batch->total_gross_paise)->toBe(300_000);
+    expect($batch->total_deductions_paise)->toBe(30_000);
+    expect($batch->distributor_count)->toBe(0);
 });

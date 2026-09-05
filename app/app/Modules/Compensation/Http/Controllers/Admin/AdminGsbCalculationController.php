@@ -152,7 +152,7 @@ final class AdminGsbCalculationController extends Controller
                 'gcr.right_bv_paise',
                 'gcr.gross_gsb_paise',
                 'gcr.net_gsb_paise',
-                'gcr.tds_paise',
+                'gcr.repurchase_deduction_paise',
                 'gcr.status',
                 'd.adn',
                 'u.full_name',

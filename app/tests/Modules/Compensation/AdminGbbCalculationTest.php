@@ -314,3 +314,23 @@ it('shows the frozen month header and the AGP point-value formula with the month
         ->assertOk()
         ->assertSee('How the AGP point value is calculated');
 });
+
+it('shows the repurchase deduction per row and counts only credited rows in the credited-to-wallets card — never TDS', function () {
+    $alice = gbbReportDistributor('GBRPD1', 'Alice');
+    $bob = gbbReportDistributor('GBRPD2', 'Bob');
+    $credited = makeGbbRow($alice, 4, 100_000, 400_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
+    $credited->update(['repurchase_deduction_paise' => 40_000, 'gbb_net_paise' => 360_000]);
+    // Held rows carry net = gross but never reached a wallet.
+    makeGbbRow($bob, 3, 100_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
+
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb.show', ['month' => '2026-07']))
+        ->assertOk()
+        ->assertSee('Repurchase deduction')
+        ->assertSee('Credited to wallets')
+        ->assertSee('-₹400.00')
+        ->assertSee('₹3,600.00')
+        ->assertSee('₹3,600')
+        ->assertDontSee('₹6,600')
+        ->assertDontSee('TDS (5%)');
+});

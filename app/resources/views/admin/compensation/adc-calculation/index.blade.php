@@ -69,7 +69,7 @@
                         Rate %
                         <x-help-tip text="Gross ADC ÷ Turnover BV × 100. Reflects the effective payout rate after admin charge." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income (Net ADC)</th>
+                    <th class="px-3 py-2 text-right text-gray-600 font-medium"><span class="flex items-center justify-end gap-1">Income (credited) <x-help-tip text="Credited to the wallet in full — ADC carries no repurchase deduction. Admin charge and TDS are applied at payout." /></span></th>
                     <th class="px-3 py-2 text-left text-gray-600 font-medium">
                         Pincode / District / State
                         <x-help-tip text="Centre address as registered. Use the Pincode / District / State search box to narrow down by area." />
@@ -139,17 +139,6 @@
                         <span class="font-semibold text-green-700">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
                         </span>
-                        @if($row->tds_paise > 0 || $row->admin_charge_paise > 0)
-                        <span class="block text-[10px] text-gray-600 font-normal">
-                            gross ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}
-                            @if($row->admin_charge_paise > 0)
-                            · adm ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}
-                            @endif
-                            @if($row->tds_paise > 0)
-                            · TDS ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}
-                            @endif
-                        </span>
-                        @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600 whitespace-nowrap">
                         @if($addressLine !== null)

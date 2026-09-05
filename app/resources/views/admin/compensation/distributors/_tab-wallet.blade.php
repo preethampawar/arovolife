@@ -13,6 +13,7 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Date</th>
                 <th class="px-3 py-2 text-left text-gray-600">Type <x-help-tip text="gsb_credit, mb_credit = bonus credits; admin_charge_debit and tds_debit = the payout-time deductions; payout_debit = the net bank transfer; reversal = admin correction." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Amount</th>
@@ -24,6 +25,7 @@
             @foreach($ledger as $item)
             @php $entry = $item['entry']; $runningBalance = $item['running_balance_paise']; @endphp
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-3 py-2 font-medium">{{ $entry->created_at?->format('d M Y') }}</td>
                 <td class="px-3 py-2 font-mono text-gray-600">{{ $entry->type }}</td>
                 <td class="px-3 py-2 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">
@@ -43,7 +45,7 @@
 {{-- Repurchase wallet ledger --}}
 <h3 class="text-sm font-semibold text-gray-700 mt-6 mb-2 flex items-center gap-1">
     Repurchase Wallet
-    <x-help-tip text="10% of prior-month bonus income (max ₹10,000) is withheld each payout and credited here. The balance is applied at checkout toward the monthly repurchase obligation. It cannot be withdrawn." />
+    <x-help-tip text="10% of each bonus (max ₹10,000 per calendar month) is moved here the moment the bonus is credited. The balance is applied at checkout toward the monthly repurchase obligation. It cannot be withdrawn." />
 </h3>
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if(empty($repurchaseLedger) || $repurchaseLedger->isEmpty())
@@ -52,8 +54,9 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Date</th>
-                <th class="px-3 py-2 text-left text-gray-600">Type <x-help-tip text="repurchase_deduction = withheld from payout; repurchase_wallet_used = applied at checkout." /></th>
+                <th class="px-3 py-2 text-left text-gray-600">Type <x-help-tip text="repurchase_deduction = moved here when a bonus was credited; repurchase_wallet_used = applied at checkout." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Amount</th>
                 <th class="px-3 py-2 text-left text-gray-600">Memo</th>
             </tr>
@@ -61,6 +64,7 @@
         <tbody class="divide-y divide-gray-50">
             @foreach($repurchaseLedger as $entry)
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-3 py-2 font-medium">{{ $entry->created_at?->format('d M Y') }}</td>
                 <td class="px-3 py-2 font-mono text-gray-600">{{ $entry->type }}</td>
                 <td class="px-3 py-2 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">

@@ -79,7 +79,7 @@ final class AdminGbbCalculationController extends Controller
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
-        $csv = "SNo,ADN,Name,Title,Month,AGP Points,Point Value (Rs),AGP Value Per Point (Rs),Gross GBB (Rs),TDS (Rs),Net GBB (Rs),Status\n";
+        $csv = "SNo,ADN,Name,Title,Month,AGP Points,Point Value (Rs),AGP Value Per Point (Rs),Gross GBB (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
@@ -100,7 +100,7 @@ final class AdminGbbCalculationController extends Controller
                 $pointValue,
                 $agpValuePerPoint,
                 number_format($row->gbb_gross_paise / 100, 2, '.', ''),
-                number_format($row->tds_paise / 100, 2, '.', ''),
+                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
                 number_format($row->gbb_net_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
             ])."\n";
@@ -137,7 +137,7 @@ final class AdminGbbCalculationController extends Controller
                 'gmr.agp_earned',
                 'gmr.point_value_paise',
                 'gmr.gbb_gross_paise',
-                'gmr.tds_paise',
+                'gmr.repurchase_deduction_paise',
                 'gmr.gbb_net_paise',
                 'gmr.status',
                 'd.adn',

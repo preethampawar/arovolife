@@ -19,13 +19,12 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Center</th>
                     <th class="px-4 py-2 text-left text-gray-600">Assigned distributor</th>
                     <th class="px-4 py-2 text-right text-gray-600">Orders</th>
                     <th class="px-4 py-2 text-right text-gray-600">Attributed BV</th>
-                    <th class="px-4 py-2 text-right text-gray-600">Gross (3%)</th>
-                    <th class="px-4 py-2 text-right text-gray-600">TDS (5%)</th>
-                    <th class="px-4 py-2 text-right text-gray-600">Net</th>
+                    <x-bonus-credit-head gross-label="Gross (3%)" :repurchase="false" />
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>
                 </tr>
             </thead>
@@ -35,15 +34,12 @@
                     $sc = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'pending' => 'bg-amber-100 text-amber-700'];
                 @endphp
                 <tr>
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $results->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 font-medium">{{ $row->center->name ?? '—' }}</td>
                     <td class="px-4 py-2 font-mono">{{ $row->distributor->adn ?? '—' }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($row->order_count) }}</td>
                     <td class="px-4 py-2 text-right">@bv($row->total_attributed_bv_paise)</td>
-                    <td class="px-4 py-2 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                    <td class="px-4 py-2 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
-                        ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}
-                    </td>
+                    <x-bonus-credit-cells :repurchase="false" :gross="$row->gross_paise" :credited="$row->net_paise" />
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ ucfirst($row->status) }}

@@ -14,7 +14,7 @@
         Rank 1 (Silver) is points-based: each achiever earned 10 RAP and each AO-GO grantee 5 points that month; the pool was divided by the month's total points and your income is your points × the point value.
         Ranks 2–9 pools are split equally among that rank's achievers.
         Re-qualifying a rank you already achieved requires that month's repurchase BV and a cleared repurchase wallet.
-        Admin charge (min of 3%, max ₹25,000 per monthly batch) and 5% TDS are deducted. Credited on the 8th of the following month.
+        When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet. The admin charge (3%, capped) and 5% TDS are taken at payout. Credited on the 8th of the following month.
     </div>
     @enddeveloper
 
@@ -173,7 +173,7 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 {{ ($aogoUsed ?? 0) > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-600 mb-1">Net Rank Bonus earned (page)</p>
+            <p class="text-xs text-gray-600 mb-1">Rank Bonus credited to wallet (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
@@ -221,6 +221,7 @@
             <table class="w-full text-sm min-w-[600px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Month</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Rank</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
@@ -229,14 +230,7 @@
                                 <x-help-tip text="Rank 1 only: RAP (Rank Achievement Points, 10 per achiever) or AO-GO offer points (5), multiplied by the month's point value (Rank-1 pool ÷ total points). Ranks 2–9 are an equal split, shown as —." />
                             </span>
                         </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Gross</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">
-                                Admin <x-help-tip text="min(3% of gross, ₹25,000 per monthly batch)" />
-                            </span>
-                        </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">TDS (5%)</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Net</th>
+                        <x-bonus-credit-head th-class="text-right px-4 py-3 font-semibold text-gray-600" />
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
                     </tr>
                 </thead>
@@ -247,6 +241,7 @@
                     $sc = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'pending' => 'bg-gray-100 text-gray-600'];
                     @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             {{ \Illuminate\Support\Carbon::parse($row->month_start)->format('F Y') }}
                         </td>
@@ -269,10 +264,7 @@
                                 —
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
+                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :gross="$row->gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_paise" />
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($row->status) }}

@@ -52,8 +52,7 @@ final class AdminGbbController extends Controller
                 MAX(pool_paise) as pool_paise,
                 MAX(total_pool_agp) as total_pool_agp,
                 SUM(gbb_gross_paise) as total_gross_paise,
-                SUM(tds_paise) as total_tds_paise,
-                SUM(gbb_net_paise) as total_net_paise,
+                SUM(CASE WHEN status = \'credited\' THEN gbb_net_paise ELSE 0 END) as total_net_paise,
                 COUNT(*) as distributor_count
             ')
             ->first();

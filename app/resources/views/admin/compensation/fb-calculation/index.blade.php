@@ -83,7 +83,7 @@
                         Value
                         <x-help-tip text="The whole-rupee point value applied at this distributor's matrix level in the month's cascade. Income = the guaranteed minimum + points × this value, capped per level." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                    <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-600 font-medium" />
                     <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
@@ -137,11 +137,15 @@
                     <td class="px-3 py-2 text-right text-gray-600">
                         {{ $row->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) : '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right">
-                        <span class="font-semibold {{ $row->status === 'skipped' ? 'text-gray-600' : 'text-green-700' }}">
-                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}
-                        </span>
-                    </td>
+                    {{-- Deduction and credited amount are the frozen figures on the
+                         result row. A pending row has not been credited yet, so its
+                         wallet column reads "—" rather than a promised figure. --}}
+                    <x-bonus-credit-cells
+                        :gross="$row->gross_paise"
+                        :deduction="$row->repurchase_deduction_paise"
+                        :credited="$row->net_paise"
+                        :is-credited="$row->status === 'credited'"
+                        td-class="px-3 py-2 text-right" />
                     <td class="px-3 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusBadges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ $row->status }}
@@ -152,7 +156,7 @@
             </tbody>
         </table>
     </div>
-    <p class="px-4 py-2 text-xs text-gray-500 border-t border-gray-100">Income = ₹30 minimum (funded from the month's pool, pro-rated on a shortfall month) + FB Points × Value, limited to the level's maximum. The ₹30 is included in the single wallet credit and in the Income column; it is not a separate line.</p>
+    <p class="px-4 py-2 text-xs text-gray-500 border-t border-gray-100">Income = ₹30 minimum (funded from the month's pool, pro-rated on a shortfall month) + FB Points × Value, limited to the level's maximum. The ₹30 is included in the Income column; it is not a separate line. Repurchase deduction = the share of Income moved to the repurchase wallet the moment it was credited; Credited to wallet = Income − Repurchase deduction. Admin charge and TDS are taken later, at payout.</p>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
 </div>

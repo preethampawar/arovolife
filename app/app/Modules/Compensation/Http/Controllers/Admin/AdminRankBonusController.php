@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankBonusResult;
-use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -51,8 +51,6 @@ final class AdminRankBonusController extends Controller
                 COUNT(*) as qualifier_count,
                 MAX(pool_paise) as pool_paise,
                 SUM(gross_paise) as total_gross_paise,
-                SUM(admin_charge_paise) as total_admin_paise,
-                SUM(tds_paise) as total_tds_paise,
                 SUM(net_paise) as total_net_paise
             ')
             ->where('month_start', $date->toDateString())

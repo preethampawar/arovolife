@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
-use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -129,7 +129,7 @@ final class AdminRankBonusCalculationController extends Controller
         $adcOn = Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
         $areteCenterMap = $adcOn ? $this->batchAreteCenters($distributorIds) : [];
 
-        $csv = 'SNo,ADN,'.($adcOn ? 'Arete Center,' : '')."Name,Title,Month,Rank,RAP,AO-GO Points,Point Value (Rs),Gross RB (Rs),TDS (Rs),Net RB (Rs),Status\n";
+        $csv = 'SNo,ADN,'.($adcOn ? 'Arete Center,' : '')."Name,Title,Month,Rank,RAP,AO-GO Points,Point Value (Rs),Gross RB (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
@@ -145,7 +145,7 @@ final class AdminRankBonusCalculationController extends Controller
                 $row->aogo_points ?? '',
                 $row->point_value_paise !== null ? number_format($row->point_value_paise / 100, 2, '.', '') : '',
                 number_format($row->gross_paise / 100, 2, '.', ''),
-                number_format($row->tds_paise / 100, 2, '.', ''),
+                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
                 number_format($row->net_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
             ]))."\n";
@@ -180,7 +180,7 @@ final class AdminRankBonusCalculationController extends Controller
                 'rbr.total_points',
                 'rbr.point_value_paise',
                 'rbr.gross_paise',
-                'rbr.tds_paise',
+                'rbr.repurchase_deduction_paise',
                 'rbr.net_paise',
                 'rbr.status',
                 'd.adn',

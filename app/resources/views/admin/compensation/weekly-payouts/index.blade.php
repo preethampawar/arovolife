@@ -18,15 +18,16 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Batch date</th>
                     <th class="px-4 py-2 text-right text-gray-600">
-                        Distributors <x-help-tip text="Number of distributors included in this payout batch (wallet ≥ ₹{{ $minPayout }})." />
+                        Distributors <x-help-tip text="Distributors being paid in this batch (net ≥ ₹{{ $minPayout }}). 'Held' counts those whose income stays in the wallet — KYC pending, no bank account, web-only or bank details unreadable." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">
-                        Total gross <x-help-tip text="Sum of all wallet balances included in the batch before deductions." />
+                        Total gross <x-help-tip text="Sum of bonus credits across every line in the batch, held lines included, before deductions." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">
-                        Deductions <x-help-tip text="Repurchase deduction (10% of last month's cash bonuses, capped ₹10,000) + admin charge (3%) + TDS (5%)." />
+                        Deductions <x-help-tip text="Repurchase deduction (10% per credit, monthly cap ₹10,000, already moved to the repurchase wallet at credit time) + admin charge (3%) + TDS (5%). Held lines carry only the repurchase part." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">Net transferred</th>
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>
@@ -45,8 +46,14 @@
                     ];
                 @endphp
                 <tr>
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $batches->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 font-medium">{{ $b->batch_date->format('d M Y') }} ({{ $b->batch_date->format('D') }})</td>
-                    <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($b->distributor_count) }}</td>
+                    <td class="px-4 py-2 text-right">
+                        {{ \App\Modules\Shared\Support\IndianNumber::format($b->distributor_count) }}
+                        @if($b->held_count > 0)
+                        <span class="text-gray-500">· {{ \App\Modules\Shared\Support\IndianNumber::format($b->held_count) }} held</span>
+                        @endif
+                    </td>
                     <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_gross_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_deductions_paise / 100, 2) }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($b->total_net_paise / 100, 2) }}</td>

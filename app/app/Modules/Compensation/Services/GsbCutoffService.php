@@ -468,7 +468,8 @@ final class GsbCutoffService
             ]);
         }
 
-        // Slab matched. Deductions (admin charge, TDS) are applied at payout time.
+        // Slab matched. The repurchase deduction is taken (and frozen onto this
+        // row) at credit time below; admin charge and TDS are applied at payout.
         $gross = $computation->grossPaise;
 
         $baseData = [
@@ -483,6 +484,7 @@ final class GsbCutoffService
             'gross_gsb_paise' => $gross,
             'admin_charge_paise' => 0,
             'tds_paise' => 0,
+            'repurchase_deduction_paise' => 0,
             'net_gsb_paise' => $gross,
             'power_cf_before_paise' => $computation->cfBeforePower,
             'power_side_before' => $computation->powerSideBefore,
@@ -574,18 +576,24 @@ final class GsbCutoffService
 
                 // A starved pool day can price a matched slab 3–7 at ₹0 — the
                 // weaker leg is still consumed, but a zero wallet entry is noise.
+                $repurchaseDeduction = 0;
+
                 if ($gross > 0) {
-                    $this->wallet->creditWithRepurchaseDeduction(
+                    $repurchaseDeduction = $this->wallet->creditWithRepurchaseDeduction(
                         distributorId: $distributorId,
                         grossPaise: $gross,
                         bonusType: 'gsb_credit',
                         referenceId: $savedResult->id,
                         referenceType: 'gsb_cutoff_result',
-                    );
+                    )->repurchaseDeductionPaise;
                 }
 
                 // STATUS_CALCULATED is transient; the daily command should treat past-date CALCULATED rows as failed on restart.
-                $savedResult->update(['status' => GsbCutoffResult::STATUS_CREDITED]);
+                $savedResult->update([
+                    'status' => GsbCutoffResult::STATUS_CREDITED,
+                    'repurchase_deduction_paise' => $repurchaseDeduction,
+                    'net_gsb_paise' => $gross - $repurchaseDeduction,
+                ]);
             });
         } catch (Throwable $e) {
             return $this->saveResult($existing, [
@@ -614,6 +622,7 @@ final class GsbCutoffService
         'gross_gsb_paise' => 0,
         'admin_charge_paise' => 0,
         'tds_paise' => 0,
+        'repurchase_deduction_paise' => 0,
         'net_gsb_paise' => 0,
         'failure_reason' => null,
     ];

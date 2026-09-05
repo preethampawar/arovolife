@@ -22,7 +22,9 @@ use Laravel\Pennant\Feature;
 /**
  * FB Monthly Calculation report — KP's 2026-08-07 mock, one row per
  * distributor per month: ADN, Arete Center, name, title, rank, enrolment date,
- * matrix level, FB points, the month's point value and the resulting income.
+ * matrix level, FB points, the month's point value and the resulting income —
+ * followed by the repurchase deduction taken at credit time and what landed in
+ * the wallet, both read off the stored result row (never re-derived here).
  *
  * Since the KP 2026-08-09 cascade a participant's income is the guaranteed
  * minimum plus points × the value applied at their matrix level, capped per
@@ -102,7 +104,7 @@ final class AdminFortuneBonusCalculationController extends Controller
 
         // Numbers stay ungrouped in CSV (project convention) — the grouped
         // Indian format is a display concern of the on-screen report.
-        $csv = "SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Status\n";
+        $csv = "SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
@@ -119,6 +121,8 @@ final class AdminFortuneBonusCalculationController extends Controller
                 $row->points ?? '',
                 $row->point_value_paise !== null ? number_format($row->point_value_paise / 100, 2, '.', '') : '',
                 number_format($row->gross_paise / 100, 2, '.', ''),
+                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
+                number_format($row->net_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
             ])."\n";
         }
@@ -152,6 +156,8 @@ final class AdminFortuneBonusCalculationController extends Controller
                 'fbr.points',
                 'fbr.point_value_paise',
                 'fbr.gross_paise',
+                'fbr.repurchase_deduction_paise',
+                'fbr.net_paise',
                 'fbr.status',
                 'fbp.first_gsb_date',
                 'd.adn',

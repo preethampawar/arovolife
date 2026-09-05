@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int $gbb_gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
+ * @property int $repurchase_deduction_paise
  * @property int $gbb_net_paise
  * @property string $status
  * @property Carbon|null $credited_at
@@ -64,6 +65,7 @@ final class GbbMonthlyResult extends Model
         'gbb_gross_paise',
         'admin_charge_paise',
         'tds_paise',
+        'repurchase_deduction_paise',
         'gbb_net_paise',
         'status',
         'credited_at',
@@ -80,6 +82,7 @@ final class GbbMonthlyResult extends Model
             'gbb_gross_paise' => 'int',
             'admin_charge_paise' => 'int',
             'tds_paise' => 'int',
+            'repurchase_deduction_paise' => 'int',
             'gbb_net_paise' => 'int',
             'credited_at' => 'datetime',
         ];

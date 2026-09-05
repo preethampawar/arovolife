@@ -10,14 +10,12 @@
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
+                <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Month</th>
                 <th class="px-3 py-2 text-right text-gray-600">AGP earned <x-help-tip text="Achievement Growth Points earned from this month's GSB slab matches." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Pool AGP <x-help-tip text="Total AGP earned by everyone in the month — the divisor for the point value." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Point value</th>
-                <th class="px-3 py-2 text-right text-gray-600">Gross</th>
-                <th class="px-3 py-2 text-right text-gray-600">Admin</th>
-                <th class="px-3 py-2 text-right text-gray-600">TDS</th>
-                <th class="px-3 py-2 text-right text-gray-600">Net</th>
+                <x-bonus-credit-head th-class="px-3 py-2 text-right text-gray-600" />
                 <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
@@ -32,16 +30,14 @@
                 };
             @endphp
             <tr>
+                <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                 <td class="px-3 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($row->year_month)->format('M Y') }}</td>
                 <td class="px-3 py-2 text-right font-semibold">{{ \App\Modules\Shared\Support\IndianNumber::format($row->agp_earned) }}</td>
                 <td class="px-3 py-2 text-right text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($row->total_pool_agp) }}</td>
                 <td class="px-3 py-2 text-right text-gray-600">
                     @if($row->point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
-                <td class="px-3 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_gross_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}</td>
+                <x-bonus-credit-cells td-class="px-3 py-2 text-right" :gross="$row->gbb_gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->gbb_net_paise" :is-credited="$row->status === 'credited'" />
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusClass }}">{{ str_replace('_', ' ', $row->status) }}</span>
                 </td>

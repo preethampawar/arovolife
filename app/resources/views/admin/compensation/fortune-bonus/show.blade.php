@@ -103,7 +103,7 @@
         <p class="text-xs font-medium text-gray-600 mb-1">Level {{ $level }}</p>
         <p class="text-sm font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->participant_count) }} participants</p>
         <p class="text-xs text-indigo-700 font-medium mt-0.5">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $summary->total_points) }} FB points</p>
-        <p class="text-xs text-gray-600 mt-0.5">Net total: ₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }}</p>
+        <p class="text-xs text-gray-600 mt-0.5">Credited to wallets: ₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }}</p>
     </div>
     @endforeach
 </div>
@@ -128,9 +128,7 @@
                     <th class="px-4 py-2 text-left text-gray-600">First GSB date</th>
                     <th class="px-4 py-2 text-right text-gray-600">FB points</th>
                     <th class="px-4 py-2 text-right text-gray-600">Value</th>
-                    <th class="px-4 py-2 text-right text-gray-600">Gross</th>
-                    <th class="px-4 py-2 text-right text-gray-600">TDS</th>
-                    <th class="px-4 py-2 text-right text-gray-600">Net</th>
+                    <x-bonus-credit-head />
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>
                 </tr>
             </thead>
@@ -150,11 +148,13 @@
                     <td class="px-4 py-2 text-gray-600">{{ $participant->first_gsb_date ?? '—' }}</td>
                     <td class="px-4 py-2 text-right font-mono text-indigo-700">{{ $result?->points !== null ? \App\Modules\Shared\Support\IndianNumber::format($result->points) : '—' }}</td>
                     <td class="px-4 py-2 text-right font-mono text-gray-600">{{ $result?->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->point_value_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono">{{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->gross_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono text-gray-600">{{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->tds_paise / 100, 2) : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-mono font-semibold {{ ($result?->net_paise ?? 0) > 0 ? 'text-green-700' : 'text-gray-600' }}">
-                        {{ $result ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($result->net_paise / 100, 2) : '—' }}
-                    </td>
+                    @if($result)
+                    <x-bonus-credit-cells :gross="$result->gross_paise" :deduction="$result->repurchase_deduction_paise" :credited="$result->net_paise" />
+                    @else
+                    <td class="px-4 py-2 text-right font-mono text-gray-500">—</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-500">—</td>
+                    <td class="px-4 py-2 text-right font-mono text-gray-500">—</td>
+                    @endif
                     <td class="px-4 py-2 text-center">
                         @if($result)
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$result->status] ?? 'bg-gray-100 text-gray-600' }}">

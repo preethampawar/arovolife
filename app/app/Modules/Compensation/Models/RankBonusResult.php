@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property int $gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
+ * @property int $repurchase_deduction_paise
  * @property int $net_paise
  * @property string $status
  * @property Carbon|null $credited_at
@@ -56,6 +57,7 @@ final class RankBonusResult extends Model
         'gross_paise',
         'admin_charge_paise',
         'tds_paise',
+        'repurchase_deduction_paise',
         'net_paise',
         'status',
         'credited_at',
@@ -75,6 +77,7 @@ final class RankBonusResult extends Model
             'gross_paise' => 'int',
             'admin_charge_paise' => 'int',
             'tds_paise' => 'int',
+            'repurchase_deduction_paise' => 'int',
             'net_paise' => 'int',
             'credited_at' => 'datetime',
         ];

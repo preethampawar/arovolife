@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Fortune Bonus is 5% of the month's company-wide BV, distributed through a level cascade. Eligible distributors are placed first-come, first-served into a monthly 3×9 forced matrix based on GSB activity, and each participant earns FB points from the enrolled distributors below them (9/8/7/6/5/4/3/2/1 per member at depths 1–9). A ₹30 minimum per qualifier is reserved off the pool first (pro-rated to an equal whole-rupee share — possibly ₹0 — when the pool cannot cover it); capped levels (0–6) then settle top-down — each at the whole-rupee floor of the remaining pool over all remaining points, with per-member ceilings of ₹30,000/₹30,000/₹30,000/₹30,000/₹20,000/₹10,000/₹5,000 including the minimum — levels 7–8 share one value over their combined points, and level 9 receives the minimum only. All economics are frozen per level before any credit and never recomputed. A 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Runs automatically on the 9th.
+    The Fortune Bonus is 5% of the month's company-wide BV, distributed through a level cascade. Eligible distributors are placed first-come, first-served into a monthly 3×9 forced matrix based on GSB activity, and each participant earns FB points from the enrolled distributors below them (9/8/7/6/5/4/3/2/1 per member at depths 1–9). A ₹30 minimum per qualifier is reserved off the pool first (pro-rated to an equal whole-rupee share — possibly ₹0 — when the pool cannot cover it); capped levels (0–6) then settle top-down — each at the whole-rupee floor of the remaining pool over all remaining points, with per-member ceilings of ₹30,000/₹30,000/₹30,000/₹30,000/₹20,000/₹10,000/₹5,000 including the minimum — levels 7–8 share one value over their combined points, and level 9 receives the minimum only. All economics are frozen per level before any credit and never recomputed. The repurchase deduction (10%, capped monthly) is taken at credit time and frozen on each row; a 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Runs automatically on the 9th.
 </div>
 @enddeveloper
 
@@ -18,6 +18,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Month</th>
                     <th class="px-4 py-2 text-right text-gray-600">Participants</th>
                     <th class="px-4 py-2 text-right text-gray-600">
@@ -41,6 +42,7 @@
                 @foreach($months as $m)
                 @php($pool = $pools[$m->month_start] ?? null)
                 <tr>
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->month_start)->format('F Y') }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->participant_count) }}</td>
                     <td class="px-4 py-2 text-right text-indigo-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) : '—' }}</td>

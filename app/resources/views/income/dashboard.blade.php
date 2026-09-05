@@ -11,9 +11,9 @@
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         @if ($gsbOn)
-            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. Deductions (3% admin charge, 5% TDS, and any repurchase wallet balance) are applied before transfer.
+            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @else
-            This dashboard shows a live snapshot of your income. Weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. Deductions (3% admin charge, 5% TDS, and any repurchase wallet balance) are applied before transfer.
+            This dashboard shows a live snapshot of your income. Weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @endif
     </div>
     @enddeveloper
@@ -23,7 +23,7 @@
         <p class="text-sm text-indigo-200 font-medium mb-1">Wallet Balance</p>
         @if ($walletBalancePaise !== null)
             <p class="text-4xl font-bold mb-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBalancePaise / 100, 2) }}</p>
-            <p class="text-sm text-indigo-200">Transferred to your bank on payout days, after 3% admin charge + 5% TDS + repurchase deduction</p>
+            <p class="text-sm text-indigo-200">Already net of the repurchase deduction. Transferred to your bank on payout days after the 3% admin charge + 5% TDS</p>
         @else
             <p class="text-4xl font-bold mb-1">₹—</p>
             <p class="text-sm text-indigo-200">Your wallet balance will appear here once the GSB engine is active.</p>

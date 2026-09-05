@@ -52,7 +52,8 @@ use Illuminate\Support\Facades\DB;
  * the pool denominator (MSB precedent: only paid participants dilute the
  * pool) and never back-paid.
  *
- * Deductions (admin charge, TDS) are applied at payout time, not credit time.
+ * The repurchase deduction is taken at credit time and frozen on the result
+ * row; admin charge and TDS are applied at payout time, not credit time.
  * All rates, caps and pool figures are read from
  * CompensationPlanSettingsService (admin-editable), not hardcoded.
  */
@@ -74,7 +75,7 @@ final class RankBonusService
      * @return array{
      *     turnover_paise: int,
      *     credited: int,
-     *     by_rank: array<int, array{qualifiers: int, held: int, aogo_grants: int, pool_paise: int, total_points: int|null, point_value_paise: int|null, net_total: int}>
+     *     by_rank: array<int, array{qualifiers: int, held: int, aogo_grants: int, pool_paise: int, total_points: int|null, point_value_paise: int|null, gross_total: int}>
      * }
      */
     public function runForMonth(Carbon $month): array
@@ -156,7 +157,7 @@ final class RankBonusService
                     'pool_paise' => $poolPaise,
                     'total_points' => $totalPoints,
                     'point_value_paise' => $pointValuePaise,
-                    'net_total' => 0,
+                    'gross_total' => 0,
                 ];
 
                 foreach ($heldIds as $distributorId) {
@@ -212,7 +213,7 @@ final class RankBonusService
 
                     if ($grossPerQualifier > 0) {
                         $rankName = $this->plan->rankName($rank);
-                        $this->wallet->creditWithRepurchaseDeduction(
+                        $outcome = $this->wallet->creditWithRepurchaseDeduction(
                             distributorId: $distributorId,
                             grossPaise: $grossPerQualifier,
                             bonusType: 'rank_credit',
@@ -224,9 +225,11 @@ final class RankBonusService
                         $result->update([
                             'status' => RankBonusResult::STATUS_CREDITED,
                             'credited_at' => now(),
+                            'repurchase_deduction_paise' => $outcome->repurchaseDeductionPaise,
+                            'net_paise' => $outcome->creditedPaise(),
                         ]);
 
-                        $byRank[$rank]['net_total'] += $grossPerQualifier;
+                        $byRank[$rank]['gross_total'] += $grossPerQualifier;
                         $credited++;
                     }
 
@@ -245,7 +248,7 @@ final class RankBonusService
                     );
 
                     if ($creditedNow > 0) {
-                        $byRank[$rank]['net_total'] += $creditedNow;
+                        $byRank[$rank]['gross_total'] += $creditedNow;
                         $credited++;
                     }
                 }
@@ -417,7 +420,7 @@ final class RankBonusService
             return 0;
         }
 
-        $this->wallet->creditWithRepurchaseDeduction(
+        $outcome = $this->wallet->creditWithRepurchaseDeduction(
             distributorId: $grant->distributor_id,
             grossPaise: $grossPaise,
             bonusType: 'rank_credit',
@@ -429,6 +432,8 @@ final class RankBonusService
         $result->update([
             'status' => RankBonusResult::STATUS_CREDITED,
             'credited_at' => now(),
+            'repurchase_deduction_paise' => $outcome->repurchaseDeductionPaise,
+            'net_paise' => $outcome->creditedPaise(),
         ]);
 
         $grant->update([

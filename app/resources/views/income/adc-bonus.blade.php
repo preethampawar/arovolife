@@ -17,7 +17,7 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-600 mb-1">Net ADC Bonus earned (page)</p>
+            <p class="text-xs text-gray-600 mb-1">ADC Bonus credited to wallet (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
@@ -56,13 +56,12 @@
             <table class="w-full text-sm min-w-[640px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Month</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Center</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Orders</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Collected BV</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Gross</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">TDS (5%)</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Net</th>
+                        <x-bonus-credit-head th-class="text-right px-4 py-3 font-semibold text-gray-600" :repurchase="false" />
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
                     </tr>
                 </thead>
@@ -72,15 +71,14 @@
                     $sc = ['credited' => 'bg-green-100 text-green-700', 'reversed' => 'bg-red-100 text-red-700', 'pending' => 'bg-amber-100 text-amber-700'];
                     @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             {{ \Illuminate\Support\Carbon::parse($row->month_start)->format('F Y') }}
                         </td>
                         <td class="px-4 py-3 text-gray-700">{{ $row->center->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-right text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($row->order_count) }}</td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">@bv($row->total_attributed_bv_paise)</td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) }}</td>
+                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :repurchase="false" :gross="$row->gross_paise" :credited="$row->net_paise" />
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($row->status) }}

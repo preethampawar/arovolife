@@ -64,6 +64,7 @@
             <table class="w-full text-sm min-w-[640px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Entry</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center gap-1">Member <x-help-tip text="The ADN of the Genos member whose purchase generated this BV." /></span>
@@ -79,17 +80,19 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($days as $day)
                     <tr class="bg-gray-50/70">
+                        <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $days->firstItem() + $loop->index }}</td>
                         <td colspan="4" class="px-4 py-2 font-semibold text-gray-600">
                             {{ \Illuminate\Support\Carbon::parse($day->date)->format('d M Y') }}
                         </td>
                     </tr>
                     @if(count($day->credits) === 0 && count($day->reversals) === 0)
                     <tr>
-                        <td colspan="4" class="px-4 py-2.5 text-gray-600 italic">No Genos BV added this day.</td>
+                        <td colspan="5" class="px-4 py-2.5 text-gray-600 italic">No Genos BV added this day.</td>
                     </tr>
                     @endif
                     @foreach($day->credits as $credit)
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2.5"></td>
                         <td class="px-4 py-2.5 text-gray-600">
                             Purchase BV
                             @if($credit->debt_consumed_paise > 0)
@@ -107,6 +110,7 @@
                     @endforeach
                     @foreach($day->reversals as $reversal)
                     <tr class="bg-red-50/40">
+                        <td class="px-4 py-2.5"></td>
                         <td class="px-4 py-2.5 text-red-700">
                             Order cancelled — BV reversed
                             @if($reversal->debt_paise > 0)
@@ -134,7 +138,7 @@
                         [$statusLabel, $statusClass] = $statusLabels[$c->status] ?? ['Pending', 'bg-gray-100 text-gray-600'];
                     @endphp
                     <tr class="bg-indigo-50/60">
-                        <td colspan="2" class="px-4 py-2.5 text-indigo-900">
+                        <td colspan="3" class="px-4 py-2.5 text-indigo-900">
                             <span class="font-semibold">Daily cut-off</span>
                             <span class="inline-flex ml-2 px-2 py-0.5 rounded-full text-xs font-medium {{ $statusClass }}">{{ $statusLabel }}</span>
                             @if($c->slab)
@@ -148,7 +152,7 @@
                     </tr>
                     @else
                     <tr class="bg-indigo-50/40">
-                        <td colspan="4" class="px-4 py-2.5 text-indigo-400 italic">Cut-off pending for this day.</td>
+                        <td colspan="5" class="px-4 py-2.5 text-indigo-400 italic">Cut-off pending for this day.</td>
                     </tr>
                     @endif
                     @endforeach

@@ -388,7 +388,7 @@ final class FortuneBonusService
                         .' '.$monthStart;
                 }
 
-                $this->wallet->creditWithRepurchaseDeduction(
+                $outcome = $this->wallet->creditWithRepurchaseDeduction(
                     distributorId: $distributorId,
                     grossPaise: $gross,
                     bonusType: 'fortune_credit',
@@ -400,9 +400,11 @@ final class FortuneBonusService
                 $result->update([
                     'status' => FortuneBonusResult::STATUS_CREDITED,
                     'credited_at' => now(),
+                    'repurchase_deduction_paise' => $outcome->repurchaseDeductionPaise,
+                    'net_paise' => $outcome->creditedPaise(),
                 ]);
 
-                $totalNet += $gross;
+                $totalNet += $outcome->creditedPaise();
                 $credited++;
             }
         });

@@ -195,6 +195,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-3 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-600">Name</th>
                     <th class="px-3 py-2 text-right text-gray-600">
@@ -204,7 +205,7 @@
                         Gross <x-help-tip text="Bonus income swept into this batch, before any deduction." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
-                        Repurchase deduction <x-help-tip text="10% of prior month cash bonuses, capped ₹10,000. Already taken at credit time — shown so the row reconciles." />
+                        Repurchase deduction <x-help-tip text="10% of each bonus, capped ₹10,000 per calendar month. Already taken at credit time — shown so the row reconciles." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
                         Admin charge <x-help-tip text="3% of gross, capped at ₹25,000 per bonus group per cycle." />
@@ -231,6 +232,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($lines as $line)
                 <tr>
+                    <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $lines->firstItem() + $loop->index }}</td>
                     <td class="px-3 py-2 font-mono font-medium">
                         <a href="{{ route('admin.compensation.distributors.show', $line->distributor_id) }}"
                            class="text-brand-700 hover:underline">

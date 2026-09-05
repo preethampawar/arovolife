@@ -587,7 +587,12 @@ it('pays a participant with no downline the ₹30 minimum, credited to the walle
     expect($topResult->points)->toBe(9)
         ->and($topResult->gross_paise)->toBe(3_000_000)
         ->and($topResult->cap_paise)->toBe(3_000_000)
-        ->and($topResult->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
+        ->and($topResult->status)->toBe(FortuneBonusResult::STATUS_CREDITED)
+        // The 10% repurchase deduction is frozen on the row at credit time and
+        // the net column is what actually landed in the main wallet.
+        ->and($topResult->repurchase_deduction_paise)->toBe(300_000)
+        ->and($topResult->net_paise)->toBe(2_700_000);
+    expect($result['total_net_paise'])->toBe($topResult->net_paise + $bottomResult->fresh()->net_paise);
 });
 
 it('freezes the month economics — later BV and later enrolments never reprice it', function (): void {

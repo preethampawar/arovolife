@@ -10,7 +10,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income transfers to your registered bank account every Tuesday and monthly income in the monthly payout on the 9th — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of your previous month's bonus income (max ₹10,000) is held back to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
+        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income transfers to your registered bank account every Tuesday and monthly income in the monthly payout on the 9th — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of each bonus (max ₹10,000 per calendar month) moves to your repurchase wallet the moment the bonus is credited, to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
     </div>
     @enddeveloper
 
@@ -73,6 +73,7 @@
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         @php
                             // Bonus names in the tip track the feature flags —
@@ -122,6 +123,7 @@
                     @foreach($ledgerRows as $item)
                     @php $entry = $item['entry']; $runningBalance = $item['running_balance_paise']; @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-gray-700">
                             {{ $walletTypeLabels[$entry->type] ?? \Illuminate\Support\Str::of($entry->type)->replace('_', ' ')->ucfirst() }}
@@ -145,7 +147,7 @@
     {{-- Repurchase wallet ledger --}}
     <h2 class="text-base font-semibold text-gray-800 mb-3 flex items-center gap-1">
         Repurchase Wallet Ledger
-        <x-help-tip text="Each payout, 10% of your previous month's bonus income (max ₹10,000) is moved here. The balance is automatically applied at checkout toward your monthly repurchase obligation. It cannot be withdrawn." />
+        <x-help-tip text="When a bonus is credited, 10% of it (up to ₹10,000 per calendar month across all bonuses) is moved here straight away. The balance is automatically applied at checkout toward your monthly repurchase obligation. It cannot be withdrawn." />
     </h2>
     @if($repurchaseLedgerRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
@@ -157,6 +159,7 @@
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center gap-1">Type <x-help-tip text="Deduction = withheld from payout into this wallet. Credit applied = used at checkout." /></span>
@@ -167,6 +170,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($repurchaseLedgerRows as $entry)
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-gray-700">
                             {{ $entry->type === 'repurchase_deduction' ? 'Repurchase deduction' : 'Credit applied at checkout' }}
@@ -196,6 +200,7 @@
             <table class="w-full text-sm min-w-[860px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">Gross <x-help-tip text="Your total bonus income for this payout period, before any deduction." /></span>
@@ -219,6 +224,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($payoutRows as $row)
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $row->created_at?->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right font-mono text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-right font-mono {{ $row->repurchase_deduction_paise > 0 ? 'text-red-600' : 'text-gray-500' }}">

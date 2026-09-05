@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property int $gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
+ * @property int $repurchase_deduction_paise
  * @property int $net_paise
  * @property string $status
  * @property Carbon|null $credited_at
@@ -46,6 +47,7 @@ final class FortuneBonusResult extends Model
         'gross_paise',
         'admin_charge_paise',
         'tds_paise',
+        'repurchase_deduction_paise',
         'net_paise',
         'status',
         'credited_at',
@@ -63,6 +65,7 @@ final class FortuneBonusResult extends Model
             'gross_paise' => 'integer',
             'admin_charge_paise' => 'integer',
             'tds_paise' => 'integer',
+            'repurchase_deduction_paise' => 'integer',
             'net_paise' => 'integer',
             'credited_at' => 'datetime',
         ];

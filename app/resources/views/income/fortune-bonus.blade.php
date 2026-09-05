@@ -10,14 +10,14 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Fortune Bonus is a monthly matrix reward funded entirely by the month's pool (5% of company BV). Eligible distributors are placed in a 3×9 matrix in order of GSB activity, and each month you earn FB points from the enrolled distributors below you in that matrix. A ₹30 minimum per qualifier is set aside from the pool first; if a month's pool cannot cover it, the pool is divided equally instead and that share may be ₹0. On top of the minimum, your FB points are multiplied by your matrix level's point value for the month — a value that varies with company BV and everyone's points, and may be ₹0 — up to your level's maximum (₹30,000 at levels 0–3, ₹20,000 at level 4, ₹10,000 at level 5, ₹5,000 at level 6, ₹2,500 at level 7, ₹1,500 at level 8 and ₹30 at level 9 — each maximum includes the ₹30). The matrix holds 29,524 positions (levels 0–9); if all of them are taken for a month, you are not entered for that month and no Fortune Bonus is payable to you. A 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Credited on the 9th of the following month. Every figure below is a record of a completed month — nothing here is a projection of future income.
+        The Fortune Bonus is a monthly matrix reward funded entirely by the month's pool (5% of company BV). Eligible distributors are placed in a 3×9 matrix in order of GSB activity, and each month you earn FB points from the enrolled distributors below you in that matrix. A ₹30 minimum per qualifier is set aside from the pool first; if a month's pool cannot cover it, the pool is divided equally instead and that share may be ₹0. On top of the minimum, your FB points are multiplied by your matrix level's point value for the month — a value that varies with company BV and everyone's points, and may be ₹0 — up to your level's maximum (₹30,000 at levels 0–3, ₹20,000 at level 4, ₹10,000 at level 5, ₹5,000 at level 6, ₹2,500 at level 7, ₹1,500 at level 8 and ₹30 at level 9 — each maximum includes the ₹30). The matrix holds 29,524 positions (levels 0–9); if all of them are taken for a month, you are not entered for that month and no Fortune Bonus is payable to you. When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet; a 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Credited on the 9th of the following month. Every figure below is a record of a completed month — nothing here is a projection of future income.
     </div>
     @enddeveloper
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-600 mb-1">Net Fortune Bonus earned (page)</p>
+            <p class="text-xs text-gray-600 mb-1">Fortune Bonus credited to wallet (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
@@ -56,6 +56,7 @@
             <table class="w-full text-sm min-w-[760px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Month</th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Position</th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Matrix Level</th>
@@ -63,9 +64,7 @@
                             FB points × value
                             <x-help-tip text="The whole-rupee point value applied at your matrix level for the month, funded by the fortune pool — 5% of company BV. It varies month to month and may be ₹0. Your gross includes the ₹30 minimum (paid from the pool, pro-rated if the pool cannot cover it) and is limited by your level's maximum." />
                         </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Gross</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">TDS (5%)</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Net</th>
+                        <x-bonus-credit-head th-class="text-right px-4 py-3 font-semibold text-gray-600" />
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
                     </tr>
                 </thead>
@@ -75,6 +74,7 @@
                     $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-600', 'pending' => 'bg-amber-100 text-amber-700'];
                     @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             {{ \Illuminate\Support\Carbon::parse($row->month_start)->format('F Y') }}
                         </td>
@@ -93,11 +93,7 @@
                                 <span class="text-gray-600">—</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-gray-600">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold {{ $row->net_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
-                            {{ $row->net_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->net_paise / 100, 2) : '—' }}
-                        </td>
+                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :dash-when-zero="true" :gross="$row->gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_paise" />
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($row->status) }}

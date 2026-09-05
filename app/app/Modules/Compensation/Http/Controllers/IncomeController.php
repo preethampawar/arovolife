@@ -217,7 +217,7 @@ final class IncomeController extends Controller
 
         return response()->streamDownload(function () use ($rows): void {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Left BV matched', 'Right BV matched', 'Slab', 'Gross GSB (₹)', 'Admin Charge (₹)', 'TDS (₹)', 'Net GSB (₹)', 'Status']);
+            fputcsv($out, ['Date', 'Left BV matched', 'Right BV matched', 'Slab', 'Gross GSB (₹)', 'Repurchase Deduction (₹)', 'Credited to Wallet (₹)', 'Status']);
             foreach ($rows as $row) {
                 fputcsv($out, [
                     $row->cutoff_date->toDateString(),
@@ -225,8 +225,7 @@ final class IncomeController extends Controller
                     number_format($row->right_bv_paise / 100, 0, '.', ''),
                     $row->slab,
                     number_format($row->gross_gsb_paise / 100, 2, '.', ''),
-                    number_format($row->admin_charge_paise / 100, 2, '.', ''),
-                    number_format($row->tds_paise / 100, 2, '.', ''),
+                    number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
                     number_format($row->net_gsb_paise / 100, 2, '.', ''),
                     $row->status,
                 ]);

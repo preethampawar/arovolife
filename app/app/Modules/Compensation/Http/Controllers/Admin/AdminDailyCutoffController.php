@@ -107,7 +107,7 @@ final class AdminDailyCutoffController extends Controller
             ->when($status, fn ($b) => $b->where('status', $status))
             ->get();
 
-        $csv = "ADN,Name,Left BV,Right BV,Slab,Gross GSB (Rs),Admin Charge (Rs),TDS (Rs),Net GSB (Rs),Status\n";
+        $csv = "ADN,Name,Left BV,Right BV,Slab,Gross GSB (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
         foreach ($rows as $r) {
             $csv .= '"'.($r->distributor->adn ?? '').'",'
                 .'"'.($r->distributor->user?->full_name ?? '').'",'
@@ -115,8 +115,7 @@ final class AdminDailyCutoffController extends Controller
                 .(int) ($r->right_bv_paise / 100).','
                 .'"'.($r->slab ?? '').'",'
                 .number_format($r->gross_gsb_paise / 100, 2, '.', '').','
-                .number_format($r->admin_charge_paise / 100, 2, '.', '').','
-                .number_format($r->tds_paise / 100, 2, '.', '').','
+                .number_format($r->repurchase_deduction_paise / 100, 2, '.', '').','
                 .number_format($r->net_gsb_paise / 100, 2, '.', '').','
                 .'"'.$r->status.'"'."\n";
         }

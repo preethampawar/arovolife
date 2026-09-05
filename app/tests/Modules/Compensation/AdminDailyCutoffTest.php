@@ -78,7 +78,8 @@ function cutoffRowForToday(): void
         'gross_gsb_paise' => 200_000,
         'admin_charge_paise' => 0,
         'tds_paise' => 0,
-        'net_gsb_paise' => 200_000,
+        'repurchase_deduction_paise' => 20_000,
+        'net_gsb_paise' => 180_000,
         'status' => GsbCutoffResult::STATUS_CREDITED,
         'created_at' => now()->toDateTimeString(),
         'updated_at' => now()->toDateTimeString(),
@@ -112,4 +113,24 @@ it('ADC-02: an admin plan edit moves the tooltip with it', function (): void {
         ->assertOk()
         ->assertSee('3=1.2L', false)
         ->assertDontSee('3=1L,');
+});
+
+it('shows gross, the credit-time repurchase deduction and the credited amount — never admin charge or TDS — on both cut-off screens', function (): void {
+    cutoffRowForToday();
+    $admin = cutoffAdmin();
+
+    foreach ([
+        route('admin.compensation.daily-cutoffs.index'),
+        route('admin.compensation.daily-cutoffs.show', today()->toDateString()),
+    ] as $url) {
+        $this->actingAs($admin)->get($url)
+            ->assertOk()
+            ->assertSee('Repurchase deduction')
+            ->assertSee('Credited to wallet')
+            ->assertSee('₹2,000.00')
+            ->assertSee('-₹200.00')
+            ->assertSee('₹1,800.00')
+            ->assertDontSee('TDS 5%')
+            ->assertDontSee('Admin 3%');
+    }
 });

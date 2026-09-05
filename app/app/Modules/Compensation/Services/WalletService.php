@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\DTOs\BonusCreditOutcome;
 use App\Modules\Compensation\Support\EngineRunContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -172,8 +173,10 @@ class WalletService
      * IST calendar month — a distributor who has already hit the monthly ceiling
      * is credited gross with no deduction at all.
      *
-     * Returns the gross credit entry, so callers can treat it exactly as they
-     * treated {@see credit()}.
+     * Returns the outcome (gross, deduction, the gross credit entry) so the
+     * calling engine can freeze the deduction onto its result row — the pages
+     * read that row, never the ledger, so this is the only place the figure is
+     * ever computed.
      */
     public function creditWithRepurchaseDeduction(
         int $distributorId,
@@ -182,10 +185,10 @@ class WalletService
         int $referenceId,
         string $referenceType,
         ?string $memo = null,
-    ): WalletLedgerEntry {
+    ): BonusCreditOutcome {
         return DB::transaction(function () use (
             $distributorId, $grossPaise, $bonusType, $referenceId, $referenceType, $memo,
-        ): WalletLedgerEntry {
+        ): BonusCreditOutcome {
             $deductionPaise = (int) floor(abs($grossPaise) * $this->planSettings->repurchaseRateBp() / 10_000);
 
             $alreadyDeducted = $this->repurchaseDeductionThisMonthPaise($distributorId);
@@ -226,7 +229,7 @@ class WalletService
                 );
             }
 
-            return $grossEntry;
+            return new BonusCreditOutcome($grossPaise, $deductionPaise, $grossEntry);
         });
     }
 

@@ -58,12 +58,12 @@ final class RankBonusRunCommand extends Command
                 $data['total_points'] !== null ? (string) $data['total_points'] : '—',
                 $data['point_value_paise'] !== null ? '₹'.Number::format($data['point_value_paise'] / 100, 0) : '—',
                 '₹'.Number::format($data['pool_paise'] / 100, 2),
-                '₹'.Number::format($data['net_total'] / 100, 2),
+                '₹'.Number::format($data['gross_total'] / 100, 2),
             ];
         }
 
         $this->table(
-            ['Rank', 'Name', 'Payable', 'Held', 'AO-GO', 'Points', 'Point Value', 'Pool', 'Net Credited'],
+            ['Rank', 'Name', 'Payable', 'Held', 'AO-GO', 'Points', 'Point Value', 'Pool', 'Gross Credited'],
             $rows,
         );
 

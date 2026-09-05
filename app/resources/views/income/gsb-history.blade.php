@@ -10,7 +10,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your Genos Sales Bonus (GSB) is calculated at 23:59 every day based on the BV your Genos groups generated. The gross amount is reduced by a 3% admin charge (max ₹25,000 per weekly batch), 5% TDS (Tax Deducted at Source), and a repurchase deduction before reaching your wallet. Each row below is one daily cut-off result.
+        Your Genos Sales Bonus (GSB) is calculated at 23:59 every day based on the BV your Genos groups generated. When a bonus is credited, 10% of it (up to ₹10,000 per calendar month) moves to your repurchase wallet; the rest lands in your main wallet. The 3% admin charge (max ₹25,000 per weekly batch) and 5% TDS (Tax Deducted at Source) are taken later, at payout, and appear on your payout statement. Each row below is one daily cut-off result.
     </div>
     @enddeveloper
 
@@ -41,24 +41,14 @@
             <table class="w-full text-sm min-w-[800px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Left BV matched</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Right BV matched</th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-center gap-1">Slab <x-help-tip text="Slab 1: 15K/15K BV = ₹2,000. Slab 2: 36K = ₹4,000. Slabs 3–7 (1L / 3L / 9L / 27L / 81L) share the day's GSB pool and pay up to ₹8,000 / ₹15,000 / ₹28,000 / ₹46,000 / ₹70,000, subject to your title — the exact amount depends on that day's company-wide sales and can be ₹0 on a low-sales day; matched BV is consumed either way." /></span>
                         </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Gross GSB <x-help-tip text="The Genos Sales Bonus before any deductions." /></span>
-                        </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Admin 3% <x-help-tip text="3% of gross GSB or ₹25,000 per weekly batch — whichever is lower." /></span>
-                        </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">TDS 5% <x-help-tip text="Tax Deducted at Source at 5% of gross minus admin charge." /></span>
-                        </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Net GSB <x-help-tip text="Amount credited to your wallet after the admin charge and TDS deductions." /></span>
-                        </th>
+                        <x-bonus-credit-head gross-label="Gross GSB" th-class="text-right px-4 py-3 font-semibold text-gray-600" />
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
                     </tr>
                 </thead>
@@ -70,24 +60,22 @@
                         if ($currentMonth !== null && $rowMonth !== $currentMonth) {
                     @endphp
                     <tr class="bg-indigo-50 font-semibold text-xs text-indigo-700">
-                        <td colspan="4" class="px-4 py-2">Month total</td>
+                        <td colspan="5" class="px-4 py-2">Month total</td>
                         <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($monthGross / 100, 0) }}</td>
-                        <td colspan="2"></td>
+                        <td></td>
                         <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($monthNet / 100, 0) }}</td>
                         <td></td>
                     </tr>
                     @php $monthGross = 0; $monthNet = 0; } $currentMonth = $rowMonth; $monthGross += $row->gross_gsb_paise; $monthNet += $row->net_gsb_paise; @endphp
                     <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $row->cutoff_date->format('d M Y') }}</td>
                         <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::format($row->left_bv_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::format($row->right_bv_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Slab {{ $row->slab }}</span>
                         </td>
-                        <td class="px-4 py-3 text-right font-mono">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_gsb_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-red-600">-₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-red-600">-₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 0) }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_gsb_paise / 100, 0) }}</td>
+                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :gross="$row->gross_gsb_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_gsb_paise" :is-credited="$row->status === 'credited'" />
                         <td class="px-4 py-3 text-center">
                             @if($row->status === 'credited')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Credited</span>
@@ -101,9 +89,9 @@
                     @endforeach
                     @if($rows->isNotEmpty())
                     <tr class="bg-indigo-50 font-semibold text-xs text-indigo-700">
-                        <td colspan="4" class="px-4 py-2">Month total</td>
+                        <td colspan="5" class="px-4 py-2">Month total</td>
                         <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($monthGross / 100, 0) }}</td>
-                        <td colspan="2"></td>
+                        <td></td>
                         <td class="px-4 py-2 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($monthNet / 100, 0) }}</td>
                         <td></td>
                     </tr>

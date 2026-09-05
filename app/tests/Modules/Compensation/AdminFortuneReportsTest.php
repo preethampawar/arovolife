@@ -81,7 +81,7 @@ function makeFbParticipant(int $distributorId, int $position, int $level, string
     ]);
 }
 
-function makeFbResult(int $distributorId, ?int $points, ?int $pointValuePaise, int $grossPaise, string $status, string $monthStart, int $level = 0, int $position = 1): void
+function makeFbResult(int $distributorId, ?int $points, ?int $pointValuePaise, int $grossPaise, string $status, string $monthStart, int $level = 0, int $position = 1, int $repurchaseDeductionPaise = 0): void
 {
     FortuneBonusResult::create([
         'distributor_id' => $distributorId,
@@ -93,7 +93,8 @@ function makeFbResult(int $distributorId, ?int $points, ?int $pointValuePaise, i
         'gross_paise' => $grossPaise,
         'admin_charge_paise' => 0,
         'tds_paise' => 0,
-        'net_paise' => $grossPaise,
+        'repurchase_deduction_paise' => $repurchaseDeductionPaise,
+        'net_paise' => $grossPaise - $repurchaseDeductionPaise,
         'status' => $status,
     ]);
 }
@@ -103,7 +104,8 @@ it("renders KP's FB calculation columns with points, value and income", function
     $legacy = fbReportDistributor('FBBBB2', 'Bob');
 
     makeFbParticipant($alice, 1, 0, '2026-07-01', '2026-07-14');
-    makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01');
+    // ₹72 income, ₹7.20 moved to the repurchase wallet at credit time → ₹64.80 credited.
+    makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01', repurchaseDeductionPaise: 720);
     // Written before the pool + points rework: no points, no point value.
     makeFbResult($legacy, null, null, 5_100, FortuneBonusResult::STATUS_CREDITED, '2026-07-01', level: 1, position: 2);
 
@@ -123,10 +125,14 @@ it("renders KP's FB calculation columns with points, value and income", function
         ->assertSee('Arete Center')
         ->assertSee('FB Points')
         ->assertSee('Income')
+        ->assertSee('Repurchase deduction')
+        ->assertSee('Credited to wallet')
         ->assertSee('FBAAA1')
         ->assertSee('14/07/26')   // enrolment date, d/m/y
         ->assertSee('₹2.00')      // the month's point value
         ->assertSee('₹72.00')     // 36 points × ₹2
+        ->assertSee('-₹7.20')     // repurchase deduction frozen on the row
+        ->assertSee('₹64.80')     // credited = income − deduction
         ->assertSee('—');         // legacy row's points/value, and the ADC center
 
     // Rank comes from the month's qualification, not the enrolment tier, and
@@ -160,7 +166,7 @@ it('exports the FB calculation report with the points columns ungrouped', functi
     $alice = fbReportDistributor('FBAAA1', 'Alice');
     $legacy = fbReportDistributor('FBBBB2', 'Bob');
     makeFbParticipant($alice, 1, 0, '2026-07-01', '2026-07-14');
-    makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01');
+    makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01', repurchaseDeductionPaise: 720);
     makeFbResult($legacy, null, null, 5_100, FortuneBonusResult::STATUS_CREDITED, '2026-07-01', position: 2);
 
     RankQualification::create([
@@ -177,9 +183,9 @@ it('exports the FB calculation report with the points columns ungrouped', functi
     $res->assertOk();
     $csv = $res->getContent();
 
-    expect($csv)->toContain('SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Status');
-    expect($csv)->toContain('"SILVER PARTNER",14/07/26,0,36,2.00,72.00,'); // rank name, then points × value → income
-    expect($csv)->toContain(',"",,0,,,51.00,');                             // legacy row: no rank, date, points or value
+    expect($csv)->toContain('SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status');
+    expect($csv)->toContain('"SILVER PARTNER",14/07/26,0,36,2.00,72.00,7.20,64.80,'); // rank, points × value → income, deduction, credited
+    expect($csv)->toContain(',"",,0,,,51.00,0.00,51.00,');                            // legacy row: no rank, date, points or value; nothing deducted
 });
 
 it('surfaces the frozen fortune pool on the month screen', function () {
@@ -430,4 +436,20 @@ it('flags a shortfall month in the FB calculation formula', function () {
         ->assertOk()
         ->assertSee('Shortfall month')
         ->assertSee('<strong>₹10</strong> per qualifier', false);
+});
+
+it('shows gross, the credit-time repurchase deduction and the credited amount on the fortune month screen — never TDS', function () {
+    $alice = fbReportDistributor('FBRPD1', 'Alice');
+    makeFbParticipant($alice, 1, 0, '2026-07-01', '2026-07-14');
+    makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01');
+    FortuneBonusResult::where('distributor_id', $alice)->update(['repurchase_deduction_paise' => 720, 'net_paise' => 6_480]);
+
+    $this->actingAs(fbReportAdmin())
+        ->get(route('admin.compensation.fortune-bonus.show', ['month' => '2026-07']))
+        ->assertOk()
+        ->assertSee('Repurchase deduction')
+        ->assertSee('Credited to wallet')
+        ->assertSee('-₹7.20')
+        ->assertSee('₹64.80')
+        ->assertDontSee('>TDS<', false);
 });

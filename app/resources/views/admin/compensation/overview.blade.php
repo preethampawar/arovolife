@@ -46,7 +46,7 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             GSB this week
-            <x-help-tip text="GSB credited to wallets (after admin charge + TDS) since last Tuesday 00:00. Reversals are shown separately — they do not reduce this figure." />
+            <x-help-tip text="GSB credited to main wallets (gross minus the repurchase deduction; admin charge and TDS come off at payout) since last Tuesday 00:00. Reversals are shown separately — they do not reduce this figure." />
         </p>
         <p class="mt-1 text-lg font-bold text-purple-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gsbThisWeekPaise / 100, 2) }}</p>
         @if($gsbReversalsThisWeekPaise > 0)
@@ -93,6 +93,7 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 font-medium w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600 font-medium">ADN</th>
                     <th class="px-4 py-2 text-right text-gray-600 font-medium">Left BV <x-help-tip text="Left Genos BV accumulated today." /></th>
                     <th class="px-4 py-2 text-right text-gray-600 font-medium">Right BV</th>
@@ -104,6 +105,7 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($cutoffTable as $row)
                 <tr class="{{ $row->status === 'failed' ? 'bg-red-50' : '' }}">
+                    <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $cutoffTable->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 font-mono">{{ $row->distributor->adn ?? '—' }}</td>
                     <td class="px-4 py-2 text-right">@bv($row->left_bv_paise)</td>
                     <td class="px-4 py-2 text-right">@bv($row->right_bv_paise)</td>
