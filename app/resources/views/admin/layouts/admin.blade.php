@@ -7,7 +7,41 @@
     <title>@yield('title', 'Admin') — arovolife Admin</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._font-size-fouc')
+    {{-- Sidebar collapse FOUC preventer: restore the saved desktop rail state
+         before first paint so the nav never renders wide and then snaps. --}}
+    <script>
+        (() => {
+            try {
+                if (localStorage.getItem('arovolife_admin_sidebar_collapsed') === '1') {
+                    document.documentElement.classList.add('admin-nav-collapsed');
+                }
+            } catch (e) { /* private-browsing — start expanded */ }
+        })();
+    </script>
     <style>
+        /* Admin sidebar collapse (desktop only). The <html> class is the single
+           source of truth; everything below re-lays out the aside as a 4rem
+           icon rail and pulls the main column in to match. Below lg the
+           sidebar is a slide-over drawer and these rules never apply. */
+        #adminSidebar { transition: transform 0.2s ease-out, width 0.2s ease-out; }
+        #adminMain { transition: margin-left 0.2s ease-out; }
+        .admin-nav-expand-icon { display: none; }
+        @media (min-width: 1024px) {
+            html.admin-nav-collapsed #adminSidebar { width: 4rem; }
+            html.admin-nav-collapsed #adminMain { margin-left: 4rem; }
+            html.admin-nav-collapsed .admin-nav-label,
+            html.admin-nav-collapsed .admin-nav-brand,
+            html.admin-nav-collapsed .admin-nav-collapse-icon { display: none; }
+            html.admin-nav-collapsed .admin-nav-expand-icon { display: block; }
+            html.admin-nav-collapsed .admin-nav-head { justify-content: center; padding-left: 0.75rem; padding-right: 0.75rem; }
+            html.admin-nav-collapsed .admin-nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+            html.admin-nav-collapsed .admin-nav-badge {
+                position: absolute; top: 0.375rem; right: 0.625rem;
+                min-width: 0.5rem; width: 0.5rem; height: 0.5rem; padding: 0;
+                font-size: 0; line-height: 0;
+            }
+        }
+
         /* Admin sidebar: hide scrollbar by default, reveal a slim slate-tinted
            one on hover so the nav looks clean but stays usable when the
            viewport is short. Firefox uses scrollbar-width; WebKit uses
@@ -62,11 +96,21 @@
     <aside id="adminSidebar"
         class="w-60 fixed top-0 bottom-0 left-0 z-40 bg-slate-900 border-r border-slate-800 flex flex-col
                -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out">
-        <div class="px-5 py-5 border-b border-slate-800 shrink-0">
-            <a href="{{ route('admin.dashboard') }}" class="block">
-                <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-10 w-auto">
-            </a>
-            <span class="block text-[11px] text-sunrise-400 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
+        <div class="admin-nav-head px-5 py-5 border-b border-slate-800 shrink-0 flex items-start justify-between gap-2">
+            <div class="admin-nav-brand min-w-0">
+                <a href="{{ route('admin.dashboard') }}" class="block">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-10 w-auto">
+                </a>
+                <span class="block text-[11px] text-sunrise-400 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
+            </div>
+            {{-- Desktop-only collapse / expand toggle. State lives on <html>
+                 (class admin-nav-collapsed) and persists in localStorage. --}}
+            <button type="button" id="adminSidebarToggle"
+                aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"
+                class="hidden lg:inline-flex shrink-0 w-8 h-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <x-lucide-panel-left-close class="admin-nav-collapse-icon w-4 h-4" />
+                <x-lucide-panel-left-open class="admin-nav-expand-icon w-4 h-4" />
+            </button>
         </div>
 
         <div class="admin-sidebar-scroll flex-1 min-h-0 overflow-y-auto flex flex-col">
@@ -183,8 +227,8 @@
                     $active = request()->routeIs($item['route'])
                         || (isset($item['prefix']) && request()->routeIs($item['prefix'].'*'));
                 @endphp
-                <a href="{{ route($item['route']) }}"
-                   class="relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-colors
+                <a href="{{ route($item['route']) }}" title="{{ $item['label'] }}"
+                   class="admin-nav-item relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-colors
                           {{ $active
                              ? 'bg-slate-800 text-white font-semibold'
                              : 'text-slate-300 hover:bg-slate-800 hover:text-white font-medium' }}">
@@ -192,21 +236,21 @@
                     <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-sunrise-500"></span>
                     @endif
                     <span class="{{ $active ? 'text-sunrise-400' : 'text-slate-600' }}">{{ svg('lucide-'.$item['icon'], 'w-4 h-4') }}</span>
-                    <span class="flex-1">{{ $item['label'] }}</span>
+                    <span class="admin-nav-label flex-1">{{ $item['label'] }}</span>
                     @if(!empty($item['badge']))
-                        <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
+                        <span class="admin-nav-badge inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
                     @endif
                 </a>
             @endforeach
         </nav>
 
             <div class="mt-auto px-3 py-4 border-t border-slate-800">
-                <p class="text-xs text-slate-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
+                <p class="admin-nav-label text-xs text-slate-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit"
-                        class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 font-medium hover:bg-slate-800 hover:text-red-400 transition-colors">
-                        <span class="text-slate-600">⏻</span> Sign out
+                    <button type="submit" title="Sign out"
+                        class="admin-nav-item w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 font-medium hover:bg-slate-800 hover:text-red-400 transition-colors">
+                        <span class="text-slate-600">⏻</span> <span class="admin-nav-label">Sign out</span>
                     </button>
                 </form>
             </div>
@@ -220,7 +264,7 @@
          designated scroll container (#treeViewport).
          lg:ml-60 reserves space for the fixed sidebar on desktop; mobile
          has ml-0 because the sidebar is a slide-over drawer there. --}}
-    <div class="ml-0 lg:ml-60 flex-1 min-h-screen flex flex-col min-w-0 max-w-full">
+    <div id="adminMain" class="ml-0 lg:ml-60 flex-1 min-h-screen flex flex-col min-w-0 max-w-full">
         {{-- Header + (on compensation pages) the compensation sub-nav travel
              together as one sticky block, so the sub-nav never has to guess
              the header's height as a top offset. --}}
@@ -309,6 +353,30 @@
             const mql = window.matchMedia('(min-width: 1024px)');
             const onChange = (e) => { if (e.matches) close(); };
             mql.addEventListener ? mql.addEventListener('change', onChange) : mql.addListener(onChange);
+        })();
+
+        // Desktop sidebar collapse / expand. The <html> class is applied before
+        // first paint by the head snippet; this only toggles and persists it.
+        (function () {
+            const toggle = document.getElementById('adminSidebarToggle');
+            if (! toggle) return;
+            const root = document.documentElement;
+            const KEY = 'arovolife_admin_sidebar_collapsed';
+
+            const render = () => {
+                const collapsed = root.classList.contains('admin-nav-collapsed');
+                const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+                toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                toggle.setAttribute('aria-label', label);
+                toggle.setAttribute('title', label);
+            };
+
+            toggle.addEventListener('click', () => {
+                const collapsed = root.classList.toggle('admin-nav-collapsed');
+                try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (e) { /* ignore */ }
+                render();
+            });
+            render();
         })();
     </script>
 
