@@ -8,7 +8,9 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Services\DTOs\EngineChainStep;
 use App\Modules\Compensation\Services\EngineChainResolver;
 use App\Modules\Compensation\Services\EngineRunService;
+use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\WorkerFreshness;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -52,6 +54,17 @@ final class RunEngineChainJob implements ShouldQueue
     public function handle(EngineChainResolver $resolver, EngineRunService $runner): void
     {
         $engine = EngineRegistry::get($this->engineKey);
+
+        // A worker that booted before the current code was deployed would run
+        // the OLD engine and credit the wrong money without a single error —
+        // refuse rather than pay from stale logic. See WorkerFreshness.
+        $stale = WorkerFreshness::staleReason();
+
+        if ($stale !== null) {
+            $this->abortStaleWorker($engine, $stale, $runner);
+
+            return;
+        }
 
         // Resolved here, not at dispatch time: by the time the worker picks the
         // job up, the scheduler may have filled some of the gaps itself.
@@ -100,6 +113,31 @@ final class RunEngineChainJob implements ShouldQueue
             'engine_key' => $this->engineKey,
             'period' => $this->period,
             'chain_id' => $this->chainId,
+        ]);
+    }
+
+    /**
+     * Nothing ran: the worker is on pre-deploy code. Recorded as a skipped run
+     * rather than thrown, so the admin sees the reason on the Engine Runs page
+     * and can re-trigger after a restart — a retry on the same stale worker
+     * would only skip again.
+     */
+    private function abortStaleWorker(EngineDefinition $engine, string $reason, EngineRunService $runner): void
+    {
+        $runner->recordSkipped(
+            $engine,
+            $engine->parsePeriod($this->period),
+            EngineRun::TRIGGER_MANUAL,
+            $this->actorId,
+            $this->chainId,
+            ['reason' => 'stale_worker', 'detail' => $reason],
+        );
+
+        Log::error('engine.chain.stale_worker', [
+            'engine_key' => $this->engineKey,
+            'period' => $this->period,
+            'chain_id' => $this->chainId,
+            'detail' => $reason,
         ]);
     }
 

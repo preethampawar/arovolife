@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Jobs;
 
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
+use App\Modules\Compensation\Support\WorkerFreshness;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -60,6 +61,17 @@ final class RecomputeAllJob implements ShouldQueue
 
     public function handle(CompensationRecomputeRunner $runner): void
     {
+        // Before the lock and before anything is wiped: a worker on pre-deploy
+        // code would replay the whole history through the OLD engines and
+        // rebuild every bonus wrong, silently. See WorkerFreshness.
+        $stale = WorkerFreshness::staleReason();
+
+        if ($stale !== null) {
+            Log::error('compensation.recompute.stale_worker', ['detail' => $stale]);
+
+            throw new \RuntimeException('Recompute refused — '.$stale);
+        }
+
         // Two concurrent replays would interleave their day loops and destroy
         // the carry-forward chain. The controller takes the same lock before
         // dispatching, so a second click is refused rather than queued.
