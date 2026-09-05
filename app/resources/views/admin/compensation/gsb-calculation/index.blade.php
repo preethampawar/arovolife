@@ -75,7 +75,7 @@
                         Score value
                         <x-help-tip text="Rupees per score point used for this row (snapshotted at cut-off). Slabs 1–2 are fixed; slabs 3–7 use the day's pro-rated pool value." />
                     </th>
-                    <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                    <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-600 font-medium" />
                     <th class="px-3 py-2 text-center text-gray-600 font-medium">Status</th>
                 </tr>
             </thead>
@@ -128,11 +128,7 @@
                     <td class="px-3 py-2 text-right text-gray-700">
                         {{ $row->score_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) : '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right">
-                        <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
-                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_gsb_paise / 100, 2) }}
-                        </span>
-                    </td>
+                    <x-bonus-credit-cells :gross="$row->gross_gsb_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_gsb_paise" :is-credited="$row->status === 'credited'" td-class="px-3 py-2 text-right" />
                     <td class="px-3 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusBadges[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ str_replace('_', ' ', $row->status) }}
@@ -146,7 +142,9 @@
                     <td class="px-3 py-2 text-right" colspan="6">Grand total (all filtered rows)</td>
                     <td class="px-3 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($totalScore) }}</td>
                     <td class="px-3 py-2"></td>
-                    <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncomePaise / 100, 2) }}</td>
+                    <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncomePaise / 100, 2) }}</td>
+                    <td class="px-3 py-2 text-right {{ $totalDeductionPaise > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $totalDeductionPaise > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($totalDeductionPaise / 100, 2) : '—' }}</td>
+                    <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalCreditedPaise / 100, 2) }}</td>
                     <td class="px-3 py-2"></td>
                 </tr>
             </tfoot>

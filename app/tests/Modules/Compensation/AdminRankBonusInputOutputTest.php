@@ -322,3 +322,69 @@ it('shows gross, the credit-time repurchase deduction and the credited amount on
         ->assertDontSee('TDS (5%)')
         ->assertDontSee('₹25,000 per monthly batch');
 });
+
+it('shows the credit-time repurchase deduction and credited amount per rank on the I&O report', function () {
+    $dist = Distributor::factory()->create();
+    $row = rbIoResult($dist->id, '2026-07-01', 2, 1_400_000, 1, 1_400_000);
+    $row->update(['repurchase_deduction_paise' => 140_000, 'net_paise' => 1_260_000]);
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('Repurchase deduction');
+    $res->assertSee('Credited to wallet');
+    $res->assertSee('-₹1,400.00');
+    $res->assertSee('12,600.00');
+});
+
+it('carries the deduction and credited columns into the rank bonus I&O CSV', function () {
+    $dist = Distributor::factory()->create();
+    $row = rbIoResult($dist->id, '2026-07-01', 2, 1_400_000, 1, 1_400_000);
+    $row->update(['repurchase_deduction_paise' => 140_000, 'net_paise' => 1_260_000]);
+
+    $csv = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->getContent();
+
+    expect($csv)->toContain('Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs)');
+    expect($csv)->toContain('1400.00');
+    expect($csv)->toContain('12600.00');
+});
+
+it('counts qualifiers blocked by the repurchase wallet gate so their unspent share is explained', function () {
+    $paid = Distributor::factory()->create();
+    $blocked = Distributor::factory()->create();
+
+    rbIoResult($paid->id, '2026-07-01', 2, 1_400_000, 2, 700_000);
+    rbIoResult($blocked->id, '2026-07-01', 2, 1_400_000, 2, 0, [
+        'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+    ]);
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('Blocked');
+    $res->assertSee('Qualifiers whose repurchase wallet was not at ₹0 at month end', false);
+    // Half the pool went unpaid, and the Blocked count is the only thing on the
+    // page that says why.
+    $res->assertSee('7,000.00');
+});
+
+it('carries the blocked count into the rank bonus I&O CSV', function () {
+    $blocked = Distributor::factory()->create();
+    rbIoResult($blocked->id, '2026-07-01', 2, 1_400_000, 1, 0, [
+        'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+    ]);
+
+    $csv = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->getContent();
+
+    expect($csv)->toContain('Qualifiers,Held,Repurchase Blocked,Total Points');
+    // qualifiers, held, blocked — the rank-2 row.
+    expect($csv)->toContain(',1,0,1,');
+});

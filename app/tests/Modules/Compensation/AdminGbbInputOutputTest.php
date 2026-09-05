@@ -206,3 +206,43 @@ it('embeds the collapsible point-value formula strip inside each month block', f
         ->assertOk()
         ->assertSee('border-gray-200" open>', false);
 });
+
+it('shows the credit-time repurchase deduction and credited amount per earner and in the month total', function () {
+    $monthStart = '2026-07-01';
+    gbbIoPool($monthStart, 100, 5_000);
+    gbbIoRow('200000040', 'Deducted Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
+
+    GbbMonthlyResult::query()->update([
+        'repurchase_deduction_paise' => 30_000,
+        'gbb_net_paise' => 270_000,
+    ]);
+
+    $res = $this->actingAs(gbbIoAdmin())
+        ->get(route('admin.compensation.gbb-input-output.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('Repurchase deduction');
+    $res->assertSee('Credited to wallet');
+    $res->assertSee('-₹300.00');   // deduction
+    $res->assertSee('2,700.00');   // credited: ₹3,000 − ₹300
+});
+
+it('carries the deduction and credited columns into the GBB per-month CSV', function () {
+    $monthStart = '2026-07-01';
+    gbbIoPool($monthStart, 100, 5_000);
+    gbbIoRow('200000041', 'CSV Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
+
+    GbbMonthlyResult::query()->update([
+        'repurchase_deduction_paise' => 30_000,
+        'gbb_net_paise' => 270_000,
+    ]);
+
+    $csv = $this->actingAs(gbbIoAdmin())
+        ->get(route('admin.compensation.gbb-input-output.export'))
+        ->assertOk()
+        ->getContent();
+
+    expect($csv)->toContain('Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs)');
+    expect($csv)->toContain('300.00');
+    expect($csv)->toContain('2700.00');
+});

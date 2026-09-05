@@ -28,6 +28,8 @@ final class AdminRankBonusController extends Controller
             ->selectRaw('
                 month_start,
                 COUNT(DISTINCT distributor_id) as qualifier_count,
+                SUM(gross_paise) as total_gross_paise,
+                SUM(repurchase_deduction_paise) as total_deduction_paise,
                 SUM(net_paise) as total_net_paise,
                 MAX(credited_at) as credited_at
             ')

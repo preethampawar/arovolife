@@ -24,6 +24,8 @@ final class AdminFortuneBonusController extends Controller
             ->selectRaw('
                 month_start,
                 COUNT(DISTINCT distributor_id) as participant_count,
+                SUM(gross_paise) as total_gross_paise,
+                SUM(repurchase_deduction_paise) as total_deduction_paise,
                 SUM(CASE WHEN status = ? THEN net_paise ELSE 0 END) as total_net_paise,
                 MAX(credited_at) as credited_at
             ', [FortuneBonusResult::STATUS_CREDITED])

@@ -83,7 +83,9 @@ it('shows a day block with fixed and variable sections, totals and leftover', fu
         ->assertSee('Variable')
         ->assertSee('7,040.00')              // slab-3 income at the pro-rated value
         ->assertSee('4,000.00')              // fixed section total (2 × ₹2,000)
-        ->assertSee('Grand total income')
+        ->assertSee('Grand total')
+        ->assertSee('Repurchase deduction')
+        ->assertSee('Credited to wallet')
         ->assertSee('leftover');
 });
 
@@ -119,7 +121,7 @@ it('exports the per-day CSV with sections, day totals and the leftover', functio
 
     $res->assertOk();
     $csv = $res->getContent();
-    expect($csv)->toContain('Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Variance (Rs)');
+    expect($csv)->toContain('Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs)');
     expect($csv)->toContain('"Fixed"');
     expect($csv)->toContain('"Variable"');
     expect($csv)->toContain('220.00');       // pro-rated score value
@@ -154,4 +156,46 @@ it('embeds the collapsible score-value formula strip inside each day block', fun
         ->get(route('admin.compensation.gsb-input-output.index', ['from' => $today->toDateString()]))
         ->assertOk()
         ->assertSee('border-gray-200" open>', false);
+});
+
+it('shows the credit-time repurchase deduction and credited amount per slab and in the section totals', function () {
+    $date = today()->toDateString();
+    ioPool($date);
+    ioCutoff(1, 1, 8, 25_000, $date);
+    ioCutoff(3, 3, 32, 22_000, $date);
+
+    GsbCutoffResult::query()->update([
+        'repurchase_deduction_paise' => 20_000,
+        'net_gsb_paise' => DB::raw('gross_gsb_paise - 20000'),
+    ]);
+
+    $res = $this->actingAs(ioAdmin())
+        ->get(route('admin.compensation.gsb-input-output.index'))
+        ->assertOk();
+
+    $res->assertSee('Repurchase deduction');
+    $res->assertSee('Credited to wallet');
+    $res->assertSee('-₹200.00');      // per-slab deduction
+    $res->assertSee('1,800.00');      // fixed slab credited: ₹2,000 − ₹200
+    $res->assertSee('6,840.00');      // variable slab credited: ₹7,040 − ₹200
+    $res->assertSee('-₹400.00');      // grand total deduction
+});
+
+it('carries the deduction and credited columns into the per-day CSV', function () {
+    $date = today()->toDateString();
+    ioPool($date);
+    ioCutoff(1, 1, 8, 25_000, $date);
+
+    GsbCutoffResult::query()->update([
+        'repurchase_deduction_paise' => 20_000,
+        'net_gsb_paise' => DB::raw('gross_gsb_paise - 20000'),
+    ]);
+
+    $csv = $this->actingAs(ioAdmin())
+        ->get(route('admin.compensation.gsb-input-output.export'))
+        ->assertOk()
+        ->getContent();
+
+    expect($csv)->toContain('200.00');    // deduction column
+    expect($csv)->toContain('1800.00');   // credited column
 });

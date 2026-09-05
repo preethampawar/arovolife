@@ -93,7 +93,7 @@ final class AdminRankBonusInputOutputController extends Controller
 
         $blocks = $this->blocks($monthStarts);
 
-        $csv = "Month,Month Turnover,Rank,Rank Name,Pool % (current),Pool (Rs),Qualifiers,Held,Total Points,Point Value / Share (Rs),Income (Rs),Leftover (Rs),Computed At\n";
+        $csv = "Month,Month Turnover,Rank,Rank Name,Pool % (current),Pool (Rs),Qualifiers,Held,Repurchase Blocked,Total Points,Point Value / Share (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Leftover (Rs),Computed At\n";
 
         foreach ($monthStarts as $monthStart) {
             $block = $blocks[$monthStart];
@@ -115,9 +115,12 @@ final class AdminRankBonusInputOutputController extends Controller
                     number_format($rank['pool_paise'] / 100, 2, '.', ''),
                     $rank['qualifiers'],
                     $rank['held'],
+                    $rank['blocked'],
                     $rank['total_points'] ?? '',
                     $valuePaise !== null ? number_format($valuePaise / 100, 2, '.', '') : '',
                     number_format($rank['income_paise'] / 100, 2, '.', ''),
+                    number_format($rank['deduction_paise'] / 100, 2, '.', ''),
+                    number_format($rank['credited_paise'] / 100, 2, '.', ''),
                     $rank['leftover_paise'] !== null ? number_format($rank['leftover_paise'] / 100, 2, '.', '') : '',
                     $computedAt,
                 ])."\n";
@@ -133,11 +136,14 @@ final class AdminRankBonusInputOutputController extends Controller
                     '',
                     $block['aogo']['grants'],
                     0,
+                    0,
                     $block['aogo']['points'],
                     $block['aogo']['point_value_paise'] !== null
                         ? number_format($block['aogo']['point_value_paise'] / 100, 2, '.', '')
                         : '',
                     number_format($block['aogo']['income_paise'] / 100, 2, '.', ''),
+                    number_format($block['aogo']['deduction_paise'] / 100, 2, '.', ''),
+                    number_format($block['aogo']['credited_paise'] / 100, 2, '.', ''),
                     '',
                     $computedAt,
                 ])."\n";
@@ -148,8 +154,10 @@ final class AdminRankBonusInputOutputController extends Controller
                 $turnover,
                 '',
                 $this->csvStr('MONTH TOTAL'),
-                '', '', '', '', '', '',
+                '', '', '', '', '', '', '',
                 number_format($block['total_income_paise'] / 100, 2, '.', ''),
+                number_format($block['total_deduction_paise'] / 100, 2, '.', ''),
+                number_format($block['total_credited_paise'] / 100, 2, '.', ''),
                 number_format($block['total_leftover_paise'] / 100, 2, '.', ''),
                 $computedAt,
             ])."\n";
@@ -216,9 +224,11 @@ final class AdminRankBonusInputOutputController extends Controller
      * @return array<string, array{
      *     computed_at: ?Carbon,
      *     turnover_paise: ?int,
-     *     ranks: list<array{rank: int, name: string, pool_pct: float, pool_paise: int, frozen: bool, qualifiers: int, held: int, total_points: ?int, point_value_paise: ?int, share_paise: ?int, income_paise: int, leftover_paise: ?int}>,
-     *     aogo: ?array{grants: int, points: int, point_value_paise: ?int, income_paise: int},
+     *     ranks: list<array{rank: int, name: string, pool_pct: float, pool_paise: int, frozen: bool, qualifiers: int, held: int, blocked: int, total_points: ?int, point_value_paise: ?int, share_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int, leftover_paise: ?int}>,
+     *     aogo: ?array{grants: int, points: int, point_value_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int},
      *     total_income_paise: int,
+     *     total_deduction_paise: int,
+     *     total_credited_paise: int,
      *     total_leftover_paise: int
      * }>
      */
@@ -238,8 +248,19 @@ final class AdminRankBonusInputOutputController extends Controller
             ->selectRaw('MAX(total_points) as total_points')
             ->selectRaw('MAX(point_value_paise) as point_value_paise')
             ->selectRaw("SUM(CASE WHEN status = 'credited' AND aogo_points IS NULL THEN gross_paise ELSE 0 END) as income_paise")
+            ->selectRaw('SUM(CASE WHEN aogo_points IS NULL THEN COALESCE(repurchase_deduction_paise, 0) ELSE 0 END) as deduction_paise')
+            ->selectRaw("SUM(CASE WHEN status = 'credited' AND aogo_points IS NULL THEN COALESCE(net_paise, 0) ELSE 0 END) as credited_paise")
+            // AO-GO grantees are credited through a Rank-1 result row (aogo_points
+            // set); rank_aogo_grants itself stores no deduction, so the AO-GO
+            // line's deduction and credited figures come from those rows.
+            ->selectRaw('SUM(CASE WHEN aogo_points IS NOT NULL THEN COALESCE(repurchase_deduction_paise, 0) ELSE 0 END) as aogo_deduction_paise')
+            ->selectRaw("SUM(CASE WHEN status = 'credited' AND aogo_points IS NOT NULL THEN COALESCE(net_paise, 0) ELSE 0 END) as aogo_credited_paise")
             ->selectRaw("MAX(CASE WHEN status = 'credited' AND aogo_points IS NULL THEN gross_paise ELSE NULL END) as share_paise")
             ->selectRaw("SUM(CASE WHEN status = 'requalification_held' THEN 1 ELSE 0 END) as held_count")
+            // Qualifiers who earned the rank but failed the repurchase-wallet =
+            // ₹0 gate. They pay nothing and their share falls to leftover, so
+            // without this count a rank reads as if it simply had fewer people.
+            ->selectRaw("SUM(CASE WHEN status = 'repurchase_wallet_blocked' THEN 1 ELSE 0 END) as blocked_count")
             ->selectRaw('MAX(created_at) as computed_at')
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->month_start)->toDateString());
@@ -276,15 +297,21 @@ final class AdminRankBonusInputOutputController extends Controller
                 ->map(fn ($ts) => Carbon::parse($ts))
                 ->max();
 
+            $rank1 = $byRank->get(1);
+
             $aogo = $aogoRow !== null ? [
                 'grants' => (int) $aogoRow->grants,
                 'points' => (int) $aogoRow->points,
                 'point_value_paise' => $aogoRow->point_value_paise !== null ? (int) $aogoRow->point_value_paise : null,
                 'income_paise' => (int) $aogoRow->income_paise,
+                'deduction_paise' => (int) ($rank1->aogo_deduction_paise ?? 0),
+                'credited_paise' => (int) ($rank1->aogo_credited_paise ?? 0),
             ] : null;
 
             $ranks = [];
             $totalIncome = $aogo['income_paise'] ?? 0;
+            $totalDeduction = $aogo['deduction_paise'] ?? 0;
+            $totalCredited = $aogo['credited_paise'] ?? 0;
             $totalLeftover = 0;
 
             foreach (range(1, 9) as $rank) {
@@ -292,6 +319,8 @@ final class AdminRankBonusInputOutputController extends Controller
 
                 if ($agg !== null) {
                     $income = (int) $agg->income_paise;
+                    $deduction = (int) $agg->deduction_paise;
+                    $credited = (int) $agg->credited_paise;
                     // AO-GO grants are paid out of the Rank-1 pool, so Rank 1's
                     // leftover only reconciles after subtracting their income.
                     $leftover = (int) $agg->pool_paise - $income
@@ -305,14 +334,19 @@ final class AdminRankBonusInputOutputController extends Controller
                         'frozen' => true,
                         'qualifiers' => (int) $agg->qualifier_count,
                         'held' => (int) $agg->held_count,
+                        'blocked' => (int) $agg->blocked_count,
                         'total_points' => $agg->total_points !== null ? (int) $agg->total_points : null,
                         'point_value_paise' => $agg->point_value_paise !== null ? (int) $agg->point_value_paise : null,
                         'share_paise' => $agg->share_paise !== null ? (int) $agg->share_paise : null,
                         'income_paise' => $income,
+                        'deduction_paise' => $deduction,
+                        'credited_paise' => $credited,
                         'leftover_paise' => $leftover,
                     ];
 
                     $totalIncome += $income;
+                    $totalDeduction += $deduction;
+                    $totalCredited += $credited;
                     $totalLeftover += $leftover;
 
                     continue;
@@ -334,10 +368,13 @@ final class AdminRankBonusInputOutputController extends Controller
                     'frozen' => false,
                     'qualifiers' => 0,
                     'held' => 0,
+                    'blocked' => 0,
                     'total_points' => null,
                     'point_value_paise' => null,
                     'share_paise' => null,
                     'income_paise' => 0,
+                    'deduction_paise' => 0,
+                    'credited_paise' => 0,
                     'leftover_paise' => null,
                 ];
             }
@@ -348,6 +385,8 @@ final class AdminRankBonusInputOutputController extends Controller
                 'ranks' => $ranks,
                 'aogo' => $aogo,
                 'total_income_paise' => $totalIncome,
+                'total_deduction_paise' => $totalDeduction,
+                'total_credited_paise' => $totalCredited,
                 'total_leftover_paise' => $totalLeftover,
             ];
         }

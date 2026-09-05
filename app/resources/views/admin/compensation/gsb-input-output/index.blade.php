@@ -52,7 +52,11 @@
         $fixedRows = $aggs->filter(fn ($a) => (int) $a->slab < 3)->values();
         $variableRows = $aggs->filter(fn ($a) => (int) $a->slab >= 3)->values();
         $fixedIncome = (int) $fixedRows->sum('income_paise');
+        $fixedDeduction = (int) $fixedRows->sum('deduction_paise');
+        $fixedCredited = (int) $fixedRows->sum('credited_paise');
         $variableIncome = (int) $variableRows->sum('income_paise');
+        $variableDeduction = (int) $variableRows->sum('deduction_paise');
+        $variableCredited = (int) $variableRows->sum('credited_paise');
         $rowValue = function ($agg) use ($pool) {
             if ($agg->snap_value_paise !== null) { return (int) $agg->snap_value_paise; }
             return (int) $agg->slab >= 3 ? (int) $pool->variable_score_value_paise : (int) ($agg->fixed_value_paise ?? 0);
@@ -83,7 +87,7 @@
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Achievers</th>
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Total score</th>
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Score value <x-help-tip text="Rupees per score point used on this day. Slabs 1–2: the fixed value. Slabs 3–7: the day's pro-rated pool value (never above the cap)." /></th>
-                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                        <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-600 font-medium" />
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Variance <x-help-tip text="Variable score value minus the fixed cap: 0 when the pool covered the full value, negative when the day was pro-rated down. Fixed slabs always 0." /></th>
                     </tr>
                 </thead>
@@ -108,29 +112,36 @@
                         <td class="px-3 py-2 text-right text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $agg->achievers) }}</td>
                         <td class="px-3 py-2 text-right font-semibold text-gray-800">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $agg->total_score) }}</td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($value / 100, 2) }}</td>
-                        <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($agg->income_paise / 100, 2) }}</td>
+                        <x-bonus-credit-cells :gross="(int) $agg->income_paise" :deduction="(int) $agg->deduction_paise" :credited="(int) $agg->credited_paise" :is-credited="true" td-class="px-3 py-2 text-right" />
                         <td class="px-3 py-2 text-right {{ $variance < 0 ? 'text-red-600 font-medium' : 'text-gray-600' }}">
                             {{ $variance === 0 ? '0' : '−₹'.\App\Modules\Shared\Support\IndianNumber::format(abs($variance) / 100, 2) }}
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="px-3 py-4 text-center text-gray-600">No slab achievers this day.</td></tr>
+                    <tr><td colspan="9" class="px-3 py-4 text-center text-gray-600">No slab achievers this day.</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
+                    @php $totalIncome = $fixedIncome + $variableIncome; $totalDeduction = $fixedDeduction + $variableDeduction; $totalCredited = $fixedCredited + $variableCredited; @endphp
                     <tr>
                         <td class="px-3 py-1.5 text-right text-xs" colspan="5">Fixed section total (slabs 1–2)</td>
-                        <td class="px-3 py-1.5 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($fixedIncome / 100, 2) }}</td>
+                        <td class="px-3 py-1.5 text-right font-semibold text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($fixedIncome / 100, 2) }}</td>
+                        <td class="px-3 py-1.5 text-right {{ $fixedDeduction > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $fixedDeduction > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($fixedDeduction / 100, 2) : '—' }}</td>
+                        <td class="px-3 py-1.5 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($fixedCredited / 100, 2) }}</td>
                         <td></td>
                     </tr>
                     <tr>
                         <td class="px-3 py-1.5 text-right text-xs" colspan="5">Variable section total (slabs 3–7)</td>
-                        <td class="px-3 py-1.5 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($variableIncome / 100, 2) }}</td>
+                        <td class="px-3 py-1.5 text-right font-semibold text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($variableIncome / 100, 2) }}</td>
+                        <td class="px-3 py-1.5 text-right {{ $variableDeduction > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $variableDeduction > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($variableDeduction / 100, 2) : '—' }}</td>
+                        <td class="px-3 py-1.5 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($variableCredited / 100, 2) }}</td>
                         <td></td>
                     </tr>
                     <tr class="font-semibold">
-                        <td class="px-3 py-2 text-right text-xs" colspan="5">Grand total income</td>
-                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($fixedIncome + $variableIncome) / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right text-xs" colspan="5">Grand total</td>
+                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right {{ $totalDeduction > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $totalDeduction > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($totalDeduction / 100, 2) : '—' }}</td>
+                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalCredited / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-600' }} text-[11px]">
                             leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($pool->leftover_paise) / 100, 2) }}
                         </td>

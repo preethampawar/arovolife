@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Fortune Bonus is 5% of the month's company-wide BV, distributed through a level cascade. Eligible distributors are placed first-come, first-served into a monthly 3×9 forced matrix based on GSB activity, and each participant earns FB points from the enrolled distributors below them (9/8/7/6/5/4/3/2/1 per member at depths 1–9). A ₹30 minimum per qualifier is reserved off the pool first (pro-rated to an equal whole-rupee share — possibly ₹0 — when the pool cannot cover it); capped levels (0–6) then settle top-down — each at the whole-rupee floor of the remaining pool over all remaining points, with per-member ceilings of ₹30,000/₹30,000/₹30,000/₹30,000/₹20,000/₹10,000/₹5,000 including the minimum — levels 7–8 share one value over their combined points, and level 9 receives the minimum only. All economics are frozen per level before any credit and never recomputed. The repurchase deduction (10%, capped monthly) is taken at credit time and frozen on each row; a 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Runs automatically on the 9th.
+    The Fortune Bonus is 5% of the month's company-wide BV, distributed through a level cascade. Eligible distributors are placed first-come, first-served into a monthly 3×9 forced matrix based on GSB activity, and each participant earns FB points from the enrolled distributors below them (9/8/7/6/5/4/3/2/1 per member at depths 1–9). A ₹30 minimum per qualifier is reserved off the pool first (pro-rated to an equal whole-rupee share — possibly ₹0 — when the pool cannot cover it); capped levels (0–6) then settle top-down — each at the whole-rupee floor of the remaining pool over all remaining points, with per-member ceilings of ₹30,000/₹30,000/₹30,000/₹30,000/₹20,000/₹10,000/₹5,000 including the minimum — levels 7–8 share one value over their combined points, and level 9 receives the minimum only. All economics are frozen per level before any credit and never recomputed. The repurchase deduction (10%, capped monthly) is taken at credit time and frozen on each row; a 3% admin charge (Group B, capped) and 5% TDS are deducted at payout. Runs automatically on the 1st.
 </div>
 @enddeveloper
 
@@ -33,7 +33,7 @@
                         Point value
                         <x-help-tip text="Cascade months price per level — open the month for the per-level table. Months run before the cascade show their single month-wide value." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-600">Net credited</th>
+                    <x-bonus-credit-head gross-label="Income" th-class="px-4 py-2 text-right text-gray-600" />
                     <th class="px-4 py-2 text-right text-gray-600">Credited at</th>
                     <th class="px-4 py-2"></th>
                 </tr>
@@ -48,7 +48,7 @@
                     <td class="px-4 py-2 text-right text-indigo-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) : '—' }}</td>
                     <td class="px-4 py-2 text-right text-gray-600">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) : '—' }}</td>
                     <td class="px-4 py-2 text-right text-gray-600">{{ $pool ? ($pool->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : 'Per level') : '—' }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_net_paise / 100, 2) }}</td>
+                    <x-bonus-credit-cells :gross="(int) $m->total_gross_paise" :deduction="(int) $m->total_deduction_paise" :credited="(int) $m->total_net_paise" :is-credited="true" td-class="px-4 py-2 text-right" />
                     <td class="px-4 py-2 text-right text-gray-600">
                         {{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}
                     </td>

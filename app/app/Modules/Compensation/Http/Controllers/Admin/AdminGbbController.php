@@ -24,7 +24,7 @@ final class AdminGbbController extends Controller
             // syntax error. groupBy()/where() are quoted by the query builder,
             // but selectRaw() is passed through verbatim. Backticks are
             // understood by both MySQL and SQLite.
-            ->selectRaw('`year_month`, COUNT(*) as distributor_count, SUM(gbb_net_paise) as total_net_paise, SUM(agp_earned) as total_agp, MAX(credited_at) as credited_at')
+            ->selectRaw('`year_month`, COUNT(*) as distributor_count, SUM(gbb_gross_paise) as total_gross_paise, SUM(repurchase_deduction_paise) as total_deduction_paise, SUM(gbb_net_paise) as total_net_paise, SUM(agp_earned) as total_agp, MAX(credited_at) as credited_at')
             ->where('status', GbbMonthlyResult::STATUS_CREDITED)
             ->groupBy('year_month')
             ->orderByDesc('year_month')

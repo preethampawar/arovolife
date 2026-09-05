@@ -86,7 +86,7 @@ final class AdminGsbInputOutputController extends Controller
             $pools->map(fn (GsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Variance (Rs),Computed At\n";
+        $csv = "Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs),Computed At\n";
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
@@ -94,12 +94,16 @@ final class AdminGsbInputOutputController extends Controller
             $dayNo = $this->dayNumber($anchor, $pool->cutoff_date);
             $weekNo = $dayNo === null ? null : intdiv($dayNo - 1, 7) + 1;
             $grandTotal = 0;
+            $grandDeduction = 0;
+            $grandCredited = 0;
 
             foreach ($aggregates[$dateStr] ?? [] as $agg) {
                 $isFixed = ! GsbDailyPoolService::isVariableSlab((int) $agg->slab);
                 $valuePaise = $this->displayScoreValuePaise($agg, $pool);
                 $variancePaise = $isFixed ? 0 : $valuePaise - $pool->variable_score_value_cap_paise;
                 $grandTotal += (int) $agg->income_paise;
+                $grandDeduction += (int) $agg->deduction_paise;
+                $grandCredited += (int) $agg->credited_paise;
 
                 $csv .= implode(',', [
                     $dayNo ?? '',
@@ -113,6 +117,8 @@ final class AdminGsbInputOutputController extends Controller
                     (int) $agg->total_score,
                     number_format($valuePaise / 100, 2, '.', ''),
                     number_format($agg->income_paise / 100, 2, '.', ''),
+                    number_format($agg->deduction_paise / 100, 2, '.', ''),
+                    number_format($agg->credited_paise / 100, 2, '.', ''),
                     number_format($variancePaise / 100, 2, '.', ''),
                     $computedAt,
                 ])."\n";
@@ -130,6 +136,8 @@ final class AdminGsbInputOutputController extends Controller
                 '',
                 '',
                 number_format($grandTotal / 100, 2, '.', ''),
+                number_format($grandDeduction / 100, 2, '.', ''),
+                number_format($grandCredited / 100, 2, '.', ''),
                 $this->csvStr('leftover '.number_format($pool->leftover_paise / 100, 2, '.', '')),
                 $computedAt,
             ])."\n";
@@ -197,7 +205,7 @@ final class AdminGsbInputOutputController extends Controller
      * Per-day, per-slab aggregates over the pool-funded result statuses.
      *
      * @param  list<string>  $dates
-     * @return array<string, list<\stdClass>> date → rows {slab, achievers, total_score, income_paise, snap_value_paise, fixed_value_paise}
+     * @return array<string, list<\stdClass>> date → rows {slab, achievers, total_score, income_paise, deduction_paise, credited_paise, snap_value_paise, fixed_value_paise}
      */
     private function slabAggregates(array $dates): array
     {
@@ -215,6 +223,8 @@ final class AdminGsbInputOutputController extends Controller
             ->selectRaw('COUNT(*) as achievers')
             ->selectRaw('COALESCE(SUM(COALESCE(gcr.score, gs.score)), 0) as total_score')
             ->selectRaw('COALESCE(SUM(gcr.gross_gsb_paise), 0) as income_paise')
+            ->selectRaw('COALESCE(SUM(gcr.repurchase_deduction_paise), 0) as deduction_paise')
+            ->selectRaw('COALESCE(SUM(gcr.net_gsb_paise), 0) as credited_paise')
             ->selectRaw('MAX(gcr.score_value_paise) as snap_value_paise')
             ->selectRaw('MAX(gs.score_value_paise) as fixed_value_paise')
             ->orderBy('gcr.slab')

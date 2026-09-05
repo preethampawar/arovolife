@@ -74,9 +74,10 @@
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Pool</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Qualifiers</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Held <x-help-tip text="Re-qualifiers who failed the requalification conditions — recorded but never credited, and excluded from the pool split." /></th>
+                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Blocked <x-help-tip text="Qualifiers whose repurchase wallet was not at ₹0 at month end. They earned the rank but are paid nothing, and their share stays in Leftover." /></th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Points</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Point value / share <x-help-tip text="Rank 1: the pool divided by total points (RAP + AO-GO), floored to whole rupees. Ranks 2–9: the equal per-qualifier share." /></th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
+                        <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-500 font-medium" />
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Leftover <x-help-tip text="Pool minus income paid — the flooring remainder the engine leaves unspent. Derived by this report; the engine does not store it." /></th>
                     </tr>
                 </thead>
@@ -93,6 +94,7 @@
                         </td>
                         <td class="px-3 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($rank['qualifiers']) }}</td>
                         <td class="px-3 py-2 text-right">{{ $rank['held'] > 0 ? \App\Modules\Shared\Support\IndianNumber::format($rank['held']) : '—' }}</td>
+                        <td class="px-3 py-2 text-right {{ $rank['blocked'] > 0 ? 'text-amber-700 font-medium' : '' }}">{{ $rank['blocked'] > 0 ? \App\Modules\Shared\Support\IndianNumber::format($rank['blocked']) : '—' }}</td>
                         <td class="px-3 py-2 text-right">{{ $rank['total_points'] !== null ? \App\Modules\Shared\Support\IndianNumber::format($rank['total_points']) : '—' }}</td>
                         <td class="px-3 py-2 text-right">
                             @if($rank['point_value_paise'] !== null)
@@ -103,7 +105,7 @@
                                 —
                             @endif
                         </td>
-                        <td class="px-3 py-2 text-right {{ $rank['income_paise'] > 0 ? 'font-semibold text-green-700' : '' }}">₹{{ \App\Modules\Shared\Support\IndianNumber::format($rank['income_paise'] / 100, 2) }}</td>
+                        <x-bonus-credit-cells :gross="$rank['income_paise']" :deduction="$rank['deduction_paise']" :credited="$rank['credited_paise']" :is-credited="$rank['frozen'] && $rank['income_paise'] > 0" td-class="px-3 py-2 text-right" />
                         <td class="px-3 py-2 text-right {{ ($rank['leftover_paise'] ?? 0) < 0 ? 'text-red-600 font-medium' : '' }}">
                             @if($rank['leftover_paise'] !== null)
                                 {{ $rank['leftover_paise'] < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($rank['leftover_paise']) / 100, 2) }}
@@ -122,11 +124,12 @@
                         <td class="px-3 py-2 text-right text-gray-400">—</td>
                         <td class="px-3 py-2 text-right text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($block['aogo']['grants']) }}</td>
                         <td class="px-3 py-2 text-right text-gray-400">—</td>
+                        <td class="px-3 py-2 text-right text-gray-400">—</td>
                         <td class="px-3 py-2 text-right text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($block['aogo']['points']) }}</td>
                         <td class="px-3 py-2 text-right text-gray-700">
                             {{ $block['aogo']['point_value_paise'] !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($block['aogo']['point_value_paise'] / 100, 2) : '—' }}
                         </td>
-                        <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($block['aogo']['income_paise'] / 100, 2) }}</td>
+                        <x-bonus-credit-cells :gross="$block['aogo']['income_paise']" :deduction="$block['aogo']['deduction_paise']" :credited="$block['aogo']['credited_paise']" :is-credited="true" td-class="px-3 py-2 text-right" />
                         <td class="px-3 py-2 text-right text-gray-400">—</td>
                     </tr>
                     @endif
@@ -134,8 +137,10 @@
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
                     <tr class="font-semibold">
-                        <td class="px-3 py-2 text-right text-xs" colspan="7">Total income</td>
-                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($block['total_income_paise'] / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right text-xs" colspan="8">Total income / deduction / credited</td>
+                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($block['total_income_paise'] / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right {{ $block['total_deduction_paise'] > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $block['total_deduction_paise'] > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($block['total_deduction_paise'] / 100, 2) : '—' }}</td>
+                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($block['total_credited_paise'] / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $block['total_leftover_paise'] < 0 ? 'text-red-600' : 'text-gray-500' }} text-[11px]">
                             leftover {{ $block['total_leftover_paise'] < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($block['total_leftover_paise']) / 100, 2) }}
                         </td>

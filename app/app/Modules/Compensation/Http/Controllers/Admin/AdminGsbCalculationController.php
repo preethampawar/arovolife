@@ -67,6 +67,8 @@ final class AdminGsbCalculationController extends Controller
             'personalBvMap' => $personalBvMap,
             'totalScore' => $totals['score'],
             'totalIncomePaise' => $totals['income_paise'],
+            'totalDeductionPaise' => $totals['deduction_paise'],
+            'totalCreditedPaise' => $totals['credited_paise'],
         ]);
     }
 
@@ -82,7 +84,7 @@ final class AdminGsbCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
         $totals = $this->totals($q, $from, $to, $status, $slab);
 
-        $csv = "SNo,ADN,Name,Title,Date,Slab,Score,Score Value (Rs),Income (Rs),Status\n";
+        $csv = "SNo,ADN,Name,Title,Date,Slab,Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $csv .= implode(',', [
@@ -95,17 +97,21 @@ final class AdminGsbCalculationController extends Controller
                 (int) $row->score,
                 $row->score_value_paise !== null ? number_format($row->score_value_paise / 100, 2, '.', '') : '',
                 number_format($row->gross_gsb_paise / 100, 2, '.', ''),
+                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
+                number_format($row->net_gsb_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
             ])."\n";
         }
 
-        // Grand total row across the full filtered set (Score, Income).
+        // Grand total row across the full filtered set (Score, Income, Deduction, Credited).
         $csv .= implode(',', [
             $this->csvStr('TOTAL'),
             '', '', '', '', '',
             $totals['score'],
             '',
             number_format($totals['income_paise'] / 100, 2, '.', ''),
+            number_format($totals['deduction_paise'] / 100, 2, '.', ''),
+            number_format($totals['credited_paise'] / 100, 2, '.', ''),
             '',
         ])."\n";
 
@@ -164,18 +170,22 @@ final class AdminGsbCalculationController extends Controller
     /**
      * Grand totals over the full filtered set (not just the current page).
      *
-     * @return array{score: int, income_paise: int}
+     * @return array{score: int, income_paise: int, deduction_paise: int, credited_paise: int}
      */
     private function totals(string $q, ?Carbon $from, ?Carbon $to, ?string $status, ?int $slab): array
     {
         $row = (array) $this->filtered($q, $from, $to, $status, $slab)
             ->selectRaw('COALESCE(SUM(COALESCE(gcr.score, gs.score)), 0) as total_score')
             ->selectRaw('COALESCE(SUM(gcr.gross_gsb_paise), 0) as total_income_paise')
+            ->selectRaw('COALESCE(SUM(gcr.repurchase_deduction_paise), 0) as total_deduction_paise')
+            ->selectRaw('COALESCE(SUM(gcr.net_gsb_paise), 0) as total_credited_paise')
             ->first();
 
         return [
             'score' => (int) ($row['total_score'] ?? 0),
             'income_paise' => (int) ($row['total_income_paise'] ?? 0),
+            'deduction_paise' => (int) ($row['total_deduction_paise'] ?? 0),
+            'credited_paise' => (int) ($row['total_credited_paise'] ?? 0),
         ];
     }
 

@@ -79,15 +79,19 @@ final class AdminGbbInputOutputController extends Controller
             $pools->map(fn (GbbMonthlyPool $p) => $p->month_start)->all(),
         ));
 
-        $csv = "Month,Month Total BV,GBB Pool (Rs),Total AGP,Point Value (Rs),Distributor ADN,Distributor Name,AGP,Income (Rs),Status,Computed At\n";
+        $csv = "Month,Month Total BV,GBB Pool (Rs),Total AGP,Point Value (Rs),Distributor ADN,Distributor Name,AGP,Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status,Computed At\n";
 
         foreach ($pools as $pool) {
             $monthLabel = Carbon::parse($pool->month_start)->format('Y-m');
             $computedAt = $pool->created_at?->format('Y-m-d H:i:s') ?? '';
             $totalIncome = 0;
+            $totalDeduction = 0;
+            $totalCredited = 0;
 
             foreach ($earners[$pool->month_start] ?? [] as $row) {
                 $totalIncome += (int) $row->income_paise;
+                $totalDeduction += (int) $row->deduction_paise;
+                $totalCredited += (int) $row->credited_paise;
 
                 $csv .= implode(',', [
                     $monthLabel,
@@ -99,6 +103,8 @@ final class AdminGbbInputOutputController extends Controller
                     $this->csvStr((string) ($row->full_name ?? '')),
                     (int) $row->agp_earned,
                     number_format(((int) $row->income_paise) / 100, 2, '.', ''),
+                    number_format(((int) $row->deduction_paise) / 100, 2, '.', ''),
+                    number_format(((int) $row->credited_paise) / 100, 2, '.', ''),
                     $this->csvStr((string) $row->status),
                     $computedAt,
                 ])."\n";
@@ -114,6 +120,8 @@ final class AdminGbbInputOutputController extends Controller
                 $this->csvStr('MONTH TOTAL'),
                 $pool->total_agp,
                 number_format($totalIncome / 100, 2, '.', ''),
+                number_format($totalDeduction / 100, 2, '.', ''),
+                number_format($totalCredited / 100, 2, '.', ''),
                 $this->csvStr('leftover '.number_format($pool->leftover_paise / 100, 2, '.', '')),
                 $computedAt,
             ])."\n";
@@ -173,7 +181,7 @@ final class AdminGbbInputOutputController extends Controller
      * denominator) so the month's total AGP reconciles visibly.
      *
      * @param  list<string>  $monthStarts  'Y-m-01' keys
-     * @return array<string, list<\stdClass>> month_start → rows {distributor_id, adn, full_name, agp_earned, point_value_paise, income_paise, status}
+     * @return array<string, list<\stdClass>> month_start → rows {distributor_id, adn, full_name, agp_earned, point_value_paise, income_paise, deduction_paise, credited_paise, status}
      */
     private function earners(array $monthStarts): array
     {
@@ -190,6 +198,8 @@ final class AdminGbbInputOutputController extends Controller
             ->selectRaw('gmr.agp_earned as agp_earned')
             ->selectRaw('gmr.point_value_paise as point_value_paise')
             ->selectRaw('gmr.gbb_gross_paise as income_paise')
+            ->selectRaw('gmr.repurchase_deduction_paise as deduction_paise')
+            ->selectRaw('gmr.gbb_net_paise as credited_paise')
             ->orderByDesc('gmr.agp_earned')
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->year_month)->toDateString())

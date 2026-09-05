@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Growth Booster Bonus (GBB) is 5% of the month's company-wide BV, distributed proportionally via arovolife Growth Points (AGP). Eligible distributors are those who held no rank in the previous month; they earn AGP every time they qualify for Slab 1 (12 AGP), Slab 2 (5 AGP) or Slab 3 (2 AGP) of the GSB during the month — capped at 120 AGP each. The month's pool, total AGP and point value are frozen before any credit and are never recomputed. Runs automatically on the 2nd of each month.
+    The Growth Booster Bonus (GBB) is 5% of the month's company-wide BV, distributed proportionally via arovolife Growth Points (AGP). Eligible distributors are those who held no rank in the previous month; they earn AGP every time they qualify for Slab 1 (12 AGP), Slab 2 (5 AGP) or Slab 3 (2 AGP) of the GSB during the month — capped at 120 AGP each. The month's pool, total AGP and point value are frozen before any credit and are never recomputed. Runs automatically on the 1st of each month.
 </div>
 @enddeveloper
 
@@ -26,7 +26,7 @@
                     <th class="px-4 py-2 text-right text-gray-600">
                         Total AGP <x-help-tip text="Sum of all AGP earned by eligible distributors for this month (each capped at 120)." />
                     </th>
-                    <th class="px-4 py-2 text-right text-gray-600">Net GBB credited</th>
+                    <x-bonus-credit-head gross-label="Income" th-class="px-4 py-2 text-right text-gray-600" />
                     <th class="px-4 py-2 text-right text-gray-600">Credited at</th>
                     <th class="px-4 py-2"></th>
                 </tr>
@@ -38,7 +38,7 @@
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->year_month)->format('F Y') }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->distributor_count) }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_agp) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_net_paise / 100, 2) }}</td>
+                    <x-bonus-credit-cells :gross="(int) $m->total_gross_paise" :deduction="(int) $m->total_deduction_paise" :credited="(int) $m->total_net_paise" :is-credited="true" td-class="px-4 py-2 text-right" />
                     <td class="px-4 py-2 text-right text-gray-600">{{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}</td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.gbb.show', \Illuminate\Support\Carbon::parse($m->year_month)->format('Y-m')) }}"

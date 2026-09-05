@@ -49,6 +49,8 @@
         $creditedIncome = (int) $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED)->sum('income_paise');
         $heldIncome = (int) $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_HELD)->sum('income_paise');
         $totalIncome = $creditedIncome + $heldIncome;
+        $totalDeduction = (int) $rows->sum('deduction_paise');
+        $totalCredited = (int) $rows->sum('credited_paise');
     @endphp
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
@@ -86,7 +88,7 @@
                         <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Held rows sit inside the frozen denominator; suspended rows earned AGP that was excluded from it and is never paid." /></th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">AGP</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Point value <x-help-tip text="The GBB pool divided by the month's total AGP, floored to whole rupees. One value applies to every earner in the month." /></th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Income</th>
+                        <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-500 font-medium" />
                         <th class="px-3 py-2 text-center text-gray-500 font-medium">Status</th>
                     </tr>
                 </thead>
@@ -105,7 +107,7 @@
                         <td class="px-3 py-2 text-right text-gray-700">
                             {{ $row->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(((int) $row->point_value_paise) / 100, 2) : '—' }}
                         </td>
-                        <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->income_paise / 100, 2) }}</td>
+                        <x-bonus-credit-cells :gross="(int) $row->income_paise" :deduction="(int) $row->deduction_paise" :credited="(int) $row->credited_paise" :is-credited="$row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED" td-class="px-3 py-2 text-right" />
                         <td class="px-3 py-2 text-center">
                             @if($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED)
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Credited</span>
@@ -117,24 +119,25 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="px-3 py-4 text-center text-gray-400">No Growth Booster Bonus earners this month.</td></tr>
+                    <tr><td colspan="8" class="px-3 py-4 text-center text-gray-400">No Growth Booster Bonus earners this month.</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
                     <tr>
                         <td class="px-3 py-1.5 text-right text-xs" colspan="2">Total AGP</td>
                         <td class="px-3 py-1.5 text-right font-semibold">{{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) }}</td>
-                        <td class="px-3 py-1.5 text-right text-[11px] text-gray-500" colspan="3">
+                        <td class="px-3 py-1.5 text-right text-[11px] text-gray-500" colspan="5">
                             {{ $pool->total_agp > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 0).' ÷ '.\App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) : '—' }}
                         </td>
                     </tr>
                     <tr class="font-semibold">
-                        <td class="px-3 py-2 text-right text-xs" colspan="3">Total income</td>
+                        <td class="px-3 py-2 text-right text-xs" colspan="4">Total income / deduction / credited</td>
+                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right {{ $totalDeduction > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $totalDeduction > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($totalDeduction / 100, 2) : '—' }}</td>
+                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalCredited / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-500' }} text-[11px]">
                             leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($pool->leftover_paise) / 100, 2) }}
                         </td>
-                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>
-                        <td></td>
                     </tr>
                 </tfoot>
             </table>

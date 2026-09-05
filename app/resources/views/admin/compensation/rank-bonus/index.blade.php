@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Rank Bonus is distributed monthly from 9 separate pools (one per rank). Each pool is that rank's percentage of the month's rank envelope — the envelope being a configurable share (default 20%) of the month's company-wide BV. Rank 1 is points-based: achievers earn RAP and AO-GO grantees earn offer points, and the pool is divided by the month's total points. Ranks 2–9 split their pool equally among achievers. Runs automatically on the 8th of each month.
+    The Rank Bonus is distributed monthly from 9 separate pools (one per rank). Each pool is that rank's percentage of the month's rank envelope — the envelope being a configurable share (default 20%) of the month's company-wide BV. Rank 1 is points-based: achievers earn RAP and AO-GO grantees earn offer points, and the pool is divided by the month's total points. Ranks 2–9 split their pool equally among achievers. Runs automatically on the 1st of each month.
 </div>
 @enddeveloper
 
@@ -21,7 +21,7 @@
                     <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Month</th>
                     <th class="px-4 py-2 text-right text-gray-600">Distributors credited</th>
-                    <th class="px-4 py-2 text-right text-gray-600">Net credited</th>
+                    <x-bonus-credit-head gross-label="Income" th-class="px-4 py-2 text-right text-gray-600" />
                     <th class="px-4 py-2 text-right text-gray-600">Credited at</th>
                     <th class="px-4 py-2"></th>
                 </tr>
@@ -32,7 +32,7 @@
                     <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->month_start)->format('F Y') }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->qualifier_count) }}</td>
-                    <td class="px-4 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_net_paise / 100, 2) }}</td>
+                    <x-bonus-credit-cells :gross="(int) $m->total_gross_paise" :deduction="(int) $m->total_deduction_paise" :credited="(int) $m->total_net_paise" :is-credited="true" td-class="px-4 py-2 text-right" />
                     <td class="px-4 py-2 text-right text-gray-600">
                         {{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}
                     </td>
