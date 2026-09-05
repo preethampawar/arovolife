@@ -12,9 +12,10 @@ use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compliance\Models\AuditLog;
-use App\Modules\Identity\Http\Middleware\RequireKycApproval;
 use App\Modules\Shared\Crypto\PiiCrypter;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -48,6 +49,25 @@ final class PayoutService
 
     /** reference_type values that produce repurchase_transfer debits from the monthly (Group B) engines. */
     private const MONTHLY_REPURCHASE_REF_TYPES = ['gbb_monthly_result', 'rank_bonus_result', 'fortune_bonus_result'];
+
+    /**
+     * Where a swept bonus credit's payout-time deductions are written back to,
+     * so each per-bonus income page can show gross → admin charge → TDS → net.
+     *
+     * `lifetime_award_milestone` is deliberately absent: award cash is credited
+     * already net of both deductions (see runMonthlyBatch), so there is nothing
+     * for the payout to write back.
+     *
+     * @var array<string, array{table: string, admin: string, tds: string, net: string}>
+     */
+    private const RESULT_DEDUCTION_COLUMNS = [
+        'gsb_cutoff_result' => ['table' => 'gsb_cutoff_results', 'admin' => 'admin_charge_paise', 'tds' => 'tds_paise', 'net' => 'net_gsb_paise'],
+        'mentorship_bonus_result' => ['table' => 'mentorship_bonus_results', 'admin' => 'mb_admin_charge_paise', 'tds' => 'mb_tds_paise', 'net' => 'mb_paise'],
+        'gbb_monthly_result' => ['table' => 'gbb_monthly_results', 'admin' => 'admin_charge_paise', 'tds' => 'tds_paise', 'net' => 'gbb_net_paise'],
+        'rank_bonus_result' => ['table' => 'rank_bonus_results', 'admin' => 'admin_charge_paise', 'tds' => 'tds_paise', 'net' => 'net_paise'],
+        'fortune_bonus_result' => ['table' => 'fortune_bonus_results', 'admin' => 'admin_charge_paise', 'tds' => 'tds_paise', 'net' => 'net_paise'],
+        'adc_bonus_result' => ['table' => 'adc_bonus_results', 'admin' => 'admin_charge_paise', 'tds' => 'tds_paise', 'net' => 'net_paise'],
+    ];
 
     /**
      * Weekly payout batch (Group A: GSB + Mentorship).
@@ -256,15 +276,21 @@ final class PayoutService
                         ->get();
                     $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
                     $effectiveGross = max(0, $gross - $repurchase);
-                    // Admin charge honours the per-bonus applies_to toggles.
-                    $adminCharge = $this->adminChargeFor(
+                    // Admin charge honours the per-bonus applies_to toggles. It is
+                    // levied on the gross but can only ever be collected out of what
+                    // actually remains in the wallet — clamping it here keeps
+                    // admin + TDS + net identical to the amount debited, so the line
+                    // item's arithmetic reconciles against the ledger.
+                    $adminCharge = min($effectiveGross, $this->adminChargeFor(
                         [[BonusType::Gsb, $gsbEffective], [BonusType::Mentorship, $mbEffective]],
                         $adminRateBp,
                         $adminCapPaise,
-                    );
-                    $payable = max(0, $effectiveGross - $adminCharge);
-                    $tds = (int) round($payable * $tdsRateBp / 10_000);
-                    $net = max(0, $payable - $tds);
+                    ));
+                    $payable = $effectiveGross - $adminCharge;
+                    // min(): a mis-set rate must not tax more than is payable and
+                    // push the net — and so the payout_debit — negative.
+                    $tds = min($payable, (int) round($payable * $tdsRateBp / 10_000));
+                    $net = $payable - $tds;
 
                     if ($net < $minPayoutPaise) {
                         PayoutLineItem::create([
@@ -304,14 +330,17 @@ final class PayoutService
                         'status' => PayoutLineItem::STATUS_PENDING,
                     ]);
 
-                    // Debit effectiveGross (gross minus credit-time repurchase),
-                    // which is exactly what remains in the main wallet.
-                    $this->wallet->debit(
-                        distributorId: $distributorId,
-                        amountPaise: $effectiveGross,
-                        type: 'payout_debit',
-                        referenceId: $lineItem->id,
-                        referenceType: 'payout_line_item',
+                    // Three debits, not one: together they remove exactly
+                    // effectiveGross (what remains in the main wallet after the
+                    // credit-time repurchase), but the statement now says how much
+                    // of it went to the admin charge, how much to TDS, and how much
+                    // to the bank.
+                    $this->writePayoutDebits($distributorId, $lineItem->id, $adminCharge, $tds, $net, $adminRateBp, $tdsRateBp);
+
+                    $this->backfillResultDeductions(
+                        $entries,
+                        [['types' => $groupTypes, 'admin_paise' => $adminCharge]],
+                        $tds,
                     );
 
                     // Credits above the monthly cap were swept with the rest, so an
@@ -588,9 +617,27 @@ final class PayoutService
                     $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
                     $effectiveGross = max(0, $gross - $repurchase);
 
-                    $payable = max(0, $effectiveGross - $adminCharge);
-                    $tds = (int) round($payable * $tdsRateBp / 10_000);
-                    $net = max(0, $payable - $tds);
+                    // Clamped to what is actually left in the wallet — see the
+                    // matching note in runWeeklyBatch(). The per-group figures are
+                    // scaled down with it so they still add up to what was taken,
+                    // which is what the result-row backfill apportions.
+                    if ($adminCharge > $effectiveGross) {
+                        [$adminB, $adminC, $adminD] = $this->apportion($effectiveGross, [$adminB, $adminC, $adminD]);
+                        $adminCharge = $adminB + $adminC + $adminD;
+                    }
+
+                    $payable = $effectiveGross - $adminCharge;
+
+                    // Group C (Lifetime Award cash) reaches the wallet already NET:
+                    // AdminLifetimeAwardsController takes both the admin charge and
+                    // the 5% TDS at delivery time, which is why
+                    // comp.admin_charge.applies_to_awards defaults to false. It has
+                    // to come out of the TDS base for the same reason, or the award
+                    // is taxed a second time on its way to the bank.
+                    $tdsBase = max(0, $payable - $grossC);
+                    // min(): see runWeeklyBatch() — never tax past what is payable.
+                    $tds = min($payable, (int) round($tdsBase * $tdsRateBp / 10_000));
+                    $net = $payable - $tds;
 
                     if ($net < $minPayoutPaise) {
                         PayoutLineItem::create([
@@ -629,15 +676,16 @@ final class PayoutService
                         'status' => PayoutLineItem::STATUS_PENDING,
                     ]);
 
-                    // Debit effectiveGross (gross minus credit-time repurchase),
-                    // which is exactly what remains in the main wallet.
-                    $this->wallet->debit(
-                        distributorId: $distributorId,
-                        amountPaise: $effectiveGross,
-                        type: 'payout_debit',
-                        referenceId: $lineItem->id,
-                        referenceType: 'payout_line_item',
-                    );
+                    // Three debits summing to effectiveGross — see runWeeklyBatch().
+                    $this->writePayoutDebits($distributorId, $lineItem->id, $adminCharge, $tds, $net, $adminRateBp, $tdsRateBp);
+
+                    // Each group's admin charge is apportioned only across its own
+                    // swept credits; the TDS is apportioned across all of them.
+                    $this->backfillResultDeductions($entries, [
+                        ['types' => CompensationPlanSettingsService::GROUP_B_TYPES, 'admin_paise' => $adminB],
+                        ['types' => CompensationPlanSettingsService::GROUP_C_TYPES, 'admin_paise' => $adminC],
+                        ['types' => CompensationPlanSettingsService::GROUP_D_TYPES, 'admin_paise' => $adminD],
+                    ], $tds);
 
                     // Credits above the monthly cap are forfeited, not carried:
                     // their entries were swept above, so an explicit debit is needed
@@ -710,7 +758,7 @@ final class PayoutService
         ]);
 
         AuditLog::create([
-            'actor_id' => auth()->id(),
+            'actor_id' => Auth::id(),
             'action' => 'payout.batch.finalised',
             'subject_type' => 'payout_batch',
             'subject_id' => $batch->id,
@@ -734,7 +782,7 @@ final class PayoutService
     private function auditBatchCreated(PayoutBatch $batch, string $period, int $distributorCount): void
     {
         AuditLog::create([
-            'actor_id' => auth()->id(),
+            'actor_id' => Auth::id(),
             'action' => 'payout.batch.created',
             'subject_type' => 'payout_batch',
             'subject_id' => $batch->id,
@@ -857,6 +905,179 @@ final class PayoutService
         }
 
         return (int) min((int) round($chargeableBase * $rateBp / 10_000), $capPaise);
+    }
+
+    /**
+     * The wallet side of a paid line item: the admin charge, the TDS and the
+     * net bank transfer as three separate debits that together remove exactly
+     * the post-repurchase balance.
+     *
+     * Each references the LINE ITEM rather than the batch — the ledger's unique
+     * index on (type, reference_type, reference_id) would otherwise collide on
+     * the second distributor in the batch.
+     */
+    private function writePayoutDebits(
+        int $distributorId,
+        int $lineItemId,
+        int $adminChargePaise,
+        int $tdsPaise,
+        int $netPaise,
+        int $adminRateBp,
+        int $tdsRateBp,
+    ): void {
+        if ($adminChargePaise > 0) {
+            $this->wallet->debit(
+                distributorId: $distributorId,
+                amountPaise: $adminChargePaise,
+                type: 'admin_charge_debit',
+                referenceId: $lineItemId,
+                referenceType: 'payout_line_item',
+                memo: 'Admin charge ('.$this->rateLabel($adminRateBp).')',
+            );
+        }
+
+        if ($tdsPaise > 0) {
+            $this->wallet->debit(
+                distributorId: $distributorId,
+                amountPaise: $tdsPaise,
+                type: 'tds_debit',
+                referenceId: $lineItemId,
+                referenceType: 'payout_line_item',
+                memo: 'TDS ('.$this->rateLabel($tdsRateBp).')',
+            );
+        }
+
+        $this->wallet->debit(
+            distributorId: $distributorId,
+            amountPaise: $netPaise,
+            type: 'payout_debit',
+            referenceId: $lineItemId,
+            referenceType: 'payout_line_item',
+        );
+    }
+
+    /**
+     * Write the payout-time deductions back onto the engine result rows, so the
+     * per-bonus income pages (GSB history, Rank Bonus, Fortune Bonus, ADC …)
+     * can show gross → admin charge → TDS → net instead of the zeroes the
+     * engines credit with.
+     *
+     * Neither deduction belongs to a single result row: the admin charge is a
+     * per-group capped figure and the TDS is per-distributor. Both are
+     * therefore apportioned across the swept credits in proportion to their
+     * gross, and each result row's net is restated as its own gross minus its
+     * share.
+     *
+     * @param  EloquentCollection<int, WalletLedgerEntry>  $entries  the swept bonus credits
+     * @param  list<array{types: list<string>, admin_paise: int}>  $groups  admin-charge group → its charge
+     */
+    private function backfillResultDeductions(EloquentCollection $entries, array $groups, int $totalTdsPaise): void
+    {
+        /** @var array<string, array{type: string, id: int, gross: int, admin: int}> $rows */
+        $rows = [];
+
+        foreach ($groups as $group) {
+            $groupEntries = $entries
+                ->whereIn('type', $group['types'])
+                ->filter(fn (WalletLedgerEntry $entry): bool => $entry->reference_id !== null
+                    && isset(self::RESULT_DEDUCTION_COLUMNS[(string) $entry->reference_type]))
+                ->values();
+
+            if ($groupEntries->isEmpty()) {
+                continue;
+            }
+
+            $shares = $this->apportion(
+                $group['admin_paise'],
+                array_values($groupEntries->map(fn (WalletLedgerEntry $entry): int => (int) $entry->amount_paise)->all()),
+            );
+
+            foreach ($groupEntries as $index => $entry) {
+                $key = $entry->reference_type.':'.$entry->reference_id;
+                $rows[$key] ??= [
+                    'type' => (string) $entry->reference_type,
+                    'id' => (int) $entry->reference_id,
+                    'gross' => 0,
+                    'admin' => 0,
+                ];
+                $rows[$key]['gross'] += (int) $entry->amount_paise;
+                $rows[$key]['admin'] += $shares[$index];
+            }
+        }
+
+        if ($rows === []) {
+            return;
+        }
+
+        $keys = array_keys($rows);
+        $tdsShares = $this->apportion($totalTdsPaise, array_column($rows, 'gross'));
+
+        foreach ($keys as $index => $key) {
+            $row = $rows[$key];
+            $columns = self::RESULT_DEDUCTION_COLUMNS[$row['type']];
+            $tds = $tdsShares[$index];
+
+            DB::table($columns['table'])->where('id', $row['id'])->update([
+                $columns['admin'] => $row['admin'],
+                $columns['tds'] => $tds,
+                $columns['net'] => max(0, $row['gross'] - $row['admin'] - $tds),
+            ]);
+        }
+    }
+
+    /**
+     * Split a pooled deduction across weighted rows so the parts sum to exactly
+     * the pool: floor every share, then hand the rounding remainder out to the
+     * largest fractional parts first. A pool with no weight behind it (every
+     * weight zero) is spread evenly rather than lost.
+     *
+     * @param  list<int>  $weights
+     * @return list<int>
+     */
+    private function apportion(int $poolPaise, array $weights): array
+    {
+        $count = count($weights);
+
+        if ($count === 0 || $poolPaise <= 0) {
+            return array_fill(0, max(0, $count), 0);
+        }
+
+        $totalWeight = array_sum($weights);
+
+        if ($totalWeight <= 0) {
+            $weights = array_fill(0, $count, 1);
+            $totalWeight = $count;
+        }
+
+        $shares = [];
+        $remainders = [];
+        foreach ($weights as $index => $weight) {
+            $exact = $poolPaise * $weight / $totalWeight;
+            $shares[$index] = (int) floor($exact);
+            $remainders[$index] = $exact - $shares[$index];
+        }
+
+        arsort($remainders);
+        $leftover = $poolPaise - array_sum($shares);
+        foreach (array_keys($remainders) as $index) {
+            if ($leftover <= 0) {
+                break;
+            }
+            $shares[$index]++;
+            $leftover--;
+        }
+
+        ksort($shares);
+
+        return array_values($shares);
+    }
+
+    /**
+     * "300" basis points → "3%", "250" → "2.5%". Used only for ledger memos.
+     */
+    private function rateLabel(int $rateBp): string
+    {
+        return rtrim(rtrim(number_format($rateBp / 100, 2, '.', ''), '0'), '.').'%';
     }
 
     /**

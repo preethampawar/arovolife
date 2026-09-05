@@ -75,7 +75,10 @@
             $adcOn ? ['label' => 'ADC Calculation', 'route' => 'admin.compensation.adc-calculation.index', 'match' => 'admin.compensation.adc-calculation'] : null,
         ]))],
 
-        ['label' => 'Payouts', 'route' => 'admin.compensation.weekly-payouts.index', 'match' => 'admin.compensation.weekly-payouts'],
+        ['label' => 'Payouts', 'items' => [
+            ['label' => 'Weekly Payouts', 'route' => 'admin.compensation.weekly-payouts.index', 'match' => 'admin.compensation.weekly-payouts'],
+            ['label' => 'Monthly Payouts', 'route' => 'admin.compensation.monthly-payouts.index', 'match' => 'admin.compensation.monthly-payouts'],
+        ]],
 
         ['label' => 'Plan & controls', 'items' => array_values(array_filter([
             $gsbOn ? ['label' => 'Manual Controls', 'route' => 'admin.compensation.manual-controls.index', 'match' => 'admin.compensation.manual-controls'] : null,

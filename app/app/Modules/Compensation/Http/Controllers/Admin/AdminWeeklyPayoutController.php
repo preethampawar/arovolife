@@ -24,7 +24,9 @@ final class AdminWeeklyPayoutController extends Controller
 {
     public function index(CompensationPlanSettingsService $plan): View
     {
-        $batches = PayoutBatch::orderByDesc('batch_date')->paginate(20);
+        $batches = PayoutBatch::whereIn('batch_type', [PayoutBatch::TYPE_WEEKLY, PayoutBatch::TYPE_GSB_WEEKLY])
+            ->orderByDesc('batch_date')
+            ->paginate(20);
         // Computed here, not in the view: `::class` inside a @php(...) Blade
         // directive fails to compile (unexpected token "class").
         $minPayout = Number::format($plan->minPayoutPaise() / 100, 0);

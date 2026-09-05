@@ -820,3 +820,124 @@ it('repurchase_deduction credits from cancelled orders do not affect payout swee
 
     Carbon::setTestNow(null);
 });
+
+it('weekly batch: writes the admin charge and TDS as their own ledger debits', function () {
+    // The wallet statement has to be able to answer "where did the rest of my
+    // money go?" — one payout_debit for the whole balance could not.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference'); // ₹1,000
+
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+
+    // admin 3% = 3,000; payable = 97,000; TDS 5% = 4,850; net = 92,150.
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->admin_charge_paise)->toBe(3_000);
+    expect($line->tds_paise)->toBe(4_850);
+    expect($line->net_transferred_paise)->toBe(92_150);
+
+    $debits = WalletLedgerEntry::where('distributor_id', $dist->id)
+        ->where('amount_paise', '<', 0)
+        ->pluck('amount_paise', 'type')
+        ->map(fn ($paise): int => (int) $paise)
+        ->all();
+
+    expect($debits)->toBe([
+        'admin_charge_debit' => -3_000,
+        'tds_debit' => -4_850,
+        'payout_debit' => -92_150,
+    ]);
+
+    // The three debits together remove exactly what was in the wallet.
+    expect($wallet->balancePaise($dist->id))->toBe(0);
+});
+
+it('weekly batch: backfills the admin charge and TDS onto the GSB cut-off result rows', function () {
+    // The engines credit gross and leave the deduction columns at zero; the
+    // payout is what knows the (capped, per-group) admin charge and the TDS, so
+    // it writes them back for the GSB history page.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    $firstId = walletRef();
+    $secondId = walletRef();
+    foreach ([[$firstId, 60_000, 2], [$secondId, 40_000, 1]] as [$resultId, $gross, $daysAgo]) {
+        DB::table('gsb_cutoff_results')->insert([
+            'id' => $resultId,
+            'distributor_id' => $dist->id,
+            'cutoff_date' => now()->subDays($daysAgo)->toDateString(),
+            'gross_gsb_paise' => $gross,
+            'net_gsb_paise' => $gross,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $wallet->credit($dist->id, $gross, 'gsb_credit', $resultId, 'gsb_cutoff_result');
+    }
+
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+
+    // Total gross 100,000 → admin 3,000, TDS 4,850, apportioned 60/40.
+    $rows = DB::table('gsb_cutoff_results')->orderBy('id')->get()->keyBy('id');
+    expect((int) $rows[$firstId]->admin_charge_paise)->toBe(1_800);
+    expect((int) $rows[$firstId]->tds_paise)->toBe(2_910);
+    expect((int) $rows[$firstId]->net_gsb_paise)->toBe(55_290);
+    expect((int) $rows[$secondId]->admin_charge_paise)->toBe(1_200);
+    expect((int) $rows[$secondId]->tds_paise)->toBe(1_940);
+    expect((int) $rows[$secondId]->net_gsb_paise)->toBe(36_860);
+
+    // Apportionment is exact — the shares add back up to what was deducted.
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect((int) $rows[$firstId]->admin_charge_paise + (int) $rows[$secondId]->admin_charge_paise)
+        ->toBe($line->admin_charge_paise);
+    expect((int) $rows[$firstId]->tds_paise + (int) $rows[$secondId]->tds_paise)
+        ->toBe($line->tds_paise);
+});
+
+it('weekly batch: never charges more admin than the wallet actually holds', function () {
+    // A ₹25,000-capped charge levied on a gross the repurchase deduction has
+    // already eaten into must not push the payout negative.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    setPayoutSetting('comp.admin_charge.rate_bp', '10000'); // 100% — forces the clamp
+
+    $wallet->creditWithRepurchaseDeduction(
+        distributorId: $dist->id,
+        grossPaise: 200_000,
+        bonusType: 'gsb_credit',
+        referenceId: walletRef(),
+        referenceType: 'gsb_cutoff_result',
+    );
+
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+
+    // effectiveGross = 180,000; the charge is levied on the 200,000 gross, so
+    // without the clamp the line item would claim 200,000 taken out of a wallet
+    // holding 180,000 and net would go negative.
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->admin_charge_paise)->toBe(180_000);
+    expect($line->tds_paise)->toBe(0);
+    expect($line->net_transferred_paise)->toBe(0);
+
+    // Nothing left for the bank, so the line is held below the minimum and the
+    // balance rolls over untouched rather than being swept for a zero payout.
+    expect($line->status)->toBe(PayoutLineItem::STATUS_BELOW_MINIMUM);
+    expect($wallet->balancePaise($dist->id))->toBe(180_000);
+});
+
+it('monthly batch: does not tax lifetime award cash a second time', function () {
+    // Award cash reaches the wallet already net of the admin charge and 5% TDS
+    // (AdminLifetimeAwardsController takes both at delivery), so the payout must
+    // leave it out of the TDS base as well as the admin base.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $wallet->credit($dist->id, 100_000, 'awards_credit', walletRef(), 'lifetime_award_milestone');
+
+    app(PayoutService::class)->runMonthlyBatch(Carbon::today()->startOfMonth());
+
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->gross_paise)->toBe(100_000);
+    expect($line->admin_charge_paise)->toBe(0);
+    expect($line->tds_paise)->toBe(0);
+    expect($line->net_transferred_paise)->toBe(100_000);
+    expect($wallet->balancePaise($dist->id))->toBe(0);
+});

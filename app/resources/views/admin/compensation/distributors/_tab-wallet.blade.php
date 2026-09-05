@@ -14,7 +14,7 @@
         <thead class="bg-gray-50">
             <tr>
                 <th class="px-3 py-2 text-left text-gray-600">Date</th>
-                <th class="px-3 py-2 text-left text-gray-600">Type <x-help-tip text="gsb_credit, mb_credit = bonus credits; payout_debit = Tuesday transfer; reversal = admin correction." /></th>
+                <th class="px-3 py-2 text-left text-gray-600">Type <x-help-tip text="gsb_credit, mb_credit = bonus credits; admin_charge_debit and tds_debit = the payout-time deductions; payout_debit = the net bank transfer; reversal = admin correction." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Amount</th>
                 <th class="px-3 py-2 text-right text-gray-600">Running balance <x-help-tip text="Main wallet balance immediately after this entry." /></th>
                 <th class="px-3 py-2 text-left text-gray-600">Memo</th>

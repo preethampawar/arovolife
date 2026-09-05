@@ -112,6 +112,8 @@
                             'fortune_credit' => 'Fortune Bonus',
                             'adc_credit' => 'ADC Bonus',
                             'payout_debit' => 'Payout to bank',
+                            'admin_charge_debit' => 'Admin charge',
+                            'tds_debit' => 'TDS (Tax Deducted at Source)',
                             'repurchase_transfer' => 'Repurchase obligation (bonus deduction)',
                             'income_cap_forfeit' => 'Monthly income cap',
                             'manual_credit' => 'Manual adjustment',
@@ -191,10 +193,22 @@
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm min-w-[860px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center justify-end gap-1">Gross <x-help-tip text="Your total bonus income for this payout period, before any deduction." /></span>
+                        </th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center justify-end gap-1">Repurchase <x-help-tip text="Already moved to your repurchase wallet when each bonus was credited. It is not withheld again here — it is shown so this row adds up." /></span>
+                        </th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center justify-end gap-1">Admin charge <x-help-tip text="3% of the gross for this payout period, capped at ₹25,000 per bonus group." /></span>
+                        </th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center justify-end gap-1">TDS <x-help-tip text="Tax Deducted at Source at 5% of the payable amount (gross minus repurchase minus admin charge)." /></span>
+                        </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">Net transferred <x-help-tip text="Amount actually sent to your bank account after all deductions." /></span>
                         </th>
@@ -206,6 +220,16 @@
                     @foreach($payoutRows as $row)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-700">{{ $row->created_at?->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gross_paise / 100, 2) }}</td>
+                        <td class="px-4 py-3 text-right font-mono {{ $row->repurchase_deduction_paise > 0 ? 'text-red-600' : 'text-gray-500' }}">
+                            {{ $row->repurchase_deduction_paise > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($row->repurchase_deduction_paise / 100, 2) : '—' }}
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono {{ $row->admin_charge_paise > 0 ? 'text-red-600' : 'text-gray-500' }}">
+                            {{ $row->admin_charge_paise > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($row->admin_charge_paise / 100, 2) : '—' }}
+                        </td>
+                        <td class="px-4 py-3 text-right font-mono {{ $row->tds_paise > 0 ? 'text-red-600' : 'text-gray-500' }}">
+                            {{ $row->tds_paise > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($row->tds_paise / 100, 2) : '—' }}
+                        </td>
                         <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->net_transferred_paise / 100, 2) }}</td>
                         <td class="px-4 py-3 text-center">
                             @if($row->status === 'transferred')

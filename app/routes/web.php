@@ -51,6 +51,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbCalculationControlle
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbInputOutputController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminGsbPersonalBvTopupController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminMonthlyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbInputOutputController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPayoutSettingsController;
@@ -500,6 +501,11 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::prefix('personal-bv-topups')->name('personal-bv-topups.')->group(function (): void {
             Route::get('/', [AdminGsbPersonalBvTopupController::class, 'index'])->name('index');
             Route::get('/export', [AdminGsbPersonalBvTopupController::class, 'export'])->name('export');
+        });
+
+        Route::prefix('monthly-payouts')->name('monthly-payouts.')->group(function (): void {
+            Route::get('/', [AdminMonthlyPayoutController::class, 'index'])->name('index');
+            Route::get('/{batch}', [AdminMonthlyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
         });
 
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {

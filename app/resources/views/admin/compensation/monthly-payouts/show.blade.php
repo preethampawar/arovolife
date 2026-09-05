@@ -1,6 +1,6 @@
 @extends('admin.layouts.admin')
-@section('title', 'Payout batch')
-@section('heading', 'Payout Batch — '.$batch->batch_date->format('d M Y'))
+@section('title', 'Monthly payout batch')
+@section('heading', 'Monthly Payout Batch — '.$batch->batch_date->format('d M Y'))
 
 @section('content')
 
@@ -28,7 +28,6 @@
         'web_only'            => 'bg-gray-100 text-gray-600',
     ];
 
-    // Only these three describe money in transit; the rest are wallet holds.
     $countOf = fn (string $status) => (int) ($statusCounts[$status] ?? 0);
     $totalLines = (int) collect($statusCounts)->sum();
     $failedCount = $countOf('failed');
@@ -37,16 +36,14 @@
 @endphp
 
 <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
-    <a href="{{ route('admin.compensation.weekly-payouts.index') }}"
-       class="text-sm text-brand-700 hover:underline">← Back to payout batches</a>
+    <a href="{{ route('admin.compensation.monthly-payouts.index') }}"
+       class="text-sm text-brand-700 hover:underline">← Back to monthly payout batches</a>
 
     <div class="flex items-center gap-2 flex-wrap justify-end">
         <span class="inline-flex px-2 py-1 rounded text-[11px] font-medium {{ $batchStatusLabel['cls'] }}">
             {{ $batchStatusLabel['text'] }}
         </span>
 
-        {{-- The CSV is always available: finance reconciles against it even in
-             Razorpay mode, where it is a record rather than an instruction. --}}
         <a href="{{ route('admin.compensation.weekly-payouts.neft', $batch) }}"
            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <x-lucide-download class="w-4 h-4" /> NEFT CSV
@@ -121,7 +118,6 @@
 </div>
 @endif
 
-{{-- Manual NEFT: import the bank's response file ─────────────────────── --}}
 @if(! $isRazorpay && $canReconcile)
 <div class="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm">
     <div class="px-5 py-3 border-b border-gray-100">
@@ -153,7 +149,6 @@
 </div>
 @endif
 
-{{-- Batch summary --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Distributors</p>
@@ -161,13 +156,13 @@
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
-            Total gross <x-help-tip text="Sum of wallet balances before repurchase deduction." />
+            Total gross <x-help-tip text="Sum of wallet balances before deductions." />
         </p>
         <p class="mt-1 text-lg font-bold text-gray-900">{{ $rupees($batch->total_gross_paise) }}</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
-            Deductions <x-help-tip text="Repurchase deduction + admin charge + TDS across all line items." />
+            Deductions <x-help-tip text="Admin charge (3% of gross, capped ₹25,000 per group) + TDS (5% of payable) across all line items." />
         </p>
         <p class="mt-1 text-lg font-bold text-red-600">{{ $rupees($batch->total_deductions_paise) }}</p>
     </div>
@@ -177,7 +172,6 @@
     </div>
 </div>
 
-{{-- Where every line item stands --}}
 <div class="flex flex-wrap items-center gap-2 mb-6 text-xs">
     <span class="text-gray-600 font-medium">{{ $totalLines }} line item(s):</span>
     @foreach($statusCounts as $status => $count)
@@ -187,7 +181,6 @@
     @endforeach
 </div>
 
-{{-- Line items table --}}
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Line items</span>
@@ -211,7 +204,7 @@
                         Gross <x-help-tip text="Bonus income swept into this batch, before any deduction." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
-                        Repurchase deduction <x-help-tip text="10% of prior month GSB+MB+RB, capped ₹10,000. Already taken at credit time — shown so the row reconciles." />
+                        Repurchase deduction <x-help-tip text="10% of prior month cash bonuses, capped ₹10,000. Already taken at credit time — shown so the row reconciles." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
                         Admin charge <x-help-tip text="3% of gross, capped at ₹25,000 per bonus group per cycle." />
@@ -222,7 +215,7 @@
                     <th class="px-3 py-2 text-right text-gray-600">Net to transfer</th>
                     <th class="px-3 py-2 text-left text-gray-600">Bank (last 4)</th>
                     <th class="px-3 py-2 text-left text-gray-600">
-                        UTR / Payout ID <x-help-tip text="The bank's Unique Transaction Reference once the transfer settles. The payout ID is Razorpay's own reference while it is in flight." />
+                        UTR / Payout ID <x-help-tip text="The bank's Unique Transaction Reference once the transfer settles." />
                     </th>
                     <th class="px-3 py-2 text-center text-gray-600">Mode</th>
                     <th class="px-3 py-2 text-center text-gray-600">
