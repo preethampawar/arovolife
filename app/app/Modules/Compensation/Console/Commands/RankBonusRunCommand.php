@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankBonusService;
+use App\Modules\Compensation\Support\RankQualificationsGate;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
@@ -15,9 +16,10 @@ use Laravel\Pennant\Feature;
 final class RankBonusRunCommand extends Command
 {
     protected $signature = 'rank:monthly-run
-                            {--month= : Month to run (YYYY-MM, defaults to previous month)}';
+                            {--month= : Month to run (YYYY-MM, defaults to previous month)}
+                            {--force : Run even when the rank qualification check has not succeeded for the month}';
 
-    protected $description = 'Calculate and credit the Rank Bonus for a calendar month (runs on 8th)';
+    protected $description = 'Calculate and credit the Rank Bonus for a calendar month (runs on the 1st)';
 
     public function __construct(
         private readonly RankBonusService $rankBonus,
@@ -37,6 +39,17 @@ final class RankBonusRunCommand extends Command
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->startOfMonth()->subMonth();
+
+        // Reads the month it pays.
+        if (! $this->option('force') && ! RankQualificationsGate::checkedFor($month)) {
+            $this->error(RankQualificationsGate::refusalMessage(
+                $month,
+                'Running now would pay no RAP achiever while still issuing AO-GO grants against the whole'
+                ."\nRank 1 pool and consuming a lifetime use.",
+            ));
+
+            return self::FAILURE;
+        }
 
         $this->info("Rank Bonus — {$month->format('F Y')}");
 

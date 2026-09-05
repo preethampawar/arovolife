@@ -69,3 +69,6 @@ wallet", that is a further change.
 
 Rank of the month vs highest rank ever ("not yet clear", 2026-09-03); new-distributor timing;
 the 9th as run date.
+
+> **Superseded 2026-09-05:** all monthly engines (including Fortune) moved to the 1st of the
+> following month. The "9th as run date" question above is resolved — the run date is now the 1st.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\FortuneBonusService;
+use App\Modules\Compensation\Support\RankQualificationsGate;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -13,7 +14,8 @@ use Laravel\Pennant\Feature;
 final class FortuneBonusEnrollCommand extends Command
 {
     protected $signature = 'fortune:enroll-eligible
-                            {--month= : Month to enroll for (YYYY-MM, defaults to previous month)}';
+                            {--month= : Month to enroll for (YYYY-MM, defaults to previous month)}
+                            {--force : Run even when the rank qualification check has not succeeded}';
 
     protected $description = 'Enroll eligible distributors into the Fortune Bonus matrix (FCFS)';
 
@@ -31,10 +33,24 @@ final class FortuneBonusEnrollCommand extends Command
         }
 
         // Defaults to the PREVIOUS month, matching fortune:monthly-run: both
-        // are scheduled on the 9th and must always act on the same month.
+        // are scheduled on the 1st and must always act on the same month.
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->startOfMonth()->subMonth();
+
+        // Fortune reads the month it enrols for: ranks 6–9 are barred. With the
+        // month unchecked the bar is empty, and seniors enrolled into the
+        // capacity-capped 29,524-position FCFS matrix permanently displace
+        // eligible distributors for that month.
+        if (! $this->option('force') && ! RankQualificationsGate::checkedFor($month)) {
+            $this->error(RankQualificationsGate::refusalMessage(
+                $month,
+                'Enrolling now would apply no rank 6–9 exclusion and let ineligible seniors take'
+                ."\nFCFS positions in the matrix, displacing eligible distributors for the month.",
+            ));
+
+            return self::FAILURE;
+        }
 
         $this->info("Fortune Bonus enrollment — {$month->format('F Y')}");
 

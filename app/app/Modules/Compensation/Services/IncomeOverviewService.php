@@ -58,7 +58,7 @@ final class IncomeOverviewService
             ['type' => 'gbb_credit', 'label' => 'Growth Booster Bonus', 'route' => 'income.growth-booster', 'active' => Feature::for(null)->active(GrowthBoosterBonusFeature::class),
                 'tip' => 'Monthly bonus from arovolife Growth Points (AGP) recorded on Slab 1–3 matches, for distributors who held no rank in the previous month.'],
             ['type' => 'rank_credit', 'label' => 'Rank Bonus', 'route' => 'income.rank-bonus', 'active' => Feature::for(null)->active(RankBonusFeature::class),
-                'tip' => 'Monthly bonus from your rank\'s pool, credited on the 8th of the following month.'],
+                'tip' => 'Monthly bonus from your rank\'s pool, credited on the 1st of the following month.'],
             ['type' => 'fortune_credit', 'label' => 'Fortune Bonus', 'route' => 'income.fortune-bonus', 'active' => Feature::for(null)->active(FortuneBonusFeature::class),
                 'tip' => 'Monthly matrix bonus based on your Genos Sales Bonus activity.'],
             ['type' => 'adc_credit', 'label' => 'ADC Bonus', 'route' => 'income.adc-bonus', 'active' => Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class),
@@ -102,7 +102,13 @@ final class IncomeOverviewService
         $daysUntilTuesday = (2 - $nowIst->dayOfWeek + 7) % 7;
         $nextWeeklyPayout = $nowIst->copy()->addDays($daysUntilTuesday)->startOfDay();
 
-        $nextMonthlyPayout = ($nowIst->day <= 9 ? $nowIst->copy()->day(9) : $nowIst->copy()->addMonthNoOverflow()->day(9))->startOfDay();
+        // The monthly batch runs at 03:30 IST on the 1st. Comparing by calendar
+        // day alone kept saying "today" for the remaining ~20 hours of the 1st,
+        // after the transfer had already gone out.
+        $monthlyRunThisMonth = $nowIst->copy()->startOfMonth()->setTime(3, 30, 0);
+        $nextMonthlyPayout = $nowIst->lt($monthlyRunThisMonth)
+            ? $monthlyRunThisMonth->copy()->startOfDay()
+            : $nowIst->copy()->addMonthNoOverflow()->startOfMonth()->startOfDay();
 
         $hasMonthlyBonuses = Feature::for(null)->active(GrowthBoosterBonusFeature::class)
             || Feature::for(null)->active(RankBonusFeature::class)

@@ -13,7 +13,7 @@ use Laravel\Pennant\Feature;
 final class RankCheckCommand extends Command
 {
     protected $signature = 'rank:check-qualifications
-                            {--month= : Month to check (YYYY-MM, defaults to current month)}
+                            {--month= : Month to check (YYYY-MM, defaults to the previous month)}
                             {--occurrence=1 : PYP occurrence number (1-3)}';
 
     protected $description = 'Check and record rank qualifications for a calendar month (PYP-aware)';
@@ -31,9 +31,14 @@ final class RankCheckCommand extends Command
             return self::SUCCESS;
         }
 
+        // The previous month, matching gbb:monthly-run and rank:monthly-run.
+        // Since this became a scheduled engine (1st, 00:15) the month it works
+        // is the one that has just closed, and EngineRegistry records the run
+        // against that month — a bare invocation must not disagree with the row
+        // it writes, which rank:monthly-run reads as its prerequisite.
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
-            : Carbon::today()->startOfMonth();
+            : Carbon::today()->startOfMonth()->subMonthNoOverflow();
 
         $occurrence = (int) ($this->option('occurrence') ?? 1);
 

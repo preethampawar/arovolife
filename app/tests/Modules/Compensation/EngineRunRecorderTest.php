@@ -50,15 +50,17 @@ it('records a console run of a month engine against the requested month', functi
 });
 
 it('falls back to the command own default period when no option is passed', function (): void {
-    // rank:check-qualifications defaults to the CURRENT month...
+    // Both default to the PREVIOUS month — the one that has closed. The
+    // command's own default and the registry's defaultPeriod must agree, or a
+    // bare invocation records a run against a month it did not work.
     Artisan::call('rank:check-qualifications');
-    // ...while gbb:monthly-run defaults to the PREVIOUS month.
     Artisan::call('gbb:monthly-run');
 
     $rankRun = EngineRun::where('engine_key', 'rank.check')->sole();
     $gbbRun = EngineRun::where('engine_key', 'gbb.monthly')->sole();
 
-    expect($rankRun->period_start->toDateString())->toBe(today()->startOfMonth()->toDateString());
+    expect($rankRun->period_start->toDateString())
+        ->toBe(today()->startOfMonth()->subMonthNoOverflow()->toDateString());
     expect($gbbRun->period_start->toDateString())
         ->toBe(today()->startOfMonth()->subMonthNoOverflow()->toDateString());
 });

@@ -38,9 +38,9 @@ Nobody creates a payout batch by hand.
 1. The bonus engines credit distributors' wallets as product sales are made.
    Every credit carries a `product_sale_id` — there is no such thing as a
    payout without a sale behind it (hard rule 2).
-2. The **weekly payout** command runs each Tuesday at 09:00 IST and sweeps the
-   unpaid GSB and Mentorship credits. The **monthly payout** runs on the 9th at
-   10:30 IST for Growth Booster, Rank, Fortune, Awards and ADC.
+2. The **weekly payout** command runs each Tuesday at 03:00 IST and sweeps the
+   unpaid GSB and Mentorship credits. The **monthly payout** runs on the 1st at
+   03:30 IST for Growth Booster, Rank, Fortune, Awards and ADC.
 3. Each run computes one line item per distributor: gross → repurchase
    deduction (already taken at credit time; the batch only sweeps and reports
    it) → admin charge → TDS → net. The wallet is debited at this moment,

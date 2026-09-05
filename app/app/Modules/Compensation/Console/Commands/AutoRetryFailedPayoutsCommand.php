@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * Nightly sweep: re-send failed payouts that have gone stale.
  *
  * Most dispatch failures are transient — a gateway blip, a rate limit, a
- * RazorpayX balance that was short at 09:00 and topped up by noon. Retrying
+ * RazorpayX balance that was short at 03:00 and topped up by noon. Retrying
  * them by hand is the kind of task that gets forgotten until a distributor
  * asks where their money is.
  *

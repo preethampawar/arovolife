@@ -11,6 +11,7 @@ use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
+use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseMonthlySnapshotCommand;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
@@ -25,24 +26,24 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Daily repurchase evaluation at 00:30 IST — refreshes each distributor's
-// cycle status for the new day. The GSB cut-off for a given date D runs at
-// 00:10 on D+1 and therefore reads the status this command computed on D's
-// own morning, which is the correct as-of-date view. Flag-gated inside the
-// command.
+// Daily repurchase evaluation at 00:05 IST — refreshes each distributor's
+// cycle status for the new day. Must run before the GSB cut-off at 00:10 so
+// the cut-off reads the status this command computed for the new day.
+// Flag-gated inside the command.
 Schedule::command(RepurchaseEvaluateCommand::class)
-    ->dailyAt('00:30')
+    ->dailyAt('00:05')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Repurchase wallet month-end snapshot — 1st of each month at 00:05 IST, for
-// the month that has just closed. It runs before every engine that reads it:
-// the GSB cut-off at 00:10 the same morning, GBB on the 2nd, Rank on the 8th,
-// Fortune on the 9th. Without the row the gate fails open, so the ordering is
+// Repurchase wallet month-end snapshot — 1st of each month at 00:06 IST, for
+// the month that has just closed. It runs first on the 1st, before every
+// engine that reads it: the GSB cut-off at 00:10, Rank at 00:30, GBB at 00:45,
+// Fortune enrolment at 01:00, ADC at 01:15, Fortune payout at 03:15, monthly
+// payout at 03:30. Without the row the gate fails open, so the ordering is
 // what makes the gate mean anything at all.
 Schedule::command(RepurchaseMonthlySnapshotCommand::class)
-    ->monthlyOn(1, '00:05')
+    ->monthlyOn(1, '00:06')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
@@ -62,64 +63,82 @@ Schedule::command(GsbDailyCutoffCommand::class, [
     ->withoutOverlapping()
     ->runInBackground();
 
-// Tuesday weekly payout at 09:00 IST (weeklyOn: 2 = Tuesday).
+// Tuesday weekly payout at 03:00 IST (weeklyOn: 2 = Tuesday).
 Schedule::command(GsbWeeklyPayoutCommand::class)
-    ->weeklyOn(2, '09:00')
+    ->weeklyOn(2, '03:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-// GBB runs on the 2nd of each month at 08:00 IST (after the previous month's orders are settled).
-Schedule::command(GbbMonthlyRunCommand::class)
-    ->monthlyOn(2, '08:00')
+// On the 1st the monthly bonus engines fire in dependency order:
+// snapshot 00:06 (gates read it) → rank qualifications 00:15 → Rank 00:30 →
+// GBB 00:45 (needs the previous month's rank gate) → Fortune enrolment 01:00 →
+// ADC 01:15 → Fortune payout 03:15 → monthly payout batch 03:30 (sweeps all
+// credits just landed) → Offers 04:00 (reads previous month BV, grants nothing
+// other engines depend on).
+
+// Rank qualifications for the closed month. Rank Bonus only READS
+// rank_qualifications — nothing else writes them — so this must succeed before
+// 00:30 or the month is priced with no qualifiers: every RAP achiever is paid
+// nothing while AO-GO grants still issue against the whole Rank-1 pool and
+// consume a lifetime use. It ran unscheduled while Rank Bonus was on the 8th
+// (a week of slack); on the 1st that slack is 15 minutes, so it is scheduled.
+// The --month is explicit: the command defaults to the CURRENT month, which on
+// the 1st is the month that has barely started.
+Schedule::command(RankCheckCommand::class, [
+    '--month' => now('Asia/Kolkata')->subMonthNoOverflow()->format('Y-m'),
+])
+    ->monthlyOn(1, '00:15')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Rank Bonus runs on the 8th of each month at 08:00 IST.
 Schedule::command(RankBonusRunCommand::class)
-    ->monthlyOn(8, '08:00')
+    ->monthlyOn(1, '00:30')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Fortune Bonus enrolment runs on the 9th at 08:45 IST, immediately before the
-// 09:00 payout run and for the same (previous) month. A single batched pass is
-// what keeps the FCFS matrix deterministic: every eligible distributor is
-// placed in one go, ordered by their first GSB credit date.
+Schedule::command(GbbMonthlyRunCommand::class)
+    ->monthlyOn(1, '00:45')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Fortune Bonus enrolment: a single batched pass keeps the FCFS matrix
+// deterministic — every eligible distributor is placed in one go, ordered by
+// their first GSB credit date.
 Schedule::command(FortuneBonusEnrollCommand::class)
-    ->monthlyOn(9, '08:45')
+    ->monthlyOn(1, '01:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Fortune Bonus runs on the 9th of each month at 09:00 IST (after rank bonus is processed).
-Schedule::command(FortuneBonusRunCommand::class)
-    ->monthlyOn(9, '09:00')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
-
-// ADC Bonus runs on the 8th of each month at 09:30 IST (after rank bonus at 08:00).
 Schedule::command(AdcBonusRunCommand::class)
-    ->monthlyOn(8, '09:30')
+    ->monthlyOn(1, '01:15')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Monthly payout (Groups B/C/D) runs on the 9th at 10:30 IST, after all monthly
-// engines (GBB 2nd, Rank 8th, Fortune 9th 09:00, ADC 8th) have completed.
+Schedule::command(FortuneBonusRunCommand::class)
+    ->monthlyOn(1, '03:15')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Monthly payout batch runs after all crediting engines (Rank 00:30, GBB 00:45,
+// Fortune 03:15, ADC 01:15) have completed.
 Schedule::command(MonthlyPayoutCommand::class)
-    ->monthlyOn(9, '10:30')
+    ->monthlyOn(1, '03:30')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Failed payouts are re-sent daily at 11:00 IST — two hours after the Tuesday
-// weekly batch, so a transfer that failed on this morning's dispatch gets its
-// first automatic second chance the next day rather than a week later. Only
-// line items past the configured staleness window and under the retry limit
-// are picked up; the command is a no-op in Manual NEFT mode.
+// Failed payouts are re-sent daily at 11:00 IST — after both the Tuesday
+// weekly batch (03:00) and the monthly payout batch (1st 03:30), so a transfer
+// that failed on this morning's dispatch gets its first automatic second chance
+// the next day. Only line items past the configured staleness window and under
+// the retry limit are picked up; the command is a no-op in Manual NEFT mode.
 Schedule::command(AutoRetryFailedPayoutsCommand::class)
     ->dailyAt('11:00')
     ->timezone('Asia/Kolkata')
@@ -149,12 +168,11 @@ Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 
-// Purchase offers on the 2nd at 06:00 IST. Early in the month and ahead of
-// every bonus engine, because the offers read the previous month's BV and
-// grant nothing that any other engine depends on — running them first means a
-// distributor sees what they earned before the payout cycle starts.
+// Purchase offers on the 1st at 04:00 IST. After the payout batch (03:30),
+// because the offers read the previous month's BV and grant nothing that any
+// other engine depends on.
 Schedule::command(PurchaseOffersMonthlyRunCommand::class)
-    ->monthlyOn(2, '06:00')
+    ->monthlyOn(1, '04:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

@@ -31,7 +31,7 @@
    BV) is frozen and divided by the day's total points — floored to whole
    rupees — and each sponsor is credited points × that value into the wallet
    (`mentorship_bonus_results`, `msb_daily_pools`).
-4. **Weekly payout** (Tuesday 09:00 IST): all wallets at or above the minimum
+4. **Weekly payout** (Tuesday 03:00 IST): all wallets at or above the minimum
    (₹100) are bundled into a payout batch with deductions (repurchase wallet,
    admin charge, TDS). Finance reviews, approves, and exports the NEFT file.
 
@@ -45,13 +45,16 @@ never a mutable balance.
 | Command | Schedule | What it does |
 |---|---|---|
 | `gsb:daily-cutoff` | daily **00:10** (for the previous day) | GSB slab match + credit, carry-forward update, then the **Mentorship Bonus** pool freeze + credits |
-| `repurchase:evaluate` | daily **00:30** | Recomputes each distributor's repurchase/income-eligibility status |
-| `gsb:weekly-payout` | **Tuesday 09:00** | Builds the weekly payout batch from wallet balances |
-| `gbb:monthly-run` | 2nd, 08:00 | Growth Booster Bonus for the previous month |
-| `rank:monthly-run` | 8th, 08:00 | Rank Bonus pool distribution |
-| `adc:monthly-run` | 8th, 09:30 | Arete Development Center Bonus |
-| `fortune:monthly-run` | 9th, 09:00 | Fortune Bonus matrix payout |
-| `payout:monthly-run` | 9th, 10:30 | Monthly payout batch for the monthly engines |
+| `repurchase:evaluate` | daily **00:05** | Recomputes each distributor's repurchase/income-eligibility status |
+| `gsb:weekly-payout` | **Tuesday 03:00** | Builds the weekly payout batch from wallet balances |
+| `compensation:repurchase-snapshot` | 1st, 00:06 | Freezes repurchase balances for monthly gate checks |
+| `rank:monthly-run` | 1st, 00:30 | Rank Bonus pool distribution |
+| `gbb:monthly-run` | 1st, 00:45 | Growth Booster Bonus for the previous month |
+| `fortune:enroll-eligible` | 1st, 01:00 | Fortune Bonus enrolment |
+| `adc:monthly-run` | 1st, 01:15 | Arete Development Center Bonus |
+| `fortune:monthly-run` | 1st, 03:15 | Fortune Bonus matrix payout |
+| `payout:monthly-run` | 1st, 03:30 | Monthly payout batch for the monthly engines |
+| `offers:monthly-run` | 1st, 04:00 | Purchase offers for the previous month |
 
 **Staging prerequisite (one-time):** the schedule only fires if the server has a
 cron entry running `php artisan schedule:run` every minute **and** a queue worker

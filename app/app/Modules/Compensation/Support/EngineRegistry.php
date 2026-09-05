@@ -98,7 +98,7 @@ final class EngineRegistry
                 dependencies: [],
                 featureFlagClass: RepurchaseEngineFeature::class,
                 reportRouteName: 'admin.compensation.carry-forwards.index',
-                cadence: EngineCadence::daily('00:30'),
+                cadence: EngineCadence::daily('00:05'),
                 defaultPeriod: 'today',
             ),
 
@@ -113,7 +113,7 @@ final class EngineRegistry
                 dependencies: [],
                 featureFlagClass: RepurchaseEngineFeature::class,
                 reportRouteName: 'admin.compensation.carry-forwards.index',
-                cadence: EngineCadence::monthlyOn(1, '00:05'),
+                cadence: EngineCadence::monthlyOn(1, '00:06'),
                 defaultPeriod: 'prev-month',
             ),
 
@@ -148,7 +148,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: GenosSalesBonusFeature::class,
                 reportRouteName: 'admin.compensation.weekly-payouts.index',
-                cadence: EngineCadence::weeklyOn(2, '09:00'),
+                cadence: EngineCadence::weeklyOn(2, '03:00'),
                 defaultPeriod: 'today',
                 manuallyTriggerable: false,
             ),
@@ -167,7 +167,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: GrowthBoosterBonusFeature::class,
                 reportRouteName: 'admin.compensation.gbb-calculation.index',
-                cadence: EngineCadence::monthlyOn(2, '08:00'),
+                cadence: EngineCadence::monthlyOn(1, '00:45'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
             ),
@@ -185,8 +185,14 @@ final class EngineRegistry
                 ],
                 featureFlagClass: RankBonusFeature::class,
                 reportRouteName: 'admin.compensation.rb-calculation.index',
-                cadence: EngineCadence::unscheduled(),
-                defaultPeriod: 'current-month',
+                // Scheduled 15 minutes ahead of Rank Bonus: nothing else writes
+                // rank_qualifications, and every monthly engine that reads them
+                // starts at 00:30.
+                cadence: EngineCadence::monthlyOn(1, '00:15'),
+                // Now that it fires on the 1st, the month it works is the one
+                // that just closed — matching Rank Bonus 15 minutes later and
+                // the explicit --month the scheduler passes.
+                defaultPeriod: 'prev-month',
             ),
 
             new EngineDefinition(
@@ -202,7 +208,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: RankBonusFeature::class,
                 reportRouteName: 'admin.compensation.rb-calculation.index',
-                cadence: EngineCadence::monthlyOn(8, '08:00'),
+                cadence: EngineCadence::monthlyOn(1, '00:30'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
             ),
@@ -218,7 +224,7 @@ final class EngineRegistry
                 dependencies: [],
                 featureFlagClass: AreteDevelopmentCenterBonusFeature::class,
                 reportRouteName: 'admin.compensation.adc-calculation.index',
-                cadence: EngineCadence::monthlyOn(8, '09:30'),
+                cadence: EngineCadence::monthlyOn(1, '01:15'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
             ),
@@ -234,7 +240,7 @@ final class EngineRegistry
                 dependencies: [],
                 featureFlagClass: PurchaseOffersFeature::class,
                 reportRouteName: 'admin.commerce.offers.index',
-                cadence: EngineCadence::monthlyOn(2, '06:00'),
+                cadence: EngineCadence::monthlyOn(1, '04:00'),
                 defaultPeriod: 'prev-month',
             ),
 
@@ -251,7 +257,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: FortuneBonusFeature::class,
                 reportRouteName: 'admin.compensation.fb-calculation.index',
-                cadence: EngineCadence::monthlyOn(9, '08:45'),
+                cadence: EngineCadence::monthlyOn(1, '01:00'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
             ),
@@ -269,7 +275,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: FortuneBonusFeature::class,
                 reportRouteName: 'admin.compensation.fb-calculation.index',
-                cadence: EngineCadence::monthlyOn(9, '09:00'),
+                cadence: EngineCadence::monthlyOn(1, '03:15'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
             ),
@@ -290,7 +296,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: null,
                 reportRouteName: 'admin.compensation.weekly-payouts.index',
-                cadence: EngineCadence::monthlyOn(9, '10:30'),
+                cadence: EngineCadence::monthlyOn(1, '03:30'),
                 defaultPeriod: 'current-month',
                 manuallyTriggerable: false,
             ),

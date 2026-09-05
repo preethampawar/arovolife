@@ -99,7 +99,7 @@
         <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 text-white sm:col-span-3">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-indigo-200 font-medium">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
-                <x-help-tip :light="true" text="Weekly payouts run every Tuesday (IST); monthly bonus income transfers in the monthly payout on the 9th. This is the balance sitting in your wallet right now, not a forecast. The repurchase deduction was already taken when each bonus was credited; at payout the balance is transferred after the 3% admin charge and 5% TDS; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout." />
+                <x-help-tip :light="true" text="Weekly payouts run every Tuesday (IST); monthly bonus income transfers in the monthly payout on the 1st. This is the balance sitting in your wallet right now, not a forecast. The repurchase deduction was already taken when each bonus was credited; at payout the balance is transferred after the 3% admin charge and 5% TDS; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout." />
             </div>
             <p class="text-2xl font-bold">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
             <p class="text-xs text-indigo-200 mt-1">Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.</p>

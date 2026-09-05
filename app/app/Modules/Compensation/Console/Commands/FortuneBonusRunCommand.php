@@ -16,7 +16,7 @@ final class FortuneBonusRunCommand extends Command
     protected $signature = 'fortune:monthly-run
                             {--month= : Month to run (YYYY-MM, defaults to previous month)}';
 
-    protected $description = 'Calculate and credit Fortune Bonus for enrolled participants (runs on 9th)';
+    protected $description = 'Calculate and credit Fortune Bonus for enrolled participants (runs on the 1st)';
 
     public function __construct(private readonly FortuneBonusService $fortuneBonus)
     {

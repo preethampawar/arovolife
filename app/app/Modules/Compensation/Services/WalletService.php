@@ -371,7 +371,7 @@ class WalletService
      * Same arithmetic as repurchaseWalletBalancePaise(); distributors with no
      * entries are simply absent from the result (balance 0).
      *
-     * Used by the Fortune enrolment gate, which runs on the 9th but has to
+     * Used by the Fortune enrolment gate, which runs on the 1st but has to
      * judge the wallet as of the last day of the month being enrolled.
      *
      * Only the two repurchase entry types are counted: a repurchase deduction

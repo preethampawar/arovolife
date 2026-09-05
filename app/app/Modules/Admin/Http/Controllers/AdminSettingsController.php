@@ -235,7 +235,7 @@ final class AdminSettingsController extends Controller
                 'owner' => 'developer',
                 'feature' => PurchaseOffersFeature::class,
                 'label' => 'Half-price grant validity (months)',
-                'description' => 'How long a half-price grant stays usable beyond the month it was earned in. The engine runs on the 2nd of the FOLLOWING month, so a grant never exists during the month it was earned — 1 is the minimum that leaves it usable at all. Letting it run indefinitely would turn a monthly promotion into a permanent discount.',
+                'description' => 'How long a half-price grant stays usable beyond the month it was earned in. The engine runs on the 1st of the FOLLOWING month, so a grant never exists during the month it was earned — 1 is the minimum that leaves it usable at all. Letting it run indefinitely would turn a monthly promotion into a permanent discount.',
                 'type' => 'int',
                 'min' => 1,
                 'max' => 12,

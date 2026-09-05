@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Monthly batches run on the 8th of each month covering GBB, Rank Bonus, Fortune Bonus, Lifetime Awards (cash), and ADC Bonus. Each batch shows total gross, deductions (admin charge 3% + TDS 5%), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over.
+    Monthly batches run on the 1st at 03:30 IST covering GBB, Rank Bonus, Fortune Bonus, Lifetime Awards (cash), and ADC Bonus. Each batch shows total gross, deductions (admin charge 3% + TDS 5%), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over.
 </div>
 @enddeveloper
 

@@ -16,7 +16,7 @@ final class AdcBonusRunCommand extends Command
     protected $signature = 'adc:monthly-run
                             {--month= : Month to run (YYYY-MM, defaults to previous month)}';
 
-    protected $description = 'Calculate and credit Arete Development Center Bonus (runs on 8th)';
+    protected $description = 'Calculate and credit Arete Development Center Bonus (runs on the 1st)';
 
     public function __construct(private readonly AreteDevelopmentCenterBonusService $adcBonus)
     {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\GrowthBoosterBonusService;
+use App\Modules\Compensation\Support\RankQualificationsGate;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
@@ -14,7 +15,8 @@ use Laravel\Pennant\Feature;
 final class GbbMonthlyRunCommand extends Command
 {
     protected $signature = 'gbb:monthly-run
-                            {--month= : Month to run (YYYY-MM, defaults to previous month)}';
+                            {--month= : Month to run (YYYY-MM, defaults to previous month)}
+                            {--force : Run even when the rank qualification check has not succeeded}';
 
     protected $description = 'Calculate and credit the Growth Booster Bonus for a calendar month';
 
@@ -34,6 +36,22 @@ final class GbbMonthlyRunCommand extends Command
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->startOfMonth()->subMonth();
+
+        // GBB reads the month BEFORE the one it pays: rejectRankedLastMonth()
+        // excludes anyone who held a qualified rank in M-1. With that month
+        // unchecked the rejection list is empty, so every excluded distributor
+        // is credited and the inflated denominator dilutes everyone else.
+        $rankMonth = $month->copy()->subMonthNoOverflow()->startOfMonth();
+
+        if (! $this->option('force') && ! RankQualificationsGate::checkedFor($rankMonth)) {
+            $this->error(RankQualificationsGate::refusalMessage(
+                $rankMonth,
+                'Growth Booster excludes anyone who ranked that month. Running now would exclude nobody,'
+                ."\ncredit distributors the plan bars, and dilute the point value for the eligible.",
+            ));
+
+            return self::FAILURE;
+        }
 
         $this->info("Growth Booster Bonus — {$month->format('F Y')}");
 

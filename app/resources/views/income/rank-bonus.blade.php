@@ -14,7 +14,7 @@
         Rank 1 (Silver) is points-based: each achiever earned 10 RAP and each AO-GO grantee 5 points that month; the pool was divided by the month's total points and your income is your points × the point value.
         Ranks 2–9 pools are split equally among that rank's achievers.
         Re-qualifying a rank you already achieved requires that month's repurchase BV and a cleared repurchase wallet.
-        When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet. The admin charge (3%, capped) and 5% TDS are taken at payout. Credited on the 8th of the following month.
+        When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet. The admin charge (3%, capped) and 5% TDS are taken at payout. Credited on the 1st of the following month.
     </div>
     @enddeveloper
 

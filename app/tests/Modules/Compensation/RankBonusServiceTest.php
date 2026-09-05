@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
@@ -9,9 +10,13 @@ use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\RankBonusFeature;
+use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -495,4 +500,38 @@ it('pays every cleared rank when pay_highest_rank_only is switched off', functio
     expect((int) $silverRow->point_value_paise)->toBe(70_000)
         ->and((int) $silverRow->gross_paise)->toBe(700_000)
         ->and((int) $silverRow->net_paise)->toBe(630_000);
+});
+
+it('refuses the monthly run when the rank qualification check has not succeeded for that month', function () {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    // No rank.check EngineRun for June: the 00:15 prerequisite never completed.
+    $exit = Artisan::call('rank:monthly-run', ['--month' => '2026-06']);
+
+    expect($exit)->toBe(Command::FAILURE);
+    expect(Artisan::output())->toContain('rank:check-qualifications --month=2026-06');
+    expect(RankBonusResult::where('month_start', '2026-06-01')->count())->toBe(0);
+    expect(RankAogoGrant::where('month_start', '2026-06-01')->count())->toBe(0);
+});
+
+it('runs the month once the qualification check has succeeded for it', function () {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => '2026-06-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+
+    expect(Artisan::call('rank:monthly-run', ['--month' => '2026-06']))->toBe(Command::SUCCESS);
+});
+
+it('lets --force run a month whose qualification check never ran', function () {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    expect(Artisan::call('rank:monthly-run', ['--month' => '2026-06', '--force' => true]))
+        ->toBe(Command::SUCCESS);
 });

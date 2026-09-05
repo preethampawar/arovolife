@@ -91,7 +91,7 @@ final readonly class EngineDefinition
      * Which period this engine works on when it fires on a given calendar day.
      *
      * `defaultPeriod` already declares the relationship — "the monthly payout
-     * run on the 9th settles the current month, the rank bonus settles the
+     * run on the 1st settles the current month, the rank bonus settles the
      * previous one" — so the replay reads that declaration instead of
      * re-deciding it. Same mapping, two reference points: today for an
      * operator's default, the replayed date for a historical replay.

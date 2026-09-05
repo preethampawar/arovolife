@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
@@ -9,9 +10,13 @@ use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\FortuneBonusService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -741,7 +746,7 @@ it('judges the repurchase wallet as of the last day of the month, not the run da
     seedPersonalBvForFortune($dist->id, 60_000);
     seedGsbCredit($dist->id, '2026-06-05');
     seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-03 09:00:00');
-    // Spent only in July — too late for June's matrix, even though enrolment runs on the 9th.
+    // Spent only in July — too late for June's matrix, even though enrolment runs on the 1st.
     seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_wallet_used', '2026-07-02 10:00:00');
 
     expect(app(FortuneBonusService::class)->enrollEligible($month)['enrolled'])->toBe(0);
@@ -878,4 +883,30 @@ it('stops entering qualifiers once the 29,524-position matrix is full', function
         ->and($result['skipped_matrix_full'])->toBe(1)
         ->and(FortuneBonusParticipant::where('distributor_id', $late->id)->exists())->toBeFalse()
         ->and((int) FortuneBonusParticipant::where('month_start', '2026-06-01')->max('position'))->toBe(FortuneBonusParticipant::MAX_POSITIONS);
+});
+
+it('refuses enrolment when the month rank check never succeeded', function () {
+    Feature::for(null)->activate(FortuneBonusFeature::class);
+
+    // Fortune reads the month it enrols for, unlike GBB which reads M-1.
+    $exit = Artisan::call('fortune:enroll-eligible', ['--month' => '2026-07']);
+
+    expect($exit)->toBe(Command::FAILURE);
+    expect(Artisan::output())->toContain('rank:check-qualifications --month=2026-07');
+    expect(FortuneBonusParticipant::count())->toBe(0);
+});
+
+it('enrols once the month rank check has succeeded', function () {
+    Feature::for(null)->activate(FortuneBonusFeature::class);
+
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => '2026-07-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+
+    expect(Artisan::call('fortune:enroll-eligible', ['--month' => '2026-07']))->toBe(Command::SUCCESS);
 });

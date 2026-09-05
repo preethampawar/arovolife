@@ -11,9 +11,9 @@
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         @if ($gsbOn)
-            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
+            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 1st' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @else
-            This dashboard shows a live snapshot of your income. Weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 9th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
+            This dashboard shows a live snapshot of your income. Weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 1st' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @endif
     </div>
     @enddeveloper
@@ -67,7 +67,7 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600 font-medium">Next monthly payout</p>
-                <x-help-tip text="Monthly bonus income for the previous month is calculated at the start of each month and transfers to your bank in the monthly payout on the 9th." />
+                <x-help-tip text="Monthly bonus income for the previous month is calculated at the start of each month and transfers to your bank in the monthly payout on the 1st." />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextMonthlyPayout']->format('D, d M') }}</p>
             <p class="text-xs text-gray-600 mt-1">Monthly bonuses for the previous month</p>

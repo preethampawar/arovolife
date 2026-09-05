@@ -147,7 +147,7 @@ final class FortuneBonusService
 
         // "Repurchase Wallet zero" (mandatory per spec, rules 2–7): the repurchase
         // wallet as it stood at the end of the month being enrolled. Enrolment
-        // runs on the 9th, so entries after month end must not count either way.
+        // runs on the 1st, so entries after month end must not count either way.
         // This gate is unconditional — the spec makes it non-configurable.
         $walletBalances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
             array_map(intval(...), array_keys($firstGsbDates)),
