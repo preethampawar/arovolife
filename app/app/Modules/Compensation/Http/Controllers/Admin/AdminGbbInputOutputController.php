@@ -6,6 +6,8 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
+use App\Modules\Compensation\Services\GrowthBoosterBonusService;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,9 +31,9 @@ use Laravel\Pennant\Feature;
  * Driven FROM gbb_monthly_pools (the frozen economics row) so a month whose
  * pool went unspent still appears. Held rows (repurchase grace) are listed —
  * their AGP sits inside the frozen denominator and releases credit at the
- * frozen point value. Suspended rows are listed with ₹0 — their AGP was
- * excluded from the denominator and is never paid. The report renders the
- * pool row verbatim; it never recomputes frozen economics.
+ * frozen point value. Suspended and repurchase-wallet-blocked rows are listed
+ * with ₹0 — their AGP was excluded from the denominator and is never paid. The
+ * report renders the pool row verbatim; it never recomputes frozen economics.
  */
 final class AdminGbbInputOutputController extends Controller
 {
@@ -42,7 +44,10 @@ final class AdminGbbInputOutputController extends Controller
         GbbMonthlyResult::STATUS_CREDITED,
         GbbMonthlyResult::STATUS_REPURCHASE_HELD,
         GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED,
+        GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
     ];
+
+    public function __construct(private readonly GrowthBoosterBonusService $gbb) {}
 
     public function index(Request $request): View
     {
@@ -62,6 +67,7 @@ final class AdminGbbInputOutputController extends Controller
         return view('admin.compensation.gbb-input-output.index', [
             'pools' => $pools,
             'earners' => $this->earners($monthStarts),
+            'lateEarners' => $this->lateEarners($monthStarts),
             'month' => $month,
             'from' => $from,
             'to' => $to,
@@ -205,6 +211,34 @@ final class AdminGbbInputOutputController extends Controller
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->year_month)->toDateString())
             ->map(fn ($rows) => array_values($rows->all()))
             ->all();
+    }
+
+    /**
+     * Distributors who earned AGP after a month's pool was frozen. The engine
+     * refuses them — a pool that has already been divided is never re-divided —
+     * so an admin has to see them rather than discover a silent gap.
+     *
+     * @param  list<string>  $monthStarts  'Y-m-01' keys
+     * @return array<string, array<int, string>> month_start → distributor id → ADN
+     */
+    private function lateEarners(array $monthStarts): array
+    {
+        $late = [];
+
+        foreach ($monthStarts as $monthStart) {
+            $ids = $this->gbb->qualifiedAfterFreeze(Carbon::parse($monthStart));
+
+            if ($ids === []) {
+                continue;
+            }
+
+            $late[$monthStart] = Distributor::whereIn('id', $ids)
+                ->pluck('adn', 'id')
+                ->map(fn ($adn): string => (string) $adn)
+                ->all();
+        }
+
+        return $late;
     }
 
     private function csvStr(string $value): string

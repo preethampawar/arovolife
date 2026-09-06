@@ -193,19 +193,21 @@ Every point value depends on the Company's total BV for the month, on how many o
 
 ## 8. Deductions
 
-The following are applied to bonuses before payment:
+The administrative charge and Tax Deducted at Source are applied to bonuses at the time of payment. The repurchase-wallet deduction is applied earlier, at the moment a bonus is credited to your account.
 
 | Deduction | Rate | Cap | Applies to |
 |---|---|---|---|
 | Administrative charge | 3% | ₹25,000 per payout period | GSB, MSB, Rank Bonus, Growth Booster, Fortune and Arete Development Centre bonuses |
 | Tax Deducted at Source | 5% | — | All monetary bonuses, as required by the Income-tax Act 1961 |
-| Repurchase wallet | 10% of the prior period's GSB + MSB + Growth Booster + Rank Bonus + Fortune | ₹10,000 | Credited to your repurchase wallet and applied automatically against your own product purchases at checkout; not withdrawable as cash. From the second month onward, a balance remaining on the last day of a month excludes you from that month's Fortune Bonus matrix (§7.2) |
+| Repurchase wallet | 10% of each bonus, taken when that bonus is credited | ₹10,000 for a given earning month | GSB, Growth Booster, Rank Bonus and Fortune Bonus. The Mentorship Bonus carries no repurchase deduction |
+
+The repurchase-wallet amount is credited to your repurchase wallet and applied automatically against your own product purchases at checkout; it is not withdrawable as cash. The ₹10,000 ceiling is counted per month of income earned, not per payment: deductions taken from bonuses earned for the same month are added together and stop once that month's ₹10,000 has been reached. From the second month onward, a repurchase-wallet balance remaining on the last day of a month excludes you from that month's Fortune Bonus matrix (§7.2).
 
 Non-cash awards are not subject to the administrative charge. Applicable tax on non-cash awards is dealt with separately at the time of release. TDS rates are those in force on the date of payment.
 
 ## 9. Payment
 
-- **Cadence:** GSB and MSB are calculated daily and paid weekly, every Tuesday at 03:00 IST. Monthly bonuses for the previous month are calculated and credited on the 1st of the following month (from 00:30 IST) and paid out in a single monthly transfer the same morning at 03:30 IST.
+- **Cadence:** GSB and MSB are calculated daily and paid weekly, every Tuesday at 03:00 IST. Monthly bonuses for the previous month are calculated and **credited** to your account on the 1st of the following month (from 00:15 IST). **Payment** of those credited amounts is a separate, later step: a single monthly transfer on the 8th at 04:00 IST. The week between crediting and payment is a checking window, during which a credited amount is visible in your account but has not yet been transferred.
 - **Minimum payment:** ₹100. Balances below this are carried to the next payout run and are not forfeited.
 - **Bank transfer requires all of:** personal BV of at least 3,000; active, verified KYC; and verified bank details on file. Until all three are met, income accrues in the web account and is not swept or forfeited.
 

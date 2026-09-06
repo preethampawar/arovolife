@@ -18,6 +18,8 @@ use App\Modules\Compensation\Console\Commands\FortuneStagingE2ESeedCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
@@ -173,6 +175,8 @@ class AppServiceProvider extends ServiceProvider
                 AdcPurgeRejectedDocumentsCommand::class,
                 PurchaseOffersMonthlyRunCommand::class,
                 MonthlyPayoutCommand::class,
+                MonthlyCloseCommand::class,
+                MonthlyPayoutCloseCommand::class,
                 AutoRetryFailedPayoutsCommand::class,
                 RepurchaseEvaluateCommand::class,
                 RepurchaseMonthlySnapshotCommand::class,

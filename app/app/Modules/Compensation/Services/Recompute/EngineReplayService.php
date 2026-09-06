@@ -209,7 +209,7 @@ final class EngineReplayService
         $pending = [];
 
         foreach (EngineRegistry::all() as $definition) {
-            if (! $definition->cadence->isScheduled() || ! $this->isSelected($definition)) {
+            if (! $definition->cadence->isScheduled() || $definition->isOrchestrator || ! $this->isSelected($definition)) {
                 continue;
             }
 
@@ -318,7 +318,7 @@ final class EngineReplayService
         $skipped = [];
 
         foreach (EngineRegistry::all() as $definition) {
-            if ($definition->cadence->isScheduled() && ! $this->isSelected($definition)) {
+            if ($definition->cadence->isScheduled() && ! $definition->isOrchestrator && ! $this->isSelected($definition)) {
                 $skipped[] = $definition->key;
             }
         }
@@ -343,7 +343,11 @@ final class EngineReplayService
         $due = [];
 
         foreach (EngineRegistry::all() as $definition) {
+            // Orchestrators are skipped: the replay drives the individual
+            // engines directly, so running the close as well would invoke every
+            // one of its steps a second time.
             if ($definition->cadence->isScheduled()
+                && ! $definition->isOrchestrator
                 && $definition->cadence->runsOn($day)
                 && $this->isSelected($definition)) {
                 $due[] = $definition;

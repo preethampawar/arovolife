@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
+use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
@@ -64,14 +65,34 @@ function gbbIoRow(string $adn, string $name, int $agp, int $valuePaise, string $
         'pool_paise' => 500_000,
         'total_pool_agp' => 100,
         'point_value_paise' => $valuePaise,
-        'gbb_gross_paise' => $status === GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED ? 0 : $agp * $valuePaise,
+        'gbb_gross_paise' => in_array($status, GbbMonthlyResult::POOL_EXCLUDED_STATUSES, true) ? 0 : $agp * $valuePaise,
         'admin_charge_paise' => 0,
         'tds_paise' => 0,
-        'gbb_net_paise' => $status === GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED ? 0 : $agp * $valuePaise,
+        'gbb_net_paise' => in_array($status, GbbMonthlyResult::POOL_EXCLUDED_STATUSES, true) ? 0 : $agp * $valuePaise,
         'status' => $status,
     ]);
 
     return $distributor;
+}
+
+/** A credited slab-1 GSB cut-off — 12 AGP for the month it falls in. */
+function gbbIoLateCutoff(int $distributorId, string $date): void
+{
+    GsbCutoffResult::create([
+        'distributor_id' => $distributorId,
+        'cutoff_date' => $date,
+        'left_bv_paise' => 1_500_000,
+        'right_bv_paise' => 1_500_000,
+        'slab' => 1,
+        'gross_gsb_paise' => 100_000,
+        'admin_charge_paise' => 3_000,
+        'tds_paise' => 4_850,
+        'net_gsb_paise' => 92_150,
+        'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 0,
+        'power_side_after' => 'L',
+        'status' => GsbCutoffResult::STATUS_CREDITED,
+    ]);
 }
 
 it('renders a month block with the frozen pool figures and per-earner rows', function () {
@@ -111,6 +132,23 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
     // The header stamps when the pool row was frozen.
     $res->assertSee('Computed');
     $res->assertSee(GbbMonthlyPool::query()->sole()->created_at?->format('d M Y H:i'));
+});
+
+it('names the distributors whose AGP landed after the month was frozen', function () {
+    $monthStart = '2026-07-01';
+    gbbIoPool($monthStart, 100, 5_000);
+    gbbIoRow('200000040', 'Credited Earner', 100, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
+
+    // A credited cut-off inside the frozen month for someone with no roster
+    // row: the engine refuses them, so the report has to name them.
+    $late = Distributor::factory()->create(['adn' => '200000041']);
+    gbbIoLateCutoff($late->id, '2026-07-20');
+
+    $this->actingAs(gbbIoAdmin())
+        ->get(route('admin.compensation.gbb-input-output.index'))
+        ->assertOk()
+        ->assertSee('Earned AGP after the pool was frozen')
+        ->assertSee('200000041');
 });
 
 it('shows a month whose pool went unspent, with a note explaining the ₹0 value', function () {
@@ -245,4 +283,18 @@ it('carries the deduction and credited columns into the GBB per-month CSV', func
     expect($csv)->toContain('Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs)');
     expect($csv)->toContain('300.00');
     expect($csv)->toContain('2700.00');
+});
+
+it('lists a repurchase-wallet-blocked earner so the blocked AGP is visible on the month', function () {
+    $monthStart = '2026-07-01';
+    gbbIoPool($monthStart, 60, 5_000);
+    gbbIoRow('AD-IO-BLK1', 'Paid Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
+    gbbIoRow('AD-IO-BLK2', 'Blocked Earner', 15, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+
+    $this->actingAs(gbbIoAdmin())
+        ->get(route('admin.compensation.gbb-input-output.index'))
+        ->assertOk()
+        ->assertSee('Blocked Earner')
+        ->assertSee('AD-IO-BLK2')
+        ->assertSee('Blocked — repurchase wallet not ₹0', false);
 });

@@ -14,6 +14,7 @@ use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,13 @@ final class PayoutService
 
     /** reference_type values that produce repurchase_transfer debits from the monthly (Group B) engines. */
     private const MONTHLY_REPURCHASE_REF_TYPES = ['gbb_monthly_result', 'rank_bonus_result', 'fortune_bonus_result'];
+
+    /**
+     * reference_type prefix of an `income_cap_forfeit` debit, completed with the
+     * 'Y-m-d' first day of the month the forfeited income was EARNED for.
+     * {@see writeIncomeCapForfeits()} for why the month is part of the identity.
+     */
+    private const FORFEIT_REFERENCE_PREFIX = 'payout_line_item_';
 
     /**
      * Weekly payout batch (Group A: GSB + Mentorship).
@@ -93,6 +101,7 @@ final class PayoutService
         $distributorIds = WalletLedgerEntry::whereIn('type', $groupTypes)
             ->whereNull('swept_by_payout_batch_id')
             ->where('amount_paise', '>', 0)
+            ->notReversed()
             ->distinct()
             ->pluck('distributor_id');
 
@@ -170,10 +179,15 @@ final class PayoutService
                     $distributorId, $batch, $cycleEnd, $groupTypes, $bankLast4,
                     $adminRateBp, $adminCapPaise, $tdsRateBp, $minPayoutPaise,
                 ): void {
+                    // notReversed(): a credit an admin has reversed keeps its
+                    // `+gross` row so the statement still shows what was earned,
+                    // and would otherwise be swept and wired to the bank for a
+                    // bonus that no longer exists.
                     $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
                         ->whereIn('type', $groupTypes)
                         ->whereNull('swept_by_payout_batch_id')
                         ->where('amount_paise', '>', 0)
+                        ->notReversed()
                         ->lockForUpdate()
                         ->get();
 
@@ -184,16 +198,21 @@ final class PayoutService
                         return;
                     }
 
-                    // ₹50L combined monthly cap (KP 2026-06-26): the five cash
-                    // bonuses (GSB, MB, GBB, Rank, Fortune) share one monthly gross
-                    // ceiling. Fill the remaining room GSB-first; whatever exceeds
-                    // it is forfeited below with an explicit ledger debit.
-                    $capRoom = max(0, $this->plan->monthlyIncomeCapPaise()
-                        - $this->monthToDateCappedGrossPaise($distributorId, $cycleEnd));
-                    $gsbEffective = min($gsbSum, $capRoom);
-                    $mbEffective = min($mbSum, $capRoom - $gsbEffective);
+                    // ₹50L combined monthly cap (client 2026-06-26): the five cash
+                    // bonuses (GSB, MB, GBB, Rank, Fortune) share one gross ceiling
+                    // per EARNED month. Each credit is measured against the ceiling
+                    // of the month it was earned for, GSB-first; whatever exceeds it
+                    // is forfeited with an explicit ledger debit.
+                    $allocation = $this->allocateAgainstIncomeCap(
+                        $distributorId,
+                        $entries,
+                        ['gsb_credit', 'mb_credit'],
+                        $cycleEnd,
+                    );
+                    $gsbEffective = $allocation['effective']['gsb_credit'];
+                    $mbEffective = $allocation['effective']['mb_credit'];
                     $gross = $gsbEffective + $mbEffective;
-                    $capForfeit = ($gsbSum + $mbSum) - $gross;
+                    $capForfeit = $allocation['forfeit'];
 
                     // Repurchase was deducted at credit time: each gsb_credit has a
                     // matching repurchase_transfer debit already in the main wallet.
@@ -204,6 +223,19 @@ final class PayoutService
                         ->lockForUpdate()
                         ->get();
                     $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
+
+                    // Nothing at all is payable because the whole balance sits above
+                    // the ceiling of the month it was earned in. Record the forfeit
+                    // HERE, before the below-minimum branch below returns: leaving
+                    // the credits unswept re-offered them to the next batch, so a
+                    // distributor with ₹0 of room was paid in full next month while
+                    // one with ₹1 of room had the same amount forfeited outright.
+                    if ($gross <= 0 && $capForfeit > 0) {
+                        $this->forfeitLineItem($batch, $distributorId, $entries, $repurchaseTransfers, $gsbSum + $mbSum, $repurchase, ['gsb_credit', 'mb_credit'], $cycleEnd);
+
+                        return;
+                    }
+
                     $effectiveGross = max(0, $gross - $repurchase);
                     // Admin charge honours the per-bonus applies_to toggles. It is
                     // levied on the gross but can only ever be collected out of what
@@ -268,17 +300,18 @@ final class PayoutService
 
                     // Credits above the monthly cap were swept with the rest, so an
                     // explicit debit is needed or the excess lingers as a phantom
-                    // wallet balance forever.
-                    if ($capForfeit > 0) {
-                        $this->wallet->debit(
-                            distributorId: $distributorId,
-                            amountPaise: $capForfeit,
-                            type: 'income_cap_forfeit',
-                            referenceId: $lineItem->id,
-                            referenceType: 'payout_line_item',
-                            memo: 'Cash income above the combined monthly income cap',
-                        );
-                    }
+                    // wallet balance forever. Attributed to the earned month whose
+                    // ceiling destroyed it, and audited, exactly as a wholly
+                    // forfeited line is.
+                    $this->writeIncomeCapForfeits(
+                        $batch,
+                        $lineItem,
+                        $distributorId,
+                        $allocation['forfeit_by_month'],
+                        $gsbSum + $mbSum,
+                        $repurchase,
+                        'the part of the balance above the combined monthly income cap of the month it was earned for is forfeited, not carried forward',
+                    );
                 });
             } catch (Throwable $e) {
                 // One distributor's failure must not strand the whole batch in
@@ -323,7 +356,6 @@ final class PayoutService
         $adminCapPaise = $this->plan->adminChargeMonthlyCapPaise();
         $adminRateBp = $this->plan->adminChargeRateBp();
         $tdsRateBp = $this->plan->tdsRateBp();
-        $incomeCapPaise = $this->plan->monthlyIncomeCapPaise();
 
         $allMonthlyTypes = array_merge(
             CompensationPlanSettingsService::GROUP_B_TYPES,
@@ -357,6 +389,7 @@ final class PayoutService
         $distributorIds = WalletLedgerEntry::whereIn('type', $allMonthlyTypes)
             ->whereNull('swept_by_payout_batch_id')
             ->where('amount_paise', '>', 0)
+            ->notReversed()
             ->distinct()
             ->pluck('distributor_id');
 
@@ -421,13 +454,15 @@ final class PayoutService
                 }
 
                 DB::transaction(function () use (
-                    $distributorId, $batch, $allMonthlyTypes, $incomeCapPaise, $month, $bankLast4,
+                    $distributorId, $batch, $allMonthlyTypes, $month, $bankLast4,
                     $adminRateBp, $adminCapPaise, $tdsRateBp, $minPayoutPaise,
                 ): void {
+                    // notReversed() — see runWeeklyBatch().
                     $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
                         ->whereIn('type', $allMonthlyTypes)
                         ->whereNull('swept_by_payout_batch_id')
                         ->where('amount_paise', '>', 0)
+                        ->notReversed()
                         ->lockForUpdate()
                         ->get();
 
@@ -436,19 +471,23 @@ final class PayoutService
                     }
 
                     // Group B: GBB + Rank + Fortune — all five cash bonuses share
-                    // the combined ₹50L monthly cap (the month's weekly GSB/MB
-                    // batches already consumed part of the room). Fill the
-                    // remaining room Fortune → GBB → Rank, so rank (the largest
-                    // pool) is forfeited first when the cap is breached.
-                    $gbbSum = (int) $entries->where('type', 'gbb_credit')->sum('amount_paise');
-                    $rankSum = (int) $entries->where('type', 'rank_credit')->sum('amount_paise');
-                    $fortuneSum = (int) $entries->where('type', 'fortune_credit')->sum('amount_paise');
-                    $capRoom = max(0, $incomeCapPaise - $this->monthToDateCappedGrossPaise($distributorId, $month));
-                    $fortuneEffective = min($fortuneSum, $capRoom);
-                    $gbbEffective = min($gbbSum, $capRoom - $fortuneEffective);
-                    $rankEffective = min($rankSum, $capRoom - $fortuneEffective - $gbbEffective);
+                    // the combined ₹50L cap of the month each credit was EARNED
+                    // for (that month's weekly GSB/MB batches already consumed
+                    // part of the room). Fill the remaining room Fortune → GBB →
+                    // Rank, so rank (the largest pool) is forfeited first when the
+                    // cap is breached.
+                    $sumB = (int) $entries->whereIn('type', ['gbb_credit', 'rank_credit', 'fortune_credit'])->sum('amount_paise');
+                    $allocation = $this->allocateAgainstIncomeCap(
+                        $distributorId,
+                        $entries,
+                        ['fortune_credit', 'gbb_credit', 'rank_credit'],
+                        $month,
+                    );
+                    $fortuneEffective = $allocation['effective']['fortune_credit'];
+                    $gbbEffective = $allocation['effective']['gbb_credit'];
+                    $rankEffective = $allocation['effective']['rank_credit'];
                     $grossB = $gbbEffective + $rankEffective + $fortuneEffective;
-                    $capForfeit = ($gbbSum + $rankSum + $fortuneSum) - $grossB;
+                    $capForfeit = $allocation['forfeit'];
 
                     // Group C: Awards.
                     $grossC = (int) $entries->where('type', 'awards_credit')->sum('amount_paise');
@@ -458,6 +497,26 @@ final class PayoutService
                     $grossAdc = $grossD;
 
                     $gross = $grossB + $grossC + $grossD;
+
+                    // Repurchase was deducted at credit time for Group B bonuses
+                    // (GBB, Rank, Fortune). Sweep their repurchase_transfer debits
+                    // alongside the bonus credits; payout_debit uses effectiveGross
+                    // so the main wallet balance closes to zero exactly.
+                    // Awards (Group C) and ADC (Group D) carry no repurchase deduction.
+                    $repurchaseTransfers = $this->unsweptRepurchaseTransfers($distributorId, self::MONTHLY_REPURCHASE_REF_TYPES)
+                        ->lockForUpdate()
+                        ->get();
+                    $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
+
+                    // Everything this distributor earned sits above the ceiling of
+                    // the month it was earned in. Record the forfeit HERE, before
+                    // the silent return: credits left unswept were re-offered to the
+                    // next batch against a fresh ceiling — see runWeeklyBatch().
+                    if ($gross <= 0 && $capForfeit > 0) {
+                        $this->forfeitLineItem($batch, $distributorId, $entries, $repurchaseTransfers, $sumB, $repurchase, ['fortune_credit', 'gbb_credit', 'rank_credit'], $month);
+
+                        return;
+                    }
 
                     if ($gross <= 0) {
                         return;
@@ -477,15 +536,6 @@ final class PayoutService
                     ], $adminRateBp, $adminCapPaise);
                     $adminCharge = $adminB + $adminC + $adminD;
 
-                    // Repurchase was deducted at credit time for Group B bonuses
-                    // (GBB, Rank, Fortune). Sweep their repurchase_transfer debits
-                    // alongside the bonus credits; payout_debit uses effectiveGross
-                    // so the main wallet balance closes to zero exactly.
-                    // Awards (Group C) and ADC (Group D) carry no repurchase deduction.
-                    $repurchaseTransfers = $this->unsweptRepurchaseTransfers($distributorId, self::MONTHLY_REPURCHASE_REF_TYPES)
-                        ->lockForUpdate()
-                        ->get();
-                    $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
                     $effectiveGross = max(0, $gross - $repurchase);
 
                     // Clamped to what is actually left in the wallet — see the
@@ -553,16 +603,17 @@ final class PayoutService
                     // Credits above the monthly cap are forfeited, not carried:
                     // their entries were swept above, so an explicit debit is needed
                     // or the excess would linger as a phantom wallet balance forever.
-                    if ($capForfeit > 0) {
-                        $this->wallet->debit(
-                            distributorId: $distributorId,
-                            amountPaise: $capForfeit,
-                            type: 'income_cap_forfeit',
-                            referenceId: $lineItem->id,
-                            referenceType: 'payout_line_item',
-                            memo: 'Cash income above the combined monthly income cap',
-                        );
-                    }
+                    // One debit per earned month, plus the audit row — see
+                    // runWeeklyBatch().
+                    $this->writeIncomeCapForfeits(
+                        $batch,
+                        $lineItem,
+                        $distributorId,
+                        $allocation['forfeit_by_month'],
+                        $sumB,
+                        $repurchase,
+                        'the part of the balance above the combined monthly income cap of the month it was earned for is forfeited, not carried forward',
+                    );
                 });
             } catch (Throwable $e) {
                 // See runWeeklyBatch(): isolate the failure, keep paying the rest.
@@ -634,9 +685,247 @@ final class PayoutService
     }
 
     /**
+     * Record a distributor whose entire batch balance sits above the combined
+     * monthly income cap of the month it was earned in: the credits and their
+     * credit-time repurchase debits are swept, an `income_cap_forfeit` debit
+     * closes the main wallet, and the batch carries a line saying so.
+     *
+     * Sweeping is the whole point. Left unswept — which is what both silent
+     * returns used to do — the same credits were re-offered by the next batch
+     * against a fresh ceiling, so ₹0 of room paid in full next month what ₹1 of
+     * room forfeited outright.
+     *
+     * The forfeit debit is the gross MINUS the repurchase share, because that
+     * share left the main wallet at credit time and is already sitting in the
+     * repurchase wallet; debiting the full gross would push the balance
+     * negative. A forfeited bonus does not return its repurchase deduction.
+     *
+     * One debit is written per EARNED month, each stamped with its own
+     * `bonus_month`. The ceiling this forfeit was measured against belongs to
+     * the month the income was earned for, so a debit that cannot name that
+     * month cannot be reconciled against the decision that destroyed it — and a
+     * batch routinely sweeps credits from more than one month.
+     *
+     * The forfeit permanently destroys income, so it also gets a
+     * retention-guaranteed `audit_log` row, not only the line item (R-35).
+     *
+     * @param  EloquentCollection<int, WalletLedgerEntry>  $entries
+     * @param  EloquentCollection<int, WalletLedgerEntry>  $repurchaseTransfers
+     * @param  list<string>  $cappedTypes  the credit types the cap allocated
+     */
+    private function forfeitLineItem(
+        PayoutBatch $batch,
+        int $distributorId,
+        EloquentCollection $entries,
+        EloquentCollection $repurchaseTransfers,
+        int $grossPaise,
+        int $repurchasePaise,
+        array $cappedTypes,
+        Carbon $fallbackMonth,
+    ): void {
+        WalletLedgerEntry::whereIn('id', $entries->merge($repurchaseTransfers)->pluck('id')->all())
+            ->update(['swept_by_payout_batch_id' => $batch->id]);
+
+        $lineItem = PayoutLineItem::create([
+            'payout_batch_id' => $batch->id,
+            'distributor_id' => $distributorId,
+            'wallet_balance_paise' => 0,
+            'gross_paise' => $grossPaise,
+            'repurchase_deduction_paise' => $repurchasePaise,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'net_transferred_paise' => 0,
+            'status' => PayoutLineItem::STATUS_INCOME_CAP_FORFEITED,
+            'failure_reason' => 'Entire balance above the combined monthly income cap of the month it was earned for.',
+        ]);
+
+        $fallback = $fallbackMonth->copy()->startOfMonth()->toDateString();
+
+        /** @var array<string, int> $grossByMonth */
+        $grossByMonth = [];
+        /** @var array<string, int> $repurchaseByMonth */
+        $repurchaseByMonth = [];
+
+        foreach ($entries as $entry) {
+            if (! in_array($entry->type, $cappedTypes, true)) {
+                continue;
+            }
+
+            $key = $entry->bonus_month?->toDateString() ?? $fallback;
+            $grossByMonth[$key] = ($grossByMonth[$key] ?? 0) + abs((int) $entry->amount_paise);
+        }
+
+        foreach ($repurchaseTransfers as $transfer) {
+            $key = $transfer->bonus_month?->toDateString() ?? $fallback;
+            $repurchaseByMonth[$key] = ($repurchaseByMonth[$key] ?? 0) + abs((int) $transfer->amount_paise);
+        }
+
+        /** @var array<string, int> $forfeitByMonth */
+        $forfeitByMonth = [];
+
+        foreach ($grossByMonth as $earnedMonth => $monthGross) {
+            // Never below zero: a month's repurchase deduction is a fraction of
+            // that month's own gross, so the subtraction cannot invert.
+            $forfeitByMonth[$earnedMonth] = max(0, $monthGross - ($repurchaseByMonth[$earnedMonth] ?? 0));
+        }
+
+        $this->writeIncomeCapForfeits(
+            $batch,
+            $lineItem,
+            $distributorId,
+            $forfeitByMonth,
+            $grossPaise,
+            $repurchasePaise,
+            'the whole balance sat above the combined monthly income cap of the month it was earned for; it is forfeited, not carried forward',
+        );
+    }
+
+    /**
+     * Write a line item's `income_cap_forfeit` debits — one per EARNED month,
+     * each stamped with its own `bonus_month` — and the `audit_log` row saying
+     * income was permanently destroyed.
+     *
+     * One debit per month rather than one per line item: the ceiling a forfeit
+     * was measured against belongs to the month the income was earned for, so a
+     * debit that cannot name that month cannot be reconciled against the
+     * decision that destroyed it — and a batch routinely settles credits from
+     * more than one month.
+     *
+     * The month goes into `reference_type` as well as `bonus_month` because
+     * `uniq_wallet_ledger_source (type, reference_type, reference_id)` covers
+     * the debit's identity: a bare `payout_line_item` would let the first month
+     * through and reject every month after it on the same line item. Same
+     * disambiguating-suffix mechanism as
+     * {@see WalletService::REVERSAL_REFERENCE_SUFFIX}.
+     *
+     * The forfeit destroys income permanently, so it is a retention-guaranteed
+     * audit fact and not only a line item (R-35).
+     *
+     * @param  array<string, int>  $forfeitByMonth  'Y-m-d' first-of-month => paise forfeited
+     */
+    private function writeIncomeCapForfeits(
+        PayoutBatch $batch,
+        PayoutLineItem $lineItem,
+        int $distributorId,
+        array $forfeitByMonth,
+        int $grossPaise,
+        int $repurchasePaise,
+        string $reason,
+    ): void {
+        $forfeitByMonth = array_filter($forfeitByMonth, static fn (int $paise): bool => $paise > 0);
+
+        if ($forfeitByMonth === []) {
+            return;
+        }
+
+        ksort($forfeitByMonth);
+
+        foreach ($forfeitByMonth as $earnedMonth => $monthForfeit) {
+            $this->wallet->debit(
+                distributorId: $distributorId,
+                amountPaise: $monthForfeit,
+                type: 'income_cap_forfeit',
+                referenceId: $lineItem->id,
+                referenceType: self::FORFEIT_REFERENCE_PREFIX.$earnedMonth,
+                memo: 'Cash income above the combined monthly income cap',
+                bonusMonth: Carbon::createFromFormat('Y-m-d', $earnedMonth)->startOfDay(),
+            );
+        }
+
+        AuditLog::create([
+            'action' => 'payout.income_cap_forfeited',
+            'subject_type' => 'distributor',
+            'subject_id' => $distributorId,
+            'details' => [
+                'payout_batch_id' => $batch->id,
+                'payout_line_item_id' => $lineItem->id,
+                'gross_paise' => $grossPaise,
+                'repurchase_deduction_paise' => $repurchasePaise,
+                'forfeited_paise' => array_sum($forfeitByMonth),
+                'forfeited_by_earned_month' => $forfeitByMonth,
+                'reason' => $reason,
+            ],
+        ]);
+    }
+
+    /**
+     * Allocate a batch's capped cash-bonus credits against the ₹50L combined
+     * ceiling, one ceiling per EARNED month.
+     *
+     * A batch routinely carries credits from more than one month: anything
+     * deferred by the ₹100 minimum, held for KYC or a missing bank account
+     * rolls forward, and the monthly engines all credit the month that just
+     * closed. Each of those credits belongs to the ceiling of its own
+     * `bonus_month`, so they are grouped by it (oldest first — the longest-held
+     * income settles first) and each group meets only the room its own month
+     * has left. Credits written before `bonus_month` existed fall back to the
+     * batch's month, which is what the old batch-window measurement assumed.
+     *
+     * Within a month the `$priority` order decides who gets the remaining room
+     * and who is forfeited.
+     *
+     * `forfeit_by_month` carries the same total as `forfeit`, broken down by the
+     * earned month whose ceiling destroyed it — the attribution the forfeit
+     * debits and the audit row are written from.
+     *
+     * @param  EloquentCollection<int, WalletLedgerEntry>  $entries
+     * @param  list<string>  $priority  capped credit types, highest priority first
+     * @return array{effective: array<string, int>, forfeit: int, forfeit_by_month: array<string, int>}
+     */
+    private function allocateAgainstIncomeCap(
+        int $distributorId,
+        EloquentCollection $entries,
+        array $priority,
+        Carbon $batchDate,
+    ): array {
+        $capPaise = $this->plan->monthlyIncomeCapPaise();
+        $fallbackMonth = $batchDate->copy()->startOfMonth()->toDateString();
+
+        $effective = array_fill_keys($priority, 0);
+        $forfeit = 0;
+        /** @var array<string, int> $forfeitByMonth */
+        $forfeitByMonth = [];
+
+        $byEarnedMonth = $entries
+            ->whereIn('type', $priority)
+            ->groupBy(fn (WalletLedgerEntry $entry): string => $entry->bonus_month?->toDateString() ?? $fallbackMonth)
+            ->sortKeys();
+
+        foreach ($byEarnedMonth as $earnedMonth => $monthEntries) {
+            $earnedMonth = (string) $earnedMonth;
+
+            $room = max(0, $capPaise - $this->monthToDateCappedGrossPaise(
+                $distributorId,
+                Carbon::createFromFormat('Y-m-d', $earnedMonth)->startOfDay(),
+            ));
+
+            foreach ($priority as $type) {
+                $sum = (int) $monthEntries->where('type', $type)->sum('amount_paise');
+                $taken = min($sum, $room);
+
+                $effective[$type] += $taken;
+                $forfeit += $sum - $taken;
+                $forfeitByMonth[$earnedMonth] = ($forfeitByMonth[$earnedMonth] ?? 0) + ($sum - $taken);
+                $room -= $taken;
+            }
+        }
+
+        return [
+            'effective' => $effective,
+            'forfeit' => $forfeit,
+            'forfeit_by_month' => array_filter($forfeitByMonth, static fn (int $paise): bool => $paise > 0),
+        ];
+    }
+
+    /**
      * The credit-time repurchase debits that belong to this batch group and
      * have not yet been swept by a payout — the deduction a line item reports,
      * and the entries a paying line sweeps alongside its credits.
+     *
+     * Transfers belonging to a reversed bonus are excluded, exactly as the
+     * bonus credits themselves are: the reversal already put that deduction
+     * back, and sweeping the debit without its credit would understate the
+     * payout by the deduction.
      *
      * @param  list<string>  $refTypes
      * @return Builder<WalletLedgerEntry>
@@ -646,7 +935,8 @@ final class PayoutService
         return WalletLedgerEntry::where('distributor_id', $distributorId)
             ->where('type', 'repurchase_transfer')
             ->whereIn('reference_type', $refTypes)
-            ->whereNull('swept_by_payout_batch_id');
+            ->whereNull('swept_by_payout_batch_id')
+            ->notReversed();
     }
 
     /**
@@ -731,22 +1021,55 @@ final class PayoutService
     }
 
     /**
-     * Combined gross of the five capped cash-bonus streams (GSB, MB, GBB,
-     * Rank, Fortune) already swept into payout batches whose batch_date falls
-     * in the same calendar month. Forfeited amounts count too: once the cap is
-     * reached it stays reached — a forfeit never frees up room.
+     * How much of one month's ₹50L combined ceiling a distributor has already
+     * used up: the gross of the five capped cash-bonus streams (GSB, MB, GBB,
+     * Rank, Fortune) that a payout batch has already settled — paid out or
+     * forfeited — for that month.
+     *
+     * A credit counts under the month it was EARNED for (`bonus_month`), not
+     * the month a batch happened to sweep it. Measuring by the sweeping batch
+     * is what let a deferred credit meet a fresh ceiling the following month:
+     * the room reset while the income did not.
+     *
+     * Rows written before `bonus_month` existed carry no earned month, so they
+     * keep answering under the batch that swept them and historical batches
+     * report exactly what they reported before. This is the same
+     * window-with-fallback shape as
+     * {@see WalletService::repurchaseDeductionForMonthPaise()}, so the two
+     * monthly ceilings agree on what a month is.
+     *
+     * Only swept rows count. Unswept credits are the ones being measured
+     * against the ceiling, not consumption already recorded against it.
+     *
+     * A reversed bonus consumes nothing: the income no longer exists, so it
+     * must not go on holding room against the ceiling of the month it was
+     * earned for. This holds whether the reversal came before the credit could
+     * be swept or after it was already paid out.
      */
-    private function monthToDateCappedGrossPaise(int $distributorId, Carbon $batchDate): int
+    private function monthToDateCappedGrossPaise(int $distributorId, Carbon $month): int
     {
+        // The month is an IST calendar month by definition; anchor it in IST
+        // rather than converting the caller's instant, so a value that arrives
+        // as a bare date can never slide into the neighbouring month.
+        $monthIst = Carbon::createFromFormat('Y-m-d H:i:s', $month->format('Y-m-01').' 00:00:00', 'Asia/Kolkata');
+
         $batchIds = PayoutBatch::whereBetween('batch_date', [
-            $batchDate->copy()->startOfMonth()->format('Y-m-d 00:00:00'),
-            $batchDate->copy()->endOfMonth()->format('Y-m-d 23:59:59'),
+            $monthIst->copy()->startOfMonth()->format('Y-m-d 00:00:00'),
+            $monthIst->copy()->endOfMonth()->format('Y-m-d 23:59:59'),
         ])->pluck('id');
 
         return (int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->whereIn('type', CompensationPlanSettingsService::MONTHLY_CAP_TYPES)
             ->where('amount_paise', '>', 0)
-            ->whereIn('swept_by_payout_batch_id', $batchIds)
+            ->whereNotNull('swept_by_payout_batch_id')
+            ->notReversed()
+            ->where(function ($query) use ($monthIst, $batchIds): void {
+                $query->whereDate('bonus_month', $monthIst->toDateString())
+                    ->orWhere(function ($legacy) use ($batchIds): void {
+                        $legacy->whereNull('bonus_month')
+                            ->whereIn('swept_by_payout_batch_id', $batchIds);
+                    });
+            })
             ->sum('amount_paise');
     }
 

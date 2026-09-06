@@ -64,7 +64,7 @@ final class PayoutBatch extends Model
     /** Per-stream weekly batch: GSB + Mentorship Bonus (Wed→Tue, paid next Tuesday). */
     public const TYPE_WEEKLY = 'weekly';
 
-    /** Per-stream monthly batch: GBB + Rank + Fortune + Awards + ADC (paid on the 1st). */
+    /** Per-stream monthly batch: GBB + Rank + Fortune + Awards + ADC (paid on the 8th). */
     public const TYPE_MONTHLY = 'monthly';
 
     protected $table = 'payout_batches';

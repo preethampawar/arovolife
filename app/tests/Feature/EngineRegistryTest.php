@@ -57,12 +57,28 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers twelve engines with unique keys and signatures', function (): void {
+it('registers fourteen engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(12);
+    expect($all)->toHaveCount(14);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(12);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(14);
+});
+
+it('points every orchestrated engine at a registered orchestrator', function (): void {
+    foreach (EngineRegistry::all() as $key => $definition) {
+        if ($definition->orchestratedBy === null) {
+            continue;
+        }
+
+        expect(EngineRegistry::has($definition->orchestratedBy))->toBeTrue(
+            "Engine [{$key}] names an unknown orchestrator [{$definition->orchestratedBy}]."
+        );
+        expect(EngineRegistry::get($definition->orchestratedBy)->isOrchestrator)->toBeTrue(
+            "Engine [{$key}] is orchestrated by an engine that is not an orchestrator."
+        );
+        expect($definition->isOrchestrator)->toBeFalse("Engine [{$key}] orchestrates and is orchestrated.");
+    }
 });
 
 it('points every registry entry at a real artisan command with the declared period option', function (): void {
@@ -197,6 +213,31 @@ it('declares a cadence that matches what the scheduler actually registers', func
         if (! $definition->cadence->isScheduled()) {
             expect($expression)->toBeNull(
                 "Engine [{$key}] is declared unscheduled but the scheduler registers it as [{$expression}]."
+            );
+
+            continue;
+        }
+
+        // An orchestrated engine is fired by a close command, not by its own
+        // cron entry: the scheduler must register the ORCHESTRATOR, and the two
+        // must agree on the day. The times deliberately differ — the close runs
+        // its steps in sequence from its own start time.
+        if ($definition->orchestratedBy !== null) {
+            $orchestrator = EngineRegistry::get($definition->orchestratedBy);
+
+            expect($expression)->toBeNull(
+                "Engine [{$key}] is orchestrated but the scheduler still registers it directly as [{$expression}]."
+            );
+
+            $orchestratorExpression = $registered[$orchestrator->commandSignature] ?? null;
+
+            expect($orchestratorExpression)->not->toBeNull(
+                "Engine [{$key}] is orchestrated by [{$orchestrator->key}], which nothing registers in routes/console.php."
+            );
+
+            expect($definition->cadence->dayOfMonth)->toBe(
+                $orchestrator->cadence->dayOfMonth,
+                "Engine [{$key}] runs on a different day from the close that fires it."
             );
 
             continue;

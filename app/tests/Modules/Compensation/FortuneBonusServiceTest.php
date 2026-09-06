@@ -702,6 +702,136 @@ it('runForMonth is idempotent — re-running does not double-credit', function (
     expect(WalletLedgerEntry::where('distributor_id', $top->id)->where('type', 'fortune_credit')->count())->toBe(1);
 });
 
+// ── Premature freeze self-heal ─────────────────────────────────────────────
+// A pool row written before the month closed is a stray manual run, not a
+// final freeze. For Fortune it is worse than for GSB/GBB: the row also closes
+// enrolment for the month, so a mid-month run locks every later qualifier out
+// for good unless the row is discarded.
+
+it('discards a pool frozen mid-month that funded nothing, refreezes at the full month BV and reopens enrolment', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    $svc = app(FortuneBonusService::class);
+
+    $early = Distributor::factory()->create();
+    placeFortuneParticipant($early->id, 1);
+
+    // A stray manual run made WHILE June was still open, before any BV had
+    // landed: the month prices at ₹0, which would otherwise pay nothing for
+    // June for ever AND refuse every later enrolment.
+    Carbon::setTestNow('2026-06-15 12:00:00');
+    $stray = $svc->runForMonth($month);
+    $strayPool = FortuneMonthlyPool::where('month_start', '2026-06-01')->sole();
+
+    expect($strayPool->company_bv_paise)->toBe(0)
+        ->and($stray['skipped_zero_income'])->toBe(1)
+        ->and(DB::table('fortune_monthly_pool_levels')->where('fortune_monthly_pool_id', $strayPool->id)->count())->toBe(1);
+
+    // June's real BV lands, and a second distributor qualifies on the 20th.
+    seedCompanyBvForFortunePool(100_000_000, '2026-06-20');
+    $late = registerDistributorForFortune('2026-05-02'); // month 2 — the non_ranked gates
+    seedTitleBvForFortune($late->id);
+    seedPersonalBvForFortune($late->id, 60_000, '2026-06-20');
+    seedGsbCredit($late->id, '2026-06-20');
+
+    // The scheduled run on the 1st: enrolment finds the stray pool, sees that
+    // it funded nothing, discards it and admits the late qualifier.
+    Carbon::setTestNow('2026-07-01 00:45:00');
+    expect($svc->enrollEligible($month))
+        ->toMatchArray(['enrolled' => 1, 'refused_pool_frozen' => false]);
+
+    expect(FortuneMonthlyPool::count())->toBe(0)
+        ->and(FortuneBonusResult::count())->toBe(0)
+        // The level rows go with the parent on the FK cascade.
+        ->and(DB::table('fortune_monthly_pool_levels')->where('fortune_monthly_pool_id', $strayPool->id)->count())->toBe(0);
+
+    $result = $svc->runForMonth($month);
+    $pool = FortuneMonthlyPool::where('month_start', '2026-06-01')->sole();
+
+    expect($pool->id)->not->toBe($strayPool->id)
+        ->and($pool->company_bv_paise)->toBe(100_060_000)
+        ->and($pool->is_shortfall)->toBeFalse()
+        ->and($result['credited'])->toBe(2);
+
+    // R-35: the replacement is an audit fact, not just a log line — and the
+    // hard delete records WHAT it destroyed, not merely how many rows, so the
+    // month stays reconstructable from audit_log alone.
+    $refrozen = DB::table('audit_log')->where('action', 'fortune.pool.refrozen')->sole();
+    $details = json_decode((string) $refrozen->details, true);
+
+    expect($details['discarded_results'])->toBe(1)
+        ->and($details['discarded_rows'])->toHaveCount(1)
+        ->and($details['discarded_rows'][0]['distributor_id'])->toBe($early->id)
+        ->and($details['discarded_rows'][0]['status'])->toBe(FortuneBonusResult::STATUS_SKIPPED)
+        ->and($details['discarded_rows'][0])->toHaveKeys(['id', 'matrix_level', 'gross_paise']);
+});
+
+it('keeps a premature pool once a distributor has been credited against it', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    $svc = app(FortuneBonusService::class);
+
+    $top = Distributor::factory()->create();
+    placeFortuneParticipant($top->id, 1);
+    placeFortuneParticipant(Distributor::factory()->create()->id, 2);
+
+    seedCompanyBvForFortunePool(100_000_000, '2026-06-10');
+
+    // Mid-month run that DID pay: those economics can never move again.
+    Carbon::setTestNow('2026-06-15 12:00:00');
+    $first = $svc->runForMonth($month);
+    $paidPool = FortuneMonthlyPool::where('month_start', '2026-06-01')->sole();
+
+    expect($first['credited'])->toBe(2);
+
+    // Far more BV lands, and the month closes.
+    seedCompanyBvForFortunePool(900_000_000, '2026-06-20');
+    Carbon::setTestNow('2026-07-01 00:45:00');
+    $second = $svc->runForMonth($month);
+
+    expect(FortuneMonthlyPool::count())->toBe(1)
+        ->and(FortuneMonthlyPool::sole()->id)->toBe($paidPool->id)
+        ->and($second['pool_paise'])->toBe($first['pool_paise'])
+        ->and(DB::table('audit_log')->where('action', 'fortune.pool.refrozen')->count())->toBe(0);
+
+    // The month stays closed to new entrants, exactly as a final freeze does.
+    expect($svc->enrollEligible($month)['refused_pool_frozen'])->toBeTrue();
+});
+
+it('keeps a premature pool once a ₹0-gross row is credited against it', function (): void {
+    // §7.5 of the published plan says a matrix level's value may be ₹0. A
+    // credited row carrying ₹0 is therefore the record of a participation the
+    // plan itself contemplates — deleting it would erase a distributor's place
+    // in a month they were in, so the keep-guard tests `credited` alone and
+    // never also `gross > 0`.
+    $month = Carbon::parse('2026-06-01');
+    $svc = app(FortuneBonusService::class);
+
+    $dist = Distributor::factory()->create();
+    placeFortuneParticipant($dist->id, 1);
+
+    // Mid-month run with no BV: the month prices at ₹0 and the row is skipped.
+    Carbon::setTestNow('2026-06-15 12:00:00');
+    $svc->runForMonth($month);
+    $strayPool = FortuneMonthlyPool::where('month_start', '2026-06-01')->sole();
+
+    $row = FortuneBonusResult::where('distributor_id', $dist->id)->sole();
+    expect((int) $row->gross_paise)->toBe(0);
+
+    // The distributor is told they participated in June at ₹0.
+    $row->update(['status' => FortuneBonusResult::STATUS_CREDITED, 'credited_at' => now()]);
+
+    // The month closes with real BV. The pool is premature, but something was
+    // credited against it, so it is kept and surfaced rather than replaced.
+    seedCompanyBvForFortunePool(100_000_000, '2026-06-20');
+    Carbon::setTestNow('2026-07-01 00:45:00');
+
+    expect($svc->enrollEligible($month)['refused_pool_frozen'])->toBeTrue();
+
+    expect(FortuneMonthlyPool::count())->toBe(1)
+        ->and(FortuneMonthlyPool::sole()->id)->toBe($strayPool->id)
+        ->and(FortuneBonusResult::whereKey($row->id)->exists())->toBeTrue()
+        ->and(DB::table('audit_log')->where('action', 'fortune.pool.refrozen')->count())->toBe(0);
+});
+
 // ── "Repurchase Wallet zero" gate ──────────────────────────────────────────
 
 /** A repurchase-wallet ledger entry: a payout deduction credit or a checkout debit, at an explicit instant. */

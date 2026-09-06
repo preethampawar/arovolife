@@ -38,6 +38,15 @@ final readonly class EngineDefinition
      *                                      The chain resolver already caps DEPENDENCY cut-offs at
      *                                      yesterday for the same reason — this flag closes the same
      *                                      hole for the directly requested engine.
+     * @param  string|null  $orchestratedBy  Registry key of the orchestrator command that fires this
+     *                                       engine on schedule. The engine still declares its own
+     *                                       cadence — that is when it actually runs — but nothing in
+     *                                       routes/console.php registers it directly, so
+     *                                       EngineRegistryTest looks for the orchestrator instead.
+     * @param  bool  $isOrchestrator  True for the two monthly close commands, which run other engines
+     *                                rather than computing anything themselves. The recompute replay
+     *                                drives the individual engines directly, so it must skip these or
+     *                                every step would be invoked twice.
      */
     public function __construct(
         public string $key,
@@ -54,6 +63,8 @@ final readonly class EngineDefinition
         public string $defaultPeriod,
         public bool $manuallyTriggerable = true,
         public bool $requiresClosedPeriod = false,
+        public ?string $orchestratedBy = null,
+        public bool $isOrchestrator = false,
     ) {}
 
     /**

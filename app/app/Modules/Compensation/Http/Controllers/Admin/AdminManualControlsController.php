@@ -184,19 +184,30 @@ final class AdminManualControlsController extends Controller
         $ip = $request->ip();
 
         $amountReversed = DB::transaction(function () use ($distributor, $request, $reason, $ip) {
+            // Locked for the whole reversal so a concurrent submit of the same
+            // form cannot pass the status filter twice; reverseBonusCredit() is
+            // idempotent on its own, this just keeps the row and the ledger from
+            // disagreeing in between.
             $result = GsbCutoffResult::where('distributor_id', $distributor->id)
                 ->where('cutoff_date', Carbon::parse((string) $request->input('date'))->toDateString())
                 ->where('status', GsbCutoffResult::STATUS_CREDITED)
+                ->lockForUpdate()
                 ->firstOrFail();
 
             $before = $this->wallet->balancePaise($distributor->id);
+            $repurchaseBefore = $this->wallet->repurchaseWalletBalancePaise($distributor->id);
 
-            $this->wallet->debit(
+            // Both wallets in one call: the net comes out of the main wallet and
+            // the frozen repurchase deduction comes back out of the repurchase
+            // wallet, so a reversed bonus stops failing the wallet-zero gates on
+            // Fortune, Growth Booster and the Rank requalification.
+            $outcome = $this->wallet->reverseBonusCredit(
                 distributorId: $distributor->id,
-                amountPaise: $result->net_gsb_paise,
-                type: 'reversal',
+                netPaise: $result->net_gsb_paise,
+                repurchaseDeductionPaise: $result->repurchase_deduction_paise,
                 referenceId: $result->id,
                 referenceType: 'gsb_cutoff_result',
+                bonusMonth: $result->cutoff_date->copy()->startOfMonth(),
                 memo: 'Admin reversal — '.$reason,
             );
 
@@ -213,12 +224,20 @@ final class AdminManualControlsController extends Controller
                     'amount_paise' => $result->net_gsb_paise,
                     'wallet_before' => $before,
                     'wallet_after' => $this->wallet->balancePaise($distributor->id),
+                    'repurchase_deduction_paise' => $result->repurchase_deduction_paise,
+                    'repurchase_reversed_paise' => $outcome !== null ? $outcome->repurchaseReversedPaise : 0,
+                    // What the distributor had already spent and is not being
+                    // clawed back — the company's loss on this reversal.
+                    'repurchase_shortfall_paise' => $outcome !== null ? $outcome->repurchaseShortfallPaise : 0,
+                    'repurchase_wallet_before' => $repurchaseBefore,
+                    'repurchase_wallet_after' => $this->wallet->repurchaseWalletBalancePaise($distributor->id),
+                    'already_reversed' => $outcome === null,
                     'reason' => $reason,
                 ],
                 'ip' => $ip,
             ]);
 
-            return $result->net_gsb_paise;
+            return $outcome !== null ? $outcome->netReversedPaise : 0;
         });
 
         return redirect()->route('admin.compensation.distributors.show', $distributor)

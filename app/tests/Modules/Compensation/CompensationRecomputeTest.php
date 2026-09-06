@@ -383,7 +383,10 @@ it('leaves no scheduled engine uncomputed for the period in flight', function ()
     // Tuesdays and the monthly engines only on the 1st, so a two-day window
     // reaches them only through the catch-up pass.
     foreach (EngineRegistry::all() as $definition) {
-        if ($definition->cadence->isScheduled()) {
+        // Orchestrators are deliberately not replayed: the replay fires the
+        // engines a close would have run, directly, so running the close too
+        // would invoke every step twice.
+        if ($definition->cadence->isScheduled() && ! $definition->isOrchestrator) {
             expect($report->enginesRun)->toHaveKey($definition->commandSignature);
         }
     }
@@ -409,11 +412,11 @@ it('does not catch up the current period when replaying a historical window', fu
 
     $report = app(CompensationRecomputeRunner::class)->run(
         from: Carbon::parse('2026-06-05'),
-        to: Carbon::parse('2026-06-08'),
+        to: Carbon::parse('2026-06-07'),
     );
 
-    // 5–8 June contains no 1st and the window does not reach today, so no
-    // monthly engine should have run at all.
+    // 5–7 June contains neither the 1st (crediting) nor the 8th (payment) and
+    // the window does not reach today, so no monthly engine should have run.
     expect($report->enginesRun)->not->toHaveKey('gbb:monthly-run');
     expect($report->enginesRun)->not->toHaveKey('payout:monthly-run');
 });

@@ -21,6 +21,14 @@
                 <option value="{{ $key }}" @selected($engineKey === $key)>{{ $definition->label }}</option>
                 @endforeach
             </select>
+            <label class="text-xs font-medium text-gray-700">Status</label>
+            <select name="status" onchange="this.form.submit()"
+                    class="rounded-lg border border-gray-300 px-2 py-1.5 text-xs focus:ring-2 focus:ring-brand-400 focus:outline-none">
+                <option value="">All statuses</option>
+                @foreach([EngineRun::STATUS_FAILED, EngineRun::STATUS_RUNNING, EngineRun::STATUS_SUCCEEDED, EngineRun::STATUS_SKIPPED] as $status)
+                <option value="{{ $status }}" @selected(($statusFilter ?? null) === $status)>{{ ucfirst($status) }}</option>
+                @endforeach
+            </select>
         </form>
         <a href="{{ route('admin.compensation.engine-runs.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">← Engine Runs</a>
     </div>
@@ -28,7 +36,7 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
     @if($runs->isEmpty())
-    <p class="px-5 py-8 text-sm text-gray-600 text-center">No engine runs recorded yet. Runs appear here from the moment an engine starts.</p>
+    <p class="px-5 py-8 text-sm text-gray-600 text-center">No engine runs match this filter. Runs appear here from the moment an engine starts.</p>
     @else
     <table class="min-w-full text-xs">
         <thead>

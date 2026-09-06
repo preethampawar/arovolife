@@ -6,7 +6,9 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Models\RepurchaseMonthlySnapshot;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Identity\Models\Distributor;
@@ -239,6 +241,319 @@ it('is idempotent — re-running the same month does not double-credit', functio
 
     expect(RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->count())->toBe(1);
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'rank_credit')->count())->toBe(1);
+});
+
+/**
+ * The defect the rank_monthly_pools freeze exists to kill: the engine used to
+ * recompute the pool AND the roster on every run, so a held qualifier clearing
+ * their §8 conditions later re-divided a pool that had already been paid out.
+ * Two qualifiers paid the whole ₹14,000; the third arriving turned that into
+ * ₹14,000 × 3 ÷ 3 on top of what was already credited.
+ */
+it('cannot pay more than the frozen pool when a held qualifier clears later', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
+
+    $firstTimerA = Distributor::factory()->create();
+    $firstTimerB = Distributor::factory()->create();
+    $repeat = Distributor::factory()->create();
+
+    seedRankQualification($firstTimerA->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($firstTimerB->id, rank: 1, monthStart: '2026-06-01');
+    // A repeat achiever with no June personal BV → §8 requalification held.
+    seedRankQualification($repeat->id, rank: 1, monthStart: '2026-05-01');
+    seedRankQualification($repeat->id, rank: 1, monthStart: '2026-06-01');
+
+    $svc = app(RankBonusService::class);
+    $svc->runForMonth($month);
+
+    // The held achiever now completes their repurchase obligation for June.
+    seedRankMonthlyBv($repeat->id, 100_000, '2026-06-25');
+
+    $svc->runForMonth($month);
+
+    $pool = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->firstOrFail();
+    $creditedGross = (int) RankBonusResult::where('month_start', '2026-06-01')
+        ->where('rank_number', 1)
+        ->where('status', RankBonusResult::STATUS_CREDITED)
+        ->sum('gross_paise');
+
+    expect($creditedGross)->toBeLessThanOrEqual((int) $pool->pool_paise)
+        ->and($creditedGross)->toBe(1_400_000)
+        ->and((int) $pool->leftover_paise)->toBe(0)
+        ->and((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0);
+
+    // The status decided at freeze stands; the hold is never back-paid.
+    expect(RankBonusResult::where('distributor_id', $repeat->id)->value('status'))
+        ->toBe(RankBonusResult::STATUS_REQUALIFICATION_HELD);
+    expect(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(2);
+
+    // Credited and non-credited rows of the month agree on the economics.
+    expect(RankBonusResult::where('month_start', '2026-06-01')->where('rank_number', 1)
+        ->distinct()->pluck('pool_paise')->all())->toBe([1_400_000]);
+});
+
+it('refuses and reports a distributor who qualifies after the pool was frozen', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+
+    $onTime = Distributor::factory()->create();
+    seedRankQualification($onTime->id, rank: 1, monthStart: '2026-06-01');
+
+    $svc = app(RankBonusService::class);
+    $svc->runForMonth($month);
+
+    // A rank qualification recorded for the month AFTER the freeze.
+    $late = Distributor::factory()->create();
+    seedRankQualification($late->id, rank: 1, monthStart: '2026-06-01');
+
+    $result = $svc->runForMonth($month);
+
+    expect($result['qualified_after_freeze'])->toBe(1)
+        ->and($result['by_rank'][1]['qualified_after_freeze'])->toBe(1)
+        ->and($svc->qualifiedAfterFreeze($month))->toBe([1 => [$late->id]]);
+
+    // Refused: no row, no money, and the on-time achiever keeps the whole pool.
+    expect(RankBonusResult::where('distributor_id', $late->id)->exists())->toBeFalse();
+    expect(WalletLedgerEntry::where('distributor_id', $late->id)->count())->toBe(0);
+    expect((int) RankBonusResult::where('distributor_id', $onTime->id)->value('gross_paise'))
+        ->toBe(1_400_000);
+
+    // R-35: withholding a month's income permanently is an audit fact with an
+    // 8-year retention, not a log line that rotates away.
+    $audit = DB::table('audit_log')
+        ->where('action', 'rank.result.qualified_after_freeze')
+        ->where('subject_type', 'distributor')
+        ->where('subject_id', $late->id)
+        ->get();
+
+    expect($audit)->toHaveCount(1);
+
+    $details = json_decode((string) $audit->first()->details, true);
+    expect($details['month_start'])->toBe('2026-06-01')
+        ->and($details['rank_number'])->toBe(1)
+        ->and($details['distributor_id'])->toBe($late->id);
+});
+
+it('replaces a premature freeze when nothing it funded was credited', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    $dist = Distributor::factory()->create();
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+
+    // Mid-month manual run: no BV yet, so the month freezes a ₹0 pool.
+    Carbon::setTestNow(Carbon::parse('2026-06-15 10:00:00'));
+    $svc = app(RankBonusService::class);
+    $svc->runForMonth($month);
+
+    expect((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
+        ->toBe(0);
+
+    // The month closes with real BV; the scheduled run must re-freeze.
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-20'));
+
+    $svc->runForMonth($month);
+
+    expect(RankMonthlyPool::where('month_start', '2026-06-01')->count())->toBe(9);
+    expect((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
+        ->toBe(1_400_000);
+
+    $row = RankBonusResult::where('distributor_id', $dist->id)->firstOrFail();
+    expect($row->status)->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and((int) $row->gross_paise)->toBe(1_400_000);
+
+    // The hard delete must stay reconstructable from audit_log alone: the
+    // discarded rows are snapshotted, not merely counted.
+    $refrozen = DB::table('audit_log')->where('action', 'rank.pool.refrozen')->sole();
+    $details = json_decode((string) $refrozen->details, true);
+
+    expect($details['discarded_results'])->toBe(1)
+        ->and($details['discarded_rows'])->toHaveCount(1)
+        ->and($details['discarded_rows'][0]['distributor_id'])->toBe($dist->id)
+        ->and($details['discarded_rows'][0]['rank_number'])->toBe(1)
+        ->and($details['discarded_rows'][0])->toHaveKeys(['id', 'status', 'gross_paise']);
+});
+
+/**
+ * The pre-freeze engine left every month it ran with credited results and no
+ * rank_monthly_pools row — indistinguishable from a never-run month. Freezing
+ * such a month prices a fresh pool against today's roster while
+ * writeRosterRow() skips the rows already credited, so anyone the new roster
+ * adds is paid on top of a pool the month has already spent.
+ */
+it('refuses a month the pre-freeze engine already paid rather than re-pricing it', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
+
+    $paidA = Distributor::factory()->create();
+    $paidB = Distributor::factory()->create();
+
+    seedRankQualification($paidA->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($paidB->id, rank: 1, monthStart: '2026-06-01');
+
+    $svc = app(RankBonusService::class);
+    $svc->runForMonth($month);
+
+    $creditedBefore = (int) RankBonusResult::where('month_start', '2026-06-01')
+        ->where('status', RankBonusResult::STATUS_CREDITED)->sum('gross_paise');
+    expect($creditedBefore)->toBe(1_400_000);
+
+    // Reproduce a legacy month: the credited rows survive, the pool row never
+    // existed. A third achiever the old run never saw is on today's roster.
+    RankMonthlyPool::query()->delete();
+    $newcomer = Distributor::factory()->create();
+    seedRankQualification($newcomer->id, rank: 1, monthStart: '2026-06-01');
+
+    expect(fn () => $svc->runForMonth($month))
+        ->toThrow(RuntimeException::class, '2026-06-01');
+
+    // Nothing was frozen, nothing was written, nothing was paid a second time.
+    expect(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::where('distributor_id', $newcomer->id)->exists())->toBeFalse()
+        ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(2);
+
+    $creditedAfter = (int) RankBonusResult::where('month_start', '2026-06-01')
+        ->where('status', RankBonusResult::STATUS_CREDITED)->sum('gross_paise');
+
+    expect($creditedAfter)->toBe($creditedBefore)
+        ->and($creditedAfter)->toBeLessThanOrEqual(1_400_000);
+});
+
+it('still freezes a month whose legacy rows moved no money', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    $dist = Distributor::factory()->create();
+
+    // A held row: recorded by the old engine, never credited, so re-pricing the
+    // month cannot pay anything twice.
+    RankBonusResult::create([
+        'distributor_id' => $dist->id,
+        'month_start' => '2026-06-01',
+        'rank_number' => 1,
+        'company_turnover_paise' => 0,
+        'pool_paise' => 0,
+        'qualifier_count' => 0,
+        'gross_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_paise' => 0,
+        'status' => RankBonusResult::STATUS_REQUALIFICATION_HELD,
+    ]);
+
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+
+    app(RankBonusService::class)->runForMonth($month);
+
+    expect(RankMonthlyPool::where('month_start', '2026-06-01')->count())->toBe(9);
+});
+
+/**
+ * A wallet-blocked achiever keeps their place in the denominator but is written
+ * with gross 0. The frozen row used to bill their unspent share to payout_paise,
+ * overstating what the month paid and understating leftover_paise.
+ */
+it('reconciles the frozen payout and leftover against the roster when an achiever is wallet-blocked', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
+
+    $paid = Distributor::factory()->create();
+    $blocked = Distributor::factory()->create();
+    $rank2Paid = Distributor::factory()->create();
+    $rank2Blocked = Distributor::factory()->create();
+
+    seedRankQualification($paid->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($blocked->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($rank2Paid->id, rank: 2, monthStart: '2026-06-01');
+    seedRankQualification($rank2Blocked->id, rank: 2, monthStart: '2026-06-01');
+
+    // June closed with an unspent repurchase wallet → income accrues, no credit.
+    foreach ([$blocked->id, $rank2Blocked->id] as $distributorId) {
+        RepurchaseMonthlySnapshot::create([
+            'distributor_id' => $distributorId,
+            'cycle_month' => '2026-06-01',
+            'balance_paise' => 50_000,
+            'was_zeroed' => false,
+            'snapshotted_at' => Carbon::parse('2026-07-01 00:05:00'),
+        ]);
+    }
+
+    app(RankBonusService::class)->runForMonth($month);
+
+    foreach ([1, 2] as $rank) {
+        $pool = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', $rank)->firstOrFail();
+        $rosterGross = (int) RankBonusResult::where('month_start', '2026-06-01')
+            ->where('rank_number', $rank)->sum('gross_paise');
+
+        expect((int) $pool->payout_paise)->toBe($rosterGross)
+            ->and((int) $pool->payout_paise + (int) $pool->leftover_paise)->toBe((int) $pool->pool_paise)
+            ->and((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0)
+            // The blocked achiever stays in the denominator — that is a separate
+            // product decision and must not have moved.
+            ->and((int) $pool->payable_count)->toBe(2);
+    }
+
+    // Half the Rank-1 pool is paid, half goes unspent with the blocked achiever.
+    $rank1 = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->firstOrFail();
+    expect((int) $rank1->payout_paise)->toBe(700_000)
+        ->and((int) $rank1->leftover_paise)->toBe(700_000);
+
+    expect((int) RankBonusResult::where('distributor_id', $blocked->id)->value('gross_paise'))->toBe(0)
+        ->and(RankBonusResult::where('distributor_id', $blocked->id)->value('status'))
+        ->toBe(RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+});
+
+it('keeps a premature freeze once something it funded was credited', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    $dist = Distributor::factory()->create();
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-05'));
+
+    Carbon::setTestNow(Carbon::parse('2026-06-15 10:00:00'));
+    $svc = app(RankBonusService::class);
+    $svc->runForMonth($month);
+
+    // More BV lands before the month closes — it must NOT re-price a pool that
+    // a wallet has already moved on.
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-20'));
+
+    $svc->runForMonth($month);
+
+    expect((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
+        ->toBe(1_400_000);
+    expect(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(1);
+    expect((int) RankBonusResult::where('distributor_id', $dist->id)->value('gross_paise'))->toBe(1_400_000);
+});
+
+/**
+ * The count used to be an unconditional increment fired once per run for every
+ * payable distributor. A row whose gross floors to ₹0 never reaches `credited`,
+ * so the credited-guard never short-circuited it and three re-runs of one month
+ * counted three qualifications.
+ */
+it('counts one lifetime qualification across three runs even when the gross floors to zero', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    // Pool = 50,000 × 20% × 7% = 700 paise over 10 RAP → ₹0 point value.
+    seedRankCompanyBv(50_000, $month->copy()->addDays(5));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+
+    $svc = app(RankBonusService::class);
+    $svc->runForMonth($month);
+    $svc->runForMonth($month);
+    $svc->runForMonth($month);
+
+    expect((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
+        ->toBe(700);
+
+    $row = RankBonusResult::where('distributor_id', $dist->id)->firstOrFail();
+    expect((int) $row->gross_paise)->toBe(0)
+        ->and($row->status)->toBe(RankBonusResult::STATUS_PENDING);
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->where('rank_number', 1)->count())->toBe(1)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $dist->id)->value('qualification_count'))->toBe(1);
+    expect(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
 });
 
 it('creates a LifetimeAwardMilestone on first rank achievement', function (): void {

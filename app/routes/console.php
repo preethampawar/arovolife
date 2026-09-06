@@ -1,19 +1,12 @@
 <?php
 
-use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
-use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
-use App\Modules\Compensation\Console\Commands\FortuneBonusEnrollCommand;
-use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
-use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
-use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
-use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
-use App\Modules\Compensation\Console\Commands\RankCheckCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
-use App\Modules\Compensation\Console\Commands\RepurchaseMonthlySnapshotCommand;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
 use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
@@ -32,18 +25,6 @@ Artisan::command('inspire', function () {
 // Flag-gated inside the command.
 Schedule::command(RepurchaseEvaluateCommand::class)
     ->dailyAt('00:05')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
-
-// Repurchase wallet month-end snapshot — 1st of each month at 00:06 IST, for
-// the month that has just closed. It runs first on the 1st, before every
-// engine that reads it: the GSB cut-off at 00:10, Rank at 00:30, GBB at 00:45,
-// Fortune enrolment at 01:00, ADC at 01:15, Fortune payout at 03:15, monthly
-// payout at 03:30. Without the row the gate fails open, so the ordering is
-// what makes the gate mean anything at all.
-Schedule::command(RepurchaseMonthlySnapshotCommand::class)
-    ->monthlyOn(1, '00:06')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
@@ -70,72 +51,49 @@ Schedule::command(GsbWeeklyPayoutCommand::class)
     ->withoutOverlapping()
     ->runInBackground();
 
-// On the 1st the monthly bonus engines fire in dependency order:
-// snapshot 00:06 (gates read it) → rank qualifications 00:15 → Rank 00:30 →
-// GBB 00:45 (needs the previous month's rank gate) → Fortune enrolment 01:00 →
-// ADC 01:15 → Fortune payout 03:15 → monthly payout batch 03:30 (sweeps all
-// credits just landed) → Offers 04:00 (reads previous month BV, grants nothing
-// other engines depend on).
+// ── The monthly close ────────────────────────────────────────────────────────
+// Two orchestrators replace eight independent monthly entries.
+//
+// The eight were sequenced only by 15-minute clock offsets, and
+// withoutOverlapping() is per-command: it does NOT serialise across commands.
+// If rank:check-qualifications overran its 15 minutes, Rank Bonus fired at
+// 00:30 against an empty rank_qualifications table, priced the month with no
+// qualifiers, froze it, and never retried. The 1st is also the heaviest night
+// of the month — the GSB cut-off at 00:10 settles the closed month's last day —
+// so the slack was thinnest exactly when it mattered most.
+//
+// The individual engines are unchanged and each still records its own
+// engine_runs row; only who invokes them has moved.
 
-// Rank qualifications for the closed month. Rank Bonus only READS
-// rank_qualifications — nothing else writes them — so this must succeed before
-// 00:30 or the month is priced with no qualifiers: every RAP achiever is paid
-// nothing while AO-GO grants still issue against the whole Rank-1 pool and
-// consume a lifetime use. It ran unscheduled while Rank Bonus was on the 8th
-// (a week of slack); on the 1st that slack is 15 minutes, so it is scheduled.
-// The --month is explicit: the command defaults to the CURRENT month, which on
-// the 1st is the month that has barely started.
-Schedule::command(RankCheckCommand::class, [
+// Crediting, 1st at 00:20 IST — after the 00:10 cut-off, which it waits for
+// rather than assumes. One process, one lock, eight steps in dependency order,
+// aborting at the first non-zero exit. A re-run resumes at the first step that
+// has not succeeded.
+Schedule::command(MonthlyCloseCommand::class, [
     '--month' => now('Asia/Kolkata')->subMonthNoOverflow()->format('Y-m'),
 ])
-    ->monthlyOn(1, '00:15')
+    ->monthlyOn(1, '00:20')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command(RankBonusRunCommand::class)
-    ->monthlyOn(1, '00:30')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
-
-Schedule::command(GbbMonthlyRunCommand::class)
-    ->monthlyOn(1, '00:45')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
-
-// Fortune Bonus enrolment: a single batched pass keeps the FCFS matrix
-// deterministic — every eligible distributor is placed in one go, ordered by
-// their first GSB credit date.
-Schedule::command(FortuneBonusEnrollCommand::class)
-    ->monthlyOn(1, '01:00')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
-
-Schedule::command(AdcBonusRunCommand::class)
-    ->monthlyOn(1, '01:15')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
-
-Schedule::command(FortuneBonusRunCommand::class)
-    ->monthlyOn(1, '03:15')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
-
-// Monthly payout batch runs after all crediting engines (Rank 00:30, GBB 00:45,
-// Fortune 03:15, ADC 01:15) have completed.
-Schedule::command(MonthlyPayoutCommand::class)
-    ->monthlyOn(1, '03:30')
+// Payment, 8th at 04:00 IST. A week after crediting, because the monthly payout
+// batch is idempotent per month: once it has swept the wallet there is nowhere
+// for a late credit to go. The week is the window in which a bad month can
+// still be caught, and MonthlyEngineCompletionGate is what makes it mean
+// something — the batch refuses unless every crediting engine for the month
+// succeeded. 04:00 rather than 03:30 keeps it clear of the weekly GSB batch at
+// Tuesday 03:00, which consults the same monthly income cap.
+Schedule::command(MonthlyPayoutCloseCommand::class, [
+    '--month' => now('Asia/Kolkata')->subMonthNoOverflow()->format('Y-m'),
+])
+    ->monthlyOn(8, '04:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
 
 // Failed payouts are re-sent daily at 11:00 IST — after both the Tuesday
-// weekly batch (03:00) and the monthly payout batch (1st 03:30), so a transfer
+// weekly batch (03:00) and the monthly payout batch (8th 04:00), so a transfer
 // that failed on this morning's dispatch gets its first automatic second chance
 // the next day. Only line items past the configured staleness window and under
 // the retry limit are picked up; the command is a no-op in Manual NEFT mode.
@@ -167,15 +125,6 @@ Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
     ->dailyAt('03:15')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
-
-// Purchase offers on the 1st at 04:00 IST. After the payout batch (03:30),
-// because the offers read the previous month's BV and grant nothing that any
-// other engine depends on.
-Schedule::command(PurchaseOffersMonthlyRunCommand::class)
-    ->monthlyOn(1, '04:00')
-    ->timezone('Asia/Kolkata')
-    ->withoutOverlapping()
-    ->runInBackground();
 
 // ── Payments ─────────────────────────────────────────────────────────────────
 // Every five minutes: ask Razorpay about open intents older than three

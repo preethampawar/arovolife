@@ -99,16 +99,25 @@ final class IncomeOverviewService
         // midnight. Distributor-facing copy uses the lock time throughout.
         $nextCutoff = $nowIst->copy()->setTime(23, 59, 0);
 
+        // The weekly batch runs at 03:00 IST on Tuesday. Same shape as the
+        // monthly one below: comparing by calendar day alone kept saying
+        // "today" for the rest of Tuesday, after the batch had already run.
         $daysUntilTuesday = (2 - $nowIst->dayOfWeek + 7) % 7;
-        $nextWeeklyPayout = $nowIst->copy()->addDays($daysUntilTuesday)->startOfDay();
+        $weeklyRun = $nowIst->copy()->addDays($daysUntilTuesday)->setTime(3, 0, 0);
+        if ($nowIst->gte($weeklyRun)) {
+            $weeklyRun->addWeek();
+        }
+        $nextWeeklyPayout = $weeklyRun->startOfDay();
 
-        // The monthly batch runs at 03:30 IST on the 1st. Comparing by calendar
-        // day alone kept saying "today" for the remaining ~20 hours of the 1st,
-        // after the transfer had already gone out.
-        $monthlyRunThisMonth = $nowIst->copy()->startOfMonth()->setTime(3, 30, 0);
+        // The monthly batch runs at 04:00 IST on the 8th — the crediting engines
+        // close the month on the 1st and payment waits a week. Same shape as the
+        // weekly one above: comparing by calendar day alone kept saying "today"
+        // for the remaining ~20 hours of the day, after the transfer had already
+        // gone out.
+        $monthlyRunThisMonth = $nowIst->copy()->startOfMonth()->addDays(7)->setTime(4, 0, 0);
         $nextMonthlyPayout = $nowIst->lt($monthlyRunThisMonth)
             ? $monthlyRunThisMonth->copy()->startOfDay()
-            : $nowIst->copy()->addMonthNoOverflow()->startOfMonth()->startOfDay();
+            : $nowIst->copy()->addMonthNoOverflow()->startOfMonth()->addDays(7)->startOfDay();
 
         $hasMonthlyBonuses = Feature::for(null)->active(GrowthBoosterBonusFeature::class)
             || Feature::for(null)->active(RankBonusFeature::class)

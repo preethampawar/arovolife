@@ -196,6 +196,7 @@ it('weekly batch: sweeps repurchase_transfer entries and reports deduction in li
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
 
     $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::today());
@@ -350,6 +351,7 @@ it('weekly batches: each credit\'s repurchase_transfer is swept exactly once acr
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
     $b1 = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
     $l1 = PayoutLineItem::where('payout_batch_id', $b1->id)->where('distributor_id', $dist->id)->first();
@@ -364,6 +366,7 @@ it('weekly batches: each credit\'s repurchase_transfer is swept exactly once acr
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
     $b2 = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 14));
     $l2 = PayoutLineItem::where('payout_batch_id', $b2->id)->where('distributor_id', $dist->id)->first();
@@ -591,6 +594,7 @@ it('monthly batch: sweeps repurchase_transfer entries for gbb/rank/fortune credi
         bonusType: 'gbb_credit',
         referenceId: walletRef(),
         referenceType: 'gbb_monthly_result',
+        bonusMonth: now()->startOfMonth(),
     );
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
@@ -649,6 +653,7 @@ it('monthly batch: GSB repurchase_transfer entries swept by weekly batch are not
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
     $weekly = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
     expect(PayoutLineItem::where('payout_batch_id', $weekly->id)->where('distributor_id', $dist->id)->first()->repurchase_deduction_paise)
@@ -662,6 +667,7 @@ it('monthly batch: GSB repurchase_transfer entries swept by weekly batch are not
         bonusType: 'gbb_credit',
         referenceId: walletRef(),
         referenceType: 'gbb_monthly_result',
+        bonusMonth: now()->startOfMonth(),
     );
     $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
@@ -691,6 +697,7 @@ it('monthly batch: each income stream\'s repurchase_transfer is swept by its own
         bonusType: 'gbb_credit',
         referenceId: walletRef(),
         referenceType: 'gbb_monthly_result',
+        bonusMonth: now()->startOfMonth(),
     );
     // GSB credit with repurchase_transfer (ref type: gsb_cutoff_result).
     $wallet->creditWithRepurchaseDeduction(
@@ -699,6 +706,7 @@ it('monthly batch: each income stream\'s repurchase_transfer is swept by its own
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
 
     // Weekly batch sweeps only the gsb_cutoff_result repurchase_transfer.
@@ -794,6 +802,7 @@ it('repurchase_deduction credits from cancelled orders do not affect payout swee
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
 
     // An order is cancelled: restores 8,000 to the repurchase wallet.
@@ -871,7 +880,7 @@ it('weekly batch: leaves the GSB cut-off result rows untouched — admin charge 
         'created_at' => now(),
         'updated_at' => now(),
     ]);
-    $wallet->creditWithRepurchaseDeduction($dist->id, 100_000, 'gsb_credit', $resultId, 'gsb_cutoff_result');
+    $wallet->creditWithRepurchaseDeduction($dist->id, 100_000, 'gsb_credit', $resultId, 'gsb_cutoff_result', now()->startOfMonth());
 
     app(PayoutService::class)->runWeeklyBatch(Carbon::today());
 
@@ -899,6 +908,7 @@ it('weekly batch: never charges more admin than the wallet actually holds', func
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
 
     app(PayoutService::class)->runWeeklyBatch(Carbon::today());
@@ -948,6 +958,7 @@ it('weekly batch: a held line reports the credit-time repurchase deduction and t
         bonusType: 'gsb_credit',
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
+        bonusMonth: now()->startOfMonth(),
     );
 
     $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::today()->startOfMonth()->addDays(7));
@@ -971,6 +982,141 @@ it('weekly batch: a held line reports the credit-time repurchase deduction and t
     expect($batch->total_net_paise)->toBe(0);
 });
 
+// ── Income cap windowed by the EARNED month (bonus_month) ────────────────────
+
+it('forfeits — and records — a distributor with exactly ₹0 of cap room instead of paying them next month', function () {
+    setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $july = Carbon::create(2026, 7, 1);
+
+    // July's weekly batch consumes the whole ₹5,000 ceiling.
+    $wallet->credit($dist->id, 500_000, 'gsb_credit', walletRef(), 'test_reference', null, $july);
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+
+    // A ₹3,000 rank bonus earned in the same month therefore has ₹0 of room.
+    $wallet->credit($dist->id, 300_000, 'rank_credit', walletRef(), 'test_reference', null, $july);
+    $monthly = app(PayoutService::class)->runMonthlyBatch($july);
+
+    $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
+    expect($line)->not->toBeNull();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_INCOME_CAP_FORFEITED);
+    expect($line->gross_paise)->toBe(300_000);
+    expect($line->net_transferred_paise)->toBe(0);
+
+    // Written off, not stranded: the credit is swept and the wallet closes to zero.
+    $forfeit = WalletLedgerEntry::where('distributor_id', $dist->id)
+        ->where('type', 'income_cap_forfeit')->first();
+    expect($forfeit->amount_paise)->toBe(-300_000);
+    expect($wallet->balancePaise($dist->id))->toBe(0);
+
+    // The forfeit is attributed to the month it was MEASURED against, not the
+    // month of the batch that wrote it off.
+    expect($forfeit->bonus_month->toDateString())->toBe('2026-07-01');
+
+    // Destroying income permanently is an audit fact with an 8-year retention.
+    $audit = DB::table('audit_log')
+        ->where('action', 'payout.income_cap_forfeited')
+        ->where('subject_type', 'distributor')
+        ->where('subject_id', $dist->id)
+        ->sole();
+
+    $details = json_decode((string) $audit->details, true);
+    expect($details['payout_batch_id'])->toBe($monthly->id)
+        ->and($details['payout_line_item_id'])->toBe($line->id)
+        ->and($details['gross_paise'])->toBe(300_000)
+        ->and($details['forfeited_paise'])->toBe(300_000)
+        ->and($details['forfeited_by_earned_month'])->toBe(['2026-07-01' => 300_000]);
+
+    // The old behaviour: next month's batch found the credit unswept and paid
+    // it in full against a fresh ceiling. Nothing is left for it to find.
+    $august = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 8, 1));
+    expect(PayoutLineItem::where('payout_batch_id', $august->id)->where('distributor_id', $dist->id)->exists())->toBeFalse();
+});
+
+it('still rolls a below-minimum remainder over and still pays it on a later batch', function () {
+    // The ₹100 deferral is intentional and must keep working: only the cap
+    // stopped resetting, not the rollover.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    $wallet->credit($dist->id, 8_000, 'gsb_credit', walletRef(), 'test_reference', null, Carbon::create(2026, 7, 1)); // ₹80 — net below ₹100
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+
+    $held = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($held->status)->toBe(PayoutLineItem::STATUS_BELOW_MINIMUM);
+    expect($wallet->balancePaise($dist->id))->toBe(8_000);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->whereNull('swept_by_payout_batch_id')->count())->toBe(1);
+
+    // Next month it clears the floor alongside new income and goes out whole.
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', null, Carbon::create(2026, 8, 1));
+    $next = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 8, 4));
+
+    $paid = PayoutLineItem::where('payout_batch_id', $next->id)->where('distributor_id', $dist->id)->first();
+    expect($paid->status)->toBe(PayoutLineItem::STATUS_PENDING);
+    expect($paid->gross_paise)->toBe(108_000);
+    expect($wallet->balancePaise($dist->id))->toBe(0);
+});
+
+it('gives a rolled-over credit no second month of cap room — it keeps the ceiling of the month it was earned in', function () {
+    setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $july = Carbon::create(2026, 7, 1);
+
+    // July: ₹4,950 paid, leaving ₹50 of the month's ceiling.
+    $wallet->credit($dist->id, 495_000, 'gsb_credit', walletRef(), 'test_reference', null, $july);
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+
+    // A ₹1,000 GSB earned in July meets only that ₹50. Net ₹46.07 is below the
+    // ₹100 floor, so the whole credit rolls over unswept — cap decision included.
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', null, $july);
+    $second = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 14));
+    expect(PayoutLineItem::where('payout_batch_id', $second->id)->where('distributor_id', $dist->id)->first()->status)
+        ->toBe(PayoutLineItem::STATUS_BELOW_MINIMUM);
+
+    // August: ₹1,000 of genuinely new income clears the floor. The rolled-over
+    // July credit is still measured against July's ₹50 of room — not August's
+    // untouched ₹5,000 — so ₹950 of it is forfeited rather than paid.
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', null, Carbon::create(2026, 8, 1));
+    $august = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 8, 4));
+
+    $line = PayoutLineItem::where('payout_batch_id', $august->id)->where('distributor_id', $dist->id)->first();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING);
+    expect($line->gross_paise)->toBe(105_000); // ₹50 of July's leftover + August's ₹1,000
+
+    $forfeit = WalletLedgerEntry::where('distributor_id', $dist->id)
+        ->where('type', 'income_cap_forfeit')->first();
+    expect($forfeit->amount_paise)->toBe(-95_000);
+    expect($wallet->balancePaise($dist->id))->toBe(0);
+});
+
+it('counts a historical credit with no bonus_month under the batch that swept it', function () {
+    // Rows written before bonus_month existed have no earned month to read, so
+    // the cap window falls back to the month of the batch that swept them and
+    // those batches keep answering exactly as they did.
+    setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    // Plain credit() — no bonus_month, as every pre-migration row.
+    $legacy = $wallet->credit($dist->id, 300_000, 'gsb_credit', walletRef(), 'test_reference');
+    expect($legacy->bonus_month)->toBeNull();
+
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+
+    // The ₹3,000 it swept still consumes July's room, so a ₹4,000 rank bonus in
+    // the same month is trimmed to the ₹2,000 that is left.
+    $wallet->credit($dist->id, 400_000, 'rank_credit', walletRef(), 'test_reference');
+    $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
+
+    $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
+    expect($line->gross_paise)->toBe(200_000);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)
+        ->where('type', 'income_cap_forfeit')->first()->amount_paise)->toBe(-200_000);
+    expect($wallet->balancePaise($dist->id))->toBe(0);
+});
+
 it('monthly batch: a KYC-held line reports the credit-time repurchase deduction', function () {
     $dist = makePayoutEligibleDistributor();
     $dist->user->update(['status' => 'pending_kyc']);
@@ -982,6 +1128,7 @@ it('monthly batch: a KYC-held line reports the credit-time repurchase deduction'
         bonusType: 'rank_credit',
         referenceId: walletRef(),
         referenceType: 'rank_bonus_result',
+        bonusMonth: now()->startOfMonth(),
     );
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::today()->startOfMonth()->addDays(7));
@@ -997,4 +1144,157 @@ it('monthly batch: a KYC-held line reports the credit-time repurchase deduction'
     expect($batch->total_gross_paise)->toBe(300_000);
     expect($batch->total_deductions_paise)->toBe(30_000);
     expect($batch->distributor_count)->toBe(0);
+});
+
+// ── A reversed bonus is never paid ───────────────────────────────────────────
+
+it('never sweeps or pays a bonus an admin has reversed', function () {
+    // A reversal leaves the original `+gross` credit and its
+    // `repurchase_transfer` debit in the ledger so the statement still shows
+    // what was earned. The batch selects credits by ledger type, so without the
+    // reversed-bonus exclusion it swept them, wired the net to the bank for a
+    // bonus that no longer exists, and left the main wallet permanently
+    // negative by that amount.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $august = Carbon::create(2026, 8, 1);
+    $ref = walletRef();
+
+    $wallet->creditWithRepurchaseDeduction(
+        distributorId: $dist->id,
+        grossPaise: 200_000,          // ₹2,000 gross
+        bonusType: 'gsb_credit',
+        referenceId: $ref,
+        referenceType: 'gsb_cutoff_result',
+        bonusMonth: $august,
+    );
+
+    expect($wallet->balancePaise($dist->id))->toBe(180_000);
+
+    $wallet->reverseBonusCredit(
+        distributorId: $dist->id,
+        netPaise: 180_000,
+        repurchaseDeductionPaise: 20_000,
+        referenceId: $ref,
+        referenceType: 'gsb_cutoff_result',
+        bonusMonth: $august,
+        memo: 'Admin reversal — slab matched against a reversed order.',
+    );
+
+    expect($wallet->balancePaise($dist->id))->toBe(0)
+        ->and($wallet->repurchaseWalletBalancePaise($dist->id))->toBe(0);
+
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 8, 11));
+
+    // Nothing to pay: no line item, no NEFT amount, and the reversed entries are
+    // left unswept so no later batch can pick them up either.
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->exists())->toBeFalse()
+        ->and($batch->fresh()->total_net_paise)->toBe(0)
+        ->and($batch->fresh()->distributor_count)->toBe(0)
+        ->and($wallet->balancePaise($dist->id))->toBe(0)
+        ->and(WalletLedgerEntry::where('distributor_id', $dist->id)->whereNotNull('swept_by_payout_batch_id')->count())->toBe(0);
+});
+
+it('leaves the earned month cap room untouched by a reversed bonus', function () {
+    setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $august = Carbon::create(2026, 8, 1);
+    $reversedRef = walletRef();
+
+    $wallet->credit($dist->id, 200_000, 'gsb_credit', $reversedRef, 'gsb_cutoff_result', null, $august);
+    $wallet->reverseBonusCredit(
+        distributorId: $dist->id,
+        netPaise: 200_000,
+        repurchaseDeductionPaise: 0,
+        referenceId: $reversedRef,
+        referenceType: 'gsb_cutoff_result',
+        bonusMonth: $august,
+    );
+
+    // ₹5,000 of genuine August income exactly fills August's ceiling. It may
+    // only be trimmed if the reversed ₹2,000 wrongly consumed part of that room.
+    $wallet->credit($dist->id, 500_000, 'gsb_credit', walletRef(), 'gsb_cutoff_result', null, $august);
+
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 8, 11));
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->gross_paise)->toBe(500_000)
+        ->and(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'income_cap_forfeit')->exists())->toBeFalse()
+        ->and($wallet->balancePaise($dist->id))->toBe(0);
+});
+
+// ── Cap forfeits carry the earned month and an audit row ─────────────────────
+
+it('attributes a PARTIAL cap forfeit to the earned month and audits it', function () {
+    // The partial-forfeit path used to write a bare `income_cap_forfeit` debit
+    // with no bonus_month and no audit row, so the debit could not be
+    // reconciled against the ceiling decision that destroyed the income.
+    setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $july = Carbon::create(2026, 7, 1);
+
+    $wallet->credit($dist->id, 400_000, 'gsb_credit', walletRef(), 'test_reference', null, $july);
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+
+    // ₹3,000 more of July income meets only the ₹1,000 July has left.
+    $wallet->credit($dist->id, 300_000, 'gsb_credit', walletRef(), 'test_reference', null, $july);
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 14));
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->gross_paise)->toBe(100_000);
+
+    $forfeit = WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'income_cap_forfeit')->sole();
+    expect($forfeit->amount_paise)->toBe(-200_000)
+        ->and($forfeit->bonus_month->toDateString())->toBe('2026-07-01')
+        ->and($wallet->balancePaise($dist->id))->toBe(0);
+
+    $audit = AuditLog::where('action', 'payout.income_cap_forfeited')->where('subject_id', $dist->id)->sole();
+    expect($audit->details['payout_line_item_id'])->toBe($line->id)
+        ->and($audit->details['forfeited_paise'])->toBe(200_000)
+        ->and($audit->details['forfeited_by_earned_month'])->toBe(['2026-07-01' => 200_000]);
+});
+
+it('writes one forfeit debit per earned month when a batch settles credits from two', function () {
+    // The debits share a line item, so the month has to be part of their ledger
+    // identity as well as their bonus_month: on a bare `payout_line_item`
+    // reference the second month collides on uniq_wallet_ledger_source and the
+    // whole distributor's payout fails.
+    setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $july = Carbon::create(2026, 7, 1);
+    $august = Carbon::create(2026, 8, 1);
+
+    // Both months' ceilings are consumed in full.
+    $wallet->credit($dist->id, 500_000, 'gsb_credit', walletRef(), 'test_reference', null, $july);
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 7));
+    $wallet->credit($dist->id, 500_000, 'gsb_credit', walletRef(), 'test_reference', null, $august);
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 8, 4));
+
+    // ₹1,000 more for each month — nothing payable, both wholly forfeited.
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', null, $july);
+    $wallet->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', null, $august);
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 8, 11));
+
+    expect($batch->status)->toBe(PayoutBatch::STATUS_PENDING);
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_INCOME_CAP_FORFEITED);
+
+    $forfeits = WalletLedgerEntry::where('distributor_id', $dist->id)
+        ->where('type', 'income_cap_forfeit')
+        ->orderBy('id')
+        ->get();
+
+    expect($forfeits)->toHaveCount(2)
+        ->and($forfeits->map(fn ($e) => $e->bonus_month->toDateString())->all())->toBe(['2026-07-01', '2026-08-01'])
+        ->and($forfeits->pluck('amount_paise')->all())->toBe([-100_000, -100_000])
+        ->and($wallet->balancePaise($dist->id))->toBe(0);
+
+    $audit = AuditLog::where('action', 'payout.income_cap_forfeited')->where('subject_id', $dist->id)->sole();
+    expect($audit->details['forfeited_by_earned_month'])->toBe(['2026-07-01' => 100_000, '2026-08-01' => 100_000]);
 });

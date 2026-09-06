@@ -103,7 +103,15 @@ final class AdminEngineRunsController extends Controller
             'recomputeRowCounts' => $this->recomputeGuard->isPermitted() ? $this->wiper->preview() : [],
             // Engine checkboxes for a partial replay, and the purchase-reset
             // card's own preview — both only when the guard permits.
-            'recomputeEngines' => $this->recomputeGuard->isPermitted() ? EngineRegistry::all() : [],
+            // Orchestrators are excluded: the replay drives the individual
+            // engines directly and skips the closes, so a ticked box would
+            // silently replay nothing.
+            'recomputeEngines' => $this->recomputeGuard->isPermitted()
+                ? array_filter(
+                    EngineRegistry::all(),
+                    static fn (EngineDefinition $definition): bool => ! $definition->isOrchestrator,
+                )
+                : [],
             'purchaseResetRowCounts' => $this->recomputeGuard->isPermitted()
                 ? app(PurchaseDataResetAction::class)->preview()
                 : [],
@@ -311,13 +319,22 @@ final class AdminEngineRunsController extends Controller
     {
         $validated = $request->validate([
             'engine' => ['nullable', 'string', Rule::in(EngineRegistry::keys())],
+            // The sidebar failure badge links straight here with status=failed.
+            'status' => ['nullable', 'string', Rule::in([
+                EngineRun::STATUS_RUNNING,
+                EngineRun::STATUS_SUCCEEDED,
+                EngineRun::STATUS_FAILED,
+                EngineRun::STATUS_SKIPPED,
+            ])],
         ]);
 
         $engineKey = $validated['engine'] ?? null;
+        $status = $validated['status'] ?? null;
 
         $runs = EngineRun::query()
             ->with('actor:id,full_name,email')
             ->when($engineKey, fn ($query) => $query->where('engine_key', $engineKey))
+            ->when($status, fn ($query) => $query->where('status', $status))
             ->orderByDesc('started_at')
             ->orderByDesc('id')
             ->paginate(50)
@@ -339,6 +356,7 @@ final class AdminEngineRunsController extends Controller
             'runs' => $runs,
             'ledgerByRun' => $ledgerByRun,
             'engineKey' => $engineKey,
+            'statusFilter' => $status,
             // Full map so historical rows of a now-disabled engine keep their
             // label; the filter dropdown only offers currently visible engines.
             'definitions' => EngineRegistry::all(),

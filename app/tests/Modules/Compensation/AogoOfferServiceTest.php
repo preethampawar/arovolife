@@ -302,3 +302,41 @@ it('blocks the grant while the repurchase wallet is not cleared (engine on, cycl
 
     expect($grants)->toHaveCount(0);
 });
+
+/**
+ * The wallet gate resolves the cycle AS OF the month it is asked about. Reading
+ * whatever cycle happens to be latest at query time made a closed month answer
+ * differently depending on when the question was asked: a July cycle completing
+ * silently unblocked June, so a June re-run granted a lifetime use the same
+ * month had already refused.
+ */
+it('does not let a later cycle unblock a month whose wallet was never cleared', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    aogoQualify($dist->id, 1, '2026-04-01');
+    aogoMonthlyBv($dist->id, '2026-06-10');
+
+    RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => '2026-05-05',
+        'due_date' => '2026-06-04',
+        'grace_end_date' => '2026-06-11',
+        'required_bv_paise' => 100_000,
+        'completed_bv_paise' => 0,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+    ]);
+
+    // A later cycle, completed — it governs July onwards, never June.
+    RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => '2026-07-05',
+        'due_date' => '2026-08-04',
+        'grace_end_date' => '2026-08-11',
+        'required_bv_paise' => 100_000,
+        'completed_bv_paise' => 100_000,
+        'status' => RepurchaseCycle::STATUS_COMPLETED,
+    ]);
+
+    expect(app(AogoOfferService::class)->grantForMonth(Carbon::parse('2026-06-01')))->toHaveCount(0);
+});

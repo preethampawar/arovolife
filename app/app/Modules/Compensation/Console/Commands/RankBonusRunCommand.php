@@ -57,6 +57,14 @@ final class RankBonusRunCommand extends Command
 
         $this->line('Company turnover: ₹'.Number::format($result['turnover_paise'] / 100, 2));
         $this->line('Distributors credited: '.$result['credited']);
+
+        if (($result['qualified_after_freeze'] ?? 0) > 0) {
+            $this->warn(
+                'Qualified after the pool was frozen: '.$result['qualified_after_freeze']
+                .' — refused, not paid. Review them on the admin Rank Bonus report for '.$month->format('F Y').'.',
+            );
+        }
+
         $this->newLine();
 
         $rows = [];

@@ -61,16 +61,37 @@ final class ReleaseHeldGsbOnReactivation
                     return;
                 }
 
-                $row->update(['status' => GsbCutoffResult::STATUS_CREDITED]);
+                $gross = (int) $row->gross_gsb_paise;
 
-                $this->wallet->credit(
-                    distributorId: $event->distributorId,
-                    amountPaise: (int) $row->gross_gsb_paise,
-                    type: 'gsb_credit',
-                    referenceId: $row->id,
-                    referenceType: 'gsb_cutoff_result',
-                    memo: 'Released after repurchase completion (cycle '.$event->cycleId.')',
-                );
+                // Released income is income: it takes the repurchase deduction
+                // like every other credit. Crediting through the plain credit()
+                // here paid the distributor the full gross in cash — ₹200 more
+                // on a ₹2,000 row than someone never held — and left the
+                // repurchase wallet, which the FB/GBB/RB wallet-zero gates all
+                // read, without the money that should have funded it.
+                // A starved pool day can price a matched slab at ₹0; skip the
+                // ledger noise, exactly as GsbCutoffService::settle() does.
+                $repurchaseDeduction = 0;
+
+                if ($gross > 0) {
+                    $repurchaseDeduction = $this->wallet->creditWithRepurchaseDeduction(
+                        distributorId: $event->distributorId,
+                        grossPaise: $gross,
+                        bonusType: 'gsb_credit',
+                        referenceId: $row->id,
+                        referenceType: 'gsb_cutoff_result',
+                        // The released row is still August's income however late
+                        // it is paid, so it charges August's deduction ceiling.
+                        bonusMonth: $row->cutoff_date->copy()->startOfMonth(),
+                        memo: 'Released after repurchase completion (cycle '.$event->cycleId.')',
+                    )->repurchaseDeductionPaise;
+                }
+
+                $row->update([
+                    'status' => GsbCutoffResult::STATUS_CREDITED,
+                    'repurchase_deduction_paise' => $repurchaseDeduction,
+                    'net_gsb_paise' => $gross - $repurchaseDeduction,
+                ]);
             });
         }
     }

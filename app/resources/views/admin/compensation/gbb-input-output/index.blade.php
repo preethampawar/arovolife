@@ -11,7 +11,8 @@
     the <strong>point value</strong> the month froze and each distributor's income.
     <span class="font-medium">AGP point value = (GBB pool) ÷ (total AGP)</span>, floored to whole rupees — so
     the month's payout equals the pool apart from that remainder. Held rows sit inside the frozen denominator
-    and release at the frozen point value; suspended rows earned AGP that was excluded and is never paid.
+    and release at the frozen point value; suspended rows, and rows blocked by an unspent repurchase wallet,
+    earned AGP that was excluded and is never paid.
     Search by month or month range.
 </div>
 @enddeveloper
@@ -67,6 +68,22 @@
         </div>
         @include('admin.compensation._formulas.gbb-month', ['pool' => $pool, 'embedded' => true, 'open' => count($pools->items()) === 1])
 
+        @if(!empty($lateEarners[$pool->month_start]))
+        <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
+            <span class="font-semibold">Earned AGP after the pool was frozen:</span>
+            @foreach($lateEarners[$pool->month_start] as $distributorId => $adn)
+                <span class="font-mono">{{ $adn !== '' ? $adn : '#'.$distributorId }}</span>{{ $loop->last ? '' : ',' }}
+            @endforeach
+            <span class="block mt-1">
+                This month's pool and its roster were frozen before these distributors earned their AGP. They were
+                not paid from this month's pool: a pool that has already been divided is never re-divided, or the
+                month would pay out more than it collected. Nothing on this page pays them, and there is no admin
+                action here that will. Whether they are owed anything for this month is a plan decision, not an
+                operational one — record it and escalate it.
+            </span>
+        </div>
+        @endif
+
         @if($pool->total_agp === 0 && $pool->pool_paise > 0)
         <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
             No payable AGP was earned this month, so the pool went unspent and the month's point value is
@@ -85,7 +102,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-3 py-2 text-left text-gray-500 font-medium">S.no</th>
-                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Held rows sit inside the frozen denominator; suspended rows earned AGP that was excluded from it and is never paid." /></th>
+                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Held rows sit inside the frozen denominator; suspended and blocked rows earned AGP that was excluded from it and is never paid. Blocked = the month closed with an unspent repurchase wallet." /></th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">AGP</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Point value <x-help-tip text="The GBB pool divided by the month's total AGP, floored to whole rupees. One value applies to every earner in the month." /></th>
                         <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-500 font-medium" />
@@ -113,6 +130,8 @@
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Credited</span>
                             @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_HELD)
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">Held</span>
+                            @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)
+                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">Blocked — repurchase wallet not ₹0</span>
                             @else
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">Suspended — AGP excluded</span>
                             @endif

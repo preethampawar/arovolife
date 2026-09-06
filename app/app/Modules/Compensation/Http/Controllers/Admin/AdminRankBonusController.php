@@ -7,6 +7,8 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\RankBonusService;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -18,6 +20,7 @@ final class AdminRankBonusController extends Controller
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
         private readonly BonusCalculationSnapshots $snapshots,
+        private readonly RankBonusService $rankBonus,
     ) {}
 
     public function index(): View
@@ -71,6 +74,17 @@ final class AdminRankBonusController extends Controller
         $rankNames = $this->plan->rankNames();
         $rank1 = $this->snapshots->rankBonusMonth($date);
 
-        return view('admin.compensation.rank-bonus.show', compact('rows', 'rankSummaries', 'date', 'rankNames', 'rank1'));
+        // Distributors who reached a rank after the month's pool was frozen.
+        // They are refused by the engine — a divided pool is never re-divided —
+        // so an admin has to see them rather than discover a silent gap.
+        $lateQualifiers = $this->rankBonus->qualifiedAfterFreeze($date);
+        $lateAdns = $lateQualifiers === []
+            ? collect()
+            : Distributor::whereIn('id', array_merge(...array_values($lateQualifiers)))
+                ->pluck('adn', 'id');
+
+        return view('admin.compensation.rank-bonus.show', compact(
+            'rows', 'rankSummaries', 'date', 'rankNames', 'rank1', 'lateQualifiers', 'lateAdns',
+        ));
     }
 }

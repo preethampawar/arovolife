@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compensation\Services\DTOs\MsbAccrual;
 use App\Modules\Compliance\Models\AuditLog;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -188,6 +189,10 @@ final class MentorshipBonusService
                     type: 'mb_credit',
                     referenceId: $result->id,
                     referenceType: 'mentorship_bonus_result',
+                    // MB takes no repurchase deduction, but it is one of the
+                    // five bonuses under the monthly income cap, which windows
+                    // on the month the income was earned for.
+                    bonusMonth: Carbon::parse($accrual->cutoffDate)->startOfMonth(),
                 );
             }
 

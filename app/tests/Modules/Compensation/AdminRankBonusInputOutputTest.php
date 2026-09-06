@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\RankMonthlyPool;
+use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -387,4 +389,52 @@ it('carries the blocked count into the rank bonus I&O CSV', function () {
     expect($csv)->toContain('Qualifiers,Held,Repurchase Blocked,Total Points');
     // qualifiers, held, blocked — the rank-2 row.
     expect($csv)->toContain(',1,0,1,');
+});
+
+/**
+ * A distributor who reaches a rank after the month's pool was frozen is refused
+ * by the engine — a divided pool is never re-divided. The admin report is where
+ * that refusal has to become visible, or the gap is silent.
+ */
+it('names distributors who qualified after the rank pool was frozen', function () {
+    $onTime = Distributor::factory()->create();
+    $late = Distributor::factory()->create();
+
+    RankMonthlyPool::create([
+        'month_start' => '2026-07-01',
+        'rank_number' => 1,
+        'company_turnover_paise' => 100_000_000,
+        'envelope_bp' => 2_000,
+        'pool_pct' => 7.0,
+        'pool_paise' => 1_400_000,
+        'rap_points' => 10,
+        'payable_count' => 1,
+        'aogo_points' => 0,
+        'total_points' => 10,
+        'point_value_paise' => 140_000,
+        'gross_per_qualifier_paise' => 1_400_000,
+        'payout_paise' => 1_400_000,
+        'leftover_paise' => 0,
+    ]);
+
+    rbIoResult($onTime->id, '2026-07-01', 1, 1_400_000, 1, 1_400_000, [
+        'rap_points' => 10, 'total_points' => 10, 'point_value_paise' => 140_000,
+    ]);
+
+    // Recorded after the freeze: on the roster of qualifiers, not of the pool.
+    RankQualification::create([
+        'distributor_id' => $late->id,
+        'rank_number' => 1,
+        'month_start' => '2026-07-01',
+        'occurrence_in_month' => 1,
+        'is_carry_forward' => false,
+        'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('Qualified after the pool was frozen');
+    $res->assertSee($late->adn);
 });

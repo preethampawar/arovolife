@@ -255,10 +255,96 @@ it('freezes the month economics — later BV and cut-offs never reprice it', fun
     expect($pool->point_value_paise)->toBe(800);
     expect($result['point_value_paise'])->toBe(800);
 
-    // The already-paid distributor is untouched; the newcomer is priced at the
-    // frozen value (the overspend is the company's, not a reprice).
+    // The already-paid distributor is untouched; the newcomer has no roster row
+    // and is refused — paying them would spend a pool already fully divided.
     expect(GbbMonthlyResult::where('distributor_id', $d1->id)->first()->gbb_gross_paise)->toBe($firstGross);
-    expect(GbbMonthlyResult::where('distributor_id', $d2->id)->first()->gbb_gross_paise)->toBe(9_600);
+    expect(GbbMonthlyResult::where('distributor_id', $d2->id)->exists())->toBeFalse();
+    expect($result['qualified_after_freeze'])->toBe(1);
+});
+
+it('refuses a distributor whose AGP lands after the freeze and never overspends the frozen pool', function () {
+    $d1 = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+    gbbSeedCompanyBv(200_000, '2026-06-03');   // pool = 10,000 paise
+    gbbSeedCutoff($d1->id, '2026-06-05', 1);   // 12 AGP → point value ₹8
+
+    $svc = app(GrowthBoosterBonusService::class);
+    $svc->runForMonth($month);
+
+    // A gsb:daily-cutoff re-run for a date inside the closed month adds a
+    // credited cut-off that was not in the frozen denominator.
+    $d2 = Distributor::factory()->create();
+    gbbSeedCutoff($d2->id, '2026-06-26', 1);   // 12 AGP, after the freeze
+
+    $second = $svc->runForMonth($month);
+
+    expect($second['credited'])->toBe(0);
+    expect($second['qualified_after_freeze'])->toBe(1);
+    expect(GbbMonthlyResult::where('distributor_id', $d2->id)->exists())->toBeFalse();
+    expect(WalletLedgerEntry::where('distributor_id', $d2->id)->where('type', 'gbb_credit')->count())->toBe(0);
+
+    // The month still spends exactly what it froze.
+    $pool = GbbMonthlyPool::first();
+    $creditedGross = (int) GbbMonthlyResult::where('status', GbbMonthlyResult::STATUS_CREDITED)->sum('gbb_gross_paise');
+
+    expect($creditedGross)->toBe((int) $pool->payout_paise);
+    expect((int) $pool->leftover_paise)->toBe((int) $pool->pool_paise - $creditedGross);
+    expect((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0);
+
+    // R-35: the refusal permanently withholds a month's income, so it is an
+    // audit fact with an 8-year retention, not a log line that rotates away.
+    $audit = DB::table('audit_log')
+        ->where('action', 'gbb.result.qualified_after_freeze')
+        ->where('subject_type', 'distributor')
+        ->where('subject_id', $d2->id)
+        ->get();
+
+    expect($audit)->toHaveCount(1);
+
+    $details = json_decode((string) $audit->first()->details, true);
+    expect($details['year_month'])->toBe('2026-06-01')
+        ->and($details['agp'])->toBe(12)
+        ->and($details['frozen_total_agp'])->toBe(12)
+        ->and($details['refused_gross_paise'])->toBe(9_600);
+});
+
+it('releases a held row at its frozen gross even after its live AGP has grown', function () {
+    $d1 = Distributor::factory()->create();
+    $d2 = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000);                // pool = 10,000 paise
+    gbbSeedCutoff($d1->id, '2026-06-05', 1);  // 12 AGP, payable
+    gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP, in grace
+    $cycle = gbbSeedCycle($d2->id, RepurchaseCycle::STATUS_GRACE);
+
+    $svc = app(GrowthBoosterBonusService::class);
+    $svc->runForMonth(Carbon::parse('2026-06-01'));
+
+    // 17 AGP in the denominator → ₹5 a point → the held row is worth ₹25.
+    $held = GbbMonthlyResult::where('distributor_id', $d2->id)->first();
+    expect($held->agp_earned)->toBe(5);
+    expect($held->gbb_gross_paise)->toBe(2_500);
+
+    // A late cut-off for the same month would take the held distributor to 17
+    // AGP. It landed after the freeze, so it must not re-price the row.
+    gbbSeedCutoff($d2->id, '2026-06-20', 1);  // +12 AGP live
+    $svc->runForMonth(Carbon::parse('2026-06-01'));
+
+    $held->refresh();
+    expect($held->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_HELD);
+    expect($held->agp_earned)->toBe(5);
+    expect($held->gbb_gross_paise)->toBe(2_500);
+
+    event(new IncomeReactivated($d2->id, $cycle->id));
+
+    $held->refresh();
+    expect($held->status)->toBe(GbbMonthlyResult::STATUS_CREDITED);
+    expect((int) WalletLedgerEntry::where('distributor_id', $d2->id)->where('type', 'gbb_credit')->sum('amount_paise'))
+        ->toBe(2_500);
+
+    // Nothing was paid beyond the frozen payout.
+    $pool = GbbMonthlyPool::first();
+    expect((int) GbbMonthlyResult::where('status', GbbMonthlyResult::STATUS_CREDITED)->sum('gbb_gross_paise'))
+        ->toBe((int) $pool->payout_paise);
 });
 
 it('freezes the repurchase deduction on the row; admin charge and TDS are left to the payout', function () {
@@ -524,8 +610,77 @@ it('keeps a premature pool once a distributor has been paid against it', functio
     expect($pool->id)->toBe($paidPool->id);
     expect($pool->total_agp)->toBe(12);
     expect(DB::table('audit_log')->where('action', 'gbb.pool.refrozen')->count())->toBe(0);
-    // The newcomer is priced at the frozen value, exactly as a normal re-run.
-    expect(GbbMonthlyResult::where('distributor_id', $d2->id)->first()->gbb_gross_paise)->toBe(9_600);
+    // The newcomer arrived after the roster closed, exactly as a normal re-run.
+    expect(GbbMonthlyResult::where('distributor_id', $d2->id)->exists())->toBeFalse();
+});
+
+it('keeps a premature pool when the row it funded was credited at a zero gross', function () {
+    // The month froze with no company BV, so the point value floored to ₹0 and
+    // the earner was credited ₹0. That row is still the record of a real
+    // participation in this pool — re-freezing it would move economics a
+    // distributor has already been shown.
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+    gbbSeedCutoff($dist->id, '2026-06-05', 1);  // 12 AGP, no BV anywhere
+
+    $svc = app(GrowthBoosterBonusService::class);
+
+    Carbon::setTestNow('2026-06-10 12:00:00');
+    $svc->runForMonth($month);
+
+    $prematurePool = GbbMonthlyPool::first();
+    $zeroRow = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
+
+    expect($prematurePool->total_agp)->toBe(12);
+    expect($zeroRow->status)->toBe(GbbMonthlyResult::STATUS_CREDITED);
+    expect($zeroRow->gbb_gross_paise)->toBe(0);
+
+    // The month closes and BV arrives late. The pool is NOT replaced.
+    Carbon::setTestNow('2026-07-01 00:45:00');
+    gbbSeedCompanyBv(200_000, '2026-06-25');
+    $svc->runForMonth($month);
+
+    $pool = GbbMonthlyPool::first();
+
+    expect(GbbMonthlyPool::count())->toBe(1);
+    expect($pool->id)->toBe($prematurePool->id);
+    expect($pool->pool_paise)->toBe(0);
+    expect(GbbMonthlyResult::whereKey($zeroRow->id)->exists())->toBeTrue();
+    expect(DB::table('audit_log')->where('action', 'gbb.pool.refrozen')->count())->toBe(0);
+});
+
+it('snapshots the rows a premature re-freeze discards into the audit details', function () {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+    gbbSeedCompanyBv(200_000, '2026-06-03');
+    gbbSeedCutoff($dist->id, '2026-06-06', 2);  // 5 AGP
+    // Unspent repurchase wallet → a wallet-blocked row: gross 0, never funded
+    // by the pool, so the premature pool can still be replaced.
+    gbbSeedRepurchaseWalletCredit($dist->id, 50_000, '2026-06-02 09:00:00');
+
+    $svc = app(GrowthBoosterBonusService::class);
+
+    Carbon::setTestNow('2026-06-10 12:00:00');
+    $svc->runForMonth($month);
+
+    $discardedRow = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
+    expect($discardedRow->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+
+    Carbon::setTestNow('2026-07-01 00:45:00');
+    $svc->runForMonth($month);
+
+    $audit = DB::table('audit_log')->where('action', 'gbb.pool.refrozen')->first();
+    expect($audit)->not->toBeNull();
+
+    $details = json_decode((string) $audit->details, true);
+
+    expect($details['discarded_results'])->toBe(1);
+    expect($details['discarded_rows'])->toHaveCount(1);
+    expect($details['discarded_rows'][0]['id'])->toBe($discardedRow->id)
+        ->and($details['discarded_rows'][0]['distributor_id'])->toBe($dist->id)
+        ->and($details['discarded_rows'][0]['agp_earned'])->toBe(5)
+        ->and($details['discarded_rows'][0]['status'])->toBe(GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)
+        ->and($details['discarded_rows'][0]['gbb_gross_paise'])->toBe(0);
 });
 
 it('refuses the monthly run when the previous month rank check never succeeded', function () {
@@ -575,4 +730,148 @@ it('runs once the previous month rank check has succeeded, still excluding last 
 
     expect(Artisan::call('gbb:monthly-run', ['--month' => '2026-07']))->toBe(Command::SUCCESS);
     expect(GbbMonthlyResult::where('distributor_id', $dist->id)->count())->toBe(0);
+});
+
+/**
+ * Seed an unspent repurchase-wallet credit so the distributor fails the
+ * repurchase wallet = ₹0 gate at month end.
+ */
+function gbbSeedRepurchaseWalletCredit(int $distributorId, int $amountPaise, string $createdAt): void
+{
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => abs($amountPaise),
+        'reference_id' => null,
+        'reference_type' => null,
+        'memo' => 'test',
+        'created_at' => $createdAt,
+    ]);
+}
+
+it('refuses to credit a suspended distributor who becomes payable on a re-run, so the frozen pool is never overspent', function () {
+    $d1 = Distributor::factory()->create();
+    $d2 = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000);                // pool = 10,000 paise
+    gbbSeedCutoff($d1->id, '2026-06-05', 1);  // 12 AGP, payable
+    gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP, suspended
+    $cycle = gbbSeedCycle($d2->id, RepurchaseCycle::STATUS_SUSPENDED);
+
+    $first = app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+    expect($first['total_agp'])->toBe(12);    // d2's 5 AGP never entered the denominator
+
+    // d2 becomes repurchase-compliant and the month is re-run. The month's
+    // frozen point value was priced without their AGP, so they must not be paid.
+    $cycle->update(['status' => RepurchaseCycle::STATUS_ACTIVE]);
+
+    $second = app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($second['credited'])->toBe(0);
+    expect($second['total_agp'])->toBe(12);
+
+    $refused = GbbMonthlyResult::where('distributor_id', $d2->id)->first();
+    expect($refused->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED);
+    expect($refused->gbb_gross_paise)->toBe(0);
+    expect(WalletLedgerEntry::where('distributor_id', $d2->id)->where('type', 'gbb_credit')->count())->toBe(0);
+
+    // The month still spends exactly what it froze.
+    $pool = GbbMonthlyPool::first();
+    $creditedGross = (int) GbbMonthlyResult::where('status', GbbMonthlyResult::STATUS_CREDITED)->sum('gbb_gross_paise');
+
+    expect($creditedGross)->toBe((int) $pool->payout_paise);
+    expect((int) $pool->leftover_paise)->toBe((int) $pool->pool_paise - $creditedGross);
+    expect((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0);
+
+    // R-35: the refusal permanently withholds a month's income, so it is an
+    // audit fact with an 8-year retention, not a log line that rotates away.
+    $audit = DB::table('audit_log')
+        ->where('action', 'gbb.result.excluded_from_frozen_denominator')
+        ->where('subject_type', 'distributor')
+        ->where('subject_id', $d2->id)
+        ->get();
+
+    expect($audit)->toHaveCount(1);
+
+    $details = json_decode((string) $audit->first()->details, true);
+    expect($details['year_month'])->toBe('2026-06-01')
+        ->and($details['agp'])->toBe(5)
+        ->and($details['frozen_total_agp'])->toBe(12)
+        ->and($details['existing_status'])->toBe(GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED);
+});
+
+it('still releases a held row after a re-run — held AGP was inside the frozen denominator', function () {
+    $dist = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000);
+    gbbSeedCutoff($dist->id, '2026-06-05', 1);  // 12 AGP
+    $cycle = gbbSeedCycle($dist->id, RepurchaseCycle::STATUS_GRACE);
+
+    app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+    app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));  // re-run
+
+    $row = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
+    expect($row->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_HELD);
+    expect($row->gbb_gross_paise)->toBe(9_600);
+
+    event(new IncomeReactivated($dist->id, $cycle->id));
+
+    $row->refresh();
+    expect($row->status)->toBe(GbbMonthlyResult::STATUS_CREDITED);
+    expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gbb_credit')->sum('amount_paise'))->toBe(9_600);
+});
+
+it('records a repurchase-wallet-blocked row so the blocked distributor is visible on the month', function () {
+    $d1 = Distributor::factory()->create();
+    $d2 = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000);                // pool = 10,000 paise
+    gbbSeedCutoff($d1->id, '2026-06-05', 1);  // 12 AGP, payable
+    gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP, wallet never spent down
+    gbbSeedRepurchaseWalletCredit($d2->id, 50_000, '2026-06-03 09:00:00');
+
+    $result = app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($result['total_agp'])->toBe(12);   // blocked AGP excluded from the denominator
+    expect($result['skipped_wallet_nonzero'])->toBe(1);
+    expect($result['wallet_blocked'])->toBe(1);
+
+    $blocked = GbbMonthlyResult::where('distributor_id', $d2->id)->first();
+    expect($blocked)->not->toBeNull();
+    expect($blocked->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+    expect($blocked->agp_earned)->toBe(5);
+    expect($blocked->gbb_gross_paise)->toBe(0);
+    expect(WalletLedgerEntry::where('distributor_id', $d2->id)->where('type', 'gbb_credit')->count())->toBe(0);
+});
+
+it('refuses to credit a wallet-blocked distributor on a later run once their wallet is spent', function () {
+    $d1 = Distributor::factory()->create();
+    $d2 = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000);
+    gbbSeedCutoff($d1->id, '2026-06-05', 1);
+    gbbSeedCutoff($d2->id, '2026-06-06', 2);
+    gbbSeedRepurchaseWalletCredit($d2->id, 50_000, '2026-06-03 09:00:00');
+
+    app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    // The wallet is spent down to ₹0 — but the month's denominator never held
+    // their AGP, so the month can still never pay them.
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => $d2->id,
+        'type' => 'repurchase_wallet_used',
+        'amount_paise' => -50_000,
+        'reference_id' => null,
+        'reference_type' => null,
+        'memo' => 'test',
+        'created_at' => '2026-06-20 09:00:00',
+    ]);
+
+    $second = app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($second['credited'])->toBe(0);
+
+    $blocked = GbbMonthlyResult::where('distributor_id', $d2->id)->first();
+    expect($blocked->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+    expect($blocked->gbb_gross_paise)->toBe(0);
+    expect(WalletLedgerEntry::where('distributor_id', $d2->id)->where('type', 'gbb_credit')->count())->toBe(0);
+
+    $pool = GbbMonthlyPool::first();
+    expect((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0);
 });

@@ -6,6 +6,29 @@
 
 @include('admin.compensation._formulas.rb-month', ['rank1' => $rank1, 'date' => $date, 'rankNames' => $rankNames, 'open' => true])
 
+@if(!empty($lateQualifiers))
+<div class="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+    <p class="font-semibold mb-1">Qualified after the pool was frozen</p>
+    <p class="text-xs mb-2">
+        This month's pools and qualifier roster were frozen before these distributors reached their rank.
+        They were not paid from this month's pool: a pool that has already been divided is never re-divided,
+        or the month would pay out more than it collected. Nothing on this page pays them, and there is no
+        admin action here that will. Whether they are owed anything for this month is a plan decision, not an
+        operational one — record it and escalate it.
+    </p>
+    <ul class="text-xs space-y-0.5">
+        @foreach($lateQualifiers as $rankNum => $distributorIds)
+        <li>
+            <span class="font-medium">{{ $rankNames[$rankNum] ?? 'Rank '.$rankNum }}:</span>
+            @foreach($distributorIds as $distributorId)
+                <span class="font-mono">{{ $lateAdns[$distributorId] ?? ('#'.$distributorId) }}</span>{{ $loop->last ? '' : ',' }}
+            @endforeach
+        </li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
 {{-- Per-rank summary cards --}}
 @if($rankSummaries->isNotEmpty())
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">

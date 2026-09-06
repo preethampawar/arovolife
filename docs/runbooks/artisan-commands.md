@@ -113,7 +113,7 @@ does not correct historical line items.
 
 Runs all Group B/C/D monthly bonus engines in sequence: Growth Booster Bonus (GBB), Rank Bonus, Fortune Bonus, and ADC Bonus — then credits results to wallets. Each engine is idempotent; re-running for the same month skips already-processed rows.
 
-**Scheduled:** 9th of each month at **10:30 IST** (after individual engines have run earlier on the 2nd, 8th, and 9th).
+**Scheduled:** not directly. `compensation:monthly-payout-close` invokes it on the **8th at 04:00 IST**, and only once every crediting engine for the closed month has succeeded.
 
 **Options:**
 
@@ -671,12 +671,27 @@ recomputation.
 | `repurchase:evaluate` | Daily 00:05 | Must run before the GSB cut-off |
 | `gsb:daily-cutoff` | Daily 00:10 (processes yesterday) | Core GSB engine |
 | `cooling-off:remind` | Daily 09:00 | Statutory D-7/D-1 |
-| `compensation:repurchase-snapshot` | 1st of month 00:06 | Freezes repurchase balances for gates |
-| `rank:monthly-run` | 1st of month 00:30 | Rank Bonus (prev month) |
-| `gbb:monthly-run` | 1st of month 00:45 | Growth Booster Bonus (prev month) |
-| `fortune:enroll-eligible` | 1st of month 01:00 | Fortune Bonus enrolment (prev month) |
-| `adc:monthly-run` | 1st of month 01:15 | ADC Bonus (prev month) |
-| `fortune:monthly-run` | 1st of month 03:15 | Fortune Bonus payout (prev month) |
+| `compensation:monthly-close` | 1st of month 00:20 | **The only monthly crediting entry.** Runs the eight engines below, in order, in one process; resumes at the first step that has not succeeded |
 | `gsb:weekly-payout` | Tuesday 03:00 | Aggregates credited cut-offs |
-| `payout:monthly-run` | 1st of month 03:30 | Credits wallet for B/C/D bonuses |
-| `offers:monthly-run` | 1st of month 04:00 | Purchase offers (prev month) |
+| `compensation:monthly-payout-close` | 8th of month 04:00 | Runs `payout:monthly-run`, but only if every crediting engine for the month succeeded |
+
+The eight steps `compensation:monthly-close` runs, in order. **None of these has
+its own scheduler entry any more** — clock offsets do not serialise commands
+(`withoutOverlapping()` is per-command), so the ordering now lives in one
+process. Each still records its own `engine_runs` row and each is still
+individually runnable and individually triggerable from Engine Runs.
+
+| Step | Command | Period |
+|---|---|---|
+| 1 | `compensation:repurchase-snapshot` | `--month` = closed month |
+| 2 | `rank:check-qualifications` | `--month` = closed month |
+| 3 | `rank:monthly-run` | closed month |
+| 4 | `gbb:monthly-run` | closed month |
+| 5 | `fortune:enroll-eligible` | closed month |
+| 6 | `adc:monthly-run` | closed month |
+| 7 | `fortune:monthly-run` | closed month |
+| 8 | `offers:monthly-run` | closed month |
+
+`payout:monthly-run` is likewise no longer scheduled directly — it is invoked by
+`compensation:monthly-payout-close` on the 8th, dated the month the money moves
+(the month AFTER the crediting month).

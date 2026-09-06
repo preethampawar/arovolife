@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Listeners;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Services\WalletService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -58,19 +59,35 @@ final class ReleaseHeldGbbOnReactivation
                     return;
                 }
 
+                $gross = (int) $row->gbb_gross_paise;
+
+                // Released income is income: it takes the repurchase deduction
+                // like every other credit. Crediting through the plain credit()
+                // here paid the distributor the full gross in cash and left the
+                // repurchase wallet — which the FB/GBB/RB wallet-zero gates all
+                // read — without the money that should have funded it.
+                $repurchaseDeduction = 0;
+
+                if ($gross > 0) {
+                    $repurchaseDeduction = $this->wallet->creditWithRepurchaseDeduction(
+                        distributorId: $event->distributorId,
+                        grossPaise: $gross,
+                        bonusType: 'gbb_credit',
+                        referenceId: $row->id,
+                        referenceType: 'gbb_monthly_result',
+                        // The released row is still that month's income however
+                        // late it is paid, so it charges that month's ceiling.
+                        bonusMonth: Carbon::parse($row->year_month)->startOfMonth(),
+                        memo: 'Released after repurchase completion (cycle '.$event->cycleId.')',
+                    )->repurchaseDeductionPaise;
+                }
+
                 $row->update([
                     'status' => GbbMonthlyResult::STATUS_CREDITED,
                     'credited_at' => now(),
+                    'repurchase_deduction_paise' => $repurchaseDeduction,
+                    'gbb_net_paise' => $gross - $repurchaseDeduction,
                 ]);
-
-                $this->wallet->credit(
-                    distributorId: $event->distributorId,
-                    amountPaise: (int) $row->gbb_gross_paise,
-                    type: 'gbb_credit',
-                    referenceId: $row->id,
-                    referenceType: 'gbb_monthly_result',
-                    memo: 'Released after repurchase completion (cycle '.$event->cycleId.')',
-                );
             });
         }
     }

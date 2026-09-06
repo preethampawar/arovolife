@@ -43,7 +43,7 @@ final class RankRequalificationGateService
 
         $requiredBvPaise = $this->plan->rankRepurchaseBvPaise($rank);
         $bvMap = $this->monthlyPersonalBvMap($distributorIds, $month);
-        $clearedMap = $this->walletClearedMap($distributorIds);
+        $clearedMap = $this->walletClearedMap($distributorIds, $month);
 
         $map = [];
         foreach ($distributorIds as $id) {
@@ -88,13 +88,27 @@ final class RankRequalificationGateService
     }
 
     /**
-     * Whether each distributor's repurchase wallet counts as cleared. Missing
-     * key = no cycle yet (fail-open, handled by the caller's `?? true`).
+     * Whether each distributor's repurchase wallet counts as cleared IN THE
+     * MONTH BEING EVALUATED. Missing key = no cycle yet (fail-open, handled by
+     * the caller's `?? true`).
+     *
+     * The governing cycle is the latest one that had started by the end of the
+     * month — not the latest that exists at query time. Without the month bound
+     * a closed month answered differently depending on when the question was
+     * asked: a distributor held in June because June's cycle lapsed became
+     * "cleared" for June the moment July's cycle completed, so a June re-run
+     * paid a §8 hold it had already refused, and AogoOfferService granted a
+     * lifetime use for a month it had previously declined.
+     *
+     * A cycle's `status` is still mutated in place by the repurchase engine, so
+     * this is as-of-the-month in the cycle it reads, not a point-in-time replay
+     * of that cycle's status — the schema keeps no status history. It is stable
+     * for a closed month because a lapsed or completed cycle is terminal.
      *
      * @param  int[]  $distributorIds
      * @return array<int, bool>
      */
-    private function walletClearedMap(array $distributorIds): array
+    private function walletClearedMap(array $distributorIds, Carbon $month): array
     {
         if (! Feature::for(null)->active(RepurchaseEngineFeature::class)) {
             return [];
@@ -102,6 +116,7 @@ final class RankRequalificationGateService
 
         $latest = RepurchaseCycle::query()
             ->whereIn('distributor_id', $distributorIds)
+            ->whereDate('cycle_start_date', '<=', $month->copy()->endOfMonth()->toDateString())
             ->orderByDesc('cycle_start_date')
             ->get()
             ->groupBy('distributor_id');

@@ -39,8 +39,10 @@ Nobody creates a payout batch by hand.
    Every credit carries a `product_sale_id` — there is no such thing as a
    payout without a sale behind it (hard rule 2).
 2. The **weekly payout** command runs each Tuesday at 03:00 IST and sweeps the
-   unpaid GSB and Mentorship credits. The **monthly payout** runs on the 1st at
-   03:30 IST for Growth Booster, Rank, Fortune, Awards and ADC.
+   unpaid GSB and Mentorship credits. The **monthly payout** runs on the 8th at
+   04:00 IST for Growth Booster, Rank, Fortune, Awards and ADC — a week after
+   the crediting engines close the month on the 1st, and only if every one of
+   them succeeded (see § Monthly close below).
 3. Each run computes one line item per distributor: gross → repurchase
    deduction (already taken at credit time; the batch only sweeps and reports
    it) → admin charge → TDS → net. The wallet is debited at this moment,
@@ -51,6 +53,41 @@ Nobody creates a payout batch by hand.
 A batch that hit an error for some distributors lands in **Partially failed**
 instead and cannot be approved. Re-run the same batch date: only the
 distributors who failed are retried, and the batch returns to Pending.
+
+## Monthly close: crediting on the 1st, payment on the 8th
+
+Two scheduled commands own the month, and they run a week apart on purpose.
+
+**`compensation:monthly-close`** — 1st, 00:20 IST. Runs the eight crediting
+engines in one process, in dependency order: repurchase snapshot → rank
+qualifications → Rank Bonus → Growth Booster → Fortune enrolment → ADC →
+Fortune payout → purchase offers. It waits for the closed month's last daily
+cut-off before starting, and it stops at the first step that fails rather than
+letting the next engine run on half-written input. Re-running it **resumes**:
+every step already recorded as succeeded is skipped, so a failure at step 5
+never re-touches steps 1–4. `--restart` forces the whole sequence, and is only
+for the rare case where an earlier step genuinely has to be recomputed.
+
+**`compensation:monthly-payout-close`** — 8th, 04:00 IST. Runs the monthly
+payout batch, but **only if every crediting engine for that month actually
+succeeded**. If one failed, it refuses, names the engine and prints the exact
+command to re-run it; nothing is swept and no batch is created. An engine whose
+feature flag is off records a *skipped* run and does not block — it computes
+nothing either way.
+
+The week between the two is the only window in which a bad month can still be
+fixed: the monthly batch is idempotent per month, so once it has swept the
+wallet, a credit that lands afterwards has nowhere to go.
+
+If a month is refused: open **Compensation → Engine Runs → Events**, filter to
+**Failed**, re-run the engine the refusal named (Engine Runs, or the printed
+command), then re-run `compensation:monthly-payout-close --month=YYYY-MM` for
+the crediting month. `--force` exists and pays out over an incomplete month —
+do not use it without knowing exactly which credits will be missing.
+
+The admin sidebar shows an **Engine failures** badge whenever a compensation
+engine's last outcome for a period is a failure. It links straight to the
+failed runs and clears itself once the engine has been re-run successfully.
 
 ## Reviewing a batch before approving it
 

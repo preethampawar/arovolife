@@ -525,20 +525,54 @@ it('shows the key-dates strip and per-bonus wallet summary on the dashboard', fu
         ->assertSee('₹2,945');
 });
 
-it('keyDates rolls the monthly payout forward once the 03:30 batch has run, not at midnight', function (): void {
-    // Before the batch on the 1st: today really is the next payout.
-    Carbon::setTestNow('2026-09-01 02:30:00');
-    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-09-01');
+it('keyDates points the monthly payout at the 8th, not the 1st', function (): void {
+    // Crediting closes on the 1st; payment waits a week. The 1st is no longer a
+    // payout day at all, so on the 1st the next payout is still ahead.
+    Carbon::setTestNow('2026-09-01 06:00:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-09-08');
+    Carbon::setTestNow();
+
+    Carbon::setTestNow('2026-09-07 23:00:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-09-08');
+    Carbon::setTestNow();
+});
+
+it('keyDates rolls the monthly payout forward once the 04:00 batch has run, not at midnight', function (): void {
+    // Before the batch on the 8th: today really is the next payout.
+    Carbon::setTestNow('2026-09-08 02:30:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-09-08');
     Carbon::setTestNow();
 
     // Later the same day the transfer has already gone out — saying "today"
-    // for the remaining 20 hours of the 1st was simply wrong.
-    Carbon::setTestNow('2026-09-01 06:00:00');
-    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-10-01');
+    // for the remaining 20 hours of the 8th would simply be wrong.
+    Carbon::setTestNow('2026-09-08 06:00:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-10-08');
     Carbon::setTestNow();
 
-    Carbon::setTestNow('2026-09-02 06:00:00');
-    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-10-01');
+    Carbon::setTestNow('2026-09-09 06:00:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2026-10-08');
+    Carbon::setTestNow();
+
+    // February: startOfMonth()->addDays(7) is the 8th in every month length.
+    Carbon::setTestNow('2027-02-09 06:00:00');
+    expect(IncomeOverviewService::keyDates()['nextMonthlyPayout']->toDateString())->toBe('2027-03-08');
+    Carbon::setTestNow();
+});
+
+it('keyDates rolls the weekly payout forward once the 03:00 Tuesday batch has run, not at midnight', function (): void {
+    // 2026-09-01 and 2026-09-08 are Tuesdays; 2026-09-03 is a Thursday.
+    Carbon::setTestNow('2026-09-01 02:30:00');
+    expect(IncomeOverviewService::keyDates()['nextWeeklyPayout']->toDateString())->toBe('2026-09-01');
+    Carbon::setTestNow();
+
+    // Tuesday afternoon: the batch went out at 03:00, so the next one is a week away.
+    Carbon::setTestNow('2026-09-01 15:00:00');
+    expect(IncomeOverviewService::keyDates()['nextWeeklyPayout']->toDateString())->toBe('2026-09-08');
+    Carbon::setTestNow();
+
+    // Mid-week still points at the coming Tuesday.
+    Carbon::setTestNow('2026-09-03 09:00:00');
+    expect(IncomeOverviewService::keyDates()['nextWeeklyPayout']->toDateString())->toBe('2026-09-08');
     Carbon::setTestNow();
 });
 

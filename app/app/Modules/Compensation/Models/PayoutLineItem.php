@@ -54,6 +54,15 @@ final class PayoutLineItem extends Model
     public const STATUS_BANK_DECRYPT_FAILED = 'bank_decrypt_failed';
 
     /**
+     * The distributor's entire balance for this batch sat above the combined
+     * monthly income cap of the month it was earned for. Unlike every held
+     * status, the credits ARE swept and an `income_cap_forfeit` debit closes
+     * the wallet: the money is gone, not waiting. The line exists so the
+     * forfeit is a fact on the batch rather than an absent row.
+     */
+    public const STATUS_INCOME_CAP_FORFEITED = 'income_cap_forfeited';
+
+    /**
      * Statuses whose income stays in the wallet this batch — nothing debited,
      * nothing swept, net ₹0. Distinct from below_minimum, which is a paying
      * distributor whose net simply did not reach the floor.

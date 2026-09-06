@@ -72,6 +72,7 @@ final class DerivedTables
         'gbb_monthly_results',
         'gbb_monthly_pools',
         'rank_bonus_results',
+        'rank_monthly_pools',
         'rank_aogo_grants',
         'rank_qualifications',
         'lifetime_award_milestones',
@@ -81,8 +82,12 @@ final class DerivedTables
         'fortune_monthly_pools',
         'adc_bonus_results',
 
-        // Eligibility state rebuilt from the BV ledger.
+        // Eligibility state rebuilt from the BV ledger. The month-end snapshots
+        // must go with them: they are frozen once and never rewritten, so a
+        // survivor would gate every replayed month on a balance computed from
+        // the pre-wipe wallet ledger.
         'repurchase_cycles',
+        'repurchase_monthly_snapshots',
 
         // The run log itself: EngineStatusService::isPeriodComputed() reads a
         // succeeded row as "already done", so surviving rows make a replay skip
@@ -124,6 +129,7 @@ final class DerivedTables
         'gbb_monthly_results' => ['column' => 'year_month', 'granularity' => 'month'],
         'gbb_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
+        'rank_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_aogo_grants' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_qualifications' => ['column' => 'month_start', 'granularity' => 'month'],
         'lifetime_award_milestones' => ['column' => 'triggered_month', 'granularity' => 'month'],
@@ -131,6 +137,7 @@ final class DerivedTables
         'fortune_bonus_participants' => ['column' => 'month_start', 'granularity' => 'month'],
         'fortune_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'adc_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
+        'repurchase_monthly_snapshots' => ['column' => 'cycle_month', 'granularity' => 'month'],
     ];
 
     /**

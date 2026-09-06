@@ -11,6 +11,8 @@ use App\Modules\Compensation\Console\Commands\FortuneBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
@@ -105,16 +107,32 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'repurchase.snapshot',
                 label: 'Repurchase Wallet Snapshot',
-                description: 'Freezes every distributor\'s repurchase wallet balance as it stood at month end. The bonus engines gate on "was the repurchase wallet spent down to ₹0 for that month?". Answering that from the live balance gives a different verdict every time a month is re-run, so the answer is written once on the 1st and every engine reads the same row afterwards. Impact: upserts one repurchase_monthly_snapshots row per distributor with a non-zero repurchase history; changes nothing in the wallet itself.',
-                periodType: EnginePeriodType::Date,
+                description: 'Freezes every distributor\'s repurchase wallet balance as it stood at month end. The bonus engines gate on "was the repurchase wallet spent down to ₹0 for that month?". Answering that from the live balance gives a different verdict every time a month is re-run, so the answer is written once on the 1st and every engine reads the same row afterwards. Impact: writes one repurchase_monthly_snapshots row per distributor with a non-zero repurchase history; changes nothing in the wallet itself. A month already frozen is left exactly as it is.',
+                // A MONTH engine, not a date one. It takes the month and derives
+                // its own as-of instant (that month's last midnight), so every
+                // caller — scheduler, replay, monthly close, admin trigger —
+                // computes the identical as-of and records the identical
+                // period_start. It used to take `--date`, which two callers
+                // filled differently for the same month (month start from
+                // EngineDefinition::periodRelativeTo, month end from
+                // MonthlyEngineCompletionGate::periodFor): the close could never
+                // match a scheduled run's period_start and so re-ran step 1 on
+                // every resume, and the two invocations snapshotted balances 30
+                // days apart under one cycle_month.
+                periodType: EnginePeriodType::Month,
                 commandClass: RepurchaseMonthlySnapshotCommand::class,
                 commandSignature: 'compensation:repurchase-snapshot',
-                periodOption: '--date',
+                periodOption: '--month',
                 dependencies: [],
                 featureFlagClass: RepurchaseEngineFeature::class,
                 reportRouteName: 'admin.compensation.carry-forwards.index',
                 cadence: EngineCadence::monthlyOn(1, '00:06'),
                 defaultPeriod: 'prev-month',
+                // It freezes a month-end fact, so the month must have ended: a
+                // mid-month manual run would freeze a balance that still had
+                // days left to move.
+                requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -170,6 +188,7 @@ final class EngineRegistry
                 cadence: EngineCadence::monthlyOn(1, '00:45'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -191,8 +210,9 @@ final class EngineRegistry
                 cadence: EngineCadence::monthlyOn(1, '00:15'),
                 // Now that it fires on the 1st, the month it works is the one
                 // that just closed — matching Rank Bonus 15 minutes later and
-                // the explicit --month the scheduler passes.
+                // the explicit --month the close passes.
                 defaultPeriod: 'prev-month',
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -211,6 +231,7 @@ final class EngineRegistry
                 cadence: EngineCadence::monthlyOn(1, '00:30'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -227,6 +248,7 @@ final class EngineRegistry
                 cadence: EngineCadence::monthlyOn(1, '01:15'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -242,6 +264,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.commerce.offers.index',
                 cadence: EngineCadence::monthlyOn(1, '04:00'),
                 defaultPeriod: 'prev-month',
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -260,6 +283,7 @@ final class EngineRegistry
                 cadence: EngineCadence::monthlyOn(1, '01:00'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -278,6 +302,7 @@ final class EngineRegistry
                 cadence: EngineCadence::monthlyOn(1, '03:15'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.monthly-close',
             ),
 
             new EngineDefinition(
@@ -296,9 +321,57 @@ final class EngineRegistry
                 ],
                 featureFlagClass: null,
                 reportRouteName: 'admin.compensation.weekly-payouts.index',
-                cadence: EngineCadence::monthlyOn(1, '03:30'),
+                // The 8th, not the 1st: crediting closes on the 1st and payment
+                // waits a week, so a bad month can be caught before it reaches a
+                // bank. 04:00 rather than 03:30 keeps it clear of the weekly GSB
+                // batch at Tuesday 03:00, which consults the same income cap.
+                cadence: EngineCadence::monthlyOn(8, '04:00'),
                 defaultPeriod: 'current-month',
                 manuallyTriggerable: false,
+                orchestratedBy: 'compensation.monthly-payout-close',
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.monthly-close',
+                label: 'Monthly Close (crediting)',
+                description: 'Runs the eight crediting engines for a closed month in dependency order — repurchase snapshot, rank qualifications, Rank Bonus, Growth Booster, Fortune enrolment, ADC, Fortune payout, purchase offers — in ONE process, aborting at the first failure instead of letting the next engine read half-written input. Impact: writes nothing of its own; every credit and every result row is written by the engine it invokes, each recording its own run. A re-run resumes at the first step that has not succeeded, so the steps that already landed are never touched again.',
+                periodType: EnginePeriodType::Month,
+                commandClass: MonthlyCloseCommand::class,
+                commandSignature: 'compensation:monthly-close',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: 'admin.compensation.engine-runs.events',
+                cadence: EngineCadence::monthlyOn(1, '00:20'),
+                defaultPeriod: 'prev-month',
+                // Scheduler-only, like the payout batches. A manual trigger goes
+                // through EngineRunService, which reads back the run id the
+                // console listener recorded — with eight nested commands the last
+                // step's id is what it would find, and it would stamp the close's
+                // outcome onto that step's row.
+                manuallyTriggerable: false,
+                requiresClosedPeriod: true,
+                isOrchestrator: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.monthly-payout-close',
+                label: 'Monthly Payout Close',
+                description: 'Runs the monthly payout batch a week after the crediting engines, but only once every crediting engine for the month has actually succeeded. Impact: writes nothing of its own — it refuses, naming the engine at fault and the command to re-run it, or it invokes the monthly payout batch, which writes the batch and its line items. The week between crediting and payment is the window in which a bad month can still be caught.',
+                periodType: EnginePeriodType::Month,
+                commandClass: MonthlyPayoutCloseCommand::class,
+                commandSignature: 'compensation:monthly-payout-close',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: 'admin.compensation.weekly-payouts.index',
+                cadence: EngineCadence::monthlyOn(8, '04:00'),
+                defaultPeriod: 'prev-month',
+                // Maker-checker: it creates a payout batch, and the permission
+                // that would trigger it is the one that approves the batch.
+                manuallyTriggerable: false,
+                requiresClosedPeriod: true,
+                isOrchestrator: true,
             ),
         ];
 

@@ -67,6 +67,7 @@ final class GbbMonthlyRunCommand extends Command
                 ['Held (repurchase grace)', $result['held']],
                 ['Suspended (grace lapsed)', $result['suspended']],
                 ['Skipped (no AGP)', $result['skipped_no_agp']],
+                ['Refused (AGP earned after the freeze)', $result['qualified_after_freeze']],
             ],
         );
 

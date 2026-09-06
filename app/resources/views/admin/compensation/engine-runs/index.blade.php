@@ -559,8 +559,14 @@
             @if(! $definition->manuallyTriggerable)
             <div class="w-full lg:w-80 shrink-0 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
                 <span class="font-semibold text-gray-700">Scheduler-only.</span>
+                @if($definition->isOrchestrator)
+                This runs the other engines rather than computing anything itself — trigger the individual
+                engine you need instead, or re-run the close from the command line, which resumes at the
+                first step that has not succeeded.
+                @else
                 Payout batches are created by the scheduler and approved separately on the Payouts page,
                 so the same person never both creates and approves a batch.
+                @endif
             </div>
             @else
             <form method="POST" action="{{ route('admin.compensation.engine-runs.trigger') }}"

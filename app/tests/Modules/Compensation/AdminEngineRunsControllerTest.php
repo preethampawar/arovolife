@@ -23,6 +23,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Pennant\Feature;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
@@ -700,4 +702,95 @@ it('allows in-flight and future periods for economics-freezing engines while the
         ->assertSessionHas('status');
 
     Queue::assertPushed(RunEngineChainJob::class, 2);
+});
+
+it('filters the run events to failures and offers the status filter', function (): void {
+    $user = engineRunsUser('admin');
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    EngineRun::create([
+        'engine_key' => 'rank.bonus',
+        'period_start' => Carbon::parse('2026-08-01'),
+        'status' => EngineRun::STATUS_FAILED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-09-01 00:30'),
+        'finished_at' => Carbon::parse('2026-09-01 00:31'),
+    ]);
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => Carbon::parse('2026-08-01'),
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-09-01 00:20'),
+        'finished_at' => Carbon::parse('2026-09-01 00:21'),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.events', ['status' => EngineRun::STATUS_FAILED]))
+        ->assertOk()
+        // The started_at stamps identify the rows; the engine labels also
+        // appear in the filter dropdown, so they cannot be asserted on.
+        ->assertSee('01 Sep 2026 00:30:00')
+        ->assertDontSee('01 Sep 2026 00:20:00');
+
+    $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.events', ['status' => 'nonsense']))
+        ->assertSessionHasErrors('status');
+});
+
+it('badges the admin sidebar with unresolved engine failures, linking to the failed runs', function (): void {
+    $user = engineRunsUser('admin');
+
+    // No failure: no badge, no extra nav item.
+    $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('Engine failures');
+
+    Cache::forget('admin.engine_runs.unresolved_failure_count');
+
+    EngineRun::create([
+        'engine_key' => 'fortune.payout',
+        'period_start' => Carbon::now()->startOfMonth()->subMonthNoOverflow(),
+        'status' => EngineRun::STATUS_FAILED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::now()->subDay(),
+        'finished_at' => Carbon::now()->subDay(),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Engine failures')
+        ->assertSee(route('admin.compensation.engine-runs.events', ['status' => 'failed']), false);
+});
+
+it('shows the engine-failure badge to admin-finance without audit.read', function (): void {
+    // The monthly payout on the 8th refuses over exactly these failures, and
+    // admin-finance is the role that owns that payout. The badge must not hang
+    // on `audit.read`, which is a monitoring grant that role need not hold.
+    Role::findByName('admin-finance')->revokePermissionTo('audit.read');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $user = engineRunsUser('admin-finance');
+
+    expect($user->can('audit.read'))->toBeFalse()
+        ->and($user->can('finance.record'))->toBeTrue();
+
+    EngineRun::create([
+        'engine_key' => 'fortune.payout',
+        'period_start' => Carbon::now()->startOfMonth()->subMonthNoOverflow(),
+        'status' => EngineRun::STATUS_FAILED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::now()->subDay(),
+        'finished_at' => Carbon::now()->subDay(),
+    ]);
+
+    Cache::forget('admin.engine_runs.unresolved_failure_count');
+
+    $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Engine failures')
+        ->assertSee(route('admin.compensation.engine-runs.events', ['status' => 'failed']), false);
 });

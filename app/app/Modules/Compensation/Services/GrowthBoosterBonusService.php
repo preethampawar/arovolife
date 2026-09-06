@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\DTOs\GbbMonthRoster;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
@@ -48,13 +49,41 @@ use Illuminate\Support\Facades\Log;
  *     earned with gross 0, and the AGP is EXCLUDED from the denominator: the
  *     month can never pay it, so it must not dilute everyone else's point value
  *     (the MSB rule — only payable participants dilute the pool).
+ *   • unspent repurchase wallet (BLOCKED) → an audit-only
+ *     {@see GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED} row, same shape
+ *     as the suspended row: gross 0, AGP excluded from the denominator, never
+ *     released. It exists so the distributor is visible on the Input & Output
+ *     report instead of silently vanishing from the month.
  *
- * FROZEN ECONOMICS — the month's pool, denominator and point value are written
- * once to gbb_monthly_pools BEFORE any credit and never recomputed. A re-run
- * after more BV or more cut-offs have landed prices against that snapshot, so
- * the month's economics never move under a distributor who was already paid. A
- * month in which nobody earned AGP still freezes a ₹0-value row and the pool
- * simply goes unspent (same product decision as the MSB pool).
+ * THREE PHASES (the RankBonusService shape):
+ *  1. Pass 1 — {@see resolveRoster()} decides the month's population and each
+ *     member's AGP: the cut-off earners, the prior-month rank gate, the
+ *     repurchase cycle gate and the repurchase-wallet gate.
+ *  2. Freeze — {@see freezeMonth()} writes, in ONE transaction, the
+ *     gbb_monthly_pools row AND a gbb_monthly_results row for every roster
+ *     member carrying its decided status and its frozen AGP. `total_agp` is the
+ *     Σ AGP of exactly the members counted in the denominator, so the pool and
+ *     the roster are consistent by construction and a crash can never leave an
+ *     earner outside a roster that is about to close.
+ *  3. Pass 2 — {@see creditFromFrozenPool()} credits roster members from the
+ *     FROZEN point value and their FROZEN AGP, never a recomputed one.
+ *
+ * WHY THE FREEZE COVERS THE ROSTER — freezing only the pool was not enough.
+ * The month's credited GSB set can still move after the freeze (a
+ * `gsb:daily-cutoff` re-run for a date in the closed month, or a `rank:check`
+ * re-run for M−1 changing the rank gate), and the engine then recomputed AGP
+ * from live data on every run: a distributor with no row at freeze was created
+ * fresh and paid at the frozen point value although their AGP was never in the
+ * frozen denominator, and a held row was re-priced to the larger live AGP that
+ * ReleaseHeldGbbOnReactivation would then pay. Pool ₹10,000 over 100 AGP pays
+ * ₹100 an AGP; one newcomer with 12 AGP takes ₹1,200 out of a pool that has
+ * already been fully divided, and leftover_paise goes negative.
+ *
+ * A distributor whose AGP appears AFTER the freeze has no roster row: they are
+ * refused, logged as `gbb.result.qualified_after_freeze`, written to
+ * `audit_log`, and surfaced on the admin GBB Input & Output report by
+ * {@see qualifiedAfterFreeze()}. Deliberate product decision — late earners are
+ * shown to an admin, never auto-paid.
  *
  * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
  */
@@ -69,10 +98,12 @@ final class GrowthBoosterBonusService
 
     /**
      * Run the GBB calculation for the given calendar month.
-     * Idempotent: a distributor already credited for the month is left alone,
-     * and the month's frozen economics are reused rather than recomputed.
      *
-     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int}
+     * Idempotent in both directions: the month's pool AND its roster are frozen
+     * on the first run, and every later run credits only the roster members not
+     * yet credited, at the frozen point value and their frozen AGP.
+     *
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, skipped_wallet_nonzero: int, wallet_blocked: int, qualified_after_freeze: int}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -80,124 +111,191 @@ final class GrowthBoosterBonusService
         $monthEnd = $month->copy()->endOfMonth();
         $yearMonth = $monthStart->toDateString();
 
+        $pool = GbbMonthlyPool::where('month_start', $yearMonth)->first();
+
+        if ($pool !== null && $this->replacePrematureFreeze($pool, $monthEnd)) {
+            $pool = null;
+        }
+
+        if ($pool === null) {
+            $pool = $this->freezeMonth($monthStart, $monthEnd, $yearMonth);
+        }
+
+        return $this->creditFromFrozenPool($monthStart, $monthEnd, $yearMonth, $pool);
+    }
+
+    /**
+     * Distributors who earned payable AGP in a frozen month but carry no roster
+     * row — their AGP arrived after the pool was divided, so they are refused
+     * rather than paid out of someone else's share.
+     *
+     * Read-only, and empty for a month that has not been frozen. The monthly run
+     * logs and audits these; the admin GBB Input & Output report displays them.
+     *
+     * @return list<int> distributor ids
+     */
+    public function qualifiedAfterFreeze(Carbon $month): array
+    {
+        $monthStart = $month->copy()->startOfMonth();
+        $yearMonth = $monthStart->toDateString();
+
+        if (! GbbMonthlyPool::where('month_start', $yearMonth)->exists()) {
+            return [];
+        }
+
+        return array_keys($this->lateEarners(
+            $this->eligibleEarners($monthStart, $month->copy()->endOfMonth()),
+            $yearMonth,
+        ));
+    }
+
+    // ---------------------------------------------------------------- pass 1
+
+    /**
+     * Pass 1 — resolve the month's population and each member's AGP. Pure
+     * reads; the caller runs it inside the freeze transaction so the roster it
+     * decides and the pool priced from it are written together or not at all.
+     */
+    private function resolveRoster(Carbon $monthStart, Carbon $monthEnd): GbbMonthRoster
+    {
         $agpMap = $this->buildAgpMap($monthStart, $monthEnd);
 
         $skippedNoAgp = $agpMap->filter(fn (int $agp): bool => $agp === 0)->count();
 
-        /** @var Collection<int, int> $earners */
-        $earners = $agpMap->filter(fn (int $agp): bool => $agp > 0);
-
-        $agpMap = $this->rejectRankedLastMonth($earners, $monthStart);
-
-        [$payable, $held, $suspended] = $this->partitionByRepurchase($agpMap);
-
-        // Repurchase wallet = 0 is a mandatory qualification gate for GBB (spec
-        // 17-8-2026): the distributor must have spent their repurchase wallet down
-        // to zero via checkout purchases before GBB is credited this month.
-        // New joiners (no prior payout → no deduction ever) have a ₹0 balance and
-        // pass automatically. Wallet balances are taken at month-end so late
-        // checkout purchases count.
-        $walletBalances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
-            array_values($payable->keys()->map(intval(...))->all()),
-            $monthEnd,
+        [$payable, $held, $suspended] = $this->partitionByRepurchase(
+            $this->rejectRankedLastMonth($this->agpEarners($agpMap), $monthStart),
         );
-        $skippedWalletNonzero = 0;
-        $payable = $payable->filter(function (int $_agp, int $distributorId) use ($walletBalances, &$skippedWalletNonzero): bool {
-            if (($walletBalances[$distributorId] ?? 0) > 0) {
-                Log::info('gbb.skipped_wallet_nonzero', [
-                    'distributor_id' => $distributorId,
-                    'repurchase_wallet_balance_paise' => $walletBalances[$distributorId],
-                ]);
-                $skippedWalletNonzero++;
 
-                return false;
-            }
+        /** @var Collection<int, int> $walletBlocked */
+        $walletBlocked = collect();
 
-            return true;
-        });
+        foreach ($this->walletBlockedIds($payable, $monthEnd) as $distributorId) {
+            $walletBlocked[$distributorId] = (int) $payable[$distributorId];
+        }
 
-        // Suspended AGP can never be paid for this month, so it is kept out of
-        // the denominator; held AGP stays in because a release can still pay it.
-        $totalAgp = (int) $payable->sum() + (int) $held->sum();
-
-        $pool = $this->freezePoolForMonth($monthStart, $monthEnd, $totalAgp);
-        $pointValuePaise = (int) $pool->point_value_paise;
-
-        $credited = 0;
-        $heldCount = 0;
-        $suspendedCount = 0;
-
-        DB::transaction(function () use (
-            $payable, $held, $suspended, $yearMonth, $pool, $pointValuePaise,
-            &$credited, &$heldCount, &$suspendedCount,
-        ): void {
-            foreach ($payable as $distributorId => $agp) {
-                $result = $this->writeResult((int) $distributorId, $yearMonth, $agp, $pool, $pointValuePaise * $agp, GbbMonthlyResult::STATUS_PENDING);
-
-                if ($result === null) {
-                    continue;
-                }
-
-                $repurchaseDeduction = 0;
-
-                if ($result->gbb_gross_paise > 0) {
-                    $repurchaseDeduction = $this->wallet->creditWithRepurchaseDeduction(
-                        distributorId: (int) $distributorId,
-                        grossPaise: (int) $result->gbb_gross_paise,
-                        bonusType: 'gbb_credit',
-                        referenceId: $result->id,
-                        referenceType: 'gbb_monthly_result',
-                        memo: 'Growth Booster Bonus '.$yearMonth,
-                    )->repurchaseDeductionPaise;
-                }
-
-                $result->update([
-                    'status' => GbbMonthlyResult::STATUS_CREDITED,
-                    'credited_at' => now(),
-                    'repurchase_deduction_paise' => $repurchaseDeduction,
-                    'gbb_net_paise' => (int) $result->gbb_gross_paise - $repurchaseDeduction,
-                ]);
-
-                $credited++;
-            }
-
-            foreach ($held as $distributorId => $agp) {
-                if ($this->writeResult((int) $distributorId, $yearMonth, $agp, $pool, $pointValuePaise * $agp, GbbMonthlyResult::STATUS_REPURCHASE_HELD) !== null) {
-                    $heldCount++;
-                }
-            }
-
-            foreach ($suspended as $distributorId => $agp) {
-                if ($this->writeResult((int) $distributorId, $yearMonth, $agp, $pool, 0, GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED) !== null) {
-                    $suspendedCount++;
-                }
-            }
-        });
-
-        // Reported straight off the frozen snapshot, never off the live
-        // recomputation — pool ÷ total_agp must always reconcile to the point
-        // value that was actually paid.
-        return [
-            'pool_paise' => (int) $pool->pool_paise,
-            'total_agp' => (int) $pool->total_agp,
-            'point_value_paise' => $pointValuePaise,
-            'credited' => $credited,
-            'held' => $heldCount,
-            'suspended' => $suspendedCount,
-            'skipped_no_agp' => $skippedNoAgp,
-            'skipped_wallet_nonzero' => $skippedWalletNonzero,
-        ];
+        return new GbbMonthRoster(
+            payable: $payable->reject(fn (int $agp, int $distributorId): bool => $walletBlocked->has($distributorId)),
+            held: $held,
+            suspended: $suspended,
+            walletBlocked: $walletBlocked,
+            skippedNoAgp: $skippedNoAgp,
+        );
     }
 
     /**
-     * Write (or refresh) the month's result row for one distributor.
+     * Repurchase wallet = 0 is a mandatory qualification gate for GBB (spec
+     * 17-8-2026): the distributor must have spent their repurchase wallet down
+     * to zero via checkout purchases before GBB is credited for the month. New
+     * joiners (no prior payout → no deduction ever) have a ₹0 balance and pass
+     * automatically. Balances are taken at month end so late checkout purchases
+     * count, which also keeps the answer stable across re-runs.
+     *
+     * @param  Collection<int, int>  $candidates  distributor id → AGP
+     * @return list<int> the ids that fail the gate
+     */
+    private function walletBlockedIds(Collection $candidates, Carbon $monthEnd): array
+    {
+        if ($candidates->isEmpty()) {
+            return [];
+        }
+
+        $balances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
+            array_values($candidates->keys()->map(fn ($id): int => (int) $id)->all()),
+            $monthEnd,
+        );
+
+        $blocked = [];
+
+        foreach ($candidates as $distributorId => $agp) {
+            if (($balances[(int) $distributorId] ?? 0) > 0) {
+                Log::info('gbb.skipped_wallet_nonzero', [
+                    'distributor_id' => (int) $distributorId,
+                    'repurchase_wallet_balance_paise' => $balances[(int) $distributorId],
+                ]);
+
+                $blocked[] = (int) $distributorId;
+            }
+        }
+
+        return $blocked;
+    }
+
+    // ----------------------------------------------------------------- freeze
+
+    /**
+     * Freeze the month: pass 1, then the pool row and every roster row, in one
+     * transaction. Nothing is credited here — pass 2 does that from what this
+     * wrote.
+     */
+    private function freezeMonth(Carbon $monthStart, Carbon $monthEnd, string $yearMonth): GbbMonthlyPool
+    {
+        return DB::transaction(function () use ($monthStart, $monthEnd, $yearMonth): GbbMonthlyPool {
+            $roster = $this->resolveRoster($monthStart, $monthEnd);
+            $totalAgp = $roster->totalAgp();
+
+            $companyBvPaise = $this->gsbPool->companyBvPaiseBetween($monthStart, $monthEnd);
+            $rateBp = $this->plan->gbbPoolRateBp();
+            $poolPaise = max(0, intdiv($companyBvPaise * $rateBp, 10_000));
+
+            // Floor the per-AGP value to whole rupees: truncate to a multiple of
+            // 100 paise. max() guards a refund-heavy (negative-BV) month, where
+            // intdiv() truncates toward zero.
+            $valuePaise = Money::floorRupee($poolPaise, $totalAgp);
+
+            $payoutPaise = $valuePaise * $totalAgp;
+
+            $pool = GbbMonthlyPool::create([
+                'month_start' => $yearMonth,
+                'company_bv_paise' => $companyBvPaise,
+                'pool_rate_bp' => $rateBp,
+                'pool_paise' => $poolPaise,
+                'total_agp' => $totalAgp,
+                'point_value_paise' => $valuePaise,
+                'payout_paise' => $payoutPaise,
+                'leftover_paise' => $poolPaise - $payoutPaise,
+            ]);
+
+            foreach ($roster->payable as $distributorId => $agp) {
+                $this->writeRosterRow((int) $distributorId, $yearMonth, $agp, $pool, $valuePaise * $agp, GbbMonthlyResult::STATUS_PENDING);
+            }
+
+            foreach ($roster->held as $distributorId => $agp) {
+                $this->writeRosterRow((int) $distributorId, $yearMonth, $agp, $pool, $valuePaise * $agp, GbbMonthlyResult::STATUS_REPURCHASE_HELD);
+            }
+
+            foreach ($roster->suspended as $distributorId => $agp) {
+                $this->writeRosterRow((int) $distributorId, $yearMonth, $agp, $pool, 0, GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED);
+            }
+
+            foreach ($roster->walletBlocked as $distributorId => $agp) {
+                $this->writeRosterRow((int) $distributorId, $yearMonth, $agp, $pool, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+            }
+
+            $this->recordFreeze($pool);
+
+            return $pool;
+        });
+    }
+
+    /**
+     * Write one roster row. The status and the AGP are decided ONCE, here, and
+     * pass 2 never re-prices them.
      *
      * Returns null when the distributor is already credited for the month,
-     * which is the idempotency guard for re-runs and also protects a row
-     * already released by ReleaseHeldGbbOnReactivation from being pushed back
-     * to `repurchase_held`.
+     * which protects a row already released by ReleaseHeldGbbOnReactivation
+     * from being pushed back to `repurchase_held`.
+     *
+     * Returns null too when the month already holds a pool-EXCLUDED row for the
+     * distributor ({@see GbbMonthlyResult::POOL_EXCLUDED_STATUSES}) and this
+     * write would move it back onto the funded path. Their AGP was never in the
+     * frozen denominator, so the frozen point value was priced without them: a
+     * distributor suspended (or wallet-blocked) under one pool must NOT be paid
+     * against it — it would overspend the pool and drive leftover_paise
+     * negative. `pending` and `repurchase_held` rows are untouched by this
+     * guard: their AGP WAS in the denominator, which is exactly why held rows
+     * are released later.
      */
-    private function writeResult(
+    private function writeRosterRow(
         int $distributorId,
         string $yearMonth,
         int $agp,
@@ -205,13 +303,20 @@ final class GrowthBoosterBonusService
         int $grossPaise,
         string $status,
     ): ?GbbMonthlyResult {
-        $alreadyCredited = GbbMonthlyResult::query()
+        $existing = GbbMonthlyResult::query()
             ->where('distributor_id', $distributorId)
             ->where('year_month', $yearMonth)
-            ->where('status', GbbMonthlyResult::STATUS_CREDITED)
-            ->exists();
+            ->first();
 
-        if ($alreadyCredited) {
+        if ($existing?->status === GbbMonthlyResult::STATUS_CREDITED) {
+            return null;
+        }
+
+        if ($existing !== null
+            && in_array($existing->status, GbbMonthlyResult::POOL_EXCLUDED_STATUSES, true)
+            && ! in_array($status, GbbMonthlyResult::POOL_EXCLUDED_STATUSES, true)) {
+            $this->recordExcludedFromFrozenDenominator($distributorId, $yearMonth, $existing->status, $status, $agp, $pool);
+
             return null;
         }
 
@@ -235,64 +340,30 @@ final class GrowthBoosterBonusService
     }
 
     /**
-     * Freeze the month's pool economics. Idempotent: an existing row is returned
-     * unchanged — the month's economics never move once written, no matter how
-     * much BV or how many cut-offs land afterwards.
-     *
-     * @param  int  $totalAgp  Σ AGP over the month's payable + held participants
+     * The freeze determines every GBB payout for the month — a
+     * retention-guaranteed audit_log row, not just a log line (R-35).
      */
-    private function freezePoolForMonth(Carbon $monthStart, Carbon $monthEnd, int $totalAgp): GbbMonthlyPool
+    private function recordFreeze(GbbMonthlyPool $pool): void
     {
-        $existing = GbbMonthlyPool::where('month_start', $monthStart->toDateString())->first();
-        if ($existing !== null && ! $this->replacePrematureFreeze($existing, $monthEnd)) {
-            return $existing;
-        }
-
-        $companyBvPaise = $this->gsbPool->companyBvPaiseBetween($monthStart, $monthEnd);
-        $rateBp = $this->plan->gbbPoolRateBp();
-        $poolPaise = max(0, intdiv($companyBvPaise * $rateBp, 10_000));
-
-        // Floor the per-AGP value to whole rupees: truncate to a multiple of
-        // 100 paise. max() guards a refund-heavy (negative-BV) month, where
-        // intdiv() truncates toward zero.
-        $valuePaise = Money::floorRupee($poolPaise, $totalAgp);
-
-        $payoutPaise = $valuePaise * $totalAgp;
-
-        $pool = GbbMonthlyPool::create([
-            'month_start' => $monthStart->toDateString(),
-            'company_bv_paise' => $companyBvPaise,
-            'pool_rate_bp' => $rateBp,
-            'pool_paise' => $poolPaise,
-            'total_agp' => $totalAgp,
-            'point_value_paise' => $valuePaise,
-            'payout_paise' => $payoutPaise,
-            'leftover_paise' => $poolPaise - $payoutPaise,
-        ]);
-
         $details = [
-            'month_start' => $monthStart->toDateString(),
-            'company_bv_paise' => $companyBvPaise,
-            'pool_rate_bp' => $rateBp,
-            'pool_paise' => $poolPaise,
-            'total_agp' => $totalAgp,
-            'point_value_paise' => $valuePaise,
-            'payout_paise' => $payoutPaise,
-            'leftover_paise' => $pool->leftover_paise,
+            'month_start' => $pool->month_start,
+            'company_bv_paise' => (int) $pool->company_bv_paise,
+            'pool_rate_bp' => (int) $pool->pool_rate_bp,
+            'pool_paise' => (int) $pool->pool_paise,
+            'total_agp' => (int) $pool->total_agp,
+            'point_value_paise' => (int) $pool->point_value_paise,
+            'payout_paise' => (int) $pool->payout_paise,
+            'leftover_paise' => (int) $pool->leftover_paise,
         ];
 
         Log::info('gbb.pool.frozen', $details);
 
-        // The freeze determines every GBB payout for the month — a
-        // retention-guaranteed audit_log row, not just a log line (R-35).
         AuditLog::create([
             'action' => 'gbb.pool.frozen',
             'subject_type' => 'gbb_monthly_pool',
             'subject_id' => $pool->id,
             'details' => $details,
         ]);
-
-        return $pool;
     }
 
     /**
@@ -306,19 +377,23 @@ final class GrowthBoosterBonusService
      * the 1st. A freeze whose created_at falls BEFORE the month ended broke
      * that assumption (a mid-month manual run from the Engine Runs page, or the
      * recompute tool catching up the period in flight): it snapshotted partial
-     * company BV and a partial denominator, and every later run for the month
-     * would silently price against it. Local, Aug 2026: a run made while every
-     * earner still failed the wallet gate froze total_agp = 0, and the next run
-     * wrote 22 result rows carrying real AGP against a zero denominator — the
-     * report showed "Total AGP 0" over 545 AGP of rows.
+     * company BV and a partial roster, and every later run for the month would
+     * silently price against it. Local, Aug 2026: a run made while every earner
+     * still failed the wallet gate froze total_agp = 0, and the next run wrote
+     * 22 result rows carrying real AGP against a zero denominator — the report
+     * showed "Total AGP 0" over 545 AGP of rows.
      *
-     * Replacement is only safe while NOTHING was funded by the row: once any
-     * result for the month carries pool-priced gross, re-freezing would change
-     * economics that money already moved on, so the row is kept and the
-     * inconsistency surfaced loudly instead. Zero-gross rows are not funding —
-     * they moved no money — but they DO block the re-run (a `credited` row is
-     * the idempotency guard in {@see writeResult()}), so they are cleared
-     * along with the pool and recomputed from the fresh snapshot.
+     * Replacement is only safe while NOTHING the pool funded was actually
+     * credited: once a wallet has moved on a pool-priced gross, re-freezing
+     * would change economics money moved on, so the rows are kept and the
+     * inconsistency surfaced loudly instead. The test is the STATUS, not the
+     * gross: a credited row whose gross floored to ₹0 is still the record of a
+     * real participation in that pool (and a released held row can turn a ₹0
+     * row into a paid one), so it keeps the pool exactly like a paid row does.
+     * Un-credited, un-held rows moved no money, but they DO block the re-run (a
+     * `credited` row is the idempotency guard in {@see writeRosterRow()}), so
+     * they are cleared along with the pool and recomputed from the fresh
+     * snapshot.
      */
     private function replacePrematureFreeze(GbbMonthlyPool $existing, Carbon $monthEnd): bool
     {
@@ -340,7 +415,6 @@ final class GrowthBoosterBonusService
 
         if ((clone $results)
             ->whereIn('status', GbbMonthlyResult::POOL_FUNDED_STATUSES)
-            ->where('gbb_gross_paise', '>', 0)
             ->exists()) {
             Log::warning('gbb.pool.premature_freeze_kept', $details + [
                 'reason' => 'results were already priced against this pool; re-freezing would change economics money moved on',
@@ -348,6 +422,20 @@ final class GrowthBoosterBonusService
 
             return false;
         }
+
+        // Snapshot what the hard delete is about to destroy — id, distributor,
+        // status, AGP and gross — so the deletion stays reconstructable from
+        // `audit_log` alone. A bare count is not.
+        $discarded = (clone $results)
+            ->get(['id', 'distributor_id', 'agp_earned', 'status', 'gbb_gross_paise'])
+            ->map(fn (GbbMonthlyResult $row): array => [
+                'id' => (int) $row->id,
+                'distributor_id' => (int) $row->distributor_id,
+                'agp_earned' => (int) $row->agp_earned,
+                'status' => $row->status,
+                'gbb_gross_paise' => (int) $row->gbb_gross_paise,
+            ])
+            ->all();
 
         $discardedResults = (clone $results)->delete();
 
@@ -361,13 +449,274 @@ final class GrowthBoosterBonusService
             'subject_id' => $existing->id,
             'details' => $details + [
                 'discarded_results' => $discardedResults,
-                'reason' => 'pool was frozen before the month ended and nothing was priced against it',
+                'discarded_rows' => $discarded,
+                'reason' => 'pool was frozen before the month ended and nothing it funded was credited',
             ],
         ]);
 
         $existing->delete();
 
         return true;
+    }
+
+    // ---------------------------------------------------------------- pass 2
+
+    /**
+     * Pass 2 — credit the frozen roster. Only rows still `pending` are paid, at
+     * the gross frozen on them; the pool, the denominator, the point value and
+     * every row's AGP are never touched again.
+     *
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, skipped_wallet_nonzero: int, wallet_blocked: int, qualified_after_freeze: int}
+     */
+    private function creditFromFrozenPool(Carbon $monthStart, Carbon $monthEnd, string $yearMonth, GbbMonthlyPool $pool): array
+    {
+        /** @var Collection<int, GbbMonthlyResult> $rows */
+        $rows = GbbMonthlyResult::where('year_month', $yearMonth)->get();
+
+        $agpMap = $this->buildAgpMap($monthStart, $monthEnd);
+        $earners = $this->rejectRankedLastMonth($this->agpEarners($agpMap), $monthStart);
+
+        $late = $this->lateEarners($earners, $yearMonth);
+
+        foreach ($late as $distributorId => $agp) {
+            $this->recordQualifiedAfterFreeze($distributorId, $yearMonth, $agp, $pool);
+        }
+
+        $this->recordRevivedExclusions($rows, $earners, $monthEnd, $yearMonth, $pool);
+
+        $credited = 0;
+
+        DB::transaction(function () use ($rows, $monthStart, $yearMonth, &$credited): void {
+            foreach ($rows as $row) {
+                if ($row->status !== GbbMonthlyResult::STATUS_PENDING) {
+                    continue;
+                }
+
+                $gross = (int) $row->gbb_gross_paise;
+                $repurchaseDeduction = 0;
+
+                if ($gross > 0) {
+                    $repurchaseDeduction = $this->wallet->creditWithRepurchaseDeduction(
+                        distributorId: (int) $row->distributor_id,
+                        grossPaise: $gross,
+                        bonusType: 'gbb_credit',
+                        referenceId: $row->id,
+                        referenceType: 'gbb_monthly_result',
+                        bonusMonth: $monthStart,
+                        memo: 'Growth Booster Bonus '.$yearMonth,
+                    )->repurchaseDeductionPaise;
+                }
+
+                $row->update([
+                    'status' => GbbMonthlyResult::STATUS_CREDITED,
+                    'credited_at' => now(),
+                    'repurchase_deduction_paise' => $repurchaseDeduction,
+                    'gbb_net_paise' => $gross - $repurchaseDeduction,
+                ]);
+
+                $credited++;
+            }
+        });
+
+        $walletBlockedCount = $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)->count();
+
+        // Reported straight off the frozen snapshot, never off the live
+        // recomputation — pool ÷ total_agp must always reconcile to the point
+        // value that was actually paid.
+        return [
+            'pool_paise' => (int) $pool->pool_paise,
+            'total_agp' => (int) $pool->total_agp,
+            'point_value_paise' => (int) $pool->point_value_paise,
+            'credited' => $credited,
+            'held' => $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_HELD)->count(),
+            'suspended' => $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED)->count(),
+            'skipped_no_agp' => $agpMap->filter(fn (int $agp): bool => $agp === 0)->count(),
+            'skipped_wallet_nonzero' => $walletBlockedCount,
+            'wallet_blocked' => $walletBlockedCount,
+            'qualified_after_freeze' => count($late),
+        ];
+    }
+
+    /**
+     * The month's eligible AGP earners that hold no roster row — their AGP
+     * landed after the freeze divided the pool.
+     *
+     * @param  Collection<int, int>  $earners  distributor id → live AGP
+     * @return array<int, int> distributor id → live AGP
+     */
+    private function lateEarners(Collection $earners, string $yearMonth): array
+    {
+        if ($earners->isEmpty()) {
+            return [];
+        }
+
+        $rosterIds = GbbMonthlyResult::query()
+            ->where('year_month', $yearMonth)
+            ->pluck('distributor_id')
+            ->map(fn ($id): int => (int) $id)
+            ->flip();
+
+        $late = [];
+
+        foreach ($earners as $distributorId => $agp) {
+            if (! $rosterIds->has((int) $distributorId)) {
+                $late[(int) $distributorId] = (int) $agp;
+            }
+        }
+
+        return $late;
+    }
+
+    /**
+     * Refusing a late earner permanently withholds a month's Growth Booster
+     * Bonus from someone who did earn AGP, and the month is never reopened.
+     * That decision gets a retention-guaranteed audit_log row a grievance
+     * officer can still query years later, not only a log line that rotates
+     * away (R-35) — the same reasoning as `fortune.enroll.matrix_full`.
+     */
+    private function recordQualifiedAfterFreeze(int $distributorId, string $yearMonth, int $agp, GbbMonthlyPool $pool): void
+    {
+        $details = [
+            'distributor_id' => $distributorId,
+            'year_month' => $yearMonth,
+            'agp' => $agp,
+            'frozen_total_agp' => (int) $pool->total_agp,
+            'frozen_point_value_paise' => (int) $pool->point_value_paise,
+            'refused_gross_paise' => (int) $pool->point_value_paise * $agp,
+            'reason' => 'earned AGP after the month\'s pool was frozen — refused, never paid from a divided pool',
+        ];
+
+        Log::warning('gbb.result.qualified_after_freeze', $details);
+
+        AuditLog::create([
+            'action' => 'gbb.result.qualified_after_freeze',
+            'subject_type' => 'distributor',
+            'subject_id' => $distributorId,
+            'details' => $details,
+        ]);
+    }
+
+    /**
+     * Roster members frozen into a pool-EXCLUDED status whose gates have since
+     * come good. Their AGP was never in the frozen denominator, so the month can
+     * still never pay them; pass 2 simply skips their row, and this records why
+     * — the same refusal the freeze-time guard in {@see writeRosterRow()}
+     * records, for the far more common case where the roster already exists.
+     *
+     * @param  Collection<int, GbbMonthlyResult>  $rows
+     * @param  Collection<int, int>  $earners  distributor id → live AGP
+     */
+    private function recordRevivedExclusions(
+        Collection $rows,
+        Collection $earners,
+        Carbon $monthEnd,
+        string $yearMonth,
+        GbbMonthlyPool $pool,
+    ): void {
+        /** @var Collection<int, GbbMonthlyResult> $excluded */
+        $excluded = $rows
+            ->filter(fn (GbbMonthlyResult $row): bool => in_array($row->status, GbbMonthlyResult::POOL_EXCLUDED_STATUSES, true))
+            ->filter(fn (GbbMonthlyResult $row): bool => $earners->has((int) $row->distributor_id));
+
+        if ($excluded->isEmpty()) {
+            return;
+        }
+
+        /** @var Collection<int, int> $candidates */
+        $candidates = $excluded->mapWithKeys(fn (GbbMonthlyResult $row): array => [
+            (int) $row->distributor_id => (int) $earners[(int) $row->distributor_id],
+        ]);
+
+        [$payable] = $this->partitionByRepurchase($candidates);
+
+        foreach ($this->walletBlockedIds($payable, $monthEnd) as $blockedId) {
+            $payable->forget($blockedId);
+        }
+
+        foreach ($excluded as $row) {
+            $distributorId = (int) $row->distributor_id;
+
+            if (! $payable->has($distributorId)) {
+                continue;
+            }
+
+            $this->recordExcludedFromFrozenDenominator(
+                $distributorId,
+                $yearMonth,
+                $row->status,
+                GbbMonthlyResult::STATUS_PENDING,
+                (int) $payable[$distributorId],
+                $pool,
+            );
+        }
+    }
+
+    /**
+     * The refusal permanently withholds this month's Growth Booster Bonus from a
+     * distributor who earned AGP, and the frozen denominator is never
+     * recomputed. It therefore gets a retention-guaranteed audit_log row a
+     * grievance officer can still query years later, not only a log line that
+     * rotates away (R-35).
+     */
+    private function recordExcludedFromFrozenDenominator(
+        int $distributorId,
+        string $yearMonth,
+        string $existingStatus,
+        string $attemptedStatus,
+        int $agp,
+        GbbMonthlyPool $pool,
+    ): void {
+        $details = [
+            'distributor_id' => $distributorId,
+            'year_month' => $yearMonth,
+            'existing_status' => $existingStatus,
+            'attempted_status' => $attemptedStatus,
+            'agp' => $agp,
+            'frozen_total_agp' => (int) $pool->total_agp,
+            'frozen_point_value_paise' => (int) $pool->point_value_paise,
+            'refused_gross_paise' => (int) $pool->point_value_paise * $agp,
+        ];
+
+        Log::warning('gbb.result.excluded_from_frozen_denominator', $details);
+
+        AuditLog::create([
+            'action' => 'gbb.result.excluded_from_frozen_denominator',
+            'subject_type' => 'distributor',
+            'subject_id' => $distributorId,
+            'details' => $details,
+        ]);
+    }
+
+    // ------------------------------------------------------------- population
+
+    /**
+     * The month's AGP earners after the prior-month rank gate — the population
+     * the freeze partitions, and the population a later run diffs against the
+     * roster to find late arrivals.
+     *
+     * @return Collection<int, int> distributor id → AGP
+     */
+    private function eligibleEarners(Carbon $monthStart, Carbon $monthEnd): Collection
+    {
+        return $this->rejectRankedLastMonth(
+            $this->agpEarners($this->buildAgpMap($monthStart, $monthEnd)),
+            $monthStart,
+        );
+    }
+
+    /**
+     * The entries of an AGP map that actually earned points. A distributor with
+     * cut-offs only in slabs that award no AGP is not a participant.
+     *
+     * @param  Collection<int, int>  $agpMap
+     * @return Collection<int, int>
+     */
+    private function agpEarners(Collection $agpMap): Collection
+    {
+        /** @var Collection<int, int> $earners */
+        $earners = $agpMap->filter(fn (int $agp): bool => $agp > 0);
+
+        return $earners;
     }
 
     /**

@@ -97,7 +97,7 @@ Points already earned stay theirs and can still be spent.
 
 | Command | What it does |
 |---|---|
-| `offers:monthly-run` | 1st of the month, 04:00 IST. Evaluates the previous month. `--month=YYYY-MM` to target a specific one. |
+| `offers:monthly-run` | 1st of the month, as the last step of `compensation:monthly-close` (which starts at 00:20 IST). Evaluates the previous month. `--month=YYYY-MM` to target a specific one. |
 
 It runs early and ahead of every bonus engine: it reads the previous month's BV
 and nothing else depends on it, so a distributor sees what they earned before

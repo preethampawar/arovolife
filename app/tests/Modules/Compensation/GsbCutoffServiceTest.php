@@ -386,6 +386,7 @@ it('retries after failure and credits exactly once', function () {
                     string $bonusType,
                     int $referenceId,
                     string $referenceType,
+                    Carbon $bonusMonth,
                     ?string $memo = null,
                 ): BonusCreditOutcome {
                     throw new RuntimeException('Payment gateway timeout');

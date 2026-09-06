@@ -10,7 +10,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income transfers to your registered bank account every Tuesday and monthly income in the monthly payout on the 1st — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of each bonus (max ₹10,000 per calendar month) moves to your repurchase wallet the moment the bonus is credited, to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
+        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income transfers to your registered bank account every Tuesday and monthly income in the monthly payout on the 8th — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of each bonus (max ₹10,000 per calendar month) moves to your repurchase wallet the moment the bonus is credited, to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
     </div>
     @enddeveloper
 

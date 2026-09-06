@@ -561,7 +561,7 @@ final class GsbCutoffService
 
         // Credit wallet inside a transaction — CF update is atomic with the wallet credit.
         try {
-            DB::transaction(function () use ($distributorId, $gross, $baseData, $existing, $cf, $computation): void {
+            DB::transaction(function () use ($distributorId, $date, $gross, $baseData, $existing, $cf, $computation): void {
                 // Move carry-forward update inside the transaction so it rolls back if credit fails.
                 $cf->update([
                     'power_side_bv_paise' => $computation->newPowerCf,
@@ -585,6 +585,7 @@ final class GsbCutoffService
                         bonusType: 'gsb_credit',
                         referenceId: $savedResult->id,
                         referenceType: 'gsb_cutoff_result',
+                        bonusMonth: $date->copy()->startOfMonth(),
                     )->repurchaseDeductionPaise;
                 }
 

@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * Frozen per-month economics of the Fortune Bonus pool (KP 2026-08-07).
@@ -31,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $guaranteed_total_paise
  * @property bool $is_shortfall
  * @property int|null $shortfall_per_head_paise
+ * @property Carbon|null $created_at
  */
 final class FortuneMonthlyPool extends Model
 {

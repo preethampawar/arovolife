@@ -104,7 +104,7 @@ final class AdminFeatureFlagController extends Controller
             'compensation.rank_bonus' => [
                 'class' => RankBonusFeature::class,
                 'label' => 'Rank Bonus (Phase 5)',
-                'description' => 'Enables the 21% rank bonus pool split across 9 ranks (Silver → Elite Diamond). Paid monthly on the 1st. Requires rank qualification engine and 1+2 rule tracking.',
+                'description' => 'Enables the 21% rank bonus pool split across 9 ranks (Silver → Elite Diamond). Paid monthly on the 8th. Requires rank qualification engine and 1+2 rule tracking.',
                 'owner' => 'developer',
             ],
             'compensation.lifetime_awards' => [
@@ -135,7 +135,7 @@ final class AdminFeatureFlagController extends Controller
             'compensation.arete_development_center_bonus' => [
                 'class' => AreteDevelopmentCenterBonusFeature::class,
                 'label' => 'Arete Development Center Bonus (Phase 7)',
-                'description' => 'Enables 3% BV-based bonus for official Arete Development Centers, capped at ₹1 lakh/month per center. Paid on the 1st. Requires center assignment and approved center records.',
+                'description' => 'Enables 3% BV-based bonus for official Arete Development Centers, capped at ₹1 lakh/month per center. Paid on the 8th. Requires center assignment and approved center records.',
                 'owner' => 'developer',
             ],
             'compensation.arete_center_applications' => [

@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\DTOs\BonusCreditOutcome;
+use App\Modules\Compensation\Services\DTOs\BonusReversalOutcome;
 use App\Modules\Compensation\Support\EngineRunContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -22,6 +23,14 @@ class WalletService
      * balance. Adding it here would leave the main wallet showing the gross.
      */
     public const REPURCHASE_TYPES = ['repurchase_deduction', 'repurchase_wallet_used'];
+
+    /**
+     * Suffix appended to the reversed row's reference_type by
+     * {@see reverseBonusCredit()} so the unwinding `repurchase_deduction` entry
+     * does not collide with the original credit's row on
+     * `uniq_wallet_ledger_source (type, reference_type, reference_id)`.
+     */
+    public const REVERSAL_REFERENCE_SUFFIX = '_reversal';
 
     public function __construct(
         private readonly CompensationPlanSettingsService $planSettings,
@@ -105,6 +114,13 @@ class WalletService
      * no result row by definition, and its control is the audit log rather than
      * this guard.
      *
+     * `$bonusMonth` is the first day of the IST month the income was EARNED for,
+     * and every credit of a {@see CompensationPlanSettingsService::MONTHLY_CAP_TYPES}
+     * type must carry it: the monthly ceilings are windowed on it rather than on
+     * created_at, because the monthly engines run on the 1st for the month that
+     * just closed. Null for entries with no earned month (order-time repurchase
+     * restorations, admin corrections).
+     *
      * @throws InvalidArgumentException when a sale-derived credit has no reference
      */
     public function credit(
@@ -114,6 +130,7 @@ class WalletService
         ?int $referenceId = null,
         ?string $referenceType = null,
         ?string $memo = null,
+        ?Carbon $bonusMonth = null,
     ): WalletLedgerEntry {
         $saleDerived = array_merge(
             CompensationPlanSettingsService::GROUP_A_TYPES,
@@ -136,11 +153,13 @@ class WalletService
             'amount_paise' => abs($amountPaise),  // always positive for credits
             'reference_id' => $referenceId,
             'reference_type' => $referenceType,
+            'bonus_month' => $bonusMonth?->copy()->startOfMonth()->toDateString(),
             'memo' => $memo,
             'engine_run_id' => $this->activeEngineRunId(),
         ]);
     }
 
+    /** @see credit() for what `$bonusMonth` means. */
     public function debit(
         int $distributorId,
         int $amountPaise,
@@ -148,6 +167,7 @@ class WalletService
         ?int $referenceId = null,
         ?string $referenceType = null,
         ?string $memo = null,
+        ?Carbon $bonusMonth = null,
     ): WalletLedgerEntry {
         return WalletLedgerEntry::create([
             'distributor_id' => $distributorId,
@@ -155,6 +175,7 @@ class WalletService
             'amount_paise' => -abs($amountPaise),  // always negative for debits
             'reference_id' => $referenceId,
             'reference_type' => $referenceType,
+            'bonus_month' => $bonusMonth?->copy()->startOfMonth()->toDateString(),
             'memo' => $memo,
             'engine_run_id' => $this->activeEngineRunId(),
         ]);
@@ -169,9 +190,13 @@ class WalletService
      * where it went, rather than a single netted figure nobody can reconcile.
      *
      * The deduction is `comp.repurchase.rate_bp` of the gross, floored, and is
-     * capped at whatever is left of `comp.repurchase.cap_paise` for the current
-     * IST calendar month — a distributor who has already hit the monthly ceiling
-     * is credited gross with no deduction at all.
+     * capped at whatever is left of `comp.repurchase.cap_paise` for the month
+     * the income was EARNED for — `$bonusMonth`, not the month the credit is
+     * written in. The monthly engines all run in the small hours of the 1st for
+     * the month that just closed, so windowing on the write date made August's
+     * Rank, Growth Booster, Fortune and ADC credits compete for September's
+     * ceiling in cron order. A distributor who has already hit the ceiling for
+     * that earned month is credited gross with no deduction at all.
      *
      * Returns the outcome (gross, deduction, the gross credit entry) so the
      * calling engine can freeze the deduction onto its result row — the pages
@@ -184,14 +209,17 @@ class WalletService
         string $bonusType,
         int $referenceId,
         string $referenceType,
+        Carbon $bonusMonth,
         ?string $memo = null,
     ): BonusCreditOutcome {
+        $bonusMonth = $bonusMonth->copy()->startOfMonth();
+
         return DB::transaction(function () use (
-            $distributorId, $grossPaise, $bonusType, $referenceId, $referenceType, $memo,
+            $distributorId, $grossPaise, $bonusType, $referenceId, $referenceType, $bonusMonth, $memo,
         ): BonusCreditOutcome {
             $deductionPaise = (int) floor(abs($grossPaise) * $this->planSettings->repurchaseRateBp() / 10_000);
 
-            $alreadyDeducted = $this->repurchaseDeductionThisMonthPaise($distributorId);
+            $alreadyDeducted = $this->repurchaseDeductionForMonthPaise($distributorId, $bonusMonth);
 
             $deductionPaise = min(
                 $deductionPaise,
@@ -205,6 +233,7 @@ class WalletService
                 referenceId: $referenceId,
                 referenceType: $referenceType,
                 memo: $memo,
+                bonusMonth: $bonusMonth,
             );
 
             if ($deductionPaise > 0) {
@@ -217,6 +246,7 @@ class WalletService
                     referenceId: $referenceId,
                     referenceType: $referenceType,
                     memo: $deductionMemo,
+                    bonusMonth: $bonusMonth,
                 );
 
                 $this->credit(
@@ -226,6 +256,7 @@ class WalletService
                     referenceId: $referenceId,
                     referenceType: $referenceType,
                     memo: $deductionMemo,
+                    bonusMonth: $bonusMonth,
                 );
             }
 
@@ -234,32 +265,140 @@ class WalletService
     }
 
     /**
-     * Repurchase deduction already taken from this distributor's bonuses in the
-     * current IST calendar month — what the monthly cap has to be measured
-     * against.
+     * Unwind a bonus credit: the exact mirror of creditWithRepurchaseDeduction().
+     *
+     * A reversal that only debits the net from the main wallet leaves the
+     * repurchase wallet holding its share of a bonus that no longer exists. That
+     * phantom balance is not cosmetic — Fortune, Growth Booster and the Rank
+     * requalification all gate on the repurchase wallet being zero, so a bonus
+     * an admin reversed goes on excluding the distributor from later income.
+     * Both sides therefore have to come back in one transaction.
+     *
+     * The repurchase side is written as a NEGATIVE `repurchase_deduction` entry
+     * rather than a generic `reversal` row, because both the wallet balance and
+     * the monthly deduction ceiling are sums over that one type: a `reversal`
+     * row would be invisible to them. It carries the SAME `$bonusMonth` as the
+     * original credit so the ceiling gives the room back to the month the income
+     * was earned for, not the month the reversal was keyed in.
+     *
+     * `uniq_wallet_ledger_source` covers (type, reference_type, reference_id),
+     * so the unwind cannot reuse the credit's own reference tuple. It hangs off
+     * `<referenceType>_reversal` instead — distinct per bonus table and per row,
+     * and deliberately not `order`, which repurchaseDeductionForMonthPaise()
+     * excludes as a refund restoration.
+     *
+     * **Clamping.** The distributor may already have spent the repurchase credit
+     * at checkout. Only what is actually in the repurchase wallet is taken back
+     * — the balance can never be driven negative — and the remainder is returned
+     * as `repurchaseShortfallPaise` for the caller to record. Same shape as
+     * {@see restoreRepurchaseCreditForOrder()}, which caps its restore at what
+     * was actually spent.
+     *
+     * **The original credit stays.** Both wallets net to where they were, but
+     * the `+gross` credit and its `repurchase_transfer` debit are deliberately
+     * left in the ledger so the statement still shows what was earned and what
+     * was withheld before the reversal. They must never be paid: the `reversal`
+     * row this writes is what {@see WalletLedgerEntry::scopeNotReversed()} keys
+     * off to keep a payout batch from sweeping them to the bank and to keep them
+     * out of the month's income ceiling.
+     *
+     * Idempotent: a row that already carries a `reversal` entry returns null and
+     * writes nothing, so a double-submitted admin form cannot debit twice.
+     *
+     * Bonus-type agnostic on purpose — Rank, Growth Booster, Fortune and ADC
+     * reversals get the same behaviour by passing their own result row.
+     */
+    public function reverseBonusCredit(
+        int $distributorId,
+        int $netPaise,
+        int $repurchaseDeductionPaise,
+        int $referenceId,
+        string $referenceType,
+        Carbon $bonusMonth,
+        ?string $memo = null,
+    ): ?BonusReversalOutcome {
+        $bonusMonth = $bonusMonth->copy()->startOfMonth();
+
+        return DB::transaction(function () use (
+            $distributorId, $netPaise, $repurchaseDeductionPaise, $referenceId, $referenceType, $bonusMonth, $memo,
+        ): ?BonusReversalOutcome {
+            $alreadyReversed = WalletLedgerEntry::where('type', 'reversal')
+                ->where('reference_type', $referenceType)
+                ->where('reference_id', $referenceId)
+                ->exists();
+
+            if ($alreadyReversed) {
+                return null;
+            }
+
+            $entry = $this->debit(
+                distributorId: $distributorId,
+                amountPaise: $netPaise,
+                type: 'reversal',
+                referenceId: $referenceId,
+                referenceType: $referenceType,
+                memo: $memo,
+                bonusMonth: $bonusMonth,
+            );
+
+            // Locked: the figure is spent against, exactly as a checkout would.
+            $available = $this->repurchaseWalletBalancePaise($distributorId, lockForUpdate: true);
+            $reversedPaise = max(0, min(abs($repurchaseDeductionPaise), $available));
+            $shortfallPaise = max(0, abs($repurchaseDeductionPaise) - $reversedPaise);
+
+            if ($reversedPaise > 0) {
+                $this->debit(
+                    distributorId: $distributorId,
+                    amountPaise: $reversedPaise,
+                    type: 'repurchase_deduction',
+                    referenceId: $referenceId,
+                    referenceType: $referenceType.self::REVERSAL_REFERENCE_SUFFIX,
+                    memo: $memo,
+                    bonusMonth: $bonusMonth,
+                );
+            }
+
+            return new BonusReversalOutcome($netPaise, $reversedPaise, $shortfallPaise, $entry);
+        });
+    }
+
+    /**
+     * Repurchase deduction already taken from this distributor's bonuses for a
+     * given EARNED month — what the monthly cap has to be measured against.
      *
      * `reference_type = 'order'` rows are excluded: those are refund
      * restorations put back by {@see restoreRepurchaseCreditForOrder()}, not
      * money withheld from a bonus, and counting them would let a refund eat
      * into the month's deduction ceiling.
      *
-     * The window is the IST month expressed in UTC, because created_at is
-     * stored in UTC — whereMonth() would cut the month at the wrong instant and
-     * mis-bill 5½ hours at each boundary.
+     * Rows written before `bonus_month` existed have nothing to window on, so
+     * they fall back to the month they were created in — the answer they have
+     * always given. The fallback window is the IST month expressed in UTC,
+     * because created_at is stored in UTC; whereMonth() would cut the month at
+     * the wrong instant and mis-bill 5½ hours at each boundary.
      */
-    public function repurchaseDeductionThisMonthPaise(int $distributorId): int
+    public function repurchaseDeductionForMonthPaise(int $distributorId, Carbon $bonusMonth): int
     {
-        $nowIst = Carbon::now('Asia/Kolkata');
+        // The month is an IST calendar month by definition; anchor it in IST
+        // rather than converting the caller's instant, so a value that arrives
+        // as a bare date can never slide into the neighbouring month.
+        $monthIst = Carbon::createFromFormat('Y-m-d H:i:s', $bonusMonth->format('Y-m-01').' 00:00:00', 'Asia/Kolkata');
 
         return (int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->where('type', 'repurchase_deduction')
             ->where(function ($q): void {
                 $q->whereNull('reference_type')->orWhere('reference_type', '!=', 'order');
             })
-            ->whereBetween('created_at', [
-                $nowIst->copy()->startOfMonth()->setTimezone('UTC'),
-                $nowIst->copy()->endOfMonth()->setTimezone('UTC'),
-            ])
+            ->where(function ($q) use ($monthIst): void {
+                $q->whereDate('bonus_month', $monthIst->toDateString())
+                    ->orWhere(function ($legacy) use ($monthIst): void {
+                        $legacy->whereNull('bonus_month')
+                            ->whereBetween('created_at', [
+                                $monthIst->copy()->startOfMonth()->setTimezone('UTC'),
+                                $monthIst->copy()->endOfMonth()->setTimezone('UTC'),
+                            ]);
+                    });
+            })
             ->sum('amount_paise');
     }
 
@@ -377,7 +516,8 @@ class WalletService
      * Only the two repurchase entry types are counted: a repurchase deduction
      * must be undone by a negative `repurchase_deduction` entry, never by a
      * generic `reversal` row, or the balance here overstates and the gate
-     * excludes wrongly.
+     * excludes wrongly. {@see reverseBonusCredit()} is the only writer of that
+     * negative entry.
      *
      * @param  list<int>  $distributorIds
      * @return array<int, int> distributor_id → balance in paise, floored at 0
@@ -421,6 +561,9 @@ class WalletService
      * Sum of positive unswept credits for a distributor filtered to specific entry types.
      * Used by PayoutService to compute per-stream gross before sweeping.
      *
+     * Reversed bonuses are excluded — a held line item must not report income
+     * an admin has already unwound. {@see WalletLedgerEntry::scopeNotReversed()}
+     *
      * @param  string[]  $types
      */
     public function sumUnsweptByTypes(int $distributorId, array $types): int
@@ -429,6 +572,7 @@ class WalletService
             ->whereIn('type', $types)
             ->whereNull('swept_by_payout_batch_id')
             ->where('amount_paise', '>', 0)
+            ->notReversed()
             ->sum('amount_paise');
     }
 

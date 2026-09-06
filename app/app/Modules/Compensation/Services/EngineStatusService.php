@@ -15,6 +15,7 @@ use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Support\EngineRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Answers "has this engine already run for this period?".
@@ -62,6 +63,35 @@ final class EngineStatusService
             ->where('status', EngineRun::STATUS_RUNNING)
             ->where('started_at', '>=', Carbon::now()->subMinutes(EngineRun::STALE_AFTER_MINUTES))
             ->exists();
+    }
+
+    /**
+     * Failed runs whose period has not since been rebuilt — a failed run with no
+     * succeeded run for the same engine and period after it.
+     *
+     * Until this existed nothing in the platform read STATUS_FAILED at all: a
+     * month in which an engine crashed looked exactly like a month in which one
+     * did not, until somebody happened to open the Engine Runs page. It feeds
+     * the admin sidebar badge, and it clears itself the moment the engine is
+     * re-run successfully.
+     */
+    public function unresolvedFailureCount(int $withinDays = 30): int
+    {
+        $since = Carbon::now()->subDays($withinDays);
+
+        return EngineRun::query()
+            ->where('status', EngineRun::STATUS_FAILED)
+            ->where('started_at', '>=', $since)
+            ->whereNotExists(function ($query) use ($since): void {
+                $query->select(DB::raw(1))
+                    ->from('engine_runs as later')
+                    ->whereColumn('later.engine_key', 'engine_runs.engine_key')
+                    ->whereColumn('later.period_start', 'engine_runs.period_start')
+                    ->whereColumn('later.started_at', '>=', 'engine_runs.started_at')
+                    ->where('later.status', EngineRun::STATUS_SUCCEEDED)
+                    ->where('later.started_at', '>=', $since);
+            })
+            ->count();
     }
 
     public function lastRun(string $key): ?EngineRun

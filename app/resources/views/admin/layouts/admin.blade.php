@@ -157,6 +157,27 @@
                     )
                     : 0;
 
+                // Compensation engines whose last outcome for a period is a
+                // FAILURE. Nothing else in the platform reads a failed run, so
+                // a month that stopped part-way was invisible until somebody
+                // opened the Engine Runs page — and the monthly payout on the
+                // 8th refuses over exactly these. Same 60s cache as the other
+                // queues; the entry disappears once the engine is re-run.
+                // `finance.record` as well as `audit.read`: admin-finance owns
+                // the payouts the 8th-of-month batch refuses over, so it must
+                // see the badge whether or not it also holds the audit-log
+                // permission.
+                $canSeeEngineFailures = (auth()->user()?->can('audit.read') ?? false)
+                    || (auth()->user()?->can('finance.record') ?? false);
+
+                $failedEngineRunCount = $canSeeEngineFailures
+                    ? \Illuminate\Support\Facades\Cache::remember(
+                        'admin.engine_runs.unresolved_failure_count',
+                        60,
+                        fn () => app(\App\Modules\Compensation\Services\EngineStatusService::class)->unresolvedFailureCount(),
+                    )
+                    : 0;
+
                 $navItems = [
                     ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => 'layout-dashboard'],
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => 'users'],
@@ -201,6 +222,11 @@
                         ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => 'chart-line', 'prefix' => 'admin.analytics']]
                         : []),
                     ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => 'banknote', 'prefix' => 'admin.compensation'],
+                    // Only rendered while something is actually broken, so a
+                    // healthy console carries no extra item.
+                    ...($failedEngineRunCount > 0
+                        ? [['route' => 'admin.compensation.engine-runs.events', 'params' => ['status' => 'failed'], 'label' => 'Engine failures', 'icon' => 'triangle-alert', 'badge' => $failedEngineRunCount]]
+                        : []),
                     // Arete Development Centres are entities in their own right
                     // (Step 11, profile, member directory); the ADC bonus is a
                     // layer on top and lives under Compensation.
@@ -227,7 +253,7 @@
                     $active = request()->routeIs($item['route'])
                         || (isset($item['prefix']) && request()->routeIs($item['prefix'].'*'));
                 @endphp
-                <a href="{{ route($item['route']) }}" title="{{ $item['label'] }}"
+                <a href="{{ route($item['route'], $item['params'] ?? []) }}" title="{{ $item['label'] }}"
                    class="admin-nav-item relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-colors
                           {{ $active
                              ? 'bg-slate-800 text-white font-semibold'

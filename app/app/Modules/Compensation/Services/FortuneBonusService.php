@@ -104,7 +104,15 @@ final class FortuneBonusService
         $monthStart = $month->copy()->startOfMonth()->toDateString();
         $monthEnd = $month->copy()->endOfMonth()->toDateString();
 
-        if (FortuneMonthlyPool::where('month_start', $monthStart)->exists()) {
+        // A pool frozen before the month closed and funding nothing is a stray
+        // manual run, not a final freeze — clear it so the month reopens to the
+        // qualifiers it locked out. See replacePrematureFreeze().
+        $frozenPool = FortuneMonthlyPool::where('month_start', $monthStart)->first();
+        if ($frozenPool !== null && $this->replacePrematureFreeze($frozenPool, $month->copy()->endOfMonth())) {
+            $frozenPool = null;
+        }
+
+        if ($frozenPool !== null) {
             Log::warning('fortune.enroll.refused_pool_frozen', [
                 'month_start' => $monthStart,
                 'reason' => 'The month\'s pool economics are already frozen; enrolling now would credit points outside the frozen denominator and overspend the pool.',
@@ -340,7 +348,7 @@ final class FortuneBonusService
         $totalNet = 0;
 
         DB::transaction(function () use (
-            $participants, $monthStart, $pointsByDistributor, $pool, $frozenLevels,
+            $participants, $monthStart, $monthStartDate, $pointsByDistributor, $pool, $frozenLevels,
             &$credited, &$skippedZeroIncome, &$totalNet,
         ): void {
             foreach ($participants as $participant) {
@@ -394,6 +402,7 @@ final class FortuneBonusService
                     bonusType: 'fortune_credit',
                     referenceId: $result->id,
                     referenceType: 'fortune_bonus_result',
+                    bonusMonth: $monthStartDate,
                     memo: $memo,
                 );
 
@@ -541,14 +550,15 @@ final class FortuneBonusService
      * fortune_monthly_pool_levels row per occupied matrix level. Idempotent:
      * an existing row is returned unchanged — the month's economics never
      * move once written, no matter how much BV or how many enrolments land
-     * afterwards.
+     * afterwards. The one exception is a row that was frozen before the month
+     * closed and funded nothing — see {@see replacePrematureFreeze()}.
      *
      * @param  array<int, array{position: int, matrix_level: int, points: int}>  $participantRows
      */
     private function freezePoolForMonth(Carbon $monthStart, Carbon $monthEnd, array $participantRows): FortuneMonthlyPool
     {
         $existing = FortuneMonthlyPool::where('month_start', $monthStart->toDateString())->first();
-        if ($existing !== null) {
+        if ($existing !== null && ! $this->replacePrematureFreeze($existing, $monthEnd)) {
             return $existing;
         }
 
@@ -630,6 +640,108 @@ final class FortuneBonusService
         ]);
 
         return $pool;
+    }
+
+    /**
+     * Delete a pool row that was frozen before its month had closed, so the
+     * caller can freeze the month afresh. Returns true when the row was
+     * removed. The Fortune twin of
+     * {@see GrowthBoosterBonusService::replacePrematureFreeze()} and
+     * {@see GsbDailyPoolService::replacePrematureFreeze()}.
+     *
+     * "Frozen economics" assumes the freeze happened once the month's BV and
+     * its enrolled matrix were final — the scheduler guarantees that by
+     * running on the 1st. A freeze whose created_at falls BEFORE the month
+     * ended broke that assumption (a mid-month manual run from the Engine Runs
+     * page, or the recompute tool catching up the period in flight): it priced
+     * the month off partial company BV over a partial matrix, and every later
+     * run for the month would silently pay against it.
+     *
+     * Fortune's premature freeze is worse than GSB's or GBB's, because the
+     * pool row also permanently CLOSES enrolment for the month
+     * ({@see enrollEligible()} refuses the moment a pool exists). A stray
+     * mid-month run therefore locked every later qualifier out of the month
+     * for good; deleting the row reopens enrolment, because that guard tests
+     * only for the row's existence.
+     *
+     * Replacement is only safe while NOTHING was credited against the row: once
+     * any result for the month is `credited`, re-freezing would change
+     * economics a distributor has already been told about, so the row is kept
+     * and the inconsistency surfaced loudly instead. The guard deliberately
+     * does NOT also require gross > 0: `/p/compensation` §7.5 publishes that a
+     * matrix level's value may be ₹0, so a credited zero-gross row is the
+     * record of a participation the plan itself contemplates, and deleting it
+     * would erase a distributor's place in a month they were in. Only
+     * un-credited rows are cleared — they moved no money, but they DO block the
+     * re-run (a credited/skipped row is the idempotency guard in
+     * {@see runForMonth()}), so they go along with the pool and are recomputed
+     * from the fresh snapshot. The per-level rows go with the pool on the FK
+     * cascade.
+     *
+     * The discarded rows are snapshotted into the audit row — id, distributor,
+     * status and gross — so a hard delete of a month's results stays
+     * reconstructable from `audit_log` alone; a bare count is not.
+     */
+    private function replacePrematureFreeze(FortuneMonthlyPool $existing, Carbon $monthEnd): bool
+    {
+        $monthClosedAt = $monthEnd->copy()->addDay()->startOfDay();
+        if ($existing->created_at === null || $existing->created_at->gte($monthClosedAt)) {
+            return false; // Frozen after the month closed — the normal, final row.
+        }
+
+        $details = [
+            'month_start' => $existing->month_start,
+            'frozen_at' => $existing->created_at->toDateTimeString(),
+            'company_bv_paise' => $existing->company_bv_paise,
+            'pool_paise' => $existing->pool_paise,
+            'total_points' => $existing->total_points,
+            'payout_paise' => $existing->payout_paise,
+            'leftover_paise' => $existing->leftover_paise,
+        ];
+
+        $results = FortuneBonusResult::where('month_start', $existing->month_start);
+
+        if ((clone $results)
+            ->where('status', FortuneBonusResult::STATUS_CREDITED)
+            ->exists()) {
+            Log::warning('fortune.pool.premature_freeze_kept', $details + [
+                'reason' => 'results were already credited against this pool; re-freezing would change economics a distributor has been told about',
+            ]);
+
+            return false;
+        }
+
+        $discarded = (clone $results)
+            ->get(['id', 'distributor_id', 'matrix_level', 'status', 'gross_paise'])
+            ->map(fn (FortuneBonusResult $row): array => [
+                'id' => (int) $row->id,
+                'distributor_id' => (int) $row->distributor_id,
+                'matrix_level' => (int) $row->matrix_level,
+                'status' => $row->status,
+                'gross_paise' => (int) $row->gross_paise,
+            ])
+            ->all();
+
+        $discardedResults = (clone $results)->delete();
+
+        Log::warning('fortune.pool.premature_freeze_replaced', $details + [
+            'discarded_results' => $discardedResults,
+        ]);
+
+        AuditLog::create([
+            'action' => 'fortune.pool.refrozen',
+            'subject_type' => 'fortune_monthly_pool',
+            'subject_id' => $existing->id,
+            'details' => $details + [
+                'discarded_results' => $discardedResults,
+                'discarded_rows' => $discarded,
+                'reason' => 'pool was frozen before the month ended and nothing it funded was credited',
+            ],
+        ]);
+
+        $existing->delete();
+
+        return true;
     }
 
     /**
