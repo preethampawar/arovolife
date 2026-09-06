@@ -2113,12 +2113,6 @@ parameters:
 			path: tests/Modules/Admin/DeveloperRoleTest.php
 
 		-
-			message: '#^Unable to resolve the template type TComponent in call to method Livewire\\LivewireManager\:\:test\(\)$#'
-			identifier: argument.templateType
-			count: 2
-			path: tests/Modules/Admin/DeveloperRoleTest.php
-
-		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$docsRoot\.$#'
 			identifier: property.notFound
 			count: 5
