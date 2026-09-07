@@ -48,8 +48,8 @@ it('LOG-2-01: a corrupt ciphertext holds that distributor and logs critical, wee
     $healthy = pbdDistributor(PiiCrypter::encryptString('123456789012'));
 
     $wallet = app(WalletService::class);
-    $wallet->credit($broken->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
-    $wallet->credit($healthy->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+    $wallet->credit($broken->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: Carbon::today()->subWeek());
+    $wallet->credit($healthy->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: Carbon::today()->subWeek());
 
     Log::spy();
 

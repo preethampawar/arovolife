@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Payouts run automatically every Tuesday covering all wallets with a balance of ₹{{ $minPayout }} or more. Each batch shows total gross, deductions (repurchase + admin charge + TDS), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over to the next week. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls → Force Payout</a> only if the automated batch failed for a specific distributor.
+    The earning week runs Wednesday to Tuesday and is paid the Tuesday one week after it closes: the batch dated Tuesday 18 August pays income earned from Wednesday 5 August to Tuesday 11 August. "Earnings through" is the last day each batch pays for; anything earned after it waits for the next Tuesday. The week is keyed on the day the income was earned — the GSB cut-off date, the mentorship cut-off day — not on when the credit reached the wallet. Each batch shows total gross, deductions (repurchase + admin charge + TDS), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum balances roll over to the next week. Use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Manual Controls → Force Payout</a> only if the automated batch failed for a specific distributor.
 </div>
 @enddeveloper
 
@@ -20,6 +20,9 @@
                 <tr>
                     <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Batch date</th>
+                    <th class="px-4 py-2 text-left text-gray-600">
+                        Earnings through <x-help-tip text="The last day of the Wednesday-to-Tuesday earning week this batch pays — the Tuesday one week before the batch date. Income earned after it is paid by the next Tuesday's batch." />
+                    </th>
                     <th class="px-4 py-2 text-right text-gray-600">
                         Distributors <x-help-tip text="Distributors being paid in this batch (net ≥ ₹{{ $minPayout }}). 'Held' counts those whose income stays in the wallet — KYC pending, no bank account, web-only or bank details unreadable." />
                     </th>
@@ -48,6 +51,7 @@
                 <tr>
                     <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $batches->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 font-medium">{{ $b->batch_date->format('d M Y') }} ({{ $b->batch_date->format('D') }})</td>
+                    <td class="px-4 py-2 text-gray-600">{{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($b->batch_date)['end']->format('d M Y') }}</td>
                     <td class="px-4 py-2 text-right">
                         {{ \App\Modules\Shared\Support\IndianNumber::format($b->distributor_count) }}
                         @if($b->held_count > 0)

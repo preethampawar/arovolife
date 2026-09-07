@@ -65,15 +65,15 @@ it('recovers the earned month from every referenced result row and leaves the re
 
     // Plain credit()/debit() with no bonus_month — exactly how every row was
     // written before the column existed.
-    $gross = $wallet->credit($dist->id, 200_000, 'gsb_credit', $gsbId, 'gsb_cutoff_result');
+    $gross = $wallet->credit($dist->id, 200_000, 'gsb_credit', $gsbId, 'gsb_cutoff_result', earnedOn: Carbon::create(2026, 8, 20));
     $transfer = $wallet->debit($dist->id, 20_000, 'repurchase_transfer', $gsbId, 'gsb_cutoff_result');
     $held = $wallet->credit($dist->id, 20_000, 'repurchase_deduction', $gsbId, 'gsb_cutoff_result');
     $rank = $wallet->credit($dist->id, 100_000, 'rank_credit', $rankId, 'rank_bonus_result');
 
     // Unresolvable: the reference points at no result row at all, and a
     // reference type the map deliberately does not cover.
-    $orphan = $wallet->credit($dist->id, 50_000, 'gsb_credit', 999_999, 'gsb_cutoff_result');
-    $mentorship = $wallet->credit($dist->id, 50_000, 'mb_credit', walletRef(), 'mentorship_bonus_result');
+    $orphan = $wallet->credit($dist->id, 50_000, 'gsb_credit', 999_999, 'gsb_cutoff_result', earnedOn: Carbon::create(2026, 8, 20));
+    $mentorship = $wallet->credit($dist->id, 50_000, 'mb_credit', walletRef(), 'mentorship_bonus_result', earnedOn: Carbon::create(2026, 8, 20));
 
     expect(WalletLedgerEntry::whereNull('bonus_month')->count())->toBe(6);
 
@@ -107,7 +107,7 @@ it('is idempotent and never overwrites a month already stamped', function (): vo
     // A row written under the current engines already carries its earned month,
     // and a July cut-off row reconciled onto an August result must not be
     // silently re-dated by a re-run.
-    $stamped = $wallet->credit($dist->id, 200_000, 'gsb_credit', $gsbId, 'gsb_cutoff_result', null, Carbon::create(2026, 7, 1));
+    $stamped = $wallet->credit($dist->id, 200_000, 'gsb_credit', $gsbId, 'gsb_cutoff_result', null, Carbon::create(2026, 7, 1), Carbon::create(2026, 7, 20));
 
     runBackfillBonusMonthMigration();
     runBackfillBonusMonthMigration();

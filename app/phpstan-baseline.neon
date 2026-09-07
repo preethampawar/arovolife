@@ -1521,7 +1521,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 4
 			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
 
 		-

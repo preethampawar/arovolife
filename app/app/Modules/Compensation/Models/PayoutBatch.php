@@ -61,7 +61,7 @@ final class PayoutBatch extends Model
 
     public const TYPE_MANUAL = 'manual';
 
-    /** Per-stream weekly batch: GSB + Mentorship Bonus (Wed→Tue, paid next Tuesday). */
+    /** Per-stream weekly batch: GSB + Mentorship Bonus. {@see weeklyEarningWindow()}. */
     public const TYPE_WEEKLY = 'weekly';
 
     /** Per-stream monthly batch: GBB + Rank + Fortune + Awards + ADC (paid on the 8th). */
@@ -85,6 +85,37 @@ final class PayoutBatch extends Model
             'total_deductions_paise' => 'integer',
             'total_net_paise' => 'integer',
             'distributor_count' => 'integer',
+        ];
+    }
+
+    /**
+     * The Wednesday→Tuesday earning week that the weekly batch dated
+     * `$batchDate` pays — the ONE place the week rule lives.
+     *
+     * The client's rule (2026-09-07): "the daily closing weekly payout cycle
+     * starts every Wednesday and closes on Tuesday … eligible earnings accrued
+     * between Wednesday, August 5, and Tuesday, August 11" are deposited "on
+     * Tuesday, August 18". So a batch dated Tuesday `T` pays the week that
+     * closed the PREVIOUS Tuesday: `[T − 13, T − 7]`, both inclusive.
+     *
+     * Keyed on the day the income was EARNED — the GSB cut-off date, the
+     * mentorship cut-off day — never on the wallet credit timestamp: Tuesday's
+     * cut-off is credited at 00:10 on Wednesday, so a window read off the write
+     * time would push every Tuesday's income a week late for ever.
+     *
+     * The gap is a processing week, NOT a cooling-off period: cooling-off is the
+     * statutory 30-day cancellation window (hard rule 5) and the phrase must
+     * never be reused for this in distributor-facing copy.
+     *
+     * @return array{start: Carbon, end: Carbon}
+     */
+    public static function weeklyEarningWindow(Carbon $batchDate): array
+    {
+        $end = $batchDate->copy()->startOfDay()->subDays(7);
+
+        return [
+            'start' => $end->copy()->subDays(6),
+            'end' => $end,
         ];
     }
 

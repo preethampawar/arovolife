@@ -82,6 +82,7 @@ function creditedGsbRow(): array
         referenceId: $result->id,
         referenceType: 'gsb_cutoff_result',
         bonusMonth: Carbon::create(2026, 8, 1),
+        earnedOn: Carbon::create(2026, 8, 20),
     );
 
     return [$distributor, $result];

@@ -7,6 +7,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
@@ -42,7 +43,7 @@ it('copies the ledger deduction onto credited rows, zeroes admin/TDS, and leaves
         'created_at' => now(),
         'updated_at' => now(),
     ]);
-    $wallet->credit($dist->id, 200_000, 'gsb_credit', $creditedId, 'gsb_cutoff_result');
+    $wallet->credit($dist->id, 200_000, 'gsb_credit', $creditedId, 'gsb_cutoff_result', earnedOn: Carbon::parse('2026-08-20'));
     $wallet->credit($dist->id, 20_000, 'repurchase_deduction', $creditedId, 'gsb_cutoff_result');
 
     // A frozen GSB row: never credited, no ledger entries.

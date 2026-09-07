@@ -61,14 +61,27 @@ final class PayoutService
     /**
      * Weekly payout batch (Group A: GSB + Mentorship).
      *
-     * Sweeps all unswept gsb_credit, mb_credit, and associated repurchase_transfer
-     * entries. Deductions, in order: repurchase (already deducted at credit time
-     * and held in the repurchase wallet), Group-A admin charge (3%, capped at ₹25k),
+     * Pays ONE Wednesday→Tuesday earning week, the one that closed the previous
+     * Tuesday: the batch dated `$cycleEnd` sweeps unswept `gsb_credit`,
+     * `mb_credit` and their `repurchase_transfer` debits earned on or before
+     * `$cycleEnd − 7` and leaves the rest for the following Tuesday
+     * ({@see PayoutBatch::weeklyEarningWindow()}, the only place that rule
+     * lives). Income earned 5–11 Aug is paid on 18 Aug; income earned 12 Aug on
+     * 25 Aug (client 2026-09-07).
+     *
+     * The window is keyed on the day the income was EARNED, never on the credit
+     * timestamp — Tuesday's cut-off is credited at 00:10 on Wednesday. Rows with
+     * no `earned_on` (pre-column history; a credit written outside the engines)
+     * still pass, so nothing is stranded unpaid.
+     *
+     * Deductions, in order: repurchase (already deducted at credit time and held
+     * in the repurchase wallet), Group-A admin charge (3%, capped at ₹25k),
      * TDS (5% of payable).
      */
     public function runWeeklyBatch(Carbon $cycleEnd): PayoutBatch
     {
         $dateStr = $cycleEnd->toDateString();
+        $earnedThrough = PayoutBatch::weeklyEarningWindow($cycleEnd)['end'];
         $minPayoutPaise = $this->plan->minPayoutPaise();
         $adminCapPaise = $this->plan->adminChargeWeeklyCapPaise();
         $adminRateBp = $this->plan->adminChargeRateBp();
@@ -102,6 +115,7 @@ final class PayoutService
             ->whereNull('swept_by_payout_batch_id')
             ->where('amount_paise', '>', 0)
             ->notReversed()
+            ->earnedOnOrBefore($earnedThrough)
             ->distinct()
             ->pluck('distributor_id');
 
@@ -128,7 +142,7 @@ final class PayoutService
                 $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
 
                 if ($personalBvPaise < $this->plan->neftMinBvPaise()) {
-                    $this->holdLineItem($batch, $distributorId, $groupTypes, self::WEEKLY_REPURCHASE_REF_TYPES, PayoutLineItem::STATUS_WEB_ONLY);
+                    $this->holdLineItem($batch, $distributorId, $groupTypes, self::WEEKLY_REPURCHASE_REF_TYPES, PayoutLineItem::STATUS_WEB_ONLY, earnedOnOrBefore: $earnedThrough);
 
                     continue;
                 }
@@ -140,7 +154,7 @@ final class PayoutService
                 // distributor should see everything but payouts should not happen
                 // unless their KYC is verified."
                 if (! $this->isKycVerified($distributorId)) {
-                    $this->holdLineItem($batch, $distributorId, $groupTypes, self::WEEKLY_REPURCHASE_REF_TYPES, PayoutLineItem::STATUS_KYC_PENDING);
+                    $this->holdLineItem($batch, $distributorId, $groupTypes, self::WEEKLY_REPURCHASE_REF_TYPES, PayoutLineItem::STATUS_KYC_PENDING, earnedOnOrBefore: $earnedThrough);
 
                     continue;
                 }
@@ -153,7 +167,7 @@ final class PayoutService
                 // on file"; without this gate the line would go out as pending and
                 // approve() would mark an impossible NEFT as transferred.
                 if (! $this->hasBankAccountOnFile($distributorId)) {
-                    $this->holdLineItem($batch, $distributorId, $groupTypes, self::WEEKLY_REPURCHASE_REF_TYPES, PayoutLineItem::STATUS_NO_BANK_ACCOUNT);
+                    $this->holdLineItem($batch, $distributorId, $groupTypes, self::WEEKLY_REPURCHASE_REF_TYPES, PayoutLineItem::STATUS_NO_BANK_ACCOUNT, earnedOnOrBefore: $earnedThrough);
 
                     continue;
                 }
@@ -170,24 +184,30 @@ final class PayoutService
                         $batch, $distributorId, $groupTypes, self::WEEKLY_REPURCHASE_REF_TYPES,
                         PayoutLineItem::STATUS_BANK_DECRYPT_FAILED,
                         'Bank account on file could not be decrypted — re-capture bank details.',
+                        earnedOnOrBefore: $earnedThrough,
                     );
 
                     continue;
                 }
 
                 DB::transaction(function () use (
-                    $distributorId, $batch, $cycleEnd, $groupTypes, $bankLast4,
+                    $distributorId, $batch, $cycleEnd, $groupTypes, $bankLast4, $earnedThrough,
                     $adminRateBp, $adminCapPaise, $tdsRateBp, $minPayoutPaise,
                 ): void {
                     // notReversed(): a credit an admin has reversed keeps its
                     // `+gross` row so the statement still shows what was earned,
                     // and would otherwise be swept and wired to the bank for a
                     // bonus that no longer exists.
+                    //
+                    // earnedOnOrBefore(): only the earning week this batch pays.
+                    // Anything earned after it stays in the wallet for the next
+                    // Tuesday, credits and repurchase debits alike.
                     $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
                         ->whereIn('type', $groupTypes)
                         ->whereNull('swept_by_payout_batch_id')
                         ->where('amount_paise', '>', 0)
                         ->notReversed()
+                        ->earnedOnOrBefore($earnedThrough)
                         ->lockForUpdate()
                         ->get();
 
@@ -219,7 +239,7 @@ final class PayoutService
                     // Sweep those entries alongside the bonus credits so the balance
                     // closes to zero; the payout_debit uses effectiveGross (post-
                     // repurchase), not the full gross, to match what actually remains.
-                    $repurchaseTransfers = $this->unsweptRepurchaseTransfers($distributorId, self::WEEKLY_REPURCHASE_REF_TYPES)
+                    $repurchaseTransfers = $this->unsweptRepurchaseTransfers($distributorId, self::WEEKLY_REPURCHASE_REF_TYPES, $earnedThrough)
                         ->lockForUpdate()
                         ->get();
                     $repurchase = abs((int) $repurchaseTransfers->sum('amount_paise'));
@@ -651,6 +671,11 @@ final class PayoutService
      * withheld. Admin charge and TDS are payout-time deductions and stay zero
      * until the money actually leaves.
      *
+     * `$earnedOnOrBefore` is the weekly batch's earning week; the monthly batch
+     * passes null. A held weekly line must report the same window the paying
+     * path would have swept, or a distributor whose KYC is pending sees a held
+     * figure that includes income this batch was never due to pay.
+     *
      * @param  list<string>  $creditTypes
      * @param  list<string>  $repurchaseRefTypes
      */
@@ -661,14 +686,15 @@ final class PayoutService
         array $repurchaseRefTypes,
         string $status,
         ?string $failureReason = null,
+        ?Carbon $earnedOnOrBefore = null,
     ): void {
-        $gross = $this->wallet->sumUnsweptByTypes($distributorId, $creditTypes);
+        $gross = $this->wallet->sumUnsweptByTypes($distributorId, $creditTypes, $earnedOnOrBefore);
 
         if ($gross <= 0) {
             return;
         }
 
-        $repurchase = abs((int) $this->unsweptRepurchaseTransfers($distributorId, $repurchaseRefTypes)->sum('amount_paise'));
+        $repurchase = abs((int) $this->unsweptRepurchaseTransfers($distributorId, $repurchaseRefTypes, $earnedOnOrBefore)->sum('amount_paise'));
 
         PayoutLineItem::create([
             'payout_batch_id' => $batch->id,
@@ -927,16 +953,23 @@ final class PayoutService
      * back, and sweeping the debit without its credit would understate the
      * payout by the deduction.
      *
+     * `$earnedOnOrBefore` narrows to the weekly batch's earning week (the
+     * monthly batch passes null) for the same reason: a transfer swept without
+     * its credit — which is still waiting for next Tuesday — would take the
+     * deduction out of a payout that never included the bonus it belongs to.
+     * The three rows are written together and carry the same day.
+     *
      * @param  list<string>  $refTypes
      * @return Builder<WalletLedgerEntry>
      */
-    private function unsweptRepurchaseTransfers(int $distributorId, array $refTypes): Builder
+    private function unsweptRepurchaseTransfers(int $distributorId, array $refTypes, ?Carbon $earnedOnOrBefore = null): Builder
     {
         return WalletLedgerEntry::where('distributor_id', $distributorId)
             ->where('type', 'repurchase_transfer')
             ->whereIn('reference_type', $refTypes)
             ->whereNull('swept_by_payout_batch_id')
-            ->notReversed();
+            ->notReversed()
+            ->when($earnedOnOrBefore !== null, fn (Builder $q) => $q->earnedOnOrBefore($earnedOnOrBefore));
     }
 
     /**

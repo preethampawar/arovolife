@@ -291,6 +291,16 @@ it('frozen run advances carry-forward so unfreeze does not double-credit', funct
     expect($credited->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     // Exactly one gross credit — no double-credit.
     expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gsb_credit')->count())->toBe(1);
+
+    // Every row of the credit is stamped with the CUT-OFF day, not the day the
+    // engine happens to run: the weekly payout's earning week is keyed on it,
+    // and the daily command runs at 00:10 the following morning.
+    WalletLedgerEntry::where('distributor_id', $dist->id)
+        ->whereIn('type', ['gsb_credit', 'repurchase_transfer', 'repurchase_deduction'])
+        ->get()
+        ->each(function (WalletLedgerEntry $entry) use ($tomorrow): void {
+            expect($entry->earned_on->toDateString())->toBe($tomorrow->toDateString());
+        });
 });
 
 it('slab1 carry-forward does NOT boost matching into slab 2+', function () {
@@ -389,6 +399,7 @@ it('retries after failure and credits exactly once', function () {
                     string $referenceType,
                     Carbon $bonusMonth,
                     ?string $memo = null,
+                    ?Carbon $earnedOn = null,
                 ): BonusCreditOutcome {
                     throw new RuntimeException('Payment gateway timeout');
                 }

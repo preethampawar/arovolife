@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $reference_id
  * @property string|null $reference_type
  * @property Carbon|null $bonus_month
+ * @property Carbon|null $earned_on
  * @property string|null $memo
  * @property int|null $swept_by_payout_batch_id
  * @property int|null $engine_run_id
@@ -32,22 +33,24 @@ final class WalletLedgerEntry extends Model
 
     protected $fillable = [
         'distributor_id', 'type', 'amount_paise',
-        'reference_id', 'reference_type', 'bonus_month', 'memo',
+        'reference_id', 'reference_type', 'bonus_month', 'earned_on', 'memo',
         'swept_by_payout_batch_id', 'engine_run_id',
     ];
 
     /**
-     * `bonus_month` IS date-cast, unlike the `month_start` columns on the pool
-     * models: those are compared straight against a 'Y-m-d' string in a plain
-     * where(), which the cast's 'Y-m-d 00:00:00' serialisation would silently
-     * break. This column is never used that way — it is only ever read through
-     * whereDate(), exactly as RepurchaseCycle's date columns are.
+     * `bonus_month` and `earned_on` ARE date-cast, unlike the `month_start`
+     * columns on the pool models: those are compared straight against a 'Y-m-d'
+     * string in a plain where(), which the cast's 'Y-m-d 00:00:00' serialisation
+     * would silently break. These columns are never used that way — they are
+     * only ever read through whereDate(), exactly as RepurchaseCycle's date
+     * columns are.
      */
     protected function casts(): array
     {
         return [
             'amount_paise' => 'integer',
             'bonus_month' => 'date',
+            'earned_on' => 'date',
             'reference_id' => 'integer',
             'swept_by_payout_batch_id' => 'integer',
             'engine_run_id' => 'integer',
@@ -87,6 +90,29 @@ final class WalletLedgerEntry extends Model
                 ->where('reversal_entries.type', 'reversal')
                 ->whereColumn('reversal_entries.reference_type', 'wallet_ledger_entries.reference_type')
                 ->whereColumn('reversal_entries.reference_id', 'wallet_ledger_entries.reference_id');
+        });
+    }
+
+    /**
+     * Rows earned on or before `$date` — the day filter the weekly payout's
+     * earning week is expressed through.
+     *
+     * WHICH day that is belongs to {@see PayoutBatch::weeklyEarningWindow()};
+     * this scope only knows how to compare against it, so the three weekly
+     * queries and the repurchase-transfer sweep cannot drift apart.
+     *
+     * A null `earned_on` passes. Those are the rows written before the column
+     * existed and the monthly streams, which have no earning day at all: both
+     * keep exactly the behaviour they had before the week rule arrived, rather
+     * than being stranded unpaid by a filter that can never match them.
+     *
+     * @param  Builder<WalletLedgerEntry>  $query
+     */
+    #[Scope]
+    protected function earnedOnOrBefore(Builder $query, Carbon $date): void
+    {
+        $query->where(function (Builder $window) use ($date): void {
+            $window->whereDate('earned_on', '<=', $date)->orWhereNull('earned_on');
         });
     }
 

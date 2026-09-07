@@ -67,3 +67,23 @@ it('renders the payout operations help document', function (): void {
         ->assertOk()
         ->assertSee('Payout Operations');
 });
+
+it('shows the earning week each weekly batch pays for on the batch list', function (): void {
+    // 18 August 2026 pays the week that closed on Tuesday 11 August (the
+    // client's own example). Admins reconciling a batch have to be able to see
+    // which week it covers without recomputing the offset by hand.
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-08-18',
+        'status' => PayoutBatch::STATUS_PENDING,
+    ]);
+
+    $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.weekly-payouts.index'))
+        ->assertOk()
+        ->assertSee('Earnings through')
+        ->assertSee('18 Aug 2026')
+        ->assertSee('11 Aug 2026')
+        // Never the statutory term: cooling-off is the 30-day cancellation window.
+        ->assertDontSee('cooling-off');
+});

@@ -28,8 +28,28 @@ it('balance returns 0 for new distributor', function () {
 it('credit adds a positive entry', function () {
     $dist = Distributor::factory()->create();
     $svc = app(WalletService::class);
-    $svc->credit($dist->id, 100_000, 'gsb_credit', 1, 'gsb_cutoff_result', 'GSB for 24 Jun');
+    $svc->credit($dist->id, 100_000, 'gsb_credit', 1, 'gsb_cutoff_result', 'GSB for 24 Jun', earnedOn: Carbon::create(2026, 6, 24));
     expect($svc->balancePaise($dist->id))->toBe(100_000);
+});
+
+it('refuses a Group A credit with no earning day', function () {
+    // The weekly batch pays one Wednesday→Tuesday earning week and lets a null
+    // earned_on through, so a GSB or Mentorship credit that forgot the day is
+    // paid by the first batch that sees it — real money, up to a week early.
+    // The engines must not be able to write one by omission.
+    $dist = Distributor::factory()->create();
+    $svc = app(WalletService::class);
+
+    foreach (['gsb_credit', 'mb_credit'] as $type) {
+        expect(fn () => $svc->credit($dist->id, 100_000, $type, walletRef(), 'gsb_cutoff_result'))
+            ->toThrow(InvalidArgumentException::class, 'requires earnedOn');
+    }
+
+    // The monthly streams are earned for a month, not a day, and stay exempt.
+    expect($svc->credit($dist->id, 100_000, 'rank_credit', walletRef(), 'rank_bonus_result')->earned_on)->toBeNull();
+    expect($svc->credit($dist->id, 100_000, 'manual_credit')->earned_on)->toBeNull();
+
+    expect(WalletLedgerEntry::whereIn('type', ['gsb_credit', 'mb_credit'])->count())->toBe(0);
 });
 
 it('leaves engine_run_id null outside an engine run', function () {
@@ -45,7 +65,7 @@ it('leaves engine_run_id null outside an engine run', function () {
 it('debit subtracts from balance', function () {
     $dist = Distributor::factory()->create();
     $svc = app(WalletService::class);
-    $svc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference');
+    $svc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: now());
     $svc->debit($dist->id, 40_000, 'payout_debit');
     expect($svc->balancePaise($dist->id))->toBe(60_000);
 });
@@ -53,8 +73,8 @@ it('debit subtracts from balance', function () {
 it('balance is the sum of all signed entries', function () {
     $dist = Distributor::factory()->create();
     $svc = app(WalletService::class);
-    $svc->credit($dist->id, 552_900, 'gsb_credit', walletRef(), 'test_reference');    // ₹5,529
-    $svc->credit($dist->id, 27_640, 'mb_credit', walletRef(), 'test_reference');      // ₹276.40
+    $svc->credit($dist->id, 552_900, 'gsb_credit', walletRef(), 'test_reference', earnedOn: now());    // ₹5,529
+    $svc->credit($dist->id, 27_640, 'mb_credit', walletRef(), 'test_reference', earnedOn: now());      // ₹276.40
     $svc->debit($dist->id, 552_900, 'payout_debit');
     expect($svc->balancePaise($dist->id))->toBe(27_640);
 });
@@ -163,6 +183,7 @@ it('does not let August income written on 1 September consume September\'s ceili
         referenceId: walletRef(),
         referenceType: 'gsb_cutoff_result',
         bonusMonth: Carbon::create(2026, 9, 1),
+        earnedOn: Carbon::create(2026, 9, 15),
     );
 
     expect($august->repurchaseDeductionPaise)->toBe(1_000_000)
@@ -223,6 +244,7 @@ function creditedAugustBonus(): array
         referenceId: $ref,
         referenceType: 'gsb_cutoff_result',
         bonusMonth: Carbon::create(2026, 8, 1),
+        earnedOn: Carbon::create(2026, 8, 31),
     );
 
     return [$dist, $svc, $ref];

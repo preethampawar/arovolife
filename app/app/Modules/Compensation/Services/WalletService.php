@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\DTOs\BonusCreditOutcome;
 use App\Modules\Compensation\Services\DTOs\BonusReversalOutcome;
@@ -121,7 +122,17 @@ class WalletService
      * just closed. Null for entries with no earned month (order-time repurchase
      * restorations, admin corrections).
      *
-     * @throws InvalidArgumentException when a sale-derived credit has no reference
+     * `$earnedOn` is the DAY the income was earned — the GSB cut-off date, the
+     * mentorship cut-off day. It is MANDATORY for every
+     * {@see CompensationPlanSettingsService::GROUP_A_TYPES} credit, because the
+     * weekly batch pays a Wednesday→Tuesday earning week one Tuesday later
+     * ({@see PayoutBatch::weeklyEarningWindow()}) and a Group A credit with no
+     * earning day is paid by the first batch that sees it — up to a week early,
+     * with real money. The monthly streams are earned for a month rather than a
+     * day and leave it null.
+     *
+     * @throws InvalidArgumentException when a sale-derived credit has no reference,
+     *                                  or a Group A credit has no earning day
      */
     public function credit(
         int $distributorId,
@@ -131,6 +142,7 @@ class WalletService
         ?string $referenceType = null,
         ?string $memo = null,
         ?Carbon $bonusMonth = null,
+        ?Carbon $earnedOn = null,
     ): WalletLedgerEntry {
         $saleDerived = array_merge(
             CompensationPlanSettingsService::GROUP_A_TYPES,
@@ -147,6 +159,14 @@ class WalletService
             );
         }
 
+        if (in_array($type, CompensationPlanSettingsService::GROUP_A_TYPES, true) && $earnedOn === null) {
+            throw new InvalidArgumentException(
+                "Wallet credit of type '{$type}' requires earnedOn: the weekly payout pays a "
+                .'Wednesday-to-Tuesday earning week one Tuesday after it closes, so a Group A '
+                .'credit with no earning day would be paid by the first batch that sees it.'
+            );
+        }
+
         return WalletLedgerEntry::create([
             'distributor_id' => $distributorId,
             'type' => $type,
@@ -154,12 +174,13 @@ class WalletService
             'reference_id' => $referenceId,
             'reference_type' => $referenceType,
             'bonus_month' => $bonusMonth?->copy()->startOfMonth()->toDateString(),
+            'earned_on' => $earnedOn?->toDateString(),
             'memo' => $memo,
             'engine_run_id' => $this->activeEngineRunId(),
         ]);
     }
 
-    /** @see credit() for what `$bonusMonth` means. */
+    /** @see credit() for what `$bonusMonth` and `$earnedOn` mean. */
     public function debit(
         int $distributorId,
         int $amountPaise,
@@ -168,6 +189,7 @@ class WalletService
         ?string $referenceType = null,
         ?string $memo = null,
         ?Carbon $bonusMonth = null,
+        ?Carbon $earnedOn = null,
     ): WalletLedgerEntry {
         return WalletLedgerEntry::create([
             'distributor_id' => $distributorId,
@@ -176,6 +198,7 @@ class WalletService
             'reference_id' => $referenceId,
             'reference_type' => $referenceType,
             'bonus_month' => $bonusMonth?->copy()->startOfMonth()->toDateString(),
+            'earned_on' => $earnedOn?->toDateString(),
             'memo' => $memo,
             'engine_run_id' => $this->activeEngineRunId(),
         ]);
@@ -202,6 +225,11 @@ class WalletService
      * calling engine can freeze the deduction onto its result row — the pages
      * read that row, never the ledger, so this is the only place the figure is
      * ever computed.
+     *
+     * All three rows carry `$earnedOn` ({@see credit()}): the weekly batch
+     * sweeps a credit and its `repurchase_transfer` debit together, so a debit
+     * outside the window its credit is in would leave the main wallet holding a
+     * deduction for money that has already gone to the bank.
      */
     public function creditWithRepurchaseDeduction(
         int $distributorId,
@@ -211,11 +239,12 @@ class WalletService
         string $referenceType,
         Carbon $bonusMonth,
         ?string $memo = null,
+        ?Carbon $earnedOn = null,
     ): BonusCreditOutcome {
         $bonusMonth = $bonusMonth->copy()->startOfMonth();
 
         return DB::transaction(function () use (
-            $distributorId, $grossPaise, $bonusType, $referenceId, $referenceType, $bonusMonth, $memo,
+            $distributorId, $grossPaise, $bonusType, $referenceId, $referenceType, $bonusMonth, $memo, $earnedOn,
         ): BonusCreditOutcome {
             $deductionPaise = (int) floor(abs($grossPaise) * $this->planSettings->repurchaseRateBp() / 10_000);
 
@@ -234,6 +263,7 @@ class WalletService
                 referenceType: $referenceType,
                 memo: $memo,
                 bonusMonth: $bonusMonth,
+                earnedOn: $earnedOn,
             );
 
             if ($deductionPaise > 0) {
@@ -247,6 +277,7 @@ class WalletService
                     referenceType: $referenceType,
                     memo: $deductionMemo,
                     bonusMonth: $bonusMonth,
+                    earnedOn: $earnedOn,
                 );
 
                 $this->credit(
@@ -257,6 +288,7 @@ class WalletService
                     referenceType: $referenceType,
                     memo: $deductionMemo,
                     bonusMonth: $bonusMonth,
+                    earnedOn: $earnedOn,
                 );
             }
 
@@ -564,15 +596,21 @@ class WalletService
      * Reversed bonuses are excluded — a held line item must not report income
      * an admin has already unwound. {@see WalletLedgerEntry::scopeNotReversed()}
      *
+     * `$earnedOnOrBefore` narrows the sum to one earning week, so a held weekly
+     * line reports the income this batch was actually due to pay rather than
+     * everything that has been credited since. Null means no day filter — how
+     * the monthly batch, which has no earning week, always reads it.
+     *
      * @param  string[]  $types
      */
-    public function sumUnsweptByTypes(int $distributorId, array $types): int
+    public function sumUnsweptByTypes(int $distributorId, array $types, ?Carbon $earnedOnOrBefore = null): int
     {
         return (int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->whereIn('type', $types)
             ->whereNull('swept_by_payout_batch_id')
             ->where('amount_paise', '>', 0)
             ->notReversed()
+            ->when($earnedOnOrBefore !== null, fn ($q) => $q->earnedOnOrBefore($earnedOnOrBefore))
             ->sum('amount_paise');
     }
 

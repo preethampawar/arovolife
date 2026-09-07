@@ -38,8 +38,15 @@ Nobody creates a payout batch by hand.
 1. The bonus engines credit distributors' wallets as product sales are made.
    Every credit carries a `product_sale_id` — there is no such thing as a
    payout without a sale behind it (hard rule 2).
-2. The **weekly payout** command runs each Tuesday at 03:00 IST and sweeps the
-   unpaid GSB and Mentorship credits. The **monthly payout** runs on the 8th at
+2. The **weekly payout** command runs each Tuesday at 03:00 IST and pays ONE
+   earning week: Wednesday to Tuesday, the week that closed the *previous*
+   Tuesday. The batch dated Tuesday 18 August pays the GSB and Mentorship
+   income earned from Wednesday 5 August to Tuesday 11 August; income earned on
+   12 August waits for the 25 August batch. The week is keyed on the day the
+   income was earned — the GSB cut-off date — not on when the credit landed in
+   the wallet, because Tuesday's cut-off is credited at 00:10 on Wednesday. The
+   batch list shows the last day each batch pays for under **Earnings through**.
+   The **monthly payout** runs on the 8th at
    04:00 IST for Growth Booster, Rank, Fortune, Awards and ADC — a week after
    the crediting engines close the month on the 1st, and only if every one of
    them succeeded (see § Monthly close below).

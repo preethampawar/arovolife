@@ -97,8 +97,12 @@ it('credits the sponsor with slab points × the day\'s pooled point value (slab 
     expect($mb->mb_tds_paise)->toBe(0);
     expect($mb->status)->toBe('credited');
 
-    // Sponsor wallet credited with gross.
-    expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
+    // Sponsor wallet credited with gross, stamped with the CUT-OFF day: the
+    // weekly payout's earning week windows on it, and Mentorship rides the same
+    // Wednesday-to-Tuesday week as GSB (spec 2026-09-07 §3, A3).
+    $entry = WalletLedgerEntry::where('distributor_id', $sponsor->id)->sole();
+    expect((int) $entry->amount_paise)->toBe(525_000)
+        ->and($entry->earned_on->toDateString())->toBe(today()->toDateString());
 });
 
 it('pays each slab its own points at one shared value (slab 3 → 15 pts; slab 7 → 3 pts, both @ ₹250)', function () {

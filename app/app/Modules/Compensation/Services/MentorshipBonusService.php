@@ -193,6 +193,9 @@ final class MentorshipBonusService
                     // five bonuses under the monthly income cap, which windows
                     // on the month the income was earned for.
                     bonusMonth: Carbon::parse($accrual->cutoffDate)->startOfMonth(),
+                    // The cut-off DAY: Mentorship rides the same Wednesday→
+                    // Tuesday earning week as GSB (spec §3, assumption A3).
+                    earnedOn: Carbon::parse($accrual->cutoffDate),
                 );
             }
 

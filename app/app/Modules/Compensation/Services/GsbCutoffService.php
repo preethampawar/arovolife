@@ -649,6 +649,10 @@ final class GsbCutoffService
                         referenceId: $savedResult->id,
                         referenceType: 'gsb_cutoff_result',
                         bonusMonth: $date->copy()->startOfMonth(),
+                        // The cut-off DATE, not the moment of the write: this
+                        // runs at 00:10 the next morning, and the weekly payout
+                        // windows on the day the income was earned.
+                        earnedOn: $date,
                     )->repurchaseDeductionPaise;
                 }
 
