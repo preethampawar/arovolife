@@ -412,7 +412,7 @@ it('reads the per-rank repurchase BV from config, not a constant', function (): 
     expect($cycle->required_bv_paise)->toBe(100_000); // 1,000 BV, from rank_tiers
 });
 
-it('forfeitedWindow is null on time, [due + 1, fulfilled − 1] when late, open-ended while unresolved, null inside the window', function (): void {
+it('forfeitedWindow is null on time, [due + 1, fulfilled − 1] when late, null when fulfilled the very next day, open-ended while unresolved, null inside the window', function (): void {
     // The one place that answers "which days did this distributor lose?" —
     // client spec §2: every day from the day after the due date up to the day
     // before the fulfilment day is forfeited.
@@ -444,9 +444,19 @@ it('forfeitedWindow is null on time, [due + 1, fulfilled − 1] when late, open-
     expect($from->toDateString())->toBe('2026-08-24')
         ->and($to->toDateString())->toBe('2026-08-26');
 
+    // Fulfilled the very next day: the fulfilment day counts in full, so
+    // nothing at all was lost — an empty range is no window, never [due + 1,
+    // due], which a between() check would read backwards.
+    $nextDay = $cycle([
+        'cycle_start_date' => '2026-07-26',
+        'fulfilled_on' => '2026-08-24',
+        'resolved_at' => '2026-08-24 00:05:00',
+    ]);
+    expect($nextDay->forfeitedWindow())->toBeNull();
+
     // Still failed: the window runs on with no end yet.
     $stillFailed = $cycle([
-        'cycle_start_date' => '2026-07-26',
+        'cycle_start_date' => '2026-07-27',
         'status' => RepurchaseCycle::STATUS_SUSPENDED,
         'completed_bv_paise' => 0,
         'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
@@ -457,7 +467,7 @@ it('forfeitedWindow is null on time, [due + 1, fulfilled − 1] when late, open-
 
     // Inside its own window nothing is forfeited — the verdict is not taken yet.
     $open = $cycle([
-        'cycle_start_date' => '2026-07-27',
+        'cycle_start_date' => '2026-07-28',
         'status' => RepurchaseCycle::STATUS_ACTIVE,
         'completed_bv_paise' => 0,
     ]);

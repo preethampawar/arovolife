@@ -99,9 +99,13 @@ final class RepurchaseCycle extends Model
      * days"). The single source of truth for "was this distributor failed on
      * day d?"; every consumer reads it rather than re-deriving the arithmetic.
      *
-     * Null when nothing is forfeited: fulfilled on time, or still inside its
-     * own window where the verdict has not been taken yet. The second element
-     * is null while the cycle is still unfulfilled — the window has no end yet.
+     * Null when nothing is forfeited: fulfilled on time, still inside its own
+     * window where the verdict has not been taken yet, or fulfilled on the very
+     * next day — the fulfilment day counts in full, so `due + 1` leaves an empty
+     * range and an empty range is no window at all (never an inverted one, which
+     * a `between()` check would read as the due and fulfilment days being lost).
+     * The second element is null while the cycle is still unfulfilled — the
+     * window has no end yet.
      *
      * @return array{0: Carbon, 1: Carbon|null}|null
      */
@@ -115,9 +119,13 @@ final class RepurchaseCycle extends Model
             return null;
         }
 
-        return [
-            $this->due_date->copy()->startOfDay()->addDay(),
-            $this->fulfilled_on?->copy()->startOfDay()->subDay(),
-        ];
+        $from = $this->due_date->copy()->startOfDay()->addDay();
+        $to = $this->fulfilled_on?->copy()->startOfDay()->subDay();
+
+        if ($to !== null && $to->lessThan($from)) {
+            return null;
+        }
+
+        return [$from, $to];
     }
 }

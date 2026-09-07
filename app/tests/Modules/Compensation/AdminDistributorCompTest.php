@@ -301,6 +301,23 @@ it('lists the days each repurchase cycle forfeited on the Repurchase tab', funct
     disableTestForeignKeys();
     try {
         DB::table('repurchase_cycles')->insert([
+            // Fulfilled the day after the due date: nothing was lost, so the
+            // cell reads "—" rather than a backwards range.
+            [
+                'distributor_id' => $distributorId,
+                'cycle_start_date' => '2026-06-23',
+                'due_date' => '2026-07-23',
+                'required_bv_paise' => 60_000,
+                'completed_bv_paise' => 60_000,
+                'wallet_balance_paise' => 0,
+                'wallet_zeroed' => true,
+                'status' => 'completed',
+                'fulfilled_on' => '2026-07-24',
+                'failure_reason' => null,
+                'resolved_at' => '2026-07-24 00:05:00',
+                'created_at' => '2026-06-23 00:05:00',
+                'updated_at' => '2026-07-24 00:05:00',
+            ],
             // Fulfilled four days late: 24–26 Aug were lost.
             [
                 'distributor_id' => $distributorId,
@@ -344,5 +361,6 @@ it('lists the days each repurchase cycle forfeited on the Repurchase tab', funct
         ->assertSessionHasNoErrors()
         ->assertSee('Days not counted')
         ->assertSee('24 Aug 2026 → 26 Aug 2026')
-        ->assertSee('27 Sep 2026 → ongoing');
+        ->assertSee('27 Sep 2026 → ongoing')
+        ->assertDontSee('24 Jul 2026 → 23 Jul 2026');
 });
