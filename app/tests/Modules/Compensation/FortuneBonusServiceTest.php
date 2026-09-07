@@ -937,6 +937,51 @@ it('forfeits the Fortune month for wallet money at month end — gross 0, positi
         ->toBe(FortuneBonusResult::STATUS_CREDITED);
 });
 
+it('the month foots — pool = credited gross + forfeited share + frozen leftover', function (): void {
+    // The cascade allocates a share to EVERY participant before the wallet gate
+    // is applied, so the frozen payout_paise includes what a blocked
+    // distributor would have been paid. That share never leaves the company, so
+    // the month only reconciles when it is reported as its own figure.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $month = Carbon::parse('2026-06-01');
+    $blocked = Distributor::factory()->create();
+    $paid = Distributor::factory()->create();
+
+    placeFortuneParticipant($blocked->id, 1);
+    placeFortuneParticipant($paid->id, 2);
+    seedCompanyBvForFortunePool(100_000_000);
+
+    seedRepurchaseWalletEntryForFortune($blocked->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
+
+    $result = app(FortuneBonusService::class)->runForMonth($month);
+
+    $creditedGross = (int) FortuneBonusResult::where('month_start', '2026-06-01')
+        ->where('status', FortuneBonusResult::STATUS_CREDITED)
+        ->sum('gross_paise');
+
+    expect($result['repurchase_wallet_blocked_paise'])->toBeGreaterThan(0)
+        ->and($result['pool_paise'])
+        ->toBe($creditedGross + $result['repurchase_wallet_blocked_paise'] + $result['leftover_paise']);
+
+    // A re-run reports the same forfeited share — it is reconstructed from the
+    // frozen economics, not accumulated during the pass that wrote the rows.
+    $second = app(FortuneBonusService::class)->runForMonth($month);
+    expect($second['repurchase_wallet_blocked_paise'])->toBe($result['repurchase_wallet_blocked_paise']);
+});
+
+it('reports a zero forfeited share for a month nobody was blocked in', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    $dist = Distributor::factory()->create();
+
+    placeFortuneParticipant($dist->id, 1);
+    seedCompanyBvForFortunePool(100_000_000);
+
+    $result = app(FortuneBonusService::class)->runForMonth($month);
+
+    expect($result['repurchase_wallet_blocked_paise'])->toBe(0);
+});
+
 it('never re-judges a blocked Fortune row on a re-run', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 

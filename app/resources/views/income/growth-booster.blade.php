@@ -22,19 +22,25 @@
         'reversed' => 'Reversed',
         'repurchase_suspended' => 'Not payable',
         'repurchase_wallet_blocked' => 'Not payable',
+        'repurchase_held' => 'Not paid — legacy record',
     ];
     $statusBadges = [
         'credited' => 'bg-green-100 text-green-700',
         'pending' => 'bg-amber-100 text-amber-700',
         'reversed' => 'bg-red-100 text-red-700',
-        'repurchase_held' => 'bg-orange-100 text-orange-700',
+        'repurchase_held' => 'bg-gray-100 text-gray-600',
         'repurchase_suspended' => 'bg-red-100 text-red-700',
         'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
     ];
     $statusNotes = [
         'repurchase_suspended' => 'Not payable for this month.',
         'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not payable for this month.',
+        'repurchase_held' => 'Recorded under a superseded rule; this amount is not payable.',
     ];
+    // Statuses that will never be credited. They must not carry the
+    // "AGP × point value" income line — it would state an amount as though it
+    // were owed.
+    $unpayableStatuses = ['repurchase_suspended', 'repurchase_wallet_blocked', 'repurchase_held'];
 @endphp
 <div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Growth Booster Bonus</h1>
@@ -118,7 +124,7 @@
                     @foreach($rows as $row)
                     @php
                         $pointValuePaise = $pointValuePaiseFor($row);
-                        $isPayable = ! in_array($row->status, ['repurchase_suspended', 'repurchase_wallet_blocked'], true);
+                        $isPayable = ! in_array($row->status, $unpayableStatuses, true);
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>

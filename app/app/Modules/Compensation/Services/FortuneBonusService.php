@@ -293,7 +293,7 @@ final class FortuneBonusService
      * is left alone, and the month's frozen economics are reused rather than
      * recomputed: incomes are reconstructed from the per-level snapshot.
      *
-     * @return array{credited: int, repurchase_wallet_blocked: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
+     * @return array{credited: int, repurchase_wallet_blocked: int, repurchase_wallet_blocked_paise: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -428,6 +428,7 @@ final class FortuneBonusService
         return [
             'credited' => $credited,
             'repurchase_wallet_blocked' => $walletBlocked,
+            'repurchase_wallet_blocked_paise' => $this->forfeitedGrossPaiseForMonth($monthStartDate),
             'skipped_zero_income' => $skippedZeroIncome,
             'total_net_paise' => $totalNet,
             'pool_paise' => (int) $pool->pool_paise,
@@ -436,6 +437,57 @@ final class FortuneBonusService
             'leftover_paise' => (int) $pool->leftover_paise,
             'is_shortfall' => (bool) $pool->is_shortfall,
         ];
+    }
+
+    /**
+     * Σ of what the frozen cascade allocated to the participants the month-end
+     * repurchase wallet gate forfeited.
+     *
+     * The cascade allocates a share to EVERY enrolled participant before the
+     * gate is applied, so `fortune_monthly_pools.payout_paise` already contains
+     * these shares — but they never leave the company. Without this figure the
+     * month does not reconcile: pool − payout − leftover leaves Σ forfeited
+     * unexplained on the admin page and in the run summary.
+     *
+     * Reconstructed from the frozen snapshot and the row's own stored level and
+     * points, through the SAME formula the credits used, so it is stable across
+     * re-runs and identical wherever it is displayed. Zero for a month with no
+     * blocked rows, and for a month that has not been frozen.
+     */
+    public function forfeitedGrossPaiseForMonth(Carbon $month): int
+    {
+        $monthStart = $month->copy()->startOfMonth()->toDateString();
+
+        $pool = FortuneMonthlyPool::where('month_start', $monthStart)->first();
+
+        if ($pool === null) {
+            return 0;
+        }
+
+        /** @var Collection<int, FortuneBonusResult> $blocked */
+        $blocked = FortuneBonusResult::query()
+            ->where('month_start', $monthStart)
+            ->where('status', FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED)
+            ->get();
+
+        if ($blocked->isEmpty()) {
+            return 0;
+        }
+
+        /** @var array<int, FortuneMonthlyPoolLevel> $frozenLevels */
+        $frozenLevels = $pool->levels()->get()->keyBy('matrix_level')->all();
+
+        $forfeited = 0;
+
+        foreach ($blocked as $row) {
+            $forfeited += $this->incomeFromFrozenEconomics(
+                $pool,
+                $frozenLevels[(int) $row->matrix_level] ?? null,
+                (int) $row->points,
+            );
+        }
+
+        return $forfeited;
     }
 
     /**

@@ -104,7 +104,7 @@ final class GrowthBoosterBonusService
      * on the first run, and every later run credits only the roster members not
      * yet credited, at the frozen point value and their frozen AGP.
      *
-     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, skipped_wallet_nonzero: int, wallet_blocked: int, qualified_after_freeze: int}
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, wallet_blocked: int, qualified_after_freeze: int}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -422,7 +422,7 @@ final class GrowthBoosterBonusService
      * the gross frozen on them; the pool, the denominator, the point value and
      * every row's AGP are never touched again.
      *
-     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, skipped_wallet_nonzero: int, wallet_blocked: int, qualified_after_freeze: int}
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, wallet_blocked: int, qualified_after_freeze: int}
      */
     private function creditFromFrozenPool(Carbon $monthStart, Carbon $monthEnd, string $yearMonth, GbbMonthlyPool $pool): array
     {
@@ -489,7 +489,6 @@ final class GrowthBoosterBonusService
             'held' => $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_HELD)->count(),
             'suspended' => $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED)->count(),
             'skipped_no_agp' => $agpMap->filter(fn (int $agp): bool => $agp === 0)->count(),
-            'skipped_wallet_nonzero' => $walletBlockedCount,
             'wallet_blocked' => $walletBlockedCount,
             'qualified_after_freeze' => count($late),
         ];

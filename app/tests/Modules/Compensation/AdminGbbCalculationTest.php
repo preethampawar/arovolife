@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
@@ -246,6 +248,57 @@ it('shows the distributor their own AGP times the frozen point value', function 
         // Historical fact only — never a projection of what they might earn.
         ->assertDontSee('could earn')
         ->assertDontSee('will earn');
+});
+
+/**
+ * Render the distributor's own Growth Booster page for one seeded result row.
+ *
+ * The controller currently lists credited months only, so a non-credited row
+ * never reaches the view through the route. The view still has to be right
+ * about them: it carries the status labels, the notes and the "AGP × point
+ * value" income line, and a wrong label there promises a distributor money the
+ * plan will never pay. This drives the view with the row directly.
+ */
+function gbbRenderIncomePage(int $distributorId): string
+{
+    Auth::login(User::findOrFail((int) DB::table('distributors')->where('id', $distributorId)->value('user_id')));
+
+    $rows = GbbMonthlyResult::where('distributor_id', $distributorId)->orderByDesc('year_month')->paginate(20);
+
+    return view('income.growth-booster', [
+        'distributor' => Distributor::findOrFail($distributorId),
+        'rows' => $rows,
+        'totalAgp' => (int) $rows->getCollection()->sum('agp_earned'),
+        'totalNet' => (int) $rows->getCollection()->sum('gbb_net_paise'),
+    ])->render();
+}
+
+it('never presents a legacy repurchase_held month as payable to the distributor', function () {
+    // Nothing releases these rows any more. The page must not label them
+    // "held" (which promises a later credit) and must not show the AGP ×
+    // point-value income line for money that will never be credited.
+    $distributorId = gbbReportDistributor('GBBHLD', 'Hema');
+    makeGbbRow($distributorId, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
+
+    $html = gbbRenderIncomePage($distributorId);
+
+    expect($html)
+        ->toContain('Not paid — legacy record')
+        ->toContain('Recorded under a superseded rule; this amount is not payable');
+    expect(str_contains($html, 'Repurchase held'))->toBeFalse();
+    expect(str_contains($html, '12 AGP × ₹'.Number::format(250, 2)))->toBeFalse();
+});
+
+it('presents a repurchase wallet forfeit without an income line', function () {
+    $distributorId = gbbReportDistributor('GBBBLK', 'Bhavana');
+    makeGbbRow($distributorId, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
+
+    $html = gbbRenderIncomePage($distributorId);
+
+    expect($html)
+        ->toContain('Not payable')
+        ->toContain('Repurchase wallet not cleared at month end');
+    expect(str_contains($html, '12 AGP × ₹'.Number::format(250, 2)))->toBeFalse();
 });
 
 it('degrades to a dash when a month has no frozen pool row', function () {

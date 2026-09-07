@@ -46,7 +46,7 @@ final class FortuneBonusRunCommand extends Command
             $this->warn('Shortfall month — the pool could not cover the minimum guarantees; every qualifier received the same pro-rated share.');
         }
         $this->line('Credited: '.$result['credited']);
-        $this->line('Forfeited (repurchase wallet not cleared at month end): '.$result['repurchase_wallet_blocked']);
+        $this->line('Forfeited (repurchase wallet not cleared at month end): '.$result['repurchase_wallet_blocked'].' — ₹'.Number::format($result['repurchase_wallet_blocked_paise'] / 100, 2));
         $this->line('Skipped (zero income): '.$result['skipped_zero_income']);
         $this->line('Total credited: ₹'.Number::format($result['total_net_paise'] / 100, 2));
         $this->line('Leftover: ₹'.Number::format($result['leftover_paise'] / 100, 2));

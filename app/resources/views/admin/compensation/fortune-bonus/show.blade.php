@@ -28,8 +28,11 @@
             <strong class="text-gray-700">{{ $pool && $pool->guaranteed_total_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->guaranteed_total_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-600">Payout
             <strong class="text-green-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->payout_paise / 100, 2) : '—' }}</strong></span>
+        <span class="text-gray-600">Forfeited
+            <x-help-tip text="The share the cascade allocated to qualifiers whose repurchase wallet was not cleared at the last instant of the month. It is inside Payout but never left the company. Pool = credited + forfeited + leftover." />
+            <strong class="{{ $walletBlockedPaise > 0 ? 'text-amber-700' : 'text-gray-700' }}">₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBlockedPaise / 100, 2) }}</strong></span>
         <span class="text-gray-600">Leftover
-            <x-help-tip text="The part of the pool the cascade could not distribute — whole-rupee flooring remainders and the headroom left by per-level caps." />
+            <x-help-tip text="The part of the pool the cascade could not distribute — whole-rupee flooring remainders and the headroom left by per-level caps. It does not include the forfeited share, which is shown separately." />
             <strong class="{{ $pool && $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-700' }}">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->leftover_paise / 100, 2) : '—' }}</strong></span>
     </div>
     @if($pool && $pool->is_shortfall)
@@ -42,8 +45,11 @@
     <p class="px-4 py-3 text-xs text-amber-700 bg-amber-50 border-t border-amber-200">
         {{ \App\Modules\Shared\Support\IndianNumber::format($walletBlockedCount) }}
         {{ $walletBlockedCount === 1 ? 'qualifier' : 'qualifiers' }} forfeited this month — the repurchase wallet
-        was not cleared at the last instant of it. They keep their matrix position, are credited nothing, and the
-        share the cascade allowed for stays unspent as leftover; it is never redistributed and never released.
+        was not cleared at the last instant of it. They keep their matrix position and are credited nothing. The
+        ₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBlockedPaise / 100, 2) }} the cascade had
+        allocated them is counted inside Payout above but never left the company, and is shown as
+        <strong>Forfeited</strong>: pool = credited + forfeited + leftover. It is never redistributed and never
+        released.
     </p>
     @endif
     @unless($pool)
