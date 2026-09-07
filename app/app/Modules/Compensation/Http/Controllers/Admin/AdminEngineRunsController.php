@@ -11,7 +11,9 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineChainResolver;
 use App\Modules\Compensation\Services\EngineStatusService;
+use App\Modules\Compensation\Services\IncomeEligibilityService;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
+use App\Modules\Compensation\Services\Recompute\EngineReplayService;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\EngineDefinition;
@@ -132,7 +134,7 @@ final class AdminEngineRunsController extends Controller
      * request timeout halfway through would leave the database wiped and only
      * partly rebuilt. Removed with the recompute scaffold at client sign-off.
      */
-    public function recomputeAll(Request $request): RedirectResponse
+    public function recomputeAll(Request $request, IncomeEligibilityService $eligibility): RedirectResponse
     {
         abort_unless($this->recomputeGuard->isPermitted(), 404);
 
@@ -163,6 +165,27 @@ final class AdminEngineRunsController extends Controller
         $to = $validated['to'] ?? null;
         /** @var list<string> $engines */
         $engines = array_values($validated['engines'] ?? []);
+
+        // The wipe deletes this window's repurchase cycles whatever is ticked,
+        // and the guarded engines then refuse to run without them — aborting
+        // the replay partway and leaving the database half-rebuilt. Refuse the
+        // selection here instead, before a single row is deleted, and name the
+        // box to tick.
+        $guarded = EngineReplayService::guardedEnginesMissingEvaluate($engines === [] ? null : $engines);
+
+        if ($guarded !== [] && $eligibility->engineActive()) {
+            throw ValidationException::withMessages([
+                'engines' => sprintf(
+                    '%s cannot be replayed without %s while the repurchase engine is on: %s reads the repurchase '
+                        .'verdict this replay is about to delete, and refuses to run until it has been rebuilt. '
+                        .'Tick %s as well, or leave every box clear to replay all engines.',
+                    $this->engineLabels($guarded),
+                    EngineRegistry::get('repurchase.evaluate')->label,
+                    count($guarded) === 1 ? 'it' : 'each',
+                    EngineRegistry::get('repurchase.evaluate')->label,
+                ),
+            ]);
+        }
 
         // Keeping the earlier history is only meaningful with a start date;
         // without one there is nothing to keep.
@@ -216,6 +239,25 @@ final class AdminEngineRunsController extends Controller
                     .'onwards are being rebuilt — earlier history is left as it is.'
                 : 'Full recompute queued. Every BV-derived row is being wiped and rebuilt — '
                     .'the runs below will repopulate as the replay progresses.');
+    }
+
+    /**
+     * "GSB Daily Cut-off (incl. MSB) and Rank Qualification Check" — engine
+     * keys are never shown to an admin, who ticked labels.
+     *
+     * @param  list<string>  $keys
+     */
+    private function engineLabels(array $keys): string
+    {
+        $labels = array_map(static fn (string $key): string => EngineRegistry::get($key)->label, $keys);
+
+        if (count($labels) === 1) {
+            return $labels[0];
+        }
+
+        $last = array_pop($labels);
+
+        return implode(', ', $labels).' and '.$last;
     }
 
     /**

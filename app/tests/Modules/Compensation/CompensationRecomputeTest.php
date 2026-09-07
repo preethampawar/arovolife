@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Console\Actions\PurchaseDataResetAction;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
+use App\Modules\Compensation\Services\Recompute\EngineReplayService;
 use App\Modules\Compensation\Services\Recompute\GroupBvReplayService;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
@@ -15,6 +17,8 @@ use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -870,4 +874,233 @@ it('publishes propagation progress often enough to show a stall as a stall', fun
 
     // Not just the opening 0 and the closing 30 — at least one tick in between.
     expect(array_filter($published, fn ($done) => $done > 0 && $done < 30))->not->toBeEmpty();
+});
+
+it('refuses a partial replay that leaves out the repurchase evaluation the cut-off needs', function (): void {
+    // The wipe deletes the window's repurchase cycles whatever is ticked, and
+    // gsb:daily-cutoff then refuses to run without them — aborting the replay
+    // partway through and leaving the database half-rebuilt. Refuse the
+    // selection before a row is deleted.
+    config(['arovolife.recompute.enabled' => true]);
+    Feature::activate(RepurchaseEngineFeature::class);
+    Queue::fake();
+
+    $this->actingAs(recomputeAdmin())
+        ->post(route('admin.compensation.engine-runs.recompute-all'), [
+            'engines' => ['gsb.daily-cutoff'],
+            'accept_missing_engines' => '1',
+        ])
+        ->assertSessionHasErrors('engines');
+
+    Queue::assertNothingPushed();
+});
+
+it('accepts the same partial replay once the repurchase evaluation is ticked too', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Feature::activate(RepurchaseEngineFeature::class);
+    Queue::fake();
+
+    $this->actingAs(recomputeAdmin())
+        ->post(route('admin.compensation.engine-runs.recompute-all'), [
+            'engines' => ['repurchase.evaluate', 'gsb.daily-cutoff'],
+            'accept_missing_engines' => '1',
+        ])
+        ->assertSessionHasNoErrors();
+
+    Queue::assertPushed(RecomputeAllJob::class);
+});
+
+it('allows a cut-off-only replay while the repurchase engine is off', function (): void {
+    // Flag off, guards skipped: the selection is runnable exactly as before.
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+
+    $this->actingAs(recomputeAdmin())
+        ->post(route('admin.compensation.engine-runs.recompute-all'), [
+            'engines' => ['gsb.daily-cutoff'],
+            'accept_missing_engines' => '1',
+        ])
+        ->assertSessionHasNoErrors();
+
+    Queue::assertPushed(RecomputeAllJob::class);
+});
+
+/** A distributor placed under $parent on $side, with its closure rows. */
+function recomputePlaceChild(Distributor $parent, string $side): Distributor
+{
+    $child = Distributor::factory()->create([
+        'status' => 'active',
+        'placement_parent_id' => $parent->id,
+        'placement_side' => $side,
+        'depth' => $parent->depth + 1,
+    ]);
+
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $child->id, 'descendant_id' => $child->id, 'depth' => 0,
+    ]);
+
+    foreach (DB::table('genealogy_closure')->where('descendant_id', $parent->id)->get() as $row) {
+        DB::table('genealogy_closure')->insert([
+            'ancestor_id' => $row->ancestor_id,
+            'descendant_id' => $child->id,
+            'depth' => $row->depth + 1,
+        ]);
+    }
+
+    return $child;
+}
+
+/** A self-consumption order + its BV — what the repurchase cycle counts. */
+function recomputeSeedSelfPurchase(int $distributorId, int $bvPaise, string $date): void
+{
+    $orderId = DB::table('orders')->insertGetId([
+        'order_no' => 'SELF-'.uniqid(),
+        'customer_id' => 1,
+        'attributed_distributor_id' => $distributorId,
+        'self_consumption' => true,
+        'idempotency_key' => uniqid('self-'),
+        'created_at' => $date,
+        'updated_at' => $date,
+    ]);
+
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'order_id' => $orderId,
+        'bv_paise' => $bvPaise,
+        'type' => 'accrual',
+        'effective_at' => $date,
+        'created_at' => $date,
+        'updated_at' => $date,
+    ]);
+}
+
+it('a full replay of the client GSB example produces forfeited rows for 7–8 Aug and a fresh cycle from 9 Aug', function (): void {
+    // The client's 2026-09-07 example: anchored 7 July, nothing repurchased
+    // until 9 August. The window closed unmet on 6 August, so 7 and 8 August are
+    // forfeited outright and the fresh window opens on the fulfilment day.
+    config(['arovolife.recompute.enabled' => true]);
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
+
+    $subject = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $subject->id, 'descendant_id' => $subject->id, 'depth' => 0,
+    ]);
+    $left = recomputePlaceChild($subject, 'L');
+    $right = recomputePlaceChild($subject, 'R');
+
+    // The anchor: personal purchases reach the 600-BV minimum on 7 July, which
+    // is where the first window starts. Only the second half of that falls
+    // inside the window, so the 600-BV obligation is not met by the anchor
+    // itself — the distributor has to repurchase, and does not.
+    recomputeSeedSelfPurchase($subject->id, 30_000, '2026-07-05 10:00:00');
+    recomputeSeedSelfPurchase($subject->id, 30_000, '2026-07-07 10:00:00');
+    // The late fulfilment, three days after the window closed on 6 August.
+    recomputeSeedSelfPurchase($subject->id, 30_000, '2026-08-09 10:00:00');
+
+    // Group BV on the two forfeited days, so the cut-off runs the engine for
+    // this distributor instead of taking the idle shortcut.
+    recomputeSeedPaidOrder($left->id, '2026-08-07 09:00:00', 500_000);
+    recomputeSeedPaidOrder($right->id, '2026-08-08 09:00:00', 500_000);
+
+    app(CompensationRecomputeRunner::class)->run(
+        from: Carbon::parse('2026-07-01'),
+        to: Carbon::parse('2026-09-05'),
+    );
+
+    $statuses = DB::table('gsb_cutoff_results')
+        ->where('distributor_id', $subject->id)
+        ->orderBy('cutoff_date')
+        ->pluck('status', 'cutoff_date')
+        ->mapWithKeys(fn (string $status, string $date): array => [Carbon::parse($date)->toDateString() => $status])
+        ->all();
+
+    expect($statuses['2026-08-07'])->toBe('repurchase_forfeited')
+        ->and($statuses['2026-08-08'])->toBe('repurchase_forfeited')
+        // The due date itself is not forfeited, nor is the fulfilment day.
+        ->and($statuses['2026-08-06'])->not->toBe('repurchase_forfeited')
+        ->and($statuses['2026-08-09'])->not->toBe('repurchase_forfeited');
+
+    $cycles = DB::table('repurchase_cycles')
+        ->where('distributor_id', $subject->id)
+        ->orderBy('cycle_start_date')
+        ->get();
+
+    expect($cycles->map(fn ($c): string => Carbon::parse($c->cycle_start_date)->toDateString())->all())
+        ->toBe(['2026-07-07', '2026-08-09']);
+
+    $first = $cycles->first();
+    expect(Carbon::parse($first->due_date)->toDateString())->toBe('2026-08-06')
+        ->and(Carbon::parse($first->fulfilled_on)->toDateString())->toBe('2026-08-09')
+        ->and($first->status)->toBe('completed');
+});
+
+it('forces only the in-flight month past the rank check repurchase guard', function (): void {
+    // rank:check-qualifications refuses without an evaluate run dated the 1st of
+    // the FOLLOWING month. For the month still in flight at the horizon that
+    // date has not arrived, so the catch-up pass could never satisfy it and the
+    // whole replay aborted — after the wipe. That one invocation is forced; the
+    // closed months keep their guard.
+    config(['arovolife.recompute.enabled' => true]);
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
+    Feature::activate(RankBonusFeature::class);
+
+    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
+    ]);
+
+    $report = app(CompensationRecomputeRunner::class)->run(
+        from: Carbon::today()->subDays(3),
+        to: Carbon::today(),
+    );
+
+    expect($report->enginesRun)->toHaveKey('rank:check-qualifications');
+
+    $run = EngineRun::where('engine_key', 'rank.check')->latest('id')->firstOrFail();
+    expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
+        ->and(Carbon::parse($run->period_start)->toDateString())
+        ->toBe(Carbon::today()->startOfMonth()->toDateString());
+});
+
+it('runs the repurchase evaluation for the horizon day inside the loop, before the engines that need it', function (): void {
+    // A replay whose window ends on the 1st of a month runs rank:check for the
+    // month that just closed, and that check needs an evaluate run dated the
+    // 1st. Deferring the 1st's evaluation to the catch-up pass put it AFTER the
+    // check and aborted the replay. Driven through EngineReplayService directly
+    // because the group-BV pass clears the test clock before the engine replay.
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
+    Feature::activate(RankBonusFeature::class);
+
+    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-01 02:00:00'));
+
+    try {
+        app(EngineReplayService::class)->replay(
+            Carbon::parse('2026-08-28'),
+            Carbon::parse('2026-09-01'),
+        );
+    } finally {
+        Carbon::setTestNow();
+    }
+
+    // The evaluation for the horizon day ran in the loop, not the catch-up...
+    expect(EngineRun::where('engine_key', 'repurchase.evaluate')
+        ->whereDate('period_start', '2026-09-01')
+        ->where('status', EngineRun::STATUS_SUCCEEDED)
+        ->exists())->toBeTrue();
+
+    // ...so August's rank check found it and did not have to be forced.
+    $check = EngineRun::where('engine_key', 'rank.check')
+        ->whereDate('period_start', '2026-08-01')
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($check->status)->toBe(EngineRun::STATUS_SUCCEEDED);
 });

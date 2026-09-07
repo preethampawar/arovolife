@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services\Recompute;
 
+use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
+use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Support\EngineCadence;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
@@ -30,8 +32,12 @@ use RuntimeException;
  *     later date already processed — a loud failure, by design.
  *   • Within a day, engines run in scheduled-time order, which is how the real
  *     cut-off/payout/bonus sequence was designed.
- *   • Unscheduled prerequisites (rank.check) run before whichever engine
- *     declares them, for the period that engine's dependency declares.
+ *   • Unscheduled prerequisites run before whichever engine declares them, for
+ *     the period that engine's dependency declares. Every registered engine
+ *     currently has a cadence, so that pass finds nothing — it stays as the
+ *     safety net for the next manual-only engine.
+ *   • repurchase:evaluate is never deferred to the catch-up: the engines due
+ *     later the same day refuse to run without it (see isInFlight()).
  *
  * The clock is travelled to each engine's scheduled instant so the rows carry
  * the timestamps the real run would have written. That is not cosmetic:
@@ -70,7 +76,44 @@ final class EngineReplayService
      */
     private ?array $onlyKeys = null;
 
+    /**
+     * Engines whose commands REFUSE to run — exit 1, a FAILED engine run —
+     * while the repurchase engine is on and `repurchase:evaluate` has no
+     * succeeded run far enough forward: {@see GsbDailyCutoffCommand}
+     * needs one as at the cut-off date, {@see RankCheckCommand}
+     * one dated the 1st of the month after the month it checks.
+     *
+     * A partial replay that ticks one of these without ticking Repurchase
+     * Evaluation does not merely leave a gap: the wipe has already deleted the
+     * repurchase cycles for the window, the first refusal aborts the replay
+     * ({@see self::invoke()}), and the database is left half-rebuilt. So the
+     * selection is refused before anything is deleted.
+     *
+     * @var list<string>
+     */
+    public const GUARDED_BY_REPURCHASE_EVALUATE = ['gsb.daily-cutoff', 'rank.check'];
+
     public function __construct(private readonly RecomputeProgress $progress) {}
+
+    /**
+     * Which of the selected engines cannot run because the selection leaves
+     * Repurchase Evaluation out. Empty for a full replay (null / no selection),
+     * and empty once the evaluation is selected too.
+     *
+     * The caller checks the repurchase flag: with the engine off the guards are
+     * skipped and any selection is runnable.
+     *
+     * @param  list<string>|null  $onlyKeys
+     * @return list<string>
+     */
+    public static function guardedEnginesMissingEvaluate(?array $onlyKeys): array
+    {
+        if ($onlyKeys === null || $onlyKeys === [] || in_array('repurchase.evaluate', $onlyKeys, true)) {
+            return [];
+        }
+
+        return array_values(array_intersect(self::GUARDED_BY_REPURCHASE_EVALUATE, $onlyKeys));
+    }
 
     /**
      * @param  Closure(string): void|null  $progress
@@ -294,8 +337,43 @@ final class EngineReplayService
                 $this->invoke($prerequisite['definition'], $prerequisite['period'], $stampAt);
             }
 
-            $this->invoke($entry['definition'], $entry['period'], $stampAt);
+            $this->invoke(
+                $entry['definition'],
+                $entry['period'],
+                $stampAt,
+                $this->overridesGuardAtHorizon($entry['definition'], $entry['period'], $horizon)
+                    ? ['--force' => true]
+                    : [],
+            );
         }
+    }
+
+    /**
+     * Whether this catch-up invocation has to override the engine's own
+     * repurchase guard, because the run that would satisfy it lies beyond the
+     * window.
+     *
+     * `rank:check-qualifications` refuses without a `repurchase:evaluate` run
+     * dated the 1st of the month AFTER the month it checks — proof that every
+     * cycle due in that month has been judged. For the month still IN FLIGHT at
+     * the horizon that date has not arrived, so no replay can produce it: the
+     * choice is between forcing this one invocation and aborting the whole
+     * replay after the wipe. The month is provisional by construction, and the
+     * report already says so.
+     *
+     * Narrow on purpose, never blanket:
+     *  • only rank.check, and only from the catch-up pass;
+     *  • only when the required date is beyond the horizon — every CLOSED month
+     *    is judged by an evaluation the day loop really ran, and keeps its
+     *    guard;
+     *  • only when this replay has itself run the evaluation, so a selection
+     *    that left it out cannot slip a forced rank check past the operator.
+     */
+    private function overridesGuardAtHorizon(EngineDefinition $definition, Carbon $period, Carbon $horizon): bool
+    {
+        return $definition->key === 'rank.check'
+            && ($this->engineRuns['repurchase:evaluate'] ?? 0) > 0
+            && $period->copy()->startOfMonth()->addMonthNoOverflow()->gt($horizon);
     }
 
     /** Is this engine part of the replay the caller asked for? */
@@ -364,10 +442,12 @@ final class EngineReplayService
     }
 
     /**
-     * Prerequisites nothing in the scheduler fires — today that is only
-     * rank.check, which every rank-derived engine depends on but which is
-     * manual-only. Read from the engine's declared dependencies rather than
-     * hardcoded here, including the 'prev-month' shift GBB's rank gate needs.
+     * Prerequisites nothing in the scheduler fires. Every registered engine has
+     * a cadence today — rank.check gained one when it joined the monthly close —
+     * so this returns nothing; it is kept as the mechanism for the next
+     * manual-only prerequisite, read from the engine's declared dependencies
+     * rather than hardcoded here, including the 'prev-month' shift GBB's rank
+     * gate needs.
      *
      * @return array<string, array{definition: EngineDefinition, period: Carbon}>
      */
@@ -406,6 +486,18 @@ final class EngineReplayService
      */
     private function isInFlight(EngineDefinition $definition, Carbon $period, Carbon $realNow): bool
     {
+        // The evaluation is never deferred. It freezes no period's economics —
+        // it refreshes each cycle as at a date — and the engines due later the
+        // same day REFUSE to run without it. Handing today's evaluation to the
+        // catch-up starved them: a replay whose window ends on the 1st of a
+        // month aborted on rank:check-qualifications for the month that just
+        // closed, after the wipe had already run. It runs in the day loop at
+        // the instant the scheduler would have used, and the catch-up then
+        // finds it already invoked.
+        if ($definition->key === 'repurchase.evaluate') {
+            return false;
+        }
+
         return $definition->periodType === EnginePeriodType::Month
             ? $period->isSameMonth($realNow)
             : $period->isSameDay($realNow);
@@ -417,12 +509,17 @@ final class EngineReplayService
         return $definition->key.'|'.$definition->formatPeriod($period);
     }
 
-    private function invoke(EngineDefinition $definition, Carbon $period, Carbon $at): void
+    /**
+     * @param  array<string, bool|string>  $extraOptions  guard overrides — see
+     *                                                    {@see self::overridesGuardAtHorizon()}; empty everywhere else
+     */
+    private function invoke(EngineDefinition $definition, Carbon $period, Carbon $at, array $extraOptions = []): void
     {
         Carbon::setTestNow($at);
 
         $exit = Artisan::call($definition->commandSignature, [
             $definition->periodOption => $definition->formatPeriod($period),
+            ...$extraOptions,
         ]);
 
         if ($exit !== 0) {

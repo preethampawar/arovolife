@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Services\DTOs\EngineChainPlan;
 use App\Modules\Compensation\Services\DTOs\EngineChainStep;
 use App\Modules\Compensation\Support\EngineDefinition;
@@ -148,14 +149,19 @@ final class EngineChainResolver
         }
 
         if ($expand === 'week') {
-            // PayoutService::runWeeklyBatch() sweeps every unpaid weekly-bonus
-            // wallet entry rather than a dated window, so there is no formal
-            // "payout week" to derive. The seven days ending on the batch date
-            // are the days a Tuesday-to-Tuesday batch would newly cover — enough
-            // to catch a missed cut-off without backfilling all of history.
+            // The batch dated T pays the Wednesday→Tuesday week that closed the
+            // PREVIOUS Tuesday — [T−13, T−7] — so those are the cut-offs it
+            // needs proven. The seven days ending on T are the wrong week: this
+            // batch does not pay them, and backfilling them here would leave the
+            // week it does pay unchecked.
+            //
+            // PayoutBatch::weeklyEarningWindow() is the ONE place the week rule
+            // lives; never restate the offsets here.
+            $window = PayoutBatch::weeklyEarningWindow($period);
+
             return $this->missingCutoffDays(
-                $period->copy()->subDays(6),
-                $period->copy(),
+                $window['start'],
+                $window['end'],
                 $engine,
                 $warnings,
             );

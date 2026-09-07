@@ -36,6 +36,16 @@ Schedule::command(RepurchaseEvaluateCommand::class)
 // idempotent and never recomputed). The 10-minute buffer lets queued
 // propagation jobs land; results are still recorded against the day the BV
 // belongs to. withoutOverlapping prevents concurrent runs.
+//
+// The five minutes between 00:05 and 00:10 are an ordering HINT, not a
+// guarantee: withoutOverlapping() is per-command, so nothing here serialises
+// the cut-off behind the evaluation — an evaluation that overran five minutes,
+// failed, or never started would let the cut-off proceed on yesterday's
+// repurchase verdicts. The guarantee is inside the command: while the
+// repurchase engine is on, gsb:daily-cutoff REFUSES (exit 1, a FAILED engine
+// run) unless repurchase:evaluate has a succeeded run as at the cut-off date or
+// later. A forfeited day credited by mistake is never corrected, so the cut-off
+// would rather not run than run early.
 Schedule::command(GsbDailyCutoffCommand::class, [
     '--date' => now('Asia/Kolkata')->subDay()->toDateString(),
 ])

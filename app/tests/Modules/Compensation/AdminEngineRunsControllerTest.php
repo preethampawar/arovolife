@@ -208,6 +208,32 @@ it('queues the chain job and writes an audit row on trigger', function (): void 
         ->and($log->details['planned_chain'])->toBeArray();
 });
 
+it('plans repurchase evaluation ahead of a manually triggered cut-off', function (): void {
+    // The cut-off REFUSES to run without a succeeded evaluate run as at its
+    // date, so a manual trigger that did not chain one would queue a job that
+    // can only fail. The chain is what satisfies the guard.
+    Queue::fake();
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
+
+    $yesterday = Carbon::yesterday()->toDateString();
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => $yesterday,
+            'reason' => 'Cut-off missed overnight — re-running yesterday.',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'));
+
+    $log = AuditLog::where('action', 'compensation.engine.manual_run')->sole();
+
+    expect($log->details['planned_chain'])->toBe([
+        'repurchase.evaluate|'.$yesterday,
+        'gsb.daily-cutoff|'.$yesterday,
+    ]);
+});
+
 it('refuses to trigger the scheduler-only payout-batch engines (maker-checker)', function (): void {
     Queue::fake();
     $admin = engineRunsUser('admin');

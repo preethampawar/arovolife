@@ -38,7 +38,17 @@ final class GsbWeeklyPayoutCommand extends Command
             ? Carbon::parse((string) $this->option('date'))
             : Carbon::today();
 
-        $this->info("Weekly payout (Group A) — {$date->toDateString()}");
+        // Name the week being paid, not just the batch date: the batch dated T
+        // pays the Wednesday–Tuesday week that closed on T−7, and an operator
+        // reading only the batch date has no way to tell which earnings moved.
+        $window = PayoutBatch::weeklyEarningWindow($date);
+
+        $this->info(sprintf(
+            'Weekly payout (Group A) — batch %s pays earnings %s → %s',
+            $date->toDateString(),
+            $window['start']->toDateString(),
+            $window['end']->toDateString(),
+        ));
 
         try {
             $batch = $this->payoutService->runWeeklyBatch($date);

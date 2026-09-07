@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\DTOs\RecomputeReport;
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\WindowedStateWiper;
+use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -334,4 +336,132 @@ it('refuses to rewind a legacy carry forward that has no side anywhere', functio
     // Better to stop and demand a full recompute than to orphan the balance.
     expect(fn () => app(WindowedStateWiper::class)->wipe(Carbon::today(), static fn (string $m): null => null))
         ->toThrow(RuntimeException::class, 'Run a full recompute');
+});
+
+it('resets the verdict of a cycle that straddles the window start and re-resolves it on replay to the same answer', function (): void {
+    // A cycle that STARTED before the window but is judged inside it had its
+    // verdict computed from wallet ledger rows the wipe deletes. Left alone,
+    // `resolveAtWindowEnd()` never runs again (it fires only while
+    // resolved_at is null), so the replay would keep a verdict derived from
+    // rows that no longer exist.
+    $distributor = Distributor::factory()->create();
+
+    $cycle = RepurchaseCycle::create([
+        'distributor_id' => $distributor->id,
+        'cycle_start_date' => '2026-07-07',
+        'due_date' => '2026-08-06',
+        'required_bv_paise' => 60_000_00,
+        'completed_bv_paise' => 12_000_00,
+        'wallet_balance_paise' => 0,
+        'wallet_zeroed' => true,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => '2026-08-07 00:05:00',
+    ]);
+
+    app(WindowedStateWiper::class)->wipe(Carbon::parse('2026-08-01'), static fn (string $m): null => null);
+
+    $cycle->refresh();
+
+    expect($cycle->resolved_at)->toBeNull()
+        ->and($cycle->wallet_balance_paise)->toBeNull()
+        ->and($cycle->wallet_zeroed)->toBeNull()
+        ->and($cycle->fulfilled_on)->toBeNull()
+        ->and($cycle->failure_reason)->toBeNull()
+        ->and($cycle->status)->toBe(RepurchaseCycle::STATUS_ACTIVE)
+        ->and($cycle->completed_bv_paise)->toBe(0)
+        ->and($cycle->completed_at)->toBeNull();
+
+    // The replay re-takes the verdict from the rebuilt ledger. With no
+    // self-purchase BV in the window it lands on the same answer as before.
+    app(RepurchaseCycleService::class)->evaluate($distributor->id, Carbon::parse('2026-08-10'));
+
+    $cycle->refresh();
+
+    expect($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED)
+        ->and($cycle->failure_reason)->toBe(RepurchaseCycle::REASON_BV_SHORT)
+        ->and($cycle->resolved_at)->not->toBeNull();
+});
+
+it('un-fulfils a cycle whose late fulfilment happened inside the window', function (): void {
+    // Verdict taken before the window (it stands), fulfilment inside it (it
+    // does not): the fulfilment day is derived from ledger rows the wipe
+    // removes, and it also re-anchors every later cycle.
+    $distributor = Distributor::factory()->create();
+
+    $cycle = RepurchaseCycle::create([
+        'distributor_id' => $distributor->id,
+        'cycle_start_date' => '2026-06-01',
+        'due_date' => '2026-07-01',
+        'required_bv_paise' => 60_000_00,
+        'completed_bv_paise' => 60_000_00,
+        'wallet_balance_paise' => 0,
+        'wallet_zeroed' => true,
+        'status' => RepurchaseCycle::STATUS_COMPLETED,
+        'fulfilled_on' => '2026-08-09',
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => '2026-07-02 00:05:00',
+        'completed_at' => '2026-08-09 00:05:00',
+    ]);
+
+    app(WindowedStateWiper::class)->wipe(Carbon::parse('2026-08-01'), static fn (string $m): null => null);
+
+    $cycle->refresh();
+
+    expect($cycle->fulfilled_on)->toBeNull()
+        ->and($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED)
+        ->and($cycle->completed_at)->toBeNull()
+        // The verdict itself was taken outside the window and survives.
+        ->and($cycle->resolved_at)->not->toBeNull()
+        ->and($cycle->failure_reason)->toBe(RepurchaseCycle::REASON_BV_SHORT);
+});
+
+it('leaves cycles wholly outside the window alone and is idempotent', function (): void {
+    $distributor = Distributor::factory()->create();
+
+    $settled = RepurchaseCycle::create([
+        'distributor_id' => $distributor->id,
+        'cycle_start_date' => '2026-06-01',
+        'due_date' => '2026-07-01',
+        'required_bv_paise' => 60_000_00,
+        'completed_bv_paise' => 60_000_00,
+        'wallet_balance_paise' => 0,
+        'wallet_zeroed' => true,
+        'status' => RepurchaseCycle::STATUS_COMPLETED,
+        'fulfilled_on' => '2026-07-01',
+        'resolved_at' => '2026-07-02 00:05:00',
+        'completed_at' => '2026-07-02 00:05:00',
+    ]);
+
+    $wiper = app(WindowedStateWiper::class);
+
+    expect($wiper->preview(Carbon::parse('2026-08-01')))
+        ->not->toHaveKey('repurchase_cycles (verdict reset)');
+
+    $wiper->wipe(Carbon::parse('2026-08-01'), static fn (string $m): null => null);
+    $wiper->wipe(Carbon::parse('2026-08-01'), static fn (string $m): null => null);
+
+    $settled->refresh();
+
+    expect($settled->status)->toBe(RepurchaseCycle::STATUS_COMPLETED)
+        ->and($settled->fulfilled_on->toDateString())->toBe('2026-07-01')
+        ->and($settled->resolved_at)->not->toBeNull();
+});
+
+it('counts the verdict resets in the preview', function (): void {
+    $distributor = Distributor::factory()->create();
+
+    RepurchaseCycle::create([
+        'distributor_id' => $distributor->id,
+        'cycle_start_date' => '2026-07-07',
+        'due_date' => '2026-08-06',
+        'required_bv_paise' => 60_000_00,
+        'completed_bv_paise' => 12_000_00,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => '2026-08-07 00:05:00',
+    ]);
+
+    expect(app(WindowedStateWiper::class)->preview(Carbon::parse('2026-08-01')))
+        ->toHaveKey('repurchase_cycles (verdict reset)', 1);
 });

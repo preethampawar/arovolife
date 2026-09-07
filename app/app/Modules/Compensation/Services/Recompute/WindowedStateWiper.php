@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services\Recompute;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Support\DerivedTables;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use Closure;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -69,6 +71,13 @@ final class WindowedStateWiper
         'fortune_bonus_result' => 'fortune_bonus_results',
         'adc_bonus_result' => 'adc_bonus_results',
     ];
+
+    /**
+     * Reported alongside the deletions, under its own label: these rows are
+     * reset in place rather than removed, and calling them `repurchase_cycles`
+     * would read as "rows deleted" in the preview and the run summary.
+     */
+    private const CYCLE_RESET_KEY = 'repurchase_cycles (verdict reset)';
 
     public function __construct(private readonly DatabaseManager $db) {}
 
@@ -148,6 +157,12 @@ final class WindowedStateWiper
                     ->delete();
             }
             $removed['wallet_ledger_entries'] = $this->deleteOrphanedWalletEntries($dayStart);
+
+            // Cycles are deleted by cycle_start_date, which leaves the ones that
+            // STARTED before the window carrying a verdict computed from rows
+            // that have just gone. Unresolve them so the replay judges them
+            // again.
+            $removed[self::CYCLE_RESET_KEY] = $this->resetCycleVerdictsInWindow($dayStart);
         } finally {
             Schema::enableForeignKeyConstraints();
         }
@@ -208,7 +223,92 @@ final class WindowedStateWiper
             }
         }
 
+        if ($this->db->getSchemaBuilder()->hasTable('repurchase_cycles')) {
+            $reset = (int) $this->straddlingVerdicts($dayStart)->count()
+                + (int) $this->lateFulfilmentsInWindow($dayStart)->count();
+
+            if ($reset > 0) {
+                $counts[self::CYCLE_RESET_KEY] = $reset;
+            }
+        }
+
         return $counts;
+    }
+
+    /**
+     * Unresolve the cycles whose verdict was computed from rows this window has
+     * just deleted, so the replay takes it again.
+     *
+     * A cycle is deleted only when its `cycle_start_date` falls inside the
+     * window, but the verdict is taken at the window's END: a cycle that
+     * started in July and was judged on 7 August keeps a `resolved_at` — and
+     * `RepurchaseCycleService::resolveAtWindowEnd()` fires only while that is
+     * null. So a windowed replay from 1 August would leave August's verdict
+     * standing on wallet ledger rows and BV credits that no longer exist,
+     * silently, and every forfeited day it implies with it.
+     *
+     * Two shapes:
+     *
+     *  1. **Judged inside the window** (`cycle_start < from <= due`) — the whole
+     *     verdict goes: it is re-taken from the rebuilt ledger.
+     *  2. **Judged before the window, fulfilled late inside it**
+     *     (`due < from <= fulfilled_on`) — the verdict itself stands, because it
+     *     was computed from surviving rows; only the fulfilment is undone. It
+     *     matters beyond this cycle: the fulfilment day re-anchors the next
+     *     window, so a stale one shifts every later cycle.
+     *
+     * Idempotent: shape 1 rewrites the same nulls, and shape 2 no longer
+     * matches once `fulfilled_on` is null.
+     */
+    public function resetCycleVerdictsInWindow(Carbon $from): int
+    {
+        if (! $this->db->getSchemaBuilder()->hasTable('repurchase_cycles')) {
+            return 0;
+        }
+
+        $dayStart = $from->copy()->startOfDay();
+        $now = Carbon::now();
+
+        $reset = $this->straddlingVerdicts($dayStart)->update([
+            'resolved_at' => null,
+            'wallet_balance_paise' => null,
+            'wallet_zeroed' => null,
+            'fulfilled_on' => null,
+            'failure_reason' => null,
+            'status' => RepurchaseCycle::STATUS_ACTIVE,
+            'completed_bv_paise' => 0,
+            'completed_at' => null,
+            'updated_at' => $now,
+        ]);
+
+        $reset += $this->lateFulfilmentsInWindow($dayStart)->update([
+            'fulfilled_on' => null,
+            // Back to what the verdict said: the window closed unmet and the
+            // fulfilment that ended the forfeit has not been rebuilt yet.
+            'status' => RepurchaseCycle::STATUS_SUSPENDED,
+            'completed_at' => null,
+            'updated_at' => $now,
+        ]);
+
+        return $reset;
+    }
+
+    /** Cycles that started before the window and are judged inside it. */
+    private function straddlingVerdicts(Carbon $dayStart): QueryBuilder
+    {
+        return $this->db->table('repurchase_cycles')
+            ->whereDate('cycle_start_date', '<', $dayStart->toDateString())
+            ->whereDate('due_date', '>=', $dayStart->toDateString());
+    }
+
+    /** Cycles judged before the window whose late fulfilment falls inside it. */
+    private function lateFulfilmentsInWindow(Carbon $dayStart): QueryBuilder
+    {
+        return $this->db->table('repurchase_cycles')
+            ->whereDate('cycle_start_date', '<', $dayStart->toDateString())
+            ->whereDate('due_date', '<', $dayStart->toDateString())
+            ->whereNotNull('fulfilled_on')
+            ->whereDate('fulfilled_on', '>=', $dayStart->toDateString());
     }
 
     /**

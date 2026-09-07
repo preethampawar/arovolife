@@ -106,7 +106,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'gsb.daily-cutoff',
                 label: 'GSB Daily Cut-off (incl. MSB)',
-                description: 'Runs the Genos Sales Bonus cut-off for the chosen day across all active distributors, prices that day\'s GSB and Mentorship pools, and credits the resulting amounts to wallets. Impact: writes the day\'s cut-off results, carry-forwards, daily pools and wallet credits. Idempotent — a distributor already credited for that day is skipped, never credited twice.',
+                description: 'Runs the Genos Sales Bonus cut-off for the chosen day across all active distributors, prices that day\'s GSB and Mentorship pools, and credits the resulting amounts to wallets. Impact: writes the day\'s cut-off results, carry-forwards, daily pools and wallet credits. Idempotent — a distributor already credited for that day is skipped, never credited twice. While the repurchase engine is on it refuses to run at all unless Repurchase Evaluation has a succeeded run as at the cut-off date or later: without it every failed repurchase cycle would still read as eligible and be credited, and the forfeit is permanent.',
                 periodType: EnginePeriodType::Date,
                 commandClass: GsbDailyCutoffCommand::class,
                 commandSignature: 'gsb:daily-cutoff',
@@ -124,7 +124,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'gsb.weekly-payout',
                 label: 'GSB Weekly Payout',
-                description: 'Builds the weekly payout batch: sweeps every unpaid weekly-bonus wallet entry, applies the admin charge and TDS, and writes one line item per distributor. Impact: writes a payout batch with its line items and marks the swept wallet entries as paid out. Idempotent — one batch per batch date, and a batch already processed is returned unchanged.',
+                description: 'Builds the weekly payout batch: sweeps GSB and Mentorship credits earned in the Wednesday–Tuesday week that closed seven days before the batch date, applies the admin charge and TDS, and writes one line item per distributor. Impact: writes a payout batch with its line items and marks the swept wallet entries as paid out. Idempotent — one batch per batch date, and a batch already processed is returned unchanged.',
                 periodType: EnginePeriodType::Date,
                 commandClass: GsbWeeklyPayoutCommand::class,
                 commandSignature: 'gsb:weekly-payout',
