@@ -78,10 +78,10 @@
                         'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
                     ];
                     $sl = [
-                        'repurchase_wallet_blocked' => 'Not payable',
+                        'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not paid',
                     ];
-                    $sn = [
-                        'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not payable for this month.',
+                    $st = [
+                        'repurchase_wallet_blocked' => 'Your repurchase wallet still held a balance at the last moment of this month, so the month\'s Fortune Bonus was not paid. Clearing the repurchase wallet before your cycle\'s last day is one of the published monthly conditions; your matrix position is kept, and a month recorded this way is final and is not released later.',
                     ];
                     @endphp
                     <tr class="hover:bg-gray-50">
@@ -104,14 +104,14 @@
                                 <span class="text-gray-600">—</span>
                             @endif
                         </td>
-                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :dash-when-zero="true" :gross="$row->gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_paise" />
+                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :dash-when-zero="true" :gross="$row->gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_paise" :is-credited="$row->status === 'credited'" />
                         <td class="px-4 py-3 text-center">
-                            <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ $sl[$row->status] ?? ucfirst($row->status) }}
+                                @isset($st[$row->status])
+                                <x-help-tip :text="$st[$row->status]" />
+                                @endisset
                             </span>
-                            @isset($sn[$row->status])
-                            <span class="block text-[11px] text-gray-600 mt-1">{{ $sn[$row->status] }}</span>
-                            @endisset
                         </td>
                     </tr>
                     @endforeach

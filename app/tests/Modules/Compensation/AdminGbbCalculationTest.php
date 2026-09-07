@@ -296,8 +296,8 @@ it('presents a repurchase wallet forfeit without an income line', function () {
     $html = gbbRenderIncomePage($distributorId);
 
     expect($html)
-        ->toContain('Not payable')
-        ->toContain('Repurchase wallet not cleared at month end');
+        // One badge, not a badge plus a footnote: the reason IS the status.
+        ->toContain('Repurchase wallet not cleared at month end — not paid');
     expect(str_contains($html, '12 AGP × ₹'.Number::format(250, 2)))->toBeFalse();
 });
 

@@ -1,6 +1,6 @@
 @developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    History of weekly Tuesday bank transfer payout line items for this distributor.
+    History of weekly Tuesday bank transfer payout line items for this distributor. Each batch pays one Wednesday-to-Tuesday earning week and runs the Tuesday one week after that week closed, so a batch dated Tuesday 22 September pays income earned from Wednesday 9 September to Tuesday 15 September.
 </div>
 @enddeveloper
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

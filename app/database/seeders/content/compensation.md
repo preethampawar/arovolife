@@ -207,7 +207,7 @@ Non-cash awards are not subject to the administrative charge. Applicable tax on 
 
 ## 9. Payment
 
-- **Cadence:** GSB and MSB are calculated daily and paid weekly, every Tuesday at 03:00 IST. Monthly bonuses for the previous month are calculated and **credited** to your account on the 1st of the following month (from 00:15 IST). **Payment** of those credited amounts is a separate, later step: a single monthly transfer on the 8th at 04:00 IST. The week between crediting and payment is a checking window, during which a credited amount is visible in your account but has not yet been transferred.
+- **Cadence:** GSB and Mentorship Bonus are calculated daily. Each earning week runs Wednesday to Tuesday and is paid on the following Tuesday at 03:00 IST. Monthly bonuses for the previous month are calculated and **credited** to your account on the 1st of the following month (from 00:15 IST). **Payment** of those credited amounts is a separate, later step: a single monthly transfer on the 8th at 04:00 IST. The week between crediting and payment is a checking window, during which a credited amount is visible in your account but has not yet been transferred.
 - **Minimum payment:** ₹100. Balances below this are carried to the next payout run and are not forfeited.
 - **Bank transfer requires all of:** personal BV of at least 3,000; active, verified KYC; and verified bank details on file. Until all three are met, income accrues in the web account and is not swept or forfeited.
 

@@ -69,12 +69,13 @@ it('renders the payout operations help document', function (): void {
 });
 
 it('shows the earning week each weekly batch pays for on the batch list', function (): void {
-    // 18 August 2026 pays the week that closed on Tuesday 11 August (the
-    // client's own example). Admins reconciling a batch have to be able to see
+    // A batch dated Tuesday 22 September pays the week that closed on Tuesday
+    // 15 September — the client's own offset, applied to the first Tuesdays the
+    // rule actually governs. Admins reconciling a batch have to be able to see
     // which week it covers without recomputing the offset by hand.
     PayoutBatch::create([
         'batch_type' => PayoutBatch::TYPE_WEEKLY,
-        'batch_date' => '2026-08-18',
+        'batch_date' => '2026-09-22',
         'status' => PayoutBatch::STATUS_PENDING,
     ]);
 
@@ -82,8 +83,44 @@ it('shows the earning week each weekly batch pays for on the batch list', functi
         ->get(route('admin.compensation.weekly-payouts.index'))
         ->assertOk()
         ->assertSee('Earnings through')
-        ->assertSee('18 Aug 2026')
-        ->assertSee('11 Aug 2026')
+        ->assertSee('22 Sep 2026')
+        ->assertSee('15 Sep 2026')
         // Never the statutory term: cooling-off is the 30-day cancellation window.
         ->assertDontSee('cooling-off');
+});
+
+it('leaves Earnings through blank for batches the week rule never governed', function (): void {
+    // The Wednesday-to-Tuesday rule took effect on 8 September 2026. Batches
+    // paid before it, and every legacy `gsb_weekly` batch, settled the wallet
+    // balance as it stood on the batch date; printing a window they never paid
+    // would misstate what a distributor was actually paid for.
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-08-18',
+        'status' => PayoutBatch::STATUS_COMPLETED,
+    ]);
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_GSB_WEEKLY,
+        'batch_date' => '2026-09-29',
+        'status' => PayoutBatch::STATUS_COMPLETED,
+    ]);
+
+    $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.weekly-payouts.index'))
+        ->assertOk()
+        ->assertSee('18 Aug 2026')
+        ->assertSee('29 Sep 2026')
+        // Neither batch's window is printed: 11 Aug and 22 Sep must not appear.
+        ->assertDontSee('11 Aug 2026')
+        ->assertDontSee('22 Sep 2026');
+});
+
+it('resolves the earning window only for weekly batches on or after the rule date', function (): void {
+    $governed = new PayoutBatch(['batch_type' => PayoutBatch::TYPE_WEEKLY, 'batch_date' => '2026-09-08']);
+    $tooEarly = new PayoutBatch(['batch_type' => PayoutBatch::TYPE_WEEKLY, 'batch_date' => '2026-09-01']);
+    $legacy = new PayoutBatch(['batch_type' => PayoutBatch::TYPE_GSB_WEEKLY, 'batch_date' => '2026-09-22']);
+
+    expect($governed->weeklyEarningThrough()?->toDateString())->toBe('2026-09-01')
+        ->and($tooEarly->weeklyEarningThrough())->toBeNull()
+        ->and($legacy->weeklyEarningThrough())->toBeNull();
 });

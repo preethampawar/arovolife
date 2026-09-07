@@ -37,7 +37,30 @@ final readonly class RankStatus
          * pays only if the month's repurchase conditions are met.
          */
         public ?bool $requalificationConditionsMet = null,
+        /**
+         * Days in the current calendar month on which the distributor was
+         * failed on their repurchase cycle, so the day's Genos BV counted
+         * toward no rank. 0 when nothing was forfeited (or the repurchase
+         * engine is off).
+         */
+        public int $forfeitedDaysThisMonth = 0,
     ) {}
+
+    /**
+     * True when the next rank is measured on this month's Left/Right Genos BV
+     * (ranks 1-2) — the only case in which forfeited days change the figures
+     * on the progress ladder.
+     */
+    public function hasMonthGenosBvRequirements(): bool
+    {
+        foreach ($this->nextRequirements as $requirement) {
+            if ($requirement->unit === 'bv' && str_contains($requirement->label, 'Genos BV this month')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public function currentRankName(): ?string
     {

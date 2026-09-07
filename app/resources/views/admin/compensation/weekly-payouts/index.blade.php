@@ -21,7 +21,7 @@
                     <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Batch date</th>
                     <th class="px-4 py-2 text-left text-gray-600">
-                        Earnings through <x-help-tip text="The last day of the Wednesday-to-Tuesday earning week this batch pays — the Tuesday one week before the batch date. Income earned after it is paid by the next Tuesday's batch." />
+                        Earnings through <x-help-tip text="The last day of the Wednesday-to-Tuesday earning week this batch pays — the Tuesday one week before the batch date. Income earned after it is paid by the next Tuesday's batch. Batches from before the rule took effect, and legacy GSB-weekly batches, swept the whole wallet balance instead and show a dash." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">
                         Distributors <x-help-tip text="Distributors being paid in this batch (net ≥ ₹{{ $minPayout }}). 'Held' counts those whose income stays in the wallet — KYC pending, no bank account, web-only or bank details unreadable." />
@@ -51,7 +51,7 @@
                 <tr>
                     <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $batches->firstItem() + $loop->index }}</td>
                     <td class="px-4 py-2 font-medium">{{ $b->batch_date->format('d M Y') }} ({{ $b->batch_date->format('D') }})</td>
-                    <td class="px-4 py-2 text-gray-600">{{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($b->batch_date)['end']->format('d M Y') }}</td>
+                    <td class="px-4 py-2 text-gray-600">{{ $b->weeklyEarningThrough()?->format('d M Y') ?? '—' }}</td>
                     <td class="px-4 py-2 text-right">
                         {{ \App\Modules\Shared\Support\IndianNumber::format($b->distributor_count) }}
                         @if($b->held_count > 0)

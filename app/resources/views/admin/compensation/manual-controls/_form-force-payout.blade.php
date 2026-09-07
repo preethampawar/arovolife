@@ -2,7 +2,7 @@
 <form method="POST" action="{{ route('admin.compensation.manual-controls.force-payout') }}"
       data-confirm="This will log a force-payout request for this distributor."
       data-confirm-title="Confirm: Force Weekly Payout"
-      data-confirm-impact="The payout batch will run for this distributor at the next scheduled time. Use only if the automated Tuesday batch skipped this distributor.">
+      data-confirm-impact="The payout batch will run for this distributor at the next scheduled time and pays that batch's Wednesday-to-Tuesday earning week — the week that closed the previous Tuesday, not the days since. Use only if the automated Tuesday batch skipped this distributor.">
     @csrf
     <div class="mb-4">
         <label class="block text-xs font-medium text-gray-700 mb-1">Distributor ADN <x-help-tip text="Arovolife Distributor Number of the distributor to include in the next payout batch." /></label>

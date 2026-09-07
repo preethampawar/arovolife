@@ -111,6 +111,20 @@
                 </div>
                 @endforeach
             </div>
+            {{-- The Genos BV above is the COUNTED BV: days on which the
+                 repurchase condition was not met contribute nothing to either
+                 side, permanently (client spec 2026-09-07 §2.2). Saying so is
+                 the difference between "your BV is lower than you expected"
+                 and "here is exactly why". --}}
+            @if($rankStatus->forfeitedDaysThisMonth > 0 && $rankStatus->hasMonthGenosBvRequirements())
+            <p class="text-xs text-red-700 mt-3 flex items-start gap-1">
+                <x-lucide-circle-alert class="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span class="flex items-center gap-1">
+                    {{ $rankStatus->forfeitedDaysThisMonth }} {{ \Illuminate\Support\Str::plural('day', $rankStatus->forfeitedDaysThisMonth) }} this month not counted (repurchase condition not met)
+                    <x-help-tip text="Your repurchase period had closed without being met on those days, so their Left and Right Genos BV was not added to the figures above and never will be. Counting resumed on the day you met the condition. Personal purchase BV is not affected." />
+                </span>
+            </p>
+            @endif
             <p class="text-xs text-gray-600 mt-3">
                 These are the plan's published conditions for {{ $rankStatus->nextRankName() }} shown next to your own current figures. Meeting them is not a guarantee of any income.
             </p>

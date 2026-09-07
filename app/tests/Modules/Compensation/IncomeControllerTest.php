@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -102,7 +104,9 @@ it('renders income dashboard for a distributor', function (): void {
 
     $this->get(route('income.dashboard'))
         ->assertOk()
-        ->assertSee('Income');
+        ->assertSee('Income')
+        ->assertSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
+        ->assertDontSee('cooling-off');
 });
 
 it('shows group BV as 0 on the dashboard when personal BV is below 600', function (): void {
@@ -468,7 +472,12 @@ it('renders wallet page with empty state', function (): void {
 
     $this->get(route('income.wallet'))
         ->assertOk()
-        ->assertSee('Wallet');
+        ->assertSee('Wallet')
+        // The payout week, stated as the week rule and never as "cooling-off"
+        // (that is the statutory 30-day cancellation window, hard rule 5).
+        ->assertSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
+        ->assertSee('Covers earnings through')
+        ->assertDontSee('cooling-off');
 });
 
 it('streams gsb history csv for authenticated distributor', function (): void {
@@ -855,4 +864,186 @@ it('keeps every other cut-off status out of the distributor gsb history', functi
         ->assertDontSee('2,222')
         ->assertDontSee('3,333')
         ->assertDontSee('4,444');
+});
+
+// ── Monthly bonus history: the wallet-blocked month is shown, never paid ──
+// Client spec 2026-09-07 §2: the month-end repurchase-wallet condition is a
+// published plan condition, so a distributor is entitled to see the month it
+// cost them. The row carries no money (gross 0, net 0), so page totals are
+// unchanged. Own data only, historical fact — never a projection (hard rule 3).
+
+it('shows a wallet-blocked month on the growth booster page without paying it', function (): void {
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('gbb_monthly_results')->insert([
+        [
+            'distributor_id' => $distributorId,
+            'year_month' => '2026-07-01',
+            'agp_earned' => 12,
+            'company_turnover_paise' => 100_000_000,
+            'pool_paise' => 5_000_000,
+            'total_pool_agp' => 100,
+            'point_value_paise' => 50_000,
+            'gbb_gross_paise' => 600_000,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'repurchase_deduction_paise' => 60_000,
+            'gbb_net_paise' => 540_000,
+            'status' => 'credited',
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ],
+        [
+            'distributor_id' => $distributorId,
+            'year_month' => '2026-08-01',
+            'agp_earned' => 17,
+            'company_turnover_paise' => 100_000_000,
+            'pool_paise' => 5_000_000,
+            'total_pool_agp' => 100,
+            'point_value_paise' => null,
+            'gbb_gross_paise' => 0,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'repurchase_deduction_paise' => 0,
+            'gbb_net_paise' => 0,
+            'status' => 'repurchase_wallet_blocked',
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ],
+    ]);
+
+    $this->get(route('income.growth-booster'))
+        ->assertOk()
+        ->assertSee('August 2026')
+        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
+        // Credited-only totals: the ₹5,400 credited July, nothing from August.
+        ->assertSee('₹5,400')
+        ->assertSee('17 AGP');
+});
+
+it('shows a wallet-blocked month on the fortune bonus page without paying it', function (): void {
+    Feature::for(null)->activate(FortuneBonusFeature::class);
+
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('fortune_bonus_results')->insert([
+        [
+            'distributor_id' => $distributorId,
+            'month_start' => '2026-07-01',
+            'position' => 4,
+            'matrix_level' => 1,
+            'points' => 9,
+            'point_value_paise' => 10_000,
+            'gross_paise' => 90_000,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'repurchase_deduction_paise' => 9_000,
+            'net_paise' => 81_000,
+            'status' => 'credited',
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ],
+        [
+            'distributor_id' => $distributorId,
+            'month_start' => '2026-08-01',
+            'position' => 4,
+            'matrix_level' => 1,
+            'points' => 9,
+            'point_value_paise' => null,
+            'gross_paise' => 0,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'repurchase_deduction_paise' => 0,
+            'net_paise' => 0,
+            'status' => 'repurchase_wallet_blocked',
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ],
+    ]);
+
+    $this->get(route('income.fortune-bonus'))
+        ->assertOk()
+        ->assertSee('August 2026')
+        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
+        // Credited-only total: only July's ₹810 reaches the summary card.
+        ->assertSee('₹810');
+});
+
+it('counts a wallet-blocked month out of the fortune page total', function (): void {
+    Feature::for(null)->activate(FortuneBonusFeature::class);
+
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    // A blocked row that (defensively) still carries a gross must never be
+    // added to the "credited to wallet" card.
+    DB::table('fortune_bonus_results')->insert([
+        'distributor_id' => $distributorId,
+        'month_start' => '2026-08-01',
+        'position' => 4,
+        'matrix_level' => 1,
+        'points' => 9,
+        'point_value_paise' => 10_000,
+        'gross_paise' => 90_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_paise' => 81_000,
+        'status' => 'repurchase_wallet_blocked',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+
+    $this->get(route('income.fortune-bonus'))
+        ->assertOk()
+        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
+        ->assertDontSee('₹810');
+});
+
+// ── Rank progress: the days this month that were not counted ──
+
+it('tells the distributor how many days this month were not counted toward rank', function (): void {
+    Carbon::setTestNow('2026-08-20 12:00:00');
+    Feature::for(null)->activate(RankBonusFeature::class);
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    // Cycle due 10 Aug, met late on 14 Aug → 11, 12 and 13 August forfeited.
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => $distributorId,
+        'cycle_start_date' => '2026-07-24',
+        'due_date' => '2026-08-10',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 60_000,
+        'status' => 'completed',
+        'fulfilled_on' => '2026-08-14',
+        'resolved_at' => '2026-08-11 00:05:00',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+
+    $this->get(route('income.rank-bonus'))
+        ->assertOk()
+        ->assertSee('Left Genos BV this month')
+        ->assertSee('3 days this month not counted (repurchase condition not met)');
+});
+
+it('shows no not-counted note when the month has no forfeited days', function (): void {
+    Carbon::setTestNow('2026-08-20 12:00:00');
+    Feature::for(null)->activate(RankBonusFeature::class);
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    ['user' => $user] = incomeDistributor();
+
+    $this->actingAs($user)
+        ->get(route('income.rank-bonus'))
+        ->assertOk()
+        ->assertSee('Left Genos BV this month')
+        ->assertDontSee('not counted (repurchase condition not met)');
 });

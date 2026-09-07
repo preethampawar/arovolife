@@ -297,16 +297,26 @@ final class IncomeController extends Controller
         abort_unless($distributor !== null, 403);
 
         try {
+            // Credited months and wallet-blocked months only. A blocked row
+            // carries no money, so the page's totals are unchanged, but the
+            // distributor is entitled to see the month the month-end
+            // repurchase-wallet condition cost them — client spec 2026-09-07
+            // §2. Every other status is engine bookkeeping, not history.
             $rows = GbbMonthlyResult::where('distributor_id', $distributor->id)
-                ->where('status', GbbMonthlyResult::STATUS_CREDITED)
+                ->whereIn('status', [
+                    GbbMonthlyResult::STATUS_CREDITED,
+                    GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+                ])
                 ->when($request->filled('from'), fn ($q) => $q->where('year_month', '>=', $request->input('from').'-01'))
                 ->when($request->filled('to'), fn ($q) => $q->where('year_month', '<=', $request->input('to').'-01'))
                 ->orderByDesc('year_month')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
-            $totalAgp = $rows->getCollection()->sum('agp_earned');
-            $totalNet = $rows->getCollection()->sum('gbb_net_paise');
+            // Totals stay credited-only: a blocked month is never money.
+            $credited = $rows->getCollection()->where('status', GbbMonthlyResult::STATUS_CREDITED);
+            $totalAgp = $credited->sum('agp_earned');
+            $totalNet = $credited->sum('gbb_net_paise');
         } catch (QueryException) {
             $rows = collect();
             $totalAgp = 0;
@@ -362,15 +372,25 @@ final class IncomeController extends Controller
         abort_unless($distributor !== null, 403);
 
         try {
+            // Wallet-blocked months join credited and skipped ones: the month
+            // is a published plan condition the distributor did not meet, and
+            // the row carries no money — client spec 2026-09-07 §2.
             $rows = FortuneBonusResult::where('distributor_id', $distributor->id)
-                ->whereIn('status', [FortuneBonusResult::STATUS_CREDITED, FortuneBonusResult::STATUS_SKIPPED])
+                ->whereIn('status', [
+                    FortuneBonusResult::STATUS_CREDITED,
+                    FortuneBonusResult::STATUS_SKIPPED,
+                    FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+                ])
                 ->when($request->filled('from'), fn ($q) => $q->where('month_start', '>=', $request->input('from').'-01'))
                 ->when($request->filled('to'), fn ($q) => $q->where('month_start', '<=', $request->input('to').'-01'))
                 ->orderByDesc('month_start')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
-            $totalNet = $rows->getCollection()->sum('net_paise');
+            // Totals stay credited-only: a blocked month is never money.
+            $totalNet = $rows->getCollection()
+                ->where('status', FortuneBonusResult::STATUS_CREDITED)
+                ->sum('net_paise');
         } catch (QueryException) {
             $rows = collect();
             $totalNet = 0;

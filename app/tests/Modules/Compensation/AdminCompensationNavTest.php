@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
@@ -12,6 +13,7 @@ use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -71,6 +73,20 @@ it('renders the sub-nav on the compensation overview too', function (): void {
         ->assertOk()
         ->assertSee('Compensation sections', false)
         ->assertSee(route('admin.compensation.weekly-payouts.index'), false);
+});
+
+it('states which earning week the next Tuesday batch pays on the overview', function (): void {
+    // Next Tuesday pays the week that closed the previous Tuesday; an admin
+    // reading "pending payouts" must not read it as "everything earned so far".
+    Carbon::setTestNow('2026-09-16 09:00:00');
+
+    $through = PayoutBatch::weeklyEarningWindow(Carbon::parse('2026-09-22'))['end'];
+
+    $this->actingAs(compNavAdmin())
+        ->get(route('admin.compensation.overview'))
+        ->assertOk()
+        ->assertSee('pays earnings through '.$through->format('d M Y'))
+        ->assertDontSee('cooling-off');
 });
 
 it('does not render the compensation sub-nav on unrelated admin pages', function (): void {

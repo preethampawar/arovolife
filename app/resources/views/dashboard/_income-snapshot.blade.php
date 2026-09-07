@@ -63,10 +63,10 @@
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next weekly</p>
-                        <x-help-tip text="Weekly bonuses transfer to your bank every Tuesday (IST), provided your balance meets the minimum payout." />
+                        <x-help-tip text="Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), provided your balance meets the minimum payout." />
                     </div>
                     <p class="text-xl font-bold text-gray-900 leading-tight">{{ $keyDates['nextWeeklyPayout']->format('D, d M') }}</p>
-                    <p class="text-[11px] text-gray-500 mt-0.5">Payout date</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Covers earnings through {{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($keyDates['nextWeeklyPayout'])['end']->format('d M') }}</p>
                 </div>
 
                 {{-- Next monthly payout (if any monthly bonuses are active, else show payout label) --}}

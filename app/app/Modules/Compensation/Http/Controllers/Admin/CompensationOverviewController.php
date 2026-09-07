@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -33,6 +35,13 @@ final class CompensationOverviewController extends Controller
         };
 
         $pendingPayoutPaise = (int) WalletLedgerEntry::selectRaw('SUM(amount_paise) as total')->value('total');
+
+        // The next weekly batch date comes from IncomeOverviewService (which
+        // already knows a Tuesday stops being "next" once 03:00 IST has passed);
+        // the earning week it pays comes from PayoutBatch. Neither rule is
+        // re-derived here or in the view.
+        $nextWeeklyPayout = IncomeOverviewService::keyDates()['nextWeeklyPayout'];
+        $nextWeeklyEarningsThrough = PayoutBatch::weeklyEarningWindow($nextWeeklyPayout)['end'];
 
         $weekStart = Carbon::now()->startOfWeek(Carbon::TUESDAY);
         $gsbThisWeekPaise = (int) WalletLedgerEntry::where('type', 'gsb_credit')
@@ -62,6 +71,7 @@ final class CompensationOverviewController extends Controller
         return view('admin.compensation.overview', compact(
             'gsbOn', 'cutoffStatus', 'todayFailed', 'pendingPayoutPaise',
             'gsbThisWeekPaise', 'gsbReversalsThisWeekPaise',
+            'nextWeeklyPayout', 'nextWeeklyEarningsThrough',
             'failedCutoffs', 'cutoffTable', 'today',
         ));
     }

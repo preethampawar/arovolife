@@ -2,7 +2,7 @@
 <form method="POST" action="{{ route('admin.compensation.manual-controls.retry') }}"
       data-confirm="This will re-run the 23:59 cut-off for this distributor."
       data-confirm-title="Confirm: Retry Daily Cut-off"
-      data-confirm-impact="GSB will be calculated and credited if not already done. If already credited, no duplicate credit will be issued.">
+      data-confirm-impact="GSB will be calculated and credited if not already done. If already credited, no duplicate credit will be issued. This retry runs one distributor and does NOT check that the Repurchase Evaluation has covered that date — it reads whatever repurchase verdict is recorded now, so run it only on a day already settled for everyone else; to run a whole day, use Engine Runs, which chains the evaluation ahead of the cut-off.">
     @csrf
     <div class="grid grid-cols-2 gap-4 mb-4">
         <div>

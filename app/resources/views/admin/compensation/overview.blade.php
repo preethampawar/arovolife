@@ -8,7 +8,7 @@
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     @if($gsbOn)
-        The Compensation Overview shows the real-time status of today's daily GSB cut-off, any failed or stuck jobs, the total pending payout queue, and this week's GSB distributed. Items in the attention feed need action before Tuesday's payout — use Retry or Recalculate to resolve them.
+        The Compensation Overview shows the real-time status of today's daily GSB cut-off, any failed or stuck jobs, the total pending payout queue, and this week's GSB distributed. The earning week runs Wednesday to Tuesday and is paid the Tuesday one week after it closes: next Tuesday ({{ $nextWeeklyPayout->format('d M Y') }}) pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}. Items in the attention feed need action before that batch — use Retry or Recalculate to resolve them.
     @else
         The Compensation Overview shows the total amount queued for the next payout run.
     @endif
@@ -38,7 +38,7 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Pending payouts
-            <x-help-tip text="Total amount queued for the next Tuesday bank transfer. Does not include wallets below the ₹{{ \App\Modules\Shared\Support\IndianNumber::format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum." />
+            <x-help-tip text="Total amount queued for the next Tuesday bank transfer ({{ $nextWeeklyPayout->format('d M Y') }}), which pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}. Does not include wallets below the ₹{{ \App\Modules\Shared\Support\IndianNumber::format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum." />
         </p>
         <p class="mt-1 text-lg font-bold text-blue-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pendingPayoutPaise / 100, 2) }}</p>
     </div>
@@ -46,7 +46,7 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             GSB this week
-            <x-help-tip text="GSB credited to main wallets (gross minus the repurchase deduction; admin charge and TDS come off at payout) since last Tuesday 00:00. Reversals are shown separately — they do not reduce this figure." />
+            <x-help-tip text="GSB credited to main wallets (gross minus the repurchase deduction; admin charge and TDS come off at payout) since last Tuesday 00:00. This is a crediting figure, not a batch total: next Tuesday ({{ $nextWeeklyPayout->format('d M Y') }}) pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}, one week behind. Reversals are shown separately — they do not reduce this figure." />
         </p>
         <p class="mt-1 text-lg font-bold text-purple-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gsbThisWeekPaise / 100, 2) }}</p>
         @if($gsbReversalsThisWeekPaise > 0)

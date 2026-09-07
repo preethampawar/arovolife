@@ -40,6 +40,7 @@ final class RankStatusService
         private readonly TeamStatsService $teamStats,
         private readonly RankRequalificationGateService $requalificationGate,
         private readonly RankQualificationService $rankQualification,
+        private readonly IncomeEligibilityService $incomeEligibility,
     ) {}
 
     public function forDistributor(Distributor $distributor): RankStatus
@@ -82,6 +83,7 @@ final class RankStatusService
             qualifiedThisMonth: $thisMonthRank !== null,
             thisMonthRank: $thisMonthRank,
             requalificationConditionsMet: $requalificationConditionsMet,
+            forfeitedDaysThisMonth: $this->forfeitedDaysThisMonth($distributorId, $monthStart),
         );
     }
 
@@ -293,6 +295,30 @@ final class RankStatusService
         );
 
         return $requirements;
+    }
+
+    /**
+     * How many days of this calendar month were forfeited for this distributor
+     * — the days whose Genos BV counts toward no rank. Read through
+     * IncomeEligibilityService, the single source of the forfeited windows, and
+     * scoped to this one distributor so the page never scans the platform.
+     */
+    private function forfeitedDaysThisMonth(int $distributorId, Carbon $monthStart): int
+    {
+        $ranges = $this->incomeEligibility->forfeitedDayRanges(
+            $monthStart,
+            $monthStart->copy()->endOfMonth(),
+            [$distributorId],
+        )[$distributorId] ?? [];
+
+        $days = 0;
+
+        foreach ($ranges as [$start, $end]) {
+            // Windows are inclusive and disjoint, so a plain sum is exact.
+            $days += Carbon::parse($start)->diffInDays(Carbon::parse($end)) + 1;
+        }
+
+        return (int) $days;
     }
 
     /**

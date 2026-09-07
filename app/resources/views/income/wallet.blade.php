@@ -10,7 +10,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income transfers to your registered bank account every Tuesday and monthly income in the monthly payout on the 8th — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of each bonus (max ₹10,000 per calendar month) moves to your repurchase wallet the moment the bonus is credited, to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
+        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday, and monthly income in the monthly payout on the 8th — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of each bonus (max ₹10,000 per calendar month) moves to your repurchase wallet the moment the bonus is credited, to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
     </div>
     @enddeveloper
 
@@ -35,14 +35,15 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Next Payout Date</p>
+                <x-help-tip text="Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday, at 03:00 IST." />
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ $nextPayout->format('d M') }}</p>
-            <p class="text-xs text-gray-600 mt-0.5">Every Tuesday (IST)</p>
+            <p class="text-xs text-gray-600 mt-0.5">Covers earnings through {{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($nextPayout)['end']->format('d M Y') }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Min. Payout</p>
-                <x-help-tip text="Wallet balances below this threshold roll over to the next Tuesday batch." />
+                <x-help-tip text="Wallet balances below this threshold roll over to the next Tuesday batch, and are never forfeited." />
             </div>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}</p>
         </div>
@@ -196,7 +197,7 @@
     @if($payoutRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center">
             <p class="text-gray-600 font-medium">No payouts yet.</p>
-            <p class="text-sm text-gray-600 mt-1">Your first bank transfer will appear here after the Tuesday payout run.</p>
+            <p class="text-sm text-gray-600 mt-1">Your first bank transfer will appear here after the Tuesday payout run — each one pays a Wednesday-to-Tuesday earning week.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">

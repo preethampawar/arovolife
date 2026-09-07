@@ -11,9 +11,9 @@
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         @if ($gsbOn)
-            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off; weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
+            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off. Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @else
-            This dashboard shows a live snapshot of your income. Weekly bonuses transfer to your bank account every Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
+            This dashboard shows a live snapshot of your income. Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @endif
     </div>
     @enddeveloper
@@ -58,7 +58,7 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600 font-medium">Next weekly payout</p>
-                <x-help-tip text="Your weekly bonus income{{ $gsbOn ? ' — Genos Sales Bonus and other weekly credits —' : '' }} transfers to your bank every Tuesday, after deductions and provided your balance meets the minimum. See Wallet &amp; Payouts for the exact rules." />
+                <x-help-tip text="Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday. This Tuesday's transfer{{ $gsbOn ? ' — Genos Sales Bonus and other weekly credits —' : '' }} therefore covers the week that closed last Tuesday, after deductions and provided your balance meets the minimum. See Wallet &amp; Payouts for the exact rules." />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextWeeklyPayout']->format('D, d M') }}</p>
             <p class="text-xs text-gray-600 mt-1">Weekly bonus income</p>

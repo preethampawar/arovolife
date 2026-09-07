@@ -67,6 +67,18 @@ final class PayoutBatch extends Model
     /** Per-stream monthly batch: GBB + Rank + Fortune + Awards + ADC (paid on the 8th). */
     public const TYPE_MONTHLY = 'monthly';
 
+    /**
+     * The first weekly batch date the Wednesday→Tuesday earning week governs —
+     * the first Tuesday after the client confirmed the rule (2026-09-07).
+     *
+     * Every batch before it, and every legacy `gsb_weekly` batch whenever it
+     * ran, swept whatever the wallet held on the batch date; it paid no
+     * bounded earning week at all. Printing a window against those batches
+     * would state, as historical fact, a period they never paid for, so the
+     * reports show them "—" instead. {@see weeklyEarningThrough()}.
+     */
+    public const string WEEK_RULE_EFFECTIVE_FROM = '2026-09-08';
+
     protected $table = 'payout_batches';
 
     protected $fillable = [
@@ -117,6 +129,28 @@ final class PayoutBatch extends Model
             'start' => $end->copy()->subDays(6),
             'end' => $end,
         ];
+    }
+
+    /**
+     * The last day THIS batch actually paid for, or null when the week rule
+     * never governed it — a legacy `gsb_weekly` batch, or any batch dated
+     * before {@see WEEK_RULE_EFFECTIVE_FROM}.
+     *
+     * The only place a report is allowed to decide whether a stored batch has
+     * an earning window: calling weeklyEarningWindow() on a batch date alone
+     * would happily invent one for a batch that swept the wallet instead.
+     */
+    public function weeklyEarningThrough(): ?Carbon
+    {
+        if ($this->batch_type !== self::TYPE_WEEKLY || $this->batch_date === null) {
+            return null;
+        }
+
+        if ($this->batch_date->lessThan(Carbon::parse(self::WEEK_RULE_EFFECTIVE_FROM))) {
+            return null;
+        }
+
+        return self::weeklyEarningWindow($this->batch_date)['end'];
     }
 
     public function lineItems(): HasMany
