@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -122,4 +125,39 @@ it('exposes the two ID-card rank labels without measuring the next rank', functi
     // Nothing achieved → both labels are null, so the card renders "—".
     expect(app(RankStatusService::class)->labelsFor((int) Distributor::factory()->create()->id))
         ->toBe(['current' => null, 'highest' => null]);
+});
+
+it('shows the counted Genos BV the qualification run uses, not the raw month sum', function (): void {
+    // Client spec 2026-09-07 §2.2 — the rank progress page must measure the
+    // month exactly as the qualification run will: days the distributor was
+    // failed on their repurchase cycle are forfeited and never shown as
+    // progress toward the rank.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    $required = app(CompensationPlanSettingsService::class)->rankGroupBvRequired(1);
+    $monthStart = Carbon::today('Asia/Kolkata')->startOfMonth();
+
+    DB::table('group_bv_daily')->insert([
+        ['distributor_id' => $dist->id, 'date' => $monthStart->toDateString(), 'left_bv_paise' => $required, 'right_bv_paise' => 0],
+        ['distributor_id' => $dist->id, 'date' => $monthStart->copy()->addDays(1)->toDateString(), 'left_bv_paise' => 5_000_000, 'right_bv_paise' => 0],
+    ]);
+
+    // Due on the 1st, fulfilled on the 3rd: the 2nd is forfeited.
+    RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => $monthStart->copy()->subDays(30)->toDateString(),
+        'due_date' => $monthStart->toDateString(),
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 60_000,
+        'status' => RepurchaseCycle::STATUS_COMPLETED,
+        'fulfilled_on' => $monthStart->copy()->addDays(2)->toDateString(),
+        'resolved_at' => $monthStart->copy()->addDay()->toDateString().' 00:05:00',
+    ]);
+
+    $status = app(RankStatusService::class)->forDistributor($dist);
+    $left = collect($status->nextRequirements)->firstWhere('label', 'Left Genos BV this month');
+
+    expect($left->current)->toBe($required)
+        ->and($left->met())->toBeTrue();
 });

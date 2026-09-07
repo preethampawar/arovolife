@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\DB;
  * Read-only mirror of {@see RankQualificationService}'s measurement rules — the
  * conditions shown here must be measured exactly the way the monthly
  * qualification run will measure them, never re-invented:
- *  - Ranks 1-2: the calendar month's Left/Right Genos BV, with up to the
- *    rank's cap of this month's personal purchase BV supplementing the weaker
- *    leg;
+ *  - Ranks 1-2: the calendar month's Left/Right Genos BV net of the days the
+ *    distributor was failed on their repurchase cycle, with up to the rank's
+ *    cap of this month's personal purchase BV supplementing the weaker leg;
  *  - Ranks 3-9: the candidate's own Q-Period count of the prior rank plus that
  *    rank's structural requirement (prior-rank qualifiers per Genos side, this
  *    month);
@@ -39,6 +39,7 @@ final class RankStatusService
         private readonly BvLedgerService $bvLedger,
         private readonly TeamStatsService $teamStats,
         private readonly RankRequalificationGateService $requalificationGate,
+        private readonly RankQualificationService $rankQualification,
     ) {}
 
     public function forDistributor(Distributor $distributor): RankStatus
@@ -295,23 +296,17 @@ final class RankStatusService
     }
 
     /**
-     * The calendar month's Left/Right Genos BV so far (paise) — the same
-     * group_bv_daily sum the qualification run reads.
+     * The calendar month's Left/Right Genos BV so far (paise), net of the days
+     * the distributor was failed on their repurchase cycle — the very method
+     * the qualification run measures with, never a second copy of it.
      *
      * @return array{0: int, 1: int}
      */
     private function monthGenosBv(int $distributorId, Carbon $monthStart): array
     {
-        $row = DB::table('group_bv_daily')
-            ->where('distributor_id', $distributorId)
-            ->whereBetween('date', [
-                $monthStart->toDateString(),
-                $monthStart->copy()->endOfMonth()->toDateString(),
-            ])
-            ->selectRaw('COALESCE(SUM(left_bv_paise), 0) as left_bv, COALESCE(SUM(right_bv_paise), 0) as right_bv')
-            ->first();
+        $counted = $this->rankQualification->countedGenosBvForMonth($monthStart, [$distributorId])[$distributorId] ?? null;
 
-        return [(int) ($row->left_bv ?? 0), (int) ($row->right_bv ?? 0)];
+        return $counted === null ? [0, 0] : [$counted['left'], $counted['right']];
     }
 
     /** This month's personal purchase BV (paise) — feeds the weaker-leg top-up. */

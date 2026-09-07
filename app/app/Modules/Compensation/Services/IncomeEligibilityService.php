@@ -122,9 +122,13 @@ final class IncomeEligibilityService
      * are simply absent. Ranges are inclusive `[start, end]` date strings and,
      * because cycle windows never overlap, disjoint and in date order.
      *
+     * @param  int[]|null  $distributorIds  restrict the scan to these distributors
+     *                                      (a one-distributor read, e.g. the rank
+     *                                      progress page, must not load every
+     *                                      failed cycle on the platform)
      * @return array<int, list<array{0: string, 1: string}>>
      */
-    public function forfeitedDayRanges(Carbon $from, Carbon $to): array
+    public function forfeitedDayRanges(Carbon $from, Carbon $to, ?array $distributorIds = null): array
     {
         if (! $this->engineActive()) {
             return [];
@@ -138,6 +142,7 @@ final class IncomeEligibilityService
         // due before the range ends (or its window starts past $to), and either
         // still unfulfilled or fulfilled late and after the range starts.
         $cycles = RepurchaseCycle::query()
+            ->when($distributorIds !== null, fn ($q) => $q->whereIn('distributor_id', $distributorIds))
             ->whereNotNull('resolved_at')
             ->whereDate('due_date', '<', $to->toDateString())
             ->where(fn ($q) => $q->whereNull('fulfilled_on')->orWhereColumn('fulfilled_on', '>', 'due_date'))

@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankQualificationService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -404,4 +407,159 @@ it('requires 6L per side for rank 2 — 5,99,999 BV on one side fails; the 30,00
 
     expect(RankQualification::where('distributor_id', $short->id)->where('rank_number', 2)->exists())->toBeFalse();
     expect(RankQualification::where('distributor_id', $topped->id)->where('rank_number', 2)->exists())->toBeTrue();
+});
+
+// ── Forfeited days: rank counts only compliant days (client spec 2026-09-07 §2.2) ──
+
+/**
+ * A resolved repurchase cycle, straight from the calendar dates the client's RB
+ * examples use. `$fulfilledOn` null = still failed at the time of the run.
+ */
+function seedRankCycle(int $distributorId, string $start, string $due, ?string $fulfilledOn): void
+{
+    RepurchaseCycle::create([
+        'distributor_id' => $distributorId,
+        'cycle_start_date' => $start,
+        'due_date' => $due,
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => $fulfilledOn === null ? 0 : 60_000,
+        'status' => $fulfilledOn === null ? RepurchaseCycle::STATUS_SUSPENDED : RepurchaseCycle::STATUS_COMPLETED,
+        'fulfilled_on' => $fulfilledOn,
+        'failure_reason' => $fulfilledOn === null ? RepurchaseCycle::REASON_BV_SHORT : null,
+        'resolved_at' => Carbon::parse($due)->addDay()->toDateString().' 00:05:00',
+    ]);
+}
+
+it('grants rank 1 on the 1-23 Aug BV of a distributor still failed at month end (RB example 1)', function (): void {
+    // Client doc: cycle 24 Jul - 23 Aug, no repurchase 24-31 Aug. Counted
+    // 1-23 Aug: L 2.8L / R 2.9L. Rank 1 is granted anyway — the Rank Bonus is
+    // never withheld by the repurchase state, only the failed days' BV is lost.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    seedPersonalBvOn($dist->id, 700_000, '2026-01-05'); // lifetime title gate only
+    seedGroupBv($dist->id, '2026-08-10', 28_000_000, 29_000_000);
+    seedGroupBv($dist->id, '2026-08-25', 10_000_000, 10_000_000); // forfeited
+    seedRankCycle($dist->id, '2026-07-24', '2026-08-23', null);
+
+    $result = app(RankQualificationService::class)->checkForMonth(Carbon::parse('2026-08-01'));
+
+    expect($result['rank_1_count'])->toBe(1);
+
+    $record = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
+
+    expect($record)->not->toBeNull()
+        ->and((int) $record->left_genos_bv_paise)->toBe(28_000_000)
+        ->and((int) $record->right_genos_bv_paise)->toBe(29_000_000);
+});
+
+it('refuses rank 1 when the surviving left leg is short (RB example 2)', function (): void {
+    // Same cycle; 1-23 Aug L 2.1L / R 2.9L. The 25 Aug BV would carry the left
+    // leg over 2.5L, and is exactly what the failed days forfeit.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    seedPersonalBvOn($dist->id, 700_000, '2026-01-05');
+    seedGroupBv($dist->id, '2026-08-10', 21_000_000, 29_000_000);
+    seedGroupBv($dist->id, '2026-08-25', 10_000_000, 0); // forfeited
+    seedRankCycle($dist->id, '2026-07-24', '2026-08-23', null);
+
+    $result = app(RankQualificationService::class)->checkForMonth(Carbon::parse('2026-08-01'));
+
+    expect($result['rank_1_count'])->toBe(0)
+        ->and(RankQualification::where('distributor_id', $dist->id)->exists())->toBeFalse();
+});
+
+it('adds the post-fulfilment days back and grants rank 1 (RB example 3)', function (): void {
+    // Fails 24-26 Aug, fulfils 27 Aug. Counted = 1-23 Aug (L 2.3L / R 3.0L)
+    // plus 27-31 Aug (L 0.2L) = exactly the rank-1 2.5L target.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $required = app(CompensationPlanSettingsService::class)->rankGroupBvRequired(1);
+
+    $dist = Distributor::factory()->create();
+    seedPersonalBvOn($dist->id, 700_000, '2026-01-05');
+    seedGroupBv($dist->id, '2026-08-10', 23_000_000, 30_000_000);
+    seedGroupBv($dist->id, '2026-08-25', 10_000_000, 10_000_000); // forfeited
+    seedGroupBv($dist->id, '2026-08-28', 2_000_000, 0);
+    seedRankCycle($dist->id, '2026-07-24', '2026-08-23', '2026-08-27');
+
+    $result = app(RankQualificationService::class)->checkForMonth(Carbon::parse('2026-08-01'));
+
+    expect($result['rank_1_count'])->toBe(1);
+
+    $record = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
+
+    expect((int) $record->left_genos_bv_paise)->toBe(25_000_000)
+        ->and((int) $record->left_genos_bv_paise)->toBe($required)
+        ->and((int) $record->right_genos_bv_paise)->toBe(30_000_000);
+});
+
+it('does not touch a closed month for a cycle that only starts failing on the 1st of the next month', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    seedPersonalBvOn($dist->id, 700_000, '2026-01-05');
+    seedGroupBv($dist->id, '2026-08-25', 26_000_000, 26_000_000);
+    seedRankCycle($dist->id, '2026-08-01', '2026-08-31', '2026-09-05'); // forfeits 1-4 Sep
+
+    $result = app(RankQualificationService::class)->checkForMonth(Carbon::parse('2026-08-01'));
+
+    $record = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
+
+    expect($result['rank_1_count'])->toBe(1)
+        ->and((int) $record->left_genos_bv_paise)->toBe(26_000_000)
+        ->and((int) $record->right_genos_bv_paise)->toBe(26_000_000);
+});
+
+it('excludes nothing while the repurchase engine flag is off', function (): void {
+    // RB example 2's numbers with the engine off: the 25 Aug BV counts and the
+    // distributor qualifies on the raw month sum, exactly as before the change.
+    $dist = Distributor::factory()->create();
+    seedPersonalBvOn($dist->id, 700_000, '2026-01-05');
+    seedGroupBv($dist->id, '2026-08-10', 21_000_000, 29_000_000);
+    seedGroupBv($dist->id, '2026-08-25', 10_000_000, 0);
+    seedRankCycle($dist->id, '2026-07-24', '2026-08-23', null);
+
+    $result = app(RankQualificationService::class)->checkForMonth(Carbon::parse('2026-08-01'));
+
+    $record = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
+
+    expect($result['rank_1_count'])->toBe(1)
+        ->and((int) $record->left_genos_bv_paise)->toBe(31_000_000);
+});
+
+it('leaves the weaker-leg personal top-up untouched by failed days', function (): void {
+    // Personal purchase BV is not Genos BV: a failed day forfeits group BV only,
+    // so the 15,000-BV top-up still bridges the surviving 2.35L left leg to 2.5L
+    // even though the purchase itself falls on a forfeited day.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    seedPersonalBvOn($dist->id, 1_500_000, '2026-08-25'); // on a forfeited day
+    seedGroupBv($dist->id, '2026-08-10', 23_500_000, 30_000_000);
+    seedGroupBv($dist->id, '2026-08-25', 10_000_000, 0); // forfeited
+    seedRankCycle($dist->id, '2026-07-24', '2026-08-23', '2026-08-27');
+
+    $result = app(RankQualificationService::class)->checkForMonth(Carbon::parse('2026-08-01'));
+
+    $record = RankQualification::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
+
+    expect($result['rank_1_count'])->toBe(1)
+        ->and((int) $record->left_genos_bv_paise)->toBe(23_500_000);
+});
+
+it('never returns a negative counted side when reversals exceed the month sum', function (): void {
+    // Group BV can be debited by a cancelled order, so a forfeited range may sum
+    // to more than the month itself. The counted BV clamps at zero per side.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    seedGroupBv($dist->id, '2026-08-15', -4_000_000, -4_000_000); // a cancelled order's reversal
+    seedGroupBv($dist->id, '2026-08-25', 5_000_000, 5_000_000); // forfeited: more than the month's 1L net
+    seedRankCycle($dist->id, '2026-07-24', '2026-08-23', '2026-08-27');
+
+    $counted = app(RankQualificationService::class)
+        ->countedGenosBvForMonth(Carbon::parse('2026-08-01'));
+
+    expect($counted[$dist->id])->toBe(['left' => 0, 'right' => 0]);
 });

@@ -14,7 +14,11 @@ use Illuminate\Support\Facades\DB;
  * Run once per month for occurrence 1 (standard qualification); extra runs in
  * the same month record further occurrences.
  *
- * Cascade order: ranks 1-2 from raw BV, ranks 3-9 from prior rank qualifiers
+ * Ranks 1-2 read Genos BV net of the days the distributor was failed on their
+ * repurchase cycle — see {@see countedGenosBvForMonth()}, the one place that
+ * subtraction is done. Ranks 3-9 never read group BV at all.
+ *
+ * Cascade order: ranks 1-2 from counted BV, ranks 3-9 from prior rank qualifiers
  * per Genos side PLUS the candidate's own Q-Period promotion gate (KP
  * 2026-08-05): rank r opens only once the candidate has achieved rank r-1 at
  * least pyp_required[r-1] times, counted over lifetime occurrences
@@ -31,7 +35,82 @@ final class RankQualificationService
 {
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
+        private readonly IncomeEligibilityService $eligibility,
     ) {}
+
+    /**
+     * The Genos BV that counts toward a rank for the month: the month's
+     * `group_bv_daily` sum, minus the group BV of every day the distributor was
+     * failed on their repurchase cycle.
+     *
+     * Client spec 2026-09-07 §2.2 — "rank qualification for a calendar month
+     * sums group BV only over days on which the distributor was not failed;
+     * failed days' group BV is excluded from the left/right target
+     * permanently". This is the single place that arithmetic lives: the monthly
+     * qualification run and the distributor-facing rank progress page both read
+     * it, so what a distributor is shown is what the run will measure.
+     *
+     * Ranks 3-9 never read group BV, so they are unaffected.
+     *
+     * @param  int[]|null  $distributorIds  restrict to these distributors (null = everyone with BV in the month)
+     * @return array<int, array{left: int, right: int}>
+     */
+    public function countedGenosBvForMonth(Carbon $month, ?array $distributorIds = null): array
+    {
+        $monthStart = $month->copy()->startOfMonth();
+        $monthEnd = $month->copy()->endOfMonth();
+
+        $query = DB::table('group_bv_daily')
+            ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->select(
+                'distributor_id',
+                DB::raw('SUM(left_bv_paise) as left_bv'),
+                DB::raw('SUM(right_bv_paise) as right_bv'),
+            )
+            ->groupBy('distributor_id');
+
+        if ($distributorIds !== null) {
+            $query->whereIn('distributor_id', $distributorIds);
+        }
+
+        /** @var array<int, array{left: int, right: int}> $counted */
+        $counted = [];
+        foreach ($query->get() as $row) {
+            $counted[(int) $row->distributor_id] = [
+                'left' => (int) $row->left_bv,
+                'right' => (int) $row->right_bv,
+            ];
+        }
+
+        $forfeited = $this->eligibility->forfeitedDayRanges($monthStart, $monthEnd, $distributorIds);
+
+        foreach ($forfeited as $distributorId => $ranges) {
+            if (! array_key_exists($distributorId, $counted)) {
+                continue;
+            }
+
+            foreach ($ranges as [$rangeStart, $rangeEnd]) {
+                // One query per forfeited range. A distributor can fail at most
+                // a couple of cycles inside one month, so this is a handful of
+                // narrow indexed sums — far cheaper than pulling every daily row
+                // of the month for every distributor on the platform.
+                $row = DB::table('group_bv_daily')
+                    ->where('distributor_id', $distributorId)
+                    ->whereBetween('date', [$rangeStart, $rangeEnd])
+                    ->selectRaw('COALESCE(SUM(left_bv_paise), 0) as left_bv, COALESCE(SUM(right_bv_paise), 0) as right_bv')
+                    ->first();
+
+                // Group BV is reversible (a cancelled order debits the day it
+                // was credited on), so a forfeited range can sum to more than
+                // the month it sits in. Clamp per side rather than record a
+                // negative target.
+                $counted[$distributorId]['left'] = max(0, $counted[$distributorId]['left'] - (int) ($row->left_bv ?? 0));
+                $counted[$distributorId]['right'] = max(0, $counted[$distributorId]['right'] - (int) ($row->right_bv ?? 0));
+            }
+        }
+
+        return $counted;
+    }
 
     /**
      * Run qualification checks for the given month and occurrence number.
@@ -56,12 +135,15 @@ final class RankQualificationService
         $personalBvMap = $this->buildPersonalBvMap();
         // This-month personal purchase BV feeds the Ranks 1 & 2 weaker-leg top-up.
         $monthlyPersonalBvMap = $this->buildMonthlyPersonalBvMap($monthStart, $monthEnd);
+        // Genos BV net of the days the distributor was failed — measured once
+        // for the month and read by both rank 1 and rank 2.
+        $countedGenosBvMap = $this->countedGenosBvForMonth($month);
 
         $rank1Ids = $this->checkRanks1And2(
             rank: 1,
             monthStart: $monthStart,
-            monthEnd: $monthEnd,
             occurrenceNumber: $occurrenceNumber,
+            countedGenosBvMap: $countedGenosBvMap,
             personalBvMap: $personalBvMap,
             monthlyPersonalBvMap: $monthlyPersonalBvMap,
         );
@@ -70,8 +152,8 @@ final class RankQualificationService
         $rank2Ids = $this->checkRanks1And2(
             rank: 2,
             monthStart: $monthStart,
-            monthEnd: $monthEnd,
             occurrenceNumber: $occurrenceNumber,
+            countedGenosBvMap: $countedGenosBvMap,
             personalBvMap: $personalBvMap,
             monthlyPersonalBvMap: $monthlyPersonalBvMap,
         );
@@ -177,8 +259,9 @@ final class RankQualificationService
     }
 
     /**
-     * Check ranks 1 and 2 (monthly group BV + personal BV title).
+     * Check ranks 1 and 2 (monthly counted group BV + personal BV title).
      *
+     * @param  array<int, array{left: int, right: int}>  $countedGenosBvMap  month's Genos BV net of forfeited days
      * @param  array<int, int>  $personalBvMap  lifetime personal BV (title gate)
      * @param  array<int, int>  $monthlyPersonalBvMap  this-month personal BV (weaker-leg top-up)
      * @return int[] distributor IDs that newly qualified
@@ -186,8 +269,8 @@ final class RankQualificationService
     private function checkRanks1And2(
         int $rank,
         string $monthStart,
-        string $monthEnd,
         int $occurrenceNumber,
+        array $countedGenosBvMap,
         array $personalBvMap,
         array $monthlyPersonalBvMap,
     ): array {
@@ -198,22 +281,11 @@ final class RankQualificationService
         // Weaker-leg top-up cap (paise): R1 15,000 BV, R2 30,000 BV, else 0.
         $topupCap = $this->plan->rankWeakerLegTopupBvPaise($rank);
 
-        $groupBvRows = DB::table('group_bv_daily')
-            ->whereBetween('date', [$monthStart, $monthEnd])
-            ->select(
-                'distributor_id',
-                DB::raw('SUM(left_bv_paise) as left_bv'),
-                DB::raw('SUM(right_bv_paise) as right_bv'),
-            )
-            ->groupBy('distributor_id')
-            ->get();
-
         $qualifiedIds = [];
 
-        foreach ($groupBvRows as $row) {
-            $distributorId = (int) $row->distributor_id;
-            $leftBv = (int) $row->left_bv;
-            $rightBv = (int) $row->right_bv;
+        foreach ($countedGenosBvMap as $distributorId => $countedBv) {
+            $leftBv = $countedBv['left'];
+            $rightBv = $countedBv['right'];
             $personalBv = $personalBvMap[$distributorId] ?? 0;
 
             if ($personalBv < $personalBvRequired) {
@@ -222,8 +294,9 @@ final class RankQualificationService
 
             // Weaker-leg personal-BV top-up (KP 2026-06-28, Ranks 1 & 2 only):
             // up to $topupCap of this month's personal purchase BV supplements
-            // the weaker leg toward the match. The recorded left/right BV below
-            // stays the raw group BV — this only aids the qualification test.
+            // the weaker leg toward the match. Personal BV is not Genos BV, so
+            // forfeited days never reduce it. The recorded left/right BV below
+            // stays the counted group BV — this only aids the qualification test.
             $topup = min($monthlyPersonalBvMap[$distributorId] ?? 0, $topupCap);
             $effectiveLeft = $leftBv + ($leftBv <= $rightBv ? $topup : 0);
             $effectiveRight = $rightBv + ($leftBv <= $rightBv ? 0 : $topup);

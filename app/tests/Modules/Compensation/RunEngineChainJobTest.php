@@ -61,6 +61,17 @@ function runChain(string $engineKey, string $period, string $chainId = 'chain-1'
 
 it('runs prerequisites before the target and labels each trigger', function (): void {
     markChainCutoffsDone('2026-05', '2026-05-31');
+    // The rank check refuses May without an evaluate run dated 1 June or later
+    // (a cycle due 31 May is only judged then). The chain cannot backfill
+    // `repurchase.evaluate` for a past date, so the run is a given here.
+    EngineRun::create([
+        'engine_key' => 'repurchase.evaluate',
+        'period_start' => '2026-06-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
 
     runChain('rank.bonus', '2026-05');
 

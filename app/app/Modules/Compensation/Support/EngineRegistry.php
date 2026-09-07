@@ -170,6 +170,12 @@ final class EngineRegistry
                 periodOption: '--month',
                 dependencies: [
                     ['key' => 'gsb.daily-cutoff', 'expand' => 'month'],
+                    // The check itself refuses without an evaluate run dated on
+                    // or after the 1st of the FOLLOWING month — the dependency
+                    // shape here cannot express that shift, so this edge only
+                    // records the prerequisite; the command's own guard enforces
+                    // the date.
+                    ['key' => 'repurchase.evaluate'],
                 ],
                 featureFlagClass: RankBonusFeature::class,
                 reportRouteName: 'admin.compensation.rb-calculation.index',
