@@ -1519,3 +1519,25 @@ it('measures a July week swept in August against July’s income cap', function 
         ->and($forfeit->bonus_month->toDateString())->toBe('2026-07-01')
         ->and($wallet->balancePaise($dist->id))->toBe(0);
 });
+
+it('stamps the earning week it pays onto the weekly batch it creates', function (): void {
+    // The batch records its own window at creation. Reports read that column
+    // instead of re-deriving one from batch_date, which would invent an earning
+    // week for the legacy batches that swept the wallet balance instead.
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::parse('2026-09-22'));
+
+    expect($batch->earnings_through)->not->toBeNull()
+        ->and($batch->earnings_through->toDateString())->toBe('2026-09-15')
+        ->and($batch->weeklyEarningThrough()?->toDateString())->toBe('2026-09-15')
+        // The same rule the sweep used — one source, not two.
+        ->and(PayoutBatch::weeklyEarningWindow(Carbon::parse('2026-09-22'))['end']->toDateString())
+        ->toBe('2026-09-15');
+});
+
+it('leaves the monthly batch without an earning week', function (): void {
+    // A monthly batch pays a calendar month, not a Wednesday-to-Tuesday week.
+    $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 9, 1));
+
+    expect($batch->earnings_through)->toBeNull()
+        ->and($batch->weeklyEarningThrough())->toBeNull();
+});

@@ -161,3 +161,75 @@ it('shows the counted Genos BV the qualification run uses, not the raw month sum
     expect($left->current)->toBe($required)
         ->and($left->met())->toBeTrue();
 });
+
+it('counts forfeited days only up to today, never to month end, while a cycle is still unresolved', function (): void {
+    // An unresolved cycle has an OPEN forfeited window. forfeitedDayRanges()
+    // clamps it to whatever end it is given, so asking for month end would tell
+    // a distributor on the 7th that 29 days "were not counted" — 23 of which
+    // have not happened. That is a projection, not a fact (hard rule 3).
+    Carbon::setTestNow('2026-09-07 12:00:00');
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+
+    // Due 1 Sep, never met: 2–7 September are forfeited so far — six days.
+    RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => '2026-08-02',
+        'due_date' => '2026-09-01',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'fulfilled_on' => null,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => '2026-09-02 00:05:00',
+    ]);
+
+    $status = app(RankStatusService::class)->forDistributor($dist);
+
+    // 2 Sep through 7 Sep inclusive. September has 30 days, so a range end of
+    // month end would have said 29.
+    expect($status->forfeitedDaysThisMonth)->toBe(6);
+});
+
+it('counts every forfeited day of a past window once the month is over', function (): void {
+    // Closed window inside the month, today past its end: nothing is clamped.
+    Carbon::setTestNow('2026-09-20 12:00:00');
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+
+    // Due 1 Sep, met on 5 Sep: 2, 3 and 4 September are forfeited.
+    RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => '2026-08-02',
+        'due_date' => '2026-09-01',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 60_000,
+        'status' => RepurchaseCycle::STATUS_COMPLETED,
+        'fulfilled_on' => '2026-09-05',
+        'resolved_at' => '2026-09-02 00:05:00',
+    ]);
+
+    expect(app(RankStatusService::class)->forDistributor($dist)->forfeitedDaysThisMonth)->toBe(3);
+});
+
+it('reports no forfeited days while the repurchase engine is off', function (): void {
+    Carbon::setTestNow('2026-09-07 12:00:00');
+    Feature::for(null)->deactivate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => '2026-08-02',
+        'due_date' => '2026-09-01',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'fulfilled_on' => null,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => '2026-09-02 00:05:00',
+    ]);
+
+    expect(app(RankStatusService::class)->forDistributor($dist)->forfeitedDaysThisMonth)->toBe(0);
+});

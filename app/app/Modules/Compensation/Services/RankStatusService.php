@@ -298,16 +298,26 @@ final class RankStatusService
     }
 
     /**
-     * How many days of this calendar month were forfeited for this distributor
-     * — the days whose Genos BV counts toward no rank. Read through
+     * How many days of this calendar month HAVE ALREADY been forfeited for this
+     * distributor — the days whose Genos BV counts toward no rank. Read through
      * IncomeEligibilityService, the single source of the forfeited windows, and
      * scoped to this one distributor so the page never scans the platform.
+     *
+     * The range stops at TODAY, never at month end. An unresolved cycle has an
+     * open forfeited window, which forfeitedDayRanges() clamps to whatever end
+     * it is given; asking it for month end would count days that have not
+     * happened yet and report them to the distributor as lost — a statement
+     * about the future dressed as a fact (DSR 2021 r.5(1)(d); hard rule 3).
      */
     private function forfeitedDaysThisMonth(int $distributorId, Carbon $monthStart): int
     {
+        $today = Carbon::today('Asia/Kolkata');
+        $monthEnd = $monthStart->copy()->endOfMonth();
+        $rangeEnd = $today->lessThan($monthEnd) ? $today : $monthEnd;
+
         $ranges = $this->incomeEligibility->forfeitedDayRanges(
             $monthStart,
-            $monthStart->copy()->endOfMonth(),
+            $rangeEnd,
             [$distributorId],
         )[$distributorId] ?? [];
 

@@ -80,6 +80,13 @@
                     $sl = [
                         'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not paid',
                     ];
+                    // Statuses that will never be credited. The engine writes a
+                    // blocked row with its REAL points and point value (gross 0),
+                    // so the "points × value" line has to be suppressed by
+                    // status, not by a null — printing it would state an amount
+                    // as though it were owed.
+                    $unpayableStatuses = ['repurchase_wallet_blocked'];
+                    $isPayable = ! in_array($row->status, $unpayableStatuses, true);
                     $st = [
                         'repurchase_wallet_blocked' => 'Your repurchase wallet still held a balance at the last moment of this month, so the month\'s Fortune Bonus was not paid. Clearing the repurchase wallet before your cycle\'s last day is one of the published monthly conditions; your matrix position is kept, and a month recorded this way is final and is not released later.',
                     ];
@@ -98,7 +105,7 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-700">
-                            @if($row->points !== null && $row->point_value_paise !== null)
+                            @if($isPayable && $row->points !== null && $row->point_value_paise !== null)
                                 {{ \App\Modules\Shared\Support\IndianNumber::format($row->points) }} × ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->point_value_paise / 100, 2) }}
                             @else
                                 <span class="text-gray-600">—</span>

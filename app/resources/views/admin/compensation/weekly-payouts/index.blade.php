@@ -21,7 +21,7 @@
                     <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">Batch date</th>
                     <th class="px-4 py-2 text-left text-gray-600">
-                        Earnings through <x-help-tip text="The last day of the Wednesday-to-Tuesday earning week this batch pays — the Tuesday one week before the batch date. Income earned after it is paid by the next Tuesday's batch. Batches from before the rule took effect, and legacy GSB-weekly batches, swept the whole wallet balance instead and show a dash." />
+                        Earnings through <x-help-tip text="The last day of the Wednesday-to-Tuesday earning week this batch pays — the Tuesday one week before the batch date. Income earned after it is paid by the next Tuesday's batch. Each batch records this when it is created; batches from before the rule was deployed, and legacy GSB-weekly batches, swept the whole wallet balance instead and show a dash." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">
                         Distributors <x-help-tip text="Distributors being paid in this batch (net ≥ ₹{{ $minPayout }}). 'Held' counts those whose income stays in the wallet — KYC pending, no bank account, web-only or bank details unreadable." />

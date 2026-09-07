@@ -141,9 +141,12 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         ->assertSee('Personal BV (lifetime)')
         ->assertSee('No title yet')
         ->assertSee('Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.')
-        // The payout week: which earning week next Tuesday's transfer covers.
-        ->assertSee('covers earnings through')
+        // The card's amount is the whole CURRENT wallet balance, including days
+        // the next batch will not pay, so the visible copy labels it as such
+        // and the earning week it covers lives in the help tip instead.
+        ->assertSee('Current wallet balance')
         ->assertSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
+        ->assertSee('transfer covers earnings through')
         // Group 3 — Left before Right
         ->assertSee('Left carry forward')
         ->assertSee('Carried-over Left Genos BV')

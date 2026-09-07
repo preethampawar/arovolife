@@ -70,12 +70,13 @@ it('renders the payout operations help document', function (): void {
 
 it('shows the earning week each weekly batch pays for on the batch list', function (): void {
     // A batch dated Tuesday 22 September pays the week that closed on Tuesday
-    // 15 September — the client's own offset, applied to the first Tuesdays the
-    // rule actually governs. Admins reconciling a batch have to be able to see
-    // which week it covers without recomputing the offset by hand.
+    // 15 September (the client's own offset). Admins reconciling a batch have
+    // to be able to see which week it covers without recomputing it by hand —
+    // and the column reads the date the batch recorded for itself.
     PayoutBatch::create([
         'batch_type' => PayoutBatch::TYPE_WEEKLY,
         'batch_date' => '2026-09-22',
+        'earnings_through' => '2026-09-15',
         'status' => PayoutBatch::STATUS_PENDING,
     ]);
 
@@ -89,11 +90,11 @@ it('shows the earning week each weekly batch pays for on the batch list', functi
         ->assertDontSee('cooling-off');
 });
 
-it('leaves Earnings through blank for batches the week rule never governed', function (): void {
-    // The Wednesday-to-Tuesday rule took effect on 8 September 2026. Batches
-    // paid before it, and every legacy `gsb_weekly` batch, settled the wallet
-    // balance as it stood on the batch date; printing a window they never paid
-    // would misstate what a distributor was actually paid for.
+it('leaves Earnings through blank for batches that recorded no earning week', function (): void {
+    // Legacy `gsb_weekly` batches, and `weekly` batches written before the
+    // column existed, settled the wallet balance as it stood on the batch date.
+    // They carry no earning week, and the report must not invent one from the
+    // batch date — that would misstate what a distributor was actually paid for.
     PayoutBatch::create([
         'batch_type' => PayoutBatch::TYPE_WEEKLY,
         'batch_date' => '2026-08-18',
@@ -115,12 +116,16 @@ it('leaves Earnings through blank for batches the week rule never governed', fun
         ->assertDontSee('22 Sep 2026');
 });
 
-it('resolves the earning window only for weekly batches on or after the rule date', function (): void {
-    $governed = new PayoutBatch(['batch_type' => PayoutBatch::TYPE_WEEKLY, 'batch_date' => '2026-09-08']);
-    $tooEarly = new PayoutBatch(['batch_type' => PayoutBatch::TYPE_WEEKLY, 'batch_date' => '2026-09-01']);
+it('reads the earning window off the batch and never re-derives it', function (): void {
+    $stamped = new PayoutBatch([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-09-22',
+        'earnings_through' => '2026-09-15',
+    ]);
+    $unstamped = new PayoutBatch(['batch_type' => PayoutBatch::TYPE_WEEKLY, 'batch_date' => '2026-09-22']);
     $legacy = new PayoutBatch(['batch_type' => PayoutBatch::TYPE_GSB_WEEKLY, 'batch_date' => '2026-09-22']);
 
-    expect($governed->weeklyEarningThrough()?->toDateString())->toBe('2026-09-01')
-        ->and($tooEarly->weeklyEarningThrough())->toBeNull()
+    expect($stamped->weeklyEarningThrough()?->toDateString())->toBe('2026-09-15')
+        ->and($unstamped->weeklyEarningThrough())->toBeNull()
         ->and($legacy->weeklyEarningThrough())->toBeNull();
 });

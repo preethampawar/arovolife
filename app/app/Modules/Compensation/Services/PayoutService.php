@@ -99,6 +99,10 @@ final class PayoutService
             $batch = PayoutBatch::create([
                 'batch_type' => PayoutBatch::TYPE_WEEKLY,
                 'batch_date' => $dateStr,
+                // Stamped at creation so the reports read the week this batch
+                // actually paid instead of re-deriving one. Batches written
+                // before this column existed keep null and read "—".
+                'earnings_through' => $earnedThrough->toDateString(),
                 'status' => PayoutBatch::STATUS_PENDING,
             ]);
             $wasCreated = true;

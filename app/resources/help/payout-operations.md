@@ -46,9 +46,9 @@ Nobody creates a payout batch by hand.
    income was earned — the GSB cut-off date — not on when the credit landed in
    the wallet, because Tuesday's cut-off is credited at 00:10 on Wednesday. The
    batch list shows the last day each batch pays for under **Earnings through**;
-   it reads "—" for batches dated before the rule took effect (8 September
-   2026) and for legacy `gsb_weekly` batches, which swept the whole wallet
-   balance rather than a bounded week.
+   each batch records it when it is created, so it reads "—" for batches
+   written before the rule was deployed and for legacy `gsb_weekly` batches,
+   which swept the whole wallet balance rather than a bounded week.
    The **monthly payout** runs on the 8th at
    04:00 IST for Growth Booster, Rank, Fortune, Awards and ADC — a week after
    the crediting engines close the month on the 1st, and only if every one of

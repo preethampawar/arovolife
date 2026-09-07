@@ -897,13 +897,16 @@ it('shows a wallet-blocked month on the growth booster page without paying it', 
             'updated_at' => now()->toDateTimeString(),
         ],
         [
+            // Shaped the way the engine writes a blocked row: the AGP and the
+            // month's point value are real, only the money is zero. A fixture
+            // with a null point value would not exercise the suppression.
             'distributor_id' => $distributorId,
             'year_month' => '2026-08-01',
             'agp_earned' => 17,
             'company_turnover_paise' => 100_000_000,
             'pool_paise' => 5_000_000,
             'total_pool_agp' => 100,
-            'point_value_paise' => null,
+            'point_value_paise' => 50_000,
             'gbb_gross_paise' => 0,
             'admin_charge_paise' => 0,
             'tds_paise' => 0,
@@ -921,7 +924,10 @@ it('shows a wallet-blocked month on the growth booster page without paying it', 
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
         // Credited-only totals: the ₹5,400 credited July, nothing from August.
         ->assertSee('₹5,400')
-        ->assertSee('17 AGP');
+        // The AGP is shown as the historical fact it is, but never multiplied
+        // out into an income line for a month that will never be paid.
+        ->assertSee('17 AGP')
+        ->assertDontSee('17 AGP × ', false);
 });
 
 it('shows a wallet-blocked month on the fortune bonus page without paying it', function (): void {
@@ -948,12 +954,15 @@ it('shows a wallet-blocked month on the fortune bonus page without paying it', f
             'updated_at' => now()->toDateTimeString(),
         ],
         [
+            // Shaped the way the engine writes a blocked row: the matrix
+            // position, points and the level's point value are all real, and
+            // only the money is zero.
             'distributor_id' => $distributorId,
             'month_start' => '2026-08-01',
             'position' => 4,
             'matrix_level' => 1,
             'points' => 9,
-            'point_value_paise' => null,
+            'point_value_paise' => 10_000,
             'gross_paise' => 0,
             'admin_charge_paise' => 0,
             'tds_paise' => 0,
@@ -965,12 +974,18 @@ it('shows a wallet-blocked month on the fortune bonus page without paying it', f
         ],
     ]);
 
-    $this->get(route('income.fortune-bonus'))
+    $html = $this->get(route('income.fortune-bonus'))
         ->assertOk()
         ->assertSee('August 2026')
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
         // Credited-only total: only July's ₹810 reaches the summary card.
-        ->assertSee('₹810');
+        ->assertSee('₹810')
+        ->getContent();
+
+    // Both months carry 9 points at ₹100, but only the credited one may show
+    // the arithmetic: an income line on a blocked month states an amount as
+    // though it were owed.
+    expect(substr_count($html, '9 × ₹100.00'))->toBe(1);
 });
 
 it('counts a wallet-blocked month out of the fortune page total', function (): void {
@@ -1001,7 +1016,9 @@ it('counts a wallet-blocked month out of the fortune page total', function (): v
     $this->get(route('income.fortune-bonus'))
         ->assertOk()
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
-        ->assertDontSee('₹810');
+        // Neither the net in the credited column nor the arithmetic behind it.
+        ->assertDontSee('₹810')
+        ->assertDontSee('9 × ₹100.00', false);
 });
 
 // ── Rank progress: the days this month that were not counted ──

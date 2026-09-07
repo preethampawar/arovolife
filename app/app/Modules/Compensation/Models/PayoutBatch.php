@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $batch_type
  * @property Carbon $batch_date
+ * @property Carbon|null $earnings_through the last day a weekly batch paid for; null for legacy, monthly and pre-column batches
  * @property string $status
  * @property int $total_gross_paise
  * @property int $total_deductions_paise
@@ -67,22 +68,10 @@ final class PayoutBatch extends Model
     /** Per-stream monthly batch: GBB + Rank + Fortune + Awards + ADC (paid on the 8th). */
     public const TYPE_MONTHLY = 'monthly';
 
-    /**
-     * The first weekly batch date the Wednesday→Tuesday earning week governs —
-     * the first Tuesday after the client confirmed the rule (2026-09-07).
-     *
-     * Every batch before it, and every legacy `gsb_weekly` batch whenever it
-     * ran, swept whatever the wallet held on the batch date; it paid no
-     * bounded earning week at all. Printing a window against those batches
-     * would state, as historical fact, a period they never paid for, so the
-     * reports show them "—" instead. {@see weeklyEarningThrough()}.
-     */
-    public const string WEEK_RULE_EFFECTIVE_FROM = '2026-09-08';
-
     protected $table = 'payout_batches';
 
     protected $fillable = [
-        'batch_type', 'batch_date', 'status',
+        'batch_type', 'batch_date', 'earnings_through', 'status',
         'total_gross_paise', 'total_deductions_paise', 'total_net_paise',
         'distributor_count', 'processed_at', 'approved_by', 'approved_at',
     ];
@@ -91,6 +80,7 @@ final class PayoutBatch extends Model
     {
         return [
             'batch_date' => 'date',
+            'earnings_through' => 'date',
             'processed_at' => 'datetime',
             'approved_at' => 'datetime',
             'total_gross_paise' => 'integer',
@@ -132,25 +122,18 @@ final class PayoutBatch extends Model
     }
 
     /**
-     * The last day THIS batch actually paid for, or null when the week rule
-     * never governed it — a legacy `gsb_weekly` batch, or any batch dated
-     * before {@see WEEK_RULE_EFFECTIVE_FROM}.
+     * The last day THIS batch actually paid for, as recorded when the batch was
+     * created, or null when the batch paid no bounded earning week: a legacy
+     * `gsb_weekly` batch, a `weekly` batch written before the column existed,
+     * or a monthly batch, all of which swept the wallet instead.
      *
-     * The only place a report is allowed to decide whether a stored batch has
-     * an earning window: calling weeklyEarningWindow() on a batch date alone
-     * would happily invent one for a batch that swept the wallet instead.
+     * Read, never derived. Recomputing the window from `batch_date` would
+     * invent an earning week for a batch that never had one and print it as
+     * historical fact.
      */
     public function weeklyEarningThrough(): ?Carbon
     {
-        if ($this->batch_type !== self::TYPE_WEEKLY || $this->batch_date === null) {
-            return null;
-        }
-
-        if ($this->batch_date->lessThan(Carbon::parse(self::WEEK_RULE_EFFECTIVE_FROM))) {
-            return null;
-        }
-
-        return self::weeklyEarningWindow($this->batch_date)['end'];
+        return $this->earnings_through;
     }
 
     public function lineItems(): HasMany
