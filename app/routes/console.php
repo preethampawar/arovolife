@@ -43,9 +43,14 @@ Schedule::command(RepurchaseEvaluateCommand::class)
 // failed, or never started would let the cut-off proceed on yesterday's
 // repurchase verdicts. The guarantee is inside the command: while the
 // repurchase engine is on, gsb:daily-cutoff REFUSES (exit 1, a FAILED engine
-// run) unless repurchase:evaluate has a succeeded run as at the cut-off date or
-// later. A forfeited day credited by mistake is never corrected, so the cut-off
-// would rather not run than run early.
+// run) unless repurchase:evaluate has a succeeded run that has SEEN the whole
+// cut-off day — dated later than it, or dated for it but started after it
+// ended. The 00:05 run on the cut-off day itself does not count: a cycle
+// fulfilled later that day would still read as failed. Here that is satisfied
+// by the 00:05 run of the following morning, which is dated for the day the
+// cut-off is not processing. A forfeited day credited (or a fulfilled day
+// forfeited) by mistake is never corrected, so the cut-off would rather not run
+// than run on a stale verdict.
 Schedule::command(GsbDailyCutoffCommand::class, [
     '--date' => now('Asia/Kolkata')->subDay()->toDateString(),
 ])

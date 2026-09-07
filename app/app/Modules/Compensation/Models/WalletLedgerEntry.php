@@ -106,6 +106,17 @@ final class WalletLedgerEntry extends Model
      * keep exactly the behaviour they had before the week rule arrived, rather
      * than being stranded unpaid by a filter that can never match them.
      *
+     * `whereDate()` — not a plain `where('earned_on', '<=', ...)` — on purpose,
+     * even though it costs the `idx_wallet_type_swept_earned` index a range
+     * scan. `earned_on` is a MySQL DATE column, but Eloquent's `date` cast
+     * writes it through `fromDateTime()`, so on the SQLite test database the
+     * stored text is `Y-m-d 00:00:00`. A string comparison against `Y-m-d`
+     * then excludes the boundary day (measured: 0 rows vs 1), which is a
+     * silent under-sweep of a distributor's own money on exactly the day it
+     * was earned. A DATE-typed comparison behaves the same on both engines;
+     * a lexical one does not. If this ever needs to be sargable, normalise
+     * what is written first — do not change only the comparison.
+     *
      * @param  Builder<WalletLedgerEntry>  $query
      */
     #[Scope]

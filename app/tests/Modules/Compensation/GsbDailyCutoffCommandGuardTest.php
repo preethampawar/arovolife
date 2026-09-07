@@ -20,20 +20,28 @@ beforeEach(function (): void {
     Feature::for(null)->activate(GenosSalesBonusFeature::class);
 });
 
-/** A succeeded `repurchase:evaluate` run for the given period. */
-function seedEvaluateRun(string $period): void
+/**
+ * A succeeded `repurchase:evaluate` run for the given period.
+ *
+ * `$startedAt` defaults to the scheduled 00:05 of the period itself — the run
+ * the cron actually produces. Pass it explicitly to model a re-run or a manual
+ * trigger that happened after the day it was dated for had ended.
+ */
+function seedEvaluateRun(string $period, ?string $startedAt = null): void
 {
+    $started = Carbon::parse($startedAt ?? $period.' 00:05:00');
+
     EngineRun::create([
         'engine_key' => 'repurchase.evaluate',
         'period_start' => $period,
         'status' => EngineRun::STATUS_SUCCEEDED,
         'trigger' => EngineRun::TRIGGER_CONSOLE,
-        'started_at' => Carbon::parse($period.' 00:05:00'),
-        'finished_at' => Carbon::parse($period.' 00:06:00'),
+        'started_at' => $started,
+        'finished_at' => $started->copy()->addMinute(),
     ]);
 }
 
-it('refuses when no evaluate run exists as at the cut-off date or later', function (): void {
+it('refuses when no evaluate run has seen the whole cut-off day', function (): void {
     // The repurchase verdict this cut-off reads is written by exactly one
     // process. Running before it would credit days the client's rules forfeit —
     // permanently, with no later correction.
@@ -48,7 +56,7 @@ it('refuses when no evaluate run exists as at the cut-off date or later', functi
     $exitCode = Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']);
 
     expect($exitCode)->toBe(1)
-        ->and(Artisan::output())->toContain('repurchase:evaluate --date=2026-08-25')
+        ->and(Artisan::output())->toContain('repurchase:evaluate --date=2026-08-26')
         ->and(GsbCutoffResult::count())->toBe(0);
 });
 
@@ -71,9 +79,22 @@ it('runs when a later evaluate run exists', function (): void {
     expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
 });
 
-it('runs when the evaluate run is for the cut-off date itself', function (): void {
+it('refuses an evaluate run dated the cut-off day that ran at 00:05 that morning', function (): void {
+    // The scheduled run for D starts at 00:05 ON D, so a fulfilment purchase
+    // made later that day is invisible to it. Accepting it would let the
+    // cut-off forfeit a day the distributor actually fulfilled.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
     seedEvaluateRun('2026-08-25');
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(1)
+        ->and(GsbCutoffResult::count())->toBe(0);
+});
+
+it('runs when the evaluate run for the cut-off day started after that day ended', function (): void {
+    // A re-run or manual trigger the next morning has seen every purchase made
+    // on the cut-off day, so it is proof enough even dated for that day.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    seedEvaluateRun('2026-08-25', '2026-08-26 00:05:00');
 
     expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
 });

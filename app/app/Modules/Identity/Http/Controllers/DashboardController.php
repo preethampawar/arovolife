@@ -125,10 +125,11 @@ final class DashboardController extends Controller
                 $walletBalancePaise = app(WalletService::class)->balancePaise($distributorId);
 
                 // Deliberately NOT gated on RepurchaseEngineFeature. That flag
-                // governs the GSB cut-off's repurchase suspension; it governs
+                // governs the GSB cut-off's day-level forfeit; it governs
                 // neither mechanism this pill describes — the 10% deduction
                 // (WalletService::creditWithRepurchaseDeduction) and the
-                // cycle-end wallet = ₹0 gate on GSB / Rank / GBB / Fortune
+                // month-end wallet = ₹0 gate on Growth Booster / Fortune / rank
+                // requalification / AO-GO (GSB has no wallet gate at all)
                 // both run unconditionally. Gating it here withheld the warning
                 // on the surface most distributors use while the money was
                 // really being held back, and contradicted the same pill

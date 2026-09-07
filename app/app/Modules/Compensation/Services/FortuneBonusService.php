@@ -376,7 +376,17 @@ final class FortuneBonusService
                 // audit row at gross 0, no wallet credit, the matrix position
                 // kept, and the share the cascade had allowed for stays with
                 // the company as leftover. Nothing releases it later.
-                if (! ($cleared[$distributorId] ?? true)) {
+                //
+                // Month-1 joiners are the one published exemption: "the
+                // calendar month in which the Distributor registers carries no
+                // wallet condition" (plan page §Fortune Bonus; R-37). Their
+                // first repurchase cycle has not closed yet, so a balance in
+                // the repurchase wallet is expected, not a failure. The tier is
+                // the one frozen on the participant row at enrolment, so a
+                // re-run judges the month by what was true when it was entered.
+                $isNewJoiner = $participant->eligibility_tier === self::TIER_NEW_JOINER;
+
+                if (! $isNewJoiner && ! ($cleared[$distributorId] ?? true)) {
                     $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED);
                     $walletBlocked++;
 

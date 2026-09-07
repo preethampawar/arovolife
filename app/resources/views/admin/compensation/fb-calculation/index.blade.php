@@ -23,8 +23,9 @@
     depth (0 = top); Date = the first GSB credit that enrolled them. Rows written before the
     cascade rework show "—" for points and value. "repurchase_wallet_blocked" = the distributor
     still held repurchase-wallet money at the last instant of the month, so the month is forfeited:
-    gross ₹0, position kept, the share stays unspent and is never redistributed. The repurchase
-    cycle itself never withholds Fortune. Search by ADN or name.
+    gross ₹0, position kept, the share stays unspent and is never redistributed. A month-1 joiner
+    (tier "new joiner") is exempt from that gate — the month of registration carries no wallet
+    condition. The repurchase cycle itself never withholds Fortune. Search by ADN or name.
 </div>
 @enddeveloper
 

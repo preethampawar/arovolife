@@ -113,14 +113,14 @@ function seedRankQualForFortune(int $distributorId, int $rank, string $monthStar
 }
 
 /** Place a distributor at an explicit matrix position, bypassing enrolment. */
-function placeFortuneParticipant(int $distributorId, int $position, string $monthStart = '2026-06-01'): FortuneBonusParticipant
+function placeFortuneParticipant(int $distributorId, int $position, string $monthStart = '2026-06-01', string $tier = 'non_ranked'): FortuneBonusParticipant
 {
     return FortuneBonusParticipant::create([
         'distributor_id' => $distributorId,
         'month_start' => $monthStart,
         'position' => $position,
         'matrix_level' => FortuneBonusParticipant::levelFromPosition($position),
-        'eligibility_tier' => 'non_ranked',
+        'eligibility_tier' => $tier,
         'first_gsb_date' => '2026-06-05',
         'enrolled_at' => now(),
     ]);
@@ -935,6 +935,38 @@ it('forfeits the Fortune month for wallet money at month end — gross 0, positi
     expect(FortuneBonusParticipant::where('distributor_id', $blocked->id)->exists())->toBeTrue();
     expect(FortuneBonusResult::where('distributor_id', $paid->id)->value('status'))
         ->toBe(FortuneBonusResult::STATUS_CREDITED);
+});
+
+it('exempts a month-1 joiner from the month-end repurchase-wallet gate', function (): void {
+    // Published plan (compensation content page, Fortune section) and R-37:
+    // "the calendar month in which the Distributor registers carries no wallet
+    // condition". Their first repurchase cycle has not closed yet, so a
+    // balance is expected. Everyone else with money at month end is forfeited.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $month = Carbon::parse('2026-06-01');
+    $joiner = registerDistributorForFortune('2026-06-02');
+    $veteran = registerDistributorForFortune('2026-05-02');
+
+    placeFortuneParticipant($joiner->id, 1, tier: 'new_joiner');
+    placeFortuneParticipant($veteran->id, 2);
+    seedCompanyBvForFortunePool(100_000_000);
+
+    seedRepurchaseWalletEntryForFortune($joiner->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
+    seedRepurchaseWalletEntryForFortune($veteran->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
+
+    $result = app(FortuneBonusService::class)->runForMonth($month);
+
+    expect($result['credited'])->toBe(1)
+        ->and($result['repurchase_wallet_blocked'])->toBe(1);
+
+    expect(FortuneBonusResult::where('distributor_id', $joiner->id)->value('status'))
+        ->toBe(FortuneBonusResult::STATUS_CREDITED);
+    expect(WalletLedgerEntry::where('distributor_id', $joiner->id)->where('type', 'fortune_credit')->count())->toBe(1);
+
+    expect(FortuneBonusResult::where('distributor_id', $veteran->id)->value('status'))
+        ->toBe(FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+    expect(WalletLedgerEntry::where('distributor_id', $veteran->id)->where('type', 'fortune_credit')->count())->toBe(0);
 });
 
 it('the month foots — pool = credited gross + forfeited share + frozen leftover', function (): void {

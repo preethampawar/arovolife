@@ -244,6 +244,13 @@ final class AdminGsbInputOutputController extends Controller
      * How many distributors had each day forfeited by a failed repurchase cycle
      * — one query for the whole page, keyed by date. Absent days had none.
      *
+     * `DATE(cutoff_date)` is deliberate and stays. `cutoff_date` is a MySQL
+     * DATE column, but the `date` cast writes `Y-m-d 00:00:00` into the SQLite
+     * test database, so matching the raw column against `Y-m-d` strings finds
+     * nothing there while working in production — the worst kind of
+     * divergence for a report that has to be trusted. The page lists at most a
+     * month of days, so the wrapped column costs nothing measurable here.
+     *
      * @param  list<string>  $dates
      * @return array<string, int>
      */

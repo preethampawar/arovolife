@@ -50,6 +50,52 @@ it('hasSucceededRunOnOrAfter rejects an earlier run, a non-succeeded run and ano
     expect($status->hasSucceededRunOnOrAfter('repurchase.evaluate', $asOf))->toBeFalse();
 });
 
+it('hasSucceededRunAfterDay rejects the run scheduled at 00:05 on the day itself', function (): void {
+    // The 00:05 run on D cannot have seen a fulfilment purchase made later on
+    // D, so it is not proof the cut-off for D may rely on.
+    seedEngineStatusRun('repurchase.evaluate', '2026-08-25', EngineRun::STATUS_SUCCEEDED);
+
+    expect(app(EngineStatusService::class)
+        ->hasSucceededRunAfterDay('repurchase.evaluate', Carbon::parse('2026-08-25')))->toBeFalse();
+});
+
+it('hasSucceededRunAfterDay accepts a run for the day that started after the day ended', function (): void {
+    EngineRun::create([
+        'engine_key' => 'repurchase.evaluate',
+        'period_start' => '2026-08-25',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-08-26 00:05:00'),
+        'finished_at' => Carbon::parse('2026-08-26 00:06:00'),
+    ]);
+
+    expect(app(EngineStatusService::class)
+        ->hasSucceededRunAfterDay('repurchase.evaluate', Carbon::parse('2026-08-25')))->toBeTrue();
+});
+
+it('hasSucceededRunAfterDay accepts a run for a later day whatever hour it started', function (): void {
+    seedEngineStatusRun('repurchase.evaluate', '2026-08-26', EngineRun::STATUS_SUCCEEDED);
+
+    expect(app(EngineStatusService::class)
+        ->hasSucceededRunAfterDay('repurchase.evaluate', Carbon::parse('2026-08-25')))->toBeTrue();
+});
+
+it('hasSucceededRunAfterDay rejects earlier, unsucceeded and other-engine runs', function (): void {
+    $status = app(EngineStatusService::class);
+    $asOf = Carbon::parse('2026-08-25');
+
+    seedEngineStatusRun('repurchase.evaluate', '2026-08-24', EngineRun::STATUS_SUCCEEDED);
+    seedEngineStatusRun('repurchase.evaluate', '2026-08-26', EngineRun::STATUS_FAILED);
+    seedEngineStatusRun('gsb.daily-cutoff', '2026-08-28', EngineRun::STATUS_SUCCEEDED);
+
+    expect($status->hasSucceededRunAfterDay('repurchase.evaluate', $asOf))->toBeFalse();
+});
+
+it('hasSucceededRunAfterDay is false when the run log is empty', function (): void {
+    expect(app(EngineStatusService::class)
+        ->hasSucceededRunAfterDay('repurchase.evaluate', Carbon::parse('2026-08-25')))->toBeFalse();
+});
+
 it('hasSucceededRunOnOrAfter is false when the run log is empty', function (): void {
     expect(app(EngineStatusService::class)
         ->hasSucceededRunOnOrAfter('repurchase.evaluate', Carbon::parse('2026-08-25')))->toBeFalse();

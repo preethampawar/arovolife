@@ -72,21 +72,26 @@ final class GsbDailyCutoffCommand extends Command
         // process, `repurchase:evaluate`. Run before it and every day inside a
         // failed cycle still reads as eligible, so the cut-off credits income
         // the client's rules forfeit — and the forfeit is permanent, so there is
-        // no later correction. Refuse instead. A run for the cut-off date or any
-        // later date is proof enough: evaluate stamps cycles forward.
+        // no later correction. Refuse instead. Proof has to be a run that could
+        // SEE the whole day: a run for a later date, or a run dated D that
+        // started after D ended. The scheduled 00:05 run ON D is not proof — a
+        // purchase made later that day fulfils the cycle it judged as failed.
         if ($this->eligibility->engineActive()
             && ! $this->option('force')
-            && ! $this->engineStatus->hasSucceededRunOnOrAfter('repurchase.evaluate', $date)) {
+            && ! $this->engineStatus->hasSucceededRunAfterDay('repurchase.evaluate', $date)) {
             Log::critical('gsb.cutoff.refused_missing_evaluate', [
                 'date' => $date->toDateString(),
                 'distributor_id' => $singleId,
             ]);
 
+            $nextDay = $date->copy()->addDay()->toDateString();
+
             $this->error(
                 "Refusing to run the {$date->toDateString()} GSB cut-off: the repurchase engine is on but "
-                ."`repurchase:evaluate` has no succeeded run for {$date->toDateString()} or later, so every "
-                ."failed repurchase cycle would still read as eligible and be credited.\n"
-                ."Run `php artisan repurchase:evaluate --date={$date->toDateString()}` first, then re-run this "
+                ."`repurchase:evaluate` has no succeeded run that has seen the whole of {$date->toDateString()} "
+                .'— it needs a run for a later date, or a run for that date that started after the day ended. '
+                ."Otherwise a cycle fulfilled later that day would still read as failed, and be forfeited.\n"
+                ."Run `php artisan repurchase:evaluate --date={$nextDay}` first, then re-run this "
                 .'command (or pass --force to override).'
             );
 

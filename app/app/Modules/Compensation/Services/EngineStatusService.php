@@ -70,6 +70,38 @@ final class EngineStatusService
     }
 
     /**
+     * A succeeded run for this engine that is proven to have SEEN all of $day.
+     *
+     * `hasSucceededRunOnOrAfter()` is not enough for the GSB cut-off. The
+     * scheduled `repurchase:evaluate --date=D` runs at 00:05 ON D, so it cannot
+     * have seen a fulfilment purchase made later that same day; accepting it
+     * would let the cut-off for D forfeit a day the distributor actually
+     * fulfilled — permanently, since the forfeit is never corrected. Accepted
+     * proof is therefore either a run for a LATER date, or a run dated D that
+     * started after D had ended (a re-run, a manual trigger, or the Engine Runs
+     * chain filling the gap the next morning).
+     *
+     * `started_at` is stamped with `Carbon::now()` in the app timezone, so the
+     * boundary is the app-timezone midnight opening D + 1.
+     */
+    public function hasSucceededRunAfterDay(string $key, Carbon $day): bool
+    {
+        $dayEnds = $day->copy()->startOfDay()->addDay();
+
+        return EngineRun::query()
+            ->where('engine_key', $key)
+            ->where('status', EngineRun::STATUS_SUCCEEDED)
+            ->where(function (Builder $query) use ($day, $dayEnds): void {
+                $query->whereDate('period_start', '>', $day->toDateString())
+                    ->orWhere(function (Builder $sameDay) use ($day, $dayEnds): void {
+                        $sameDay->whereDate('period_start', '>=', $day->toDateString())
+                            ->where('started_at', '>=', $dayEnds->toDateTimeString());
+                    });
+            })
+            ->exists();
+    }
+
+    /**
      * True when the engine has a live run in flight — either one this process
      * knows about or a cron run that started moments ago. `running` rows older
      * than the staleness cutoff are treated as abandoned, not live.

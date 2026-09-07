@@ -491,6 +491,19 @@ final class GsbCutoffService
         // says was never added, while this row asserts after == before. Safe
         // because the out-of-order guard in computeForDistributor() has already
         // refused every case where a NEWER day's advance would be erased.
+        //
+        // KNOWN RESIDUAL — the rewind covers the carry-forward store only. If
+        // the earlier run had applied a personal-BV weaker-leg top-up (see
+        // `applyPendingForDistributor()` below), those orders stay consumed:
+        // this branch never calls the top-up service, so nothing hands them
+        // back. The re-run is therefore conservative — the distributor keeps a
+        // spent top-up they arguably should not have — never generous, so it
+        // cannot manufacture income. It is also rare by construction: it needs
+        // a day that first settled with a top-up and was then re-resolved as
+        // failed, which only happens when a cycle verdict is corrected after
+        // the fact. The clean repair is not a targeted un-apply but a WINDOWED
+        // RECOMPUTE (`WindowedStateWiper`), which wipes applied top-ups along
+        // with every other derived row in the window and replays them.
         if ($computation->outcome === GsbCutoffComputation::OUTCOME_REPURCHASE_FORFEITED) {
             $rewindStore = $existing !== null && $existing->advancedCarryForward();
 

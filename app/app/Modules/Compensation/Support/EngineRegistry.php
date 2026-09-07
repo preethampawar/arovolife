@@ -91,7 +91,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'repurchase.evaluate',
                 label: 'Repurchase Evaluation',
-                description: "Refreshes every active distributor's repurchase cycle as at the chosen date: opens or rolls cycles, recounts self-purchase BV, and moves each cycle between active, suspended and completed. Impact: writes repurchase cycles and the income-eligibility status the daily cut-off reads — it credits nothing itself. The cut-off for day D needs an evaluate run as at D or later. Run it for today; running it for a past date would stamp today's purchases onto an older cycle.",
+                description: "Refreshes every active distributor's repurchase cycle as at the chosen date: opens or rolls cycles, recounts self-purchase BV, and moves each cycle between active, suspended and completed. Impact: writes repurchase cycles and the income-eligibility status the daily cut-off reads — it credits nothing itself. The cut-off for day D needs an evaluate run that has seen the whole of D — a run dated later than D, or a run dated D that started after D ended (the scheduled 00:05 run on D cannot see a purchase made later that same day). Run it for today; running it for a past date would stamp today's purchases onto an older cycle.",
                 periodType: EnginePeriodType::Date,
                 commandClass: RepurchaseEvaluateCommand::class,
                 commandSignature: 'repurchase:evaluate',
@@ -106,7 +106,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'gsb.daily-cutoff',
                 label: 'GSB Daily Cut-off (incl. MSB)',
-                description: 'Runs the Genos Sales Bonus cut-off for the chosen day across all active distributors, prices that day\'s GSB and Mentorship pools, and credits the resulting amounts to wallets. Impact: writes the day\'s cut-off results, carry-forwards, daily pools and wallet credits. Idempotent — a distributor already credited for that day is skipped, never credited twice. While the repurchase engine is on it refuses to run at all unless Repurchase Evaluation has a succeeded run as at the cut-off date or later: without it every failed repurchase cycle would still read as eligible and be credited, and the forfeit is permanent.',
+                description: 'Runs the Genos Sales Bonus cut-off for the chosen day across all active distributors, prices that day\'s GSB and Mentorship pools, and credits the resulting amounts to wallets. Impact: writes the day\'s cut-off results, carry-forwards, daily pools and wallet credits. Idempotent — a distributor already credited for that day is skipped, never credited twice. While the repurchase engine is on it refuses to run at all unless Repurchase Evaluation has a succeeded run that has seen the whole cut-off day — dated after it, or dated for it but started once the day had ended. The scheduled 00:05 run on the cut-off day itself is not enough: a cycle fulfilled later that day would still read as failed and be forfeited permanently, and nothing corrects it afterwards.',
                 periodType: EnginePeriodType::Date,
                 commandClass: GsbDailyCutoffCommand::class,
                 commandSignature: 'gsb:daily-cutoff',

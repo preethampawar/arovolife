@@ -49,7 +49,8 @@
         ₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBlockedPaise / 100, 2) }} the cascade had
         allocated them is counted inside Payout above but never left the company, and is shown as
         <strong>Forfeited</strong>: pool = credited + forfeited + leftover. It is never redistributed and never
-        released.
+        released. Month-1 joiners are exempt from this gate — the month a distributor registers carries no
+        wallet condition.
     </p>
     @endif
     @unless($pool)

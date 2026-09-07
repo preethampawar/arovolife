@@ -234,9 +234,11 @@ it('an idle failed-cycle distributor gets no_match with the store unchanged', fu
     $date = Carbon::today();
     $dateStr = $date->toDateString();
 
+    // Dated the day AFTER the cut-off day, as in production: the 00:05 run of
+    // the following morning is the one that has seen all of the cut-off day.
     EngineRun::create([
         'engine_key' => 'repurchase.evaluate',
-        'period_start' => $dateStr,
+        'period_start' => $date->copy()->addDay()->toDateString(),
         'status' => EngineRun::STATUS_SUCCEEDED,
         'trigger' => EngineRun::TRIGGER_CONSOLE,
         'started_at' => now(),

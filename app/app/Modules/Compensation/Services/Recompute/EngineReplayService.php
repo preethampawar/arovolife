@@ -190,7 +190,7 @@ final class EngineReplayService
                     $this->invoke($prerequisite['definition'], $prerequisite['period'], $at);
                 }
 
-                $this->invoke($definition, $period, $at);
+                $this->invoke($definition, $period, $at, $this->overridesCutoffEvaluateGuard($definition, $period));
             }
 
             $days++;
@@ -343,7 +343,7 @@ final class EngineReplayService
                 $stampAt,
                 $this->overridesGuardAtHorizon($entry['definition'], $entry['period'], $horizon)
                     ? ['--force' => true]
-                    : [],
+                    : $this->overridesCutoffEvaluateGuard($entry['definition'], $entry['period']),
             );
         }
     }
@@ -374,6 +374,37 @@ final class EngineReplayService
         return $definition->key === 'rank.check'
             && ($this->engineRuns['repurchase:evaluate'] ?? 0) > 0
             && $period->copy()->startOfMonth()->addMonthNoOverflow()->gt($horizon);
+    }
+
+    /**
+     * Whether this cut-off invocation has to override its own evaluate guard.
+     *
+     * `gsb:daily-cutoff --date=D` refuses without a `repurchase:evaluate` run
+     * that has SEEN all of D — in production the 00:05 run on D + 1, because a
+     * purchase made late on D would otherwise still read as a failed cycle and
+     * be forfeited permanently. A replay has no such hazard: it fires each
+     * day's engines in cadence order over data that is already complete in the
+     * database, so the evaluation it ran moments earlier for the same day has
+     * seen every purchase that day will ever hold. Without the override the
+     * replay would abort on its first day, after the wipe.
+     *
+     * Narrow, like the horizon override:
+     *  • only gsb.daily-cutoff;
+     *  • only when this replay has itself already run the evaluation for that
+     *    exact day, so a selection that left evaluate out cannot slip a forced
+     *    cut-off past the operator.
+     *
+     * @return array<string, bool> `--force` when overridden, empty otherwise
+     */
+    private function overridesCutoffEvaluateGuard(EngineDefinition $definition, Carbon $period): array
+    {
+        if ($definition->key !== 'gsb.daily-cutoff') {
+            return [];
+        }
+
+        $evaluateKey = $this->invocationKey(EngineRegistry::get('repurchase.evaluate'), $period);
+
+        return isset($this->invoked[$evaluateKey]) ? ['--force' => true] : [];
     }
 
     /** Is this engine part of the replay the caller asked for? */

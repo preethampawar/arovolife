@@ -26,7 +26,7 @@ final class RepurchaseEvaluateCommand extends Command
                             {--date= : Override the as-of date (YYYY-MM-DD, default: today)}
                             {--distributor= : Evaluate a single distributor ID only}';
 
-    protected $description = 'Evaluate each distributor\'s monthly repurchase cycle and update income eligibility';
+    protected $description = 'Evaluate each distributor\'s 30-day repurchase cycle and update income eligibility';
 
     public function __construct(
         private readonly RepurchaseCycleService $cycles,
