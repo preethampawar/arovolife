@@ -634,7 +634,7 @@ Timestamps are back-dated during the replay (`Carbon::setTestNow` per replayed
 day) so the monthly income cap and repurchase deduction, which window on
 `wallet_ledger_entries.created_at`, fall in the right months. Outbound mail and
 notifications are muted for the duration; domain events still fire, because
-listeners like `ReleaseHeldGsbOnReactivation` are part of a correct
+listeners like `ReleaseHeldRankBonusOnReactivation` are part of a correct
 recomputation.
 
 #### Reverting it after sign-off

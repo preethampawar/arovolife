@@ -29,10 +29,17 @@ final class GsbCutoffComputation
     public const OUTCOME_MATCHED = 'matched';
 
     /**
-     * No longer produced. The wallet = ₹0 test used to be a second gate against
-     * the previous calendar month's frozen snapshot; the client's 2026-09-06
-     * rule 4 folds it into the distributor's own repurchase cycle, so a wallet
-     * failure now arrives as an ordinary repurchase hold on `$eligibility`.
+     * The day fell inside a failed repurchase cycle's window (client spec
+     * 2026-09-07 §2.1). No slab is matched, no income exists, and neither
+     * carry-forward store moves — the day's group BV is simply never added.
+     * Nothing is released later.
+     */
+    public const OUTCOME_REPURCHASE_FORFEITED = 'repurchase_forfeited';
+
+    /**
+     * LEGACY — no longer produced. The wallet = ₹0 test used to be a second gate
+     * against the previous calendar month's frozen snapshot before the client's
+     * cycle rules folded it into the distributor's own repurchase cycle.
      * Retained for result rows written before that change.
      */
     public const OUTCOME_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';

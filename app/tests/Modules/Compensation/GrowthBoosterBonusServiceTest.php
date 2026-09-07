@@ -348,7 +348,7 @@ it('releases a held row at its frozen gross even after its live AGP has grown', 
     $pool = GbbMonthlyPool::first();
     expect((int) GbbMonthlyResult::where('status', GbbMonthlyResult::STATUS_CREDITED)->sum('gbb_gross_paise'))
         ->toBe((int) $pool->payout_paise);
-});
+})->skip('GBB release removed with ReleaseHeldGbbOnReactivation; the GBB forfeit model replaces these in task 5 of the 2026-09-07 repurchase plan.');
 
 it('freezes the repurchase deduction on the row; admin charge and TDS are left to the payout', function () {
     $dist = Distributor::factory()->create();
@@ -523,7 +523,7 @@ it('releases a held month on reactivation and never double-credits on a re-fired
     $ledger = WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gbb_credit')->get();
     expect($ledger)->toHaveCount(1);
     expect($ledger->first()->amount_paise)->toBe($row->gbb_gross_paise);
-});
+})->skip('GBB release removed with ReleaseHeldGbbOnReactivation; the GBB forfeit model replaces these in task 5 of the 2026-09-07 repurchase plan.');
 
 it('keeps a failed-cycle distributor in the denominator and releases them on fulfilment', function () {
     // Client rule 8 pays withheld income back, so the held AGP has to stay in
@@ -556,7 +556,7 @@ it('keeps a failed-cycle distributor in the denominator and releases them on ful
     expect($heldRow->status)->toBe(GbbMonthlyResult::STATUS_CREDITED);
     expect((int) WalletLedgerEntry::where('distributor_id', $d2->id)->where('type', 'gbb_credit')->sum('amount_paise'))
         ->toBe($value * 5);
-});
+})->skip('GBB release removed with ReleaseHeldGbbOnReactivation; the GBB forfeit model replaces these in task 5 of the 2026-09-07 repurchase plan.');
 
 it('re-freezes a pool that was frozen before the month closed, and discards the rows it produced', function () {
     $dist = Distributor::factory()->create();
@@ -812,7 +812,7 @@ it('still releases a held row after a re-run — held AGP was inside the frozen 
     $row->refresh();
     expect($row->status)->toBe(GbbMonthlyResult::STATUS_CREDITED);
     expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gbb_credit')->sum('amount_paise'))->toBe(9_600);
-});
+})->skip('GBB release removed with ReleaseHeldGbbOnReactivation; the GBB forfeit model replaces these in task 5 of the 2026-09-07 repurchase plan.');
 
 it('holds a distributor whose cycle failed on the wallet condition alone', function () {
     // Rule 4(B): BV was fine, the repurchase wallet was not ₹0 on the cycle's

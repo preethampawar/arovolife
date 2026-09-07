@@ -6,9 +6,11 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Events\IncomeSuspended;
 use App\Modules\Compensation\Models\GroupBvDaily;
+use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
+use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\IncomeEligibilityService;
 use App\Modules\Compensation\Services\RepurchaseCycleService;
@@ -598,103 +600,252 @@ it('forfeits nothing for a cycle fulfilled on time, and nothing at all when the 
         ->and($svc->verdictAsOf($dist->id, Carbon::parse('2026-08-25'))->isEligible())->toBeTrue();
 });
 
-// ── GSB cut-off gate ────────────────────────────────────────────────────────
+// ── GSB cut-off: a failed day is forfeited, never held ───────────────────────
 
-/** A distributor (anchor 2026-01-05, never repurchased after) whose group BV on
- *  $date matches GSB slab 1 (weaker side ≥ 15,000 BV). */
-function makeGsbReadyRetailer(string $date): Distributor
+/**
+ * The conditional personal-BV top-up is live by default (go-live 1970-01-01)
+ * and would silently move BV between the legs of these fixtures. Push it out of
+ * the way; the one test that cares about it switches it back on itself.
+ */
+function gsbSuppressTopup(): void
 {
-    $dist = Distributor::factory()->create(['status' => 'active', 'adn' => '100000900']);
-    seedSelfPurchase($dist->id, 300_000, '2026-01-05');
-    GroupBvDaily::create([
-        'distributor_id' => $dist->id, 'date' => $date,
-        'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000, // weaker 16,000 BV ≥ slab 1
-    ]);
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.gsb.topup_golive_date'],
+        ['value' => '2099-01-01'],
+    );
+}
 
-    // The gate is read-only — the daily command (here, a direct evaluate) is the
-    // sole writer that establishes the cycle status the cut-off then reads.
-    svc()->evaluate($dist->id, Carbon::parse($date));
+/**
+ * A Retailer whose cycle (05 Jan → 04 Feb) was fulfilled late on 10 Feb, so
+ * 05–09 Feb are forfeited and 10 Feb counts again.
+ */
+function makeLateFulfiller(string $adn = '100000900'): Distributor
+{
+    $dist = Distributor::factory()->create(['status' => 'active', 'adn' => $adn]);
+    seedSelfPurchase($dist->id, 300_000, '2026-01-05');
+    seedCycle($dist->id, '2026-01-05', '2026-02-04', '2026-02-10');
 
     return $dist;
 }
 
-it('credits GSB normally when the repurchase engine is OFF, even past a failed window', function (): void {
-    $dist = makeGsbReadyRetailer('2026-03-20');
+/** Today's Genos BV for one distributor. */
+function seedDayBv(int $distributorId, string $date, int $leftPaise, int $rightPaise): void
+{
+    GroupBvDaily::create([
+        'distributor_id' => $distributorId, 'date' => $date,
+        'left_bv_paise' => $leftPaise, 'right_bv_paise' => $rightPaise,
+    ]);
+}
 
-    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-20'));
+it('credits GSB normally when the repurchase engine is OFF, even past a failed window', function (): void {
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+    seedDayBv($dist->id, '2026-02-06', 2_000_000, 1_600_000);
+
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
 
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
 });
 
-it('holds the GSB credit when the engine is ON and the cycle has failed', function (): void {
+it('forfeits a failed day: zero income, no ledger row, both carry-forwards untouched, day BV not added', function (): void {
+    // Client spec §2.1 / answer 3: "the BVs on both sides of the left genos and
+    // right genos at that time will stop there as assets". No match, no income,
+    // and the two stores stand exactly where the due date left them.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
-    $dist = makeGsbReadyRetailer('2026-03-20'); // window 02-05 → 03-07 failed
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
 
-    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-20'));
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 800_000, 'power_side' => 'L', 'slab1_weaker_bv_paise' => 500_000,
+    ]);
+    seedDayBv($dist->id, '2026-02-06', 2_000_000, 1_600_000); // would match slab 1
 
-    expect($result->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_HELD);
-    expect($result->gross_gsb_paise)->toBeGreaterThan(0);          // calculated…
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0); // …but not credited
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
+        ->and($result->gross_gsb_paise)->toBe(0)
+        ->and($result->net_gsb_paise)->toBe(0)
+        ->and($result->slab)->toBeNull()
+        ->and($result->score)->toBeNull()
+        ->and($result->weaker_bv_paise)->toBe(0)
+        // The day's raw Genos BV is recorded for the report — and nothing else.
+        ->and($result->left_bv_paise)->toBe(2_000_000)
+        ->and($result->right_bv_paise)->toBe(1_600_000)
+        // The carry-forward invariant: after == before, on both stores.
+        ->and($result->power_cf_after_paise)->toBe($result->power_cf_before_paise)
+        ->and($result->power_cf_after_paise)->toBe(800_000)
+        ->and($result->power_side_before)->toBe('L')
+        ->and($result->power_side_after)->toBe('L')
+        ->and($result->slab1_weaker_cf_after_paise)->toBe($result->slab1_weaker_cf_before_paise)
+        ->and($result->slab1_weaker_cf_after_paise)->toBe(500_000);
+
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->power_side_bv_paise)->toBe(800_000)
+        ->and($cf->power_side)->toBe('L')
+        ->and($cf->slab1_weaker_bv_paise)->toBe(500_000);
+
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0)
+        ->and(DB::table('wallet_ledger_entries')->where('distributor_id', $dist->id)->count())->toBe(0);
 });
 
-it('releases held GSB rows when the distributor fulfils the repurchase', function (): void {
-    // Client rule 8: withheld income is reinstated, not forfeited.
+it('forfeits a small-BV failed day without accumulating it into the slab-1 store', function (): void {
+    // The everyday case: far below any slab. An eligible day would add the
+    // weaker side to the lifetime slab-1 accumulator; a forfeited day must not.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
 
-    $dist = Distributor::factory()->create(['status' => 'active', 'adn' => '100000901']);
-    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // window 02-05 → 03-07 will fail
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 120_000, 'power_side' => 'R', 'slab1_weaker_bv_paise' => 100_000,
+    ]);
+    seedDayBv($dist->id, '2026-02-07', 50_000, 30_000);
 
-    foreach (['2026-03-09', '2026-03-11'] as $date) {
-        GroupBvDaily::create([
-            'distributor_id' => $dist->id, 'date' => $date,
-            'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000,
-        ]);
-    }
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-02-07'));
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
+        ->and($result->slab1_weaker_cf_after_paise)->toBe(100_000)
+        ->and($result->power_cf_after_paise)->toBe(120_000)
+        ->and($result->power_side_after)->toBe('R');
+
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->slab1_weaker_bv_paise)->toBe(100_000)
+        ->and($cf->power_side_bv_paise)->toBe(120_000)
+        ->and($cf->power_side)->toBe('R');
+});
+
+it('leaves a pending personal-BV top-up pending on a forfeited day', function (): void {
+    // The top-up is consumed by a match. A forfeited day never matches, so the
+    // pending BV must survive for the day the distributor fulfils.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.gsb.topup_golive_date'],
+        ['value' => '2026-01-01'],
+    );
+    $dist = makeLateFulfiller();
+    seedDayBv($dist->id, '2026-02-06', 2_000_000, 1_600_000);
+
+    app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
+
+    expect(DB::table('gsb_personal_bv_topups')->where('distributor_id', $dist->id)->count())->toBe(0);
+});
+
+it('resumes on the fulfilment day: day BV + preserved carry-forward matches and credits', function (): void {
+    // Client answer 3: "on the day the repurchase condition is satisfied, the
+    // BVs from that day will be credited to the old ones". The preserved 4,000
+    // BV slab-1 store is exactly what lifts the fulfilment day to the 15K match.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 1_000_000, 'power_side' => 'L', 'slab1_weaker_bv_paise' => 400_000,
+    ]);
+    seedDayBv($dist->id, '2026-02-06', 500_000, 500_000);   // forfeited
+    seedDayBv($dist->id, '2026-02-10', 1_600_000, 1_100_000); // fulfilment day
 
     $gsb = app(GsbCutoffService::class);
-    $rows = [];
 
-    foreach (['2026-03-09', '2026-03-11'] as $date) {
-        svc()->evaluate($dist->id, Carbon::parse($date));
-        $rows[] = $gsb->runForDistributor($dist->id, Carbon::parse($date));
-    }
+    expect($gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06'))->status)
+        ->toBe(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED);
 
-    expect($rows[0]->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_HELD);
-    expect($rows[1]->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_HELD);
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
+    $resumed = $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-10'));
 
-    // Fulfil the obligation → both held rows are released to the wallet.
-    seedSelfPurchase($dist->id, 60_000, '2026-03-20');
-    $current = svc()->evaluate($dist->id, Carbon::parse('2026-03-20'));
+    // Left 16,000 + 10,000 power carry = 26,000; Right 11,000 weaker + the
+    // preserved 4,000 slab-1 store = 15,000 = the slab-1 threshold exactly.
+    expect($resumed->status)->toBe(GsbCutoffResult::STATUS_CREDITED)
+        ->and($resumed->slab)->toBe(1)
+        ->and($resumed->slab1_weaker_cf_before_paise)->toBe(400_000)
+        ->and($resumed->weaker_bv_paise)->toBe(1_500_000)
+        ->and($resumed->gross_gsb_paise)->toBeGreaterThan(0);
 
-    // evaluate() hands back the window that was just re-anchored on the
-    // fulfilment day; the one that failed is now completed behind it.
-    expect($current->cycle_start_date->toDateString())->toBe('2026-03-20');
-    expect(RepurchaseCycle::whereDate('cycle_start_date', '2026-02-05')->first()->status)
-        ->toBe(RepurchaseCycle::STATUS_COMPLETED);
-    expect($rows[0]->fresh()->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
-    expect($rows[1]->fresh()->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect(app(WalletService::class)->balancePaise($dist->id))->toBeGreaterThan(0);
 });
 
-it('release listener is idempotent — a second reactivation credits nothing more', function (): void {
+it('a forfeited computation is not matched so it does not fund the day pool', function (): void {
+    // GsbDailyCutoffCommand funds the day's pool from isMatched() computations
+    // only. A forfeited day carries no slab and no score, so it contributes
+    // neither fixed payout nor variable score to the frozen pool.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+    seedDayBv($dist->id, '2026-02-06', 2_000_000, 1_600_000);
 
-    $dist = Distributor::factory()->create(['status' => 'active', 'adn' => '100000902']);
-    seedSelfPurchase($dist->id, 300_000, '2026-01-05');
-    GroupBvDaily::create([
-        'distributor_id' => $dist->id, 'date' => '2026-03-09',
-        'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000,
+    $computation = app(GsbCutoffService::class)->computeForDistributor($dist->id, Carbon::parse('2026-02-06'));
+
+    expect($computation->outcome)->toBe(GsbCutoffComputation::OUTCOME_REPURCHASE_FORFEITED)
+        ->and($computation->isMatched())->toBeFalse()
+        ->and($computation->slabIndex)->toBeNull()
+        ->and($computation->slabScore)->toBeNull()
+        ->and($computation->fixedSlabGrossPaise())->toBe(0);
+});
+
+it('re-running a forfeited day is idempotent and never rewinds the store', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 800_000, 'power_side' => 'L', 'slab1_weaker_bv_paise' => 500_000,
     ]);
+    seedDayBv($dist->id, '2026-02-06', 2_000_000, 1_600_000);
 
-    svc()->evaluate($dist->id, Carbon::parse('2026-03-09'));
-    app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-09'));
+    $gsb = app(GsbCutoffService::class);
+    $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
+    $second = $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
 
-    event(new IncomeReactivated($dist->id, 1));
-    $afterFirst = app(WalletService::class)->balancePaise($dist->id);
+    expect(GsbCutoffResult::where('distributor_id', $dist->id)->count())->toBe(1)
+        ->and($second->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
+        ->and($second->power_cf_before_paise)->toBe(800_000)
+        ->and($second->power_cf_after_paise)->toBe(800_000)
+        ->and($second->slab1_weaker_cf_before_paise)->toBe(500_000)
+        ->and($second->slab1_weaker_cf_after_paise)->toBe(500_000);
 
-    event(new IncomeReactivated($dist->id, 1));
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->power_side_bv_paise)->toBe(800_000)
+        ->and($cf->slab1_weaker_bv_paise)->toBe(500_000);
+});
 
-    expect($afterFirst)->toBeGreaterThan(0);
-    expect(app(WalletService::class)->balancePaise($dist->id))->toBe($afterFirst);
+it('refuses to re-run a forfeited day as eligible once a later cut-off advanced the store', function (): void {
+    // A forfeited row deliberately left the store alone, so the store now holds
+    // the LATER day's advance. Re-running the forfeited day as eligible would
+    // measure it against that inflated baseline.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+
+    seedDayBv($dist->id, '2026-02-06', 500_000, 300_000);
+    seedDayBv($dist->id, '2026-02-10', 700_000, 400_000);
+
+    $gsb = app(GsbCutoffService::class);
+    $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
+    $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-10'));
+
+    // The cycle is re-resolved as fulfilled the day after it was due: 6 Feb is
+    // no longer forfeited, and the re-run must refuse rather than guess.
+    RepurchaseCycle::where('distributor_id', $dist->id)->update(['fulfilled_on' => '2026-02-05']);
+
+    expect(fn () => $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06')))
+        ->toThrow(RuntimeException::class, 'a later cut-off already advanced the carry-forward store');
+});
+
+it('frozen wins over forfeited', function (): void {
+    // An operator freeze already calculates without crediting and deliberately
+    // advances the store; the repurchase verdict must not take that branch over.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+    $dist->update(['gsb_frozen_at' => '2026-02-01 00:00:00']);
+    seedDayBv($dist->id, '2026-02-06', 2_000_000, 1_600_000);
+
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_FROZEN)
+        ->and($result->slab)->toBe(1)
+        ->and($result->gross_gsb_paise)->toBeGreaterThan(0);
+
+    expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
 });

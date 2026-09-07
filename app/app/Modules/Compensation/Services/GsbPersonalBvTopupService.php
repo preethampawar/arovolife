@@ -299,6 +299,10 @@ final class GsbPersonalBvTopupService
         return in_array($result, [
             GsbCutoffResult::STATUS_CREDITED,
             GsbCutoffResult::STATUS_FROZEN,
+            // A forfeited day paid nothing, but it is settled all the same: the
+            // date is closed and its Genos BV permanently out of the plan, so a
+            // reversal must take the forward-debt route rather than rewrite it.
+            GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
             GsbCutoffResult::STATUS_REPURCHASE_HELD,
             GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
         ], true);

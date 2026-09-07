@@ -184,6 +184,56 @@ final class GsbCutoffService
             $cfSide = $existing->power_side_before ?? $cfSide;
         }
 
+        // Client spec 2026-09-07 §2.1: a failed repurchase day is forfeited
+        // outright — no match is attempted, no income exists, and today's group
+        // BV is simply not added. Both stores stay exactly where the due date
+        // left them ("the BVs on both sides ... will stop there as assets"), and
+        // the fulfilment day resumes on top of them. Nothing is released later.
+        //
+        // Frozen wins: that branch never credits either, but it deliberately
+        // advances the store so stale BV cannot phantom-accumulate during the
+        // freeze — taking the forfeit branch instead would undo that.
+        $verdict = $isFrozen
+            ? RepurchaseVerdict::eligible()
+            : $this->eligibility->verdictAsOf($distributorId, $date);
+
+        if (! $verdict->isEligible()) {
+            return new GsbCutoffComputation(
+                distributorId: $distributorId,
+                date: $date,
+                existing: $existing,
+                outcome: GsbCutoffComputation::OUTCOME_REPURCHASE_FORFEITED,
+                isFrozen: false,
+                eligibility: IncomeEligibilityService::FORFEITED,
+                personalBvPaise: $personalBvPaise,
+                leftToday: $leftToday,
+                rightToday: $rightToday,
+                weakerTotal: 0,
+                strongerSide: $cfSide ?? 'L',
+                powerSideBefore: $cfSide,
+                cfBeforePower: $cfPower,
+                cfBeforeSlab1: $cfSlab1,
+                newPowerCf: $cfPower,
+                newSlab1Cf: $cfSlab1,
+            );
+        }
+
+        // The day was forfeited when it ran and counts now — the cycle was
+        // re-resolved behind it. A forfeited row left the store alone, so the
+        // rewind block above never fired for it: the store holds whatever the
+        // LATEST processed date left there. Recomputing this day as eligible
+        // against that baseline would measure it twice.
+        if ($existing?->status === GsbCutoffResult::STATUS_REPURCHASE_FORFEITED
+            && GsbCutoffResult::where('distributor_id', $distributorId)
+                ->whereDate('cutoff_date', '>', $date->toDateString())
+                ->exists()) {
+            throw new \RuntimeException(
+                "Cannot re-run the {$date->toDateString()} cut-off for distributor {$distributorId}: "
+                .'a later cut-off already advanced the carry-forward store. '
+                .'Use Recalculate CF and reprocess dates oldest-first.'
+            );
+        }
+
         // Snapshot the pre-run side now that the locals hold the true
         // before-state; saved on the result row so a future re-run can rewind
         // side-accurately.
@@ -301,28 +351,15 @@ final class GsbCutoffService
             );
         }
 
-        // Slab matched. Repurchase standing is a read (warmed cache) — safe to
-        // resolve here so settle() stays branch-for-branch mechanical.
-        //
-        // ONE gate, as at THIS cut-off date. The wallet = ₹0 condition used to
-        // be a second, independent test against the previous CALENDAR month's
-        // frozen snapshot; the client's 2026-09-06 rule 4 puts both conditions
-        // on the distributor's own cycle, judged on its last day, so a cycle
-        // that failed either condition holds the day's GSB and nothing else
-        // does. Frozen distributors are exempt — their branch never credits.
-        $verdict = $isFrozen
-            ? RepurchaseVerdict::eligible()
-            : $this->eligibility->verdictAsOf($distributorId, $date);
-
-        $eligibility = $verdict->status;
-
+        // Slab matched. Reaching this line already means the day counts — a
+        // forfeited day returned above, before any matching was attempted.
         return new GsbCutoffComputation(
             distributorId: $distributorId,
             date: $date,
             existing: $existing,
             outcome: GsbCutoffComputation::OUTCOME_MATCHED,
             isFrozen: $isFrozen,
-            eligibility: $eligibility,
+            eligibility: IncomeEligibilityService::ELIGIBLE,
             personalBvPaise: $personalBvPaise,
             leftToday: $leftToday,
             rightToday: $rightToday,
@@ -421,6 +458,34 @@ final class GsbCutoffService
             ]);
         }
 
+        // Forfeited day (client spec 2026-09-07 §2.1). Deliberately NO
+        // $cf->update(): the store is left exactly as it stood, which is what
+        // makes the fulfilment day resume on top of the preserved balances.
+        // Zero income, no wallet credit, no slab, no score — the row exists so
+        // the daily calculation report and My Business can show why the day
+        // paid nothing. The raw left/right BV is recorded for the same reason;
+        // it is never added to anything.
+        if ($computation->outcome === GsbCutoffComputation::OUTCOME_REPURCHASE_FORFEITED) {
+            return $this->saveResult($existing, [
+                'distributor_id' => $distributorId,
+                'cutoff_date' => $date->toDateString(),
+                'left_bv_paise' => $computation->leftToday,
+                'right_bv_paise' => $computation->rightToday,
+                'weaker_bv_paise' => 0,
+                'gross_gsb_paise' => 0,
+                'admin_charge_paise' => 0,
+                'tds_paise' => 0,
+                'net_gsb_paise' => 0,
+                'power_cf_before_paise' => $computation->cfBeforePower,
+                'power_side_before' => $computation->powerSideBefore,
+                'power_cf_after_paise' => $computation->cfBeforePower,
+                'power_side_after' => $computation->powerSideBefore,
+                'slab1_weaker_cf_before_paise' => $computation->cfBeforeSlab1,
+                'slab1_weaker_cf_after_paise' => $computation->cfBeforeSlab1,
+                'status' => GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
+            ]);
+        }
+
         // Apply the simulated personal-BV top-up — exactly the orders the
         // computation counted, so the settled accumulator matches the match.
         if ($computation->topupBvPaise > 0 && $computation->topupSide !== null) {
@@ -442,6 +507,10 @@ final class GsbCutoffService
         // for distributors it has proven inert, skipping the compute entirely.
         // Any change to the columns, the defaults or the 'L' tie-break below
         // must be mirrored there, or a replay and a live run stop agreeing.
+        // (One accepted divergence: an idle distributor inside a failed
+        // repurchase window is bulk-written `no_match` where the engine would
+        // write `repurchase_forfeited`. Both are all-zero rows that leave the
+        // stores untouched — GsbIdleCutoffBatchTest pins that.)
         if ($computation->outcome === GsbCutoffComputation::OUTCOME_NO_MATCH) {
             $cf->update([
                 'power_side_bv_paise' => $computation->newPowerCf,
@@ -508,32 +577,6 @@ final class GsbCutoffService
                 return $this->saveResult($existing, [
                     ...$baseData,
                     'status' => GsbCutoffResult::STATUS_FROZEN,
-                ]);
-            });
-        }
-
-        // Repurchase engine (flag-gated): the distributor's cycle failed one of
-        // the client's two rule-4 conditions, so the day's match is calculated
-        // and recorded but not credited. It is HELD, never forfeited — rule 8
-        // releases it in full the day they fulfil the obligation, which is why
-        // there is no longer a separate suspended branch here.
-        //
-        // CF is advanced identically to the frozen path so the weaker side
-        // doesn't phantom-accumulate while income is withheld. (Mentorship is
-        // unaffected: a held sponsee simply generates no credited GSB, while
-        // the distributor's own MB comes from their sponsees and is never gated
-        // here.)
-        if ($computation->eligibility !== IncomeEligibilityService::ELIGIBLE) {
-            return DB::transaction(function () use ($cf, $computation, $existing, $baseData): GsbCutoffResult {
-                $cf->update([
-                    'power_side_bv_paise' => $computation->newPowerCf,
-                    'power_side' => $computation->strongerSide,
-                    'slab1_weaker_bv_paise' => 0,
-                ]);
-
-                return $this->saveResult($existing, [
-                    ...$baseData,
-                    'status' => GsbCutoffResult::STATUS_REPURCHASE_HELD,
                 ]);
             });
         }

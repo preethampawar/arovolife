@@ -13,6 +13,17 @@ The day closes at midnight IST; the cut-off job runs at 00:10 the next morning a
 ### 600 BV eligibility gate
 Distributors whose lifetime personal BV is below the minimum (default 600 BV, admin-editable) are skipped at cut-off with status `below_600bv`: their day's Genos BV is discarded, never carried forward, and never retroactively counted. Genos BV still *propagates* into the raw accumulator intraday, so on this page their Left/Right Genos BV cards show the raw figures struck through with an amber **"Not credited — personal BV below 600"** pill; the distributor's own income dashboard shows 0 instead. This is why a distributor can appear to "have" Genos BV yet earn no GSB.
 
+### Repurchase interaction — a failed day is forfeited (client, 2026-09-07)
+A distributor whose repurchase period closed without both conditions being met is **failed** from the day after the due date until the day they meet them again. Every failed day is **forfeited**, not held:
+
+- **No slab is matched and no income is ever earned** for that day. Nothing is released later — this is permanent, and it is why the cut-off has no "held GSB" state any more.
+- **The day's Left and Right Genos BV is not added to anything.** Both stores — the power-side carry over and the slab-1 weaker accumulator — stay exactly where the due date left them ("the BVs on both sides of the left genos and right genos at that time will stop there as assets").
+- **The fulfilment day resumes on top of the preserved balances**: that day's BV is added to the old ones and can match a slab immediately.
+- Any pending personal-BV weaker-leg top-up stays pending — a forfeited day consumes nothing.
+- The day is recorded as a zero-value `repurchase_forfeited` row so the Daily Cut-offs report, the GSB Input & Output day header ("Days not counted (repurchase)") and the distributor's own GSB History can show why the day paid nothing. The distributor sees **"Repurchase not met — day not counted"**.
+
+The cut-off **refuses to run** for a day that `repurchase:evaluate` has not yet covered (no succeeded run for that date or later) while the repurchase engine is on: the verdict it reads is written only by that command, and running early would credit days the rules forfeit — with no way back, because the forfeit is permanent. The refusal is logged, shows on the Engine Runs page as a failed run, and names the exact command to run first. `--force` overrides it. With the repurchase feature flag off, nothing is ever forfeited and the guard does not apply.
+
 ### Distributor compensation page — tabs
 Every bonus with a per-distributor history has its own tab: GSB History, Genos BV Ledger, Mentorship Bonus, Growth Booster, Rank Bonus, Fortune Bonus, ADC Bonus, Daily BV Log, Wallet Ledger, Repurchase, Payout History and Audit Log. Each bonus tab is **flag-gated** — a bonus whose feature flag is off has no tab, and a link to it (a stale bookmark, or a report opened after the flag was switched off) simply opens the first visible tab instead of erroring. Every "Calculation report" links its ADN column to the matching tab.
 

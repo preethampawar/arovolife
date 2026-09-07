@@ -52,6 +52,24 @@ final class EngineStatusService
     }
 
     /**
+     * A succeeded run for this engine whose period is $period or later.
+     *
+     * "Or later" is what makes this the right question for a dependency that
+     * stamps state forward rather than per-period: `repurchase:evaluate --date=D`
+     * resolves every cycle due up to D, so a run for D + 1 has already answered
+     * everything day D can ask. Compared by DATE — the hour a run started is
+     * irrelevant to which day it evaluated.
+     */
+    public function hasSucceededRunOnOrAfter(string $key, Carbon $period): bool
+    {
+        return EngineRun::query()
+            ->where('engine_key', $key)
+            ->whereDate('period_start', '>=', $period->toDateString())
+            ->where('status', EngineRun::STATUS_SUCCEEDED)
+            ->exists();
+    }
+
+    /**
      * True when the engine has a live run in flight — either one this process
      * knows about or a cron run that started moments ago. `running` rows older
      * than the staleness cutoff are treated as abandoned, not live.

@@ -7,9 +7,11 @@ namespace App\Modules\Compensation\Console\Commands;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\DTOs\MsbAccrual;
+use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compensation\Services\GsbIdleCutoffBatch;
+use App\Modules\Compensation\Services\IncomeEligibilityService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Compensation\Services\MsbDailyPoolService;
 use App\Modules\Identity\Models\Distributor;
@@ -25,7 +27,8 @@ final class GsbDailyCutoffCommand extends Command
 {
     protected $signature = 'gsb:daily-cutoff
                             {--date= : Override the cut-off date (YYYY-MM-DD, default: today)}
-                            {--distributor= : Run for a single distributor ID only (admin retry)}';
+                            {--distributor= : Run for a single distributor ID only (admin retry)}
+                            {--force : Run even though repurchase:evaluate has not run for the date}';
 
     protected $description = 'Run the 23:59 GSB cut-off for all active distributors';
 
@@ -35,6 +38,8 @@ final class GsbDailyCutoffCommand extends Command
         private readonly GsbDailyPoolService $poolService,
         private readonly MsbDailyPoolService $msbPoolService,
         private readonly GsbIdleCutoffBatch $idleBatch,
+        private readonly IncomeEligibilityService $eligibility,
+        private readonly EngineStatusService $engineStatus,
     ) {
         parent::__construct();
     }
@@ -62,6 +67,31 @@ final class GsbDailyCutoffCommand extends Command
         $singleId = $this->option('distributor')
             ? (int) $this->option('distributor')
             : null;
+
+        // The repurchase verdict this cut-off reads is written by exactly one
+        // process, `repurchase:evaluate`. Run before it and every day inside a
+        // failed cycle still reads as eligible, so the cut-off credits income
+        // the client's rules forfeit — and the forfeit is permanent, so there is
+        // no later correction. Refuse instead. A run for the cut-off date or any
+        // later date is proof enough: evaluate stamps cycles forward.
+        if ($this->eligibility->engineActive()
+            && ! $this->option('force')
+            && ! $this->engineStatus->hasSucceededRunOnOrAfter('repurchase.evaluate', $date)) {
+            Log::critical('gsb.cutoff.refused_missing_evaluate', [
+                'date' => $date->toDateString(),
+                'distributor_id' => $singleId,
+            ]);
+
+            $this->error(
+                "Refusing to run the {$date->toDateString()} GSB cut-off: the repurchase engine is on but "
+                ."`repurchase:evaluate` has no succeeded run for {$date->toDateString()} or later, so every "
+                ."failed repurchase cycle would still read as eligible and be credited.\n"
+                ."Run `php artisan repurchase:evaluate --date={$date->toDateString()}` first, then re-run this "
+                .'command (or pass --force to override).'
+            );
+
+            return self::FAILURE;
+        }
 
         $this->info("GSB daily cut-off — {$date->toDateString()}");
 

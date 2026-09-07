@@ -66,6 +66,10 @@ final class MyBusinessController extends Controller
             // the last slab match (the weaker side resets to 0, the power
             // side's remainder survives). Zero until the first slab matches —
             // BV building up before a match is carry over, not carry forward.
+            //
+            // `repurchase_forfeited` is not a match and never appears here: a
+            // forfeited day attempts no slab (its `slab` is null), so it moves
+            // neither the displayed carry forward nor the Power/Weaker badges.
             $lastMatch = ($gsbOn && $genosBvEligible)
                 ? GsbCutoffResult::query()
                     ->where('distributor_id', $distributorId)

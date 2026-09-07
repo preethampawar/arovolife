@@ -73,6 +73,11 @@
             <span class="text-gray-600">Variable score value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_paise / 100, 2) }}</strong>
                 <span class="text-gray-600">(cap ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->variable_score_value_cap_paise / 100, 2) }})</span></span>
+            @if(($forfeitedDays[$pool->cutoff_date->toDateString()] ?? 0) > 0)
+            <span class="text-red-700">Days not counted (repurchase)
+                <strong>{{ \App\Modules\Shared\Support\IndianNumber::format($forfeitedDays[$pool->cutoff_date->toDateString()], 0) }}</strong>
+                <x-help-tip text="Distributors whose repurchase period had closed unmet on this day. Their Genos BV was not added and no slab was matched, so they took nothing from this day's pool and appear in no slab row below." /></span>
+            @endif
             <span class="text-gray-600 ml-auto">Computed
                 <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
                 <x-help-tip text="When this day's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the original cut-off run." /></span>

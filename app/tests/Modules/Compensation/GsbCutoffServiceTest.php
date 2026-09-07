@@ -11,6 +11,7 @@ use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\DTOs\BonusCreditOutcome;
 use App\Modules\Compensation\Services\GsbCutoffService;
+use App\Modules\Compensation\Services\Recompute\WindowedStateWiper;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -642,4 +643,63 @@ it('treats an admin-reversed cut-off as terminal — re-run is a no-op with no n
     expect(GsbCarryforward::where('distributor_id', $dist->id)->first()->only([
         'power_side_bv_paise', 'power_side', 'slab1_weaker_bv_paise',
     ]))->toBe($cfBefore);
+});
+
+// ── Forfeited status: the two lists it must stay out of ─────────────────────
+
+/**
+ * The GsbCutoffResult::STATUS_* constants named inside one method's source.
+ *
+ * WindowedStateWiper duplicates advancedCarryForward()'s list as a raw SQL
+ * whereIn (it works on the query builder, not on models), so the only thing
+ * that can keep the two honest is a test that reads both.
+ *
+ * @return list<string>
+ */
+function statusConstantsNamedIn(string $class, string $method): array
+{
+    $reflection = new ReflectionMethod($class, $method);
+    $lines = explode("\n", (string) file_get_contents((string) $reflection->getFileName()));
+    $source = implode("\n", array_slice(
+        $lines,
+        $reflection->getStartLine() - 1,
+        $reflection->getEndLine() - $reflection->getStartLine() + 1,
+    ));
+
+    preg_match_all('/STATUS_[A-Z0-9_]+/', $source, $matches);
+
+    $names = array_values(array_unique($matches[0]));
+    sort($names);
+
+    return $names;
+}
+
+it('keeps repurchase_forfeited out of the carry-forward and pool-funded lists', function (): void {
+    // A forfeited day moves neither store and consumes no pool: it is the one
+    // status that appears in neither list. The legacy held/suspended statuses
+    // stay in both — those rows really did advance the store and fund the pool.
+    $forfeited = new GsbCutoffResult(['status' => GsbCutoffResult::STATUS_REPURCHASE_FORFEITED]);
+
+    expect($forfeited->advancedCarryForward())->toBeFalse()
+        ->and(GsbCutoffResult::POOL_FUNDED_STATUSES)->not->toContain(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
+        ->and(GsbCutoffResult::POOL_FUNDED_STATUSES)->toContain(GsbCutoffResult::STATUS_REPURCHASE_HELD)
+        ->and(GsbCutoffResult::POOL_FUNDED_STATUSES)->toContain(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
+
+    foreach ([
+        GsbCutoffResult::STATUS_NO_MATCH,
+        GsbCutoffResult::STATUS_FROZEN,
+        GsbCutoffResult::STATUS_REPURCHASE_HELD,
+        GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
+        GsbCutoffResult::STATUS_CREDITED,
+        GsbCutoffResult::STATUS_REVERSED,
+    ] as $status) {
+        expect((new GsbCutoffResult(['status' => $status]))->advancedCarryForward())->toBeTrue();
+    }
+});
+
+it('keeps the wiper rewind list identical to the model carry-forward list', function (): void {
+    $wiperList = statusConstantsNamedIn(WindowedStateWiper::class, 'readCarryforwardRewind');
+
+    expect($wiperList)->toBe(statusConstantsNamedIn(GsbCutoffResult::class, 'advancedCarryForward'));
+    expect($wiperList)->not->toContain('STATUS_REPURCHASE_FORFEITED');
 });

@@ -31,7 +31,7 @@ final class AdminDailyCutoffController extends Controller
 
         $request->validate([
             'date' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated'],
+            'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated,repurchase_forfeited'],
             'q' => ['nullable', 'string', 'max:64'],
         ]);
 
@@ -43,7 +43,7 @@ final class AdminDailyCutoffController extends Controller
             ->where('cutoff_date', $date->toDateString())
             ->when($status, fn ($b) => $b->where('status', $status))
             ->when($q, fn ($b) => $b->whereHas('distributor', fn ($d) => $d->where('adn', 'like', "%{$q}%")))
-            ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'no_match' THEN 2 WHEN 'below_600bv' THEN 3 WHEN 'frozen' THEN 4 WHEN 'calculated' THEN 5 ELSE 6 END");
+            ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'repurchase_forfeited' THEN 2 WHEN 'no_match' THEN 3 WHEN 'below_600bv' THEN 4 WHEN 'frozen' THEN 5 WHEN 'calculated' THEN 6 ELSE 7 END");
 
         $rows = $query->paginate(self::PER_PAGE)->withQueryString();
 
@@ -80,7 +80,7 @@ final class AdminDailyCutoffController extends Controller
 
         $rows = GsbCutoffResult::with('distributor.user')
             ->where('cutoff_date', $parsed->toDateString())
-            ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'no_match' THEN 2 WHEN 'below_600bv' THEN 3 WHEN 'frozen' THEN 4 WHEN 'calculated' THEN 5 ELSE 6 END")
+            ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'repurchase_forfeited' THEN 2 WHEN 'no_match' THEN 3 WHEN 'below_600bv' THEN 4 WHEN 'frozen' THEN 5 WHEN 'calculated' THEN 6 ELSE 7 END")
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
@@ -97,7 +97,7 @@ final class AdminDailyCutoffController extends Controller
 
         $request->validate([
             'date' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated'],
+            'status' => ['nullable', 'in:credited,reversed,failed,no_match,frozen,below_600bv,calculated,repurchase_forfeited'],
         ]);
         $date = $request->query('date') ? Carbon::parse((string) $request->query('date')) : Carbon::today();
         $status = $request->query('status');

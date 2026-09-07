@@ -3,13 +3,16 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\GsbIdleCutoffBatch;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -219,4 +222,56 @@ it('still shortcuts a distributor whose only activity is pending personal BV', f
 
     // And the pending BV is still pending — the shortcut consumed nothing.
     expect(DB::table('gsb_personal_bv_topups')->count())->toBe(0);
+});
+
+it('an idle failed-cycle distributor gets no_match with the store unchanged', function (): void {
+    // The engine would label this day `repurchase_forfeited`; the shortcut
+    // labels it `no_match`. Both are zero-value rows that leave the two stores
+    // exactly as they stood, so the divergence is cosmetic — but it is real,
+    // and this test is where it is recorded rather than discovered.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $date = Carbon::today();
+    $dateStr = $date->toDateString();
+
+    EngineRun::create([
+        'engine_key' => 'repurchase.evaluate',
+        'period_start' => $dateStr,
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+
+    $idle = idleBatchDistributor(100_000); // eligible, no group BV, no carry-forward
+    RepurchaseCycle::create([
+        'distributor_id' => $idle->id,
+        'cycle_start_date' => $date->copy()->subDays(40)->toDateString(),
+        'due_date' => $date->copy()->subDays(10)->toDateString(),
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => $date->copy()->subDays(9)->toDateTimeString(),
+    ]);
+
+    expect(array_keys(app(GsbIdleCutoffBatch::class)
+        ->partition(Distributor::query()->get(['id', 'gsb_frozen_at']), $date)['idle']))
+        ->toContain($idle->id);
+
+    Artisan::call('gsb:daily-cutoff', ['--date' => $dateStr]);
+
+    $row = idleBatchRowShape($idle->id, $dateStr);
+    expect($row['status'])->toBe(GsbCutoffResult::STATUS_NO_MATCH)
+        ->and($row['left_bv_paise'])->toBe(0)
+        ->and($row['right_bv_paise'])->toBe(0)
+        ->and($row['gross_gsb_paise'])->toBe(0)
+        ->and($row['power_cf_before_paise'])->toBe(0)
+        ->and($row['power_cf_after_paise'])->toBe(0)
+        ->and($row['slab1_weaker_cf_before_paise'])->toBe(0)
+        ->and($row['slab1_weaker_cf_after_paise'])->toBe(0);
+
+    $cf = GsbCarryforward::where('distributor_id', $idle->id)->first();
+    expect($cf->power_side_bv_paise)->toBe(0)
+        ->and($cf->slab1_weaker_bv_paise)->toBe(0);
 });

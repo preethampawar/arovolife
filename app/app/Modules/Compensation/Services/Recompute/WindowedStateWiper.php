@@ -227,6 +227,12 @@ final class WindowedStateWiper
             // rewinding from one would invent an all-zero carry-forward row for
             // every distributor who has never purchased (126 of 288 on the
             // reference dataset, none of which a full replay creates).
+            // `repurchase_forfeited` is absent for the same reason: the client's
+            // 2026-09-07 forfeit deliberately leaves both stores untouched.
+            //
+            // PARITY PARTNER: this list must stay identical to
+            // GsbCutoffResult::advancedCarryForward(). GsbCutoffServiceTest
+            // reads both method bodies and pins them equal.
             ->whereIn('status', [
                 GsbCutoffResult::STATUS_NO_MATCH,
                 GsbCutoffResult::STATUS_FROZEN,

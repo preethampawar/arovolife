@@ -28,8 +28,6 @@ use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
 use App\Modules\Compensation\Listeners\ReleaseHeldFortuneOnReactivation;
-use App\Modules\Compensation\Listeners\ReleaseHeldGbbOnReactivation;
-use App\Modules\Compensation\Listeners\ReleaseHeldGsbOnReactivation;
 use App\Modules\Compensation\Listeners\ReleaseHeldRankBonusOnReactivation;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Compensation\Support\EngineRunContext;
@@ -114,13 +112,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(OrderStatusChanged::class, ReverseGroupBvOnOrderReversal::class);
         Event::listen(OrderRefundApproved::class, ReverseGroupBvOnOrderReversal::class);
 
-        // Release the four withheld bonuses once the distributor fulfils their
-        // repurchase obligation (client 2026-09-06 rule 8: "the exempted
-        // facilities will be reinstated"). Held rows were priced at the rate
-        // their month was frozen at and stayed in the denominator, so each of
-        // these pays exactly what everyone else was paid.
-        Event::listen(IncomeReactivated::class, ReleaseHeldGsbOnReactivation::class);
-        Event::listen(IncomeReactivated::class, ReleaseHeldGbbOnReactivation::class);
+        // Release the withheld monthly bonuses once the distributor fulfils
+        // their repurchase obligation. GSB is deliberately absent: the client's
+        // 2026-09-07 spec forfeits a failed DAY outright — no match, no income,
+        // nothing to release later — so the daily cut-off has nothing to hold.
         Event::listen(IncomeReactivated::class, ReleaseHeldRankBonusOnReactivation::class);
         Event::listen(IncomeReactivated::class, ReleaseHeldFortuneOnReactivation::class);
 

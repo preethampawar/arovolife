@@ -79,6 +79,11 @@
                         <td class="px-4 py-3 text-center">
                             @if($row->status === 'credited')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Credited</span>
+                            @elseif($row->status === 'repurchase_forfeited')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                    Repurchase not met — day not counted
+                                    <x-help-tip text="Your repurchase period had closed without being met on this day, so the day's Left and Right Genos BV was not added and no slab was matched. Your carried-over BV on both sides was kept exactly as it was, and counting resumed on the day you met the condition." />
+                                </span>
                             @elseif($row->status === 'failed')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Failed</span>
                             @else

@@ -27,13 +27,18 @@ use Laravel\Pennant\Feature;
  * Day/week numbers count from the first pooled day (gsb_daily_pools anchor).
  *
  * Per-slab aggregates cover the statuses whose gross funded the day's pool
- * (credited / frozen / repurchase held / suspended / reversed) so the day's
- * grand total reconciles with the pool row's leftover. Suspended income is
- * later forfeited and reversed income was debited back from the wallet, so on
- * such days the stored leftover understates the real residue — the report
+ * (credited / frozen / legacy repurchase held / suspended / reversed) so the
+ * day's grand total reconciles with the pool row's leftover. Legacy suspended
+ * income was forfeited and reversed income was debited back from the wallet, so
+ * on such days the stored leftover understates the real residue — the report
  * shows the pool row verbatim (frozen economics). Per-slab score value uses
  * MAX(score_value_paise): when a day+slab mixes snapshotted and legacy rows
  * one value is shown, but money is unaffected (income sums gross_gsb_paise).
+ *
+ * `repurchase_forfeited` rows are outside all of that — a forfeited day matched
+ * no slab, so it took nothing from the pool and appears in no slab row. The day
+ * header carries their count on its own ("Days not counted (repurchase)") so a
+ * quiet day is readable as "few achievers" or "many forfeits", never both.
  */
 final class AdminGsbInputOutputController extends Controller
 {
@@ -65,6 +70,7 @@ final class AdminGsbInputOutputController extends Controller
         return view('admin.compensation.gsb-input-output.index', [
             'pools' => $pools,
             'slabAggregates' => $this->slabAggregates($dates),
+            'forfeitedDays' => $this->forfeitedCounts($dates),
             'slab3Score' => $this->plan->gsbSlab(3)['score'] ?? null,
             'anchor' => $anchor,
             'day' => $day,
@@ -231,6 +237,32 @@ final class AdminGsbInputOutputController extends Controller
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->cutoff_date)->toDateString())
             ->map(fn ($rows) => array_values($rows->all()))
+            ->all();
+    }
+
+    /**
+     * How many distributors had each day forfeited by a failed repurchase cycle
+     * — one query for the whole page, keyed by date. Absent days had none.
+     *
+     * @param  list<string>  $dates
+     * @return array<string, int>
+     */
+    private function forfeitedCounts(array $dates): array
+    {
+        if ($dates === []) {
+            return [];
+        }
+
+        return DB::table('gsb_cutoff_results')
+            ->where('status', GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
+            ->whereIn(DB::raw('DATE(cutoff_date)'), $dates)
+            ->groupBy('cutoff_date')
+            ->select('cutoff_date')
+            ->selectRaw('COUNT(*) as forfeited')
+            ->get()
+            ->mapWithKeys(fn (\stdClass $row): array => [
+                Carbon::parse($row->cutoff_date)->toDateString() => (int) $row->forfeited,
+            ])
             ->all();
     }
 

@@ -49,10 +49,23 @@ final class GsbCutoffResult extends Model
 
     public const STATUS_REVERSED = 'reversed';
 
-    /** Repurchase missed, within grace — calculated but held (not credited). */
+    /**
+     * The client's 2026-09-07 spec: the day fell inside a failed repurchase
+     * cycle's window, so no match was attempted, no income exists and neither
+     * carry-forward store moved. Recorded purely so the reports can show why
+     * the day paid nothing. Nothing is ever released from it.
+     */
+    public const STATUS_REPURCHASE_FORFEITED = 'repurchase_forfeited';
+
+    /**
+     * LEGACY — never written again (superseded by STATUS_REPURCHASE_FORFEITED).
+     * Repurchase missed, within grace — calculated but held (not credited).
+     * Existing rows stay valid data: they really did advance the carry-forward
+     * store and consume the day's pool, so they remain in both lists below.
+     */
     public const STATUS_REPURCHASE_HELD = 'repurchase_held';
 
-    /** Repurchase grace lapsed — calculated but suspended (not credited). */
+    /** LEGACY — never written again. Repurchase grace lapsed — calculated but suspended. */
     public const STATUS_REPURCHASE_SUSPENDED = 'repurchase_suspended';
 
     /**
@@ -61,6 +74,9 @@ final class GsbCutoffResult extends Model
      * debited back, but their gross still consumed the pool on the day. Used by
      * the Input & Output report and by GsbDailyPoolService to decide whether a
      * prematurely frozen pool row can still be safely replaced.
+     *
+     * STATUS_REPURCHASE_FORFEITED is deliberately absent: a forfeited day never
+     * matched a slab, so it was never priced and took nothing from the pool.
      */
     public const POOL_FUNDED_STATUSES = [
         self::STATUS_CREDITED,
@@ -87,7 +103,13 @@ final class GsbCutoffResult extends Model
      * credited — and reversed, which was credited when it ran; the admin
      * reversal only debits the wallet, never rewinds CF). below_600bv returns
      * before touching the store and the failed path rolls its CF mutation
-     * back, so those never advanced it.
+     * back, so those never advanced it. Neither did repurchase_forfeited: the
+     * client's 2026-09-07 spec leaves both stores exactly where the due date
+     * left them, which is the whole point of the forfeit.
+     *
+     * PARITY PARTNER: WindowedStateWiper::readCarryforwardRewind() repeats this
+     * list as a query-builder whereIn (it works on rows, not models). Change
+     * one and you must change the other — GsbCutoffServiceTest pins them equal.
      */
     public function advancedCarryForward(): bool
     {
