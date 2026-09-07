@@ -89,6 +89,9 @@ final class RankQualificationService
                 continue;
             }
 
+            $forfeitedLeft = 0;
+            $forfeitedRight = 0;
+
             foreach ($ranges as [$rangeStart, $rangeEnd]) {
                 // One query per forfeited range. A distributor can fail at most
                 // a couple of cycles inside one month, so this is a handful of
@@ -100,13 +103,18 @@ final class RankQualificationService
                     ->selectRaw('COALESCE(SUM(left_bv_paise), 0) as left_bv, COALESCE(SUM(right_bv_paise), 0) as right_bv')
                     ->first();
 
-                // Group BV is reversible (a cancelled order debits the day it
-                // was credited on), so a forfeited range can sum to more than
-                // the month it sits in. Clamp per side rather than record a
-                // negative target.
-                $counted[$distributorId]['left'] = max(0, $counted[$distributorId]['left'] - (int) ($row->left_bv ?? 0));
-                $counted[$distributorId]['right'] = max(0, $counted[$distributorId]['right'] - (int) ($row->right_bv ?? 0));
+                $forfeitedLeft += (int) ($row->left_bv ?? 0);
+                $forfeitedRight += (int) ($row->right_bv ?? 0);
             }
+
+            // Total the ranges first, then subtract once and clamp once. Group
+            // BV is reversible (a cancelled order debits the day it was credited
+            // on), so a single range can sum negative; clamping inside the loop
+            // would floor an intermediate result at zero and let a later
+            // negative range add BV back, raising the counted target above the
+            // month's own arithmetic.
+            $counted[$distributorId]['left'] = max(0, $counted[$distributorId]['left'] - $forfeitedLeft);
+            $counted[$distributorId]['right'] = max(0, $counted[$distributorId]['right'] - $forfeitedRight);
         }
 
         return $counted;
