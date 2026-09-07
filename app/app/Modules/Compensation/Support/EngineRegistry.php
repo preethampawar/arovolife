@@ -91,7 +91,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'repurchase.evaluate',
                 label: 'Repurchase Evaluation',
-                description: "Refreshes every active distributor's monthly repurchase cycle as at the chosen date: opens or rolls cycles, recounts self-purchase BV, and moves each cycle between active, grace, suspended and completed. Impact: writes repurchase cycles and the income-eligibility status the daily cut-off reads — it credits nothing itself. Run it for today; running it for a past date would stamp today's purchases onto an older cycle.",
+                description: "Refreshes every active distributor's repurchase cycle as at the chosen date: opens or rolls cycles, recounts self-purchase BV, and moves each cycle between active, suspended and completed. Impact: writes repurchase cycles and the income-eligibility status the daily cut-off reads — it credits nothing itself. The cut-off for day D needs an evaluate run as at D or later. Run it for today; running it for a past date would stamp today's purchases onto an older cycle.",
                 periodType: EnginePeriodType::Date,
                 commandClass: RepurchaseEvaluateCommand::class,
                 commandSignature: 'repurchase:evaluate',

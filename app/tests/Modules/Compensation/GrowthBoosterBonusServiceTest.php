@@ -97,7 +97,6 @@ function gbbSeedCycle(int $distributorId, string $status, ?string $reason = null
         'distributor_id' => $distributorId,
         'cycle_start_date' => '2026-05-05',
         'due_date' => '2026-06-04',
-        'grace_end_date' => '2026-06-11',
         'required_bv_paise' => 100_000,
         'completed_bv_paise' => 0,
         'wallet_balance_paise' => $walletPaise,
@@ -317,8 +316,8 @@ it('releases a held row at its frozen gross even after its live AGP has grown', 
     $d2 = Distributor::factory()->create();
     gbbSeedCompanyBv(200_000);                // pool = 10,000 paise
     gbbSeedCutoff($d1->id, '2026-06-05', 1);  // 12 AGP, payable
-    gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP, in grace
-    $cycle = gbbSeedCycle($d2->id, RepurchaseCycle::STATUS_GRACE);
+    gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP, repurchase failed
+    $cycle = gbbSeedCycle($d2->id, RepurchaseCycle::STATUS_SUSPENDED);
 
     $svc = app(GrowthBoosterBonusService::class);
     $svc->runForMonth(Carbon::parse('2026-06-01'));
@@ -480,13 +479,13 @@ it('makes a distributor ranked in M-2 but not M-1 eligible again', function () {
     expect($result['total_agp'])->toBe(12);
 });
 
-it('holds a grace-window distributor without crediting, but keeps their AGP in the denominator', function () {
+it('holds a repurchase-failed distributor without crediting, but keeps their AGP in the denominator', function () {
     $d1 = Distributor::factory()->create();
     $d2 = Distributor::factory()->create();
     gbbSeedCompanyBv(200_000);
     gbbSeedCutoff($d1->id, '2026-06-05', 1);  // 12 AGP, payable
-    gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP, in grace
-    gbbSeedCycle($d2->id, RepurchaseCycle::STATUS_GRACE);
+    gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP, repurchase failed
+    gbbSeedCycle($d2->id, RepurchaseCycle::STATUS_SUSPENDED);
 
     $result = app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
 
@@ -507,7 +506,7 @@ it('releases a held month on reactivation and never double-credits on a re-fired
     $dist = Distributor::factory()->create();
     gbbSeedCompanyBv(200_000);
     gbbSeedCutoff($dist->id, '2026-06-05', 1);  // 12 AGP
-    $cycle = gbbSeedCycle($dist->id, RepurchaseCycle::STATUS_GRACE);
+    $cycle = gbbSeedCycle($dist->id, RepurchaseCycle::STATUS_SUSPENDED);
 
     app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
 
@@ -799,7 +798,7 @@ it('still releases a held row after a re-run — held AGP was inside the frozen 
     $dist = Distributor::factory()->create();
     gbbSeedCompanyBv(200_000);
     gbbSeedCutoff($dist->id, '2026-06-05', 1);  // 12 AGP
-    $cycle = gbbSeedCycle($dist->id, RepurchaseCycle::STATUS_GRACE);
+    $cycle = gbbSeedCycle($dist->id, RepurchaseCycle::STATUS_SUSPENDED);
 
     app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
     app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));  // re-run

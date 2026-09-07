@@ -9,19 +9,19 @@ use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Events\IncomeSuspended;
 use App\Modules\Compensation\Events\RepurchaseCompleted;
 use App\Modules\Compensation\Events\RepurchaseCycleOpened;
-use App\Modules\Compensation\Events\RepurchaseGraceStarted;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Manages each distributor's repurchase obligation cycle (client 2026-09-06).
+ * Manages each distributor's repurchase obligation cycle (client 2026-09-07).
  *
- * A cycle is a fixed 30-day window (`comp.repurchase.cycle_days`, inclusive of
- * its first day) anchored on the date the distributor first reached 600 BV of
- * personal purchase. It passes only if BOTH of the client's rule-4 conditions
- * hold:
+ * A cycle is a fixed 30-day window (`comp.repurchase.cycle_days`) anchored on
+ * the date the distributor first reached 600 BV of personal purchase. That day
+ * is day 0 and the due date falls `cycle_days` days AFTER it — start 7 Jul,
+ * due 6 Aug, as in every one of the client's worked examples. It passes only if
+ * BOTH of the client's conditions hold:
  *
  *   (A) self-purchase BV inside the window >= the rank's obligation, and
  *   (B) the repurchase wallet stood at zero on the window's LAST day.
@@ -33,12 +33,12 @@ use Illuminate\Support\Facades\DB;
  * run that paid it — the job `repurchase_monthly_snapshots` used to do for the
  * old calendar-month deadline, moved onto the window it belongs to.
  *
- * A failed cycle HOLDS the four suspendable bonuses (GSB, Rank, Growth Booster,
- * Fortune) rather than forfeiting them; Mentorship is never affected. The
+ * There is NO grace window: a cycle that misses its due date is failed from
+ * `due + 1` onwards ({@see RepurchaseCycle::forfeitedWindow()}). The
  * distributor keeps accumulating, and on the first day both conditions hold
- * again their held income is released ({@see IncomeReactivated})
- * and a brand-new full-length window opens ON that day (rule 9). One rule
- * covers both paths: `next_start = max(due_date + 1, fulfilled_on)`.
+ * again the cycle completes ({@see IncomeReactivated}) and a brand-new
+ * full-length window opens ON that day. One rule covers both paths:
+ * `next_start = max(due_date + 1, fulfilled_on)`.
  *
  * Every value is read through {@see CompensationPlanSettingsService} (SSOT) and
  * every state transition emits a fire-and-forget domain event.
@@ -147,7 +147,7 @@ final class RepurchaseCycleService
 
     /**
      * The day the distributor's next window opens, or null while the current
-     * one is unresolved. Rule 9: a cycle fulfilled AFTER its due date re-anchors
+     * one is unresolved. A cycle fulfilled AFTER its due date re-anchors
      * the next window onto the fulfilment day itself; an on-time cycle simply
      * hands over the day after it ends.
      */
@@ -171,14 +171,12 @@ final class RepurchaseCycleService
     private function openCycle(int $distributorId, Carbon $start): RepurchaseCycle
     {
         $start = $start->copy()->startOfDay();
-        $due = $start->copy()->addDays($this->plan->repurchaseCycleDays() - 1);
-        $graceEnd = $due->copy()->addDays($this->plan->repurchaseGraceDays());
+        $due = $start->copy()->addDays($this->plan->repurchaseCycleDays());
 
         $cycle = RepurchaseCycle::create([
             'distributor_id' => $distributorId,
             'cycle_start_date' => $start->toDateString(),
             'due_date' => $due->toDateString(),
-            'grace_end_date' => $graceEnd->toDateString(),
             'required_bv_paise' => $this->requiredBvPaise($distributorId),
             'completed_bv_paise' => 0,
             'status' => RepurchaseCycle::STATUS_ACTIVE,
@@ -197,7 +195,7 @@ final class RepurchaseCycleService
      *  - the window has just closed — resolve BOTH conditions at the window's
      *    last instant and freeze them; this happens exactly once per cycle;
      *  - the window closed and failed — hunt for the first day since on which
-     *    both conditions hold again (rule 9's late fulfilment).
+     *    both conditions hold again (the late fulfilment).
      */
     private function refresh(RepurchaseCycle $cycle, Carbon $asOf): void
     {
@@ -280,10 +278,10 @@ final class RepurchaseCycleService
     }
 
     /**
-     * Rule 9: after a failed window the distributor keeps accumulating against
-     * the SAME obligation. On the first day both conditions hold again the
-     * cycle completes, their held income is released, and a fresh window opens
-     * on that day.
+     * After a failed window the distributor keeps accumulating against the SAME
+     * obligation. On the first day both conditions hold again the cycle
+     * completes and a fresh window opens on that day; every day in between is
+     * forfeited.
      *
      * The scan walks days rather than trusting $asOf, because a catch-up replay
      * would otherwise stamp today's date onto a fulfilment that happened weeks
@@ -346,9 +344,7 @@ final class RepurchaseCycleService
         }
 
         $cycle->completed_bv_paise = $bv;
-        $cycle->status = $asOf->lessThanOrEqualTo($cycle->grace_end_date->copy()->startOfDay())
-            ? RepurchaseCycle::STATUS_GRACE
-            : RepurchaseCycle::STATUS_SUSPENDED;
+        $cycle->status = RepurchaseCycle::STATUS_SUSPENDED;
     }
 
     /**
@@ -413,11 +409,6 @@ final class RepurchaseCycleService
         $distributorId = $cycle->distributor_id;
 
         match ($to) {
-            RepurchaseCycle::STATUS_GRACE => event(new RepurchaseGraceStarted(
-                $distributorId,
-                $cycle->id,
-                $cycle->grace_end_date->toDateString(),
-            )),
             RepurchaseCycle::STATUS_SUSPENDED => event(new IncomeSuspended($distributorId, $cycle->id)),
             RepurchaseCycle::STATUS_COMPLETED => $this->onCompleted($cycle, $from),
             default => null,
@@ -427,10 +418,10 @@ final class RepurchaseCycleService
     private function onCompleted(RepurchaseCycle $cycle, string $from): void
     {
         // Pass the prior status so listeners can distinguish an on-time close
-        // from a late fulfilment that has held income waiting behind it.
+        // from a late fulfilment that has forfeited days behind it.
         event(new RepurchaseCompleted($cycle->distributor_id, $cycle->id, $from));
 
-        if (in_array($from, [RepurchaseCycle::STATUS_GRACE, RepurchaseCycle::STATUS_SUSPENDED], true)) {
+        if ($from === RepurchaseCycle::STATUS_SUSPENDED) {
             event(new IncomeReactivated($cycle->distributor_id, $cycle->id));
         }
     }

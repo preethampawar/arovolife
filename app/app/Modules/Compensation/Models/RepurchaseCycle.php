@@ -15,7 +15,6 @@ use Illuminate\Support\Carbon;
  * @property int $distributor_id
  * @property Carbon $cycle_start_date
  * @property Carbon $due_date
- * @property Carbon $grace_end_date
  * @property int $required_bv_paise
  * @property int $completed_bv_paise
  * @property int|null $wallet_balance_paise
@@ -31,10 +30,7 @@ final class RepurchaseCycle extends Model
     /** Within the cycle window, obligation not yet met but not yet due. */
     public const STATUS_ACTIVE = 'active';
 
-    /** Past due, inside the grace window — income is calculated but held. */
-    public const STATUS_GRACE = 'grace';
-
-    /** Grace lapsed without meeting the obligation — GSB/Fortune/GBB suspended. */
+    /** The window closed with an unmet obligation — every day since is forfeited. */
     public const STATUS_SUSPENDED = 'suspended';
 
     /** Obligation met for the cycle — fully income-eligible. */
@@ -53,7 +49,6 @@ final class RepurchaseCycle extends Model
         'distributor_id',
         'cycle_start_date',
         'due_date',
-        'grace_end_date',
         'required_bv_paise',
         'completed_bv_paise',
         'wallet_balance_paise',
@@ -70,7 +65,6 @@ final class RepurchaseCycle extends Model
         return [
             'cycle_start_date' => 'date',
             'due_date' => 'date',
-            'grace_end_date' => 'date',
             'required_bv_paise' => 'integer',
             'completed_bv_paise' => 'integer',
             'wallet_balance_paise' => 'integer',
@@ -89,12 +83,41 @@ final class RepurchaseCycle extends Model
 
     /**
      * Whether the cycle was fulfilled inside its own window. A cycle fulfilled
-     * later was suspended in between, which is what {@see IncomeEligibilityService::verdictAsOf()}
+     * later forfeited the days in between, which is what {@see IncomeEligibilityService::verdictAsOf()}
      * needs in order to answer for a date in that gap.
      */
     public function fulfilledOnTime(): bool
     {
         return $this->fulfilled_on !== null
             && $this->fulfilled_on->lessThanOrEqualTo($this->due_date);
+    }
+
+    /**
+     * The days this cycle forfeited: from the day after the due date up to the
+     * day before the fulfilment day (client spec §1 — there is no grace, and
+     * §2 — "he permanently lost the Business Volume associated with those
+     * days"). The single source of truth for "was this distributor failed on
+     * day d?"; every consumer reads it rather than re-deriving the arithmetic.
+     *
+     * Null when nothing is forfeited: fulfilled on time, or still inside its
+     * own window where the verdict has not been taken yet. The second element
+     * is null while the cycle is still unfulfilled — the window has no end yet.
+     *
+     * @return array{0: Carbon, 1: Carbon|null}|null
+     */
+    public function forfeitedWindow(): ?array
+    {
+        if ($this->fulfilledOnTime()) {
+            return null;
+        }
+
+        if ($this->resolved_at === null) {
+            return null;
+        }
+
+        return [
+            $this->due_date->copy()->startOfDay()->addDay(),
+            $this->fulfilled_on?->copy()->startOfDay()->subDay(),
+        ];
     }
 }

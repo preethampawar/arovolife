@@ -17,8 +17,8 @@ use Laravel\Pennant\Feature;
  * rank's monthly repurchase obligation (rank_tiers.repurchase_bv_paise) and
  * (b) a cleared repurchase wallet.
  *
- * "Wallet cleared" reads the repurchase engine's latest cycle: grace or
- * suspended means the obligation was missed, so the wallet is NOT cleared.
+ * "Wallet cleared" reads the repurchase engine's latest cycle: a suspended
+ * cycle means the obligation was missed, so the wallet is NOT cleared.
  * When the {@see RepurchaseEngineFeature} flag is off (or the distributor has
  * no cycle yet) the check fails open — same convention as
  * {@see IncomeEligibilityService}.

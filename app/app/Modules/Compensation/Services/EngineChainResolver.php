@@ -181,7 +181,7 @@ final class EngineChainResolver
     /**
      * RepurchaseCycleService::evaluate() takes an as-of date but *mutates the
      * cycle rows in place* and emits the transition events as it goes — running
-     * it for an older date would push a cycle back to active/grace and re-emit
+     * it for an older date would push a cycle back to active and re-emit
      * a reactivation. It is therefore only safe on today or yesterday; for a
      * historical backfill it is left out and the omission surfaced to the admin.
      *

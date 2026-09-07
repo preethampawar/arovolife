@@ -94,21 +94,30 @@ it('has no obligation until the distributor reaches 600 BV personal', function (
 });
 
 it('opens a 30-day window anchored on the day 600 BV was reached', function (): void {
-    // Client rule 1: "the 30-day period from that date", inclusive of it.
+    // Client spec §1: the anchor day is day 0 and the due date is 30 days after
+    // it — "completed his 600-BV on July 7th, therefore his Beginning Date is
+    // July 7th", judged on 6 August.
     $dist = Distributor::factory()->create();
-    seedSelfPurchase($dist->id, 60_000, '2026-01-05'); // exactly 600 BV
+    seedSelfPurchase($dist->id, 60_000, '2026-07-07'); // exactly 600 BV
 
-    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-01-20'));
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-07-20'));
 
     expect($cycle)->not->toBeNull();
-    expect($cycle->cycle_start_date->toDateString())->toBe('2026-01-05');
-    expect($cycle->due_date->toDateString())->toBe('2026-02-03'); // start + 29 days
+    expect($cycle->cycle_start_date->toDateString())->toBe('2026-07-07');
+    expect($cycle->due_date->toDateString())->toBe('2026-08-06'); // start + 30 days
     expect($cycle->required_bv_paise)->toBe(60_000);              // non-ranked 600 BV
 });
 
 it("matches the client's worked cycle examples", function (): void {
-    // A) 1 Jan → 30 Jan.  B) 1 Feb → 2 Mar (2026 is not a leap year).
-    foreach ([['2026-01-01', '2026-01-30'], ['2026-02-01', '2026-03-02']] as [$anchor, $expectedDue]) {
+    // All six dated examples in the client spec (§1) are exactly start + 30.
+    foreach ([
+        ['2026-07-07', '2026-08-06'],
+        ['2026-07-13', '2026-08-12'],
+        ['2026-07-24', '2026-08-23'],
+        ['2026-08-09', '2026-09-08'],
+        ['2026-08-17', '2026-09-16'],
+        ['2026-08-27', '2026-09-26'],
+    ] as [$anchor, $expectedDue]) {
         $dist = Distributor::factory()->create();
         seedSelfPurchase($dist->id, 60_000, $anchor);
 
@@ -122,7 +131,7 @@ it('cannot complete a cycle early — the wallet condition needs the last day', 
     // Rule 4(B) asks about the wallet on the window's LAST day, so a cycle whose
     // BV obligation is already met stays ACTIVE until the window closes.
     $dist = Distributor::factory()->create();
-    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // anchor; window 01-05 → 02-03
+    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // anchor; window 01-05 → 02-04
     seedSelfPurchase($dist->id, 60_000, '2026-01-10');  // obligation met on day 6
 
     $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-01-20'));
@@ -136,20 +145,20 @@ it('completes at the window end when both conditions hold, and freezes the walle
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 300_000, '2026-01-05');
 
-    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-02-03'));
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-02-04'));
     // Still the last day of the window — resolved only once it has passed.
     expect($cycle->status)->toBe(RepurchaseCycle::STATUS_ACTIVE);
 
-    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-02-04'));
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-02-05'));
 
     // The first window resolved and handed over to the next one on due + 1.
     $first = RepurchaseCycle::where('distributor_id', $dist->id)->orderBy('cycle_start_date')->first();
     expect($first->status)->toBe(RepurchaseCycle::STATUS_COMPLETED);
     expect($first->wallet_zeroed)->toBeTrue();
     expect($first->wallet_balance_paise)->toBe(0);
-    expect($first->fulfilled_on->toDateString())->toBe('2026-02-03');
+    expect($first->fulfilled_on->toDateString())->toBe('2026-02-04');
     expect($first->failure_reason)->toBeNull();
-    expect($cycle->cycle_start_date->toDateString())->toBe('2026-02-04');
+    expect($cycle->cycle_start_date->toDateString())->toBe('2026-02-05');
 });
 
 it('fails the cycle when the repurchase wallet is not zero on the last day', function (): void {
@@ -159,7 +168,7 @@ it('fails the cycle when the repurchase wallet is not zero on the last day', fun
     seedSelfPurchase($dist->id, 300_000, '2026-01-05');
     seedRepurchaseWalletCredit($dist->id, 25_000, '2026-01-20 10:00:00');
 
-    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-02-04'));
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-02-05'));
 
     expect($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
     expect($cycle->failure_reason)->toBe(RepurchaseCycle::REASON_WALLET_NONZERO);
@@ -173,12 +182,12 @@ it('fails the cycle when the window BV falls short', function (): void {
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 60_000, '2026-01-05'); // anchor only; nothing repurchased after
 
-    // Window 01-05 → 02-03 is satisfied by the anchoring purchase itself, so the
-    // shortfall shows on the SECOND window (02-04 → 03-05).
-    svc()->evaluate($dist->id, Carbon::parse('2026-03-06'));
+    // Window 01-05 → 02-04 is satisfied by the anchoring purchase itself, so the
+    // shortfall shows on the SECOND window (02-05 → 03-07).
+    svc()->evaluate($dist->id, Carbon::parse('2026-03-08'));
 
     $second = RepurchaseCycle::where('distributor_id', $dist->id)
-        ->whereDate('cycle_start_date', '2026-02-04')->first();
+        ->whereDate('cycle_start_date', '2026-02-05')->first();
 
     expect($second->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
     expect($second->failure_reason)->toBe(RepurchaseCycle::REASON_BV_SHORT);
@@ -189,37 +198,39 @@ it('records both reasons when BV and wallet fail together', function (): void {
     seedSelfPurchase($dist->id, 60_000, '2026-01-05');
     seedRepurchaseWalletCredit($dist->id, 10_000, '2026-02-10 10:00:00');
 
-    svc()->evaluate($dist->id, Carbon::parse('2026-03-06'));
+    svc()->evaluate($dist->id, Carbon::parse('2026-03-08'));
 
     $second = RepurchaseCycle::where('distributor_id', $dist->id)
-        ->whereDate('cycle_start_date', '2026-02-04')->first();
+        ->whereDate('cycle_start_date', '2026-02-05')->first();
 
     expect($second->failure_reason)->toBe(RepurchaseCycle::REASON_BOTH);
 });
 
 it('re-anchors a new 30-day window on the day a failed cycle is fulfilled', function (): void {
-    // Client rule 9: failed on the due date, fulfilled later → the NEW window
+    // The client's distributor C: the window 24 Jul → 23 Aug failed, he
+    // repurchased on 27 Aug, and his fresh window runs 27 Aug → 26 Sep — it
     // starts on the fulfilment day itself, not the day after the old one ended.
     Event::fake([IncomeReactivated::class]);
     $dist = Distributor::factory()->create();
-    seedSelfPurchase($dist->id, 60_000, '2026-01-05');
+    seedSelfPurchase($dist->id, 60_000, '2026-06-23'); // anchor; window 06-23 → 07-23
 
-    // Second window 02-04 → 03-05 fails (no repurchase in it).
-    svc()->evaluate($dist->id, Carbon::parse('2026-03-06'));
+    // Second window 07-24 → 08-23 fails (no repurchase in it).
+    svc()->evaluate($dist->id, Carbon::parse('2026-08-24'));
 
-    // Fulfilled on 03-15 — ten days late.
-    seedSelfPurchase($dist->id, 60_000, '2026-03-15');
-    $current = svc()->evaluate($dist->id, Carbon::parse('2026-03-20'));
+    // Fulfilled on 08-27 — four days late.
+    seedSelfPurchase($dist->id, 60_000, '2026-08-27');
+    $current = svc()->evaluate($dist->id, Carbon::parse('2026-08-31'));
 
     $failed = RepurchaseCycle::where('distributor_id', $dist->id)
-        ->whereDate('cycle_start_date', '2026-02-04')->first();
+        ->whereDate('cycle_start_date', '2026-07-24')->first();
 
+    expect($failed->due_date->toDateString())->toBe('2026-08-23');
     expect($failed->status)->toBe(RepurchaseCycle::STATUS_COMPLETED);
-    expect($failed->fulfilled_on->toDateString())->toBe('2026-03-15');
+    expect($failed->fulfilled_on->toDateString())->toBe('2026-08-27');
     expect($failed->fulfilledOnTime())->toBeFalse();
 
-    expect($current->cycle_start_date->toDateString())->toBe('2026-03-15');
-    expect($current->due_date->toDateString())->toBe('2026-04-13'); // 30 days from 03-15
+    expect($current->cycle_start_date->toDateString())->toBe('2026-08-27');
+    expect($current->due_date->toDateString())->toBe('2026-09-26'); // 30 days from 08-27
     Event::assertDispatched(IncomeReactivated::class);
 });
 
@@ -233,7 +244,7 @@ it('stamps the fulfilment day the conditions actually met, not the day it was no
     svc()->evaluate($dist->id, Carbon::parse('2026-04-20')); // noticed six weeks later
 
     $failed = RepurchaseCycle::where('distributor_id', $dist->id)
-        ->whereDate('cycle_start_date', '2026-02-04')->first();
+        ->whereDate('cycle_start_date', '2026-02-05')->first();
 
     expect($failed->fulfilled_on->toDateString())->toBe('2026-03-10');
 });
@@ -249,7 +260,7 @@ it('does not double-count BV when a failed cycle is re-evaluated', function (): 
     svc()->evaluate($dist->id, Carbon::parse('2026-03-21'));
 
     $failed = RepurchaseCycle::where('distributor_id', $dist->id)
-        ->whereDate('cycle_start_date', '2026-02-04')->first();
+        ->whereDate('cycle_start_date', '2026-02-05')->first();
 
     expect($failed->completed_bv_paise)->toBe(20_000);
     expect($failed->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
@@ -268,7 +279,7 @@ it('needs the wallet cleared as well as the BV before a failed cycle is fulfille
     svc()->evaluate($dist->id, Carbon::parse('2026-03-20'));
 
     $failed = RepurchaseCycle::where('distributor_id', $dist->id)
-        ->whereDate('cycle_start_date', '2026-02-04')->first();
+        ->whereDate('cycle_start_date', '2026-02-05')->first();
 
     expect($failed->status)->toBe(RepurchaseCycle::STATUS_COMPLETED);
     expect($failed->fulfilled_on->toDateString())->toBe('2026-03-18');
@@ -289,7 +300,6 @@ it('never lets an unmeasured wallet pass the cleared-wallet condition', function
         'distributor_id' => $dist->id,
         'cycle_start_date' => '2026-02-04',
         'due_date' => '2026-03-05',
-        'grace_end_date' => '2026-03-05',
         'required_bv_paise' => 60_000,
         'completed_bv_paise' => 0,
         'wallet_balance_paise' => null,
@@ -325,7 +335,6 @@ it('completes a late fulfilment once the derived wallet balance really is clear'
         'distributor_id' => $dist->id,
         'cycle_start_date' => '2026-02-04',
         'due_date' => '2026-03-05',
-        'grace_end_date' => '2026-03-05',
         'required_bv_paise' => 60_000,
         'completed_bv_paise' => 0,
         'wallet_balance_paise' => null,
@@ -357,7 +366,6 @@ it('does not demote an already-resolved cycle back to active inside its window',
         'distributor_id' => $dist->id,
         'cycle_start_date' => '2026-02-04',
         'due_date' => '2026-03-05',
-        'grace_end_date' => '2026-03-05',
         'required_bv_paise' => 60_000,
         'completed_bv_paise' => 60_000,
         'status' => RepurchaseCycle::STATUS_COMPLETED,
@@ -380,13 +388,14 @@ it('handles a month-end anchor without window errors', function (): void {
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 300_000, '2026-01-31');
 
-    // Jan 31 + 29 days = Mar 1, so the first window spans a short month
-    // without the date arithmetic overflowing; the second lapses unrepurchased.
+    // Jan 31 + 30 days = Mar 2, so the first window spans a short month without
+    // the date arithmetic overflowing; the second lapses unrepurchased. A day
+    // count never has to answer "the 31st of the month after February".
     $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-04-15'));
 
     expect($cycle)->not->toBeNull();
-    expect($cycle->cycle_start_date->toDateString())->toBe('2026-03-02');
-    expect($cycle->due_date->toDateString())->toBe('2026-03-31');
+    expect($cycle->cycle_start_date->toDateString())->toBe('2026-03-03');
+    expect($cycle->due_date->toDateString())->toBe('2026-04-02');
     expect($cycle->status)->toBe(RepurchaseCycle::STATUS_SUSPENDED);
 });
 
@@ -401,6 +410,58 @@ it('reads the per-rank repurchase BV from config, not a constant', function (): 
     $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-01-20'));
 
     expect($cycle->required_bv_paise)->toBe(100_000); // 1,000 BV, from rank_tiers
+});
+
+it('forfeitedWindow is null on time, [due + 1, fulfilled − 1] when late, open-ended while unresolved, null inside the window', function (): void {
+    // The one place that answers "which days did this distributor lose?" —
+    // client spec §2: every day from the day after the due date up to the day
+    // before the fulfilment day is forfeited.
+    $dist = Distributor::factory()->create();
+
+    $cycle = fn (array $overrides): RepurchaseCycle => RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'due_date' => '2026-08-23',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 60_000,
+        'status' => RepurchaseCycle::STATUS_COMPLETED,
+        ...$overrides,
+    ]);
+
+    $onTime = $cycle([
+        'cycle_start_date' => '2026-07-24',
+        'fulfilled_on' => '2026-08-23',
+        'resolved_at' => '2026-08-24 00:05:00',
+    ]);
+    expect($onTime->forfeitedWindow())->toBeNull();
+
+    // The client's distributor C: failed 24–26 Aug, fulfilled on the 27th.
+    $late = $cycle([
+        'cycle_start_date' => '2026-07-25',
+        'fulfilled_on' => '2026-08-27',
+        'resolved_at' => '2026-08-24 00:05:00',
+    ]);
+    [$from, $to] = $late->forfeitedWindow();
+    expect($from->toDateString())->toBe('2026-08-24')
+        ->and($to->toDateString())->toBe('2026-08-26');
+
+    // Still failed: the window runs on with no end yet.
+    $stillFailed = $cycle([
+        'cycle_start_date' => '2026-07-26',
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'completed_bv_paise' => 0,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => '2026-08-24 00:05:00',
+    ]);
+    [$from, $to] = $stillFailed->forfeitedWindow();
+    expect($from->toDateString())->toBe('2026-08-24')->and($to)->toBeNull();
+
+    // Inside its own window nothing is forfeited — the verdict is not taken yet.
+    $open = $cycle([
+        'cycle_start_date' => '2026-07-27',
+        'status' => RepurchaseCycle::STATUS_ACTIVE,
+        'completed_bv_paise' => 0,
+    ]);
+    expect($open->forfeitedWindow())->toBeNull();
 });
 
 it('withholds GSB, Rank, Growth Booster and Fortune — never Mentorship', function (): void {
@@ -466,7 +527,7 @@ it('credits GSB normally when the repurchase engine is OFF, even past a failed w
 
 it('holds the GSB credit when the engine is ON and the cycle has failed', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
-    $dist = makeGsbReadyRetailer('2026-03-20'); // window 02-04 → 03-05 failed
+    $dist = makeGsbReadyRetailer('2026-03-20'); // window 02-05 → 03-07 failed
 
     $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-20'));
 
@@ -480,9 +541,9 @@ it('releases held GSB rows when the distributor fulfils the repurchase', functio
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create(['status' => 'active', 'adn' => '100000901']);
-    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // window 02-04 → 03-05 will fail
+    seedSelfPurchase($dist->id, 300_000, '2026-01-05'); // window 02-05 → 03-07 will fail
 
-    foreach (['2026-03-06', '2026-03-08'] as $date) {
+    foreach (['2026-03-09', '2026-03-11'] as $date) {
         GroupBvDaily::create([
             'distributor_id' => $dist->id, 'date' => $date,
             'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000,
@@ -492,7 +553,7 @@ it('releases held GSB rows when the distributor fulfils the repurchase', functio
     $gsb = app(GsbCutoffService::class);
     $rows = [];
 
-    foreach (['2026-03-06', '2026-03-08'] as $date) {
+    foreach (['2026-03-09', '2026-03-11'] as $date) {
         svc()->evaluate($dist->id, Carbon::parse($date));
         $rows[] = $gsb->runForDistributor($dist->id, Carbon::parse($date));
     }
@@ -508,7 +569,7 @@ it('releases held GSB rows when the distributor fulfils the repurchase', functio
     // evaluate() hands back the window that was just re-anchored on the
     // fulfilment day; the one that failed is now completed behind it.
     expect($current->cycle_start_date->toDateString())->toBe('2026-03-20');
-    expect(RepurchaseCycle::whereDate('cycle_start_date', '2026-02-04')->first()->status)
+    expect(RepurchaseCycle::whereDate('cycle_start_date', '2026-02-05')->first()->status)
         ->toBe(RepurchaseCycle::STATUS_COMPLETED);
     expect($rows[0]->fresh()->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
     expect($rows[1]->fresh()->status)->toBe(GsbCutoffResult::STATUS_CREDITED);
@@ -521,12 +582,12 @@ it('release listener is idempotent — a second reactivation credits nothing mor
     $dist = Distributor::factory()->create(['status' => 'active', 'adn' => '100000902']);
     seedSelfPurchase($dist->id, 300_000, '2026-01-05');
     GroupBvDaily::create([
-        'distributor_id' => $dist->id, 'date' => '2026-03-06',
+        'distributor_id' => $dist->id, 'date' => '2026-03-09',
         'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000,
     ]);
 
-    svc()->evaluate($dist->id, Carbon::parse('2026-03-06'));
-    app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-06'));
+    svc()->evaluate($dist->id, Carbon::parse('2026-03-09'));
+    app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::parse('2026-03-09'));
 
     event(new IncomeReactivated($dist->id, 1));
     $afterFirst = app(WalletService::class)->balancePaise($dist->id);

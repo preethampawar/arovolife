@@ -27,7 +27,7 @@
     Edit the live compensation-plan ladders below. Each row is locked by default — press <strong>Edit</strong> to change it,
     then <strong>Save</strong> to review and confirm the change. All BV and money fields are stored in <strong>paise</strong>
     (BV × 100, ₹ × 100). Every change is audit-logged and takes effect on the next engine run.
-    Rates, caps and periods (admin charge, TDS, repurchase %, grace days, etc.) are edited under
+    Rates, caps and periods (admin charge, TDS, repurchase %, cycle length, etc.) are edited under
     <a href="{{ route('admin.settings') }}#compensation_plan" class="underline font-medium">Settings → Compensation plan</a>.
     @else
     The live compensation-plan ladders currently in force. All BV and money fields are shown in <strong>paise</strong>

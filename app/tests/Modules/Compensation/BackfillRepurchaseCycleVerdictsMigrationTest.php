@@ -26,7 +26,6 @@ function legacyCycle(int $distributorId, string $status, string $start, string $
         'distributor_id' => $distributorId,
         'cycle_start_date' => $start,
         'due_date' => $due,
-        'grace_end_date' => $due,
         'required_bv_paise' => 60_000,
         'completed_bv_paise' => $status === 'completed' ? 60_000 : 0,
         'status' => $status,

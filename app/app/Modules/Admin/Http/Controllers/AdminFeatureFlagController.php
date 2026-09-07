@@ -89,7 +89,7 @@ final class AdminFeatureFlagController extends Controller
                 'class' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase / income-eligibility engine (Phase 4)',
                 'requires' => ['compensation.genos_sales_bonus'],
-                'description' => 'When ON, the daily GSB cut-off consults each distributor\'s monthly repurchase status: if they missed their repurchase due date the bonus is held (grace) or, after grace, suspended — GSB/Fortune/GBB only, never Mentorship or Rank. When OFF, repurchase status is ignored. Run repurchase:evaluate daily.',
+                'description' => 'When ON, the daily GSB cut-off consults each distributor\'s monthly repurchase status: if they missed their repurchase due date the bonus is suspended from the day after that due date until they fulfil — GSB/Fortune/GBB only, never Mentorship or Rank. When OFF, repurchase status is ignored. Run repurchase:evaluate daily.',
                 'owner' => 'developer',
             ],
             'compensation.growth_booster_bonus' => [

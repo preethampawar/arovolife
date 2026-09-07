@@ -294,3 +294,55 @@ it('shows the repurchase alert traffic-light in the header while the repurchase 
         Carbon::setTestNow();
     }
 });
+
+it('lists the days each repurchase cycle forfeited on the Repurchase tab', function (): void {
+    $distributorId = compDistributor();
+
+    disableTestForeignKeys();
+    try {
+        DB::table('repurchase_cycles')->insert([
+            // Fulfilled four days late: 24–26 Aug were lost.
+            [
+                'distributor_id' => $distributorId,
+                'cycle_start_date' => '2026-07-24',
+                'due_date' => '2026-08-23',
+                'required_bv_paise' => 60_000,
+                'completed_bv_paise' => 60_000,
+                'wallet_balance_paise' => 0,
+                'wallet_zeroed' => true,
+                'status' => 'completed',
+                'fulfilled_on' => '2026-08-27',
+                'failure_reason' => null,
+                'resolved_at' => '2026-08-24 00:05:00',
+                'created_at' => '2026-07-24 00:05:00',
+                'updated_at' => '2026-08-27 00:05:00',
+            ],
+            // Still failed: the forfeited window has no end yet.
+            [
+                'distributor_id' => $distributorId,
+                'cycle_start_date' => '2026-08-27',
+                'due_date' => '2026-09-26',
+                'required_bv_paise' => 60_000,
+                'completed_bv_paise' => 0,
+                'wallet_balance_paise' => 50_000,
+                'wallet_zeroed' => false,
+                'status' => 'suspended',
+                'fulfilled_on' => null,
+                'failure_reason' => 'both',
+                'resolved_at' => '2026-09-27 00:05:00',
+                'created_at' => '2026-08-27 00:05:00',
+                'updated_at' => '2026-09-27 00:05:00',
+            ],
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $this->actingAs(compAdmin())
+        ->get(route('admin.compensation.distributors.show', [$distributorId, 'tab' => 'repurchase']))
+        ->assertOk()
+        ->assertSessionHasNoErrors()
+        ->assertSee('Days not counted')
+        ->assertSee('24 Aug 2026 → 26 Aug 2026')
+        ->assertSee('27 Sep 2026 → ongoing');
+});

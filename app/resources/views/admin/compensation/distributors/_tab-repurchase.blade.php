@@ -3,27 +3,39 @@
     $statusClass = [
         'completed' => 'bg-green-100 text-green-700',
         'active' => 'bg-blue-100 text-blue-700',
-        'grace' => 'bg-amber-100 text-amber-700',
         'suspended' => 'bg-red-100 text-red-700',
     ];
     $current = (! empty($rows) && ! $rows->isEmpty()) ? $rows->first() : null;
-    $fortuneOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FortuneBonusFeature::class);
     $money = fn ($paise) => '₹'.\App\Modules\Shared\Support\IndianNumber::format(($paise ?? 0) / 100, 2);
     $reasonLabel = [
         'bv_short' => 'BV short',
         'wallet_nonzero' => 'Wallet not ₹0',
         'both' => 'BV short + wallet not ₹0',
     ];
+    // The days the cycle forfeited: due + 1 up to the day before fulfilment.
+    $forfeited = function ($cycle) {
+        $window = $cycle->forfeitedWindow();
+
+        if ($window === null) {
+            return '—';
+        }
+
+        [$from, $to] = $window;
+
+        return $to === null
+            ? $from->format('d M Y').' → ongoing'
+            : $from->format('d M Y').' → '.$to->format('d M Y');
+    };
 @endphp
 
 @developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    A 30-day repurchase window, anchored on the day the distributor first reached 600 personal BV and
-    re-anchored on the day they fulfil a failed one. It passes only if BOTH conditions hold: self-purchase BV
-    inside the window at least the required amount, AND a repurchase wallet of ₹0 on the window's LAST day —
-    which is why a window is never judged before it closes. A failed window HOLDS
-    GSB{{ $fortuneOn ? ' / Fortune' : '' }} / Growth Booster / Rank Bonus (never Mentorship, ADC or Awards);
-    the held income is credited in full the day they fulfil. Maintained by the daily
+    A 30-day repurchase window: the due date falls 30 days after the day the distributor first reached 600
+    personal BV, and a failed window re-anchors on the day they fulfil it. It passes only if BOTH conditions
+    hold: self-purchase BV inside the window at least the required amount, AND a repurchase wallet of ₹0 on
+    the window's LAST day — which is why a window is never judged before it closes. From the day after the
+    due date until the day they fulfil, the distributor's Genos BV for those days is not counted and the
+    income that would have followed from it is permanently forfeited. Maintained by the daily
     <code class="font-mono">repurchase:evaluate</code> command; only active when the Repurchase engine
     feature flag is on.
 </div>
@@ -66,6 +78,7 @@
                 <th class="px-3 py-2 text-right text-gray-600">Completed</th>
                 <th class="px-3 py-2 text-right text-gray-600">Wallet at close <x-help-tip text="The repurchase wallet balance frozen at the last instant of this window — the answer to condition (B). Blank while the window is still open." /></th>
                 <th class="px-3 py-2 text-left text-gray-600">Fulfilled</th>
+                <th class="px-3 py-2 text-left text-gray-600">Days not counted <x-help-tip text="The days this cycle forfeited — from the day after the due date up to the day before it was fulfilled. Their Genos BV is never counted and the income from it is never paid." /></th>
                 <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
@@ -86,6 +99,7 @@
                     <span class="text-[10px] text-orange-700">(late)</span>
                     @endif
                 </td>
+                <td class="px-3 py-2 text-gray-600">{{ $forfeited($cycle) }}</td>
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $statusClass[$cycle->status] ?? 'bg-gray-100 text-gray-600' }}">
                         {{ ucfirst($cycle->status) }}

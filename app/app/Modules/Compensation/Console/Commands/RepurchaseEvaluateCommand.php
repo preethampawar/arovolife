@@ -16,8 +16,8 @@ use Laravel\Pennant\Feature;
 
 /**
  * Daily evaluation of every active distributor's repurchase cycle: opens/rolls
- * cycles, refreshes completion from self-purchase BV, and transitions
- * active → grace → suspended → completed (emitting the domain events). The GSB
+ * cycles, refreshes completion from self-purchase BV, and moves each cycle
+ * between active, suspended and completed (emitting the domain events). The GSB
  * cut-off reads the resulting status; this command keeps it current.
  */
 final class RepurchaseEvaluateCommand extends Command
