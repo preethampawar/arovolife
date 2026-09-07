@@ -1,8 +1,9 @@
 # Repurchase system — client worked examples and clarifications (2026-09-07)
 
-**Status:** spec received; NOT yet implemented. Supersedes the "rules 1–9"
-hold-and-release model the 2026-09-06 branch work
-(`fix/compensation-frozen-roster-and-monthly-close`, uncommitted) was built on.
+**Status:** Implemented on branch `fix/compensation-frozen-roster-and-monthly-close`,
+commits `329c5d8..056e830` (2026-09-07); public-page copy pending DSA §6.2 notice
+(R-75). Supersedes the "rules 1–9" hold-and-release model the 2026-09-06 branch
+work was built on.
 
 **Sources**
 
@@ -192,3 +193,52 @@ finally completing it on August 27. Since he permanently lost the Business
 Volume (BV) associated with those three days, his repurchase period must be
 reset to a fresh 30-day cycle starting from August 27 and extending to
 September 26."
+
+---
+
+## 7. Deploy checklist
+
+1. `php artisan migrate` — five `2026_09_07` migrations, forward-only. The
+   `earned_on` backfill on `wallet_ledger_entries` must complete before the
+   first post-deploy Tuesday batch runs, or Group A rows credited before the
+   backfill will not sweep on the correct week.
+2. Restart the `compensation` queue worker and the scheduler. Pre-deploy
+   worker code has no `earned_on` stamping and none of the new evaluate
+   guards — it would throw on the new Group A columns or miss the
+   `gsb:daily-cutoff` / `rank:check-qualifications` guards entirely (see R-71
+   for why a stale worker running old code is a standing risk class, not a
+   one-off).
+3. Decide staging's legacy `repurchase_held` rows (edge 20): replay them via
+   the Engine Runs recompute, or accept them as legacy. Either way they stay
+   forfeited-model-incompatible and must never be released — the four
+   `ReleaseHeld*OnReactivation` listeners that used to do that are deleted.
+4. The repurchase feature flag stays **OFF** in production until the DSA
+   §6.2 thirty-day notice has run (R-75).
+5. Re-seed the compensation content page (`app/database/seeders/content/compensation.md`)
+   only after the §6.2 notice — the new payout-week cadence sentence is
+   written into the file but must not reach `ContentPageSeeder` before then
+   (R-75).
+6. The first weekly batch run under the new rule is the first one to stamp
+   `earnings_through`; batches created before this deploy show "—" for that
+   column and should not be reconciled against the new window logic.
+
+## 8. Implementation deltas vs §4
+
+Client re-confirmed 2026-09-07 that the implementation may add controls
+beyond §4's required-changes list, provided the plan mechanics (§1–§3) are
+unchanged. Two design additions came out of the review process:
+
+- **Evaluate guards on `gsb:daily-cutoff` and `rank:check-qualifications`.**
+  Neither command may run for a date/month unless a `repurchase.evaluate`
+  `EngineRun` dated on or after the relevant cut-off exists (`--force`
+  overrides; skipped outright when the repurchase flag is off). This closes
+  the same "prerequisite the scheduler did not run" hazard as R-70, applied
+  to the forfeit model's own dependency: a cut-off or rank check that runs
+  before that day's/month's repurchase verdicts are in would silently
+  forfeit or admit the wrong distributors.
+- **`RepurchaseWalletGateService` month-end wallet gate.** A single service
+  (`clearedAtMonthEnd()`) restores the month-end repurchase-wallet = ₹0 gate
+  for GBB, Fortune, rank requalification and AO-GO, replacing the
+  branch-specific hold logic §4 described as removed outright. Blocked
+  months are `repurchase_wallet_blocked`, gross 0, excluded from the
+  denominator — forfeited, never held-and-released.
