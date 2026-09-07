@@ -76,7 +76,7 @@
             @if(($forfeitedDays[$pool->cutoff_date->toDateString()] ?? 0) > 0)
             <span class="text-red-700">Days not counted (repurchase)
                 <strong>{{ \App\Modules\Shared\Support\IndianNumber::format($forfeitedDays[$pool->cutoff_date->toDateString()], 0) }}</strong>
-                <x-help-tip text="Distributors whose repurchase period had closed unmet on this day. Their Genos BV was not added and no slab was matched, so they took nothing from this day's pool and appear in no slab row below." /></span>
+                <x-help-tip text="Active distributors above the 600-BV minimum whose repurchase period had closed unmet on this day; idle and below-minimum distributors are not counted here. Their Genos BV was not added and no slab was matched, so they took nothing from this day's pool and appear in no slab row below." /></span>
             @endif
             <span class="text-gray-600 ml-auto">Computed
                 <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>

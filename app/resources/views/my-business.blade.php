@@ -107,6 +107,20 @@
         </div>
     </div>
 
+    {{-- Today's business was forfeited by an unmet repurchase period (client, 2026-09-07). --}}
+    @if($gsbOn && ($slabProgress?->forfeitedToday ?? false))
+    <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800 mb-4 flex items-start gap-2">
+        <x-lucide-circle-alert class="w-4 h-4 mt-0.5 shrink-0" />
+        <span>
+            Repurchase not met — today's Genos BV was not counted.
+            Your repurchase period closed without being met, so today's Left and Right Genos business
+            was not added to either side and no slab was matched for today. Your carried-over BV on
+            both sides is untouched and counting resumes on the day you meet the condition.
+            <x-help-tip text="The figures below show your carried-over BV as it stood before today, with none of today's business in them — today's business is not part of any slab progress." />
+        </span>
+    </div>
+    @endif
+
     {{-- Group 3 — carry forward / carry over row (Left before Right; GSB matching mechanics) --}}
     @if($gsbOn)
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">

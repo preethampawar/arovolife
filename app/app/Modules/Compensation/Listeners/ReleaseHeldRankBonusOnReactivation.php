@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Idempotent: each row is credited only while it is still held, and the status
  * flips to CREDITED inside the same row-locked transaction, so a re-fired event
- * cannot double-credit. The twin of {@see ReleaseHeldGbbOnReactivation}.
+ * cannot double-credit. The twin of {@see ReleaseHeldFortuneOnReactivation}.
  */
 final class ReleaseHeldRankBonusOnReactivation
 {

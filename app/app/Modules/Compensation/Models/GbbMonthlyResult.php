@@ -38,8 +38,8 @@ final class GbbMonthlyResult extends Model
 
     /**
      * Repurchase grace window: the bonus was calculated at the frozen point
-     * value but not credited. Releasable by ReleaseHeldGbbOnReactivation once
-     * the distributor completes their repurchase.
+     * value but not credited. Releasable once the distributor completes their
+     * repurchase.
      */
     public const STATUS_REPURCHASE_HELD = 'repurchase_held';
 

@@ -45,8 +45,7 @@ use Illuminate\Support\Facades\Log;
  *   • failed cycle (HOLD) → the bonus IS calculated at the frozen point value
  *     and persisted as {@see GbbMonthlyResult::STATUS_REPURCHASE_HELD} with no
  *     wallet credit; the AGP STAYS in the denominator, because the row is
- *     released and paid in full by ReleaseHeldGbbOnReactivation the day the
- *     distributor fulfils. Withholding it from the denominator would price the
+ *     released and paid in full on the day the distributor fulfils. Withholding it from the denominator would price the
  *     release at a rate nobody else was paid.
  *
  * The STATUS_REPURCHASE_SUSPENDED and STATUS_REPURCHASE_WALLET_BLOCKED rows —
@@ -74,7 +73,7 @@ use Illuminate\Support\Facades\Log;
  * from live data on every run: a distributor with no row at freeze was created
  * fresh and paid at the frozen point value although their AGP was never in the
  * frozen denominator, and a held row was re-priced to the larger live AGP that
- * ReleaseHeldGbbOnReactivation would then pay. Pool ₹10,000 over 100 AGP pays
+ * its later release would then pay. Pool ₹10,000 over 100 AGP pays
  * ₹100 an AGP; one newcomer with 12 AGP takes ₹1,200 out of a pool that has
  * already been fully divided, and leftover_paise goes negative.
  *
@@ -241,8 +240,8 @@ final class GrowthBoosterBonusService
      * pass 2 never re-prices them.
      *
      * Returns null when the distributor is already credited for the month,
-     * which protects a row already released by ReleaseHeldGbbOnReactivation
-     * from being pushed back to `repurchase_held`.
+     * which protects a row already released from being pushed back to
+     * `repurchase_held`.
      *
      * Returns null too when the month already holds a pool-EXCLUDED row for the
      * distributor ({@see GbbMonthlyResult::POOL_EXCLUDED_STATUSES}) and this

@@ -24,6 +24,8 @@ A distributor whose repurchase period closed without both conditions being met i
 
 The cut-off **refuses to run** for a day that `repurchase:evaluate` has not yet covered (no succeeded run for that date or later) while the repurchase engine is on: the verdict it reads is written only by that command, and running early would credit days the rules forfeit — with no way back, because the forfeit is permanent. The refusal is logged, shows on the Engine Runs page as a failed run, and names the exact command to run first. `--force` overrides it. With the repurchase feature flag off, nothing is ever forfeited and the guard does not apply.
 
+A refused **single-distributor** run (`gsb:daily-cutoff --distributor=…`) is the one exception on the Engine Runs page: partial runs are never written to the run log at all, so a refusal there leaves no failed run to see — only the `gsb.cutoff.refused_missing_evaluate` entry in the application log and the message on the console.
+
 ### Distributor compensation page — tabs
 Every bonus with a per-distributor history has its own tab: GSB History, Genos BV Ledger, Mentorship Bonus, Growth Booster, Rank Bonus, Fortune Bonus, ADC Bonus, Daily BV Log, Wallet Ledger, Repurchase, Payout History and Audit Log. Each bonus tab is **flag-gated** — a bonus whose feature flag is off has no tab, and a link to it (a stale bookmark, or a report opened after the flag was switched off) simply opens the first visible tab instead of erroring. Every "Calculation report" links its ADN column to the matching tab.
 

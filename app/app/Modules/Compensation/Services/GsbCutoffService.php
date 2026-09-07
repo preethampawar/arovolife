@@ -198,6 +198,22 @@ final class GsbCutoffService
             : $this->eligibility->verdictAsOf($distributorId, $date);
 
         if (! $verdict->isEligible()) {
+            // Re-running a date that already forfeited: the columns that row
+            // recorded ARE the truth for it. A forfeited row never advanced the
+            // store, so the rewind block above did not fire and the locals hold
+            // whatever the LATEST processed date left behind — re-reading them
+            // here would rewrite this date's audit columns with another day's
+            // state. No money moves either way; the row must simply not lie.
+            $forfeitCfPower = $cfPower;
+            $forfeitCfSlab1 = $cfSlab1;
+            $forfeitCfSide = $cfSide;
+
+            if ($existing?->status === GsbCutoffResult::STATUS_REPURCHASE_FORFEITED) {
+                $forfeitCfPower = $existing->power_cf_before_paise;
+                $forfeitCfSlab1 = $existing->slab1_weaker_cf_before_paise;
+                $forfeitCfSide = $existing->power_side_before;
+            }
+
             return new GsbCutoffComputation(
                 distributorId: $distributorId,
                 date: $date,
@@ -209,12 +225,12 @@ final class GsbCutoffService
                 leftToday: $leftToday,
                 rightToday: $rightToday,
                 weakerTotal: 0,
-                strongerSide: $cfSide ?? 'L',
-                powerSideBefore: $cfSide,
-                cfBeforePower: $cfPower,
-                cfBeforeSlab1: $cfSlab1,
-                newPowerCf: $cfPower,
-                newSlab1Cf: $cfSlab1,
+                strongerSide: $forfeitCfSide ?? 'L',
+                powerSideBefore: $forfeitCfSide,
+                cfBeforePower: $forfeitCfPower,
+                cfBeforeSlab1: $forfeitCfSlab1,
+                newPowerCf: $forfeitCfPower,
+                newSlab1Cf: $forfeitCfSlab1,
             );
         }
 
@@ -458,32 +474,57 @@ final class GsbCutoffService
             ]);
         }
 
-        // Forfeited day (client spec 2026-09-07 §2.1). Deliberately NO
-        // $cf->update(): the store is left exactly as it stood, which is what
-        // makes the fulfilment day resume on top of the preserved balances.
-        // Zero income, no wallet credit, no slab, no score — the row exists so
-        // the daily calculation report and My Business can show why the day
-        // paid nothing. The raw left/right BV is recorded for the same reason;
-        // it is never added to anything.
+        // Forfeited day (client spec 2026-09-07 §2.1). On a first run the store
+        // is left exactly as it stood — no write at all, not even the
+        // firstOrCreate below — which is what makes the fulfilment day resume on
+        // top of the preserved balances. Zero income, no wallet credit, no slab,
+        // no score; the row exists so the daily calculation report, the GSB
+        // history and My Business can show why the day paid nothing. The raw
+        // left/right BV is recorded for the same reason; it is never added to
+        // anything.
+        //
+        // The one case that DOES write: a re-run of a date that previously
+        // settled no_match / frozen / credited and has since been forfeited by a
+        // re-resolved cycle. That run advanced the store, and the compute
+        // rewound the locals to its recorded before-state, so the store must be
+        // rewound with them — otherwise it keeps a day's BV that the forfeit
+        // says was never added, while this row asserts after == before. Safe
+        // because the out-of-order guard in computeForDistributor() has already
+        // refused every case where a NEWER day's advance would be erased.
         if ($computation->outcome === GsbCutoffComputation::OUTCOME_REPURCHASE_FORFEITED) {
-            return $this->saveResult($existing, [
-                'distributor_id' => $distributorId,
-                'cutoff_date' => $date->toDateString(),
-                'left_bv_paise' => $computation->leftToday,
-                'right_bv_paise' => $computation->rightToday,
-                'weaker_bv_paise' => 0,
-                'gross_gsb_paise' => 0,
-                'admin_charge_paise' => 0,
-                'tds_paise' => 0,
-                'net_gsb_paise' => 0,
-                'power_cf_before_paise' => $computation->cfBeforePower,
-                'power_side_before' => $computation->powerSideBefore,
-                'power_cf_after_paise' => $computation->cfBeforePower,
-                'power_side_after' => $computation->powerSideBefore,
-                'slab1_weaker_cf_before_paise' => $computation->cfBeforeSlab1,
-                'slab1_weaker_cf_after_paise' => $computation->cfBeforeSlab1,
-                'status' => GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
-            ]);
+            $rewindStore = $existing !== null && $existing->advancedCarryForward();
+
+            return DB::transaction(function () use ($computation, $distributorId, $date, $existing, $rewindStore): GsbCutoffResult {
+                if ($rewindStore) {
+                    GsbCarryforward::updateOrCreate(
+                        ['distributor_id' => $distributorId],
+                        [
+                            'power_side_bv_paise' => $computation->cfBeforePower,
+                            'power_side' => $computation->powerSideBefore,
+                            'slab1_weaker_bv_paise' => $computation->cfBeforeSlab1,
+                        ],
+                    );
+                }
+
+                return $this->saveResult($existing, [
+                    'distributor_id' => $distributorId,
+                    'cutoff_date' => $date->toDateString(),
+                    'left_bv_paise' => $computation->leftToday,
+                    'right_bv_paise' => $computation->rightToday,
+                    'weaker_bv_paise' => 0,
+                    'gross_gsb_paise' => 0,
+                    'admin_charge_paise' => 0,
+                    'tds_paise' => 0,
+                    'net_gsb_paise' => 0,
+                    'power_cf_before_paise' => $computation->cfBeforePower,
+                    'power_side_before' => $computation->powerSideBefore,
+                    'power_cf_after_paise' => $computation->cfBeforePower,
+                    'power_side_after' => $computation->powerSideBefore,
+                    'slab1_weaker_cf_before_paise' => $computation->cfBeforeSlab1,
+                    'slab1_weaker_cf_after_paise' => $computation->cfBeforeSlab1,
+                    'status' => GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
+                ]);
+            });
         }
 
         // Apply the simulated personal-BV top-up — exactly the orders the

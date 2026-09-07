@@ -46,6 +46,14 @@ final readonly class GsbSlabProgress
         public int $powerCfPaise = 0,
         /** Side the power carry-forward sits on ('L', 'R', or null when there is none). */
         public ?string $powerCfSide = null,
+        /**
+         * Today's cut-off forfeited the day: the distributor's repurchase period
+         * had closed unmet, so today's Genos BV was not added and never will be
+         * (client spec 2026-09-07 §2.1). The left/right and progress figures
+         * above therefore show the preserved carry-forward only, with none of
+         * today's business in them.
+         */
+        public bool $forfeitedToday = false,
     ) {}
 
     /**

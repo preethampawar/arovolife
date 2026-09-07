@@ -189,8 +189,16 @@ final class IncomeController extends Controller
         abort_unless($distributor !== null, 403);
 
         try {
+            // Credited days and forfeited days only. A forfeited row carries no
+            // money (gross, deduction and net are all 0, so the page's month
+            // totals are unchanged) but the distributor is entitled to see why
+            // a day of Genos business paid nothing — client spec 2026-09-07
+            // §2.1. Every other status is engine bookkeeping, not history.
             $rows = GsbCutoffResult::where('distributor_id', $distributor->id)
-                ->where('status', GsbCutoffResult::STATUS_CREDITED)
+                ->whereIn('status', [
+                    GsbCutoffResult::STATUS_CREDITED,
+                    GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
+                ])
                 ->when($request->filled('from'), fn ($q) => $q->where('cutoff_date', '>=', $request->input('from')))
                 ->when($request->filled('to'), fn ($q) => $q->where('cutoff_date', '<=', $request->input('to')))
                 ->orderByDesc('cutoff_date')
@@ -210,8 +218,12 @@ final class IncomeController extends Controller
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
 
+        // Same two statuses as the on-screen history, so the CSV is the page.
         $rows = GsbCutoffResult::where('distributor_id', $distributor->id)
-            ->where('status', GsbCutoffResult::STATUS_CREDITED)
+            ->whereIn('status', [
+                GsbCutoffResult::STATUS_CREDITED,
+                GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
+            ])
             ->when($request->filled('from'), fn ($q) => $q->where('cutoff_date', '>=', $request->input('from')))
             ->when($request->filled('to'), fn ($q) => $q->where('cutoff_date', '<=', $request->input('to')))
             ->orderByDesc('cutoff_date')

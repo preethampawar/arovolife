@@ -54,6 +54,7 @@ final class GsbSlabProgressService
         $pendingTopupSide = null;
         $powerCfPaise = 0;
         $powerCfSide = null;
+        $forfeitedToday = false;
 
         if ($eligible) {
             $today = Carbon::today('Asia/Kolkata')->toDateString();
@@ -73,12 +74,13 @@ final class GsbSlabProgressService
             $openingPowerSide = $cf->power_side ?? null;
             $openingSlab1CfPaise = $cf->slab1_weaker_bv_paise ?? 0;
 
-            $todayCutoff = GsbCutoffResult::query()
+            $todayRows = GsbCutoffResult::query()
                 ->where('distributor_id', $distributorId)
                 ->whereDate('cutoff_date', $today)
                 ->orderBy('id')
-                ->get()
-                ->first(fn (GsbCutoffResult $result): bool => $result->advancedCarryForward());
+                ->get();
+
+            $todayCutoff = $todayRows->first(fn (GsbCutoffResult $result): bool => $result->advancedCarryForward());
 
             if ($todayCutoff !== null) {
                 $openingPowerCfPaise = $todayCutoff->power_cf_before_paise;
@@ -86,9 +88,22 @@ final class GsbSlabProgressService
                 $openingSlab1CfPaise = $todayCutoff->slab1_weaker_cf_before_paise;
             }
 
-            $leftEffective = ($daily->left_bv_paise ?? 0)
+            // Today's cut-off forfeited the day (client spec 2026-09-07 §2.1):
+            // its group BV was never added and never will be. Showing it as
+            // progress would promise a match that cannot happen, so the ladder
+            // falls back to the preserved carry-forward alone — which is exactly
+            // what the forfeit left in the store — and the page is told to say
+            // the day did not count.
+            $forfeitedToday = $todayRows->contains(
+                fn (GsbCutoffResult $result): bool => $result->status === GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
+            );
+
+            $dayLeftPaise = $forfeitedToday ? 0 : ($daily->left_bv_paise ?? 0);
+            $dayRightPaise = $forfeitedToday ? 0 : ($daily->right_bv_paise ?? 0);
+
+            $leftEffective = $dayLeftPaise
                 + ($openingPowerSide === 'L' ? $openingPowerCfPaise : 0);
-            $rightEffective = ($daily->right_bv_paise ?? 0)
+            $rightEffective = $dayRightPaise
                 + ($openingPowerSide === 'R' ? $openingPowerCfPaise : 0);
             $slab1Cf = $openingSlab1CfPaise;
             // The carry-forward cards ("remaining after your last slab match" /
@@ -199,6 +214,7 @@ final class GsbSlabProgressService
             slab1WeakerCfPaise: $slab1Cf,
             powerCfPaise: $powerCfPaise,
             powerCfSide: $powerCfSide,
+            forfeitedToday: $forfeitedToday,
         );
     }
 }

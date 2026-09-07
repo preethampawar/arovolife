@@ -769,3 +769,90 @@ it('shows the repurchase alert traffic-light on the wallet page while a balance 
         Carbon::setTestNow();
     }
 });
+
+it('shows a forfeited day on the gsb history page and csv, with no slab badge and no effect on the month total', function (): void {
+    // Client spec 2026-09-07 §2.1: the distributor is entitled to see why a day
+    // of Genos business paid nothing. The row carries no money, so the page's
+    // month totals must be identical with and without it.
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('gsb_cutoff_results')->insert([
+        [
+            'distributor_id' => $distributorId,
+            'cutoff_date' => today()->subDay()->toDateString(),
+            'left_bv_paise' => 2_000_000,
+            'right_bv_paise' => 1_600_000,
+            'weaker_bv_paise' => 1_600_000,
+            'slab' => 1,
+            'score' => 8,
+            'gross_gsb_paise' => 200_000,
+            'repurchase_deduction_paise' => 20_000,
+            'net_gsb_paise' => 180_000,
+            'status' => 'credited',
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ],
+        [
+            'distributor_id' => $distributorId,
+            'cutoff_date' => today()->toDateString(),
+            'left_bv_paise' => 900_000,
+            'right_bv_paise' => 700_000,
+            'weaker_bv_paise' => 0,
+            'slab' => null,
+            'score' => null,
+            'gross_gsb_paise' => 0,
+            'repurchase_deduction_paise' => 0,
+            'net_gsb_paise' => 0,
+            'status' => 'repurchase_forfeited',
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ],
+    ]);
+
+    $html = $this->get(route('income.gsb-history'))
+        ->assertOk()
+        ->assertSee('Repurchase not met — day not counted', false)
+        // The day's raw Genos BV is shown, but no slab badge is rendered for it.
+        ->assertSee('9,000')
+        // Only the credited row carries money, so the month total is unchanged.
+        ->assertSee('₹2,000')
+        ->getContent();
+
+    // Exactly one slab badge on the page — the credited row's. The forfeited
+    // row renders an em dash, never an empty "Slab " badge.
+    expect(substr_count($html, 'bg-indigo-100 text-indigo-700">Slab '))->toBe(1);
+
+    $csv = $this->get(route('income.gsb-history.export'))->assertOk()->streamedContent();
+    expect($csv)->toContain('repurchase_forfeited')
+        ->toContain('9000,7000,,0.00,0.00,0.00,repurchase_forfeited');
+});
+
+it('keeps every other cut-off status out of the distributor gsb history', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    DB::table('gsb_cutoff_results')->insert(array_map(fn (array $row): array => [
+        'distributor_id' => $distributorId,
+        'weaker_bv_paise' => 0,
+        'gross_gsb_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_gsb_paise' => 0,
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+        ...$row,
+    ], [
+        ['cutoff_date' => today()->subDays(1)->toDateString(), 'left_bv_paise' => 111_100, 'right_bv_paise' => 0, 'status' => 'no_match'],
+        ['cutoff_date' => today()->subDays(2)->toDateString(), 'left_bv_paise' => 222_200, 'right_bv_paise' => 0, 'status' => 'below_600bv'],
+        ['cutoff_date' => today()->subDays(3)->toDateString(), 'left_bv_paise' => 333_300, 'right_bv_paise' => 0, 'status' => 'frozen'],
+        ['cutoff_date' => today()->subDays(4)->toDateString(), 'left_bv_paise' => 444_400, 'right_bv_paise' => 0, 'status' => 'repurchase_held'],
+    ]));
+
+    $this->get(route('income.gsb-history'))
+        ->assertOk()
+        ->assertSee('No GSB history yet.')
+        ->assertDontSee('1,111')
+        ->assertDontSee('2,222')
+        ->assertDontSee('3,333')
+        ->assertDontSee('4,444');
+});

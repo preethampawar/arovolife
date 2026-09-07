@@ -849,3 +849,83 @@ it('frozen wins over forfeited', function (): void {
 
     expect(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
 });
+
+it('rewinds the store when a day that settled no_match is re-run as forfeited', function (): void {
+    // The cycle was re-resolved behind an already-settled day. The no_match run
+    // advanced the store with that day's BV; the forfeit says it was never
+    // added. The row asserts after == before, so the store must agree with it.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 300_000, 'power_side' => 'L', 'slab1_weaker_bv_paise' => 200_000,
+    ]);
+    seedDayBv($dist->id, '2026-02-06', 500_000, 100_000);
+
+    // First run: the cycle still looked fulfilled, so the day counted.
+    RepurchaseCycle::where('distributor_id', $dist->id)->update(['fulfilled_on' => '2026-02-05']);
+    $gsb = app(GsbCutoffService::class);
+    expect($gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06'))->status)
+        ->toBe(GsbCutoffResult::STATUS_NO_MATCH);
+
+    $advanced = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($advanced->power_side_bv_paise)->toBe(800_000)   // 5,000 BV + the 3,000 BV carry
+        ->and($advanced->slab1_weaker_bv_paise)->toBe(300_000); // 1,000 BV + the 2,000 BV store
+
+    // The cycle is re-resolved: 6 Feb is now inside a failed window.
+    RepurchaseCycle::where('distributor_id', $dist->id)->update(['fulfilled_on' => '2026-02-10']);
+
+    $result = $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
+        ->and($result->power_cf_before_paise)->toBe(300_000)
+        ->and($result->power_cf_after_paise)->toBe(300_000)
+        ->and($result->slab1_weaker_cf_before_paise)->toBe(200_000)
+        ->and($result->slab1_weaker_cf_after_paise)->toBe(200_000);
+
+    // The store is back at the pre-day state the row claims.
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->power_side_bv_paise)->toBe(300_000)
+        ->and($cf->power_side)->toBe('L')
+        ->and($cf->slab1_weaker_bv_paise)->toBe(200_000);
+});
+
+it('re-running an already-forfeited day keeps its own before/after snapshot, not a later day state', function (): void {
+    // A forfeited row never advanced the store, so a later day's advance is
+    // what the store now holds. Re-reading it here would rewrite this date's
+    // audit columns with another day's numbers. No money moves; the row must
+    // simply not lie.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    gsbSuppressTopup();
+    $dist = makeLateFulfiller();
+
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 300_000, 'power_side' => 'L', 'slab1_weaker_bv_paise' => 200_000,
+    ]);
+    seedDayBv($dist->id, '2026-02-06', 500_000, 100_000);
+    seedDayBv($dist->id, '2026-02-10', 900_000, 400_000);
+
+    $gsb = app(GsbCutoffService::class);
+    $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06')); // forfeited
+    $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-10')); // counts, advances the store
+
+    $moved = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($moved->power_side_bv_paise)->toBeGreaterThan(300_000);
+
+    $rerun = $gsb->runForDistributor($dist->id, Carbon::parse('2026-02-06'));
+
+    expect($rerun->status)->toBe(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
+        ->and($rerun->power_cf_before_paise)->toBe(300_000)
+        ->and($rerun->power_cf_after_paise)->toBe(300_000)
+        ->and($rerun->power_side_before)->toBe('L')
+        ->and($rerun->power_side_after)->toBe('L')
+        ->and($rerun->slab1_weaker_cf_before_paise)->toBe(200_000)
+        ->and($rerun->slab1_weaker_cf_after_paise)->toBe(200_000);
+
+    // And the later day's advance is untouched — the re-run wrote no store.
+    expect(GsbCarryforward::where('distributor_id', $dist->id)->first()->power_side_bv_paise)
+        ->toBe($moved->power_side_bv_paise);
+});

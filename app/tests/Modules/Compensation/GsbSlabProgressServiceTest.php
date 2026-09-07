@@ -186,3 +186,83 @@ it('does not preview a top-up while no leg has touched the first slab', function
         ->and($progress->pendingPersonalBvTopupPaise)->toBe(0)
         ->and($progress->pendingTopupSide)->toBeNull();
 });
+
+it('shows only the preserved carry-forward on a forfeited day, and flags that the day did not count', function (): void {
+    // Client spec 2026-09-07 §2.1: today's Genos BV was never added and never
+    // will be. Showing it as ladder progress would promise a match that cannot
+    // happen, so the ladder falls back to the carry-forward the forfeit left in
+    // the store — which is what tomorrow will actually build on.
+    $dist = slabProgressDistributor();
+    $today = Carbon::today('Asia/Kolkata')->toDateString();
+
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 800_000, 'power_side' => 'L', 'slab1_weaker_bv_paise' => 500_000,
+    ]);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id, 'date' => $today,
+        'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000,
+    ]);
+    GsbCutoffResult::create([
+        'distributor_id' => $dist->id,
+        'cutoff_date' => $today,
+        'left_bv_paise' => 2_000_000,
+        'right_bv_paise' => 1_600_000,
+        'weaker_bv_paise' => 0,
+        'gross_gsb_paise' => 0,
+        'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 800_000,
+        'power_side_before' => 'L',
+        'power_cf_after_paise' => 800_000,
+        'power_side_after' => 'L',
+        'slab1_weaker_cf_before_paise' => 500_000,
+        'slab1_weaker_cf_after_paise' => 500_000,
+        'status' => GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
+    ]);
+
+    $progress = app(GsbSlabProgressService::class)->forDistributor($dist->id);
+
+    expect($progress->forfeitedToday)->toBeTrue()
+        // Carry-forward only: the 20,000 / 16,000 BV of today's business is gone.
+        ->and($progress->leftEffectivePaise)->toBe(800_000)
+        ->and($progress->rightEffectivePaise)->toBe(0)
+        ->and($progress->slab1WeakerCfPaise)->toBe(500_000)
+        // Slab-1 progress = weaker (0) + the slab-1 store, capped by the
+        // stronger side — never today's 16,000 BV weaker leg.
+        ->and($progress->rows[0]->progressPaise)->toBe(500_000);
+});
+
+it('counts the day normally when today has a no_match row rather than a forfeit', function (): void {
+    // The guard is specific to the forfeit status: an ordinary cut-off that has
+    // already run rebuilds the opening state from its own before-snapshot and
+    // still counts the day's BV.
+    $dist = slabProgressDistributor();
+    $today = Carbon::today('Asia/Kolkata')->toDateString();
+
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id, 'date' => $today,
+        'left_bv_paise' => 600_000, 'right_bv_paise' => 400_000,
+    ]);
+    GsbCutoffResult::create([
+        'distributor_id' => $dist->id,
+        'cutoff_date' => $today,
+        'left_bv_paise' => 600_000,
+        'right_bv_paise' => 400_000,
+        'weaker_bv_paise' => 400_000,
+        'gross_gsb_paise' => 0,
+        'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 0,
+        'power_side_before' => null,
+        'power_cf_after_paise' => 600_000,
+        'power_side_after' => 'L',
+        'slab1_weaker_cf_before_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 400_000,
+        'status' => GsbCutoffResult::STATUS_NO_MATCH,
+    ]);
+
+    $progress = app(GsbSlabProgressService::class)->forDistributor($dist->id);
+
+    expect($progress->forfeitedToday)->toBeFalse()
+        ->and($progress->leftEffectivePaise)->toBe(600_000)
+        ->and($progress->rightEffectivePaise)->toBe(400_000);
+});

@@ -73,7 +73,11 @@
                         <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::format($row->left_bv_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::format($row->right_bv_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Slab {{ $row->slab }}</span>
+                            @if($row->slab)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Slab {{ $row->slab }}</span>
+                            @else
+                                <span class="text-gray-600">—</span>
+                            @endif
                         </td>
                         <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :gross="$row->gross_gsb_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_gsb_paise" :is-credited="$row->status === 'credited'" />
                         <td class="px-4 py-3 text-center">
