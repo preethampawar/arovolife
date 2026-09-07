@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
@@ -364,7 +363,7 @@ final class FortuneBonusService
                 // row is written with the SAME gross the month priced everyone
                 // else at and simply not credited; ReleaseHeldFortuneOnReactivation
                 // pays it the day the distributor fulfils.
-                if (! $this->eligibility->verdictAsOf($distributorId, BonusType::Fortune, $monthEnd)->isEligible()) {
+                if (! $this->eligibility->verdictAsOf($distributorId, $monthEnd)->isEligible()) {
                     $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, $gross, FortuneBonusResult::STATUS_REPURCHASE_HELD);
                     $held++;
 

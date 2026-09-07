@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -728,15 +727,15 @@ final class GrowthBoosterBonusService
         $this->eligibility->warmCycleCache($agpMap->keys()->map(fn ($id): int => (int) $id)->all());
 
         foreach ($agpMap as $distributorId => $agp) {
-            $status = $this->eligibility
-                ->verdictAsOf((int) $distributorId, BonusType::GrowthBooster, $asOf)
-                ->status;
+            $eligible = $this->eligibility
+                ->verdictAsOf((int) $distributorId, $asOf)
+                ->isEligible();
 
-            match ($status) {
-                IncomeEligibilityService::HOLD => $held[$distributorId] = $agp,
-                IncomeEligibilityService::BLOCKED => $suspended[$distributorId] = $agp,
-                default => $payable[$distributorId] = $agp,
-            };
+            if ($eligible) {
+                $payable[$distributorId] = $agp;
+            } else {
+                $held[$distributorId] = $agp;
+            }
         }
 
         return [$payable, $held, $suspended];

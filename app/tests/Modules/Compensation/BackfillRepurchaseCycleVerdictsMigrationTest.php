@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\IncomeEligibilityService;
 use App\Modules\Compensation\Services\RepurchaseCycleService;
@@ -69,7 +68,7 @@ it('leaves a legacy completed cycle eligible for every date after it closed', fu
     runVerdictBackfill();
 
     expect(app(IncomeEligibilityService::class)
-        ->verdictAsOf($dist->id, BonusType::Gsb, Carbon::parse('2026-06-15'))->isEligible())
+        ->verdictAsOf($dist->id, Carbon::parse('2026-06-15'))->isEligible())
         ->toBeTrue();
 });
 

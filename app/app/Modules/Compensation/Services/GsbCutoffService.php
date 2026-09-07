@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -313,7 +312,7 @@ final class GsbCutoffService
         // does. Frozen distributors are exempt — their branch never credits.
         $verdict = $isFrozen
             ? RepurchaseVerdict::eligible()
-            : $this->eligibility->verdictAsOf($distributorId, BonusType::Gsb, $date);
+            : $this->eligibility->verdictAsOf($distributorId, $date);
 
         $eligibility = $verdict->status;
 
@@ -534,9 +533,7 @@ final class GsbCutoffService
 
                 return $this->saveResult($existing, [
                     ...$baseData,
-                    'status' => $computation->eligibility === IncomeEligibilityService::BLOCKED
-                        ? GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED
-                        : GsbCutoffResult::STATUS_REPURCHASE_HELD,
+                    'status' => GsbCutoffResult::STATUS_REPURCHASE_HELD,
                 ]);
             });
         }

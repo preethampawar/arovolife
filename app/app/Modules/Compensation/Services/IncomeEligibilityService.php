@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\DTOs\RepurchaseVerdict;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
@@ -13,38 +12,33 @@ use Illuminate\Support\Collection;
 use Laravel\Pennant\Feature;
 
 /**
- * Decides, from a distributor's repurchase cycles, whether a bonus may be paid
- * on a given date.
+ * Answers one question, in the two shapes its callers need it: was this
+ * distributor's repurchase obligation failed on this day?
  *
- * Client 2026-09-06, rules 6–8: a failed repurchase cycle withholds GSB, Rank
- * Bonus, Growth Booster and Fortune. Mentorship is always paid, and ADC and
- * Awards & Rewards are outside the repurchase condition entirely. Withheld
- * income is HELD, not forfeited — it is released the moment the distributor
- * fulfils the obligation (rule 8), which is why nothing here returns BLOCKED
- * any more.
+ * Client spec 2026-09-07 §2 — a failed day is FORFEITED, not held. The day's
+ * group BV is never added and the income that would have followed from it is
+ * lost permanently; nothing is released later. Which days are lost is decided
+ * in exactly one place, {@see RepurchaseCycle::forfeitedWindow()}; both methods
+ * here read it rather than re-deriving the arithmetic, so a daily engine asking
+ * "is 25 Aug forfeited?" and a monthly rank sum asking "which days of August
+ * were forfeited?" can never disagree.
  *
  * The verdict is a function of a DATE, not of "the newest cycle row". A monthly
  * engine re-running August must reach the verdict August's run reached, and a
- * distributor who failed on 9 Aug and fulfilled on 19 Aug was held for exactly
- * those ten days. `fulfilled_on` on the cycle row is what makes that
- * answerable after the fact.
+ * distributor who failed on 9 Aug and fulfilled on 19 Aug lost exactly those
+ * ten days. `fulfilled_on` on the cycle row is what makes that answerable after
+ * the fact.
  *
  * The whole thing is gated by the {@see RepurchaseEngineFeature} flag, so when
- * the engine is off everyone is eligible and existing runs are unchanged.
+ * the engine is off nothing is ever forfeited and existing runs are unchanged.
  */
 final class IncomeEligibilityService
 {
-    /** Pay the bonus normally. */
+    /** The day counts normally. */
     public const ELIGIBLE = 'eligible';
 
-    /** Calculate the bonus but do not credit it yet — released on fulfilment. */
-    public const HOLD = 'hold';
-
-    /**
-     * Forfeited. No longer produced (rule 8 pays held income back); retained
-     * because result rows written before that decision carry it.
-     */
-    public const BLOCKED = 'blocked';
+    /** The day fell inside a failed cycle's window — its BV and income are lost. */
+    public const FORFEITED = 'forfeited';
 
     /** @var array<int, Collection<int, RepurchaseCycle>> Cycles per distributor, newest first. */
     private array $cycleCache = [];
@@ -82,32 +76,18 @@ final class IncomeEligibilityService
     }
 
     /**
-     * Bonuses withheld on repurchase non-compliance (client rule 7: GSB, Rank,
-     * Growth Booster and Fortune are suspended; MSB is the one of the five that
-     * keeps paying). ADC and Awards & Rewards are exempt by rule 6.
-     */
-    public function suspends(BonusType $bonus): bool
-    {
-        return in_array(
-            $bonus,
-            [BonusType::Gsb, BonusType::Fortune, BonusType::GrowthBooster, BonusType::Rank],
-            true,
-        );
-    }
-
-    /**
-     * Repurchase standing for $bonus on $asOf. This is a READ — it reflects the
-     * cycle state maintained by the daily `repurchase:evaluate` command (the
-     * sole writer), so bonus runs never mutate cycle state or fire events.
+     * Repurchase standing on $asOf. This is a READ — it reflects the cycle
+     * state maintained by the daily `repurchase:evaluate` command (the sole
+     * writer), so bonus runs never mutate cycle state or fire events.
      *
-     * Eligible when the engine is off, the bonus is never withheld
-     * (Mentorship/ADC/Awards), or the distributor has no cycle covering $asOf
-     * (pre-600-BV, or not yet evaluated → fail open, so a lagging daily command
-     * can never silently withhold everyone's income).
+     * Eligible when the engine is off, when the distributor has no cycle
+     * covering $asOf (pre-600-BV, or not yet evaluated → fail open, so a lagging
+     * daily command can never silently forfeit everyone's income), and when the
+     * governing cycle forfeited no days or forfeited days other than this one.
      */
-    public function verdictAsOf(int $distributorId, BonusType $bonus, Carbon $asOf): RepurchaseVerdict
+    public function verdictAsOf(int $distributorId, Carbon $asOf): RepurchaseVerdict
     {
-        if (! $this->engineActive() || ! $this->suspends($bonus)) {
+        if (! $this->engineActive()) {
             return RepurchaseVerdict::eligible();
         }
 
@@ -118,29 +98,73 @@ final class IncomeEligibilityService
             return RepurchaseVerdict::eligible();
         }
 
-        // Inside its own window a cycle is never a hold: the obligation is not
-        // yet due, and condition (B) is not even knowable until the last day.
-        if ($asOf->lessThanOrEqualTo($cycle->due_date->copy()->startOfDay())) {
+        $window = $cycle->forfeitedWindow();
+
+        if ($window === null) {
             return RepurchaseVerdict::eligible($cycle->id);
         }
 
-        // Past the window. The distributor was held from the day after it ended
-        // until the day they fulfilled — a cycle fulfilled on or before its due
-        // date never held anything.
-        if ($cycle->fulfilledOnTime()) {
+        [$start, $end] = $window;
+
+        if ($asOf->lessThan($start) || ($end !== null && $asOf->greaterThan($end))) {
             return RepurchaseVerdict::eligible($cycle->id);
         }
 
-        return RepurchaseVerdict::held($cycle->failure_reason, $cycle->id);
+        return RepurchaseVerdict::forfeited($cycle->failure_reason, $cycle->id);
     }
 
     /**
-     * Repurchase standing today. Kept for callers that genuinely mean "right
-     * now" — a UI badge, an ad-hoc admin read.
+     * Every distributor's forfeited days between $from and $to, clipped to that
+     * range — what a monthly engine needs in order to subtract the lost days
+     * from a month's group BV in one query instead of 31 per distributor.
+     *
+     * Keyed by distributor id; distributors who forfeited nothing in the range
+     * are simply absent. Ranges are inclusive `[start, end]` date strings and,
+     * because cycle windows never overlap, disjoint and in date order.
+     *
+     * @return array<int, list<array{0: string, 1: string}>>
      */
-    public function statusFor(int $distributorId, BonusType $bonus): string
+    public function forfeitedDayRanges(Carbon $from, Carbon $to): array
     {
-        return $this->verdictAsOf($distributorId, $bonus, Carbon::today())->status;
+        if (! $this->engineActive()) {
+            return [];
+        }
+
+        $from = $from->copy()->startOfDay();
+        $to = $to->copy()->startOfDay();
+
+        // Narrow to cycles that could possibly overlap the range before asking
+        // forfeitedWindow(): resolved (an unresolved cycle forfeits nothing),
+        // due before the range ends (or its window starts past $to), and either
+        // still unfulfilled or fulfilled late and after the range starts.
+        $cycles = RepurchaseCycle::query()
+            ->whereNotNull('resolved_at')
+            ->whereDate('due_date', '<', $to->toDateString())
+            ->where(fn ($q) => $q->whereNull('fulfilled_on')->orWhereColumn('fulfilled_on', '>', 'due_date'))
+            ->where(fn ($q) => $q->whereNull('fulfilled_on')->orWhereDate('fulfilled_on', '>', $from->toDateString()))
+            ->orderBy('due_date')
+            ->get(['distributor_id', 'due_date', 'fulfilled_on', 'resolved_at']);
+
+        $ranges = [];
+
+        foreach ($cycles as $cycle) {
+            $window = $cycle->forfeitedWindow();
+
+            if ($window === null) {
+                continue;
+            }
+
+            [$start, $end] = $window;
+
+            $start = $start->greaterThan($from) ? $start : $from->copy();
+            $end = ($end === null || $end->greaterThan($to)) ? $to->copy() : $end;
+
+            if ($start->lessThanOrEqualTo($end)) {
+                $ranges[(int) $cycle->distributor_id][] = [$start->toDateString(), $end->toDateString()];
+            }
+        }
+
+        return $ranges;
     }
 
     /**

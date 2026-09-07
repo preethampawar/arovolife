@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Listeners\ReleaseHeldRankBonusOnReactivation;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
@@ -222,7 +221,7 @@ final class RankBonusService
             $repurchaseHeldIds = array_values(array_filter(
                 $payableIds,
                 fn (int $id): bool => ! $this->eligibility
-                    ->verdictAsOf($id, BonusType::Rank, $monthEnd)
+                    ->verdictAsOf($id, $monthEnd)
                     ->isEligible(),
             ));
 

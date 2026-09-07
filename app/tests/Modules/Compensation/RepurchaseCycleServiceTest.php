@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
-use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Events\IncomeSuspended;
 use App\Modules\Compensation\Models\GroupBvDaily;
@@ -474,37 +473,129 @@ it('forfeitedWindow is null on time, [due + 1, fulfilled − 1] when late, null 
     expect($open->forfeitedWindow())->toBeNull();
 });
 
-it('withholds GSB, Rank, Growth Booster and Fortune — never Mentorship', function (): void {
-    // Client rule 7: MSB is the one of the five that keeps paying.
-    $svc = app(IncomeEligibilityService::class);
-
-    expect($svc->suspends(BonusType::Gsb))->toBeTrue();
-    expect($svc->suspends(BonusType::Rank))->toBeTrue();
-    expect($svc->suspends(BonusType::GrowthBooster))->toBeTrue();
-    expect($svc->suspends(BonusType::Fortune))->toBeTrue();
-    expect($svc->suspends(BonusType::Mentorship))->toBeFalse();
-    expect($svc->suspends(BonusType::Arete))->toBeFalse();
-    expect($svc->suspends(BonusType::LifetimeAwards))->toBeFalse();
-});
-
 it('answers eligibility for a past date from the cycle that governed it', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 60_000, '2026-01-05');
-    seedSelfPurchase($dist->id, 60_000, '2026-03-15'); // fulfils the failed 02-04 window late
+    seedSelfPurchase($dist->id, 60_000, '2026-03-15'); // fulfils the failed 02-05 window late
 
     svc()->evaluate($dist->id, Carbon::parse('2026-03-20'));
 
     $svc = app(IncomeEligibilityService::class);
 
-    // Inside the failed window nothing was due yet.
-    expect($svc->verdictAsOf($dist->id, BonusType::Gsb, Carbon::parse('2026-02-20'))->isEligible())->toBeTrue();
-    // In the gap between the window ending and the late fulfilment, income was held.
-    expect($svc->verdictAsOf($dist->id, BonusType::Gsb, Carbon::parse('2026-03-10'))->isEligible())->toBeFalse();
+    // Inside the window that later failed, nothing was due yet.
+    expect($svc->verdictAsOf($dist->id, Carbon::parse('2026-02-20'))->isEligible())->toBeTrue();
+    // Between the window closing and the late fulfilment, the day is forfeited.
+    expect($svc->verdictAsOf($dist->id, Carbon::parse('2026-03-10'))->isEligible())->toBeFalse();
     // From the re-anchored window onward, eligible again.
-    expect($svc->verdictAsOf($dist->id, BonusType::Gsb, Carbon::parse('2026-03-16'))->isEligible())->toBeTrue();
-    // Mentorship is never gated, even in the gap.
-    expect($svc->verdictAsOf($dist->id, BonusType::Mentorship, Carbon::parse('2026-03-10'))->isEligible())->toBeTrue();
+    expect($svc->verdictAsOf($dist->id, Carbon::parse('2026-03-16'))->isEligible())->toBeTrue();
+});
+
+// ── Forfeited days (client spec §2) ─────────────────────────────────────────
+
+/** A resolved cycle row, straight from the calendar dates the client's examples use. */
+function seedCycle(int $distributorId, string $start, string $due, ?string $fulfilledOn, ?string $resolvedAt = '00:05:00'): RepurchaseCycle
+{
+    return RepurchaseCycle::create([
+        'distributor_id' => $distributorId,
+        'cycle_start_date' => $start,
+        'due_date' => $due,
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => $fulfilledOn === null ? 0 : 60_000,
+        'status' => match (true) {
+            $resolvedAt === null => RepurchaseCycle::STATUS_ACTIVE,
+            $fulfilledOn === null => RepurchaseCycle::STATUS_SUSPENDED,
+            default => RepurchaseCycle::STATUS_COMPLETED,
+        },
+        'fulfilled_on' => $fulfilledOn,
+        'failure_reason' => $resolvedAt !== null && $fulfilledOn === null ? RepurchaseCycle::REASON_BV_SHORT : null,
+        'resolved_at' => $resolvedAt === null ? null : Carbon::parse($due)->addDay()->toDateString().' '.$resolvedAt,
+    ]);
+}
+
+it('forfeits Aug 24–26 for a cycle due Aug 23 fulfilled Aug 27 (RB example 3)', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $dist = Distributor::factory()->create();
+    seedCycle($dist->id, '2026-07-24', '2026-08-23', '2026-08-27');
+
+    expect(app(IncomeEligibilityService::class)
+        ->forfeitedDayRanges(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31')))
+        ->toBe([$dist->id => [['2026-08-24', '2026-08-26']]]);
+});
+
+it('runs an unresolved failure to the end of the asked window', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $dist = Distributor::factory()->create();
+    seedCycle($dist->id, '2026-07-24', '2026-08-23', null);
+
+    expect(app(IncomeEligibilityService::class)
+        ->forfeitedDayRanges(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31')))
+        ->toBe([$dist->id => [['2026-08-24', '2026-08-31']]]);
+});
+
+it('clips a window that started before the asked range', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $dist = Distributor::factory()->create();
+    seedCycle($dist->id, '2026-06-20', '2026-07-20', '2026-08-10'); // forfeited 21 Jul – 9 Aug
+
+    expect(app(IncomeEligibilityService::class)
+        ->forfeitedDayRanges(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31')))
+        ->toBe([$dist->id => [['2026-08-01', '2026-08-09']]]);
+});
+
+it('returns two ranges for two consecutive failed cycles', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $dist = Distributor::factory()->create();
+    seedCycle($dist->id, '2026-06-05', '2026-07-05', '2026-07-10'); // forfeited 6–9 Jul
+    seedCycle($dist->id, '2026-07-10', '2026-08-09', '2026-08-15'); // forfeited 10–14 Aug
+
+    expect(app(IncomeEligibilityService::class)
+        ->forfeitedDayRanges(Carbon::parse('2026-07-01'), Carbon::parse('2026-09-30')))
+        ->toBe([$dist->id => [['2026-07-06', '2026-07-09'], ['2026-08-10', '2026-08-14']]]);
+});
+
+it('agrees day for day with verdictAsOf across August', function (): void {
+    // One predicate, two shapes: the daily engine asks verdictAsOf() and the
+    // monthly rank sum asks forfeitedDayRanges(). They must never disagree.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $dist = Distributor::factory()->create();
+    seedCycle($dist->id, '2026-07-24', '2026-08-23', '2026-08-27');
+    seedCycle($dist->id, '2026-08-27', '2026-09-26', null, resolvedAt: null); // still running
+
+    $svc = app(IncomeEligibilityService::class);
+
+    $fromRanges = [];
+    foreach ($svc->forfeitedDayRanges(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31'))[$dist->id] ?? [] as [$start, $end]) {
+        foreach (Carbon::parse($start)->toPeriod(Carbon::parse($end)) as $day) {
+            $fromRanges[] = $day->toDateString();
+        }
+    }
+
+    $fromVerdict = [];
+    foreach (Carbon::parse('2026-08-01')->toPeriod(Carbon::parse('2026-08-31')) as $day) {
+        if (! $svc->verdictAsOf($dist->id, $day)->isEligible()) {
+            $fromVerdict[] = $day->toDateString();
+        }
+    }
+
+    expect($fromVerdict)->toBe($fromRanges)
+        ->and($fromVerdict)->toBe(['2026-08-24', '2026-08-25', '2026-08-26']);
+});
+
+it('forfeits nothing for a cycle fulfilled on time, and nothing at all when the engine is off', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $dist = Distributor::factory()->create();
+    $onTime = seedCycle($dist->id, '2026-07-24', '2026-08-23', '2026-08-23');
+    $svc = app(IncomeEligibilityService::class);
+
+    expect($svc->forfeitedDayRanges(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31')))->toBe([]);
+
+    // A real failure, with the engine switched off: no forfeits anywhere.
+    $onTime->update(['fulfilled_on' => '2026-08-27']);
+    Feature::for(null)->deactivate(RepurchaseEngineFeature::class);
+
+    expect($svc->forfeitedDayRanges(Carbon::parse('2026-08-01'), Carbon::parse('2026-08-31')))->toBe([])
+        ->and($svc->verdictAsOf($dist->id, Carbon::parse('2026-08-25'))->isEligible())->toBeTrue();
 });
 
 // ── GSB cut-off gate ────────────────────────────────────────────────────────
