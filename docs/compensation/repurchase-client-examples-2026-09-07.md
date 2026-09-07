@@ -1,0 +1,194 @@
+# Repurchase system — client worked examples and clarifications (2026-09-07)
+
+**Status:** spec received; NOT yet implemented. Supersedes the "rules 1–9"
+hold-and-release model the 2026-09-06 branch work
+(`fix/compensation-frozen-roster-and-monthly-close`, uncommitted) was built on.
+
+**Sources**
+
+- Client Google Doc "New Arovolife — Re-purchase system" (Drive file
+  `1_LVrHDFeKlRNujCKMDQm5Hp5MnTtP1ye`): GSB examples 1–2, RB examples 1–3, the
+  "students and examinations" analogy. Dates are on the August 2026 calendar.
+- Client answers to our four questions, relayed 2026-09-07 (quoted in §6).
+
+---
+
+## 1. The cycle
+
+| Rule | Value | Evidence |
+|---|---|---|
+| Anchor | The day the distributor first reaches 600 BV of personal purchase. That day is **day 0** of the first cycle. | "completed his 600-BV on July 7th, therefore his Beginning Date is July 7th"; answer 4 |
+| Length | **due_date = start + 30 days** (inclusive end). Jul 7 → Aug 6, Jul 13 → Aug 12, Jul 24 → Aug 23, Aug 9 → Sep 8, Aug 17 → Sep 16, Aug 27 → Sep 26 — all six examples are exactly start + 30. | Doc; answer 4 |
+| Condition A | Self-purchase BV inside `[start, due]` ≥ the rank's obligation (600 BV non-ranked; per-rank table otherwise). | Answer 2 (A) |
+| Condition B | Repurchase wallet = ₹0 at the end of `due_date`. | Answer 2 (B): "100% apply" |
+| Verdict | Taken once, on `due_date`; both conditions must hold. | Answer 2 |
+| On-time pass | Next cycle starts `due + 1`. | Unchanged (not contradicted) |
+| Fail | From `due + 1` the distributor is **failed** until the first day both conditions hold again (the *fulfilment day*). | Doc examples |
+| Late fulfilment | A fresh cycle starts **on** the fulfilment day: `start = fulfilled_on`, `due = fulfilled_on + 30`. | "reset to a fresh 30-day cycle starting from August 27 and extending to September 26"; answer 4 |
+| Grace | **None.** Failure begins the day after `due_date`. There is no grace window and no "10-day grace". | Doc: 7 Aug fails for a 6 Aug due date |
+| Month-end shortness | Not an issue: the window is a day count, never "same date next month". | Answer 4 |
+
+**Assumption A1 (not contradicted, kept from the branch):** late fulfilment is
+measured cumulatively — BV from the failed cycle's `start` up to the day in
+question, wallet from the frozen due-date balance plus daily movement — and
+completes on the first day both conditions hold.
+
+---
+
+## 2. What a failed day does — forfeit, never hold
+
+The mechanism is a **per-day exclusion of group BV**, and income follows from
+BV. It is not a hold on income, and nothing is released later.
+
+> "for those who have failed to repurchase BVs on time, the business BVs in
+> their left and right genos are not added to them, and therefore they lose
+> the income related to it." — the analogy
+>
+> "he permanently lost the Business Volume (BV) associated with those three
+> days" — answer 4
+
+For every day `d` with `due + 1 ≤ d ≤ fulfilled_on − 1`:
+
+### 2.1 GSB (daily)
+
+- No slab match is attempted for that distributor on `d`. No income, ever.
+- The day's left and right group BV is **not added** to either carry-forward.
+  Both stores — the slab-1 weaker accumulator and the power-side carry-forward
+  — stay exactly as they stood at the end of `due_date`.
+- On the fulfilment day, the cut-off resumes normally and that day's BV is
+  added on top of the preserved carry-forward ("the BVs from that day will be
+  credited to the old ones").
+- Record the day for reporting (a zero-income result row in a `forfeited`
+  state) so the daily calculation report and the distributor's My Business
+  page can show why the day paid nothing.
+
+Answer 3, verbatim: *"the BVs on both sides of the left genos and right genos
+at that time will stop there as assets. Again, on the day the repurchase
+condition is satisfied, the BVs from that day will be credited to the old
+ones."*
+
+### 2.2 Rank Bonus (monthly)
+
+- Rank qualification for a calendar month sums group BV **only over days on
+  which the distributor was not failed**. Failed days' group BV is excluded
+  from the left/right target permanently.
+- Rank Bonus income is **never withheld** by the repurchase state. If the rank
+  is achieved on the surviving BV, the bonus is credited on the 1st and paid
+  on the 8th as usual — even if the distributor is still failed at month end.
+
+| RB example | Cycle | BV counted | Verdict |
+|---|---|---|---|
+| 1 | Jul 24–Aug 23; no repurchase 24–31 Aug | 1–23 Aug: L 2.8L / R 2.9L | Rank 1 granted; paid 8 Sep |
+| 2 | same | 1–23 Aug: L 2.1L / R 2.9L | not granted (left short) |
+| 3 | fails 24–26 Aug, fulfils 27 Aug | 1–23 Aug + 27–31 Aug: L 2.3L + 0.2L / R 3.0L | Rank 1 granted; paid 8 Sep; new cycle 27 Aug–26 Sep |
+
+### 2.3 Growth Booster, Fortune
+
+Not covered by the doc. **Assumption A2 (to confirm with the client):** the
+same per-day model applies — a failed day simply produces no GSB slab match,
+so no AGP and no Fortune slab-achievement for that day — and there is **no**
+month-end hold of the GBB or Fortune payout by the repurchase state. The
+separate month-end **wallet = ₹0** gates on GBB, Fortune, rank
+requalification and AO-GO (client 2026-09-05) are unchanged.
+
+### 2.4 Unaffected
+
+Mentorship, ADC and Awards & Rewards are outside the repurchase condition.
+
+---
+
+## 3. Weekly payout — Wednesday-to-Tuesday earning week, paid one Tuesday later
+
+> "the daily closing weekly payout cycle starts every Wednesday and closes on
+> Tuesday … eligible earnings accrued between Wednesday, August 5, and
+> Tuesday, August 11, into their accounts on Tuesday, August 18, following a
+> one-week cooling-off period." — answer 1
+
+- Earning week: **Wednesday → Tuesday** (inclusive), keyed on the day the
+  income was **earned** (the GSB cut-off date, not the wallet credit time —
+  Tuesday's cut-off is credited at 00:10 on Wednesday).
+- Payment: the **Tuesday one week after** the earning week closes. The batch
+  dated Tuesday `T` sweeps Group A entries earned on or before `T − 7`.
+- Check: 6 Aug (Thu) and 11 Aug (Tue) both fall in the week 5–11 Aug → paid
+  18 Aug ✔. 18 Aug (Tue) falls in 12–18 Aug → paid 25 Aug ✔.
+- **Assumption A3:** the rule covers both Group A types, GSB and Mentorship
+  ("daily closing weekly payout" is the whole Group A batch).
+- **Copy rule:** never call this week a "cooling-off period" in distributor
+  copy. Cooling-off is the statutory 30-day cancellation window (hard rule 5).
+  Use "payout processing week" or "paid the Tuesday after the week closes".
+
+---
+
+## 4. What the current branch does differently (must change)
+
+| # | Current branch (2026-09-06 work) | Required |
+|---|---|---|
+| 1 | Failed-day income is calculated, marked `repurchase_held`, kept in the Rank/GBB denominator and **released in full** on fulfilment by four `ReleaseHeld*OnReactivation` listeners. `IncomeEligibilityService` never returns BLOCKED. | Forfeit. No held rows, no release, no listeners. Failed days contribute nothing. |
+| 2 | `due_date = start + (cycle_days − 1)` = start + 29 with the 30 default. | `due_date = start + 30`. Every example is off by one otherwise. |
+| 3 | GSB on a failed day consumes the weaker leg and advances the power carry-forward as if matched (the "frozen path" shape). | Do not touch either carry-forward; do not add the day's BV. |
+| 4 | Rank qualification sums `group_bv_daily` over the whole month. | Exclude each distributor's failed days. |
+| 5 | Rank Bonus writes `repurchase_held` for an achiever whose month-end verdict is failed. | Never held. Credit and pay normally. |
+| 6 | `grace_end_date`, `STATUS_GRACE`, `comp.repurchase.grace_days`. | No grace. Failed from `due + 1`. |
+| 7 | Weekly batch sweeps every unswept Group A entry as of the batch Tuesday. | Sweep only entries earned on or before batch date − 7. |
+
+Unchanged and correct: the 600-BV anchor, the one-time verdict at the window
+end with frozen `wallet_balance_paise` / `wallet_zeroed`, re-anchoring on the
+fulfilment day, the date-based verdict (`verdictAsOf`) that lets a month be
+re-run to the same answer, the repurchase deduction at credit time, the
+`bonus_month` cap windowing, and the frozen pool + roster (R-72 is untouched
+by this doc).
+
+Because the branch work is uncommitted, the hold-and-release pieces should be
+**removed** from it rather than reversed by a second migration: the
+`repurchase_held` enum additions for Rank and Fortune
+(`2026_09_06_100001_…`), the two new release listeners and the two existing
+ones, and the "held stays in the denominator" pricing in Rank Bonus and GBB.
+
+---
+
+## 5. Open assumptions to confirm with the client
+
+- **A2** — GBB and Fortune follow the per-day model with no month-end hold
+  (§2.3). *Different answer = different code in two engines.*
+- **A3** — Mentorship is paid on the same Wednesday–Tuesday, plus-one-week
+  schedule as GSB (§3).
+- **A1** — Late fulfilment counts BV cumulatively from the failed cycle's
+  start (§1).
+
+---
+
+## 6. Client answers, verbatim (2026-09-07)
+
+**Q1 — payout date.** "rule sir. … In our company, the daily closing weekly
+payout cycle starts every Wednesday and closes on Tuesday. … The company will
+deposit eligible earnings accrued between Wednesday, August 5, and Tuesday,
+August 11, into their accounts on Tuesday, August 18, following a one-week
+cooling-off period. Similarly, we will deposit eligible earnings from
+Wednesday, August 12 to Tuesday, August 18 into their account on Tuesday,
+August 25, after a one-week cooling period."
+
+**Q2 — wallet = 0.** "100% apply sir / yes. The distributor will have to prove
+his repurchase condition in two ways. A) The Distributor must generate BVs
+equal to or greater than his eligibility from multiple purchases for his
+personal needs within his 30-day repurchase period. B) The distributor must
+clear his repurchase wallet to 0 on the last day of his repurchase period (30
+days)."
+
+**Q3 — carry-forward on a failed day.** "Yes, continue sir. If the repurchase
+condition is not satisfied on the last day of the repurchase cycle, then the
+BVs on both sides of the left genos and right genos at that time will stop
+there as assets. Again, on the day the repurchase condition is satisfied, the
+BVs from that day will be credited to the old ones. Please develop this
+method, sir."
+
+**Q4 — anchor on the 31st.** "Since we consider the day a distributor in our
+company generates a bill exceeding 600 BV as the first day of the cycle, we
+request you to calculate the 30-day period starting from that date. Similarly,
+I request that a 30-day period be determined, calculated from the date the
+distributor fulfills their repurchase conditions. … Distributor C's repurchase
+period needs to be reset. Previously, the period ran from July 24 to August
+23; however, he failed to make a repurchase on the 24th, 25th, and 26th,
+finally completing it on August 27. Since he permanently lost the Business
+Volume (BV) associated with those three days, his repurchase period must be
+reset to a fresh 30-day cycle starting from August 27 and extending to
+September 26."

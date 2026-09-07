@@ -2,17 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
-use App\Modules\Compensation\Models\RepurchaseMonthlySnapshot;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\RankBonusService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -448,32 +451,42 @@ it('still freezes a month whose legacy rows moved no money', function (): void {
 });
 
 /**
- * A wallet-blocked achiever keeps their place in the denominator but is written
- * with gross 0. The frozen row used to bill their unspent share to payout_paise,
- * overstating what the month paid and understating leftover_paise.
+ * Client 2026-09-06 rule 7 adds Rank Bonus to the withheld four, and rule 8 pays
+ * the withheld amount on fulfilment — so a repurchase-held achiever is priced at
+ * the month's full rate and stays in the denominator. The frozen pool must still
+ * reconcile: payout + leftover = pool, and payout = Σ roster gross.
  */
-it('reconciles the frozen payout and leftover against the roster when an achiever is wallet-blocked', function (): void {
+it('prices a repurchase-held achiever at the full rate and still reconciles the frozen pool', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
     $month = Carbon::parse('2026-06-01');
     seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
 
     $paid = Distributor::factory()->create();
-    $blocked = Distributor::factory()->create();
+    $held = Distributor::factory()->create();
     $rank2Paid = Distributor::factory()->create();
-    $rank2Blocked = Distributor::factory()->create();
+    $rank2Held = Distributor::factory()->create();
 
     seedRankQualification($paid->id, rank: 1, monthStart: '2026-06-01');
-    seedRankQualification($blocked->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($held->id, rank: 1, monthStart: '2026-06-01');
     seedRankQualification($rank2Paid->id, rank: 2, monthStart: '2026-06-01');
-    seedRankQualification($rank2Blocked->id, rank: 2, monthStart: '2026-06-01');
+    seedRankQualification($rank2Held->id, rank: 2, monthStart: '2026-06-01');
 
-    // June closed with an unspent repurchase wallet → income accrues, no credit.
-    foreach ([$blocked->id, $rank2Blocked->id] as $distributorId) {
-        RepurchaseMonthlySnapshot::create([
+    // A repurchase window that closed on 30 May unfulfilled — so these two were
+    // still failed on 30 June, the date the month is judged at.
+    foreach ([$held->id, $rank2Held->id] as $distributorId) {
+        RepurchaseCycle::create([
             'distributor_id' => $distributorId,
-            'cycle_month' => '2026-06-01',
-            'balance_paise' => 50_000,
-            'was_zeroed' => false,
-            'snapshotted_at' => Carbon::parse('2026-07-01 00:05:00'),
+            'cycle_start_date' => '2026-05-01',
+            'due_date' => '2026-05-30',
+            'grace_end_date' => '2026-05-30',
+            'required_bv_paise' => 60_000,
+            'completed_bv_paise' => 0,
+            'wallet_balance_paise' => 50_000,
+            'wallet_zeroed' => false,
+            'status' => RepurchaseCycle::STATUS_SUSPENDED,
+            'failure_reason' => RepurchaseCycle::REASON_BOTH,
+            'resolved_at' => Carbon::parse('2026-05-31 00:05:00'),
         ]);
     }
 
@@ -487,19 +500,57 @@ it('reconciles the frozen payout and leftover against the roster when an achieve
         expect((int) $pool->payout_paise)->toBe($rosterGross)
             ->and((int) $pool->payout_paise + (int) $pool->leftover_paise)->toBe((int) $pool->pool_paise)
             ->and((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0)
-            // The blocked achiever stays in the denominator — that is a separate
-            // product decision and must not have moved.
             ->and((int) $pool->payable_count)->toBe(2);
     }
 
-    // Half the Rank-1 pool is paid, half goes unspent with the blocked achiever.
+    // The whole Rank-1 pool is committed — half of it waiting on a fulfilment.
     $rank1 = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->firstOrFail();
-    expect((int) $rank1->payout_paise)->toBe(700_000)
-        ->and((int) $rank1->leftover_paise)->toBe(700_000);
+    expect((int) $rank1->payout_paise)->toBe(1_400_000)
+        ->and((int) $rank1->leftover_paise)->toBe(0);
 
-    expect((int) RankBonusResult::where('distributor_id', $blocked->id)->value('gross_paise'))->toBe(0)
-        ->and(RankBonusResult::where('distributor_id', $blocked->id)->value('status'))
-        ->toBe(RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+    // Held and paid carry the same gross; only the status differs.
+    expect((int) RankBonusResult::where('distributor_id', $held->id)->value('gross_paise'))->toBe(700_000)
+        ->and(RankBonusResult::where('distributor_id', $held->id)->value('status'))
+        ->toBe(RankBonusResult::STATUS_REPURCHASE_HELD)
+        ->and(RankBonusResult::where('distributor_id', $paid->id)->value('status'))
+        ->toBe(RankBonusResult::STATUS_CREDITED);
+
+    // Nothing reached the held distributor's wallet.
+    expect(app(WalletService::class)->balancePaise($held->id))->toBe(0);
+});
+
+it('releases a held Rank Bonus row when the distributor fulfils the repurchase', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $month = Carbon::parse('2026-06-01');
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+
+    $held = Distributor::factory()->create();
+    seedRankQualification($held->id, rank: 1, monthStart: '2026-06-01');
+
+    $cycle = RepurchaseCycle::create([
+        'distributor_id' => $held->id,
+        'cycle_start_date' => '2026-05-01',
+        'due_date' => '2026-05-30',
+        'grace_end_date' => '2026-05-30',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'wallet_balance_paise' => 50_000,
+        'wallet_zeroed' => false,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'failure_reason' => RepurchaseCycle::REASON_BOTH,
+        'resolved_at' => Carbon::parse('2026-05-31 00:05:00'),
+    ]);
+
+    app(RankBonusService::class)->runForMonth($month);
+
+    $row = RankBonusResult::where('distributor_id', $held->id)->firstOrFail();
+    expect($row->status)->toBe(RankBonusResult::STATUS_REPURCHASE_HELD);
+
+    event(new IncomeReactivated($held->id, $cycle->id));
+
+    expect($row->fresh()->status)->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and(app(WalletService::class)->balancePaise($held->id))->toBeGreaterThan(0);
 });
 
 it('keeps a premature freeze once something it funded was credited', function (): void {

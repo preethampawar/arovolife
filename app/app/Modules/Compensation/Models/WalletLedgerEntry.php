@@ -41,7 +41,7 @@ final class WalletLedgerEntry extends Model
      * models: those are compared straight against a 'Y-m-d' string in a plain
      * where(), which the cast's 'Y-m-d 00:00:00' serialisation would silently
      * break. This column is never used that way — it is only ever read through
-     * whereDate(), exactly as RepurchaseMonthlySnapshot::$cycle_month is.
+     * whereDate(), exactly as RepurchaseCycle's date columns are.
      */
     protected function casts(): array
     {

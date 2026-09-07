@@ -121,7 +121,6 @@ it('runs the eight crediting engines in the declared order', function (): void {
 
     expect($exitCode)->toBe(0);
     expect(StubEngineCommand::$calls)->toBe([
-        'repurchase.snapshot',
         'rank.check',
         'rank.bonus',
         'gbb.monthly',
@@ -162,10 +161,10 @@ it('records every step against the same period the scheduler would', function ()
     }
 });
 
-it('resumes past step 1 when a scheduled run already froze the month', function (): void {
-    // Exactly the row the 00:06 scheduled snapshot leaves behind.
+it('resumes past step 1 when a scheduled run already completed it', function (): void {
+    // Exactly the row the scheduled rank check leaves behind.
     EngineRun::create([
-        'engine_key' => 'repurchase.snapshot',
+        'engine_key' => 'rank.check',
         'period_start' => Carbon::parse('2026-08-01'),
         'status' => EngineRun::STATUS_SUCCEEDED,
         'trigger' => EngineRun::TRIGGER_CONSOLE,
@@ -176,8 +175,8 @@ it('resumes past step 1 when a scheduled run already froze the month', function 
     $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
 
     expect($exitCode)->toBe(0);
-    expect(StubEngineCommand::$calls)->not->toContain('repurchase.snapshot');
-    expect(EngineRun::where('engine_key', 'repurchase.snapshot')->count())->toBe(1);
+    expect(StubEngineCommand::$calls)->not->toContain('rank.check');
+    expect(EngineRun::where('engine_key', 'rank.check')->count())->toBe(1);
 });
 
 it('aborts at the first non-zero exit and never reaches the later steps', function (): void {
@@ -187,7 +186,6 @@ it('aborts at the first non-zero exit and never reaches the later steps', functi
 
     expect($exitCode)->toBe(Command::FAILURE);
     expect(StubEngineCommand::$calls)->toBe([
-        'repurchase.snapshot',
         'rank.check',
         'rank.bonus',
         'gbb.monthly',
@@ -218,7 +216,7 @@ it('resumes at the failed step and leaves the rows the earlier steps wrote untou
     Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
 
     $before = EngineRun::query()
-        ->whereIn('engine_key', ['repurchase.snapshot', 'rank.check', 'rank.bonus', 'gbb.monthly'])
+        ->whereIn('engine_key', ['rank.check', 'rank.bonus', 'gbb.monthly'])
         ->orderBy('id')
         ->get()
         ->map(fn (EngineRun $run): array => [
@@ -231,7 +229,7 @@ it('resumes at the failed step and leaves the rows the earlier steps wrote untou
         ])
         ->all();
 
-    expect($before)->toHaveCount(4);
+    expect($before)->toHaveCount(3);
 
     StubEngineCommand::$calls = [];
     StubEngineCommand::$exitCodes = [];
@@ -240,7 +238,7 @@ it('resumes at the failed step and leaves the rows the earlier steps wrote untou
 
     expect($exitCode)->toBe(0);
 
-    // Steps 1–4 were not invoked a second time…
+    // Steps 1–3 were not invoked a second time…
     expect(StubEngineCommand::$calls)->toBe([
         'fortune.enroll',
         'adc.bonus',
@@ -250,7 +248,7 @@ it('resumes at the failed step and leaves the rows the earlier steps wrote untou
 
     // …and their rows are byte-identical to what the first run left behind.
     $after = EngineRun::query()
-        ->whereIn('engine_key', ['repurchase.snapshot', 'rank.check', 'rank.bonus', 'gbb.monthly'])
+        ->whereIn('engine_key', ['rank.check', 'rank.bonus', 'gbb.monthly'])
         ->orderBy('id')
         ->get()
         ->map(fn (EngineRun $run): array => [
@@ -275,7 +273,6 @@ it('--restart forces the full sequence even when every step already succeeded', 
 
     expect($exitCode)->toBe(0);
     expect(StubEngineCommand::$calls)->toBe([
-        'repurchase.snapshot',
         'rank.check',
         'rank.bonus',
         'gbb.monthly',

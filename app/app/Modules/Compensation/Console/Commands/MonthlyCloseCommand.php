@@ -8,6 +8,7 @@ use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
+use App\Modules\Compensation\Support\ResolvesMonthOption;
 use App\Modules\Compensation\Support\WorkerFreshness;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -50,6 +51,8 @@ use Throwable;
  */
 final class MonthlyCloseCommand extends Command
 {
+    use ResolvesMonthOption;
+
     protected $signature = 'compensation:monthly-close
                             {--month= : Month to close (YYYY-MM, defaults to the month that has just ended)}
                             {--force : Run the steps even when the preflight refuses}
@@ -59,9 +62,8 @@ final class MonthlyCloseCommand extends Command
 
     /**
      * The crediting sequence. Order is the contract: rank qualifications before
-     * everything that reads them, Fortune enrolment before the Fortune payout
-     * that freezes the matrix, the repurchase snapshot before every gate that
-     * reads it.
+     * everything that reads them, and Fortune enrolment before the Fortune
+     * payout that freezes the matrix.
      *
      * @var list<string>
      */
@@ -261,23 +263,5 @@ final class MonthlyCloseCommand extends Command
         }
 
         return self::FAILURE;
-    }
-
-    /** The month that has just ended, or an explicit --month. */
-    private function resolveMonth(): ?Carbon
-    {
-        $raw = $this->option('month');
-
-        if ($raw === null || trim((string) $raw) === '') {
-            return Carbon::now('Asia/Kolkata')->startOfMonth()->subMonthNoOverflow()->startOfDay();
-        }
-
-        if (preg_match('/^\d{4}-\d{2}$/', trim((string) $raw)) !== 1) {
-            $this->error("--month must be in YYYY-MM format, got: {$raw}");
-
-            return null;
-        }
-
-        return Carbon::createFromFormat('Y-m-d', trim((string) $raw).'-01')->startOfDay();
     }
 }

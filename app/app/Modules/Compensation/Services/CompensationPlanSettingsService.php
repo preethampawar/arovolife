@@ -109,6 +109,10 @@ final class CompensationPlanSettingsService
         'comp.repurchase.rate_bp' => 1000,
         'comp.repurchase.cap_paise' => 1_000_000,
         'comp.repurchase.grace_days' => 0,
+        // Length of a distributor's repurchase window in days (client
+        // 2026-09-06, rule 1): "the 30-day period from that date". The window
+        // is inclusive of its first day, so due_date = start + (days - 1).
+        'comp.repurchase.cycle_days' => 30,
         'comp.repurchase.non_ranked_bv_paise' => 60_000,
         'payout.min_threshold_paise' => 10_000,
         'payout.neft_min_bv_paise' => 300_000,
@@ -292,6 +296,12 @@ final class CompensationPlanSettingsService
     public function repurchaseGraceDays(): int
     {
         return $this->scalarInt('comp.repurchase.grace_days');
+    }
+
+    /** Length of one repurchase window in days (inclusive of its first day). */
+    public function repurchaseCycleDays(): int
+    {
+        return max(1, $this->scalarInt('comp.repurchase.cycle_days'));
     }
 
     /** Monthly repurchase BV (paise) for a distributor with no rank yet. */

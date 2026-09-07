@@ -29,10 +29,11 @@ final class GsbCutoffComputation
     public const OUTCOME_MATCHED = 'matched';
 
     /**
-     * A slab matched, but the distributor's repurchase wallet was not spent
-     * down to ₹0 by the end of the previous calendar month. Settled exactly
-     * like the repurchase-suspended path: carry-forward advances, the result
-     * row records the match, no wallet credit.
+     * No longer produced. The wallet = ₹0 test used to be a second gate against
+     * the previous calendar month's frozen snapshot; the client's 2026-09-06
+     * rule 4 folds it into the distributor's own repurchase cycle, so a wallet
+     * failure now arrives as an ordinary repurchase hold on `$eligibility`.
+     * Retained for result rows written before that change.
      */
     public const OUTCOME_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
 

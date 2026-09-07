@@ -24,12 +24,13 @@ use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
-use App\Modules\Compensation\Console\Commands\RepurchaseMonthlySnapshotCommand;
 use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
+use App\Modules\Compensation\Listeners\ReleaseHeldFortuneOnReactivation;
 use App\Modules\Compensation\Listeners\ReleaseHeldGbbOnReactivation;
 use App\Modules\Compensation\Listeners\ReleaseHeldGsbOnReactivation;
+use App\Modules\Compensation\Listeners\ReleaseHeldRankBonusOnReactivation;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\User;
@@ -113,14 +114,15 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(OrderStatusChanged::class, ReverseGroupBvOnOrderReversal::class);
         Event::listen(OrderRefundApproved::class, ReverseGroupBvOnOrderReversal::class);
 
-        // Release GSB income held during a repurchase grace window once the
-        // distributor completes their repurchase (KP 2026-06-28). Suspended
-        // (post-grace) income stays forfeited — see the listener.
+        // Release the four withheld bonuses once the distributor fulfils their
+        // repurchase obligation (client 2026-09-06 rule 8: "the exempted
+        // facilities will be reinstated"). Held rows were priced at the rate
+        // their month was frozen at and stayed in the denominator, so each of
+        // these pays exactly what everyone else was paid.
         Event::listen(IncomeReactivated::class, ReleaseHeldGsbOnReactivation::class);
-
-        // Same for the Growth Booster's monthly held rows. Suspended
-        // (post-grace) months stay forfeited — see the listener.
         Event::listen(IncomeReactivated::class, ReleaseHeldGbbOnReactivation::class);
+        Event::listen(IncomeReactivated::class, ReleaseHeldRankBonusOnReactivation::class);
+        Event::listen(IncomeReactivated::class, ReleaseHeldFortuneOnReactivation::class);
 
         // Run log for the ten compensation engines. Listening to the console
         // events (rather than refactoring the commands) means cron runs,
@@ -179,7 +181,6 @@ class AppServiceProvider extends ServiceProvider
                 MonthlyPayoutCloseCommand::class,
                 AutoRetryFailedPayoutsCommand::class,
                 RepurchaseEvaluateCommand::class,
-                RepurchaseMonthlySnapshotCommand::class,
                 PaymentsReconcileCommand::class,
                 ExpireUnpaidOrdersCommand::class,
                 PaymentsRedactEventsCommand::class,

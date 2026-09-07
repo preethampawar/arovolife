@@ -13,23 +13,32 @@ use App\Modules\Compensation\Events\RepurchaseGraceStarted;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Manages each distributor's monthly repurchase obligation (KP 2026-06-27/28).
+ * Manages each distributor's repurchase obligation cycle (client 2026-09-06).
  *
- * Cycles are anchored to the day-of-month the distributor first reached 600 BV
- * personal purchase (5 Jul 2026 rule; e.g. the 5th → cycle 5th..4th). A
- * distributor must complete their rank's
- * `repurchase_bv_paise` of self-purchase BV before the cycle's due date; missing
- * it opens a `grace_days` window (income calculated-but-held), after which their
- * GSB/Fortune/GBB are suspended — Mentorship and Rank BV are never suspended.
+ * A cycle is a fixed 30-day window (`comp.repurchase.cycle_days`, inclusive of
+ * its first day) anchored on the date the distributor first reached 600 BV of
+ * personal purchase. It passes only if BOTH of the client's rule-4 conditions
+ * hold:
  *
- * MVP modelling note: one obligation cycle is open at a time (non-overlapping),
- * so a single cycle row's status IS the distributor's effective eligibility. The
- * next cycle opens only once the current one is completed AND its window has
- * elapsed; a suspended distributor stays on the same cycle until they complete
- * it, then resumes forward. (Strict back-to-back overlapping cycles with grace
- * spilling into the next cycle is a refinement to confirm with KP.)
+ *   (A) self-purchase BV inside the window >= the rank's obligation, and
+ *   (B) the repurchase wallet stood at zero on the window's LAST day.
+ *
+ * Condition (B) is only knowable on that last day, so a cycle can never
+ * complete early: it stays `active` until its window closes, then resolves
+ * once and freezes `wallet_balance_paise` / `wallet_zeroed` onto the row. That
+ * freeze is what lets a bonus month be re-run and reach the same verdict as the
+ * run that paid it — the job `repurchase_monthly_snapshots` used to do for the
+ * old calendar-month deadline, moved onto the window it belongs to.
+ *
+ * A failed cycle HOLDS the four suspendable bonuses (GSB, Rank, Growth Booster,
+ * Fortune) rather than forfeiting them; Mentorship is never affected. The
+ * distributor keeps accumulating, and on the first day both conditions hold
+ * again their held income is released ({@see IncomeReactivated})
+ * and a brand-new full-length window opens ON that day (rule 9). One rule
+ * covers both paths: `next_start = max(due_date + 1, fulfilled_on)`.
  *
  * Every value is read through {@see CompensationPlanSettingsService} (SSOT) and
  * every state transition emits a fire-and-forget domain event.
@@ -42,6 +51,7 @@ final class RepurchaseCycleService
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
         private readonly BvLedgerService $bvLedger,
+        private readonly WalletService $wallet,
     ) {}
 
     /** Highest rank the distributor has qualified for (sticky); 0 = non-ranked. */
@@ -74,12 +84,27 @@ final class RepurchaseCycleService
     }
 
     /**
+     * The distributor's newest cycle, read-only — what the UI needs in order to
+     * name THEIR deadline rather than a calendar month end. Null before they
+     * reach 600 BV, when no obligation exists yet.
+     */
+    public function currentCycle(int $distributorId): ?RepurchaseCycle
+    {
+        return RepurchaseCycle::query()
+            ->where('distributor_id', $distributorId)
+            ->orderByDesc('cycle_start_date')
+            ->first();
+    }
+
+    /**
      * Open/advance the distributor's repurchase cycle as of $asOf, refreshing
-     * completion + status and emitting transition events. Returns the open cycle,
-     * or null if the distributor is not yet a Retailer (no obligation).
+     * both conditions and emitting transition events. Returns the open cycle,
+     * or null if the distributor has never reached 600 BV (no obligation yet).
      */
     public function evaluate(int $distributorId, Carbon $asOf): ?RepurchaseCycle
     {
+        $asOf = $asOf->copy()->startOfDay();
+
         // Check for an existing cycle first — a cycle already existing proves
         // the distributor passed the 600-BV anchor, so skip the expensive
         // firstReachedBvPaiseAt() scan (N+1 on bv_ledger_entries) on every run
@@ -97,18 +122,20 @@ final class RepurchaseCycleService
             $cycle = $this->openCycle($distributorId, $anchor->copy()->startOfDay());
         }
 
-        // Advance through elapsed-and-completed cycles until the open cycle
-        // covers $asOf or is held/suspended. The guard caps catch-up and, by
-        // failing the roll condition rather than opening a new row, guarantees
-        // the returned cycle is always one that was just refreshed.
+        // Advance through elapsed-and-fulfilled cycles until the open cycle
+        // covers $asOf. The guard caps catch-up and, by failing the roll
+        // condition rather than opening a new row, guarantees the returned
+        // cycle is always one that was just refreshed.
         $guard = 0;
         while (true) {
             $this->refresh($cycle, $asOf);
 
-            if ($cycle->status === RepurchaseCycle::STATUS_COMPLETED
-                && $asOf->greaterThan($cycle->due_date)
+            $nextStart = $this->nextCycleStart($cycle);
+
+            if ($nextStart !== null
+                && $asOf->greaterThanOrEqualTo($nextStart)
                 && ++$guard <= self::MAX_ROLL) {
-                $cycle = $this->openCycle($distributorId, $cycle->due_date->copy()->addDay());
+                $cycle = $this->openCycle($distributorId, $nextStart);
 
                 continue;
             }
@@ -119,6 +146,24 @@ final class RepurchaseCycleService
     }
 
     /**
+     * The day the distributor's next window opens, or null while the current
+     * one is unresolved. Rule 9: a cycle fulfilled AFTER its due date re-anchors
+     * the next window onto the fulfilment day itself; an on-time cycle simply
+     * hands over the day after it ends.
+     */
+    private function nextCycleStart(RepurchaseCycle $cycle): ?Carbon
+    {
+        if ($cycle->status !== RepurchaseCycle::STATUS_COMPLETED || $cycle->fulfilled_on === null) {
+            return null;
+        }
+
+        $dayAfterDue = $cycle->due_date->copy()->startOfDay()->addDay();
+        $fulfilled = $cycle->fulfilled_on->copy()->startOfDay();
+
+        return $fulfilled->greaterThan($dayAfterDue) ? $fulfilled : $dayAfterDue;
+    }
+
+    /**
      * Create + persist a fresh cycle starting on $start; emits the opened event.
      * The required BV is snapshotted from the distributor's rank at cycle-open;
      * a rank change mid-cycle takes effect from the next cycle.
@@ -126,7 +171,7 @@ final class RepurchaseCycleService
     private function openCycle(int $distributorId, Carbon $start): RepurchaseCycle
     {
         $start = $start->copy()->startOfDay();
-        $due = $start->copy()->addMonthNoOverflow()->subDay();
+        $due = $start->copy()->addDays($this->plan->repurchaseCycleDays() - 1);
         $graceEnd = $due->copy()->addDays($this->plan->repurchaseGraceDays());
 
         $cycle = RepurchaseCycle::create([
@@ -144,59 +189,223 @@ final class RepurchaseCycleService
         return $cycle;
     }
 
-    /** Recompute one cycle's completion + status as of $asOf and persist it. */
+    /**
+     * Recompute one cycle's conditions as of $asOf and persist it.
+     *
+     * Three shapes, in order:
+     *  - the window is still open — only the running BV moves, never the status;
+     *  - the window has just closed — resolve BOTH conditions at the window's
+     *    last instant and freeze them; this happens exactly once per cycle;
+     *  - the window closed and failed — hunt for the first day since on which
+     *    both conditions hold again (rule 9's late fulfilment).
+     */
     private function refresh(RepurchaseCycle $cycle, Carbon $asOf): void
     {
         $start = $cycle->cycle_start_date->copy()->startOfDay();
-        $asOfEod = $asOf->copy()->endOfDay();
-
-        // On-time / grace completion counts self-purchase BV only up to the
-        // grace end (so a later cycle's BV can never complete an earlier rolled
-        // cycle). A suspended cycle can still be completed late — that counts
-        // BV right up to $asOf.
-        $byGraceEnd = $this->bvLedger->selfPurchaseBvPaise(
-            $cycle->distributor_id,
-            $start,
-            $asOfEod->copy()->min($cycle->grace_end_date->copy()->endOfDay()),
-        );
-        $now = $this->bvLedger->selfPurchaseBvPaise($cycle->distributor_id, $start, $asOfEod);
-
+        $dueEnd = $cycle->due_date->copy()->endOfDay();
         $previous = $cycle->status;
-        $next = $this->resolveStatus($cycle, $asOf, $byGraceEnd, $now);
 
-        $cycle->completed_bv_paise = $next === RepurchaseCycle::STATUS_COMPLETED
-            ? max($byGraceEnd, $now)
-            : $now;
+        if ($asOf->lessThanOrEqualTo($cycle->due_date->copy()->startOfDay())) {
+            // Window still open. A cycle cannot be judged early: condition (B)
+            // asks about the wallet on the LAST day, which has not happened.
+            $cycle->completed_bv_paise = $this->bvLedger->selfPurchaseBvPaise(
+                $cycle->distributor_id,
+                $start,
+                $asOf->copy()->endOfDay(),
+            );
 
-        if ($next !== $previous) {
-            if ($next === RepurchaseCycle::STATUS_COMPLETED && $cycle->completed_at === null) {
-                $cycle->completed_at = Carbon::now();
+            // Only an unresolved cycle is active. A cycle written before the
+            // 2026-09-06 rules could complete as soon as its BV landed, so a
+            // legacy row can reach this branch already resolved — and demoting
+            // it back to active would discard a verdict that has already been
+            // acted on, then re-resolve it later against the wrong window.
+            if ($cycle->resolved_at === null) {
+                $cycle->status = RepurchaseCycle::STATUS_ACTIVE;
             }
-            $this->onTransition($cycle, $previous, $next);
+
+            $cycle->save();
+
+            return;
         }
 
-        $cycle->status = $next;
+        if ($cycle->resolved_at === null) {
+            $this->resolveAtWindowEnd($cycle, $start, $dueEnd);
+        }
+
+        if ($cycle->status !== RepurchaseCycle::STATUS_COMPLETED) {
+            $this->applyLateFulfilment($cycle, $start, $asOf);
+        }
+
+        if ($cycle->status !== $previous) {
+            if ($cycle->status === RepurchaseCycle::STATUS_COMPLETED && $cycle->completed_at === null) {
+                $cycle->completed_at = Carbon::now();
+            }
+            $this->onTransition($cycle, $previous, $cycle->status);
+        }
+
         $cycle->save();
     }
 
-    private function resolveStatus(RepurchaseCycle $cycle, Carbon $asOf, int $byGraceEnd, int $now): string
+    /**
+     * The one-time verdict, taken at the window's last instant and frozen.
+     * Re-running a past month must not be able to move it.
+     */
+    private function resolveAtWindowEnd(RepurchaseCycle $cycle, Carbon $start, Carbon $dueEnd): void
     {
-        $required = $cycle->required_bv_paise;
+        $bv = $this->bvLedger->selfPurchaseBvPaise($cycle->distributor_id, $start, $dueEnd);
+        $walletPaise = $this->walletBalanceAt($cycle->distributor_id, $dueEnd);
 
-        if ($byGraceEnd >= $required) {
-            return RepurchaseCycle::STATUS_COMPLETED;
-        }
-        if ($asOf->lessThanOrEqualTo($cycle->due_date->copy()->endOfDay())) {
-            return RepurchaseCycle::STATUS_ACTIVE;
-        }
-        if ($asOf->lessThanOrEqualTo($cycle->grace_end_date->copy()->endOfDay())) {
-            return RepurchaseCycle::STATUS_GRACE;
-        }
-        if ($now >= $required) {
-            return RepurchaseCycle::STATUS_COMPLETED; // late completion → reactivation
+        $bvMet = $bv >= $cycle->required_bv_paise;
+        $walletZeroed = $walletPaise <= 0;
+
+        $cycle->completed_bv_paise = $bv;
+        $cycle->wallet_balance_paise = max(0, $walletPaise);
+        $cycle->wallet_zeroed = $walletZeroed;
+        $cycle->resolved_at = Carbon::now();
+
+        if ($bvMet && $walletZeroed) {
+            $cycle->status = RepurchaseCycle::STATUS_COMPLETED;
+            $cycle->fulfilled_on = $cycle->due_date->copy()->startOfDay();
+            $cycle->failure_reason = null;
+
+            return;
         }
 
-        return RepurchaseCycle::STATUS_SUSPENDED;
+        $cycle->failure_reason = match (true) {
+            ! $bvMet && ! $walletZeroed => RepurchaseCycle::REASON_BOTH,
+            ! $bvMet => RepurchaseCycle::REASON_BV_SHORT,
+            default => RepurchaseCycle::REASON_WALLET_NONZERO,
+        };
+        $cycle->status = RepurchaseCycle::STATUS_SUSPENDED;
+    }
+
+    /**
+     * Rule 9: after a failed window the distributor keeps accumulating against
+     * the SAME obligation. On the first day both conditions hold again the
+     * cycle completes, their held income is released, and a fresh window opens
+     * on that day.
+     *
+     * The scan walks days rather than trusting $asOf, because a catch-up replay
+     * would otherwise stamp today's date onto a fulfilment that happened weeks
+     * ago and shift every window after it. Two queries, however long the gap.
+     */
+    private function applyLateFulfilment(RepurchaseCycle $cycle, Carbon $start, Carbon $asOf): void
+    {
+        $from = $cycle->due_date->copy()->startOfDay()->addDay();
+
+        if ($from->greaterThan($asOf)) {
+            return;
+        }
+
+        // Re-derive the window-end BV from the ledger rather than reading
+        // completed_bv_paise: this method advances that column past the window
+        // end, so a second run would otherwise start from a total that already
+        // includes the days it is about to add again. The wallet base IS safe to
+        // read — wallet_balance_paise is frozen once, at the window end, and
+        // never written here.
+        $bv = $this->bvLedger->selfPurchaseBvPaise(
+            $cycle->distributor_id,
+            $start,
+            $cycle->due_date->copy()->endOfDay(),
+        );
+
+        // The wallet base must never come from `?? 0`. A cycle resolved before
+        // this column existed carries NULL here — deliberately, because the old
+        // engine never measured it — and reading that as "the wallet was clear"
+        // passed condition (B) for a distributor who was holding repurchase
+        // money. Derive it from the ledger instead, and freeze it while we are
+        // here so the row stops being ambiguous.
+        $walletPaise = $cycle->wallet_balance_paise;
+
+        if ($walletPaise === null) {
+            $walletPaise = $this->walletBalanceAt(
+                $cycle->distributor_id,
+                $cycle->due_date->copy()->endOfDay(),
+            );
+            $cycle->wallet_balance_paise = max(0, $walletPaise);
+            $cycle->wallet_zeroed = $walletPaise <= 0;
+        }
+
+        $walletPaise = (int) $walletPaise;
+
+        $bvByDay = $this->selfPurchaseBvByDay($cycle->distributor_id, $from, $asOf);
+        $walletByDay = $this->repurchaseWalletDeltaByDay($cycle->distributor_id, $from, $asOf);
+
+        for ($day = $from->copy(); $day->lessThanOrEqualTo($asOf); $day->addDay()) {
+            $key = $day->toDateString();
+            $bv += $bvByDay[$key] ?? 0;
+            $walletPaise += $walletByDay[$key] ?? 0;
+
+            if ($bv >= $cycle->required_bv_paise && $walletPaise <= 0) {
+                $cycle->completed_bv_paise = $bv;
+                $cycle->status = RepurchaseCycle::STATUS_COMPLETED;
+                $cycle->fulfilled_on = $day->copy()->startOfDay();
+
+                return;
+            }
+        }
+
+        $cycle->completed_bv_paise = $bv;
+        $cycle->status = $asOf->lessThanOrEqualTo($cycle->grace_end_date->copy()->startOfDay())
+            ? RepurchaseCycle::STATUS_GRACE
+            : RepurchaseCycle::STATUS_SUSPENDED;
+    }
+
+    /**
+     * The repurchase wallet balance at an instant — condition 4(B)'s input.
+     * One place, so the window-end freeze and the late-fulfilment scan can
+     * never answer the question differently.
+     */
+    private function walletBalanceAt(int $distributorId, Carbon $at): int
+    {
+        return $this->wallet->repurchaseWalletBalancesAsOfPaise([$distributorId], $at)[$distributorId] ?? 0;
+    }
+
+    /**
+     * Self-purchase BV per calendar day. Same definition as
+     * {@see BvLedgerService::selfPurchaseBvPaise()} — accruals net of reversals
+     * on self-consumption orders — grouped so the late-fulfilment scan costs one
+     * query instead of one per day.
+     *
+     * @return array<string, int> Y-m-d => paise
+     */
+    private function selfPurchaseBvByDay(int $distributorId, Carbon $from, Carbon $to): array
+    {
+        return DB::table('bv_ledger_entries')
+            ->where('distributor_id', $distributorId)
+            ->whereIn('type', ['accrual', 'reversal'])
+            ->whereBetween('effective_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->whereExists(function ($q): void {
+                $q->selectRaw('1')
+                    ->from('orders')
+                    ->whereColumn('orders.id', 'bv_ledger_entries.order_id')
+                    ->where('orders.self_consumption', true);
+            })
+            ->selectRaw('DATE(effective_at) AS day, SUM(bv_paise) AS total')
+            ->groupBy('day')
+            ->pluck('total', 'day')
+            ->map(fn ($v): int => (int) $v)
+            ->all();
+    }
+
+    /**
+     * Repurchase-wallet movement per calendar day, signed the same way
+     * {@see WalletService::repurchaseWalletBalancesAsOfPaise()} sums it:
+     * `repurchase_deduction` credits in, `repurchase_wallet_used` debits out.
+     *
+     * @return array<string, int> Y-m-d => paise
+     */
+    private function repurchaseWalletDeltaByDay(int $distributorId, Carbon $from, Carbon $to): array
+    {
+        return DB::table('wallet_ledger_entries')
+            ->where('distributor_id', $distributorId)
+            ->whereIn('type', WalletService::REPURCHASE_TYPES)
+            ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->selectRaw("DATE(created_at) AS day, COALESCE(SUM(CASE WHEN type = 'repurchase_deduction' THEN amount_paise ELSE -ABS(amount_paise) END), 0) AS total")
+            ->groupBy('day')
+            ->pluck('total', 'day')
+            ->map(fn ($v): int => (int) $v)
+            ->all();
     }
 
     private function onTransition(RepurchaseCycle $cycle, string $from, string $to): void
@@ -217,8 +426,8 @@ final class RepurchaseCycleService
 
     private function onCompleted(RepurchaseCycle $cycle, string $from): void
     {
-        // Pass the prior status so listeners can distinguish on-time (from
-        // active) vs within-grace vs forfeited-then-completed (from suspended).
+        // Pass the prior status so listeners can distinguish an on-time close
+        // from a late fulfilment that has held income waiting behind it.
         event(new RepurchaseCompleted($cycle->distributor_id, $cycle->id, $from));
 
         if (in_array($from, [RepurchaseCycle::STATUS_GRACE, RepurchaseCycle::STATUS_SUSPENDED], true)) {

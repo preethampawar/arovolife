@@ -71,7 +71,17 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($rows as $row)
                     @php
-                    $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-600', 'pending' => 'bg-amber-100 text-amber-700'];
+                    $sc = [
+                        'credited' => 'bg-green-100 text-green-700',
+                        'skipped' => 'bg-gray-100 text-gray-600',
+                        'pending' => 'bg-amber-100 text-amber-700',
+                        'repurchase_held' => 'bg-orange-100 text-orange-700',
+                        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
+                    ];
+                    $sl = [
+                        'repurchase_held' => 'Held',
+                        'repurchase_wallet_blocked' => 'Not payable',
+                    ];
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
@@ -96,7 +106,7 @@
                         <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :dash-when-zero="true" :gross="$row->gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->net_paise" />
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
-                                {{ ucfirst($row->status) }}
+                                {{ $sl[$row->status] ?? ucfirst($row->status) }}
                             </span>
                         </td>
                     </tr>

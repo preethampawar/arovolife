@@ -88,7 +88,7 @@ final class RankRequalificationGateService
     }
 
     /**
-     * Whether each distributor's repurchase wallet counts as cleared IN THE
+     * Whether each distributor's repurchase condition counts as met IN THE
      * MONTH BEING EVALUATED. Missing key = no cycle yet (fail-open, handled by
      * the caller's `?? true`).
      *
@@ -100,10 +100,10 @@ final class RankRequalificationGateService
      * paid a §8 hold it had already refused, and AogoOfferService granted a
      * lifetime use for a month it had previously declined.
      *
-     * A cycle's `status` is still mutated in place by the repurchase engine, so
-     * this is as-of-the-month in the cycle it reads, not a point-in-time replay
-     * of that cycle's status — the schema keeps no status history. It is stable
-     * for a closed month because a lapsed or completed cycle is terminal.
+     * Reading `fulfilled_on` rather than `status` is what makes that stable
+     * even after a late fulfilment: a cycle fulfilled AFTER its due date was
+     * failed for the whole gap, and flipping its status to completed must not
+     * retroactively clear the month it lapsed in.
      *
      * @param  int[]  $distributorIds
      * @return array<int, bool>
@@ -114,20 +114,28 @@ final class RankRequalificationGateService
             return [];
         }
 
+        $monthEnd = $month->copy()->endOfMonth()->startOfDay();
+
         $latest = RepurchaseCycle::query()
             ->whereIn('distributor_id', $distributorIds)
-            ->whereDate('cycle_start_date', '<=', $month->copy()->endOfMonth()->toDateString())
+            ->whereDate('cycle_start_date', '<=', $monthEnd->toDateString())
             ->orderByDesc('cycle_start_date')
             ->get()
             ->groupBy('distributor_id');
 
         $map = [];
         foreach ($latest as $distributorId => $cycles) {
-            $status = $cycles->first()?->status;
-            $map[(int) $distributorId] = ! in_array($status, [
-                RepurchaseCycle::STATUS_GRACE,
-                RepurchaseCycle::STATUS_SUSPENDED,
-            ], true);
+            /** @var RepurchaseCycle|null $cycle */
+            $cycle = $cycles->first();
+
+            if ($cycle === null) {
+                continue;
+            }
+
+            // Still inside its own window: nothing is due yet, so nothing is
+            // failed. Past it: only an on-time fulfilment clears the month.
+            $map[(int) $distributorId] = $monthEnd->lessThanOrEqualTo($cycle->due_date->copy()->startOfDay())
+                || $cycle->fulfilledOnTime();
         }
 
         return $map;

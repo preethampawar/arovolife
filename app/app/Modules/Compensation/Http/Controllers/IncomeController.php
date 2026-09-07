@@ -22,6 +22,7 @@ use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
+use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\RepurchaseWalletStatus;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -431,7 +432,10 @@ final class IncomeController extends Controller
 
         $minThresholdPaise = app(CompensationPlanSettingsService::class)->minPayoutPaise();
 
-        $repurchaseWalletStatus = RepurchaseWalletStatus::for($repurchaseWalletBalancePaise);
+        $repurchaseWalletStatus = RepurchaseWalletStatus::for(
+            $repurchaseWalletBalancePaise,
+            deadline: app(RepurchaseCycleService::class)->currentCycle($distributor->id)?->due_date,
+        );
 
         return view('income.wallet', compact(
             'distributor', 'ledgerRows', 'repurchaseLedgerRows', 'payoutRows',

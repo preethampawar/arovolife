@@ -31,7 +31,7 @@
         'repurchase_suspended' => 'bg-red-100 text-red-700',
     ];
     $statusNotes = [
-        'repurchase_held' => 'Held until your repurchase is complete.',
+        'repurchase_held' => 'Held until your repurchase is complete — credited in full once it is.',
         'repurchase_suspended' => 'Not payable for this month.',
     ];
 @endphp

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Models;
 
+use App\Modules\Compensation\Services\IncomeEligibilityService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -17,8 +18,13 @@ use Illuminate\Support\Carbon;
  * @property Carbon $grace_end_date
  * @property int $required_bv_paise
  * @property int $completed_bv_paise
+ * @property int|null $wallet_balance_paise
+ * @property bool|null $wallet_zeroed
  * @property string $status
+ * @property Carbon|null $fulfilled_on
+ * @property string|null $failure_reason
  * @property Carbon|null $completed_at
+ * @property Carbon|null $resolved_at
  */
 final class RepurchaseCycle extends Model
 {
@@ -34,6 +40,15 @@ final class RepurchaseCycle extends Model
     /** Obligation met for the cycle — fully income-eligible. */
     public const STATUS_COMPLETED = 'completed';
 
+    /** Self-purchase BV in the window fell short of the obligation. */
+    public const REASON_BV_SHORT = 'bv_short';
+
+    /** BV was met but the repurchase wallet was not ₹0 on the window's last day. */
+    public const REASON_WALLET_NONZERO = 'wallet_nonzero';
+
+    /** Both conditions failed. */
+    public const REASON_BOTH = 'both';
+
     protected $fillable = [
         'distributor_id',
         'cycle_start_date',
@@ -41,8 +56,13 @@ final class RepurchaseCycle extends Model
         'grace_end_date',
         'required_bv_paise',
         'completed_bv_paise',
+        'wallet_balance_paise',
+        'wallet_zeroed',
         'status',
+        'fulfilled_on',
+        'failure_reason',
         'completed_at',
+        'resolved_at',
     ];
 
     protected function casts(): array
@@ -53,7 +73,28 @@ final class RepurchaseCycle extends Model
             'grace_end_date' => 'date',
             'required_bv_paise' => 'integer',
             'completed_bv_paise' => 'integer',
+            'wallet_balance_paise' => 'integer',
+            'wallet_zeroed' => 'boolean',
+            'fulfilled_on' => 'date',
             'completed_at' => 'datetime',
+            'resolved_at' => 'datetime',
         ];
+    }
+
+    /** Condition 4(A): the window's self-purchase BV cleared the obligation. */
+    public function bvMet(): bool
+    {
+        return $this->completed_bv_paise >= $this->required_bv_paise;
+    }
+
+    /**
+     * Whether the cycle was fulfilled inside its own window. A cycle fulfilled
+     * later was suspended in between, which is what {@see IncomeEligibilityService::verdictAsOf()}
+     * needs in order to answer for a date in that gap.
+     */
+    public function fulfilledOnTime(): bool
+    {
+        return $this->fulfilled_on !== null
+            && $this->fulfilled_on->lessThanOrEqualTo($this->due_date);
     }
 }

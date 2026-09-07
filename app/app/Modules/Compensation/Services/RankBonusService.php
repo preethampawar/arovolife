@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Enums\BonusType;
+use App\Modules\Compensation\Listeners\ReleaseHeldRankBonusOnReactivation;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
@@ -199,7 +201,9 @@ final class RankBonusService
 
         $payable = [];
         $held = [];
-        $walletBlocked = [];
+        $repurchaseHeld = [];
+
+        $monthEnd = $monthStartCarbon->copy()->endOfMonth();
 
         foreach (self::RANKS as $rank) {
             $qualifierIds = $qualifiers[$rank] ?? [];
@@ -207,24 +211,30 @@ final class RankBonusService
             $heldIds = $this->requalificationHeldIds($qualifierIds, $monthStartCarbon, $rank);
             $payableIds = array_values(array_diff($qualifierIds, $heldIds));
 
-            // Repurchase wallet gate: the month being paid must have closed
-            // with the wallet spent down to ₹0. A blocked achiever keeps their
-            // place in the denominator — the qualification happened, the money
-            // did not, and their share simply goes unspent.
-            $blockedIds = array_values(array_filter(
+            // Repurchase gate (client 2026-09-06 rule 7 — Rank Bonus joined the
+            // withheld four). One verdict as at month end covers both of the
+            // rule-4 conditions: the cycle's self-purchase BV and the wallet
+            // standing at ₹0 on the cycle's last day. A held achiever keeps
+            // their place in the denominator and is priced at the month's full
+            // rate, because rule 8 pays it to them the day they fulfil.
+            $this->eligibility->warmCycleCache($payableIds);
+
+            $repurchaseHeldIds = array_values(array_filter(
                 $payableIds,
-                fn (int $id): bool => ! $this->eligibility->repurchaseWalletZeroedForMonth($id, $monthStart),
+                fn (int $id): bool => ! $this->eligibility
+                    ->verdictAsOf($id, BonusType::Rank, $monthEnd)
+                    ->isEligible(),
             ));
 
             $payable[$rank] = $payableIds;
             $held[$rank] = $heldIds;
-            $walletBlocked[$rank] = $blockedIds;
+            $repurchaseHeld[$rank] = $repurchaseHeldIds;
         }
 
         return new RankMonthRoster(
             payableIds: $payable,
             heldIds: $held,
-            walletBlockedIds: $walletBlocked,
+            repurchaseHeldIds: $repurchaseHeld,
             aogoGrants: $this->aogo->grantForMonth($monthStartCarbon),
         );
     }
@@ -350,19 +360,18 @@ final class RankBonusService
 
                 $payableIds = $roster->payableFor($rank);
                 $heldIds = $roster->heldFor($rank);
-                $blockedIds = $roster->walletBlockedFor($rank);
+                $repurchaseHeldIds = $roster->repurchaseHeldFor($rank);
 
                 /** @var Collection<int, RankAogoGrant> $grants */
                 $grants = $rank === 1 ? $roster->aogoGrants : collect();
                 $aogoPoints = (int) $grants->sum('points');
 
-                // A wallet-blocked achiever keeps their place in the DENOMINATOR
-                // (see resolveRoster()) but is written with gross 0, so the paid
-                // population is the payable one minus the blocked one. Pricing
-                // payout_paise off the denominator overstated what the month
-                // actually pays and understated leftover_paise, leaving the
-                // frozen audit row unreconcilable against its own roster.
-                $paidCount = count($payableIds) - count($blockedIds);
+                // A repurchase-held achiever is in the DENOMINATOR and priced
+                // at the month's full rate: the money is committed to them, it
+                // is simply not credited until they fulfil (rule 8). So the
+                // month's payout covers the whole payable population and
+                // leftover_paise still reconciles against the frozen roster.
+                $paidCount = count($payableIds);
 
                 $totalPoints = null;
                 $pointValuePaise = null;
@@ -408,18 +417,20 @@ final class RankBonusService
                 }
 
                 foreach ($payableIds as $distributorId) {
-                    $blocked = in_array($distributorId, $blockedIds, true);
-
+                    // A repurchase-held achiever carries the SAME gross and the
+                    // same snapshot columns as a paid one — only the status
+                    // differs — so ReleaseHeldRankBonusOnReactivation can pay it
+                    // at the rate the month was priced at.
                     $this->writeRosterRow(
                         $distributorId,
                         $pool,
-                        $blocked
-                            ? RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED
+                        in_array($distributorId, $repurchaseHeldIds, true)
+                            ? RankBonusResult::STATUS_REPURCHASE_HELD
                             : RankBonusResult::STATUS_PENDING,
-                        $blocked ? 0 : $grossPerQualifier,
-                        rapPoints: $blocked ? null : $rapPoints,
-                        totalPoints: $blocked ? null : $totalPoints,
-                        pointValuePaise: $blocked ? null : $pointValuePaise,
+                        $grossPerQualifier,
+                        rapPoints: $rapPoints,
+                        totalPoints: $totalPoints,
+                        pointValuePaise: $pointValuePaise,
                     );
                 }
 
@@ -629,7 +640,7 @@ final class RankBonusService
 
         $results = RankBonusResult::query()->where('month_start', $monthStart);
 
-        if ((clone $results)->whereIn('status', [
+        if ($results->clone()->whereIn('status', [
             RankBonusResult::STATUS_CREDITED,
             RankBonusResult::STATUS_REVERSED,
         ])->exists()) {
@@ -643,7 +654,7 @@ final class RankBonusService
         // Snapshot what the hard delete is about to destroy — id, distributor,
         // rank, status and gross — so the deletion stays reconstructable from
         // `audit_log` alone. A bare count is not.
-        $discarded = (clone $results)
+        $discarded = $results->clone()
             ->get(['id', 'distributor_id', 'rank_number', 'status', 'gross_paise'])
             ->map(fn (RankBonusResult $row): array => [
                 'id' => (int) $row->id,
@@ -654,7 +665,7 @@ final class RankBonusService
             ])
             ->all();
 
-        $discardedResults = (clone $results)->delete();
+        $discardedResults = $results->clone()->delete();
 
         Log::warning('rank.pool.premature_freeze_replaced', $details + [
             'discarded_results' => $discardedResults,
@@ -743,6 +754,7 @@ final class RankBonusService
                 $byRank[$rank] = [
                     'qualifiers' => (int) $pool->payable_count,
                     'held' => $rows->where('status', RankBonusResult::STATUS_REQUALIFICATION_HELD)->count(),
+                    'repurchase_held' => $rows->where('status', RankBonusResult::STATUS_REPURCHASE_HELD)->count(),
                     'aogo_grants' => $rows->whereNotNull('aogo_points')->count(),
                     'pool_paise' => (int) $pool->pool_paise,
                     'total_points' => $pool->total_points,
@@ -752,11 +764,13 @@ final class RankBonusService
                 ];
 
                 foreach ($rows as $row) {
-                    if ($row->status !== RankBonusResult::STATUS_PENDING) {
+                    $isHeld = $row->status === RankBonusResult::STATUS_REPURCHASE_HELD;
+
+                    if ($row->status !== RankBonusResult::STATUS_PENDING && ! $isHeld) {
                         continue;
                     }
 
-                    if ($row->gross_paise > 0) {
+                    if (! $isHeld && $row->gross_paise > 0) {
                         $this->creditRosterRow($row, $monthStartCarbon, $monthStart, $grants);
 
                         $byRank[$rank]['gross_total'] += (int) $row->gross_paise;
@@ -764,7 +778,9 @@ final class RankBonusService
                     }
 
                     // AO-GO grantees hold no rank this month — the lifetime
-                    // award belongs to the achievers only.
+                    // award belongs to the achievers only. A repurchase-held
+                    // achiever still qualified (rule 6), so their milestone
+                    // tracks even though the money waits.
                     if ($row->aogo_points === null) {
                         $this->syncLifetimeAward((int) $row->distributor_id, $rank, $monthStart);
                     }
@@ -778,6 +794,25 @@ final class RankBonusService
             'qualified_after_freeze' => array_sum(array_map(count(...), $late)),
             'by_rank' => $byRank,
         ];
+    }
+
+    /**
+     * Release one repurchase-held roster row: credit the gross the month was
+     * frozen at and settle the AO-GO grant behind it. Called by
+     * {@see ReleaseHeldRankBonusOnReactivation}
+     * the day the distributor fulfils their repurchase obligation (rule 8),
+     * never by the monthly run.
+     */
+    public function releaseHeldRow(RankBonusResult $row): void
+    {
+        $monthStart = Carbon::parse((string) $row->month_start)->startOfMonth();
+
+        $this->creditRosterRow(
+            $row,
+            $monthStart,
+            $monthStart->toDateString(),
+            $this->aogo->grantForMonth($monthStart)->keyBy('distributor_id'),
+        );
     }
 
     /**
@@ -861,6 +896,9 @@ final class RankBonusService
                 RankBonusResult::STATUS_PENDING,
                 RankBonusResult::STATUS_CREDITED,
                 RankBonusResult::STATUS_REVERSED,
+                // Rule 6: Awards & Rewards are outside the repurchase
+                // condition, so a held month still counts as a qualification.
+                RankBonusResult::STATUS_REPURCHASE_HELD,
             ])
             ->distinct()
             ->count('month_start');

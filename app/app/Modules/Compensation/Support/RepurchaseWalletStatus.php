@@ -7,26 +7,33 @@ namespace App\Modules\Compensation\Support;
 use Illuminate\Support\Carbon;
 
 /**
- * Traffic-light urgency for clearing the repurchase wallet before month end.
+ * Traffic-light urgency for clearing the repurchase wallet before the
+ * distributor's own repurchase deadline.
  *
- * The monthly bonus gates read the balance frozen by
- * `compensation:repurchase-snapshot` on the 1st, so the deadline that actually
- * matters to a distributor is the last day of the current calendar month —
- * hence the tone escalates by calendar day, not by any income figure.
+ * The deadline is the last day of THEIR cycle (client 2026-09-06 rule 4B), not
+ * the last day of the calendar month: a distributor anchored on the 10th is
+ * judged on the 8th of the following month, and telling them "by the 31st"
+ * would be telling them the wrong date. Callers pass the cycle's due date; with
+ * no cycle yet there is no obligation to be urgent about, and the fallback is
+ * the end of the current month.
  *
- * The day thresholds are presentation constants, not plan economics: they only
- * decide when the reminder turns amber or red and are deliberately NOT stored
- * in `compensation_plan_settings`, which holds money parameters.
+ * The escalation thresholds are presentation constants, not plan economics —
+ * they only decide when the reminder turns amber or red, and are deliberately
+ * NOT stored in `compensation_plan_settings`, which holds money parameters.
+ * They are expressed in DAYS REMAINING rather than day-of-month, because a
+ * rolling window has no month boundary to count from.
  *
  * Hard rule 3: this never states or implies future earnings. It restates an
- * existing plan condition ("the wallet must be ₹0 at month end") against a
- * balance the distributor already holds.
+ * existing plan condition ("the wallet must be ₹0 by your cycle's last day")
+ * against a balance the distributor already holds.
  */
 final readonly class RepurchaseWalletStatus
 {
-    private const AMBER_FROM_DAY = 11;
+    /** 20 or fewer days left in the window. */
+    private const AMBER_WITHIN_DAYS = 20;
 
-    private const RED_FROM_DAY = 21;
+    /** 10 or fewer days left in the window. */
+    private const RED_WITHIN_DAYS = 10;
 
     /**
      * @param  string  $tone  'cleared'|'green'|'amber'|'red'
@@ -38,21 +45,31 @@ final readonly class RepurchaseWalletStatus
         public int $balancePaise,
     ) {}
 
-    public static function for(int $balancePaise, ?Carbon $today = null): self
+    /**
+     * @param  Carbon|null  $deadline  the distributor's cycle due date; falls back
+     *                                 to the end of the current month when they
+     *                                 have no cycle yet
+     */
+    public static function for(int $balancePaise, ?Carbon $today = null, ?Carbon $deadline = null): self
     {
         $today ??= Carbon::today('Asia/Kolkata');
-        $deadline = $today->copy()->endOfMonth()->startOfDay();
+        $deadline = ($deadline ?? $today->copy()->endOfMonth())->copy()->startOfDay();
+
+        // A deadline already past still reads as "today" rather than a negative
+        // count: the cycle is being resolved, and the distributor's action —
+        // clear the wallet — has not changed.
+        $daysRemaining = max(1, (int) $today->diffInDays($deadline, absolute: false) + 1);
 
         $tone = match (true) {
             $balancePaise <= 0 => 'cleared',
-            $today->day >= self::RED_FROM_DAY => 'red',
-            $today->day >= self::AMBER_FROM_DAY => 'amber',
+            $daysRemaining <= self::RED_WITHIN_DAYS => 'red',
+            $daysRemaining <= self::AMBER_WITHIN_DAYS => 'amber',
             default => 'green',
         };
 
         return new self(
             tone: $tone,
-            daysRemaining: (int) $today->diffInDays($deadline) + 1,
+            daysRemaining: $daysRemaining,
             deadline: $deadline,
             balancePaise: $balancePaise,
         );
@@ -71,7 +88,7 @@ final readonly class RepurchaseWalletStatus
     public function detail(): string
     {
         if ($this->tone === 'cleared') {
-            return 'Nothing to clear this month.';
+            return 'Nothing to clear this cycle.';
         }
 
         return sprintf(

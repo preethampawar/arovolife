@@ -57,12 +57,12 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers fourteen engines with unique keys and signatures', function (): void {
+it('registers thirteen engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(14);
+    expect($all)->toHaveCount(13);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(14);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(13);
 });
 
 it('points every orchestrated engine at a registered orchestrator', function (): void {

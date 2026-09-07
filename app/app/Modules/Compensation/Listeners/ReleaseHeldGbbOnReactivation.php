@@ -18,13 +18,14 @@ use Illuminate\Support\Facades\DB;
  *    withheld from that day will be calculated as usual and released to his
  *    bank account."
  *
- * Only GRACE-window rows ({@see GbbMonthlyResult::STATUS_REPURCHASE_HELD}) are
+ * Only HELD rows ({@see GbbMonthlyResult::STATUS_REPURCHASE_HELD}) are
  * released — they were *calculated at the month's frozen point value but not
  * credited*, and their AGP was left in the month's denominator precisely so a
- * release pays the same rupees everyone else was priced at. Rows that fell in
- * the post-grace suspension ({@see GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED})
- * are audit-only records of forfeited AGP: gross 0, excluded from the month's
- * denominator, and intentionally NEVER released.
+ * release pays the same rupees everyone else was priced at. Legacy
+ * {@see GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED} rows — written before the
+ * client's 2026-09-06 rule 8 made withheld income payable on fulfilment — are
+ * audit-only records of forfeited AGP: gross 0, excluded from the month's
+ * denominator, and intentionally NEVER released. No new ones are written.
  *
  * Idempotent: each row is credited only while it is still HELD, flipped to
  * CREDITED inside the same row-locked transaction, so a re-fired event can never

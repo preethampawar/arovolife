@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Models;
 
+use App\Modules\Compensation\Listeners\ReleaseHeldFortuneOnReactivation;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,6 +35,16 @@ final class FortuneBonusResult extends Model
     public const string STATUS_CREDITED = 'credited';
 
     public const string STATUS_SKIPPED = 'skipped';
+
+    /**
+     * Enrolled and priced for the month, but not credited: the distributor's
+     * repurchase cycle had failed (client 2026-09-06 rule 7). They keep their
+     * Fortune position and stay in the month's roster so the release pays the
+     * rate everyone else was priced at; released by
+     * {@see ReleaseHeldFortuneOnReactivation}
+     * on fulfilment (rule 8).
+     */
+    public const string STATUS_REPURCHASE_HELD = 'repurchase_held';
 
     protected $fillable = [
         'distributor_id',

@@ -22,6 +22,7 @@ use App\Modules\Compensation\Services\AogoOfferService;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\RepurchaseWalletStatus;
 use App\Modules\Compliance\Models\AuditLog;
@@ -201,7 +202,10 @@ final class AdminDistributorCompController extends Controller
             'cf' => $cf,
             'walletBalance' => $walletBalance,
             'repurchaseWalletBalance' => $repurchaseWalletBalance,
-            'repurchaseWalletStatus' => RepurchaseWalletStatus::for($repurchaseWalletBalance),
+            'repurchaseWalletStatus' => RepurchaseWalletStatus::for(
+                $repurchaseWalletBalance,
+                deadline: app(RepurchaseCycleService::class)->currentCycle($distributor->id)?->due_date,
+            ),
             'failedToday' => $failedToday,
             'gsbOn' => $gsbOn,
             'repurchaseOn' => $repurchaseOn,

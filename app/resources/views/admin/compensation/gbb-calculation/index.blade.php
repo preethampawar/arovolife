@@ -11,6 +11,7 @@
         'reversed' => 'bg-red-100 text-red-700',
         'repurchase_held' => 'bg-orange-100 text-orange-700',
         'repurchase_suspended' => 'bg-red-100 text-red-700',
+        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
     ];
 @endphp
 
@@ -19,7 +20,7 @@
     Global monthly Growth Booster Bonus (GBB) calculation table — one row per distributor per month.
     AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP.
     "repurchase_held" = calculated inside the repurchase grace window, released on repurchase completion.
-    "repurchase_suspended" = the grace window lapsed, so the month is not payable.
+    "repurchase_held" = the repurchase cycle failed, so the month is calculated at the frozen point value and credited in full on fulfilment. "repurchase_suspended" / "repurchase_wallet_blocked" are legacy rows written before withheld income was paid back — those were forfeited.
     Search by ADN or name, filter by month and status.
 </div>
 @enddeveloper
@@ -37,7 +38,8 @@
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
         <option value="repurchase_held" {{ $status === 'repurchase_held' ? 'selected' : '' }}>Repurchase held</option>
-        <option value="repurchase_suspended" {{ $status === 'repurchase_suspended' ? 'selected' : '' }}>Repurchase suspended</option>
+        <option value="repurchase_suspended" {{ $status === 'repurchase_suspended' ? 'selected' : '' }}>Repurchase suspended (legacy)</option>
+        <option value="repurchase_wallet_blocked" {{ $status === 'repurchase_wallet_blocked' ? 'selected' : '' }}>Repurchase wallet blocked (legacy)</option>
     </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $status)

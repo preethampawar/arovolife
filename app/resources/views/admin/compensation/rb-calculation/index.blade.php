@@ -10,6 +10,8 @@
         'pending'  => 'bg-amber-100 text-amber-700',
         'reversed' => 'bg-red-100 text-red-700',
         'requalification_held' => 'bg-orange-100 text-orange-700',
+        'repurchase_held' => 'bg-orange-100 text-orange-700',
+        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
     ];
 @endphp
 
@@ -19,6 +21,7 @@
     Rank 1 is points-based (achievers earn RAP, AO-GO grantees earn offer points; income = points × point value).
     Ranks 2–9 split each pool equally among achievers. "requalification_held" = re-qualified but missed the
     month's requalification conditions (rank's repurchase BV + cleared repurchase wallet) — recorded, not paid.
+    "repurchase_held" = priced at the month's full rate but withheld because the repurchase cycle had failed; credited in full on fulfilment.
 </div>
 @enddeveloper
 
@@ -37,6 +40,7 @@
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
         <option value="requalification_held" {{ $status === 'requalification_held' ? 'selected' : '' }}>Requalification held</option>
+        <option value="repurchase_held" {{ $status === 'repurchase_held' ? 'selected' : '' }}>Repurchase held</option>
     </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $rank || $status)

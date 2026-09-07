@@ -38,22 +38,22 @@ use Illuminate\Support\Facades\Log;
  * had no prior-month row), and someone who ranked two months ago but not last
  * month becomes eligible again.
  *
- * REPURCHASE — KP 2026-06-28: GSB, Fortune and Growth Booster are suspended
- * together on repurchase non-compliance (never Mentorship/Rank).
- *   • grace window (HOLD)  → the bonus IS calculated at the frozen point value
+ * REPURCHASE — client 2026-09-06 rules 7–8: GSB, Rank, Growth Booster and
+ * Fortune are withheld together on repurchase non-compliance (never Mentorship).
+ * A cycle fails when EITHER the window's self-purchase BV fell short OR the
+ * repurchase wallet was not ₹0 on the window's last day — one verdict, read as
+ * at month end from {@see IncomeEligibilityService::verdictAsOf()}.
+ *   • failed cycle (HOLD) → the bonus IS calculated at the frozen point value
  *     and persisted as {@see GbbMonthlyResult::STATUS_REPURCHASE_HELD} with no
- *     wallet credit; the AGP STAYS in the denominator because the row can still
- *     be released and paid by ReleaseHeldGbbOnReactivation.
- *   • post-grace (BLOCKED) → an audit-only
- *     {@see GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED} row records the AGP
- *     earned with gross 0, and the AGP is EXCLUDED from the denominator: the
- *     month can never pay it, so it must not dilute everyone else's point value
- *     (the MSB rule — only payable participants dilute the pool).
- *   • unspent repurchase wallet (BLOCKED) → an audit-only
- *     {@see GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED} row, same shape
- *     as the suspended row: gross 0, AGP excluded from the denominator, never
- *     released. It exists so the distributor is visible on the Input & Output
- *     report instead of silently vanishing from the month.
+ *     wallet credit; the AGP STAYS in the denominator, because the row is
+ *     released and paid in full by ReleaseHeldGbbOnReactivation the day the
+ *     distributor fulfils. Withholding it from the denominator would price the
+ *     release at a rate nobody else was paid.
+ *
+ * The STATUS_REPURCHASE_SUSPENDED and STATUS_REPURCHASE_WALLET_BLOCKED rows —
+ * gross 0, excluded from the denominator, never released — are no longer
+ * written. They predate rule 8's decision that withheld income is paid back,
+ * and the recovery path below still has to recognise them.
  *
  * THREE PHASES (the RankBonusService shape):
  *  1. Pass 1 — {@see resolveRoster()} decides the month's population and each
@@ -143,10 +143,9 @@ final class GrowthBoosterBonusService
             return [];
         }
 
-        return array_keys($this->lateEarners(
-            $this->eligibleEarners($monthStart, $month->copy()->endOfMonth()),
-            $yearMonth,
-        ));
+        $agpMap = $this->buildAgpMap($monthStart, $month->copy()->endOfMonth());
+
+        return array_keys($this->lateEarners($this->eligibleEarners($agpMap, $monthStart), $yearMonth));
     }
 
     // ---------------------------------------------------------------- pass 1
@@ -162,62 +161,23 @@ final class GrowthBoosterBonusService
 
         $skippedNoAgp = $agpMap->filter(fn (int $agp): bool => $agp === 0)->count();
 
+        // ONE repurchase gate, as at month end. The wallet = ₹0 condition used
+        // to be a second pass over the live balances; the client's 2026-09-06
+        // rule 4 folds it into the distributor's own cycle verdict, so a wallet
+        // failure now lands in $held like any other missed repurchase — in the
+        // denominator, and released in full on fulfilment (rule 8).
         [$payable, $held, $suspended] = $this->partitionByRepurchase(
-            $this->rejectRankedLastMonth($this->agpEarners($agpMap), $monthStart),
-        );
-
-        /** @var Collection<int, int> $walletBlocked */
-        $walletBlocked = collect();
-
-        foreach ($this->walletBlockedIds($payable, $monthEnd) as $distributorId) {
-            $walletBlocked[$distributorId] = (int) $payable[$distributorId];
-        }
-
-        return new GbbMonthRoster(
-            payable: $payable->reject(fn (int $agp, int $distributorId): bool => $walletBlocked->has($distributorId)),
-            held: $held,
-            suspended: $suspended,
-            walletBlocked: $walletBlocked,
-            skippedNoAgp: $skippedNoAgp,
-        );
-    }
-
-    /**
-     * Repurchase wallet = 0 is a mandatory qualification gate for GBB (spec
-     * 17-8-2026): the distributor must have spent their repurchase wallet down
-     * to zero via checkout purchases before GBB is credited for the month. New
-     * joiners (no prior payout → no deduction ever) have a ₹0 balance and pass
-     * automatically. Balances are taken at month end so late checkout purchases
-     * count, which also keeps the answer stable across re-runs.
-     *
-     * @param  Collection<int, int>  $candidates  distributor id → AGP
-     * @return list<int> the ids that fail the gate
-     */
-    private function walletBlockedIds(Collection $candidates, Carbon $monthEnd): array
-    {
-        if ($candidates->isEmpty()) {
-            return [];
-        }
-
-        $balances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
-            array_values($candidates->keys()->map(fn ($id): int => (int) $id)->all()),
+            $this->eligibleEarners($agpMap, $monthStart),
             $monthEnd,
         );
 
-        $blocked = [];
-
-        foreach ($candidates as $distributorId => $agp) {
-            if (($balances[(int) $distributorId] ?? 0) > 0) {
-                Log::info('gbb.skipped_wallet_nonzero', [
-                    'distributor_id' => (int) $distributorId,
-                    'repurchase_wallet_balance_paise' => $balances[(int) $distributorId],
-                ]);
-
-                $blocked[] = (int) $distributorId;
-            }
-        }
-
-        return $blocked;
+        return new GbbMonthRoster(
+            payable: $payable,
+            held: $held,
+            suspended: $suspended,
+            walletBlocked: collect(),
+            skippedNoAgp: $skippedNoAgp,
+        );
     }
 
     // ----------------------------------------------------------------- freeze
@@ -413,7 +373,7 @@ final class GrowthBoosterBonusService
 
         $results = GbbMonthlyResult::where('year_month', $existing->month_start);
 
-        if ((clone $results)
+        if ($results->clone()
             ->whereIn('status', GbbMonthlyResult::POOL_FUNDED_STATUSES)
             ->exists()) {
             Log::warning('gbb.pool.premature_freeze_kept', $details + [
@@ -426,7 +386,7 @@ final class GrowthBoosterBonusService
         // Snapshot what the hard delete is about to destroy — id, distributor,
         // status, AGP and gross — so the deletion stays reconstructable from
         // `audit_log` alone. A bare count is not.
-        $discarded = (clone $results)
+        $discarded = $results->clone()
             ->get(['id', 'distributor_id', 'agp_earned', 'status', 'gbb_gross_paise'])
             ->map(fn (GbbMonthlyResult $row): array => [
                 'id' => (int) $row->id,
@@ -437,7 +397,7 @@ final class GrowthBoosterBonusService
             ])
             ->all();
 
-        $discardedResults = (clone $results)->delete();
+        $discardedResults = $results->clone()->delete();
 
         Log::warning('gbb.pool.premature_freeze_replaced', $details + [
             'discarded_results' => $discardedResults,
@@ -474,7 +434,7 @@ final class GrowthBoosterBonusService
         $rows = GbbMonthlyResult::where('year_month', $yearMonth)->get();
 
         $agpMap = $this->buildAgpMap($monthStart, $monthEnd);
-        $earners = $this->rejectRankedLastMonth($this->agpEarners($agpMap), $monthStart);
+        $earners = $this->eligibleEarners($agpMap, $monthStart);
 
         $late = $this->lateEarners($earners, $yearMonth);
 
@@ -627,11 +587,7 @@ final class GrowthBoosterBonusService
             (int) $row->distributor_id => (int) $earners[(int) $row->distributor_id],
         ]);
 
-        [$payable] = $this->partitionByRepurchase($candidates);
-
-        foreach ($this->walletBlockedIds($payable, $monthEnd) as $blockedId) {
-            $payable->forget($blockedId);
-        }
+        [$payable] = $this->partitionByRepurchase($candidates, $monthEnd);
 
         foreach ($excluded as $row) {
             $distributorId = (int) $row->distributor_id;
@@ -692,16 +648,16 @@ final class GrowthBoosterBonusService
     /**
      * The month's AGP earners after the prior-month rank gate — the population
      * the freeze partitions, and the population a later run diffs against the
-     * roster to find late arrivals.
+     * roster to find late arrivals. Both callers already hold the raw AGP map
+     * (they report `skipped_no_agp` off it), so it is passed in rather than
+     * rebuilt.
      *
+     * @param  Collection<int, int>  $agpMap
      * @return Collection<int, int> distributor id → AGP
      */
-    private function eligibleEarners(Carbon $monthStart, Carbon $monthEnd): Collection
+    private function eligibleEarners(Collection $agpMap, Carbon $monthStart): Collection
     {
-        return $this->rejectRankedLastMonth(
-            $this->agpEarners($this->buildAgpMap($monthStart, $monthEnd)),
-            $monthStart,
-        );
+        return $this->rejectRankedLastMonth($this->agpEarners($agpMap), $monthStart);
     }
 
     /**
@@ -746,12 +702,17 @@ final class GrowthBoosterBonusService
 
     /**
      * Split the month's participants into payable / held / suspended by their
-     * repurchase cycle status, before the denominator is computed.
+     * repurchase standing AS AT $asOf, before the denominator is computed.
+     *
+     * The suspended bucket is no longer filled: the client's 2026-09-06 rule 8
+     * releases withheld income on fulfilment, so every repurchase failure is a
+     * hold. It stays in the signature because rows written before that decision
+     * are still recovered through this path.
      *
      * @param  Collection<int, int>  $agpMap
      * @return array{0: Collection<int, int>, 1: Collection<int, int>, 2: Collection<int, int>}
      */
-    private function partitionByRepurchase(Collection $agpMap): array
+    private function partitionByRepurchase(Collection $agpMap, Carbon $asOf): array
     {
         /** @var Collection<int, int> $payable */
         $payable = collect();
@@ -767,7 +728,9 @@ final class GrowthBoosterBonusService
         $this->eligibility->warmCycleCache($agpMap->keys()->map(fn ($id): int => (int) $id)->all());
 
         foreach ($agpMap as $distributorId => $agp) {
-            $status = $this->eligibility->statusFor((int) $distributorId, BonusType::GrowthBooster);
+            $status = $this->eligibility
+                ->verdictAsOf((int) $distributorId, BonusType::GrowthBooster, $asOf)
+                ->status;
 
             match ($status) {
                 IncomeEligibilityService::HOLD => $held[$distributorId] = $agp,

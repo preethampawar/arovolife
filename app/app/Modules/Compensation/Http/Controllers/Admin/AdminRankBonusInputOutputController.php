@@ -260,7 +260,7 @@ final class AdminRankBonusInputOutputController extends Controller
             // Qualifiers who earned the rank but failed the repurchase-wallet =
             // ₹0 gate. They pay nothing and their share falls to leftover, so
             // without this count a rank reads as if it simply had fewer people.
-            ->selectRaw("SUM(CASE WHEN status = 'repurchase_wallet_blocked' THEN 1 ELSE 0 END) as blocked_count")
+            ->selectRaw("SUM(CASE WHEN status IN ('repurchase_held','repurchase_wallet_blocked') THEN 1 ELSE 0 END) as blocked_count")
             ->selectRaw('MAX(created_at) as computed_at')
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->month_start)->toDateString());

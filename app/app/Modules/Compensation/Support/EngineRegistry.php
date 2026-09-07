@@ -17,7 +17,6 @@ use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
-use App\Modules\Compensation\Console\Commands\RepurchaseMonthlySnapshotCommand;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -105,37 +104,6 @@ final class EngineRegistry
             ),
 
             new EngineDefinition(
-                key: 'repurchase.snapshot',
-                label: 'Repurchase Wallet Snapshot',
-                description: 'Freezes every distributor\'s repurchase wallet balance as it stood at month end. The bonus engines gate on "was the repurchase wallet spent down to ₹0 for that month?". Answering that from the live balance gives a different verdict every time a month is re-run, so the answer is written once on the 1st and every engine reads the same row afterwards. Impact: writes one repurchase_monthly_snapshots row per distributor with a non-zero repurchase history; changes nothing in the wallet itself. A month already frozen is left exactly as it is.',
-                // A MONTH engine, not a date one. It takes the month and derives
-                // its own as-of instant (that month's last midnight), so every
-                // caller — scheduler, replay, monthly close, admin trigger —
-                // computes the identical as-of and records the identical
-                // period_start. It used to take `--date`, which two callers
-                // filled differently for the same month (month start from
-                // EngineDefinition::periodRelativeTo, month end from
-                // MonthlyEngineCompletionGate::periodFor): the close could never
-                // match a scheduled run's period_start and so re-ran step 1 on
-                // every resume, and the two invocations snapshotted balances 30
-                // days apart under one cycle_month.
-                periodType: EnginePeriodType::Month,
-                commandClass: RepurchaseMonthlySnapshotCommand::class,
-                commandSignature: 'compensation:repurchase-snapshot',
-                periodOption: '--month',
-                dependencies: [],
-                featureFlagClass: RepurchaseEngineFeature::class,
-                reportRouteName: 'admin.compensation.carry-forwards.index',
-                cadence: EngineCadence::monthlyOn(1, '00:06'),
-                defaultPeriod: 'prev-month',
-                // It freezes a month-end fact, so the month must have ended: a
-                // mid-month manual run would freeze a balance that still had
-                // days left to move.
-                requiresClosedPeriod: true,
-                orchestratedBy: 'compensation.monthly-close',
-            ),
-
-            new EngineDefinition(
                 key: 'gsb.daily-cutoff',
                 label: 'GSB Daily Cut-off (incl. MSB)',
                 description: 'Runs the Genos Sales Bonus cut-off for the chosen day across all active distributors, prices that day\'s GSB and Mentorship pools, and credits the resulting amounts to wallets. Impact: writes the day\'s cut-off results, carry-forwards, daily pools and wallet credits. Idempotent — a distributor already credited for that day is skipped, never credited twice.',
@@ -182,6 +150,7 @@ final class EngineRegistry
                 dependencies: [
                     ['key' => 'gsb.daily-cutoff', 'expand' => 'month'],
                     ['key' => 'rank.check', 'shift' => 'prev-month'],
+                    ['key' => 'repurchase.evaluate'],
                 ],
                 featureFlagClass: GrowthBoosterBonusFeature::class,
                 reportRouteName: 'admin.compensation.gbb-calculation.index',
@@ -225,6 +194,7 @@ final class EngineRegistry
                 periodOption: '--month',
                 dependencies: [
                     ['key' => 'rank.check'],
+                    ['key' => 'repurchase.evaluate'],
                 ],
                 featureFlagClass: RankBonusFeature::class,
                 reportRouteName: 'admin.compensation.rb-calculation.index',
@@ -277,6 +247,7 @@ final class EngineRegistry
                 periodOption: '--month',
                 dependencies: [
                     ['key' => 'rank.check'],
+                    ['key' => 'repurchase.evaluate'],
                 ],
                 featureFlagClass: FortuneBonusFeature::class,
                 reportRouteName: 'admin.compensation.fb-calculation.index',
@@ -334,7 +305,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'compensation.monthly-close',
                 label: 'Monthly Close (crediting)',
-                description: 'Runs the eight crediting engines for a closed month in dependency order — repurchase snapshot, rank qualifications, Rank Bonus, Growth Booster, Fortune enrolment, ADC, Fortune payout, purchase offers — in ONE process, aborting at the first failure instead of letting the next engine read half-written input. Impact: writes nothing of its own; every credit and every result row is written by the engine it invokes, each recording its own run. A re-run resumes at the first step that has not succeeded, so the steps that already landed are never touched again.',
+                description: 'Runs the seven crediting engines for a closed month in dependency order — rank qualifications, Rank Bonus, Growth Booster, Fortune enrolment, ADC, Fortune payout, purchase offers — in ONE process, aborting at the first failure instead of letting the next engine read half-written input. Impact: writes nothing of its own; every credit and every result row is written by the engine it invokes, each recording its own run. A re-run resumes at the first step that has not succeeded, so the steps that already landed are never touched again.',
                 periodType: EnginePeriodType::Month,
                 commandClass: MonthlyCloseCommand::class,
                 commandSignature: 'compensation:monthly-close',

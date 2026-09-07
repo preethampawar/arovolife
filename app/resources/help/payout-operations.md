@@ -58,14 +58,13 @@ distributors who failed are retried, and the batch returns to Pending.
 
 Two scheduled commands own the month, and they run a week apart on purpose.
 
-**`compensation:monthly-close`** — 1st, 00:20 IST. Runs the eight crediting
-engines in one process, in dependency order: repurchase snapshot → rank
-qualifications → Rank Bonus → Growth Booster → Fortune enrolment → ADC →
-Fortune payout → purchase offers. It waits for the closed month's last daily
+**`compensation:monthly-close`** — 1st, 00:20 IST. Runs the seven crediting
+engines in one process, in dependency order: rank qualifications → Rank Bonus →
+Growth Booster → Fortune enrolment → ADC → Fortune payout → purchase offers. It waits for the closed month's last daily
 cut-off before starting, and it stops at the first step that fails rather than
 letting the next engine run on half-written input. Re-running it **resumes**:
 every step already recorded as succeeded is skipped, so a failure at step 5
-never re-touches steps 1–4. `--restart` forces the whole sequence, and is only
+never re-touches steps 1–3. `--restart` forces the whole sequence, and is only
 for the rare case where an earlier step genuinely has to be recomputed.
 
 **`compensation:monthly-payout-close`** — 8th, 04:00 IST. Runs the monthly

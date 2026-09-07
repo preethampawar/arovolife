@@ -11,6 +11,7 @@ use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
+use App\Modules\Compensation\Services\DTOs\RepurchaseVerdict;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use Illuminate\Support\Carbon;
@@ -301,29 +302,26 @@ final class GsbCutoffService
             );
         }
 
-        // Slab matched. Repurchase eligibility is a read (warmed cache) — safe
-        // to resolve here so settle() stays branch-for-branch mechanical.
-        $eligibility = $isFrozen
-            ? IncomeEligibilityService::ELIGIBLE
-            : $this->eligibility->statusFor($distributorId, BonusType::Gsb);
+        // Slab matched. Repurchase standing is a read (warmed cache) — safe to
+        // resolve here so settle() stays branch-for-branch mechanical.
+        //
+        // ONE gate, as at THIS cut-off date. The wallet = ₹0 condition used to
+        // be a second, independent test against the previous CALENDAR month's
+        // frozen snapshot; the client's 2026-09-06 rule 4 puts both conditions
+        // on the distributor's own cycle, judged on its last day, so a cycle
+        // that failed either condition holds the day's GSB and nothing else
+        // does. Frozen distributors are exempt — their branch never credits.
+        $verdict = $isFrozen
+            ? RepurchaseVerdict::eligible()
+            : $this->eligibility->verdictAsOf($distributorId, BonusType::Gsb, $date);
 
-        // Repurchase wallet gate: the wallet must have been spent down to ₹0 by
-        // the end of the PREVIOUS calendar month. Read off the frozen month-end
-        // snapshot, and fail-open while no snapshot exists. Frozen distributors
-        // are exempt for the same reason they skip the eligibility read — their
-        // branch never credits anyway.
-        $walletBlocked = ! $isFrozen && ! $this->eligibility->repurchaseWalletZeroedForMonth(
-            $distributorId,
-            $date->copy()->timezone('Asia/Kolkata')->startOfMonth()->subMonthNoOverflow()->toDateString(),
-        );
+        $eligibility = $verdict->status;
 
         return new GsbCutoffComputation(
             distributorId: $distributorId,
             date: $date,
             existing: $existing,
-            outcome: $walletBlocked
-                ? GsbCutoffComputation::OUTCOME_REPURCHASE_WALLET_BLOCKED
-                : GsbCutoffComputation::OUTCOME_MATCHED,
+            outcome: GsbCutoffComputation::OUTCOME_MATCHED,
             isFrozen: $isFrozen,
             eligibility: $eligibility,
             personalBvPaise: $personalBvPaise,
@@ -515,33 +513,17 @@ final class GsbCutoffService
             });
         }
 
-        // Repurchase wallet gate: the previous calendar month closed with an
-        // unspent repurchase wallet, so the day's match is recorded but not
-        // paid. CF advances exactly as in the frozen path — the weaker side has
-        // been consumed by the match either way, and letting it phantom-
-        // accumulate would double-credit it the day the gate clears.
-        if ($computation->outcome === GsbCutoffComputation::OUTCOME_REPURCHASE_WALLET_BLOCKED) {
-            return DB::transaction(function () use ($cf, $computation, $existing, $baseData): GsbCutoffResult {
-                $cf->update([
-                    'power_side_bv_paise' => $computation->newPowerCf,
-                    'power_side' => $computation->strongerSide,
-                    'slab1_weaker_bv_paise' => 0,
-                ]);
-
-                return $this->saveResult($existing, [
-                    ...$baseData,
-                    'status' => GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
-                ]);
-            });
-        }
-
-        // Repurchase engine (flag-gated): if the distributor missed their
-        // repurchase, calculate but do not credit — held during grace,
-        // suspended after. CF is advanced identically to the frozen path so the
-        // weaker side doesn't phantom-accumulate while income is withheld.
-        // (Mentorship is unaffected: a held/suspended sponsee simply generates
-        // no credited GSB, while the distributor's own MB comes from their
-        // sponsees and is never gated here.)
+        // Repurchase engine (flag-gated): the distributor's cycle failed one of
+        // the client's two rule-4 conditions, so the day's match is calculated
+        // and recorded but not credited. It is HELD, never forfeited — rule 8
+        // releases it in full the day they fulfil the obligation, which is why
+        // there is no longer a separate suspended branch here.
+        //
+        // CF is advanced identically to the frozen path so the weaker side
+        // doesn't phantom-accumulate while income is withheld. (Mentorship is
+        // unaffected: a held sponsee simply generates no credited GSB, while
+        // the distributor's own MB comes from their sponsees and is never gated
+        // here.)
         if ($computation->eligibility !== IncomeEligibilityService::ELIGIBLE) {
             return DB::transaction(function () use ($cf, $computation, $existing, $baseData): GsbCutoffResult {
                 $cf->update([
@@ -552,9 +534,9 @@ final class GsbCutoffService
 
                 return $this->saveResult($existing, [
                     ...$baseData,
-                    'status' => $computation->eligibility === IncomeEligibilityService::HOLD
-                        ? GsbCutoffResult::STATUS_REPURCHASE_HELD
-                        : GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
+                    'status' => $computation->eligibility === IncomeEligibilityService::BLOCKED
+                        ? GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED
+                        : GsbCutoffResult::STATUS_REPURCHASE_HELD,
                 ]);
             });
         }

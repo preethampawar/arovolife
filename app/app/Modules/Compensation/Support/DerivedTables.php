@@ -87,7 +87,6 @@ final class DerivedTables
         // survivor would gate every replayed month on a balance computed from
         // the pre-wipe wallet ledger.
         'repurchase_cycles',
-        'repurchase_monthly_snapshots',
 
         // The run log itself: EngineStatusService::isPeriodComputed() reads a
         // succeeded row as "already done", so surviving rows make a replay skip
@@ -137,7 +136,6 @@ final class DerivedTables
         'fortune_bonus_participants' => ['column' => 'month_start', 'granularity' => 'month'],
         'fortune_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'adc_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
-        'repurchase_monthly_snapshots' => ['column' => 'cycle_month', 'granularity' => 'month'],
     ];
 
     /**

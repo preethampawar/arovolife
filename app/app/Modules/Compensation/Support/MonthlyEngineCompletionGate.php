@@ -44,7 +44,6 @@ final class MonthlyEngineCompletionGate
      * @var list<string>
      */
     public const ENGINE_KEYS = [
-        'repurchase.snapshot',
         'rank.check',
         'rank.bonus',
         'gbb.monthly',
@@ -133,9 +132,9 @@ final class MonthlyEngineCompletionGate
      *
      * This must agree with what `RecordEngineRun` writes as `period_start` for
      * the same invocation, or the close's resume check can never match a run it
-     * made itself. The repurchase snapshot used to be date-typed and be handed
-     * the month's LAST day here while the scheduler handed it the FIRST — the
-     * close then re-ran it on every resume.
+     * made itself. The now-retired repurchase snapshot was the cautionary case:
+     * it was date-typed and handed the month's LAST day here while the scheduler
+     * handed it the FIRST, so the close re-ran it on every resume.
      */
     public static function periodFor(EngineDefinition $definition, Carbon $month): Carbon
     {
@@ -149,8 +148,8 @@ final class MonthlyEngineCompletionGate
      * oldest first, grouped by engine. One query for the whole gate.
      *
      * A range rather than an exact date so a date-typed step — or a legacy run
-     * recorded against the month's last day, as the repurchase snapshot was
-     * before it became month-typed — is still found.
+     * recorded against the month's last day, as the retired repurchase snapshot
+     * was before it became month-typed — is still found.
      *
      * @return array<string, list<EngineRun>>
      */

@@ -97,7 +97,7 @@ final class FortuneBonusService
      * denominator, so the month would pay out more than pool_paise. The month
      * is closed to new entrants the moment runForMonth() freezes it.
      *
-     * @return array{enrolled: int, skipped_ineligible: int, skipped_wallet_nonzero: int, skipped_matrix_full: int, refused_pool_frozen: bool}
+     * @return array{enrolled: int, skipped_ineligible: int, skipped_matrix_full: int, refused_pool_frozen: bool}
      */
     public function enrollEligible(Carbon $month): array
     {
@@ -121,7 +121,6 @@ final class FortuneBonusService
             return [
                 'enrolled' => 0,
                 'skipped_ineligible' => 0,
-                'skipped_wallet_nonzero' => 0,
                 'skipped_matrix_full' => 0,
                 'refused_pool_frozen' => true,
             ];
@@ -153,15 +152,6 @@ final class FortuneBonusService
         // Highest rank per distributor for this month.
         $rankMap = $this->buildRankMap($monthStart);
 
-        // "Repurchase Wallet zero" (mandatory per spec, rules 2–7): the repurchase
-        // wallet as it stood at the end of the month being enrolled. Enrolment
-        // runs on the 1st, so entries after month end must not count either way.
-        // This gate is unconditional — the spec makes it non-configurable.
-        $walletBalances = $this->wallet->repurchaseWalletBalancesAsOfPaise(
-            array_map(intval(...), array_keys($firstGsbDates)),
-            $month->copy()->endOfMonth(),
-        );
-
         // Determine next available position (existing participants claim positions already).
         $highestPosition = (int) DB::table('fortune_bonus_participants')
             ->where('month_start', $monthStart)
@@ -169,16 +159,9 @@ final class FortuneBonusService
         $nextPosition = $highestPosition + 1;
 
         $eligibles = [];
-        $skippedWalletNonzero = 0;
 
         foreach ($firstGsbDates as $distributorId => $firstGsbDate) {
             if (in_array($distributorId, $ineligibleRankIds, true)) {
-                continue;
-            }
-
-            // Repurchase engine: a held/suspended distributor is not enrolled in
-            // the Fortune tree this month (KP — GSB/Fortune/GBB suspend together).
-            if ($this->eligibility->statusFor((int) $distributorId, BonusType::Fortune) !== IncomeEligibilityService::ELIGIBLE) {
                 continue;
             }
 
@@ -218,24 +201,13 @@ final class FortuneBonusService
                 continue;
             }
 
-            // From the second month onward the repurchase wallet must have been
-            // spent down to ₹0 by the last day of the month (rule 1, the month of
-            // registration, carries no wallet condition — whatever tier the
-            // joiner lands in). A distributor who never received a deduction has
-            // a ₹0 balance and passes. The exclusion is irreversible once the
-            // month freezes, so it is logged with the balance that caused it.
-            $walletBalance = $walletBalances[(int) $distributorId] ?? 0;
-            if (! isset($newJoinerIds[$distributorId]) && $walletBalance > 0) {
-                Log::info('fortune.enroll.skipped_wallet_nonzero', [
-                    'distributor_id' => (int) $distributorId,
-                    'month_start' => $monthStart,
-                    'tier' => $tier,
-                    'repurchase_wallet_balance_paise' => $walletBalance,
-                ]);
-                $skippedWalletNonzero++;
-
-                continue;
-            }
+            // The repurchase condition is NO LONGER an enrolment gate. Under the
+            // client's 2026-09-06 rules 7–8 a failed cycle holds the money, it
+            // does not cancel the qualification: the distributor keeps their
+            // Fortune position, stays in the month's roster and denominator,
+            // and their row is written held (see payout below) so it can be
+            // released at the rate the month was priced at. Excluding them here
+            // would have been irreversible the moment the month froze.
 
             $eligibles[] = [
                 'distributor_id' => $distributorId,
@@ -299,7 +271,6 @@ final class FortuneBonusService
         return [
             'enrolled' => $enrolled,
             'skipped_ineligible' => count($firstGsbDates) - $enrolled,
-            'skipped_wallet_nonzero' => $skippedWalletNonzero,
             'skipped_matrix_full' => $skippedMatrixFull,
             'refused_pool_frozen' => false,
         ];
@@ -312,7 +283,7 @@ final class FortuneBonusService
      * is left alone, and the month's frozen economics are reused rather than
      * recomputed: incomes are reconstructed from the per-level snapshot.
      *
-     * @return array{credited: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
+     * @return array{credited: int, repurchase_held: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -343,20 +314,30 @@ final class FortuneBonusService
         /** @var array<int, FortuneMonthlyPoolLevel> $frozenLevels */
         $frozenLevels = $pool->levels()->get()->keyBy('matrix_level')->all();
 
+        $this->eligibility->warmCycleCache(
+            $participants->map(fn ($p): int => (int) $p->distributor_id)->all(),
+        );
+
         $credited = 0;
+        $held = 0;
         $skippedZeroIncome = 0;
         $totalNet = 0;
+        $monthEnd = $monthStartDate->copy()->endOfMonth();
 
         DB::transaction(function () use (
-            $participants, $monthStart, $monthStartDate, $pointsByDistributor, $pool, $frozenLevels,
-            &$credited, &$skippedZeroIncome, &$totalNet,
+            $participants, $monthStart, $monthStartDate, $monthEnd, $pointsByDistributor, $pool, $frozenLevels,
+            &$credited, &$held, &$skippedZeroIncome, &$totalNet,
         ): void {
             foreach ($participants as $participant) {
                 $distributorId = (int) $participant->distributor_id;
 
                 $alreadyProcessed = FortuneBonusResult::where('distributor_id', $distributorId)
                     ->where('month_start', $monthStart)
-                    ->whereIn('status', [FortuneBonusResult::STATUS_CREDITED, FortuneBonusResult::STATUS_SKIPPED])
+                    ->whereIn('status', [
+                        FortuneBonusResult::STATUS_CREDITED,
+                        FortuneBonusResult::STATUS_SKIPPED,
+                        FortuneBonusResult::STATUS_REPURCHASE_HELD,
+                    ])
                     ->exists();
 
                 if ($alreadyProcessed) {
@@ -375,6 +356,17 @@ final class FortuneBonusService
                     // wallet entry, but the row records why.
                     $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_SKIPPED);
                     $skippedZeroIncome++;
+
+                    continue;
+                }
+
+                // Repurchase gate, read as at month end (client rules 7–8). The
+                // row is written with the SAME gross the month priced everyone
+                // else at and simply not credited; ReleaseHeldFortuneOnReactivation
+                // pays it the day the distributor fulfils.
+                if (! $this->eligibility->verdictAsOf($distributorId, BonusType::Fortune, $monthEnd)->isEligible()) {
+                    $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, $gross, FortuneBonusResult::STATUS_REPURCHASE_HELD);
+                    $held++;
 
                     continue;
                 }
@@ -423,6 +415,7 @@ final class FortuneBonusService
         // actually paid.
         return [
             'credited' => $credited,
+            'repurchase_held' => $held,
             'skipped_zero_income' => $skippedZeroIncome,
             'total_net_paise' => $totalNet,
             'pool_paise' => (int) $pool->pool_paise,

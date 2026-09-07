@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
+use App\Modules\Compensation\Support\ResolvesMonthOption;
 use App\Modules\Compensation\Support\WorkerFreshness;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Console\Command;
@@ -39,6 +40,8 @@ use Throwable;
  */
 final class MonthlyPayoutCloseCommand extends Command
 {
+    use ResolvesMonthOption;
+
     protected $signature = 'compensation:monthly-payout-close
                             {--month= : Crediting month to pay out (YYYY-MM, defaults to the previous month)}
                             {--force : Pay out even when a crediting engine has not succeeded for the month}';
@@ -134,23 +137,5 @@ final class MonthlyPayoutCloseCommand extends Command
         }
 
         return self::FAILURE;
-    }
-
-    /** The crediting month, which on the 8th is the month that closed on the 1st. */
-    private function resolveMonth(): ?Carbon
-    {
-        $raw = $this->option('month');
-
-        if ($raw === null || trim((string) $raw) === '') {
-            return Carbon::now('Asia/Kolkata')->startOfMonth()->subMonthNoOverflow()->startOfDay();
-        }
-
-        if (preg_match('/^\d{4}-\d{2}$/', trim((string) $raw)) !== 1) {
-            $this->error("--month must be in YYYY-MM format, got: {$raw}");
-
-            return null;
-        }
-
-        return Carbon::createFromFormat('Y-m-d', trim((string) $raw).'-01')->startOfDay();
     }
 }

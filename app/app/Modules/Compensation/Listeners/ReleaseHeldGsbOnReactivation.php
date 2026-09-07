@@ -10,23 +10,24 @@ use App\Modules\Compensation\Services\WalletService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Releases GSB income that was held during a repurchase grace window once the
- * distributor completes their repurchase (KP 2026-06-28, final answer):
+ * Releases GSB income withheld while the distributor's repurchase cycle was
+ * failed, the day they fulfil it (client 2026-09-06 rule 8; KP 2026-06-28's
+ * original wording still holds):
  *
  *   "…on the day he fulfils his re-purchase condition, the total income
  *    withheld from that day will be calculated as usual and released to his
  *    bank account."
  *
- * Only GRACE-window rows ({@see GsbCutoffResult::STATUS_REPURCHASE_HELD}) are
- * released — they were *calculated but not credited*. Rows that fell in the
- * post-grace suspension ({@see GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED})
- * are forfeited for the lapsed period and are intentionally NOT released.
+ * Only HELD rows ({@see GsbCutoffResult::STATUS_REPURCHASE_HELD}) are
+ * released — they were *calculated but not credited*. Legacy
+ * {@see GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED} rows, written before
+ * rule 8 made withheld income payable, are forfeited and intentionally NOT
+ * released; no new ones are written.
  *
- * Mentorship and Rank are never suspended, so there is nothing to release for
- * them. Growth Booster now persists its own monthly held rows and is released
- * by {@see ReleaseHeldGbbOnReactivation}, registered beside this listener.
- * Fortune remains a monthly batch that simply skips an ineligible distributor
- * rather than persist a held record, so it has no held artefact to release.
+ * Mentorship is never withheld, so there is nothing to release for it. The
+ * other three withheld bonuses have their own twins of this listener —
+ * {@see ReleaseHeldGbbOnReactivation}, {@see ReleaseHeldRankBonusOnReactivation}
+ * and {@see ReleaseHeldFortuneOnReactivation} — all registered together.
  *
  * Idempotent: each row is credited only while it is still HELD, flipped to
  * CREDITED inside the same row-locked transaction, so a re-fired event (or a

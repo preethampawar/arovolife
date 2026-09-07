@@ -1038,6 +1038,16 @@ final class AdminSettingsController extends Controller
                 'max' => 1_000_000_000,
                 'default' => '1000000',
             ],
+            'comp.repurchase.cycle_days' => [
+                'group' => 'compensation_plan',
+                'feature' => RepurchaseEngineFeature::class,
+                'label' => 'Repurchase cycle length (days)',
+                'description' => 'Length of each distributor\'s repurchase window, counted from the day they completed 600 BV of personal purchase and inclusive of that day. Default: 30 days (1 Jan → 30 Jan).',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 365,
+                'default' => '30',
+            ],
             'comp.repurchase.grace_days' => [
                 'group' => 'compensation_plan',
                 'feature' => RepurchaseEngineFeature::class,

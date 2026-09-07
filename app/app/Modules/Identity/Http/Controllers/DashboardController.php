@@ -11,6 +11,7 @@ use App\Modules\Compensation\Services\GsbSlabProgressService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
+use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\RepurchaseWalletStatus;
 use App\Modules\Genealogy\Services\PlacementEngine;
@@ -127,13 +128,14 @@ final class DashboardController extends Controller
                 // governs the GSB cut-off's repurchase suspension; it governs
                 // neither mechanism this pill describes — the 10% deduction
                 // (WalletService::creditWithRepurchaseDeduction) and the
-                // month-end wallet = ₹0 gate on Fortune / GBB / rank
-                // requalification both run unconditionally. Gating it here
-                // withheld the warning on the surface most distributors use
-                // while the money was really being held back, and contradicted
-                // the same pill rendering ungated on /income/wallet.
+                // cycle-end wallet = ₹0 gate on GSB / Rank / GBB / Fortune
+                // both run unconditionally. Gating it here withheld the warning
+                // on the surface most distributors use while the money was
+                // really being held back, and contradicted the same pill
+                // rendering ungated on /income/wallet.
                 $repurchaseWalletStatus = RepurchaseWalletStatus::for(
                     app(WalletService::class)->repurchaseWalletBalancePaise($distributorId),
+                    deadline: app(RepurchaseCycleService::class)->currentCycle($distributorId)?->due_date,
                 );
 
                 $today = Carbon::today('Asia/Kolkata')->toDateString();
