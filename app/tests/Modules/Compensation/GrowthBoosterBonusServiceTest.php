@@ -601,6 +601,26 @@ it('refuses the monthly run when the previous month rank check never succeeded',
     expect(GbbMonthlyPool::count())->toBe(0);
 });
 
+it('runs the monthly run when the previous month had no Genos BV at all', function () {
+    // The first replayed month (e.g. June, before any BV exists in a full
+    // recompute replay) can never produce a rank check — the scheduler never
+    // runs one for a month before BV existed. With group_bv_daily AND
+    // rank_qualifications both empty for June, nobody could have ranked, so
+    // the exclusion set is provably empty and the prior-month prerequisite
+    // is waived instead of refusing the run.
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+
+    $dist = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000, '2026-07-03');
+    gbbSeedCutoff($dist->id, '2026-07-05', 1);
+    // No EngineRun for June, no group_bv_daily rows, no rank_qualifications row.
+
+    $exit = Artisan::call('gbb:monthly-run', ['--month' => '2026-07']);
+
+    expect($exit)->toBe(Command::SUCCESS);
+    expect(GbbMonthlyPool::count())->toBe(1);
+});
+
 it('runs once the previous month rank check has succeeded, still excluding last month rankers', function () {
     Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
 

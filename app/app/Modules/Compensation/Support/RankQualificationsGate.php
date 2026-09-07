@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Support;
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GroupBvDaily;
+use App\Modules\Compensation\Models\RankQualification;
 use Illuminate\Support\Carbon;
 
 /**
@@ -52,6 +54,35 @@ final class RankQualificationsGate
             ->whereDate('period_start', $month->copy()->startOfMonth()->toDateString())
             ->where('status', EngineRun::STATUS_SUCCEEDED)
             ->exists();
+    }
+
+    /**
+     * True when a month could not possibly have produced a rank qualification:
+     * `group_bv_daily` has zero rows dated inside it AND `rank_qualifications`
+     * has zero rows for it. With no Genos BV posted, nobody could have ranked,
+     * so the exclusion set the check would have produced is provably empty —
+     * a missing `rank:check-qualifications` run carries no risk.
+     *
+     * NARROW USE ONLY: this exists for Growth Booster's replay of the first
+     * BV month in the platform's history (June 2026 precedes any BV and the
+     * scheduler never runs a check for a month before BV existed, so a full
+     * recompute replay can never produce one). It must never be used to waive
+     * `checkedFor()` for a month that already has BV or a qualification row —
+     * that is exactly the empty-table-read-as-valid-answer failure this class
+     * exists to prevent. Callers other than the GBB prior-month check should
+     * not use this.
+     */
+    public static function monthHadNoGenosBv(Carbon $month): bool
+    {
+        $start = $month->copy()->startOfMonth();
+        $end = $month->copy()->endOfMonth();
+
+        return ! GroupBvDaily::query()
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->exists()
+            && ! RankQualification::query()
+                ->where('month_start', $start->toDateString())
+                ->exists();
     }
 
     /** Operator-facing refusal naming the month at fault and the way out. */

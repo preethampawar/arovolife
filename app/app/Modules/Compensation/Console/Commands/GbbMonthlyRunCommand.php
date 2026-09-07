@@ -10,6 +10,7 @@ use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
 final class GbbMonthlyRunCommand extends Command
@@ -44,13 +45,21 @@ final class GbbMonthlyRunCommand extends Command
         $rankMonth = $month->copy()->subMonthNoOverflow()->startOfMonth();
 
         if (! $this->option('force') && ! RankQualificationsGate::checkedFor($rankMonth)) {
-            $this->error(RankQualificationsGate::refusalMessage(
-                $rankMonth,
-                'Growth Booster excludes anyone who ranked that month. Running now would exclude nobody,'
-                ."\ncredit distributors the plan bars, and dilute the point value for the eligible.",
-            ));
+            // A month with zero Genos BV could not have produced a rank
+            // qualification, so the exclusion set is provably empty — this is
+            // the first replayed month (no BV precedes it) and never fires in
+            // production, where every month has a scheduled check.
+            if (! RankQualificationsGate::monthHadNoGenosBv($rankMonth)) {
+                $this->error(RankQualificationsGate::refusalMessage(
+                    $rankMonth,
+                    'Growth Booster excludes anyone who ranked that month. Running now would exclude nobody,'
+                    ."\ncredit distributors the plan bars, and dilute the point value for the eligible.",
+                ));
 
-            return self::FAILURE;
+                return self::FAILURE;
+            }
+
+            Log::info('gbb.monthly.prior_month_check_waived', ['month' => $rankMonth->format('Y-m')]);
         }
 
         $this->info("Growth Booster Bonus — {$month->format('F Y')}");

@@ -120,7 +120,7 @@ Distributors whose **stored bank account cannot be decrypted** get a `bank_decry
 A monthly bonus for early-stage distributors, funded from a share of the month's company BV and divided by the AGP everyone earned.
 
 ### Who is eligible
-Only distributors who held **no rank in the previous month**. Someone reaching a rank for the **first time in the current month is still eligible**; someone who held any rank last month is not. The gate is evaluated per month, so eligibility can return if a distributor holds no rank in a later prior month.
+Only distributors who held **no rank in the previous month**. Someone reaching a rank for the **first time in the current month is still eligible**; someone who held any rank last month is not. The gate is evaluated per month, so eligibility can return if a distributor holds no rank in a later prior month. The monthly run refuses unless the prior month's Rank Qualification Check has succeeded — except when that month posted no Genos BV at all (the first month of a full recompute replay), where nobody could have ranked and the prerequisite is waived.
 
 ### AGP (arovolife Growth Points)
 AGP accrue per **GSB slab match** during the month — **12 AGP** for a slab-1 match, **5** for slab 2, **2** for slab 3, none for slabs 4–7. Multiple matches in the same month each add AGP. A distributor's AGP is capped at **120 per month**; anything above the cap is not counted and is not carried to the next month.
