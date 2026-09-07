@@ -75,12 +75,13 @@
                         'credited' => 'bg-green-100 text-green-700',
                         'skipped' => 'bg-gray-100 text-gray-600',
                         'pending' => 'bg-amber-100 text-amber-700',
-                        'repurchase_held' => 'bg-orange-100 text-orange-700',
                         'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
                     ];
                     $sl = [
-                        'repurchase_held' => 'Held',
                         'repurchase_wallet_blocked' => 'Not payable',
+                    ];
+                    $sn = [
+                        'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not payable for this month.',
                     ];
                     @endphp
                     <tr class="hover:bg-gray-50">
@@ -108,6 +109,9 @@
                             <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">
                                 {{ $sl[$row->status] ?? ucfirst($row->status) }}
                             </span>
+                            @isset($sn[$row->status])
+                            <span class="block text-[11px] text-gray-600 mt-1">{{ $sn[$row->status] }}</span>
+                            @endisset
                         </td>
                     </tr>
                     @endforeach

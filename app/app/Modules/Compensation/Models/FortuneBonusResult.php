@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Models;
 
-use App\Modules\Compensation\Listeners\ReleaseHeldFortuneOnReactivation;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,14 +36,14 @@ final class FortuneBonusResult extends Model
     public const string STATUS_SKIPPED = 'skipped';
 
     /**
-     * Enrolled and priced for the month, but not credited: the distributor's
-     * repurchase cycle had failed (client 2026-09-06 rule 7). They keep their
-     * Fortune position and stay in the month's roster so the release pays the
-     * rate everyone else was priced at; released by
-     * {@see ReleaseHeldFortuneOnReactivation}
-     * on fulfilment (rule 8).
+     * Enrolled and positioned for the month, but the distributor still held
+     * repurchase-wallet money at the last instant of it — a mandatory monthly
+     * qualification condition (client 2026-09-05, re-confirmed 2026-09-07).
+     * Gross is 0, nothing is credited, the matrix position is kept, and the
+     * share the cascade allowed for stays with the company as leftover. The
+     * verdict is written once and NEVER released.
      */
-    public const string STATUS_REPURCHASE_HELD = 'repurchase_held';
+    public const string STATUS_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
 
     protected $fillable = [
         'distributor_id',

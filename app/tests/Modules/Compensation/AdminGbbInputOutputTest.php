@@ -122,8 +122,10 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
     $res->assertSee('Suspended');
     $res->assertSee('AGP excluded');
 
-    // The held amount is called out — it sits inside the frozen payout.
-    $res->assertSee('held pending repurchase');
+    // Legacy held rows were priced into the pool, so they are still called out
+    // — but as stranded rows to escalate, not as money awaiting a release.
+    $res->assertSee('legacy');
+    $res->assertSee('nothing credits them now');
 
     // Footer: the frozen denominator and the month's income.
     $res->assertSee('Total AGP');

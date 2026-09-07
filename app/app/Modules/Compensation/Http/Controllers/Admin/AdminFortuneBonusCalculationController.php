@@ -49,7 +49,7 @@ final class AdminFortuneBonusCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,credited,skipped'],
+            'status' => ['nullable', 'in:pending,credited,skipped,repurchase_wallet_blocked'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -88,7 +88,7 @@ final class AdminFortuneBonusCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,credited,skipped'],
+            'status' => ['nullable', 'in:pending,credited,skipped,repurchase_wallet_blocked'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));

@@ -48,7 +48,10 @@
     @php
         $rows = collect($earners[$pool->month_start] ?? []);
         $creditedIncome = (int) $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED)->sum('income_paise');
+        // Legacy rows only — priced into their month's pool, so they still have
+        // to reconcile here, but nothing releases them any more.
         $heldIncome = (int) $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_HELD)->sum('income_paise');
+        $walletBlockedCount = $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)->count();
         $totalIncome = $creditedIncome + $heldIncome;
         $totalDeduction = (int) $rows->sum('deduction_paise');
         $totalCredited = (int) $rows->sum('credited_paise');
@@ -89,11 +92,23 @@
             No payable AGP was earned this month, so the pool went unspent and the month's point value is
             frozen at ₹0.
         </div>
-        @elseif($heldIncome > 0)
+        @endif
+
+        @if($walletBlockedCount > 0)
+        <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
+            {{ \App\Modules\Shared\Support\IndianNumber::format($walletBlockedCount) }}
+            {{ $walletBlockedCount === 1 ? 'distributor' : 'distributors' }} forfeited this month: the repurchase
+            wallet was not cleared at the last instant of it. Their AGP was excluded from the denominator, so the
+            month's point value was priced without them and nothing here will ever pay them.
+        </div>
+        @endif
+
+        @if($heldIncome > 0)
         <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($heldIncome / 100, 2) }} of the frozen
-            payout is held pending repurchase — releases credit at the frozen point value, so the month's
-            economics never move.
+            payout sits on legacy <code>repurchase_held</code> rows. Their AGP was inside the denominator, so the
+            pool was priced with them, but the release path was removed with the 2026-09-07 repurchase rules and
+            nothing credits them now. Escalate rather than paying them from this page.
         </div>
         @endif
 
@@ -102,7 +117,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-3 py-2 text-left text-gray-500 font-medium">S.no</th>
-                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Held rows sit inside the frozen denominator; suspended and blocked rows earned AGP that was excluded from it and is never paid. Blocked = the month closed with an unspent repurchase wallet." /></th>
+                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Blocked = the repurchase wallet was not cleared at the last instant of the month: that AGP was excluded from the denominator and is never paid. Held and suspended are legacy states no run writes any more." /></th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">AGP</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Point value <x-help-tip text="The GBB pool divided by the month's total AGP, floored to whole rupees. One value applies to every earner in the month." /></th>
                         <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-500 font-medium" />
@@ -129,11 +144,11 @@
                             @if($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED)
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Credited</span>
                             @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_HELD)
-                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">Held</span>
+                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">Held (legacy)</span>
                             @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">Blocked — repurchase wallet not ₹0</span>
                             @else
-                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">Suspended — AGP excluded</span>
+                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">Suspended — AGP excluded (legacy)</span>
                             @endif
                         </td>
                     </tr>

@@ -85,8 +85,15 @@ final class AdminFortuneBonusController extends Controller
             ->where('month_start', $monthStart)
             ->first();
 
+        // Forfeited for the month-end repurchase wallet gate: enrolled and
+        // positioned, gross ₹0, never released. Surfaced as a count so a month
+        // that paid fewer people than it enrolled explains itself.
+        $walletBlockedCount = FortuneBonusResult::where('month_start', $monthStart)
+            ->where('status', FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED)
+            ->count();
+
         return view('admin.compensation.fortune-bonus.show', compact(
-            'rows', 'levelSummaries', 'date', 'resultsByDistributor', 'levelPoints', 'pool',
+            'rows', 'levelSummaries', 'date', 'resultsByDistributor', 'levelPoints', 'pool', 'walletBlockedCount',
         ));
     }
 }

@@ -29,11 +29,13 @@ use Laravel\Pennant\Feature;
  * to the frozen payout and leftover.
  *
  * Driven FROM gbb_monthly_pools (the frozen economics row) so a month whose
- * pool went unspent still appears. Held rows (repurchase grace) are listed —
- * their AGP sits inside the frozen denominator and releases credit at the
- * frozen point value. Suspended and repurchase-wallet-blocked rows are listed
- * with ₹0 — their AGP was excluded from the denominator and is never paid. The
- * report renders the pool row verbatim; it never recomputes frozen economics.
+ * pool went unspent still appears. Repurchase-wallet-blocked rows are listed
+ * with ₹0 — the wallet was not cleared at the last instant of the month, so
+ * their AGP was excluded from the denominator and is never paid. Legacy held
+ * and suspended rows are listed too: no run writes them any more, but held rows
+ * WERE priced into their month's pool, so the month only reconciles with them
+ * on the page. The report renders the pool row verbatim; it never recomputes
+ * frozen economics.
  */
 final class AdminGbbInputOutputController extends Controller
 {

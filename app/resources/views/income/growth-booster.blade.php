@@ -20,8 +20,8 @@
         'credited' => 'Credited',
         'pending' => 'Pending',
         'reversed' => 'Reversed',
-        'repurchase_held' => 'Held',
         'repurchase_suspended' => 'Not payable',
+        'repurchase_wallet_blocked' => 'Not payable',
     ];
     $statusBadges = [
         'credited' => 'bg-green-100 text-green-700',
@@ -29,10 +29,11 @@
         'reversed' => 'bg-red-100 text-red-700',
         'repurchase_held' => 'bg-orange-100 text-orange-700',
         'repurchase_suspended' => 'bg-red-100 text-red-700',
+        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
     ];
     $statusNotes = [
-        'repurchase_held' => 'Held until your repurchase is complete — credited in full once it is.',
         'repurchase_suspended' => 'Not payable for this month.',
+        'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not payable for this month.',
     ];
 @endphp
 <div>
@@ -117,7 +118,7 @@
                     @foreach($rows as $row)
                     @php
                         $pointValuePaise = $pointValuePaiseFor($row);
-                        $isPayable = $row->status !== 'repurchase_suspended';
+                        $isPayable = ! in_array($row->status, ['repurchase_suspended', 'repurchase_wallet_blocked'], true);
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>

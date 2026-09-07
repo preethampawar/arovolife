@@ -67,8 +67,8 @@ final class CompensationRecomputeRunner
 
         // Back-dated transitions would otherwise mail every distributor about
         // repurchase cycles that opened weeks ago. The event bus stays live —
-        // listeners like ReleaseHeldFortuneOnReactivation are part of a
-        // correct recomputation — only the transport is muted.
+        // listeners like PropagateGroupBvOnOrderPaid are part of a correct
+        // recomputation — only the transport is muted.
         //
         // Both mutes are captured first and restored in the `finally` below.
         // A queue worker is a long-lived process that handles many jobs, so a

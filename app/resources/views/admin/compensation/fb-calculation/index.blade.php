@@ -9,6 +9,7 @@
         'credited' => 'bg-green-100 text-green-700',
         'pending'  => 'bg-amber-100 text-amber-700',
         'skipped'  => 'bg-gray-100 text-gray-600',
+        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
     ];
 @endphp
 
@@ -20,7 +21,10 @@
     receives and is capped per level (₹30,000 at levels 0–3, ₹20,000 / ₹10,000 / ₹5,000 at
     levels 4–6, ₹2,500 / ₹1,500 at levels 7–8, ₹30 at level 9). Level = matrix
     depth (0 = top); Date = the first GSB credit that enrolled them. Rows written before the
-    cascade rework show "—" for points and value. Search by ADN or name.
+    cascade rework show "—" for points and value. "repurchase_wallet_blocked" = the distributor
+    still held repurchase-wallet money at the last instant of the month, so the month is forfeited:
+    gross ₹0, position kept, the share stays unspent and is never redistributed. The repurchase
+    cycle itself never withholds Fortune. Search by ADN or name.
 </div>
 @enddeveloper
 
@@ -36,6 +40,7 @@
         <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Pending</option>
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="skipped" {{ $status === 'skipped' ? 'selected' : '' }}>Skipped</option>
+        <option value="repurchase_wallet_blocked" {{ $status === 'repurchase_wallet_blocked' ? 'selected' : '' }}>Repurchase wallet not cleared</option>
     </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $status)

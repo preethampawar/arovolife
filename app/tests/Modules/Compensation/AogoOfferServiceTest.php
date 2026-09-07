@@ -281,35 +281,23 @@ it('previews exactly what the monthly run decides, across every blocking rule', 
     expect($previewed->filter()->keys()->all())->toBe([$eligible->id]);
 });
 
-it('blocks the grant while the repurchase wallet is not cleared (engine on, cycle suspended)', function (): void {
+it('blocks the grant while repurchase wallet money is still held at month end', function (): void {
+    // Client 2026-09-05, re-confirmed 2026-09-07: the §8 wallet condition is
+    // the month-end BALANCE. A failed repurchase cycle is not this gate — it
+    // only forfeits the failed days' group BV.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create();
     aogoQualify($dist->id, 1, '2026-04-01');
     aogoMonthlyBv($dist->id, '2026-06-10');
-
-    RepurchaseCycle::create([
-        'distributor_id' => $dist->id,
-        'cycle_start_date' => '2026-05-05',
-        'due_date' => '2026-06-04',
-        'required_bv_paise' => 100_000,
-        'completed_bv_paise' => 0,
-        'status' => RepurchaseCycle::STATUS_SUSPENDED,
-    ]);
+    aogoRepurchaseWalletCredit($dist->id, 50_000, '2026-06-20 09:00:00');
 
     $grants = app(AogoOfferService::class)->grantForMonth(Carbon::parse('2026-06-01'));
 
     expect($grants)->toHaveCount(0);
 });
 
-/**
- * The wallet gate resolves the cycle AS OF the month it is asked about. Reading
- * whatever cycle happens to be latest at query time made a closed month answer
- * differently depending on when the question was asked: a July cycle completing
- * silently unblocked June, so a June re-run granted a lifetime use the same
- * month had already refused.
- */
-it('does not let a later cycle unblock a month whose wallet was never cleared', function (): void {
+it('grants when the repurchase cycle is failed but the wallet is empty at month end', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create();
@@ -325,15 +313,39 @@ it('does not let a later cycle unblock a month whose wallet was never cleared', 
         'status' => RepurchaseCycle::STATUS_SUSPENDED,
     ]);
 
-    // A later cycle, completed — it governs July onwards, never June.
-    RepurchaseCycle::create([
-        'distributor_id' => $dist->id,
-        'cycle_start_date' => '2026-07-05',
-        'due_date' => '2026-08-04',
-        'required_bv_paise' => 100_000,
-        'completed_bv_paise' => 100_000,
-        'status' => RepurchaseCycle::STATUS_COMPLETED,
-    ]);
+    expect(app(AogoOfferService::class)->grantForMonth(Carbon::parse('2026-06-01')))->toHaveCount(1);
+});
+
+/**
+ * The wallet gate reads the balance AS AT the last instant of the month it is
+ * asked about. A closed month must answer the same way however long afterwards
+ * the question is asked, or a June re-run would grant a lifetime use that June
+ * itself had refused.
+ */
+it('does not let a wallet emptied after the month closed unblock that month', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    aogoQualify($dist->id, 1, '2026-04-01');
+    aogoMonthlyBv($dist->id, '2026-06-10');
+    aogoRepurchaseWalletCredit($dist->id, 50_000, '2026-06-20 09:00:00');
+
+    // Spent in July — June closed with the money still in the wallet.
+    aogoRepurchaseWalletCredit($dist->id, 50_000, '2026-07-03 09:00:00', 'repurchase_wallet_used');
 
     expect(app(AogoOfferService::class)->grantForMonth(Carbon::parse('2026-06-01')))->toHaveCount(0);
 });
+
+/** A repurchase-wallet movement in the ledger — what the §8 wallet gate reads. */
+function aogoRepurchaseWalletCredit(int $distributorId, int $amountPaise, string $createdAt, string $type = 'repurchase_deduction'): void
+{
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'type' => $type,
+        'amount_paise' => $type === 'repurchase_wallet_used' ? -abs($amountPaise) : abs($amountPaise),
+        'reference_id' => null,
+        'reference_type' => null,
+        'memo' => 'test',
+        'created_at' => $createdAt,
+    ]);
+}

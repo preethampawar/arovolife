@@ -38,6 +38,14 @@
         ₹{{ \App\Modules\Shared\Support\IndianNumber::format(($pool->shortfall_per_head_paise ?? 0) / 100, 2) }} and no point earnings were distributed.
     </p>
     @endif
+    @if($walletBlockedCount > 0)
+    <p class="px-4 py-3 text-xs text-amber-700 bg-amber-50 border-t border-amber-200">
+        {{ \App\Modules\Shared\Support\IndianNumber::format($walletBlockedCount) }}
+        {{ $walletBlockedCount === 1 ? 'qualifier' : 'qualifiers' }} forfeited this month — the repurchase wallet
+        was not cleared at the last instant of it. They keep their matrix position, are credited nothing, and the
+        share the cascade allowed for stays unspent as leftover; it is never redistributed and never released.
+    </p>
+    @endif
     @unless($pool)
     <p class="px-4 py-3 text-xs text-gray-600">
         No frozen pool row for this month — the engine has not run for it yet.
@@ -136,7 +144,7 @@
                 @foreach($rows as $participant)
                 @php
                     $result = $resultsByDistributor[$participant->distributor_id] ?? null;
-                    $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-600', 'pending' => 'bg-amber-100 text-amber-700'];
+                    $sc = ['credited' => 'bg-green-100 text-green-700', 'skipped' => 'bg-gray-100 text-gray-600', 'pending' => 'bg-amber-100 text-amber-700', 'repurchase_wallet_blocked' => 'bg-red-100 text-red-700'];
                 @endphp
                 <tr>
                     <td class="px-4 py-2 text-right font-mono text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($participant->position) }}</td>
@@ -158,7 +166,7 @@
                     <td class="px-4 py-2 text-center">
                         @if($result)
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$result->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ ucfirst($result->status) }}
+                            {{ $result->status === \App\Modules\Compensation\Models\FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED ? 'Repurchase wallet not cleared' : ucfirst($result->status) }}
                         </span>
                         @else
                         <span class="text-gray-600">—</span>

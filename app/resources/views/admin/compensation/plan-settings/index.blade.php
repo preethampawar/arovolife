@@ -156,7 +156,7 @@
             <li>Only distributors who held <strong>no rank in the previous month</strong> are eligible (reaching a first rank in the current month is fine).</li>
             <li><strong>AGP</strong> (arovolife Growth Points) accrue per GSB slab match during the month — <strong>12</strong> for slab 1, <strong>5</strong> for slab 2, <strong>2</strong> for slab 3, none above — capped at <strong>120 AGP</strong> per month, nothing carried over.</li>
             <li>The month's <strong>pool</strong> is the GBB monthly pool rate (5%) of the month's company-wide BV.</li>
-            <li><strong>Point value = pool ÷ the total AGP of all eligible distributors</strong>, floored to whole rupees; income = <strong>own AGP × that value</strong>. Distributors inside their repurchase grace window are held (still in the denominator); a lapsed window forfeits the month.</li>
+            <li><strong>Point value = pool ÷ the total AGP of all eligible distributors</strong>, floored to whole rupees; income = <strong>own AGP × that value</strong>. A distributor still holding repurchase-wallet money at the last instant of the month forfeits it — their AGP is left out of the denominator and nothing is ever paid back. The repurchase cycle itself never withholds GBB: a failed day produced no slab match, so no AGP came from it.</li>
         </ol>
     </div>
 

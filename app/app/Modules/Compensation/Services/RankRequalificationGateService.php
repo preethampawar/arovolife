@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Compensation\Models\RepurchaseCycle;
-use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Laravel\Pennant\Feature;
 
 /**
  * KP's §8 requalification conditions (confirmed 2026-08-05): a distributor
@@ -17,16 +14,19 @@ use Laravel\Pennant\Feature;
  * rank's monthly repurchase obligation (rank_tiers.repurchase_bv_paise) and
  * (b) a cleared repurchase wallet.
  *
- * "Wallet cleared" reads the repurchase engine's latest cycle: a suspended
- * cycle means the obligation was missed, so the wallet is NOT cleared.
- * When the {@see RepurchaseEngineFeature} flag is off (or the distributor has
- * no cycle yet) the check fails open — same convention as
- * {@see IncomeEligibilityService}.
+ * "Wallet cleared" is the MONTH-END BALANCE, not the repurchase cycle's verdict
+ * (client 2026-09-05, re-confirmed 2026-09-07): a cycle failure forfeits the
+ * failed days' group BV and nothing else, while unspent repurchase-wallet money
+ * held at the last instant of the month is its own, separate qualification
+ * failure. The question is answered in exactly one place,
+ * {@see RepurchaseWalletGateService::clearedAtMonthEnd()}, so this gate, GBB
+ * and Fortune can never disagree about a month.
  */
 final class RankRequalificationGateService
 {
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
+        private readonly RepurchaseWalletGateService $walletGate,
     ) {}
 
     /**
@@ -88,56 +88,15 @@ final class RankRequalificationGateService
     }
 
     /**
-     * Whether each distributor's repurchase condition counts as met IN THE
-     * MONTH BEING EVALUATED. Missing key = no cycle yet (fail-open, handled by
-     * the caller's `?? true`).
-     *
-     * The governing cycle is the latest one that had started by the end of the
-     * month — not the latest that exists at query time. Without the month bound
-     * a closed month answered differently depending on when the question was
-     * asked: a distributor held in June because June's cycle lapsed became
-     * "cleared" for June the moment July's cycle completed, so a June re-run
-     * paid a §8 hold it had already refused, and AogoOfferService granted a
-     * lifetime use for a month it had previously declined.
-     *
-     * Reading `fulfilled_on` rather than `status` is what makes that stable
-     * even after a late fulfilment: a cycle fulfilled AFTER its due date was
-     * failed for the whole gap, and flipping its status to completed must not
-     * retroactively clear the month it lapsed in.
+     * Whether each distributor's repurchase wallet was clear at the end of the
+     * month being evaluated. Delegated — this service does not answer the
+     * month-end wallet question itself.
      *
      * @param  int[]  $distributorIds
      * @return array<int, bool>
      */
     private function walletClearedMap(array $distributorIds, Carbon $month): array
     {
-        if (! Feature::for(null)->active(RepurchaseEngineFeature::class)) {
-            return [];
-        }
-
-        $monthEnd = $month->copy()->endOfMonth()->startOfDay();
-
-        $latest = RepurchaseCycle::query()
-            ->whereIn('distributor_id', $distributorIds)
-            ->whereDate('cycle_start_date', '<=', $monthEnd->toDateString())
-            ->orderByDesc('cycle_start_date')
-            ->get()
-            ->groupBy('distributor_id');
-
-        $map = [];
-        foreach ($latest as $distributorId => $cycles) {
-            /** @var RepurchaseCycle|null $cycle */
-            $cycle = $cycles->first();
-
-            if ($cycle === null) {
-                continue;
-            }
-
-            // Still inside its own window: nothing is due yet, so nothing is
-            // failed. Past it: only an on-time fulfilment clears the month.
-            $map[(int) $distributorId] = $monthEnd->lessThanOrEqualTo($cycle->due_date->copy()->startOfDay())
-                || $cycle->fulfilledOnTime();
-        }
-
-        return $map;
+        return $this->walletGate->clearedAtMonthEnd($distributorIds, $month);
     }
 }

@@ -53,9 +53,20 @@ use Illuminate\Support\Facades\Log;
  * Point values floor to whole rupees (the same rule as the Rank, MSB and GBB
  * pools); flooring and cap remainders stay in leftover_paise.
  *
- * REPURCHASE — a held/suspended distributor is filtered out at ENROLMENT
- * (IncomeEligibilityService), so unlike GBB there is no held/suspended split at
- * run time: every enrolled participant is payable.
+ * REPURCHASE — two independent things, and only one of them reaches Fortune.
+ * The repurchase CYCLE never withholds it (client spec 2026-09-07 §2.3): a day
+ * the distributor was failed produced no GSB slab achievement, so it never
+ * counted toward enrolment in the first place, and a cycle still failed at
+ * month end pays normally. The month-end repurchase WALLET gate does (client
+ * 2026-09-05, re-confirmed 2026-09-07): a participant still holding
+ * repurchase-wallet money at the last instant of the month is written
+ * {@see FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED} with gross 0 and
+ * credited nothing. They keep their matrix position and their points stayed in
+ * the frozen denominator, so their unpaid share is simply never spent — it
+ * stays as leftover and is NEVER redistributed. Never held, never released; the
+ * month's verdict is written once and a re-run skips the row. The question is
+ * asked in exactly one place,
+ * {@see RepurchaseWalletGateService::clearedAtMonthEnd()}.
  *
  * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
  * Per-level points, eligibility tiers, and ineligible ranks are all
@@ -79,7 +90,7 @@ final class FortuneBonusService
     public function __construct(
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
-        private readonly IncomeEligibilityService $eligibility,
+        private readonly RepurchaseWalletGateService $walletGate,
         private readonly GsbDailyPoolService $gsbPool,
         private readonly PersonalBvTitleService $titleService,
         private readonly FortuneDistributionCalculator $calculator,
@@ -282,7 +293,7 @@ final class FortuneBonusService
      * is left alone, and the month's frozen economics are reused rather than
      * recomputed: incomes are reconstructed from the per-level snapshot.
      *
-     * @return array{credited: int, repurchase_held: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
+     * @return array{credited: int, repurchase_wallet_blocked: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -313,19 +324,20 @@ final class FortuneBonusService
         /** @var array<int, FortuneMonthlyPoolLevel> $frozenLevels */
         $frozenLevels = $pool->levels()->get()->keyBy('matrix_level')->all();
 
-        $this->eligibility->warmCycleCache(
+        // The month-end repurchase wallet gate, asked once for the whole roster.
+        $cleared = $this->walletGate->clearedAtMonthEnd(
             $participants->map(fn ($p): int => (int) $p->distributor_id)->all(),
+            $monthStartDate,
         );
 
         $credited = 0;
-        $held = 0;
+        $walletBlocked = 0;
         $skippedZeroIncome = 0;
         $totalNet = 0;
-        $monthEnd = $monthStartDate->copy()->endOfMonth();
 
         DB::transaction(function () use (
-            $participants, $monthStart, $monthStartDate, $monthEnd, $pointsByDistributor, $pool, $frozenLevels,
-            &$credited, &$held, &$skippedZeroIncome, &$totalNet,
+            $participants, $monthStart, $monthStartDate, $cleared, $pointsByDistributor, $pool, $frozenLevels,
+            &$credited, &$walletBlocked, &$skippedZeroIncome, &$totalNet,
         ): void {
             foreach ($participants as $participant) {
                 $distributorId = (int) $participant->distributor_id;
@@ -335,7 +347,7 @@ final class FortuneBonusService
                     ->whereIn('status', [
                         FortuneBonusResult::STATUS_CREDITED,
                         FortuneBonusResult::STATUS_SKIPPED,
-                        FortuneBonusResult::STATUS_REPURCHASE_HELD,
+                        FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
                     ])
                     ->exists();
 
@@ -359,13 +371,14 @@ final class FortuneBonusService
                     continue;
                 }
 
-                // Repurchase gate, read as at month end (client rules 7–8). The
-                // row is written with the SAME gross the month priced everyone
-                // else at and simply not credited; ReleaseHeldFortuneOnReactivation
-                // pays it the day the distributor fulfils.
-                if (! $this->eligibility->verdictAsOf($distributorId, $monthEnd)->isEligible()) {
-                    $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, $gross, FortuneBonusResult::STATUS_REPURCHASE_HELD);
-                    $held++;
+                // Month-end repurchase wallet gate (client 2026-09-05,
+                // re-confirmed 2026-09-07). The month is forfeited outright: an
+                // audit row at gross 0, no wallet credit, the matrix position
+                // kept, and the share the cascade had allowed for stays with
+                // the company as leftover. Nothing releases it later.
+                if (! ($cleared[$distributorId] ?? true)) {
+                    $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+                    $walletBlocked++;
 
                     continue;
                 }
@@ -414,7 +427,7 @@ final class FortuneBonusService
         // actually paid.
         return [
             'credited' => $credited,
-            'repurchase_held' => $held,
+            'repurchase_wallet_blocked' => $walletBlocked,
             'skipped_zero_income' => $skippedZeroIncome,
             'total_net_paise' => $totalNet,
             'pool_paise' => (int) $pool->pool_paise,

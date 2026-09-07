@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
@@ -851,11 +850,12 @@ function seedRepurchaseWalletEntryForFortune(int $distributorId, int $amountPais
     ]);
 }
 
-it('enrols a distributor holding repurchase wallet money — the wallet is judged at cycle end', function (): void {
-    // Client 2026-09-06 rule 4(B) moved the wallet test onto the last day of the
-    // distributor's own cycle. Enrolment no longer looks at the balance at all:
-    // excluding them here was irreversible the moment the month froze, and rule
-    // 8 says the money is held and paid back, not cancelled.
+it('enrols a distributor holding repurchase wallet money — the wallet is judged at month end, at payout', function (): void {
+    // The wallet is not an enrolment gate: enrolment happens during the month,
+    // and the month-end balance is not knowable yet. The gate is applied once,
+    // at the payout pass, from the balance at the last instant of the month.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
@@ -868,20 +868,21 @@ it('enrols a distributor holding repurchase wallet money — the wallet is judge
     expect(FortuneBonusParticipant::where('distributor_id', $dist->id)->value('eligibility_tier'))->toBe('non_ranked');
 });
 
-it('holds the Fortune payout when the repurchase cycle failed, keeping the position', function (): void {
+it('pays Fortune on a failed repurchase cycle — only the month-end wallet gate can forfeit it', function (): void {
+    // Client spec 2026-09-07 §2.3 (A2): the repurchase CYCLE never withholds
+    // Fortune. A failed day produced no slab achievement, so it never reached
+    // the matrix in the first place; what did qualify is paid.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $month = Carbon::parse('2026-06-01');
-    $held = Distributor::factory()->create();
-    $paid = Distributor::factory()->create();
+    $dist = Distributor::factory()->create();
 
-    placeFortuneParticipant($held->id, 1);
-    placeFortuneParticipant($paid->id, 2);
+    placeFortuneParticipant($dist->id, 1);
     seedCompanyBvForFortunePool(100_000_000);
 
     // A window that closed on 30 May unfulfilled — still failed on 30 June.
     RepurchaseCycle::create([
-        'distributor_id' => $held->id,
+        'distributor_id' => $dist->id,
         'cycle_start_date' => '2026-05-01',
         'due_date' => '2026-05-30',
         'required_bv_paise' => 60_000,
@@ -889,62 +890,75 @@ it('holds the Fortune payout when the repurchase cycle failed, keeping the posit
         'wallet_balance_paise' => 50_000,
         'wallet_zeroed' => false,
         'status' => RepurchaseCycle::STATUS_SUSPENDED,
-        'failure_reason' => RepurchaseCycle::REASON_WALLET_NONZERO,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
         'resolved_at' => Carbon::parse('2026-05-31 00:05:00'),
     ]);
 
     $result = app(FortuneBonusService::class)->runForMonth($month);
 
-    expect($result['repurchase_held'])->toBe(1);
+    expect($result['credited'])->toBe(1)
+        ->and($result['repurchase_wallet_blocked'])->toBe(0);
 
-    $heldRow = FortuneBonusResult::where('distributor_id', $held->id)->firstOrFail();
-    $paidRow = FortuneBonusResult::where('distributor_id', $paid->id)->firstOrFail();
-
-    // Priced off the same frozen level economics as the paid one — the held row
-    // carries a real gross, it is simply not credited yet.
-    expect($heldRow->status)->toBe(FortuneBonusResult::STATUS_REPURCHASE_HELD)
-        ->and((int) $heldRow->gross_paise)->toBeGreaterThan(0)
-        ->and((int) $heldRow->net_paise)->toBe((int) $heldRow->gross_paise)
-        ->and($paidRow->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
-
-    expect(WalletLedgerEntry::where('distributor_id', $held->id)->where('type', 'fortune_credit')->count())->toBe(0);
-
-    // The position and the roster row survive — they are what the release pays at.
-    expect(FortuneBonusParticipant::where('distributor_id', $held->id)->exists())->toBeTrue();
+    expect(FortuneBonusResult::where('distributor_id', $dist->id)->value('status'))
+        ->toBe(FortuneBonusResult::STATUS_CREDITED);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'fortune_credit')->count())->toBe(1);
 });
 
-it('releases a held Fortune row when the distributor fulfils the repurchase', function (): void {
+it('forfeits the Fortune month for wallet money at month end — gross 0, position kept, amount stays leftover', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $month = Carbon::parse('2026-06-01');
-    $held = Distributor::factory()->create();
+    $blocked = Distributor::factory()->create();
+    $paid = Distributor::factory()->create();
 
-    placeFortuneParticipant($held->id, 1);
+    placeFortuneParticipant($blocked->id, 1);
+    placeFortuneParticipant($paid->id, 2);
     seedCompanyBvForFortunePool(100_000_000);
 
-    $cycle = RepurchaseCycle::create([
-        'distributor_id' => $held->id,
-        'cycle_start_date' => '2026-05-01',
-        'due_date' => '2026-05-30',
-        'required_bv_paise' => 60_000,
-        'completed_bv_paise' => 0,
-        'wallet_balance_paise' => 50_000,
-        'wallet_zeroed' => false,
-        'status' => RepurchaseCycle::STATUS_SUSPENDED,
-        'failure_reason' => RepurchaseCycle::REASON_BOTH,
-        'resolved_at' => Carbon::parse('2026-05-31 00:05:00'),
-    ]);
+    seedRepurchaseWalletEntryForFortune($blocked->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
+
+    $result = app(FortuneBonusService::class)->runForMonth($month);
+
+    expect($result['repurchase_wallet_blocked'])->toBe(1)
+        ->and($result['credited'])->toBe(1);
+
+    $blockedRow = FortuneBonusResult::where('distributor_id', $blocked->id)->firstOrFail();
+
+    expect($blockedRow->status)->toBe(FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED)
+        ->and((int) $blockedRow->gross_paise)->toBe(0)
+        ->and((int) $blockedRow->net_paise)->toBe(0);
+
+    expect(WalletLedgerEntry::where('distributor_id', $blocked->id)->where('type', 'fortune_credit')->count())->toBe(0);
+
+    // The position survives — the roster and the cascade were frozen with them
+    // in it, and their unpaid share simply stays unspent with the company.
+    expect(FortuneBonusParticipant::where('distributor_id', $blocked->id)->exists())->toBeTrue();
+    expect(FortuneBonusResult::where('distributor_id', $paid->id)->value('status'))
+        ->toBe(FortuneBonusResult::STATUS_CREDITED);
+});
+
+it('never re-judges a blocked Fortune row on a re-run', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $month = Carbon::parse('2026-06-01');
+    $dist = Distributor::factory()->create();
+
+    placeFortuneParticipant($dist->id, 1);
+    seedCompanyBvForFortunePool(100_000_000);
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
 
     app(FortuneBonusService::class)->runForMonth($month);
 
-    $row = FortuneBonusResult::where('distributor_id', $held->id)->firstOrFail();
-    expect($row->status)->toBe(FortuneBonusResult::STATUS_REPURCHASE_HELD);
+    // The wallet is emptied afterwards. The month was already decided; nothing
+    // is released and nothing is re-priced.
+    seedRepurchaseWalletEntryForFortune($dist->id, 50_000, 'repurchase_wallet_used', '2026-06-25 09:00:00');
 
-    event(new IncomeReactivated($held->id, $cycle->id));
-    event(new IncomeReactivated($held->id, $cycle->id)); // re-fired — must not double-credit
+    $second = app(FortuneBonusService::class)->runForMonth($month);
 
-    expect($row->fresh()->status)->toBe(FortuneBonusResult::STATUS_CREDITED);
-    expect(WalletLedgerEntry::where('distributor_id', $held->id)->where('type', 'fortune_credit')->count())->toBe(1);
+    expect($second['credited'])->toBe(0);
+    expect(FortuneBonusResult::where('distributor_id', $dist->id)->value('status'))
+        ->toBe(FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+    expect(WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'fortune_credit')->count())->toBe(0);
 });
 
 // ── The matrix is levels 0–9 only ───────────────────────────────────────────

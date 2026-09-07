@@ -19,8 +19,8 @@
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Growth Booster Bonus (GBB) calculation table — one row per distributor per month.
     AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP.
-    "repurchase_held" = calculated inside the repurchase grace window, released on repurchase completion.
-    "repurchase_held" = the repurchase cycle failed, so the month is calculated at the frozen point value and credited in full on fulfilment. "repurchase_suspended" / "repurchase_wallet_blocked" are legacy rows written before withheld income was paid back — those were forfeited.
+    "repurchase_wallet_blocked" = the distributor still held repurchase-wallet money at the last instant of the month, so the month is forfeited: gross ₹0, the AGP excluded from the denominator, never released. The repurchase cycle never withholds GBB — a failed day simply produced no slab match, so no AGP came from it.
+    "repurchase_held" / "repurchase_suspended" are legacy rows only; no run writes them any more.
     Search by ADN or name, filter by month and status.
 </div>
 @enddeveloper
@@ -37,9 +37,7 @@
         <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Pending</option>
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
-        <option value="repurchase_held" {{ $status === 'repurchase_held' ? 'selected' : '' }}>Repurchase held</option>
-        <option value="repurchase_suspended" {{ $status === 'repurchase_suspended' ? 'selected' : '' }}>Repurchase suspended (legacy)</option>
-        <option value="repurchase_wallet_blocked" {{ $status === 'repurchase_wallet_blocked' ? 'selected' : '' }}>Repurchase wallet blocked (legacy)</option>
+        <option value="repurchase_wallet_blocked" {{ $status === 'repurchase_wallet_blocked' ? 'selected' : '' }}>Repurchase wallet not cleared</option>
     </select>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
     @if($q || $month || $status)
@@ -128,7 +126,7 @@
                         ₹{{ \App\Modules\Shared\Support\IndianNumber::format($agpValuePerPoint, 2) }}
                     </td>
                     <td class="px-3 py-2 text-right">
-                        <span class="font-semibold {{ in_array($row->status, ['reversed', 'repurchase_suspended'], true) ? 'text-red-600' : ($row->status === 'repurchase_held' ? 'text-orange-700' : 'text-green-700') }}">
+                        <span class="font-semibold {{ in_array($row->status, ['reversed', 'repurchase_suspended', 'repurchase_wallet_blocked'], true) ? 'text-red-600' : ($row->status === 'repurchase_held' ? 'text-orange-700' : 'text-green-700') }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}
                         </span>
                         @if($row->repurchase_deduction_paise > 0)

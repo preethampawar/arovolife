@@ -146,28 +146,41 @@ it('badges the repurchase held and suspended statuses', function () {
         ->assertSee('bg-orange-100 text-orange-700', false);
 });
 
-it('filters by the repurchase held and suspended statuses', function () {
-    $held = gbbReportDistributor('GBBHLD', 'Hema');
-    $susp = gbbReportDistributor('GBBSUS', 'Suresh');
+it('filters by the repurchase wallet blocked status', function () {
+    $blocked = gbbReportDistributor('GBBBLK', 'Bhavana');
     $credited = gbbReportDistributor('GBBOK1', 'Kiran');
-    makeGbbRow($held, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
-    makeGbbRow($susp, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED, '2026-07-01');
+    makeGbbRow($blocked, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
     makeGbbRow($credited, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
 
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_wallet_blocked']))
+        ->assertOk()
+        ->assertSee('GBBBLK')
+        ->assertDontSee('GBBOK1');
+});
+
+it('rejects the retired repurchase hold statuses as filters', function () {
+    // Nothing writes them any more; a legacy row still renders in the
+    // unfiltered list, but they are no longer offered as a filter.
     $admin = gbbReportAdmin();
 
     $this->actingAs($admin)
         ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_held']))
-        ->assertOk()
-        ->assertSee('GBBHLD')
-        ->assertDontSee('GBBSUS')
-        ->assertDontSee('GBBOK1');
+        ->assertSessionHasErrors('status');
 
     $this->actingAs($admin)
         ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_suspended']))
+        ->assertSessionHasErrors('status');
+});
+
+it('still renders a legacy repurchase_held row in the unfiltered list', function () {
+    $held = gbbReportDistributor('GBBHLD', 'Hema');
+    makeGbbRow($held, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
+
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.index'))
         ->assertOk()
-        ->assertSee('GBBSUS')
-        ->assertDontSee('GBBHLD');
+        ->assertSee('GBBHLD');
 });
 
 it('rejects an unknown status filter', function () {
