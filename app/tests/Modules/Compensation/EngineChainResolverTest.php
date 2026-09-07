@@ -224,18 +224,19 @@ it('never backfills a cut-off for today or a future day', function (): void {
 });
 
 it('weekly payout chain checks the cut-offs of the earning week T−13…T−7', function (): void {
-    // A batch dated Wednesday 10 June pays the week that closed the previous
-    // Wednesday: 28 May → 3 June (PayoutBatch::weeklyEarningWindow). The seven
-    // days ending on the batch date are a DIFFERENT week that this batch does
-    // not pay, so they must not be what the chain backfills.
-    $ids = chainIds('gsb.weekly-payout', '2026-06-10');
+    // The batch runs on a Tuesday and pays the Wednesday→Tuesday week that
+    // closed the previous Tuesday: batch Tue 9 June pays Wed 27 May → Tue 2 June
+    // (PayoutBatch::weeklyEarningWindow). The seven days ending on the batch
+    // date are a DIFFERENT week that this batch does not pay, so they must not
+    // be what the chain backfills.
+    $ids = chainIds('gsb.weekly-payout', '2026-06-09');
 
-    expect($ids)->toContain('gsb.daily-cutoff|2026-05-28');
-    expect($ids)->toContain('gsb.daily-cutoff|2026-06-03');
-    expect($ids)->not->toContain('gsb.daily-cutoff|2026-05-27');
-    expect($ids)->not->toContain('gsb.daily-cutoff|2026-06-04');
-    expect($ids)->not->toContain('gsb.daily-cutoff|2026-06-10');
-    expect(end($ids))->toBe('gsb.weekly-payout|2026-06-10');
+    expect($ids)->toContain('gsb.daily-cutoff|2026-05-27');
+    expect($ids)->toContain('gsb.daily-cutoff|2026-06-02');
+    expect($ids)->not->toContain('gsb.daily-cutoff|2026-05-26');
+    expect($ids)->not->toContain('gsb.daily-cutoff|2026-06-03');
+    expect($ids)->not->toContain('gsb.daily-cutoff|2026-06-09');
+    expect(end($ids))->toBe('gsb.weekly-payout|2026-06-09');
 });
 
 it('de-duplicates an engine that several branches depend on', function (): void {

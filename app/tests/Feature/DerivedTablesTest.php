@@ -37,9 +37,11 @@ it('registers every table the repurchase forfeit model touches', function (strin
 })->with(repurchasePlanTables());
 
 it('dates every plan table a windowed replay must rebuild from a day or a month', function (): void {
-    // The three deliberate exceptions carry no date of their own:
-    // gsb_carryforward is rewound from the *_before columns, group_bv_debts
-    // arithmetically, and payout_line_items by their parent batch id.
+    // Two of this plan's tables carry no date of their own: gsb_carryforward is
+    // rewound from the *_before columns recorded on the cut-off rows, and
+    // payout_line_items is deleted by its parent batch id. (group_bv_debts is
+    // the third such table in the registry, rewound arithmetically, but this
+    // plan does not touch it.)
     $undated = ['gsb_carryforward', 'payout_line_items'];
 
     foreach (repurchasePlanTables() as $table) {
@@ -63,10 +65,6 @@ it('wipes purchase data through the same registry, never a second list', functio
 
     expect(array_slice($reset, 0, count(DerivedTables::inTruncationOrder())))
         ->toBe(DerivedTables::inTruncationOrder());
-
-    foreach (repurchasePlanTables() as $table) {
-        expect($reset)->toContain($table);
-    }
 
     // The orders and the BV they produced go too, or there is nothing left to
     // recompute from and the forfeited rows would be rebuilt from stale input.

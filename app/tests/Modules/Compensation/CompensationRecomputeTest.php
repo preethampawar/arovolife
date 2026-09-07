@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Console\Actions\PurchaseDataResetAction;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Services\Recompute\EngineReplayService;
@@ -986,8 +987,15 @@ it('a full replay of the client GSB example produces forfeited rows for 7–8 Au
     DB::table('genealogy_closure')->insert([
         'ancestor_id' => $subject->id, 'descendant_id' => $subject->id, 'depth' => 0,
     ]);
-    $left = recomputePlaceChild($subject, 'L');
-    $right = recomputePlaceChild($subject, 'R');
+    // Two per leg — a placement side takes one child, so the second sits under
+    // the first and still counts to the same group. The subject then has real
+    // Genos BV on each of the four days this test reads; without it the cut-off
+    // takes the idle shortcut and writes no row at all, which would make the
+    // "not forfeited" assertions pass against nothing.
+    $leftDue = recomputePlaceChild($subject, 'L');
+    $leftForfeited = recomputePlaceChild($leftDue, 'L');
+    $rightForfeited = recomputePlaceChild($subject, 'R');
+    $rightFulfilment = recomputePlaceChild($rightForfeited, 'R');
 
     // The anchor: personal purchases reach the 600-BV minimum on 7 July, which
     // is where the first window starts. Only the second half of that falls
@@ -998,28 +1006,53 @@ it('a full replay of the client GSB example produces forfeited rows for 7–8 Au
     // The late fulfilment, three days after the window closed on 6 August.
     recomputeSeedSelfPurchase($subject->id, 30_000, '2026-08-09 10:00:00');
 
-    // Group BV on the two forfeited days, so the cut-off runs the engine for
-    // this distributor instead of taking the idle shortcut.
-    recomputeSeedPaidOrder($left->id, '2026-08-07 09:00:00', 500_000);
-    recomputeSeedPaidOrder($right->id, '2026-08-08 09:00:00', 500_000);
+    // 6 August (the due date) is one-sided, so it leaves a real carry-forward
+    // standing — the asset the forfeited days must not move.
+    recomputeSeedPaidOrder($leftDue->id, '2026-08-06 09:00:00', 500_000);
+    recomputeSeedPaidOrder($leftForfeited->id, '2026-08-07 09:00:00', 500_000);
+    recomputeSeedPaidOrder($rightForfeited->id, '2026-08-08 09:00:00', 500_000);
+    recomputeSeedPaidOrder($rightFulfilment->id, '2026-08-09 09:00:00', 500_000);
 
     app(CompensationRecomputeRunner::class)->run(
         from: Carbon::parse('2026-07-01'),
         to: Carbon::parse('2026-09-05'),
     );
 
-    $statuses = DB::table('gsb_cutoff_results')
+    $rows = DB::table('gsb_cutoff_results')
         ->where('distributor_id', $subject->id)
         ->orderBy('cutoff_date')
-        ->pluck('status', 'cutoff_date')
-        ->mapWithKeys(fn (string $status, string $date): array => [Carbon::parse($date)->toDateString() => $status])
-        ->all();
+        ->get()
+        ->keyBy(fn (object $row): string => Carbon::parse($row->cutoff_date)->toDateString());
 
-    expect($statuses['2026-08-07'])->toBe('repurchase_forfeited')
-        ->and($statuses['2026-08-08'])->toBe('repurchase_forfeited')
-        // The due date itself is not forfeited, nor is the fulfilment day.
-        ->and($statuses['2026-08-06'])->not->toBe('repurchase_forfeited')
-        ->and($statuses['2026-08-09'])->not->toBe('repurchase_forfeited');
+    foreach (['2026-08-06', '2026-08-07', '2026-08-08', '2026-08-09'] as $date) {
+        expect($rows->has($date))->toBeTrue("no cut-off row for {$date}");
+    }
+
+    expect($rows['2026-08-07']->status)->toBe('repurchase_forfeited')
+        ->and($rows['2026-08-08']->status)->toBe('repurchase_forfeited')
+        // The due date itself is not forfeited, nor is the fulfilment day: both
+        // ran the engine and settled normally on BV below any slab.
+        ->and($rows['2026-08-06']->status)->toBe('no_match')
+        ->and($rows['2026-08-09']->status)->toBe('no_match');
+
+    // A forfeited day moves neither store and funds nothing: "the BVs on both
+    // sides ... will stop there as assets" (client spec §2.1).
+    foreach (['2026-08-07', '2026-08-08'] as $date) {
+        expect((int) $rows[$date]->power_cf_after_paise)->toBe((int) $rows[$date]->power_cf_before_paise)
+            ->and((int) $rows[$date]->slab1_weaker_cf_after_paise)->toBe((int) $rows[$date]->slab1_weaker_cf_before_paise)
+            ->and((int) $rows[$date]->gross_gsb_paise)->toBe(0)
+            ->and((int) $rows[$date]->net_gsb_paise)->toBe(0)
+            ->and($rows[$date]->status)->not->toBeIn(GsbCutoffResult::POOL_FUNDED_STATUSES);
+    }
+
+    // ...and the fulfilment day resumes on top of the store exactly as the due
+    // date left it, two forfeited days later.
+    expect((int) $rows['2026-08-06']->power_cf_after_paise)->toBeGreaterThan(0)
+        ->and((int) $rows['2026-08-09']->power_cf_before_paise)
+        ->toBe((int) $rows['2026-08-06']->power_cf_after_paise)
+        ->and((int) $rows['2026-08-09']->slab1_weaker_cf_before_paise)
+        ->toBe((int) $rows['2026-08-06']->slab1_weaker_cf_after_paise)
+        ->and($rows['2026-08-09']->power_side_before)->toBe($rows['2026-08-06']->power_side_after);
 
     $cycles = DB::table('repurchase_cycles')
         ->where('distributor_id', $subject->id)

@@ -85,7 +85,10 @@ final class WindowedStateWiper
      * Delete every derived row on or after $from and rewind the rolling stores.
      *
      * @param  Closure(string): void|null  $progress
-     * @return array<string, int> table => rows removed
+     * @return array<string, int> display label => rows affected. Most labels are
+     *                            table names; {@see self::CYCLE_RESET_KEY} is a
+     *                            labelled reset, not a table, so never treat a
+     *                            key here as a table name.
      */
     public function wipe(Carbon $from, ?Closure $progress = null): array
     {
@@ -190,10 +193,12 @@ final class WindowedStateWiper
     }
 
     /**
-     * Rows that would be removed, without removing them — the confirmation
-     * preview, mirroring CompensationStateWiper::preview().
+     * Rows that would be removed or reset, without touching them — the
+     * confirmation preview, mirroring CompensationStateWiper::preview().
      *
-     * @return array<string, int>
+     * @return array<string, int> display label => rows affected, keyed as
+     *                            {@see self::wipe()}: table names plus the
+     *                            labelled cycle-verdict reset.
      */
     public function preview(Carbon $from): array
     {
