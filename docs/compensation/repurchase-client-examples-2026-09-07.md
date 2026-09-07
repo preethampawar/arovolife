@@ -198,10 +198,40 @@ September 26."
 
 ## 7. Deploy checklist
 
-1. `php artisan migrate` — five `2026_09_07` migrations, forward-only. The
-   `earned_on` backfill on `wallet_ledger_entries` must complete before the
-   first post-deploy Tuesday batch runs, or Group A rows credited before the
-   backfill will not sweep on the correct week.
+1. `php artisan migrate` — forward-only. The five migrations this change
+   ships, in order (all under
+   `app/Modules/Compensation/Database/Migrations/`):
+
+   - `2026_09_07_100000_drop_grace_end_date_from_repurchase_cycles`
+   - `2026_09_07_100001_add_repurchase_forfeited_status_to_gsb_cutoff_results`
+   - `2026_09_07_100002_add_earned_on_to_wallet_ledger_entries`
+   - `2026_09_07_100003_backfill_earned_on_on_wallet_ledger_entries`
+   - `2026_09_07_100004_add_earnings_through_to_payout_batches`
+
+   `2026_09_07_100000_create_rank_monthly_pools_table` shares the date but is
+   **unrelated** — it belongs to the R-72 rank-pool work and is not part of
+   this change.
+
+   The `earned_on` backfill must complete before the first post-deploy
+   Tuesday batch runs, or Group A rows credited before the backfill will not
+   sweep on the correct week. Verify it landed:
+
+   ```sql
+   SELECT COUNT(*) FROM wallet_ledger_entries
+    WHERE type IN ('gsb_credit', 'mb_credit') AND earned_on IS NULL;
+   ```
+
+   It must return **0** before the first Tuesday batch. A non-zero count
+   means the backfill did not run (or ran before those rows existed) — do not
+   run the batch until it is 0.
+
+   One dev-only artefact: migration `2026_09_06_100001` was deleted from the
+   branch after it had already run on dev, so dev keeps an orphaned
+   `migrations` row for it and a dead `repurchase_held` member in the
+   `rank_bonus_results` / `fortune_bonus_results` status ENUMs. Both are
+   harmless — nothing writes or reads that status any more — and must be left
+   alone: **never roll back to reach it.** Staging and production, which
+   never ran it, get the correct schema from a clean forward migrate.
 2. Restart the `compensation` queue worker and the scheduler. Pre-deploy
    worker code has no `earned_on` stamping and none of the new evaluate
    guards — it would throw on the new Group A columns or miss the
@@ -229,9 +259,15 @@ beyond §4's required-changes list, provided the plan mechanics (§1–§3) are
 unchanged. Two design additions came out of the review process:
 
 - **Evaluate guards on `gsb:daily-cutoff` and `rank:check-qualifications`.**
-  Neither command may run for a date/month unless a `repurchase.evaluate`
-  `EngineRun` dated on or after the relevant cut-off exists (`--force`
-  overrides; skipped outright when the repurchase flag is off). This closes
+  Neither command may run for a date/month unless a succeeded
+  `repurchase.evaluate` `EngineRun` proves the period has been judged
+  (`--force` overrides; skipped outright when the repurchase flag is off).
+  The rank check accepts a run dated the 1st of the following month or later.
+  The cut-off is stricter: it needs a run that has SEEN the whole cut-off day
+  — dated later than it, or dated for it but started after it ended — because
+  the scheduled 00:05 run on day D cannot see a fulfilment purchase made
+  later on D, and would let the cut-off forfeit a day the distributor
+  actually fulfilled. This closes
   the same "prerequisite the scheduler did not run" hazard as R-70, applied
   to the forfeit model's own dependency: a cut-off or rank check that runs
   before that day's/month's repurchase verdicts are in would silently

@@ -56,6 +56,9 @@ it('AH-06: every registered reference doc renders as HTML', function (string $sl
     'admin-actions' => ['admin-actions', 'irreversible'],
     'staff-access-recovery' => ['staff-access-recovery', 'Forgot password'],
     'cooling-off' => ['cooling-off', '30 days'],
+    // The compensation reference is written into by every engine change; it
+    // was reachable only as a 404 until the allow-list caught up.
+    'compensation' => ['compensation', 'Repurchase'],
     'status' => ['status-reference', 'Blocked'],
 ]);
 

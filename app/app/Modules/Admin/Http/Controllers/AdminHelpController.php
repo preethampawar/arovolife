@@ -56,6 +56,11 @@ final class AdminHelpController extends Controller
             'description' => 'How commission money reaches a distributor\'s bank — the two gateway modes, approving and dispatching a batch, importing a bank response file, what every line-item status means, and what to do when a transfer fails.',
             'file' => 'payout-operations.md',
         ],
+        'compensation' => [
+            'title' => 'Compensation Engines',
+            'description' => 'How GSB, Mentorship, Rank Bonus, Growth Booster, Fortune and the repurchase condition are calculated and reported — engines, reports, guards and re-runs.',
+            'file' => 'compensation.md',
+        ],
         'payments' => [
             'title' => 'Payments & Refunds',
             'description' => 'How an online payment is confirmed (never on our word, only on Razorpay\'s), what the Payments screen shows, the unsettled-refunds worklist, the return-receipt gate on a cooling-off refund, and what to do when a refund fails.',
