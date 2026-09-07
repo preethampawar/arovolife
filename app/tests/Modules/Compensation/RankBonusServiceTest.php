@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
@@ -12,7 +11,6 @@ use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\RankBonusService;
-use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
@@ -451,104 +449,56 @@ it('still freezes a month whose legacy rows moved no money', function (): void {
 });
 
 /**
- * Client 2026-09-06 rule 7 adds Rank Bonus to the withheld four, and rule 8 pays
- * the withheld amount on fulfilment — so a repurchase-held achiever is priced at
- * the month's full rate and stays in the denominator. The frozen pool must still
- * reconcile: payout + leftover = pool, and payout = Σ roster gross.
+ * Client 2026-09-07 forfeit model (§2.2): the repurchase condition reaches Rank
+ * Bonus ONLY through the Genos BV counted at qualification — a failed day's
+ * group BV is never added. The bonus itself is never withheld: an achiever who
+ * is still failed on the last day of the month is credited on the 1st and paid
+ * on the 8th like everyone else.
  */
-it('prices a repurchase-held achiever at the full rate and still reconciles the frozen pool', function (): void {
+it('credits a rank achiever whose repurchase cycle is failed at month end — repurchase only filters BV', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $month = Carbon::parse('2026-06-01');
     seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
 
-    $paid = Distributor::factory()->create();
-    $held = Distributor::factory()->create();
-    $rank2Paid = Distributor::factory()->create();
-    $rank2Held = Distributor::factory()->create();
+    $failed = Distributor::factory()->create();
+    seedRankQualification($failed->id, rank: 1, monthStart: '2026-06-01');
 
-    seedRankQualification($paid->id, rank: 1, monthStart: '2026-06-01');
-    seedRankQualification($held->id, rank: 1, monthStart: '2026-06-01');
-    seedRankQualification($rank2Paid->id, rank: 2, monthStart: '2026-06-01');
-    seedRankQualification($rank2Held->id, rank: 2, monthStart: '2026-06-01');
-
-    // A repurchase window that closed on 30 May unfulfilled — so these two were
-    // still failed on 30 June, the date the month is judged at.
-    foreach ([$held->id, $rank2Held->id] as $distributorId) {
-        RepurchaseCycle::create([
-            'distributor_id' => $distributorId,
-            'cycle_start_date' => '2026-05-01',
-            'due_date' => '2026-05-30',
-            'required_bv_paise' => 60_000,
-            'completed_bv_paise' => 0,
-            'wallet_balance_paise' => 50_000,
-            'wallet_zeroed' => false,
-            'status' => RepurchaseCycle::STATUS_SUSPENDED,
-            'failure_reason' => RepurchaseCycle::REASON_BOTH,
-            'resolved_at' => Carbon::parse('2026-05-31 00:05:00'),
-        ]);
-    }
-
-    app(RankBonusService::class)->runForMonth($month);
-
-    foreach ([1, 2] as $rank) {
-        $pool = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', $rank)->firstOrFail();
-        $rosterGross = (int) RankBonusResult::where('month_start', '2026-06-01')
-            ->where('rank_number', $rank)->sum('gross_paise');
-
-        expect((int) $pool->payout_paise)->toBe($rosterGross)
-            ->and((int) $pool->payout_paise + (int) $pool->leftover_paise)->toBe((int) $pool->pool_paise)
-            ->and((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0)
-            ->and((int) $pool->payable_count)->toBe(2);
-    }
-
-    // The whole Rank-1 pool is committed — half of it waiting on a fulfilment.
-    $rank1 = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->firstOrFail();
-    expect((int) $rank1->payout_paise)->toBe(1_400_000)
-        ->and((int) $rank1->leftover_paise)->toBe(0);
-
-    // Held and paid carry the same gross; only the status differs.
-    expect((int) RankBonusResult::where('distributor_id', $held->id)->value('gross_paise'))->toBe(700_000)
-        ->and(RankBonusResult::where('distributor_id', $held->id)->value('status'))
-        ->toBe(RankBonusResult::STATUS_REPURCHASE_HELD)
-        ->and(RankBonusResult::where('distributor_id', $paid->id)->value('status'))
-        ->toBe(RankBonusResult::STATUS_CREDITED);
-
-    // Nothing reached the held distributor's wallet.
-    expect(app(WalletService::class)->balancePaise($held->id))->toBe(0);
-});
-
-it('releases a held Rank Bonus row when the distributor fulfils the repurchase', function (): void {
-    Feature::for(null)->activate(RepurchaseEngineFeature::class);
-
-    $month = Carbon::parse('2026-06-01');
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
-
-    $held = Distributor::factory()->create();
-    seedRankQualification($held->id, rank: 1, monthStart: '2026-06-01');
-
-    $cycle = RepurchaseCycle::create([
-        'distributor_id' => $held->id,
-        'cycle_start_date' => '2026-05-01',
-        'due_date' => '2026-05-30',
+    // Cycle due 20 June, never fulfilled — so 21–30 June are forfeited days and
+    // the distributor is still failed on 30 June, the date the month is judged at.
+    RepurchaseCycle::create([
+        'distributor_id' => $failed->id,
+        'cycle_start_date' => '2026-05-21',
+        'due_date' => '2026-06-20',
         'required_bv_paise' => 60_000,
         'completed_bv_paise' => 0,
         'wallet_balance_paise' => 50_000,
         'wallet_zeroed' => false,
         'status' => RepurchaseCycle::STATUS_SUSPENDED,
         'failure_reason' => RepurchaseCycle::REASON_BOTH,
-        'resolved_at' => Carbon::parse('2026-05-31 00:05:00'),
+        'resolved_at' => Carbon::parse('2026-06-21 00:05:00'),
     ]);
 
     app(RankBonusService::class)->runForMonth($month);
 
-    $row = RankBonusResult::where('distributor_id', $held->id)->firstOrFail();
-    expect($row->status)->toBe(RankBonusResult::STATUS_REPURCHASE_HELD);
+    $row = RankBonusResult::where('distributor_id', $failed->id)->firstOrFail();
 
-    event(new IncomeReactivated($held->id, $cycle->id));
+    expect($row->status)->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and((int) $row->gross_paise)->toBe(1_400_000)
+        ->and($row->credited_at)->not->toBeNull();
 
-    expect($row->fresh()->status)->toBe(RankBonusResult::STATUS_CREDITED)
-        ->and(app(WalletService::class)->balancePaise($held->id))->toBeGreaterThan(0);
+    // Real money moved: the rank credit exists in the ledger.
+    expect(WalletLedgerEntry::query()
+        ->where('distributor_id', $failed->id)
+        ->where('reference_type', 'rank_bonus_result')
+        ->where('reference_id', $row->id)
+        ->exists())->toBeTrue();
+
+    // The pool still reconciles against the frozen roster.
+    $pool = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->firstOrFail();
+    expect((int) $pool->payable_count)->toBe(1)
+        ->and((int) $pool->payout_paise)->toBe(1_400_000)
+        ->and((int) $pool->leftover_paise)->toBe(0);
 });
 
 it('keeps a premature freeze once something it funded was credited', function (): void {

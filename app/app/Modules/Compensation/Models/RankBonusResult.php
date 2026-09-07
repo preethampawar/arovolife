@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Models;
 
-use App\Modules\Compensation\Listeners\ReleaseHeldRankBonusOnReactivation;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,15 +42,6 @@ final class RankBonusResult extends Model
 
     /** Qualified, but the month closed with an unspent repurchase wallet — recorded, never credited. */
     public const string STATUS_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
-
-    /**
-     * The month's Rank Bonus was calculated at the pool's frozen point value but
-     * not credited, because the distributor's repurchase cycle had failed
-     * (client 2026-09-06 rule 7). Released in full by
-     * {@see ReleaseHeldRankBonusOnReactivation}
-     * the day they fulfil the obligation (rule 8).
-     */
-    public const string STATUS_REPURCHASE_HELD = 'repurchase_held';
 
     protected $fillable = [
         'distributor_id',

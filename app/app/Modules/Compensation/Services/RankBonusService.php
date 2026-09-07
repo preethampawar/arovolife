@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Compensation\Listeners\ReleaseHeldRankBonusOnReactivation;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
@@ -47,8 +46,8 @@ use Illuminate\Support\Facades\Log;
  *
  * THREE PHASES (the GsbCutoffService shape):
  *  1. Pass 1 — {@see resolveRoster()} decides the month's population: the
- *     qualifiers per rank, the §8 requalification gate, the repurchase-wallet
- *     gate, and the AO-GO grants.
+ *     qualifiers per rank, the §8 requalification gate (which carries its own
+ *     repurchase-wallet condition), and the AO-GO grants.
  *  2. Freeze — {@see freezeMonth()} writes, in ONE transaction, the nine
  *     rank_monthly_pools rows AND a rank_bonus_results row for every roster
  *     member carrying its decided status. A crash can therefore never leave a
@@ -84,6 +83,13 @@ use Illuminate\Support\Facades\Log;
  * the pool denominator (MSB precedent: only paid participants dilute the
  * pool) and never back-paid.
  *
+ * The repurchase cycle never withholds Rank Bonus (client 2026-09-07, §2.2).
+ * It reaches this engine only upstream, at qualification: RankQualification-
+ * Service counts Genos BV over the days the distributor was not failed, and a
+ * failed day's group BV is forfeited permanently. Once the rank is achieved on
+ * the surviving BV the money follows — credited on the 1st and paid on the 8th
+ * even if the distributor is still failed at month end.
+ *
  * The repurchase deduction is taken at credit time and frozen on the result
  * row; admin charge and TDS are applied at payout time, not credit time.
  * All rates, caps and pool figures are read from
@@ -100,7 +106,6 @@ final class RankBonusService
         private readonly AogoOfferService $aogo,
         private readonly RankRequalificationGateService $gate,
         private readonly GsbDailyPoolService $gsbPool,
-        private readonly IncomeEligibilityService $eligibility,
     ) {}
 
     /**
@@ -200,40 +205,19 @@ final class RankBonusService
 
         $payable = [];
         $held = [];
-        $repurchaseHeld = [];
-
-        $monthEnd = $monthStartCarbon->copy()->endOfMonth();
 
         foreach (self::RANKS as $rank) {
             $qualifierIds = $qualifiers[$rank] ?? [];
 
             $heldIds = $this->requalificationHeldIds($qualifierIds, $monthStartCarbon, $rank);
-            $payableIds = array_values(array_diff($qualifierIds, $heldIds));
 
-            // Repurchase gate (client 2026-09-06 rule 7 — Rank Bonus joined the
-            // withheld four). One verdict as at month end covers both of the
-            // rule-4 conditions: the cycle's self-purchase BV and the wallet
-            // standing at ₹0 on the cycle's last day. A held achiever keeps
-            // their place in the denominator and is priced at the month's full
-            // rate, because rule 8 pays it to them the day they fulfil.
-            $this->eligibility->warmCycleCache($payableIds);
-
-            $repurchaseHeldIds = array_values(array_filter(
-                $payableIds,
-                fn (int $id): bool => ! $this->eligibility
-                    ->verdictAsOf($id, $monthEnd)
-                    ->isEligible(),
-            ));
-
-            $payable[$rank] = $payableIds;
+            $payable[$rank] = array_values(array_diff($qualifierIds, $heldIds));
             $held[$rank] = $heldIds;
-            $repurchaseHeld[$rank] = $repurchaseHeldIds;
         }
 
         return new RankMonthRoster(
             payableIds: $payable,
             heldIds: $held,
-            repurchaseHeldIds: $repurchaseHeld,
             aogoGrants: $this->aogo->grantForMonth($monthStartCarbon),
         );
     }
@@ -359,17 +343,11 @@ final class RankBonusService
 
                 $payableIds = $roster->payableFor($rank);
                 $heldIds = $roster->heldFor($rank);
-                $repurchaseHeldIds = $roster->repurchaseHeldFor($rank);
 
                 /** @var Collection<int, RankAogoGrant> $grants */
                 $grants = $rank === 1 ? $roster->aogoGrants : collect();
                 $aogoPoints = (int) $grants->sum('points');
 
-                // A repurchase-held achiever is in the DENOMINATOR and priced
-                // at the month's full rate: the money is committed to them, it
-                // is simply not credited until they fulfil (rule 8). So the
-                // month's payout covers the whole payable population and
-                // leftover_paise still reconciles against the frozen roster.
                 $paidCount = count($payableIds);
 
                 $totalPoints = null;
@@ -416,16 +394,10 @@ final class RankBonusService
                 }
 
                 foreach ($payableIds as $distributorId) {
-                    // A repurchase-held achiever carries the SAME gross and the
-                    // same snapshot columns as a paid one — only the status
-                    // differs — so ReleaseHeldRankBonusOnReactivation can pay it
-                    // at the rate the month was priced at.
                     $this->writeRosterRow(
                         $distributorId,
                         $pool,
-                        in_array($distributorId, $repurchaseHeldIds, true)
-                            ? RankBonusResult::STATUS_REPURCHASE_HELD
-                            : RankBonusResult::STATUS_PENDING,
+                        RankBonusResult::STATUS_PENDING,
                         $grossPerQualifier,
                         rapPoints: $rapPoints,
                         totalPoints: $totalPoints,
@@ -753,7 +725,6 @@ final class RankBonusService
                 $byRank[$rank] = [
                     'qualifiers' => (int) $pool->payable_count,
                     'held' => $rows->where('status', RankBonusResult::STATUS_REQUALIFICATION_HELD)->count(),
-                    'repurchase_held' => $rows->where('status', RankBonusResult::STATUS_REPURCHASE_HELD)->count(),
                     'aogo_grants' => $rows->whereNotNull('aogo_points')->count(),
                     'pool_paise' => (int) $pool->pool_paise,
                     'total_points' => $pool->total_points,
@@ -763,13 +734,11 @@ final class RankBonusService
                 ];
 
                 foreach ($rows as $row) {
-                    $isHeld = $row->status === RankBonusResult::STATUS_REPURCHASE_HELD;
-
-                    if ($row->status !== RankBonusResult::STATUS_PENDING && ! $isHeld) {
+                    if ($row->status !== RankBonusResult::STATUS_PENDING) {
                         continue;
                     }
 
-                    if (! $isHeld && $row->gross_paise > 0) {
+                    if ($row->gross_paise > 0) {
                         $this->creditRosterRow($row, $monthStartCarbon, $monthStart, $grants);
 
                         $byRank[$rank]['gross_total'] += (int) $row->gross_paise;
@@ -777,9 +746,7 @@ final class RankBonusService
                     }
 
                     // AO-GO grantees hold no rank this month — the lifetime
-                    // award belongs to the achievers only. A repurchase-held
-                    // achiever still qualified (rule 6), so their milestone
-                    // tracks even though the money waits.
+                    // award belongs to the achievers only.
                     if ($row->aogo_points === null) {
                         $this->syncLifetimeAward((int) $row->distributor_id, $rank, $monthStart);
                     }
@@ -793,25 +760,6 @@ final class RankBonusService
             'qualified_after_freeze' => array_sum(array_map(count(...), $late)),
             'by_rank' => $byRank,
         ];
-    }
-
-    /**
-     * Release one repurchase-held roster row: credit the gross the month was
-     * frozen at and settle the AO-GO grant behind it. Called by
-     * {@see ReleaseHeldRankBonusOnReactivation}
-     * the day the distributor fulfils their repurchase obligation (rule 8),
-     * never by the monthly run.
-     */
-    public function releaseHeldRow(RankBonusResult $row): void
-    {
-        $monthStart = Carbon::parse((string) $row->month_start)->startOfMonth();
-
-        $this->creditRosterRow(
-            $row,
-            $monthStart,
-            $monthStart->toDateString(),
-            $this->aogo->grantForMonth($monthStart)->keyBy('distributor_id'),
-        );
     }
 
     /**
@@ -895,9 +843,6 @@ final class RankBonusService
                 RankBonusResult::STATUS_PENDING,
                 RankBonusResult::STATUS_CREDITED,
                 RankBonusResult::STATUS_REVERSED,
-                // Rule 6: Awards & Rewards are outside the repurchase
-                // condition, so a held month still counts as a qualification.
-                RankBonusResult::STATUS_REPURCHASE_HELD,
             ])
             ->distinct()
             ->count('month_start');

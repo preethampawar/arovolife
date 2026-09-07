@@ -17,9 +17,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Held rows were enrolled, positioned and priced exactly like the paid ones —
  * the roster and the level cascade were frozen with them in it — so the release
- * pays the gross the month was divided at. The twin of
- * {@see ReleaseHeldRankBonusOnReactivation}; idempotent for the same reason,
- * the status flipping to CREDITED inside the row-locked transaction.
+ * pays the gross the month was divided at. Idempotent: the status flips to
+ * CREDITED inside the row-locked transaction.
  */
 final class ReleaseHeldFortuneOnReactivation
 {

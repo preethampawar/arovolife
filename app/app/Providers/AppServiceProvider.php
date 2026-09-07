@@ -28,7 +28,6 @@ use App\Modules\Compensation\Events\IncomeReactivated;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
 use App\Modules\Compensation\Listeners\ReleaseHeldFortuneOnReactivation;
-use App\Modules\Compensation\Listeners\ReleaseHeldRankBonusOnReactivation;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\User;
@@ -112,11 +111,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(OrderStatusChanged::class, ReverseGroupBvOnOrderReversal::class);
         Event::listen(OrderRefundApproved::class, ReverseGroupBvOnOrderReversal::class);
 
-        // Release the withheld monthly bonuses once the distributor fulfils
-        // their repurchase obligation. GSB is deliberately absent: the client's
-        // 2026-09-07 spec forfeits a failed DAY outright — no match, no income,
-        // nothing to release later — so the daily cut-off has nothing to hold.
-        Event::listen(IncomeReactivated::class, ReleaseHeldRankBonusOnReactivation::class);
+        // Release the withheld monthly bonus once the distributor fulfils their
+        // repurchase obligation. GSB and Rank Bonus are deliberately absent:
+        // the client's 2026-09-07 spec forfeits a failed DAY's group BV
+        // outright, so the daily cut-off has nothing to hold and Rank Bonus is
+        // only ever filtered upstream, at qualification.
         Event::listen(IncomeReactivated::class, ReleaseHeldFortuneOnReactivation::class);
 
         // Run log for the ten compensation engines. Listening to the console

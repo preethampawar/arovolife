@@ -242,12 +242,10 @@
                         'credited' => 'bg-green-100 text-green-700',
                         'reversed' => 'bg-red-100 text-red-700',
                         'pending' => 'bg-gray-100 text-gray-600',
-                        'repurchase_held' => 'bg-orange-100 text-orange-700',
                         'requalification_held' => 'bg-amber-100 text-amber-800',
                         'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
                     ];
                     $sl = [
-                        'repurchase_held' => 'Held',
                         'requalification_held' => 'Held',
                         'repurchase_wallet_blocked' => 'Not payable',
                     ];

@@ -42,7 +42,7 @@ final class AdminRankBonusCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
             'rank' => ['nullable', 'integer', 'min:1'],
-            'status' => ['nullable', 'in:pending,credited,reversed,requalification_held,repurchase_held,repurchase_wallet_blocked'],
+            'status' => ['nullable', 'in:pending,credited,reversed,requalification_held,repurchase_wallet_blocked'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -111,7 +111,7 @@ final class AdminRankBonusCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
             'rank' => ['nullable', 'integer', 'min:1'],
-            'status' => ['nullable', 'in:pending,credited,reversed,requalification_held,repurchase_held,repurchase_wallet_blocked'],
+            'status' => ['nullable', 'in:pending,credited,reversed,requalification_held,repurchase_wallet_blocked'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));

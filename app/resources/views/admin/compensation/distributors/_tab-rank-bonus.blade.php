@@ -2,7 +2,7 @@
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Monthly Rank Bonus for this distributor. Rank 1 is points-based (RAP for achievers, AO-GO offer points for grantees; income = points × the month's point value); Ranks 2–9 split their pool equally among that rank's achievers.
     "requalification_held" = re-qualified but missed the month's requalification conditions (the rank's repurchase BV + a cleared repurchase wallet) — recorded, not paid.
-    "repurchase_held" = the month's Rank Bonus was priced at the pool's full rate but withheld because their repurchase cycle had failed; it is credited in full the day they fulfil it.
+    A failed repurchase cycle never withholds Rank Bonus: it only removes the failed days' Genos BV from the qualification check.
 </div>
 @enddeveloper
 
@@ -31,7 +31,6 @@
                     'credited' => 'bg-green-100 text-green-700',
                     'reversed' => 'bg-red-100 text-red-700',
                     'requalification_held' => 'bg-amber-100 text-amber-800',
-                    'repurchase_held' => 'bg-orange-100 text-orange-700',
                     'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
                     default => 'bg-gray-100 text-gray-600',
                 };

@@ -67,7 +67,7 @@ final class CompensationRecomputeRunner
 
         // Back-dated transitions would otherwise mail every distributor about
         // repurchase cycles that opened weeks ago. The event bus stays live —
-        // listeners like ReleaseHeldRankBonusOnReactivation are part of a
+        // listeners like ReleaseHeldFortuneOnReactivation are part of a
         // correct recomputation — only the transport is muted.
         //
         // Both mutes are captured first and restored in the `finally` below.
