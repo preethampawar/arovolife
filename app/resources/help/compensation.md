@@ -245,6 +245,39 @@ The five cash bonuses (GSB, Mentorship, GBB, Rank, Fortune) share one ₹50,00,0
 
 All of the above rates and caps are admin-editable under **Settings → Compensation plan — rates, caps & periods**.
 
+## Daily engine-health email
+Every morning at **08:00 IST**, after every overnight engine has finished, the platform checks the compensation engines and emails a monitored mailbox **only when something needs a person**. A healthy day sends nothing, so an email arriving is itself the signal. The mailbox is part of the platform configuration and is not editable from this console — ask the platform team if it needs to change.
+
+It reports three things:
+
+- **Failed runs** — an engine that ran and errored in the last 30 days and has not since been re-run successfully for the same period. This is the same set the sidebar **Engine failures** badge counts.
+- **Scheduled runs that did not happen** — the period the last scheduled fire should have produced, with no run of any kind recorded for it. Nothing else in the platform shows this: a run that never started leaves no row, so not even the badge appears.
+- **Runs that appear stuck** — a run still marked *running* more than 3 hours after it started. That is the compensation queue worker having died mid-run, not a slow engine.
+
+Every line in the email carries its own numbered instructions. They are reproduced here so the same guidance exists without the email:
+
+**A. An engine with a Run button (GSB Daily Cut-off (incl. MSB), Rank Qualification Check, Rank Bonus, Growth Booster Bonus, Fortune Bonus Enrolment, Fortune Bonus Payout, ADC Bonus, Purchase Offers) that failed or never ran**
+
+1. Open **Compensation → Engine Runs**.
+2. Find the card named in the email.
+3. In its **Month** or **Date** field select the period the email names — it gives both the form the picker shows ("Aug 2026") and the raw value ("2026-08").
+4. Type a **Reason** (why you are running it; at least 10 characters).
+5. Click **Preview & Confirm →**. The preview lists every engine that will run: a missing prerequisite is added for you, which is expected. Confirm.
+6. Reload after a minute: the card's **Last run** must read *succeeded* for that period. If it fails again, do not retry more than once — send the error text under **Run events** to the platform team.
+7. Nothing is credited twice. A re-run only fills what the failed run left empty.
+
+**Repurchase Evaluation is the exception.** Never run it for a past date: it refreshes every cycle as at the date it is given, so a back-dated run would stamp today's purchases onto an older cycle. Leave its **Date** field on today and run it once; today's run covers the missed day. A failed row for an earlier date stays in the email until it is 30 days old.
+
+**B. GSB Weekly Payout** — this engine has no button on purpose (the person who approves a batch must never be the one who creates it). Every unpaid weekly income is still in the distributors' wallets and **next Tuesday's batch sweeps it automatically**, one week late. Only if the next Tuesday also produces no batch does this need the platform team to create the missed batch on the server; you then approve it on **Compensation → Weekly Payouts**.
+
+**C. Monthly Payout Batch / Monthly Payout Close** — also no button. First clear every other item in the email for that month: the monthly payout refuses to run while any crediting engine for the month is failed or missing. The platform team then re-runs the payout close on the server, and you approve the batch on **Compensation → Monthly Payouts**. A batch is never created twice for the same month.
+
+**D. Monthly Close (crediting)** — the close stopped at one step, and that step is listed separately in the same email with its own instructions. Re-run that step, then the steps after it in order — Rank Qualification Check → Rank Bonus → Growth Booster Bonus → Fortune Bonus Enrolment → ADC Bonus → Fortune Bonus Payout → Purchase Offers — skipping any card that already reads *succeeded* for the month. Once every step is succeeded, the payout on the 8th proceeds on its own.
+
+**E. A stuck run** — do not trigger anything for that engine yet: a second run is refused while one is recorded as running. Ask the platform team to restart the compensation worker and to mark the dead run failed if it does not finish within the hour. Once the card no longer shows *running*, follow **A** for the same period.
+
+To check that the mailbox is receiving mail, the platform team can run `php artisan compensation:engine-health-digest --always`, which sends the digest even on a healthy day.
+
 ## Manual controls
 Use Manual Controls (always audit-logged) for: failed cut-offs (Retry is safe/idempotent), BV reversals after cut-off (Recalculate CF), incorrect credits (Reverse), and frozen accounts.
 

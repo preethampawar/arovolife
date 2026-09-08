@@ -2,6 +2,7 @@
 
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
+use App\Modules\Compensation\Console\Commands\EngineHealthDigestCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
@@ -103,6 +104,16 @@ Schedule::command(MonthlyPayoutCloseCommand::class, [
     '--month' => now('Asia/Kolkata')->subMonthNoOverflow()->format('Y-m'),
 ])
     ->monthlyOn(8, '04:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Daily engine-health digest at 08:00 IST — after every overnight engine
+// (monthly payout close is the last, 04:00 on the 8th). Emails the admin
+// mailbox only when a run failed, a scheduled period never ran, or a run is
+// stuck; a healthy day sends nothing. Recipient: notifications.engine_health_email.
+Schedule::command(EngineHealthDigestCommand::class)
+    ->dailyAt('08:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

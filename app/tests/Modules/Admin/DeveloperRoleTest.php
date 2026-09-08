@@ -89,6 +89,7 @@ it('DEV-04: admin cannot write a developer-owned setting', function (string $key
     'commerce.cooling_off.days',
     'placement.spillover.enabled',
     'notifications.email_on_status_change',
+    'notifications.engine_health_email',
 ]);
 
 it('DEV-05: developer can write a developer-owned setting', function () {
@@ -161,7 +162,7 @@ it('DEV-06: the settings page shows an admin no developer-owned key', function (
     $res->assertSee('commerce.shipping.fee_rupees');
     // Deduction/threshold keys stay visible read-only (compliance can verify
     // them); everything else the admin doesn't own is absent entirely.
-    foreach (['placement.spillover.enabled', 'comp.gsb.pool_rate_bp', 'payments.gateway.stub.enabled'] as $hidden) {
+    foreach (['placement.spillover.enabled', 'comp.gsb.pool_rate_bp', 'payments.gateway.stub.enabled', 'notifications.engine_health_email'] as $hidden) {
         $res->assertDontSee($hidden);
     }
     // The raw engineer table would dump every row including the hidden ones.

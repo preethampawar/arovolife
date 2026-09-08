@@ -168,6 +168,71 @@ php artisan repurchase:evaluate --distributor=59
 php artisan repurchase:evaluate --date=2026-07-01
 ```
 
+### `compensation:engine-health-digest`
+
+Builds the daily engine-health report and emails it to the mailbox in the `notifications.engine_health_email` setting — **only when something needs a human**. A healthy day sends nothing, so an email arriving is itself the signal. A blank or invalid setting value turns the digest off (the gate and the address are the same setting).
+
+It reports three things, each with the numbered steps that close it:
+
+1. **Failed runs** — `engine_runs` rows with `status = failed` in the last 30 days with no later succeeded run for the same engine and period (the same rule as the admin sidebar badge).
+2. **Scheduled runs that did not happen** — for every scheduled, non-orchestrator engine, the period its most recent fire instant should have produced, with no run recorded for it in any status but `failed`.
+3. **Stuck runs** — `status = running` for more than 3 hours: the compensation worker died mid-run.
+
+**Scheduled:** Daily at **08:00 IST** — after every overnight engine (the monthly payout close at 04:00 on the 8th is the last).
+
+**Options:**
+
+| Option | Description |
+|---|---|
+| `--always` | Send even when every engine is healthy. The way to test that the mailbox works. |
+| `--dry-run` | Print the report to the console and send nothing. |
+
+**Examples:**
+
+```bash
+# What would the digest say right now?
+php artisan compensation:engine-health-digest --dry-run
+
+# Prove the mailbox receives mail (sends even on a healthy day)
+php artisan compensation:engine-health-digest --always
+```
+
+The recipient is set per environment by the settings owner under Settings → Notifications; no address lives in code or in a seeder.
+
+#### Developer actions the digest asks for
+
+The digest is written for an admin, and it deliberately hands three things to a developer instead:
+
+**Restart the compensation worker** (a run stuck in `running`):
+
+```bash
+php artisan queue:restart          # workers exit after the current job and are respawned by Supervisor
+```
+
+**Create a missed weekly batch** — only when the following Tuesday also produced none:
+
+```bash
+php artisan gsb:weekly-payout --date=2026-09-15   # the batch date (a Tuesday)
+```
+
+**Re-run the monthly payment close** for a crediting month:
+
+```bash
+php artisan compensation:monthly-payout-close --month=2026-08
+```
+
+**Mark a dead run failed.** There is no command for this: a `running` row is only ever closed by the process that opened it, and `RunEngineChainJob::abortStaleWorker()` closes one only when a new chain run finds it stale. If a row must be closed by hand so the engine can be re-triggered, do exactly one row and nothing broader:
+
+```sql
+UPDATE engine_runs
+   SET status = 'failed',
+       error = 'marked failed by developer: worker died mid-run',
+       finished_at = NOW()
+ WHERE id = <id> AND status = 'running';
+```
+
+---
+
 ---
 
 ## Compliance & Cooling-off
@@ -675,6 +740,7 @@ recomputation.
 | `compensation:monthly-close` | 1st of month 00:20 | **The only monthly crediting entry.** Runs the seven engines below, in order, in one process; resumes at the first step that has not succeeded |
 | `gsb:weekly-payout` | Tuesday 03:00 | Aggregates credited cut-offs |
 | `compensation:monthly-payout-close` | 8th of month 04:00 | Runs `payout:monthly-run`, but only if every crediting engine for the month succeeded |
+| `compensation:engine-health-digest` | Daily 08:00 | Emails failed / missed / stuck runs; silent when healthy |
 
 The seven steps `compensation:monthly-close` runs, in order. **None of these has
 its own scheduler entry any more** — clock offsets do not serialise commands

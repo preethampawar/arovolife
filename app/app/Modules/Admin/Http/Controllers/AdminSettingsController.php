@@ -685,6 +685,17 @@ final class AdminSettingsController extends Controller
                 'max' => 255,
                 'default' => 'orders@arovolife.com',
             ],
+            'notifications.engine_health_email' => [
+                'group' => 'notifications',
+                'label' => 'Engine health digest email',
+                'description' => 'Mailbox that receives one email a day (08:00 IST) listing compensation engine runs that failed, scheduled runs that never happened, and runs that are stuck. Nothing is sent on a healthy day. Leave blank to turn the digest off.',
+                'type' => 'string',
+                'format' => 'email',
+                'max' => 255,
+                'default' => '',
+                // Developer-only: explicit even though the group default already says so.
+                'owner' => 'developer',
+            ],
 
             // ── Payout configuration ───────────────────────────────────────
             'payout.min_threshold_paise' => [

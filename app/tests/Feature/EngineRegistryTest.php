@@ -32,6 +32,9 @@ it('has exactly one registry entry per compensation console command', function (
         // Dev/staging seed that populates the Fortune matrix for local
         // end-to-end testing. Never runs in production; produces no bonus.
         'FortuneStagingE2ESeedCommand',
+        // Reports on the engines by email; takes no period, computes nothing,
+        // and must never appear on the Engine Runs page as something to run.
+        'EngineHealthDigestCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])

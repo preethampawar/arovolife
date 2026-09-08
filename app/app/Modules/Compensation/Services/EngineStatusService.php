@@ -14,6 +14,7 @@ use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Support\EngineRegistry;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -127,8 +128,48 @@ final class EngineStatusService
      */
     public function unresolvedFailureCount(int $withinDays = 30): int
     {
-        $since = Carbon::now()->subDays($withinDays);
+        return $this->unresolvedFailureQuery(Carbon::now()->subDays($withinDays))->count();
+    }
 
+    /**
+     * The same failures the badge counts, as rows — newest first.
+     *
+     * The daily health digest needs the engine, the period and the recorded
+     * error, not a number, and the two must never disagree about what counts as
+     * unresolved: both read {@see unresolvedFailureQuery()}.
+     *
+     * @return Collection<int, EngineRun>
+     */
+    public function unresolvedFailures(int $withinDays = 30): Collection
+    {
+        return $this->unresolvedFailureQuery(Carbon::now()->subDays($withinDays))
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * Runs still marked `running` long after they started — the process died
+     * without ever writing an outcome, so nothing else in the platform reports
+     * them: they are neither a failure nor a success.
+     *
+     * @return Collection<int, EngineRun>
+     */
+    public function stuckRuns(int $olderThanHours = 3): Collection
+    {
+        return EngineRun::query()
+            ->where('status', EngineRun::STATUS_RUNNING)
+            ->where('started_at', '<', Carbon::now()->subHours($olderThanHours))
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * @return Builder<EngineRun>
+     */
+    private function unresolvedFailureQuery(Carbon $since): Builder
+    {
         return EngineRun::query()
             ->where('status', EngineRun::STATUS_FAILED)
             ->where('started_at', '>=', $since)
@@ -140,8 +181,7 @@ final class EngineStatusService
                     ->whereColumn('later.started_at', '>=', 'engine_runs.started_at')
                     ->where('later.status', EngineRun::STATUS_SUCCEEDED)
                     ->where('later.started_at', '>=', $since);
-            })
-            ->count();
+            });
     }
 
     public function lastRun(string $key): ?EngineRun

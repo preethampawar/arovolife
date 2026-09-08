@@ -84,6 +84,11 @@ command to re-run it; nothing is swept and no batch is created. An engine whose
 feature flag is off records a *skipped* run and does not block — it computes
 nothing either way.
 
+A step that fails also reaches the monitored mailbox in the next morning's
+engine-health email (08:00 IST) with the steps that close it, so an incomplete
+month is not waiting on somebody opening the console — see
+**Compensation → Daily engine-health email** in the compensation help page.
+
 The week between the two is the only window in which a bad month can still be
 fixed: the monthly batch is idempotent per month, so once it has swept the
 wallet, a credit that lands afterwards has nowhere to go.
