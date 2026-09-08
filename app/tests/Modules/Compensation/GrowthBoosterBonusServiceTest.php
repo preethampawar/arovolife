@@ -621,6 +621,34 @@ it('runs the monthly run when the previous month had no Genos BV at all', functi
     expect(GbbMonthlyPool::count())->toBe(1);
 });
 
+it('still refuses when the previous month has Genos BV but no rank check', function () {
+    // Pins the GroupBvDaily half of monthHadNoGenosBv(): a month with actual
+    // Genos BV could have produced a rank qualification, so a missing check
+    // must still refuse even though rank_qualifications itself is empty for
+    // that month — the waiver may not fire on BV alone.
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => Distributor::factory()->create()->id,
+        'date' => '2026-06-15',
+        'left_bv_paise' => 1_000_000,
+        'right_bv_paise' => 0,
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+    // No rank_qualifications row for June, no EngineRun for rank.check.
+
+    $dist = Distributor::factory()->create();
+    gbbSeedCompanyBv(200_000, '2026-07-03');
+    gbbSeedCutoff($dist->id, '2026-07-05', 1);
+
+    $exit = Artisan::call('gbb:monthly-run', ['--month' => '2026-07']);
+
+    expect($exit)->toBe(Command::FAILURE);
+    expect(Artisan::output())->toContain('rank:check-qualifications --month=2026-06');
+    expect(GbbMonthlyResult::where('year_month', '2026-07-01')->count())->toBe(0);
+    expect(GbbMonthlyPool::count())->toBe(0);
+});
+
 it('runs once the previous month rank check has succeeded, still excluding last month rankers', function () {
     Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
 
