@@ -1,6 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "claude-sonnet-4-6",
+  "env": {
+    "AROVOLIFE_PROJECT": "arovolife",
+    "AROVOLIFE_PHASE": "1",
+    "AROVOLIFE_COMPLIANCE": "DSR_2021"
+  },
   "includeCoAuthoredBy": true,
   "permissions": {
     "allow": [
@@ -50,7 +54,6 @@
       "Bash(git reset --hard:*)",
       "Bash(git clean -f:*)",
       "Bash(sudo:*)",
-      "Bash(curl:*)",
       "Bash(wget:*)",
       "Write(.env)",
       "Write(**/.env)",
@@ -59,6 +62,7 @@
       "Read(**/storage/logs/**)"
     ],
     "ask": [
+      "Bash(curl:*)",
       "Bash(php artisan migrate:fresh:*)",
       "Bash(php artisan db:seed:*)",
       "Bash(docker compose down -v:*)",
@@ -66,11 +70,7 @@
       "Bash(gh pr merge:*)"
     ]
   },
-  "env": {
-    "AROVOLIFE_PROJECT": "arovolife",
-    "AROVOLIFE_PHASE": "1",
-    "AROVOLIFE_COMPLIANCE": "DSR_2021"
-  },
+  "model": "opus[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -111,8 +111,10 @@
       }
     ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": "echo \"$(git branch --show-current 2>/dev/null || echo no-git) | phase-1 | DSR-2021\""
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "chrome-devtools-mcp@claude-plugins-official": true
   }
 }
