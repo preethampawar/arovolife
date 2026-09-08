@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\FortuneBonusService;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\RankQualificationsGate;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use Illuminate\Console\Command;
@@ -15,7 +16,8 @@ final class FortuneBonusEnrollCommand extends Command
 {
     protected $signature = 'fortune:enroll-eligible
                             {--month= : Month to enroll for (YYYY-MM, defaults to previous month)}
-                            {--force : Run even when the rank qualification check has not succeeded}';
+                            {--force : Run even when the rank qualification check has not succeeded}
+                            {--in-flight : Testing only — run for a month that has not closed; the freeze is provisional}';
 
     protected $description = 'Enroll eligible distributors into the Fortune Bonus matrix (FCFS)';
 
@@ -37,6 +39,12 @@ final class FortuneBonusEnrollCommand extends Command
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->startOfMonth()->subMonth();
+
+        if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
+            $this->error($refusal);
+
+            return self::FAILURE;
+        }
 
         // Fortune reads the month it enrols for: ranks 6–9 are barred. With the
         // month unchecked the bar is empty, and seniors enrolled into the

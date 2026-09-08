@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankBonusService;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\RankQualificationsGate;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
@@ -17,7 +18,8 @@ final class RankBonusRunCommand extends Command
 {
     protected $signature = 'rank:monthly-run
                             {--month= : Month to run (YYYY-MM, defaults to previous month)}
-                            {--force : Run even when the rank qualification check has not succeeded for the month}';
+                            {--force : Run even when the rank qualification check has not succeeded for the month}
+                            {--in-flight : Testing only — run for a month that has not closed; the freeze is provisional}';
 
     protected $description = 'Calculate and credit the Rank Bonus for a calendar month (runs on the 1st)';
 
@@ -39,6 +41,12 @@ final class RankBonusRunCommand extends Command
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->startOfMonth()->subMonth();
+
+        if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
+            $this->error($refusal);
+
+            return self::FAILURE;
+        }
 
         // Reads the month it pays.
         if (! $this->option('force') && ! RankQualificationsGate::checkedFor($month)) {

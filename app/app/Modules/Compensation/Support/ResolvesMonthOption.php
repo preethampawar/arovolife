@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Support;
 
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -40,6 +41,23 @@ trait ResolvesMonthOption
             return null;
         }
 
-        return Carbon::createFromFormat('Y-m-d', $raw.'-01')->startOfDay();
+        try {
+            $month = Carbon::createFromFormat('Y-m-d', $raw.'-01')->startOfDay();
+        } catch (InvalidFormatException) {
+            $this->error("--month is not a real month: {$raw}");
+
+            return null;
+        }
+
+        // Both closes freeze (or pay from) the month's economics through the
+        // engines they run — see OpenMonthGuard for why a month still in
+        // flight is refused, and why --in-flight is a testing override.
+        if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
+            $this->error($refusal);
+
+            return null;
+        }
+
+        return $month;
     }
 }

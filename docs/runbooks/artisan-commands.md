@@ -60,7 +60,8 @@ Aggregates all `CREDITED` GSB cut-off results since the last payout into a weekl
 
 | Option | Description |
 |---|---|
-| `--date=YYYY-MM-DD` | Override the batch date. Default: today. |
+| `--date=YYYY-MM-DD` | Override the batch date. Default: today. Must be a **Tuesday**: the batch dated Tuesday T pays the Wednesday–Tuesday week that closed on T − 7, and a batch dated any other day splits a week. |
+| `--force` | Run for a batch date that is not a Tuesday (deliberately off-cycle only). |
 
 **Examples:**
 
@@ -68,8 +69,8 @@ Aggregates all `CREDITED` GSB cut-off results since the last payout into a weekl
 # Trigger the weekly payout manually (e.g. if the Tuesday scheduler missed)
 php artisan gsb:weekly-payout
 
-# Backfill a specific week
-php artisan gsb:weekly-payout --date=2026-07-01
+# Backfill a specific week — the date is the Tuesday the batch was due
+php artisan gsb:weekly-payout --date=2026-06-30
 ```
 
 **⚠️ Month-end batch dates.** The repurchase deduction is a percentage of the
@@ -671,11 +672,11 @@ recomputation.
 | `repurchase:evaluate` | Daily 00:05 | Must run before the GSB cut-off |
 | `gsb:daily-cutoff` | Daily 00:10 (processes yesterday) | Core GSB engine |
 | `cooling-off:remind` | Daily 09:00 | Statutory D-7/D-1 |
-| `compensation:monthly-close` | 1st of month 00:20 | **The only monthly crediting entry.** Runs the eight engines below, in order, in one process; resumes at the first step that has not succeeded |
+| `compensation:monthly-close` | 1st of month 00:20 | **The only monthly crediting entry.** Runs the seven engines below, in order, in one process; resumes at the first step that has not succeeded |
 | `gsb:weekly-payout` | Tuesday 03:00 | Aggregates credited cut-offs |
 | `compensation:monthly-payout-close` | 8th of month 04:00 | Runs `payout:monthly-run`, but only if every crediting engine for the month succeeded |
 
-The eight steps `compensation:monthly-close` runs, in order. **None of these has
+The seven steps `compensation:monthly-close` runs, in order. **None of these has
 its own scheduler entry any more** — clock offsets do not serialise commands
 (`withoutOverlapping()` is per-command), so the ordering now lives in one
 process. Each still records its own `engine_runs` row and each is still
@@ -683,14 +684,30 @@ individually runnable and individually triggerable from Engine Runs.
 
 | Step | Command | Period |
 |---|---|---|
-| 1 | `compensation:repurchase-snapshot` | `--month` = closed month |
-| 2 | `rank:check-qualifications` | `--month` = closed month |
-| 3 | `rank:monthly-run` | closed month |
-| 4 | `gbb:monthly-run` | closed month |
-| 5 | `fortune:enroll-eligible` | closed month |
-| 6 | `adc:monthly-run` | closed month |
-| 7 | `fortune:monthly-run` | closed month |
-| 8 | `offers:monthly-run` | closed month |
+| 1 | `rank:check-qualifications` | `--month` = closed month |
+| 2 | `rank:monthly-run` | closed month |
+| 3 | `gbb:monthly-run` | closed month |
+| 4 | `fortune:enroll-eligible` | closed month |
+| 5 | `adc:monthly-run` | closed month |
+| 6 | `fortune:monthly-run` | closed month |
+| 7 | `offers:monthly-run` | closed month |
+
+**A month still in flight is refused.** `rank:monthly-run`, `gbb:monthly-run`,
+`fortune:enroll-eligible`, `fortune:monthly-run`, `adc:monthly-run`, `offers:monthly-run` and both
+closes exit non-zero when `--month` names a month that has not ended yet in
+IST — a run on the 20th would freeze the month's pool and roster on twenty
+days of BV and credit from it, and the 1st-of-month run then keeps that
+pricing because money already moved on it (the 24 Aug 2026 premature-freeze
+incident, at month scale). `--in-flight` overrides it and is a **testing
+option**: the recompute tool passes it for the month in flight at its horizon
+(those figures are provisional and discarded by the next recompute), and the
+Engine Runs page passes it only behind the developer testing gate. Do not use
+it on production by hand.
+
+A flag-off `rank:check-qualifications` records a **skipped** run, and that
+satisfies the dependants' prerequisite: with Rank Bonus off nobody can hold a
+rank, so the exclusion set they read is legitimately empty and the close
+proceeds instead of deadlocking every month.
 
 `payout:monthly-run` is likewise no longer scheduled directly — it is invoked by
 `compensation:monthly-payout-close` on the 8th, dated the month the money moves

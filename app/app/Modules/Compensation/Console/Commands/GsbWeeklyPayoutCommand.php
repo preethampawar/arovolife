@@ -17,7 +17,8 @@ use Throwable;
 final class GsbWeeklyPayoutCommand extends Command
 {
     protected $signature = 'gsb:weekly-payout
-                            {--date= : Batch date override (YYYY-MM-DD, default: today)}';
+                            {--date= : Batch date override (YYYY-MM-DD, default: today)}
+                            {--force : Run for a batch date that is not a Tuesday}';
 
     protected $description = 'Run the Tuesday weekly payout batch for all eligible wallets';
 
@@ -38,6 +39,19 @@ final class GsbWeeklyPayoutCommand extends Command
             ? Carbon::parse((string) $this->option('date'))
             : Carbon::today();
 
+        // The earning week is Wednesday→Tuesday and the batch dated Tuesday T
+        // pays it. A batch dated any other day derives a window that splits a
+        // week: the entries earned on the leftover days would then wait for
+        // — and be swept by — the next real Tuesday batch, a week late.
+        if (! $date->isTuesday() && ! $this->option('force')) {
+            $this->error(sprintf(
+                'A weekly payout batch is dated a Tuesday; %s is a %s. Pass --force only to run a deliberately off-cycle batch.',
+                $date->toDateString(),
+                $date->format('l'),
+            ));
+
+            return self::FAILURE;
+        }
         // Name the week being paid, not just the batch date: the batch dated T
         // pays the Wednesday–Tuesday week that closed on T−7, and an operator
         // reading only the batch date has no way to tell which earnings moved.

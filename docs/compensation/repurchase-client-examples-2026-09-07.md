@@ -272,6 +272,28 @@ unchanged. Two design additions came out of the review process:
   to the forfeit model's own dependency: a cut-off or rank check that runs
   before that day's/month's repurchase verdicts are in would silently
   forfeit or admit the wrong distributors.
+- **Open-month refusal on the freezing engines (2026-09-08 audit).** The
+  five pool-freezing monthly commands and both closes refuse a `--month`
+  that has not ended in IST; `--in-flight` is the testing override the
+  recompute tool and the developer-gated Engine Runs page pass. A flag-off
+  rank check (`skipped` run) satisfies the dependants' prerequisite, so a
+  Rank flag left OFF no longer deadlocks the monthly close. The recompute
+  wipers keep the checkout-time `repurchase_wallet_used` debits (they are a
+  purchase record no engine rebuilds), and a real-clock `repurchase:evaluate`
+  undoes a failed verdict that a future-dated replay froze inside a window
+  that has not closed. Both the `--in-flight` close and the verdict undo
+  write `audit_log` rows; the admin trigger path injects `--in-flight` only
+  while the recompute testing gate is open. R-76 records the flag-toggle
+  interaction (a flag-off rank check opens the gate only while the flag is
+  still off, never for any other skip reason).
+- **Distributor-facing copy (same audit).** The repurchase-wallet reminder
+  counts down to the nearer of the window's last day and the calendar month
+  end (both are ₹0 conditions), and once the window's last day has passed
+  with a balance it says the window was missed ("your Genos BV for each day
+  until this is ₹0 is not counted") instead of "1 day left"; the window's
+  last day is only used while the repurchase engine flag is on. The
+  rank page counts forfeited days only up to yesterday — today is settled by
+  tomorrow's cut-off and can still become the fulfilment day.
 - **`RepurchaseWalletGateService` month-end wallet gate.** A single service
   (`clearedAtMonthEnd()`) restores the month-end repurchase-wallet = ₹0 gate
   for GBB, Fortune, rank requalification and AO-GO, replacing the

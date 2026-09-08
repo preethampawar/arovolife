@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Console\Commands;
 
 use App\Modules\Commerce\Services\PurchaseOfferService;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -20,7 +21,8 @@ use Laravel\Pennant\Feature;
 final class PurchaseOffersMonthlyRunCommand extends Command
 {
     protected $signature = 'offers:monthly-run
-        {--month= : Month to evaluate as YYYY-MM (default: last month)}';
+        {--month= : Month to evaluate as YYYY-MM (default: last month)}
+        {--in-flight : Testing only — grant for a month that has not closed; grants are idempotent per month, so a partial-month run is final}';
 
     protected $description = 'Grant the half-price product and redeem-point streak offers for a month';
 
@@ -36,6 +38,15 @@ final class PurchaseOffersMonthlyRunCommand extends Command
 
         if ($month === null) {
             $this->error('--month must be YYYY-MM.');
+
+            return self::FAILURE;
+        }
+
+        // Grants are idempotent per distributor per month, so a run on partial
+        // BV is never topped up by the 1st-of-month run — same class as the
+        // pool-freezing engines (see OpenMonthGuard).
+        if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
+            $this->error($refusal);
 
             return self::FAILURE;
         }

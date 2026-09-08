@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -36,6 +38,7 @@ final class EngineRunService
     public function __construct(
         private readonly EngineRunContext $context,
         private readonly EngineStatusService $status,
+        private readonly RecomputeGuard $recomputeGuard,
     ) {}
 
     public function runOne(
@@ -117,6 +120,14 @@ final class EngineRunService
             // the listener recorded.
             $exitCode = Artisan::call($engine->commandSignature, [
                 $engine->periodOption => $engine->formatPeriod($periodStart),
+                // An open month reaches here only through the admin console's
+                // developer testing gate (parsePeriodOrFail refuses it
+                // otherwise); the override is re-checked against that gate here
+                // rather than trusted from the caller, so a future caller
+                // cannot freeze a live month by accident.
+                ...($this->recomputeGuard->isPermitted()
+                    ? OpenMonthGuard::overrideFor($engine->commandSignature, $periodStart)
+                    : []),
             ]);
             $output = Artisan::output();
         } catch (Throwable $e) {

@@ -44,7 +44,8 @@ final class MonthlyPayoutCloseCommand extends Command
 
     protected $signature = 'compensation:monthly-payout-close
                             {--month= : Crediting month to pay out (YYYY-MM, defaults to the previous month)}
-                            {--force : Pay out even when a crediting engine has not succeeded for the month}';
+                            {--force : Pay out even when a crediting engine has not succeeded for the month}
+                            {--in-flight : Testing only — pay a month that has not ended}';
 
     protected $description = 'Run the monthly payout batch, but only once every crediting engine for the month has succeeded';
 

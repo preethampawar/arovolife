@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\FortuneBonusService;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
@@ -14,7 +15,8 @@ use Laravel\Pennant\Feature;
 final class FortuneBonusRunCommand extends Command
 {
     protected $signature = 'fortune:monthly-run
-                            {--month= : Month to run (YYYY-MM, defaults to previous month)}';
+                            {--month= : Month to run (YYYY-MM, defaults to previous month)}
+                            {--in-flight : Testing only — run for a month that has not closed; the freeze is provisional}';
 
     protected $description = 'Calculate and credit Fortune Bonus for enrolled participants (runs on the 1st)';
 
@@ -34,6 +36,12 @@ final class FortuneBonusRunCommand extends Command
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->startOfMonth()->subMonth();
+
+        if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
+            $this->error($refusal);
+
+            return self::FAILURE;
+        }
 
         $this->info("Fortune Bonus payout — {$month->format('F Y')}");
 

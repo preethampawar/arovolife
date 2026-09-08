@@ -7,7 +7,9 @@ namespace App\Modules\Compensation\Support;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Support\Carbon;
+use Laravel\Pennant\Feature;
 
 /**
  * Precondition for every engine that READS `rank_qualifications`.
@@ -42,18 +44,37 @@ final class RankQualificationsGate
     /**
      * Whether `rank:check-qualifications` completed for the given month.
      *
-     * A flag-off no-op records STATUS_SKIPPED and a crash records STATUS_FAILED
-     * (RecordEngineRun), so only a real completed check opens the gate. A month
-     * whose ladder was genuinely empty still records a succeeded run, so this
-     * refuses the missing prerequisite and never a legitimately quiet month.
+     * A crash records STATUS_FAILED (RecordEngineRun), so a check that did not
+     * complete never opens the gate. A month whose ladder was genuinely empty
+     * still records a succeeded run, so this refuses the missing prerequisite
+     * and never a legitimately quiet month.
+     *
+     * A flag-off no-op records STATUS_SKIPPED with reason `feature_flag_off`,
+     * and that ONE skip opens the gate — only while the flag is still off:
+     * with the Rank Bonus engine off nobody can hold a rank, so the exclusion
+     * set the dependants read is legitimately empty — exactly like a quiet
+     * month. Refusing it would deadlock every monthly close (rank.bonus, gbb,
+     * fortune.enroll all wait on this) for as long as the flag stays off.
+     * Every other SKIPPED reason (`already_running`, `upstream_failed`,
+     * `stale_worker`…) means the check did NOT happen and keeps the gate shut:
+     * an empty exclusion set there would credit GBB to distributors the plan
+     * bars and enrol barred seniors into the capacity-capped Fortune matrix.
      */
     public static function checkedFor(Carbon $month): bool
     {
-        return EngineRun::query()
+        $runs = EngineRun::query()
             ->where('engine_key', 'rank.check')
-            ->whereDate('period_start', $month->copy()->startOfMonth()->toDateString())
-            ->where('status', EngineRun::STATUS_SUCCEEDED)
-            ->exists();
+            ->whereDate('period_start', $month->copy()->startOfMonth()->toDateString());
+
+        if ($runs->clone()->where('status', EngineRun::STATUS_SUCCEEDED)->exists()) {
+            return true;
+        }
+
+        return ! Feature::for(null)->active(RankBonusFeature::class)
+            && $runs->clone()
+                ->where('status', EngineRun::STATUS_SKIPPED)
+                ->where('summary->reason', 'feature_flag_off')
+                ->exists();
     }
 
     /**

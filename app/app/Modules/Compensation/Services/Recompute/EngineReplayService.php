@@ -10,6 +10,7 @@ use App\Modules\Compensation\Support\EngineCadence;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use Closure;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -262,7 +263,7 @@ final class EngineReplayService
                 : $horizon->copy()->startOfDay();
 
             if (! isset($this->invoked[$this->invocationKey($definition, $inFlight)])) {
-                $pending[] = ['definition' => $definition, 'period' => $inFlight];
+                $pending[] = ['definition' => $definition, 'period' => $inFlight, 'inFlight' => true];
             }
 
             // (ii) Arrears period — month engines only: the period the *next*
@@ -337,14 +338,18 @@ final class EngineReplayService
                 $this->invoke($prerequisite['definition'], $prerequisite['period'], $stampAt);
             }
 
-            $this->invoke(
-                $entry['definition'],
-                $entry['period'],
-                $stampAt,
-                $this->overridesGuardAtHorizon($entry['definition'], $entry['period'], $horizon)
-                    ? ['--force' => true]
-                    : $this->overridesCutoffEvaluateGuard($entry['definition'], $entry['period']),
-            );
+            $options = $this->overridesGuardAtHorizon($entry['definition'], $entry['period'], $horizon)
+                ? ['--force' => true]
+                : $this->overridesCutoffEvaluateGuard($entry['definition'], $entry['period']);
+
+            // The month in flight at the horizon is computed provisionally by
+            // design ("this month's bonuses, computed as at this moment"); the
+            // freezing engines refuse an open month unless told so explicitly.
+            if ($entry['inFlight'] ?? false) {
+                $options += OpenMonthGuard::overrideFor($entry['definition']->commandSignature, $entry['period']);
+            }
+
+            $this->invoke($entry['definition'], $entry['period'], $stampAt, $options);
         }
     }
 

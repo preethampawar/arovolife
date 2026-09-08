@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\GrowthBoosterBonusService;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\RankQualificationsGate;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
@@ -17,7 +18,8 @@ final class GbbMonthlyRunCommand extends Command
 {
     protected $signature = 'gbb:monthly-run
                             {--month= : Month to run (YYYY-MM, defaults to previous month)}
-                            {--force : Run even when the rank qualification check has not succeeded}';
+                            {--force : Run even when the rank qualification check has not succeeded}
+                            {--in-flight : Testing only — run for a month that has not closed; the freeze is provisional}';
 
     protected $description = 'Calculate and credit the Growth Booster Bonus for a calendar month';
 
@@ -37,6 +39,12 @@ final class GbbMonthlyRunCommand extends Command
         $month = $this->option('month')
             ? Carbon::parse((string) $this->option('month').'-01')
             : Carbon::today()->startOfMonth()->subMonth();
+
+        if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
+            $this->error($refusal);
+
+            return self::FAILURE;
+        }
 
         // GBB reads the month BEFORE the one it pays: rejectRankedLastMonth()
         // excludes anyone who held a qualified rank in M-1. With that month
