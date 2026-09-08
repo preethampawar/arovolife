@@ -22,7 +22,7 @@ folder is the webroot. Cloudways must be configured to serve from
 | MySQL 8.0 | Cloudways → *Server Management → Settings & Packages → MySQL* |
 | Required PHP extensions | `bcmath, ctype, curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, redis, tokenizer, xml, zip` — all enabled by default on Cloudways but verify under *Settings & Packages → Advanced* |
 | Composer 2 | `composer --version` (Cloudways ships v2 by default) |
-| Node 20+ for asset builds | If missing: `nvm install 20` (per-master-user nvm is fine; ssh key is master-user scoped) |
+| Node LTS for asset builds | Vite 8 requires `^20.19.0 \|\| >=22.12.0`. The Debian system Node at `/usr/bin/node` is **20.5.1 and cannot build** — always build from nvm, never the system binary. Install with `nvm install --lts && nvm alias default 'lts/*'` (per-master-user nvm; ssh key is master-user scoped). nvm is **not** sourced by any login profile, so each build shell must run `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"` first — this is also why the nvm default is safe on a shared server: it changes nothing for the other apps, which keep resolving to the system Node. |
 | Redis enabled | *Settings & Packages → Advanced → Redis* → **ON**. ACL is on, so also grab the per-app username / password / prefix — see §1.5 |
 | 8 GB RAM, swap ≥ 2 GB | `free -h` (Cloudways auto-creates swap) |
 | Outbound HTTPS to Resend / Mailgun / SES, SMS gateway, Aadhaar/PAN/penny-drop providers | Test from server: `curl -I https://api.resend.com` etc. |
@@ -96,7 +96,12 @@ cd /home/master/applications/ahdhesuhty/public_html/app
 composer install --no-dev --optimize-autoloader --no-interaction
 
 # Frontend assets (Vite). Build once on the server, commit nothing.
-npm ci
+# nvm is not auto-sourced — activate it, or you get the system Node 20.5.1
+# and the build fails. Confirm `node -v` reports the LTS before building.
+export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default
+node -v
+
+npm ci        # re-run after any Node major change: native addons are ABI-specific
 npm run build
 ```
 
