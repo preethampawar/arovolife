@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\RankAogoGrant;
+use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -22,22 +23,28 @@ use Laravel\Pennant\Feature;
  * sibling of the per-day GSB/MSB Input & Output reports, per rank instead of
  * per slab.
  *
- * Unlike GBB there is no frozen monthly pool table: the engine snapshots the
- * month's economics (turnover, per-rank pool, qualifier count, points, point
- * value) onto every rank_bonus_results row. Each month block is therefore
- * reconstructed with MAX()/SUM() aggregates over those rows — MAX() is safe
- * because every row of a (month, rank) group carries the same snapshot, and
- * requalification-held rows leave their point columns null. AO-GO grantees get
- * a credited Rank-1 result row too (aogo_points set, rap_points null); those
- * rows are excluded from the achiever income sums so the AO-GO line — sourced
- * from rank_aogo_grants — is never counted twice.
+ * Since the frozen roster (R-72) the engine writes one `rank_monthly_pools`
+ * row per (month, rank) — pool, points, point value, per-qualifier share,
+ * payout and leftover, frozen once and never rewritten — and that row is the
+ * source for every month that has one, ranks with no qualifier included.
  *
- * Ranks that had no qualifiers write no rows at all, so their pool went
- * unspent invisibly; the report renders them with the pool ESTIMATED from the
- * month's stored turnover and the CURRENT envelope/pool-% settings, clearly
- * asterisked — those two parameters are live settings, not frozen snapshots.
- * The per-rank leftover is likewise derived (pool − Σ gross), because the
- * engine never stores its flooring remainder.
+ * Months frozen before that table existed have only the snapshot the engine
+ * copied onto every rank_bonus_results row (turnover, per-rank pool, qualifier
+ * count, points, point value), so those blocks are reconstructed with
+ * MAX()/SUM() aggregates over the rows — MAX() is safe because every row of a
+ * (month, rank) group carries the same snapshot, and requalification-held rows
+ * leave their point columns null. AO-GO grantees get a credited Rank-1 result
+ * row too (aogo_points set, rap_points null); those rows are excluded from the
+ * achiever income sums so the AO-GO line — sourced from rank_aogo_grants — is
+ * never counted twice. Income, deduction and credited sums always come from the
+ * result rows, whichever source priced the pool.
+ *
+ * For a legacy month, ranks that had no qualifiers wrote no rows at all, so
+ * their pool went unspent invisibly; the report renders them with the pool
+ * ESTIMATED from the month's stored turnover and the CURRENT envelope/pool-%
+ * settings, clearly asterisked — those two parameters are live settings, not
+ * frozen snapshots. The legacy per-rank leftover is likewise derived
+ * (pool − Σ gross), because those months never stored a flooring remainder.
  */
 final class AdminRankBonusInputOutputController extends Controller
 {
@@ -278,21 +285,31 @@ final class AdminRankBonusInputOutputController extends Controller
             ->get()
             ->keyBy(fn (\stdClass $row) => Carbon::parse($row->month_start)->toDateString());
 
+        // The frozen pool rows, where the month has them (R-72 onwards).
+        $frozenPools = RankMonthlyPool::query()
+            ->whereIn('month_start', $monthStarts)
+            ->get()
+            ->groupBy(fn (RankMonthlyPool $pool): string => Carbon::parse($pool->month_start)->toDateString())
+            ->map(fn ($pools) => $pools->keyBy('rank_number'));
+
         $envelopeBp = $this->plan->rankEnvelopeBp();
         $blocks = [];
 
         foreach ($monthStarts as $monthStart) {
             $byRank = ($rankAggregates[$monthStart] ?? collect())->keyBy('rank_number');
+            $pools = $frozenPools[$monthStart] ?? collect();
             $aogoRow = $aogoAggregates[$monthStart] ?? null;
 
-            $turnover = $byRank->isNotEmpty()
-                ? (int) $byRank->max('turnover_paise')
-                : null;
+            $turnover = match (true) {
+                $pools->isNotEmpty() => (int) $pools->first()->company_turnover_paise,
+                $byRank->isNotEmpty() => (int) $byRank->max('turnover_paise'),
+                default => null,
+            };
 
             // When the month's rows were written — i.e. when the engine (or a
             // testing recompute) last computed this month. The report shows
             // the data as it stood at this moment.
-            $computedAt = collect([$byRank->max('computed_at'), $aogoRow->computed_at ?? null])
+            $computedAt = collect([$byRank->max('computed_at'), $aogoRow->computed_at ?? null, $pools->max('created_at')])
                 ->filter()
                 ->map(fn ($ts) => Carbon::parse($ts))
                 ->max();
@@ -316,28 +333,40 @@ final class AdminRankBonusInputOutputController extends Controller
 
             foreach (range(1, 9) as $rank) {
                 $agg = $byRank->get($rank);
+                /** @var RankMonthlyPool|null $pool */
+                $pool = $pools->get($rank);
 
-                if ($agg !== null) {
-                    $income = (int) $agg->income_paise;
-                    $deduction = (int) $agg->deduction_paise;
-                    $credited = (int) $agg->credited_paise;
-                    // AO-GO grants are paid out of the Rank-1 pool, so Rank 1's
-                    // leftover only reconciles after subtracting their income.
-                    $leftover = (int) $agg->pool_paise - $income
-                        - ($rank === 1 ? ($aogo['income_paise'] ?? 0) : 0);
+                if ($agg !== null || $pool !== null) {
+                    $income = (int) ($agg->income_paise ?? 0);
+                    $deduction = (int) ($agg->deduction_paise ?? 0);
+                    $credited = (int) ($agg->credited_paise ?? 0);
+                    $poolPaise = $pool !== null ? (int) $pool->pool_paise : (int) $agg->pool_paise;
+                    // The frozen row stores the engine's own remainder; a
+                    // legacy month derives it. AO-GO grants are paid out of the
+                    // Rank-1 pool, so a derived Rank-1 leftover only
+                    // reconciles after subtracting their income.
+                    $leftover = $pool !== null
+                        ? (int) $pool->leftover_paise
+                        : $poolPaise - $income - ($rank === 1 ? ($aogo['income_paise'] ?? 0) : 0);
 
                     $ranks[] = [
                         'rank' => $rank,
                         'name' => $this->plan->rankName($rank),
-                        'pool_pct' => $this->plan->rankPoolPct($rank),
-                        'pool_paise' => (int) $agg->pool_paise,
+                        'pool_pct' => $pool !== null ? (float) $pool->pool_pct : $this->plan->rankPoolPct($rank),
+                        'pool_paise' => $poolPaise,
                         'frozen' => true,
-                        'qualifiers' => (int) $agg->qualifier_count,
-                        'held' => (int) $agg->held_count,
-                        'blocked' => (int) $agg->blocked_count,
-                        'total_points' => $agg->total_points !== null ? (int) $agg->total_points : null,
-                        'point_value_paise' => $agg->point_value_paise !== null ? (int) $agg->point_value_paise : null,
-                        'share_paise' => $agg->share_paise !== null ? (int) $agg->share_paise : null,
+                        'qualifiers' => (int) ($agg->qualifier_count ?? 0),
+                        'held' => (int) ($agg->held_count ?? 0),
+                        'blocked' => (int) ($agg->blocked_count ?? 0),
+                        'total_points' => $pool !== null
+                            ? ($pool->total_points !== null ? (int) $pool->total_points : null)
+                            : ($agg->total_points !== null ? (int) $agg->total_points : null),
+                        'point_value_paise' => $pool !== null
+                            ? ($pool->point_value_paise !== null ? (int) $pool->point_value_paise : null)
+                            : ($agg->point_value_paise !== null ? (int) $agg->point_value_paise : null),
+                        'share_paise' => $pool !== null
+                            ? (int) $pool->gross_per_qualifier_paise
+                            : ($agg->share_paise !== null ? (int) $agg->share_paise : null),
                         'income_paise' => $income,
                         'deduction_paise' => $deduction,
                         'credited_paise' => $credited,

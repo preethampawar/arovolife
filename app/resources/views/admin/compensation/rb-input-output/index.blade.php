@@ -149,10 +149,12 @@
             </table>
         </div>
 
+        @if(collect($block['ranks'])->contains(fn (array $rank): bool => ! $rank['frozen']))
         <div class="px-4 py-2 border-t border-gray-100 text-[11px] text-gray-400">
             * estimated from the month's turnover and the current plan settings — this rank had no qualifiers,
             so nothing was frozen and its pool went unspent.
         </div>
+        @endif
     </div>
     @endforeach
 </div>

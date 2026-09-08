@@ -45,6 +45,9 @@ return new class extends Migration
      */
     private const SOURCES = [
         'gsb_cutoff_result' => ['gsb_cutoff_results', 'cutoff_date'],
+        // Mentorship is a Group A income like GSB and shares the monthly
+        // income cap, so its legacy credits need the earned month too.
+        'mentorship_bonus_result' => ['mentorship_bonus_results', 'cutoff_date'],
         'rank_bonus_result' => ['rank_bonus_results', 'month_start'],
         'gbb_monthly_result' => ['gbb_monthly_results', 'year_month'],
         'fortune_bonus_result' => ['fortune_bonus_results', 'month_start'],

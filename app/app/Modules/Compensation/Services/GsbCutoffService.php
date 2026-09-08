@@ -484,8 +484,11 @@ final class GsbCutoffService
         // anything.
         //
         // The one case that DOES write: a re-run of a date that previously
-        // settled no_match / frozen / credited and has since been forfeited by a
-        // re-resolved cycle. That run advanced the store, and the compute
+        // settled no_match / frozen and has since been forfeited by a
+        // re-resolved cycle (a credited day never reaches here — it is
+        // OUTCOME_ALREADY_SETTLED in computeForDistributor() and keeps its
+        // income; correcting one is a windowed-recompute job). That run
+        // advanced the store, and the compute
         // rewound the locals to its recorded before-state, so the store must be
         // rewound with them — otherwise it keeps a day's BV that the forfeit
         // says was never added, while this row asserts after == before. Safe

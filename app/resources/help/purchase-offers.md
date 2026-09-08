@@ -99,10 +99,11 @@ Points already earned stay theirs and can still be spent.
 |---|---|
 | `offers:monthly-run` | 1st of the month, as the last step of `compensation:monthly-close` (which starts at 00:20 IST). Evaluates the previous month. `--month=YYYY-MM` to target a specific one. |
 
-It runs early and ahead of every bonus engine: it reads the previous month's BV
-and nothing else depends on it, so a distributor sees what they earned before
-the payout cycle starts. Idempotent per distributor per month. A flag-off run
-reports **skipped**, never succeeded.
+It runs last in the close because it reads the month's final rank check and BV,
+and nothing else depends on it; the monthly payout on the 8th is a separate
+step, so a distributor still sees what they earned a week before it is paid.
+Idempotent per distributor per month. A flag-off run reports **skipped**, never
+succeeded.
 
 **Admin → Offers** shows what was granted for a month and lets you announce the
 next product. Distributors see their own balance, streak and history at

@@ -211,13 +211,13 @@ final class FortuneBonusService
                 continue;
             }
 
-            // The repurchase condition is NO LONGER an enrolment gate. Under the
-            // client's 2026-09-06 rules 7–8 a failed cycle holds the money, it
-            // does not cancel the qualification: the distributor keeps their
-            // Fortune position, stays in the month's roster and denominator,
-            // and their row is written held (see payout below) so it can be
-            // released at the rate the month was priced at. Excluding them here
-            // would have been irreversible the moment the month froze.
+            // The repurchase condition is not an enrolment gate. Under the
+            // forfeit model (client 2026-09-07) a failed repurchase day simply
+            // produces no GSB slab match, so it never counts toward the
+            // qualification in the first place; and the month-end
+            // repurchase-wallet gate is judged at payout (runForMonth), where a
+            // blocked participant keeps their matrix position and is written
+            // repurchase_wallet_blocked at gross 0 — forfeited, never released.
 
             $eligibles[] = [
                 'distributor_id' => $distributorId,
@@ -362,15 +362,6 @@ final class FortuneBonusService
                 $minCommission = $pool->min_commission_paise;
                 $capPaise = $level?->cap_paise;
 
-                if ($gross === 0) {
-                    // A ₹0-pool month (or a legacy zero-value month) — no
-                    // wallet entry, but the row records why.
-                    $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_SKIPPED);
-                    $skippedZeroIncome++;
-
-                    continue;
-                }
-
                 // Month-end repurchase wallet gate (client 2026-09-05,
                 // re-confirmed 2026-09-07). The month is forfeited outright: an
                 // audit row at gross 0, no wallet credit, the matrix position
@@ -393,6 +384,16 @@ final class FortuneBonusService
                     continue;
                 }
 
+                if ($gross === 0) {
+                    // A ₹0-pool month (or a legacy zero-value month) — no
+                    // wallet entry, but the row records why. Judged AFTER the
+                    // wallet gate so a blocked participant in a ₹0 level is
+                    // reported blocked, not skipped.
+                    $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_SKIPPED);
+                    $skippedZeroIncome++;
+
+                    continue;
+                }
                 $result = $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, $gross, FortuneBonusResult::STATUS_PENDING);
 
                 // The memo is a distributor-facing statement line — it must
