@@ -31,6 +31,7 @@ use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -457,16 +458,18 @@ final class IncomeController extends Controller
 
         $totalPaidOutPaise = app(PayoutService::class)->totalTransferredPaise((int) $distributor->id);
 
-        // Next Tuesday (or today if it is Tuesday).
-        $today = now()->timezone('Asia/Kolkata');
-        $daysUntilTuesday = (2 - $today->dayOfWeek + 7) % 7;
-        $nextPayout = $daysUntilTuesday === 0 ? $today->copy() : $today->copy()->addDays($daysUntilTuesday);
+        // The next Tuesday 03:00 batch — after it has run, "today" is wrong.
+        $nextPayout = IncomeOverviewService::keyDates()['nextWeeklyPayout'];
 
         $minThresholdPaise = app(CompensationPlanSettingsService::class)->minPayoutPaise();
 
+        // The window's last day only exists while the repurchase engine is on;
+        // with it off the only ₹0 date is the month end (see DashboardController).
         $repurchaseWalletStatus = RepurchaseWalletStatus::for(
             $repurchaseWalletBalancePaise,
-            deadline: app(RepurchaseCycleService::class)->currentCycle($distributor->id)?->due_date,
+            deadline: Feature::for(null)->active(RepurchaseEngineFeature::class)
+                ? app(RepurchaseCycleService::class)->currentCycle($distributor->id)?->due_date
+                : null,
         );
 
         return view('income.wallet', compact(

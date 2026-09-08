@@ -204,7 +204,9 @@ final class AdminDistributorCompController extends Controller
             'repurchaseWalletBalance' => $repurchaseWalletBalance,
             'repurchaseWalletStatus' => RepurchaseWalletStatus::for(
                 $repurchaseWalletBalance,
-                deadline: app(RepurchaseCycleService::class)->currentCycle($distributor->id)?->due_date,
+                deadline: $repurchaseOn
+                    ? app(RepurchaseCycleService::class)->currentCycle($distributor->id)?->due_date
+                    : null,
             ),
             'failedToday' => $failedToday,
             'gsbOn' => $gsbOn,

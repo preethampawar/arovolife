@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbSlabProgressService;
+use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Services\TeamStatsService;
@@ -99,10 +100,8 @@ final class MyBusinessController extends Controller
             $teamCounts = ['left_team' => 0, 'right_team' => 0, 'total_team' => 0];
         }
 
-        // Next Tuesday (or today if it is Tuesday) — same rule as the wallet page.
-        $todayIst = now()->timezone('Asia/Kolkata');
-        $daysUntilTuesday = (2 - $todayIst->dayOfWeek + 7) % 7;
-        $nextPayout = $daysUntilTuesday === 0 ? $todayIst->copy() : $todayIst->copy()->addDays($daysUntilTuesday);
+        // The next Tuesday 03:00 batch — same rule as the wallet page.
+        $nextPayout = IncomeOverviewService::keyDates()['nextWeeklyPayout'];
 
         return view('my-business', compact(
             'distributor', 'personalBvPaise', 'title', 'gsbMinBvPaise', 'genosBvEligible',

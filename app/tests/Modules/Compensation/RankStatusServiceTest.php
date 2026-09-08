@@ -162,12 +162,14 @@ it('shows the counted Genos BV the qualification run uses, not the raw month sum
         ->and($left->met())->toBeTrue();
 });
 
-it('counts forfeited days only up to today, never to month end, while a cycle is still unresolved', function (): void {
+it('counts forfeited days only up to yesterday, never to today or month end, while a cycle is still unresolved', function (): void {
     // An unresolved cycle has an OPEN forfeited window. forfeitedDayRanges()
     // clamps it to whatever end it is given, so asking for month end would tell
-    // a distributor on the 7th that 29 days "were not counted" — 23 of which
-    // have not happened. That is a projection, not a fact (hard rule 3).
-    Carbon::setTestNow('2026-09-07 12:00:00');
+    // a distributor on the 8th that 29 days "were not counted" — 22 of which
+    // have not happened. That is a projection, not a fact (hard rule 3). Today
+    // is not settled either: a purchase this afternoon makes it the fulfilment
+    // day, which counts — only yesterday's cut-off has run.
+    Carbon::setTestNow('2026-09-08 12:00:00');
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create();
@@ -187,9 +189,30 @@ it('counts forfeited days only up to today, never to month end, while a cycle is
 
     $status = app(RankStatusService::class)->forDistributor($dist);
 
-    // 2 Sep through 7 Sep inclusive. September has 30 days, so a range end of
-    // month end would have said 29.
+    // 2 Sep through 7 Sep inclusive: today (the 8th) is still open. September
+    // has 30 days, so a range end of month end would have said 29.
     expect($status->forfeitedDaysThisMonth)->toBe(6);
+});
+
+it('counts no forfeited day on the 1st of a month, when yesterday belongs to the previous month', function (): void {
+    Carbon::setTestNow('2026-09-01 12:00:00');
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+
+    RepurchaseCycle::create([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => '2026-07-20',
+        'due_date' => '2026-08-19',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'fulfilled_on' => null,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => '2026-08-20 00:05:00',
+    ]);
+
+    expect(app(RankStatusService::class)->forDistributor($dist)->forfeitedDaysThisMonth)->toBe(0);
 });
 
 it('counts every forfeited day of a past window once the month is over', function (): void {

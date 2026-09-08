@@ -330,19 +330,24 @@ it('shows zero genos figures on my business below the personal bv minimum', func
         ->assertDontSee('as of last page load');
 });
 
-it('shows a Tuesday as the next payout date on my business', function (): void {
+it('shows the next Tuesday 03:00 batch as the next payout date on my business', function (): void {
     ['user' => $user] = myBusinessDistributor();
     $this->actingAs($user);
 
-    $today = now()->timezone('Asia/Kolkata');
-    $daysUntilTuesday = (2 - $today->dayOfWeek + 7) % 7;
-    $expected = $daysUntilTuesday === 0 ? $today->copy() : $today->copy()->addDays($daysUntilTuesday);
-
-    expect($expected->dayOfWeek)->toBe(Carbon::TUESDAY);
-
+    // Tuesday before the 03:00 batch: today.
+    Carbon::setTestNow('2026-09-08 02:00:00');
     $this->get(route('my-business'))
         ->assertOk()
-        ->assertSee('Next payout — Tuesday, '.$expected->format('d M Y'), false);
+        ->assertSee('Next payout — Tuesday, 08 Sep 2026', false);
+
+    // Tuesday after the batch has run: the batch already went out, so the
+    // next one is a week away — "today" would name a batch that is history.
+    Carbon::setTestNow('2026-09-08 08:15:00');
+    $this->get(route('my-business'))
+        ->assertOk()
+        ->assertSee('Next payout — Tuesday, 15 Sep 2026', false);
+
+    Carbon::setTestNow();
 });
 
 it('hides the GSB matching mechanics while the feature is off', function (): void {

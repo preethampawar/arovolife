@@ -23,6 +23,7 @@ use App\Modules\Shared\Features\DistributorRequestsFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
@@ -134,9 +135,15 @@ final class DashboardController extends Controller
                 // on the surface most distributors use while the money was
                 // really being held back, and contradicted the same pill
                 // rendering ungated on /income/wallet.
+                //
+                // The 30-day window's last day IS gated: the window verdict
+                // and the day-level forfeit only exist while the engine is on,
+                // so with it off the only ₹0 date is the month end.
                 $repurchaseWalletStatus = RepurchaseWalletStatus::for(
                     app(WalletService::class)->repurchaseWalletBalancePaise($distributorId),
-                    deadline: app(RepurchaseCycleService::class)->currentCycle($distributorId)?->due_date,
+                    deadline: Feature::for(null)->active(RepurchaseEngineFeature::class)
+                        ? app(RepurchaseCycleService::class)->currentCycle($distributorId)?->due_date
+                        : null,
                 );
 
                 $today = Carbon::today('Asia/Kolkata')->toDateString();

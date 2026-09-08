@@ -8,7 +8,7 @@
     // Every Genos figure is gated by eligibility: below the personal-BV minimum
     // the cut-off discards group BV, so the page shows 0 rather than a number
     // the distributor will never be credited for.
-    $gsbMinBv = $gsbMinBvPaise !== null ? Number::format($gsbMinBvPaise / 100, 0) : '600';
+    $gsbMinBv = $gsbMinBvPaise !== null ? \App\Modules\Shared\Support\IndianNumber::format($gsbMinBvPaise / 100, 0) : '600';
 
     $leftTodayBv = (int) round(($dailyBv->left_bv_paise ?? 0) / 100);
     $rightTodayBv = (int) round(($dailyBv->right_bv_paise ?? 0) / 100);
@@ -41,10 +41,10 @@
         }
         $parts = [];
         if ($todayBv > 0) {
-            $parts[] = Number::format($todayBv, 0).' BV of '.$side.' Genos business today';
+            $parts[] = \App\Modules\Shared\Support\IndianNumber::format($todayBv, 0).' BV of '.$side.' Genos business today';
         }
         if ($pendingPersonalBv > 0) {
-            $parts[] = Number::format($pendingPersonalBv, 0).' BV of your own purchase, which goes to whichever side is weaker at that moment (only if a side has reached the first slab)';
+            $parts[] = \App\Modules\Shared\Support\IndianNumber::format($pendingPersonalBv, 0).' BV of your own purchase, which goes to whichever side is weaker at that moment (only if a side has reached the first slab)';
         }
 
         return 'Pending tonight\'s 23:59 cut-off: '.implode(' and ', $parts).'.'.$tail;

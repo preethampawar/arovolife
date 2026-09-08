@@ -250,6 +250,8 @@
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Awaiting KYC</span>
                             @elseif($row->status === 'bank_decrypt_failed')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">On hold — contact support</span>
+                            @elseif($row->status === 'income_cap_forfeited')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Above the monthly income cap — not paid (forfeited)</span>
                             @else
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ ucfirst($row->status) }}</span>
                             @endif

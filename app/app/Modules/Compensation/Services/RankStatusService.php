@@ -303,17 +303,25 @@ final class RankStatusService
      * IncomeEligibilityService, the single source of the forfeited windows, and
      * scoped to this one distributor so the page never scans the platform.
      *
-     * The range stops at TODAY, never at month end. An unresolved cycle has an
-     * open forfeited window, which forfeitedDayRanges() clamps to whatever end
-     * it is given; asking it for month end would count days that have not
+     * The range stops at YESTERDAY — the last day the cut-off has settled —
+     * never at month end and never at today. An unresolved cycle has an open
+     * forfeited window, which forfeitedDayRanges() clamps to whatever end it
+     * is given; asking it for month end would count days that have not
      * happened yet and report them to the distributor as lost — a statement
      * about the future dressed as a fact (DSR 2021 r.5(1)(d); hard rule 3).
+     * Today is not settled either: a purchase made this afternoon can make it
+     * the fulfilment day, which counts, so it is only known once its cut-off
+     * has run at 00:10 tomorrow.
      */
     private function forfeitedDaysThisMonth(int $distributorId, Carbon $monthStart): int
     {
-        $today = Carbon::today('Asia/Kolkata');
+        $yesterday = Carbon::yesterday('Asia/Kolkata');
         $monthEnd = $monthStart->copy()->endOfMonth();
-        $rangeEnd = $today->lessThan($monthEnd) ? $today : $monthEnd;
+        $rangeEnd = $yesterday->lessThan($monthEnd) ? $yesterday : $monthEnd;
+
+        if ($rangeEnd->lessThan($monthStart)) {
+            return 0;
+        }
 
         $ranges = $this->incomeEligibility->forfeitedDayRanges(
             $monthStart,
