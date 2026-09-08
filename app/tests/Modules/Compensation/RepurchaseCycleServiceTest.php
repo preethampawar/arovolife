@@ -385,6 +385,50 @@ it('does not demote an already-resolved cycle back to active inside its window',
         ->and($cycle->fulfilled_on->toDateString())->toBe('2026-03-05');
 });
 
+it('undoes a failed verdict frozen inside a window that has not closed yet', function (): void {
+    // Only a run dated AFTER the window can fail a cycle — the recompute tool
+    // replaying into next month does exactly that. Left standing, the
+    // real-clock run would keep the frozen verdict (wallet balance included)
+    // and forfeit every day from the due date on, whatever the distributor
+    // does in the days the window really has left.
+    $dist = Distributor::factory()->create();
+    seedSelfPurchase($dist->id, 60_000, '2026-09-01');
+
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => $dist->id,
+        'cycle_start_date' => '2026-09-01',
+        'due_date' => '2026-10-01',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'wallet_balance_paise' => 500,
+        'wallet_zeroed' => false,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'failure_reason' => RepurchaseCycle::REASON_BOTH,
+        'fulfilled_on' => null,
+        'resolved_at' => '2026-10-02 00:05:00',
+        'created_at' => '2026-09-01 00:05:00',
+        'updated_at' => '2026-10-02 00:05:00',
+    ]);
+
+    // The real clock is still inside the window.
+    svc()->evaluate($dist->id, Carbon::parse('2026-09-20'));
+
+    $cycle = RepurchaseCycle::whereDate('cycle_start_date', '2026-09-01')->firstOrFail();
+
+    expect($cycle->status)->toBe(RepurchaseCycle::STATUS_ACTIVE)
+        ->and($cycle->resolved_at)->toBeNull()
+        ->and($cycle->wallet_balance_paise)->toBeNull()
+        ->and($cycle->wallet_zeroed)->toBeNull()
+        ->and($cycle->failure_reason)->toBeNull()
+        ->and($cycle->fulfilled_on)->toBeNull();
+
+    // And it is judged for real when the window closes: both conditions hold.
+    svc()->evaluate($dist->id, Carbon::parse('2026-10-02'));
+
+    expect(RepurchaseCycle::whereDate('cycle_start_date', '2026-09-01')->firstOrFail()->status)
+        ->toBe(RepurchaseCycle::STATUS_COMPLETED);
+});
+
 it('handles a month-end anchor without window errors', function (): void {
     $dist = Distributor::factory()->create();
     seedSelfPurchase($dist->id, 300_000, '2026-01-31');

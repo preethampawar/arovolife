@@ -185,12 +185,23 @@ it('keeps a wallet credit whose source row survives the window', function (): vo
             'reference_type' => 'gsb_cutoff_result',
             'created_at' => '2026-08-20 00:10:00',
         ],
+        [
+            // ...and an in-window checkout debit of the repurchase wallet
+            // references an ORDER, which no engine rebuilds: it must survive,
+            // or the replayed cycle verdict reads a balance that was spent.
+            'distributor_id' => $dist->id,
+            'type' => 'repurchase_wallet_used',
+            'amount_paise' => -50_000,
+            'reference_id' => 4_242,
+            'reference_type' => 'order',
+            'created_at' => '2026-08-22 11:00:00',
+        ],
     ]);
 
     app(WindowedStateWiper::class)->wipe(Carbon::parse('2026-08-15'));
 
-    $remaining = DB::table('wallet_ledger_entries')->pluck('type')->all();
-    expect($remaining)->toBe(['gbb_credit'])
+    $remaining = DB::table('wallet_ledger_entries')->orderBy('created_at')->pluck('type')->all();
+    expect($remaining)->toBe(['gbb_credit', 'repurchase_wallet_used'])
         ->and(DB::table('gbb_monthly_results')->count())->toBe(1);
 });
 

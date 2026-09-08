@@ -44,9 +44,23 @@ final class CompensationStateWiper
                     continue;
                 }
 
-                $count = (int) $this->db->table($table)->count();
-                $this->db->table($table)->truncate();
-                $removed[$table] = $count;
+                if ($table === 'wallet_ledger_entries') {
+                    // The repurchase-wallet debits written at checkout are a
+                    // record of a purchase, not a derived figure: nothing in the
+                    // replay recreates them, and both the cycle verdict
+                    // (condition B) and the month-end wallet gate read the
+                    // ledger. Truncating them would re-judge every distributor
+                    // who spent their repurchase wallet as if they never had.
+                    $query = $this->db->table($table)
+                        ->whereNotIn('type', DerivedTables::PRESERVED_WALLET_TYPES);
+                    $count = (int) $query->clone()->count();
+                    $query->delete();
+                    $removed[$table] = $count;
+                } else {
+                    $count = (int) $this->db->table($table)->count();
+                    $this->db->table($table)->truncate();
+                    $removed[$table] = $count;
+                }
 
                 if ($count > 0) {
                     $log(sprintf('  %-28s %d row(s)', $table, $count));

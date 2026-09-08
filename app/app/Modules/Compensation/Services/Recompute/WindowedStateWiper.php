@@ -557,9 +557,12 @@ final class WindowedStateWiper
     {
         $deleted = 0;
 
-        // Anything whose reference we cannot resolve is rebuilt from scratch.
+        // Anything whose reference we cannot resolve is rebuilt from scratch —
+        // except the checkout-time repurchase-wallet debits, which no engine
+        // writes and no replay can rebuild (see DerivedTables::PRESERVED_WALLET_TYPES).
         $deleted += $this->db->table('wallet_ledger_entries')
             ->whereDate('created_at', '>=', $dayStart->toDateString())
+            ->whereNotIn('type', DerivedTables::PRESERVED_WALLET_TYPES)
             ->where(function ($query): void {
                 $query->whereNull('reference_type')
                     ->orWhereNull('reference_id')

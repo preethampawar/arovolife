@@ -11,6 +11,7 @@ use App\Modules\Compensation\Events\RepurchaseCompleted;
 use App\Modules\Compensation\Events\RepurchaseCycleOpened;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
+use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -217,8 +218,42 @@ final class RepurchaseCycleService
             // legacy row can reach this branch already resolved — and demoting
             // it back to active would discard a verdict that has already been
             // acted on, then re-resolve it later against the wrong window.
+            //
+            // A FAILED verdict inside an open window is different: nothing can
+            // fail a cycle before its last day, so it can only have come from
+            // a run dated after the window (the recompute tool replaying into
+            // next month). Left standing, the real-clock run would keep it —
+            // frozen wallet balance included — and forfeit every day from the
+            // due date onward no matter what the distributor does. Undo it and
+            // let the window be judged when it really closes.
             if ($cycle->resolved_at === null) {
                 $cycle->status = RepurchaseCycle::STATUS_ACTIVE;
+            } elseif ($cycle->status !== RepurchaseCycle::STATUS_COMPLETED) {
+                AuditLog::create([
+                    'actor_id' => null,
+                    'action' => 'repurchase.cycle.premature_verdict_reset',
+                    'subject_type' => 'distributor',
+                    'subject_id' => $cycle->distributor_id,
+                    'details' => [
+                        'cycle_id' => $cycle->id,
+                        'due_date' => $cycle->due_date->toDateString(),
+                        'as_of' => $asOf->toDateString(),
+                        'discarded' => [
+                            'status' => $cycle->status,
+                            'failure_reason' => $cycle->failure_reason,
+                            'wallet_balance_paise' => $cycle->wallet_balance_paise,
+                            'resolved_at' => $cycle->resolved_at instanceof Carbon ? $cycle->resolved_at->toDateTimeString() : null,
+                        ],
+                        'reason' => 'failed verdict frozen inside a window that had not closed (future-dated replay); undone by the real-clock run',
+                    ],
+                ]);
+
+                $cycle->status = RepurchaseCycle::STATUS_ACTIVE;
+                $cycle->resolved_at = null;
+                $cycle->wallet_balance_paise = null;
+                $cycle->wallet_zeroed = null;
+                $cycle->failure_reason = null;
+                $cycle->fulfilled_on = null;
             }
 
             $cycle->save();

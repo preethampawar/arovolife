@@ -82,10 +82,10 @@ final class DerivedTables
         'fortune_monthly_pools',
         'adc_bonus_results',
 
-        // Eligibility state rebuilt from the BV ledger. The month-end snapshots
-        // must go with them: they are frozen once and never rewritten, so a
-        // survivor would gate every replayed month on a balance computed from
-        // the pre-wipe wallet ledger.
+        // Eligibility state rebuilt from the BV ledger and the wallet ledger.
+        // Each cycle's verdict is frozen once and never rewritten, so a
+        // survivor would judge every replayed window on a wallet balance
+        // computed from the pre-wipe ledger.
         'repurchase_cycles',
 
         // The run log itself: EngineStatusService::isPeriodComputed() reads a
@@ -137,6 +137,17 @@ final class DerivedTables
         'fortune_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'adc_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
     ];
+
+    /**
+     * Wallet ledger entry types that are NOT derived and survive every wipe:
+     * the repurchase-wallet debit recorded at checkout (`reference_type` =
+     * `order`). It is written by the Commerce checkout, never by an engine, so
+     * no replay can rebuild it — and the repurchase cycle verdict and the
+     * month-end wallet gate both read the ledger for the balance it reduces.
+     *
+     * @var list<string>
+     */
+    public const PRESERVED_WALLET_TYPES = ['repurchase_wallet_used'];
 
     /**
      * @return list<string>

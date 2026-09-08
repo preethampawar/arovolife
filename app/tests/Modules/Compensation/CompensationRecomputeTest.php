@@ -189,6 +189,40 @@ it('wipes every derived table but keeps the purchases that produced them', funct
     expect(DB::table('distributors')->where('id', $dist->id)->count())->toBe(1);
 });
 
+it('keeps the checkout-time repurchase-wallet debits through a full wipe', function (): void {
+    // The debit a distributor takes at checkout is a record of a purchase, not
+    // a derived figure: no engine writes it and no replay rebuilds it. Both
+    // the cycle verdict (condition B) and the month-end wallet gate read the
+    // ledger for the balance it reduces, so wiping it would re-judge every
+    // distributor who spent their repurchase wallet as if they never had.
+    $dist = Distributor::factory()->create();
+    recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
+
+    DB::table('wallet_ledger_entries')->insert([
+        [
+            'distributor_id' => $dist->id,
+            'type' => 'repurchase_deduction',
+            'amount_paise' => 50_000,
+            'reference_id' => 1,
+            'reference_type' => 'gsb_cutoff_result',
+            'created_at' => '2026-06-06 00:10:00',
+        ],
+        [
+            'distributor_id' => $dist->id,
+            'type' => 'repurchase_wallet_used',
+            'amount_paise' => -50_000,
+            'reference_id' => 1,
+            'reference_type' => 'order',
+            'created_at' => '2026-06-20 10:00:00',
+        ],
+    ]);
+
+    $removed = app(CompensationStateWiper::class)->wipe();
+
+    expect($removed['wallet_ledger_entries'])->toBe(1)
+        ->and(DB::table('wallet_ledger_entries')->pluck('type')->all())->toBe(['repurchase_wallet_used']);
+});
+
 it('clears a manual GSB freeze so it cannot suppress the replay', function (): void {
     $dist = Distributor::factory()->create();
     DB::table('distributors')->where('id', $dist->id)->update(['gsb_frozen_at' => now()]);
