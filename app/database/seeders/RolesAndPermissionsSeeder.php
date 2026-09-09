@@ -78,6 +78,13 @@ final class RolesAndPermissionsSeeder extends Seeder
         // cancellations (`compliance.discipline`). Finance has no part.
         'distributor.request.handle' => ['admin-operations', 'admin-compliance'],
 
+        // Reading a reported message means reading a private conversation
+        // between two distributors. It sits with the same two roles that
+        // handle grievances and for the same reason: the reports that matter
+        // are income claims and harassment, which routinely name staff, and
+        // finance has no business reading a complaint about itself.
+        'messaging.moderate' => ['admin-operations', 'admin-compliance'],
+
         // Reading the audit log is monitoring, not action, and every scoped
         // role needs it to do its own job — but admin-finance reading it is
         // also the check on admin-finance, so it stays broad deliberately.
