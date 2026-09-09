@@ -11,6 +11,8 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $slug
  * @property string|null $type
+ * @property string|null $category
+ * @property int $sort_order
  * @property string $title
  * @property string|null $body
  * @property string|null $meta_description
@@ -24,6 +26,14 @@ final class ContentPage extends Model
 {
     protected $table = 'content_pages';
 
+    /**
+     * The FAQ library's page type. Named here rather than repeated as a
+     * string: the type is what the listing, the editor's allow-list and the
+     * feature flag all key off, and three copies of 'faq' is three chances to
+     * mistype one.
+     */
+    public const TYPE_FAQ = 'faq';
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_PUBLISHED = 'published';
@@ -33,6 +43,8 @@ final class ContentPage extends Model
     protected $fillable = [
         'slug',
         'type',
+        'category',
+        'sort_order',
         'title',
         'body',
         'meta_description',
@@ -45,6 +57,7 @@ final class ContentPage extends Model
     {
         return [
             'published_at' => 'datetime',
+            'sort_order' => 'integer',
         ];
     }
 

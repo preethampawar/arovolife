@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Modules\Shared\Rules\NoIncomeProjection;
 use Tests\TestCase;
 
 /**
@@ -16,41 +17,14 @@ final class PublicCopyAuditTest extends TestCase
     /**
      * Phrases that imply a future income.
      *
-     * The second group was added on 2026-08-17 after the C-02 sign-off found
-     * "Income amounts shown in any plan illustration represent maximum
-     * achievable levels based on historical top performer data" inside the
-     * registration consent step. None of the original phrases would have
-     * caught it: the pattern is not a promise of a number, it is a
-     * characterisation of the plan's numbers by reference to what the best
-     * earners have made, which is the more common way this rule gets broken.
+     * The list itself now lives on NoIncomeProjection, which also guards
+     * administrator-written copy that never passes through a Blade template —
+     * announcement bodies, which reach every distributor the moment they are
+     * published. Reading it from there is what stops the two from drifting.
      *
      * @var array<int, string>
      */
-    private array $bannedPhrases = [
-        'guaranteed income',
-        'assured income',
-        'earn upto',
-        'earn up to',
-        'earn per day',
-        'earn per month',
-        'earn every month',
-        'monthly income guaranteed',
-        'passive income',
-        'unlimited earnings',
-        'become rich',
-        'get rich',
-        'top performer',
-        'top earner',
-        'maximum achievable',
-        'typical results',
-        'plan illustration',
-        'income illustration',
-        'potential earnings',
-        'earning potential',
-        'expected income',
-        'average income',
-        'average earnings',
-    ];
+    private array $bannedPhrases = NoIncomeProjection::BANNED_PHRASES;
 
     public function test_public_blade_templates_have_no_income_projection_copy(): void
     {
@@ -71,6 +45,12 @@ final class PublicCopyAuditTest extends TestCase
             base_path('resources/views/compliance'),
             base_path('resources/views/tree'),
             base_path('resources/views/emails'),
+            // Added 2026-09-09 with the distributor-communications work. The
+            // messages chrome and the FAQ / announcement surfaces are company
+            // copy even where the message bodies inside them are not.
+            base_path('resources/views/messages'),
+            base_path('resources/views/announcements'),
+            base_path('resources/views/faq'),
         ];
 
         $found = [];

@@ -47,9 +47,37 @@
             <option value="seminar" {{ old('type', $page->type) === 'seminar' ? 'selected' : '' }}>seminar — Seminar</option>
             <option value="news" {{ old('type', $page->type) === 'news' ? 'selected' : '' }}>news — News</option>
             <option value="hub" {{ old('type', $page->type) === 'hub' ? 'selected' : '' }}>hub — Hub</option>
+            @if($faqLibraryOn)
+                <option value="faq" {{ old('type', $page->type) === 'faq' ? 'selected' : '' }}>faq — FAQ answer</option>
+            @endif
         </select>
         @error('type')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+        @if($faqLibraryOn)
+            <p class="mt-1 text-xs text-gray-500">An FAQ answer appears only in the FAQ library, never at <code>/p/{slug}</code>. Moving one back to General publishes it as an ordinary page.</p>
+        @endif
     </div>
+
+    @if($faqLibraryOn)
+    {{-- FAQ-only fields. A library of forty answers in publication order is
+         not a library, so an entry carries a category and a sort order. --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">FAQ category <x-help-tip text="The heading this answer is grouped under in the FAQ library, e.g. Payouts, KYC, Orders. Ignored for every other content type." /></label>
+            <input type="text" name="category" value="{{ old('category', $page->category) }}"
+                maxlength="80"
+                placeholder="e.g. Payouts"
+                class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+            @error('category')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Sort order <x-help-tip text="Position of this answer inside its category — lower numbers appear first. Answers with the same number fall back to alphabetical order." /></label>
+            <input type="number" name="sort_order" value="{{ old('sort_order', $page->sort_order) }}"
+                min="0" max="65535"
+                class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+            @error('sort_order')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+        </div>
+    </div>
+    @endif
 
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Status <span class="text-red-600">*</span> <x-help-tip text="Draft keeps the page private, Published makes it publicly visible, and Archived hides it while keeping the record." /></label>
