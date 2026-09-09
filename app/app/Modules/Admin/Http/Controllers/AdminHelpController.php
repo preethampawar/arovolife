@@ -96,6 +96,11 @@ final class AdminHelpController extends Controller
             'description' => 'Name and date-of-birth corrections, name changes, membership transfers and ID cancellations: what each type does on approval, who decides it, and what to check before approving.',
             'file' => 'distributor-requests.md',
         ],
+        'distributor-communications' => [
+            'title' => 'Distributor Communications',
+            'description' => 'The three surfaces distributors read and write on: direct messages and the reported-message queue, company announcements, and the FAQ library. What each control does, and which of them is a compliance control rather than a convenience.',
+            'file' => 'distributor-communications.md',
+        ],
         'analytics' => [
             'title' => 'Analytics',
             'description' => 'How to read the funnels, the retention table and the base panel — what each figure counts, and why nothing on the page forecasts.',

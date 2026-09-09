@@ -6,17 +6,25 @@
     $offersOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class);
     $adcApplicationsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteCenterApplicationsFeature::class);
     $requestsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\DistributorRequestsFeature::class);
+    $messagingOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MessagingFeature::class);
+    $announcementsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AnnouncementsFeature::class);
+    $faqOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FaqLibraryFeature::class);
 
     $groups = [
         'Overview' => [
             ['label' => 'Dashboard',          'route' => 'dashboard',           'icon' => 'house', 'prefix' => 'dashboard'],
             ['label' => 'My Business',        'route' => 'my-business',         'icon' => 'chart-column'],
             ['label' => 'My Income',          'route' => 'income.dashboard',    'icon' => 'banknote', 'prefix' => 'income.'],
+            ...($announcementsOn
+                ? [['label' => 'Announcements', 'route' => 'announcements.index', 'icon' => 'megaphone', 'prefix' => 'announcements.']]
+                : []),
         ],
         'My Network' => [
             ['label' => 'My Genos',           'route' => 'tree.binary',         'icon' => 'network'],
             ['label' => 'Sponsorship Tree',   'route' => 'tree.sponsorship',    'icon' => 'git-branch'],
-            ['label' => 'Messages',           'route' => 'messages.index',      'icon' => 'mail', 'prefix' => 'messages.'],
+            ...($messagingOn
+                ? [['label' => 'Messages',    'route' => 'messages.index',      'icon' => 'mail', 'prefix' => 'messages.']]
+                : []),
         ],
         'Shopping' => [
             ['label' => 'Shop',               'route' => 'shop.index',          'icon' => 'shopping-bag'],
@@ -37,6 +45,9 @@
                 ? [['label' => 'My Requests', 'route' => 'my.requests.index',   'icon' => 'clipboard-list', 'prefix' => 'my.requests.']]
                 : []),
             ['label' => 'My Grievances',      'route' => 'my.grievances.index', 'icon' => 'megaphone', 'prefix' => 'my.grievances.'],
+            ...($faqOn
+                ? [['label' => 'FAQ',         'route' => 'faq.index',           'icon' => 'circle-question-mark', 'prefix' => 'faq.']]
+                : []),
         ],
     ];
 @endphp

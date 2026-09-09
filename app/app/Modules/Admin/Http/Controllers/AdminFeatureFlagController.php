@@ -6,9 +6,11 @@ namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AnnouncementsFeature;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\DistributorRequestsFeature;
+use App\Modules\Shared\Features\FaqLibraryFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
@@ -16,6 +18,7 @@ use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use App\Modules\Shared\Features\HibpPasswordCheck;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RegistrationKillswitch;
@@ -150,6 +153,31 @@ final class AdminFeatureFlagController extends Controller
                 'class' => DistributorRequestsFeature::class,
                 'label' => 'Distributor requests',
                 'description' => 'Lets a distributor file a formal request about their own record — name correction, name change, date-of-birth correction, membership transfer to an immediate blood relation, or ID cancellation — with supporting documents, and puts the review queue in the admin console. Name and DOB approvals update the record (audit-logged); transfer and cancellation approvals are acknowledgements that compliance then carries out with the existing account tools. OFF leaves no trace: no menu item, no routes, no queue.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+
+            // ── Distributor communications ──────────────────────────────────
+            // Messaging defaults ON: it shipped in Phase 1 and is live, so this
+            // row is a killswitch for a moderation incident, not a launch gate.
+            'messaging.enabled' => [
+                'class' => MessagingFeature::class,
+                'label' => 'Distributor messaging',
+                'description' => 'Direct messages between distributors — the inbox, the chat thread, and the "Send Message" action on Genos and direct-referral cards. Unlike the other flags here this one is ON by default because messaging is already live; turn it OFF to close the channel during a harassment or mis-selling investigation. Messages are retained while it is off, and every thread returns when it goes back on. Who may message whom, the send rate limits, the block list and the PAN/Aadhaar guard are tuned in Settings → Messaging.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+            'content.announcements' => [
+                'class' => AnnouncementsFeature::class,
+                'label' => 'Company announcements',
+                'description' => 'Lets the company address distributors directly — an admin writes an announcement, targets it at everyone or at one rank or account status, and it appears in the distributors\' announcements list and on the notification bell. Bodies are scanned by the public copy audit when saved, so an income claim is refused at authoring rather than after it has gone out. OFF leaves no trace: no menu item, no routes, no bell section.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+            'content.faq_library' => [
+                'class' => FaqLibraryFeature::class,
+                'label' => 'FAQ library',
+                'description' => 'A categorised, searchable question-and-answer library for distributors, authored as content pages of type "faq" so entries carry the same draft → published workflow and audit trail as the policy pages, plus an income-projection check on the title and body that the other content types do not have. Settings → Content decides whether it is members-only or public. OFF leaves no trace: no menu item, no routes, and "faq" is refused as a content-page type in the editor.',
                 'owner' => 'developer',
                 'requires' => [],
             ],

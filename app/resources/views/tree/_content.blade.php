@@ -33,6 +33,9 @@
     $rerootBase          = $rerootBase  ?? url('/tree');
     $rerootKey           = $rerootKey   ?? 'adn';
     $isSponsorshipModeTop = ($mode ?? 'binary') === 'sponsorship';
+    // Resolved once for the whole canvas, not per card: while the messaging
+    // killswitch is off the Send Message action and its modal leave no trace.
+    $messagingOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MessagingFeature::class);
 
     // Highest Rank / Current Rank / Personal BV for every card on this canvas,
     // resolved in ONE pass through the same service the dashboard and the
@@ -279,7 +282,9 @@
     </div>
 
     @include('partials._id-card-modal')
-    @include('partials._send-message-modal')
+    @if($messagingOn)
+        @include('partials._send-message-modal')
+    @endif
     @include('partials._toast-container')
 
     {{-- Minimap: click-to-jump anywhere, or drag the blue rectangle to pan.

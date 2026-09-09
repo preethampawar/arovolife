@@ -442,10 +442,61 @@ production passes (runbook checklist). Follow-ups: R-68 (COD refunds manual),
 R-69 (coupon value on non-cooling-off refunds — client policy), dispute /
 chargeback webhooks, buyer notifications on refund settled.
 
+### 8. Distributor communications ✅
+
+**Shipped 2026-09-09.** The messaging / FAQ line had sat in this document
+unspecced since the first roadmap commit. Three surfaces, each behind its own
+flag and each tunable from Settings → Distributor communications (dev-owned):
+
+- **Messaging hardening.** The Phase 1 direct-message channel was an
+  intentionally permissive MVP — any authenticated user could message any
+  user_id, at any rate, with any content. Sends now pass an audience check
+  (own Genos line by default), a block list, two rate limits and the
+  PAN/Aadhaar rule, all enforced in `MessageService` so the tree-card modal
+  inherits them. Distributors can report a message; `messaging.moderate`
+  (R-17: not admin-finance) works the queue, and every open of a report is
+  audit-logged. `MessagingFeature` defaults **ON** — it is a killswitch for a
+  moderation incident, not a launch gate, because the channel is already live.
+- **Company announcements.** Admin-authored, audience-scoped (everyone / one
+  account state / a rank and above), draft → published → archived, with an
+  optional email copy (default OFF). Bodies pass the income-projection audit
+  at save *and* at publish — the only company copy that reaches every
+  distributor without a code review.
+- **FAQ library.** A fifth `content_pages` type (`faq`) plus a category and a
+  sort order, members-only by default. Reuses the content editor, the publish
+  workflow and the audit trail rather than adding a module, and adds the
+  income-projection check on the title and body — scoped to this type, because
+  the Code of Ethics page quotes the banned phrases in order to forbid them.
+  FAQ entries are excluded from the generic `/p/{slug}` reader so that the flag
+  and `faq.members_only` are the only way in.
+
+`NoIncomeProjection` now owns the banned-phrase list that `PublicCopyAuditTest`
+reads, so template copy and administrator-written copy cannot drift apart.
+`resources/views/{messages,announcements,faq}` were added to the audit's roots.
+The moderation queue is disclosed and bounded rather than merely built:
+Privacy Notice §4.5b names the purpose and the three-message window, §5 gives
+messages, reports, blocks and announcement reads a retention period, and
+`messages:purge` (weekly, Sunday 03:20 IST) enforces the 24-month rows while
+holding back anything attached to a report. Deploy step: `php artisan content:publish privacy` republishes the Privacy
+Policy page from the markdown — until it runs, the published page is the old
+text and §4.5b is not something the company has actually said. Use that command
+rather than `db:seed --class=ContentPageSeeder`, which rewrites all five policy
+pages and would publish the payout-week wording R-75 is holding back. R-80 tracks the two open items —
+whether the §13 30-day notice has to run before reporting goes live, and the
+delete-cascade that would take an open report with it.
+
+63 tests. **Mentor calls were not built** — the third item on the old line has
+no spec and no confirmed client expectation; it needs a conversation, not a
+design.
+
 ### Still open in this build-out
 
-- Distributor messaging / mentor calls / FAQ library tooling
+- Mentor calls (unspecced — see above)
 - Quarterly internal audit cadence formalised (the agreement promises it)
+- R-80 (a): confirm with the client whether the DPDP §13 30-day notice must run
+  before `messaging.reporting_enabled` goes live
+- R-80 (b): enforce the message / report legal hold in the schema before any
+  erasure request is honoured by deleting a user row
 
 ---
 
