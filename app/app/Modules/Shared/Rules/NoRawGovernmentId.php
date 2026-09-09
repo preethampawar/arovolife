@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Grievance\Rules;
+namespace App\Modules\Shared\Rules;
 
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -19,6 +19,10 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * twelve-digit string — an order value, a phone number pair, a date run —
  * would block a legitimate complaint, and a complainant who cannot describe
  * their problem is worse off than one who overshares.
+ *
+ * Lives in Shared because two bounded contexts now need it: grievance free
+ * text and distributor-to-distributor messages, where a member asking an
+ * upline to "check my KYC" will paste the number for exactly the same reason.
  */
 final class NoRawGovernmentId implements ValidationRule
 {
