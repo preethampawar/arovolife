@@ -91,6 +91,8 @@ final class CommissionHasProductSaleTest extends TestCase
         // `admin_charge_debit` and `tds_debit` take the admin charge and TDS
         // off a payout line at batch time (PayoutService::writePayoutDebits).
         // Money leaves the wallet in each case; no entitlement is created.
+        // The client confirmed on 2026-09-10 that all three are deductions only
+        // and can never create income for a distributor.
         'repurchase_transfer',
         'admin_charge_debit',
         'tds_debit',

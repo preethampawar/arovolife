@@ -509,6 +509,13 @@ Three rules make a windowed run reproduce a full one exactly:
   window and is never recomputed. Entries are removed only when the row that
   produced them is being rebuilt.
 
+**Empty weekly batch after a mid-week run.** When the replay ends on a day
+other than Tuesday, the catch-up pass creates an empty `pending`
+`gsb:weekly-payout` batch dated the previous Tuesday (zero distributors). The
+scheduler would never have written it. The client accepted this on 2026-09-10:
+the row is harmless, the next recompute wipes it, and the tool itself is deleted
+after the plan sign-off.
+
 Verified on the reference dataset (288 distributors, 53 days): a windowed
 `--from` = 1st-of-month run produces a byte-identical database to a full replay —
 same 15,264 cut-off rows, same ₹67,62,369.54 of wallet credits, same

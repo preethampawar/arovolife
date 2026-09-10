@@ -559,6 +559,12 @@ final class EngineReplayService
      * within seven days; a cadence that fired on no day in the preceding month
      * would be a registry mistake, and it aborts loudly rather than letting the
      * catch-up drop that engine in silence.
+     *
+     * When the horizon is not a Tuesday and that last Tuesday lies before the
+     * window start, the catch-up creates an empty `pending` weekly batch dated
+     * that Tuesday. The real scheduler never writes such a row; the client
+     * accepted it on 2026-09-10 because this tool is temporary and the next
+     * recompute wipes the row.
      */
     private function latestFiringAtOrBefore(EngineDefinition $definition, Carbon $horizon): Carbon
     {
