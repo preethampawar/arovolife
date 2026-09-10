@@ -1171,3 +1171,107 @@ it('runs the repurchase evaluation for the horizon day inside the loop, before t
 
     expect($check->status)->toBe(EngineRun::STATUS_SUCCEEDED);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Catch-up — the weekly payout batch is dated a Tuesday, whatever day it is
+|--------------------------------------------------------------------------
+|
+| The clock is pinned so these hold on every weekday. Driven through
+| EngineReplayService directly: CompensationRecomputeRunner::run() clears the
+| test clock itself. 8 Sep 2026 is a Tuesday; 10 Sep 2026 a Thursday.
+*/
+
+it('catches up the weekly payout for the preceding Tuesday when the horizon is not one', function (): void {
+    // The catch-up used to hand every date engine the horizon date. The weekly
+    // payout command refuses any --date that is not a Tuesday, so on six days
+    // out of seven the whole replay aborted — after the wipe. The window here
+    // holds no Tuesday at all, so the batch can only come from the catch-up.
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-10 12:00:00')); // Thursday
+
+    try {
+        $result = app(EngineReplayService::class)->replay(
+            Carbon::parse('2026-09-09'),
+            Carbon::parse('2026-09-10'),
+        );
+    } finally {
+        Carbon::setTestNow();
+    }
+
+    expect($result['engines']['gsb:weekly-payout'] ?? 0)
+        ->toBe(1, 'The catch-up did not run the weekly payout: a non-Tuesday horizon must resolve to the preceding Tuesday, not be skipped');
+
+    $run = EngineRun::where('engine_key', 'gsb.weekly-payout')->latest('id')->firstOrFail();
+    expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
+        ->and(Carbon::parse($run->period_start)->toDateString())
+        ->toBe('2026-09-08', 'The weekly payout was dated the horizon (a Thursday) instead of the preceding Tuesday');
+
+    expect(DB::table('payout_batches')
+        ->where('batch_type', 'weekly')
+        ->whereDate('batch_date', '2026-09-08')
+        ->exists())->toBeTrue();
+});
+
+it('does not run the weekly payout twice when the preceding Tuesday lies inside the window', function (): void {
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-10 12:00:00')); // Thursday
+
+    try {
+        $result = app(EngineReplayService::class)->replay(
+            Carbon::parse('2026-09-07'),
+            Carbon::parse('2026-09-10'),
+        );
+    } finally {
+        Carbon::setTestNow();
+    }
+
+    // The day loop ran Tuesday's batch at its scheduled instant; the catch-up
+    // resolved to the same Tuesday and found it already invoked.
+    expect($result['engines']['gsb:weekly-payout'] ?? 0)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'gsb.weekly-payout')->sole();
+    expect(Carbon::parse($run->period_start)->toDateString())->toBe('2026-09-08')
+        ->and(Carbon::parse($run->started_at)->format('Y-m-d H:i'))->toBe('2026-09-08 03:00');
+});
+
+it('still catches up the weekly payout for the horizon itself when the horizon is a Tuesday', function (): void {
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-08 12:00:00')); // Tuesday
+
+    try {
+        $result = app(EngineReplayService::class)->replay(
+            Carbon::parse('2026-09-07'),
+            Carbon::parse('2026-09-08'),
+        );
+    } finally {
+        Carbon::setTestNow();
+    }
+
+    expect($result['engines']['gsb:weekly-payout'] ?? 0)->toBe(1);
+
+    // In flight at the horizon: the day loop stepped around it and the catch-up
+    // stamped it at the real clock, not the 03:00 schedule instant.
+    $run = EngineRun::where('engine_key', 'gsb.weekly-payout')->sole();
+    expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
+        ->and(Carbon::parse($run->period_start)->toDateString())->toBe('2026-09-08')
+        ->and(Carbon::parse($run->started_at)->format('Y-m-d H:i'))->toBe('2026-09-08 12:00');
+});

@@ -258,9 +258,22 @@ final class EngineReplayService
             }
 
             // (i) In-flight period at the horizon.
+            //
+            // A Date engine is not necessarily a *daily* engine: the weekly
+            // payout batch fires only on a Tuesday, because it sweeps the
+            // Wednesday-Tuesday week that closed seven days earlier. Handing it
+            // the horizon date whenever the horizon is not a Tuesday made the
+            // command refuse the batch outright ("a weekly payout batch is
+            // dated a Tuesday"), aborting the whole replay on six days out of
+            // seven. The period in flight for a date engine is therefore the
+            // LATEST date its cadence would have fired on at or before the
+            // horizon: the horizon itself for a daily engine, the most recent
+            // Tuesday for the weekly batch. Dropping the engine instead would
+            // leave it uncomputed, which is the one thing this pass exists to
+            // prevent.
             $inFlight = $definition->periodType === EnginePeriodType::Month
                 ? $horizon->copy()->startOfMonth()
-                : $horizon->copy()->startOfDay();
+                : $this->latestFiringAtOrBefore($definition, $horizon);
 
             if (! isset($this->invoked[$this->invocationKey($definition, $inFlight)])) {
                 $pending[] = ['definition' => $definition, 'period' => $inFlight, 'inFlight' => true];
@@ -537,6 +550,31 @@ final class EngineReplayService
         return $definition->periodType === EnginePeriodType::Month
             ? $period->isSameMonth($realNow)
             : $period->isSameDay($realNow);
+    }
+
+    /**
+     * The period a date-type engine would most recently have been fired for, at
+     * or before the horizon — the horizon itself for a daily cadence, the last
+     * Tuesday for the weekly payout batch. Every registered date engine fires
+     * within seven days; a cadence that fired on no day in the preceding month
+     * would be a registry mistake, and it aborts loudly rather than letting the
+     * catch-up drop that engine in silence.
+     */
+    private function latestFiringAtOrBefore(EngineDefinition $definition, Carbon $horizon): Carbon
+    {
+        $candidate = $horizon->copy()->startOfDay();
+
+        for ($i = 0; $i < 31; $i++, $candidate->subDay()) {
+            if ($definition->cadence->runsOn($candidate)) {
+                return $definition->periodRelativeTo($candidate);
+            }
+        }
+
+        throw new RuntimeException(sprintf(
+            'Replay aborted: %s fires on no day in the 31 days up to %s, so its period in flight cannot be determined.',
+            $definition->commandSignature,
+            $horizon->toDateString(),
+        ));
     }
 
     /** Identifies one engine run for one period, so it can happen only once. */
