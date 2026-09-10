@@ -280,6 +280,12 @@ it('forbids triggering without the finance.record permission', function (): void
 });
 
 it('rejects invalid engine keys, malformed periods, future periods and short reasons', function (): void {
+    // The closed-period rule is production behaviour, and an open recompute
+    // gate deliberately lifts it. TestCase declares the connected test database
+    // destroyable, so whether the gate is open here otherwise depends on the
+    // developer's own COMP_RECOMPUTE_ENABLED — which made this test pass or
+    // fail by machine. Pin it closed: that is the state the rule guards.
+    config(['arovolife.recompute.enabled' => false]);
     Queue::fake();
     Feature::activate(GrowthBoosterBonusFeature::class);
     $admin = engineRunsUser('admin');
@@ -321,6 +327,12 @@ it('refuses to run an economics-freezing engine for a period still in flight', f
     // ₹0 before the evening's BV landed, and the scheduled 00:10 run then paid
     // the day's real achievers out of the empty snapshot. A day is only
     // runnable once it has ended; a month once it has ended.
+    // The closed-period rule is production behaviour, and an open recompute
+    // gate deliberately lifts it. TestCase declares the connected test database
+    // destroyable, so whether the gate is open here otherwise depends on the
+    // developer's own COMP_RECOMPUTE_ENABLED — which made this test pass or
+    // fail by machine. Pin it closed: that is the state the rule guards.
+    config(['arovolife.recompute.enabled' => false]);
     Queue::fake();
     Feature::activate(GenosSalesBonusFeature::class);
     Feature::activate(GrowthBoosterBonusFeature::class);
