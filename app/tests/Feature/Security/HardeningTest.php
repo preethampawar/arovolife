@@ -19,7 +19,10 @@ declare(strict_types=1);
 
 use App\Modules\Shared\Logging\PiiScrubberProcessor;
 use App\Modules\Shared\Logging\TapPiiScrubber;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Monolog\Level;
 use Monolog\LogRecord;
 
@@ -125,8 +128,22 @@ it('SEC-08: account creation and checkout are rate limited', function () {
             $route->getName() => collect($route->gatherMiddleware())->first(fn ($m) => str_starts_with((string) $m, 'throttle:')),
         ]);
 
-    // Unauthenticated routes that write rows and burn the ADN sequence.
-    expect($limits['join.submit'])->toBe('throttle:10,60')
-        ->and($limits['register.post'])->toBe('throttle:10,60')
+    // Unauthenticated routes that write rows and burn the ADN sequence. The
+    // two registration routes share the named `registration` limiter, whose
+    // numbers are DB-driven so operations can tighten them without a deploy;
+    // checkout keeps an inline limit.
+    expect($limits['join.submit'])->toBe('throttle:registration')
+        ->and($limits['register.post'])->toBe('throttle:registration')
         ->and($limits['shop.checkout.place'])->toBe('throttle:20,60');
+
+    // Carrying the middleware name proves nothing on its own — a limiter that
+    // resolved to Limit::none() would still read `throttle:registration`. What
+    // SEC-08 actually claims is that account creation is *capped*, so resolve
+    // the limiter and assert the effective numbers.
+    $resolved = app(RateLimiter::class)->limiter('registration')(Request::create('/join', 'POST'));
+
+    expect($resolved)->toBeInstanceOf(Limit::class)
+        ->and($resolved->maxAttempts)->toBeGreaterThan(0)
+        ->and($resolved->maxAttempts)->toBeLessThanOrEqual(60)
+        ->and($resolved->decaySeconds)->toBeGreaterThanOrEqual(60);
 });
