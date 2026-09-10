@@ -71,9 +71,12 @@ use App\Modules\Compliance\Http\Controllers\Admin\AdminDormancyController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
 use App\Modules\Consent\Http\Controllers\ConsentWithdrawalController;
+use App\Modules\Content\Http\Controllers\Admin\AdminAnnouncementController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
+use App\Modules\Content\Http\Controllers\AnnouncementController;
 use App\Modules\Content\Http\Controllers\Public\PublicBlogController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
+use App\Modules\Content\Http\Controllers\Public\PublicFaqController;
 use App\Modules\Content\Http\Controllers\Public\PublicNewsController;
 use App\Modules\Content\Http\Controllers\Public\PublicSeminarController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
@@ -101,6 +104,7 @@ use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardControl
 use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
+use App\Modules\Messaging\Http\Controllers\Admin\AdminMessageReportController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
 use App\Modules\Payments\Http\Controllers\Admin\AdminPaymentController;
 use App\Modules\Payments\Http\Controllers\PaymentController;
@@ -673,6 +677,15 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::patch('/content/{page}', [AdminContentPageController::class, 'update'])->name('content.update');
     Route::delete('/content/{page}', [AdminContentPageController::class, 'destroy'])->name('content.destroy');
 
+    // Company announcements (flag-gated in the controller: AnnouncementsFeature).
+    // Same permission as the content pages they sit beside — this is publishing.
+    Route::get('/announcements', [AdminAnnouncementController::class, 'index'])->name('announcements.index');
+    Route::get('/announcements/create', [AdminAnnouncementController::class, 'create'])->name('announcements.create');
+    Route::post('/announcements', [AdminAnnouncementController::class, 'store'])->name('announcements.store');
+    Route::get('/announcements/{announcement}/edit', [AdminAnnouncementController::class, 'edit'])->whereNumber('announcement')->name('announcements.edit');
+    Route::patch('/announcements/{announcement}', [AdminAnnouncementController::class, 'update'])->whereNumber('announcement')->name('announcements.update');
+    Route::post('/announcements/{announcement}/transition', [AdminAnnouncementController::class, 'transition'])->whereNumber('announcement')->name('announcements.transition');
+
     // Compliance documents — admin upload/manage; published ones are listed
     // publicly at /compliance-documents.
     Route::get('/compliance-documents', [AdminComplianceDocumentController::class, 'index'])->name('compliance-documents.index');
@@ -751,6 +764,15 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::post('/grievances/{id}/resolve', [AdminGrievanceController::class, 'resolve'])->whereNumber('id')->name('grievances.resolve');
         Route::post('/grievances/{id}/close', [AdminGrievanceController::class, 'close'])->whereNumber('id')->name('grievances.close');
     });
+
+    // Reported messages. `can:messaging.moderate` carries the same R-17
+    // exclusion as grievances — reading a reported message means reading a
+    // private conversation, and the reports that matter name staff.
+    Route::middleware('can:messaging.moderate')->prefix('messaging')->name('messaging.')->group(function (): void {
+        Route::get('/reports', [AdminMessageReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{report}', [AdminMessageReportController::class, 'show'])->whereNumber('report')->name('reports.show');
+        Route::post('/reports/{report}/review', [AdminMessageReportController::class, 'review'])->whereNumber('report')->name('reports.review');
+    });
 });
 
 // "Stop impersonation" must be reachable while the admin is logged in as the
@@ -779,6 +801,10 @@ Route::get('/blogs', [PublicBlogController::class, 'index'])->name('public.blogs
 Route::get('/seminars', [PublicSeminarController::class, 'index'])->name('public.seminars.index');
 Route::get('/news', [PublicNewsController::class, 'index'])->name('public.news.index');
 Route::get('/arovo-hub', fn () => view('landing.arovo-hub'))->name('public.arovo-hub');
+
+// The FAQ library. Flag-gated and members-only-by-default in the controller,
+// so it 404s rather than 403s while either gate is closed.
+Route::get('/faq', [PublicFaqController::class, 'index'])->name('faq.index');
 
 Route::get('/p/{slug}', [PublicContentPageController::class, 'show'])
     ->where('slug', '[a-z0-9-]+')
@@ -918,6 +944,11 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::post('/my/requests', [DistributorRequestController::class, 'store'])->name('my.requests.store');
     Route::get('/my/requests/{distributorRequest}', [DistributorRequestController::class, 'show'])->whereNumber('distributorRequest')->name('my.requests.show');
 
+    // Company announcements (flag-gated in the controller: AnnouncementsFeature).
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])
+        ->whereNumber('announcement')->name('announcements.show');
+
     // The distributor's own offers: point balance, streak and entitlements.
     Route::get('/my/offers', [MyOffersController::class, 'index'])->name('my.offers.index');
 
@@ -1052,6 +1083,14 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
         ->whereNumber('user')->name('messages.show');
     Route::post('/messages/{user}', [MessageController::class, 'store'])
         ->whereNumber('user')->name('messages.store');
+    // Recipient-side controls. Literal '/report' hangs off the message id, not
+    // the user id, because a report is about one thing that was said.
+    Route::post('/messages/{user}/block', [MessageController::class, 'block'])
+        ->whereNumber('user')->name('messages.block');
+    Route::delete('/messages/{user}/block', [MessageController::class, 'unblock'])
+        ->whereNumber('user')->name('messages.unblock');
+    Route::post('/messages/report/{message}', [MessageController::class, 'report'])
+        ->whereNumber('message')->name('messages.report');
 
     // Arete Development Centre application — flag-gated inside the controller
     // (AreteCenterApplicationsFeature, 404 when off for zero trace).

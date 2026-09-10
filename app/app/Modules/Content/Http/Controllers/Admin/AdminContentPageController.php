@@ -7,10 +7,12 @@ namespace App\Modules\Content\Http\Controllers\Admin;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Content\Http\Requests\ContentPageRequest;
 use App\Modules\Content\Models\ContentPage;
+use App\Modules\Shared\Features\FaqLibraryFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Pennant\Feature;
 use Mews\Purifier\Facades\Purifier;
 
 final class AdminContentPageController extends Controller
@@ -24,9 +26,10 @@ final class AdminContentPageController extends Controller
 
     public function create(): View
     {
-        return view('admin.content.create', ['page' => new ContentPage([
-            'status' => ContentPage::STATUS_DRAFT,
-        ])]);
+        return view('admin.content.create', [
+            'page' => new ContentPage(['status' => ContentPage::STATUS_DRAFT]),
+            'faqLibraryOn' => $this->faqLibraryOn(),
+        ]);
     }
 
     public function store(ContentPageRequest $request): RedirectResponse
@@ -50,7 +53,22 @@ final class AdminContentPageController extends Controller
 
     public function edit(ContentPage $page): View
     {
-        return view('admin.content.edit', ['page' => $page]);
+        return view('admin.content.edit', [
+            'page' => $page,
+            'faqLibraryOn' => $this->faqLibraryOn(),
+        ]);
+    }
+
+    /**
+     * Whether the editor offers `faq` as a type, and with it the category and
+     * sort-order fields. Resolved on the pinned global scope, the same one the
+     * admin console toggles, so the editor and ContentPageRequest agree about
+     * what is offerable. While it is off the type is refused by validation
+     * too — an option nobody can save is worse than no option at all.
+     */
+    private function faqLibraryOn(): bool
+    {
+        return Feature::for(null)->active(FaqLibraryFeature::class);
     }
 
     public function update(ContentPageRequest $request, ContentPage $page): RedirectResponse

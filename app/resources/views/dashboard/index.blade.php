@@ -58,7 +58,9 @@
         <div class="flex flex-col gap-6 min-w-0">
             @include('dashboard._placement')
             @include('dashboard._cooling-off')
-            @include('dashboard._messages')
+            @if(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MessagingFeature::class))
+                @include('dashboard._messages')
+            @endif
         </div>
     </div>
 

@@ -102,7 +102,7 @@
                         <span class="block text-[11px] text-gray-600 mt-0.5">Hide siblings and parent; root here</span>
                     </span>
                 </a>
-                @if($node->user_id && auth()->id() !== (int) $node->user_id)
+                @if($node->user_id && auth()->id() !== (int) $node->user_id && ($messagingOn ?? false))
                 <button type="button"
                     data-send-message="{{ $node->user_id }}"
                     data-send-message-name="{{ $node->user?->full_name ?: ('Distributor '.$node->adn) }}"

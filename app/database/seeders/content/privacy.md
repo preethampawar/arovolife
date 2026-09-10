@@ -74,6 +74,7 @@ We process your personal data for:
 4. **Order fulfilment** — receiving, packing, dispatching and tracking customer orders; managing returns, refunds and buybacks.
 5. **Customer and Distributor support** — responding to your queries, processing grievances, providing training and education content.
 5a. **Genealogy visibility** — showing your name, ADN, KYC status, activation date, current and highest achieved rank, and accumulated personal BV to your sponsor and to the Distributors above you in your Genos (placement) line, inside their authenticated genealogy view only, so that they can mentor you and coordinate product training. These figures are **not** used to set targets for you, are not shown to Distributors outside your line, and must not be shared by them outside the platform (Code of Ethics §2.11). Your purchase history, order contents, bank details, PAN and Aadhaar are never shown to other Distributors. This purpose takes effect only after the 30-day notice in §13 has run.
+5b. **Moderation of reported messages** — where you report a message you have received, reading that message and up to three messages either side of it in the same conversation, so that we can judge it in context; recording the report, our decision and the reason for it. Only the Operations and Compliance staff who handle grievances can do this, every time one of them opens a report it is written to the audit log, and the message itself is never edited or deleted by us. We do **not** read, scan or index private messages that nobody has reported, and no such scanning is planned. Both people in the conversation are told, on the compose screen, that a message can be reported and read this way.
 6. **Fraud prevention and security** — detecting account compromise, surrogate selling, ghost placements, BV manipulation, payment fraud, and abuse of the platform.
 7. **Statutory reporting** — filings with Income Tax, GST authorities, MCA, and consumer-protection authorities.
 8. **Platform improvement** — first-party analytics on aggregate, pseudonymised usage; bug diagnostics; performance tuning.
@@ -90,6 +91,10 @@ We do not use your data for any other purpose without obtaining fresh consent.
 | Transactional records (orders, invoices, payouts, GST returns, Form 16A) | **8 years** from the end of the relevant financial year | Income Tax Act §44AA; CGST Act §35–36; Companies Act 2013. |
 | Audit log of admin actions and consent log entries | **8 years** | Internal compliance; DPDP Act §8. |
 | Grievance tickets and attached evidence | **7 years** from closure | DSR 2021 Rule 12. |
+| In-app messages between Distributors | **24 months** from the date sent — except a message that has been reported or attached to a grievance, which is held until that record's own period expires | Minimisation under DPDP Act §4; legal hold for open complaints. |
+| Reports of a message, and the moderation record (who reviewed it, the decision, the reason) | **7 years** from closure | DSR 2021 Rule 12; same basis as grievance tickets. |
+| Block list entries | for as long as the block is in place; deleted the moment you unblock | Minimisation under DPDP Act §4. |
+| Record that you have read a company announcement | **24 months** | Minimisation under DPDP Act §4. |
 | Behavioural / session analytics | **24 months** | Minimisation under DPDP Act §4. |
 | Marketing contact data after opt-out | **purged within 30 days** of opt-out | DPDP Act §6, §13. |
 | Cookies (first-party, technical) | session or up to **12 months** | See §9. |
@@ -177,7 +182,7 @@ You may request correction of inaccurate or out-of-date data. Some fields (PAN, 
 
 ### 10.3 Right to erasure
 
-You may request erasure of personal data that is no longer necessary for the purpose for which it was collected or for which consent has been withdrawn. Data retained under a legal obligation (e.g. tax records within the 8-year window, grievance records within the 7-year window) cannot be erased on request; we will tell you which fields are blocked and why.
+You may request erasure of personal data that is no longer necessary for the purpose for which it was collected or for which consent has been withdrawn. Data retained under a legal obligation (e.g. tax records within the 8-year window, grievance records and message-moderation records within the 7-year window) cannot be erased on request; we will tell you which fields are blocked and why. A message that is the subject of an open or closed report is part of that moderation record and is held with it.
 
 ### 10.4 Right to data portability
 

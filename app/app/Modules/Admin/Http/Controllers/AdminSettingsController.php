@@ -7,13 +7,16 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AnnouncementsFeature;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\FaqLibraryFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
@@ -668,6 +671,109 @@ final class AdminSettingsController extends Controller
                 'default' => 'false',
             ],
 
+            // ── Distributor communications ─────────────────────────────────
+            // Feature-gated: each block disappears from this page while its
+            // flag is off, so a closed channel leaves no settings trace.
+            //
+            // These are policy, not mechanism. How strictly a company polices
+            // its own distributors' channel is a judgement that will be
+            // revisited the first time a moderation incident happens, and
+            // tightening it should be an audited settings edit, not a deploy.
+            'messaging.audience' => [
+                'group' => 'communications',
+                'feature' => MessagingFeature::class,
+                'label' => 'Who a distributor may message',
+                'description' => 'Restricted (default): a distributor may only message their own sponsor, their upline, their sponsees and their Genos team — plus company accounts, which are always reachable. Anyone: the Phase 1 behaviour, where any signed-in member may message any other by id.',
+                'impact' => 'Setting this to "Anyone" makes every distributor reachable by every other. The endpoint takes a numeric user id, so it also makes the whole distributor base enumerable by anyone willing to count — the standard cross-recruiting attack, and the standard way one member ends up with a hundred pitches a day.',
+                'type' => 'enum',
+                'default' => 'downline_upline',
+                'options' => [
+                    ['value' => 'downline_upline', 'label' => 'Restricted — own Genos line only', 'note' => 'Sponsor, upline, sponsees and team. Company accounts stay reachable either way.'],
+                    ['value' => 'anyone', 'label' => 'Anyone — any signed-in member', 'note' => 'No lineage check. Every distributor is reachable by every other.'],
+                ],
+            ],
+            'messaging.rate_limit_per_hour' => [
+                'group' => 'communications',
+                'feature' => MessagingFeature::class,
+                'label' => 'Messages per sender per hour',
+                'description' => 'How many messages one distributor may send in a rolling hour, across all recipients. Stops a broadcast. Set to 0 to remove the limit.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10_000,
+                'default' => '60',
+            ],
+            'messaging.rate_limit_per_recipient_per_day' => [
+                'group' => 'communications',
+                'feature' => MessagingFeature::class,
+                'label' => 'Messages to one person per day',
+                'description' => 'How many messages one distributor may send to the same person in a rolling day. Stops one member being worn down by a sender who is still within their hourly quota. Set to 0 to remove the limit.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10_000,
+                'default' => '20',
+            ],
+            'messaging.block_list_enabled' => [
+                'group' => 'communications',
+                'feature' => MessagingFeature::class,
+                'label' => 'Let distributors block senders',
+                'description' => 'When ON, a distributor can stop hearing from another distributor, and the block button appears in the chat thread. Company accounts can never be blocked — compliance has to be able to reach a member about their own account.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            // There is deliberately no `messaging.reject_government_id` here.
+            // A message body carrying a full PAN or a Verhoeff-valid Aadhaar is
+            // always refused — hard rule 8, applied in MessageService, with no
+            // off position for anyone to find. See the review of 2026-09-09.
+            'messaging.reporting_enabled' => [
+                'group' => 'communications',
+                'feature' => MessagingFeature::class,
+                'label' => 'Let distributors report a message',
+                'description' => 'When ON, a distributor can report a message they received and it lands in Admin → Messaging → Reported messages for operations or compliance to review.',
+                'impact' => 'Turning this OFF removes the only route by which anything said in a private message becomes visible to the company. The public copy audit scans templates; it cannot scan what one distributor types to another, so an income claim made in a chat would go unrecorded.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+            'messaging.max_body_chars' => [
+                'group' => 'communications',
+                'feature' => MessagingFeature::class,
+                'label' => 'Longest message',
+                'description' => 'Maximum characters in a single message body.',
+                'type' => 'int',
+                'min' => 100,
+                'max' => 20_000,
+                'default' => '4000',
+            ],
+
+            'announcements.email_copy' => [
+                'group' => 'communications',
+                'feature' => AnnouncementsFeature::class,
+                'label' => 'Also email each announcement',
+                'description' => 'When ON, publishing an announcement also emails it to everyone in its audience. When OFF it appears only in the app, on the announcements page and the notification bell.',
+                'impact' => 'An emailed announcement cannot be withdrawn. The in-app copy can be archived and stops being visible; an email that has gone out is out.',
+                'type' => 'bool',
+                'default' => 'false',
+            ],
+            'announcements.pin_limit' => [
+                'group' => 'communications',
+                'feature' => AnnouncementsFeature::class,
+                'label' => 'Maximum pinned announcements',
+                'description' => 'How many announcements may sit pinned at the top of the list at once. Pinning a further one is refused rather than silently unpinning another.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 20,
+                'default' => '3',
+            ],
+
+            'faq.members_only' => [
+                'group' => 'communications',
+                'feature' => FaqLibraryFeature::class,
+                'label' => 'FAQ library is members-only',
+                'description' => 'When ON (default), the FAQ library is visible only after login. When OFF it is a public page indexed by search engines.',
+                'impact' => 'A public FAQ is public copy: every answer becomes a statement the company has published to prospects, and the same income-representation rules apply to it as to the landing page.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
+
             // ── Notifications ──────────────────────────────────────────────
             'notifications.email_on_status_change' => [
                 'group' => 'notifications',
@@ -1200,6 +1306,7 @@ final class AdminSettingsController extends Controller
         'payments' => 'developer',
         'payout' => 'developer',
         'notifications' => 'developer',
+        'communications' => 'developer',
         'advanced' => 'developer',
     ];
 
@@ -1324,6 +1431,10 @@ final class AdminSettingsController extends Controller
             'notifications' => [
                 'label' => 'Notifications',
                 'description' => 'Transactional emails (and, later, SMS) sent to buyers about their orders.',
+            ],
+            'communications' => [
+                'label' => 'Distributor communications',
+                'description' => 'Who may message whom and on what terms, company announcements, and the FAQ library. These are the surfaces the public copy audit cannot reach — it scans templates, not what one distributor types to another — so the controls here are what stands in for it.',
             ],
             'advanced' => [
                 'label' => 'Other / Advanced',

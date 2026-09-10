@@ -66,18 +66,41 @@ final class ContentPageSeeder extends Seeder
 
     public function run(): void
     {
+        $count = $this->publish();
+
+        $this->command->info('Seeded '.$count.' content pages.');
+    }
+
+    /**
+     * Republish some or all of the policy pages from their markdown source.
+     *
+     * Split out of run() because republishing *all* of them is rarely what a
+     * deploy wants. Each page carries its own publication gate — the payout
+     * week in `compensation.md` is held by R-75 until the DSA §6.2 30-day
+     * notice has run — so a bare `db:seed --class=ContentPageSeeder` can
+     * publish an un-notified material amendment as a side effect of fixing an
+     * unrelated page. `content:publish <slug>` exists so that a deploy can
+     * name what it means to publish.
+     *
+     * @param  list<string>|null  $slugs  null republishes every page
+     * @return int the number of pages written
+     */
+    public function publish(?array $slugs = null): int
+    {
         $now = now();
         $count = 0;
 
         foreach (self::PAGES as $meta) {
-            $body = $this->renderBody($meta['slug']);
+            if ($slugs !== null && ! in_array($meta['slug'], $slugs, true)) {
+                continue;
+            }
 
             ContentPage::updateOrCreate(
                 ['slug' => $meta['slug']],
                 [
                     'title' => $meta['title'],
                     'meta_description' => $meta['meta_description'],
-                    'body' => $body,
+                    'body' => $this->renderBody($meta['slug']),
                     'status' => ContentPage::STATUS_PUBLISHED,
                     'published_at' => $now,
                 ],
@@ -86,7 +109,13 @@ final class ContentPageSeeder extends Seeder
             $count++;
         }
 
-        $this->command->info('Seeded '.$count.' content pages.');
+        return $count;
+    }
+
+    /** @return list<string> every slug this seeder knows how to publish */
+    public static function slugs(): array
+    {
+        return array_map(static fn (array $meta): string => $meta['slug'], self::PAGES);
     }
 
     /**

@@ -20,14 +20,17 @@ declare(strict_types=1);
  * SOD-07: admin-compliance still cannot record finance actions (the original R-17)
  * SOD-08: no scoped role can change credentials — that is admin/developer only
  * SOD-09: no scoped role can both mark a return received and settle its refund — the two halves of a cooling-off refund sit with different people
+ * SOD-10: admin-finance cannot read a reported private message
  */
 
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Identity\Models\User;
 use App\Modules\Returns\Models\ReturnRequest;
+use App\Modules\Shared\Features\MessagingFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pennant\Feature;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -164,4 +167,21 @@ it('SOD-09: no scoped role can both mark a return received and settle its refund
 
     expect(sodUser('admin-operations')->can('returns.receive'))->toBeTrue()
         ->and(sodUser('admin-finance')->can('finance.record'))->toBeTrue();
+});
+
+it('SOD-10: admin-finance cannot read a reported private message', function () {
+    // A message report is a private conversation between two distributors, and
+    // the reports that matter — income claims, harassment — routinely name a
+    // member of staff. Same exclusion as grievances, for the same reason.
+    Feature::for(null)->activate(MessagingFeature::class);
+
+    $this->actingAs(sodUser('admin-finance'))
+        ->get('/admin/messaging/reports')
+        ->assertForbidden();
+
+    // Operations and compliance can, or the queue would be unreachable.
+    foreach (['admin-operations', 'admin-compliance'] as $role) {
+        expect($this->actingAs(sodUser($role))->get('/admin/messaging/reports')->status())
+            ->not->toBe(403);
+    }
 });

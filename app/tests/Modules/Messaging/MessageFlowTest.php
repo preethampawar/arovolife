@@ -9,9 +9,16 @@ declare(strict_types=1);
  *   MSG-04      mark-thread-read flips read_at
  *   MSG-05..07  routes auth + view content
  *   MSG-08      bell badge query (unread count) is accurate
+ *
+ * These cover the send MECHANICS, so they run with the audience restriction
+ * lifted (`messaging.audience = anyone`) — the fixtures are bare users with no
+ * placement between them, and under the shipped default a send between two
+ * strangers is correctly refused. The restriction itself is covered by
+ * MessagingPolicyTest, which builds the lineage the rule is about.
  */
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Messaging\Exceptions\MessageRefused;
 use App\Modules\Messaging\Models\Message;
 use App\Modules\Messaging\Notifications\NewMessageNotification;
 use App\Modules\Messaging\Services\MessageService;
@@ -22,6 +29,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'messaging.audience'],
+        ['value' => 'anyone', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+});
 
 function msgUser(string $key): User
 {
@@ -57,7 +71,7 @@ it('MSG-02: MessageService rejects empty / whitespace-only bodies', function ():
     $bob = msgUser('bob');
 
     expect(fn () => app(MessageService::class)->send($alice, $bob, '   '))
-        ->toThrow(InvalidArgumentException::class);
+        ->toThrow(MessageRefused::class);
 });
 
 it('MSG-04: markThreadRead flips read_at on every unread message FROM the other party', function (): void {

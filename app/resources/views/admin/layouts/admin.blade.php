@@ -133,6 +133,20 @@
                     fn () => \App\Modules\Grievance\Models\Ticket::query()->unsettled()->count(),
                 );
 
+                // Open message reports for the sidebar badge. Gated on the
+                // messaging killswitch as well as the permission: a closed
+                // channel must leave no trace, badge included.
+                $messagingOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MessagingFeature::class);
+                $openMessageReportCount = ($messagingOn && (auth()->user()?->can('messaging.moderate') ?? false))
+                    ? \Illuminate\Support\Facades\Cache::remember(
+                        'admin.message_reports.open_count',
+                        60,
+                        fn () => \App\Modules\Messaging\Models\MessageReport::query()
+                            ->where('status', \App\Modules\Messaging\Models\MessageReport::STATUS_OPEN)
+                            ->count(),
+                    )
+                    : 0;
+
                 // Open distributor requests for the sidebar badge (flag-gated,
                 // same 60s cache as the other queues).
                 $distributorRequestsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\DistributorRequestsFeature::class)
@@ -202,6 +216,15 @@
                     // 403 also keeps the open-complaint count out of view.
                     ...(auth()->user()?->can('grievance.handle')
                         ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => 'megaphone', 'prefix' => 'admin.grievances', 'badge' => $openGrievanceCount]]
+                        : []),
+                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AnnouncementsFeature::class)
+                        ? [['route' => 'admin.announcements.index', 'label' => 'Announcements', 'icon' => 'megaphone', 'prefix' => 'admin.announcements']]
+                        : []),
+                    // Reported messages. Same R-17 exclusion as grievances, and
+                    // hidden rather than 403 for the same reason: the count of
+                    // open reports is itself information.
+                    ...(auth()->user()?->can('messaging.moderate') && $messagingOn
+                        ? [['route' => 'admin.messaging.reports.index', 'label' => 'Reported messages', 'icon' => 'message-square-warning', 'prefix' => 'admin.messaging', 'badge' => $openMessageReportCount]]
                         : []),
                     // Agreement §21 dormancy. Account discipline, so it follows
                     // the same permission as freeze / terminate.

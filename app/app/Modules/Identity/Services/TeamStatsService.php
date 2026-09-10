@@ -171,6 +171,54 @@ final class TeamStatsService
     }
 
     /**
+     * Are these two distributors on the same line — is either one a Genos
+     * ancestor of the other, or do they stand in a sponsor / sponsee
+     * relationship?
+     *
+     * This answers a membership question, not a counting one, so it does not
+     * go through {@see scopedQuery()}: materialising a leg to ask whether one
+     * id is in it would read a whole subtree to learn one boolean. It uses the
+     * same two predicates that scopedQuery()'s 'total' and 'direct' scopes use
+     * — the closure table for placement, the sponsorship table for referral —
+     * so the two stay semantically in step, and it lives here rather than in a
+     * consumer so that no second place learns how the tree is shaped.
+     */
+    public function sharesLineage(Distributor $a, Distributor $b): bool
+    {
+        $aId = (int) $a->id;
+        $bId = (int) $b->id;
+
+        if ($aId === $bId) {
+            return true;
+        }
+
+        $onSamePlacementLine = $this->db->table('genealogy_closure')
+            ->where('depth', '>', 0)
+            ->where(function (Builder $q) use ($aId, $bId): void {
+                $q->where(function (Builder $forward) use ($aId, $bId): void {
+                    $forward->where('ancestor_id', $aId)->where('descendant_id', $bId);
+                })->orWhere(function (Builder $reverse) use ($aId, $bId): void {
+                    $reverse->where('ancestor_id', $bId)->where('descendant_id', $aId);
+                });
+            })
+            ->exists();
+
+        if ($onSamePlacementLine) {
+            return true;
+        }
+
+        return $this->db->table('sponsorship')
+            ->where(function (Builder $q) use ($aId, $bId): void {
+                $q->where(function (Builder $forward) use ($aId, $bId): void {
+                    $forward->where('sponsor_id', $aId)->where('distributor_id', $bId);
+                })->orWhere(function (Builder $reverse) use ($aId, $bId): void {
+                    $reverse->where('sponsor_id', $bId)->where('distributor_id', $aId);
+                });
+            })
+            ->exists();
+    }
+
+    /**
      * The single source of truth — every downline / referral question
      * about a distributor flows through here. Returns a builder seeded
      * at `distributors as d` joined to `users as u`, with the WHERE/JOIN
