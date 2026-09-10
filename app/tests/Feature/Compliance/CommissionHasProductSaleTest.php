@@ -84,6 +84,16 @@ final class CommissionHasProductSaleTest extends TestCase
         // an entitlement that some other type already created and traced; it
         // creates none of its own.
         'repurchase_wallet_used',
+        // Three more debits, all written by WalletService::debit() against a
+        // credit that some CREDIT_TRACE type already created and traced:
+        // `repurchase_transfer` moves the repurchase deduction out of the main
+        // wallet at credit time (WalletService::creditWithRepurchaseDeduction);
+        // `admin_charge_debit` and `tds_debit` take the admin charge and TDS
+        // off a payout line at batch time (PayoutService::writePayoutDebits).
+        // Money leaves the wallet in each case; no entitlement is created.
+        'repurchase_transfer',
+        'admin_charge_debit',
+        'tds_debit',
     ];
 
     /** HR2-01: BV cannot exist without an order. */
