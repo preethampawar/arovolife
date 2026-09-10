@@ -379,24 +379,26 @@ it('RRF-13: a manual NEFT settlement is refused on a held or forfeited refund', 
 
 it('RRF-14: a refund owed with no gateway payment is settled by NEFT against the order', function () {
     $order = rrfOrder();
-    $order->update(['payment_method' => 'cod', 'refund_approved_at' => now()->subDays(3)]);
+    // No captured PaymentIntent: the refund is owed outside the gateway. The
+    // payment_method enum has held only 'online' since 2026-06-25.
+    $order->update(['refund_approved_at' => now()->subDays(3)]);
     // The obligation as RefundOrder books it, under the order's refund key.
     app(LedgerPoster::class)->transfer('Returns', 'order.refund_approved', $order->id, 'refund:'.$order->id, 'revenue.sales', 'liability.refund_payable', 45000);
-    ReturnRequest::create(['rma_no' => 'RMA-COD', 'order_id' => $order->id, 'reason' => 'damage', 'opened_by_customer_id' => $order->customer_id, 'status' => ReturnRequest::STATUS_APPROVED]);
+    ReturnRequest::create(['rma_no' => 'RMA-MANUAL', 'order_id' => $order->id, 'reason' => 'damage', 'opened_by_customer_id' => $order->customer_id, 'status' => ReturnRequest::STATUS_APPROVED]);
     $staff = rrfStaff();
 
     expect(RefundPayable::owedOutsideGateway($order))->toBe(45000);
 
-    app(RazorpayRefundService::class)->settleOrderManually($order, $staff, 'NEFT-UTR-COD', 'paid by bank');
+    app(RazorpayRefundService::class)->settleOrderManually($order, $staff, 'NEFT-UTR-MANUAL', 'paid by bank');
 
     expect(rrfBalance('liability.refund_payable'))->toBe(0)
         ->and(rrfBalance('asset.cash.bank.settlement'))->toBe(45000)
         ->and($order->fresh()->status)->toBe(Order::STATUS_REFUNDED)
         ->and(ReturnRequest::where('order_id', $order->id)->sole()->status)->toBe(ReturnRequest::STATUS_REFUNDED);
     $audit = AuditLog::where('action', 'refund.manual_settlement')->where('subject_type', 'order')->where('subject_id', $order->id)->sole();
-    expect($audit->actor_id)->toBe($staff)->and($audit->details['amount_paise'])->toBe(45000)->and($audit->details['reference'])->toBe('NEFT-UTR-COD');
+    expect($audit->actor_id)->toBe($staff)->and($audit->details['amount_paise'])->toBe(45000)->and($audit->details['reference'])->toBe('NEFT-UTR-MANUAL');
 
     // Twice is refused, and the ledger did not move again.
-    expect(fn () => app(RazorpayRefundService::class)->settleOrderManually($order->fresh(), $staff, 'NEFT-UTR-COD', null))->toThrow(RuntimeException::class, 'not awaiting a refund');
+    expect(fn () => app(RazorpayRefundService::class)->settleOrderManually($order->fresh(), $staff, 'NEFT-UTR-MANUAL', null))->toThrow(RuntimeException::class, 'not awaiting a refund');
     expect(rrfBalance('asset.cash.bank.settlement'))->toBe(45000);
 });

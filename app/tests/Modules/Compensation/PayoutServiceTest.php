@@ -1138,7 +1138,7 @@ it('counts a historical credit with no bonus_month under the batch that swept it
 
 it('monthly batch: a KYC-held line reports the credit-time repurchase deduction', function () {
     $dist = makePayoutEligibleDistributor();
-    $dist->user->update(['status' => 'pending_kyc']);
+    $dist->user->update(['status' => 'pending']); // KYC not yet verified: anything but 'active' holds the line
 
     $walletSvc = app(WalletService::class);
     $walletSvc->creditWithRepurchaseDeduction(

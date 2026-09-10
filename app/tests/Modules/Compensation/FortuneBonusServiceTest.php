@@ -736,7 +736,12 @@ it('discards a pool frozen mid-month that funded nothing, refreezes at the full 
     seedGsbCredit($late->id, '2026-06-20');
 
     // The scheduled run on the 1st: enrolment finds the stray pool, sees that
-    // it funded nothing, discards it and admits the late qualifier.
+    // it funded nothing, discards it and admits the late qualifier. The
+    // discard leans on the level rows' ON DELETE CASCADE, and MySQL suspends
+    // cascades along with checks under SET FOREIGN_KEY_CHECKS=0 (SQLite's
+    // deferral does not), so the fixture shortcut is switched off here and the
+    // run sees the constraint production sees.
+    enableTestForeignKeys();
     Carbon::setTestNow('2026-07-01 00:45:00');
     expect($svc->enrollEligible($month))
         ->toMatchArray(['enrolled' => 1, 'refused_pool_frozen' => false]);

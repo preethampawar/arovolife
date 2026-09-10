@@ -148,7 +148,7 @@ it('CZC-02: a sub-₹1 payable is taken to ₹1 by applying less credit; the res
 
     // The prepayment posted matches the ₹1 actually payable.
     $tx = LedgerTx::where('idempotency_key', 'order.placed:'.$order->id)->sole();
-    expect(DB::table('ledger_entries')->where('ledger_tx_id', $tx->id)->where('side', 'debit')->sum('amount_paise'))->toBe(100);
+    expect((int) DB::table('ledger_entries')->where('ledger_tx_id', $tx->id)->where('side', 'debit')->sum('amount_paise'))->toBe(100);
 });
 
 it('CZC-04: a fully credit-settled order places at ₹0 with no prepayment, confirms without a gateway, and ships', function () {

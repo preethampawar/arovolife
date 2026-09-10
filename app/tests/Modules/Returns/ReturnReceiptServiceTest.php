@@ -11,7 +11,7 @@ declare(strict_types=1);
  * RRS-03: courier-lost is treated as received
  * RRS-04: not-returned forfeits the refund, keeps the entitlements withheld, and reverts the order to delivered
  * RRS-05: an unknown outcome is refused; a closed return cannot be received
- * RRS-06: a cash-on-delivery return closed as not returned writes the same entry back with no refund intent
+ * RRS-06: a return on an order with no gateway payment, closed as not returned, writes the same entry back with no refund intent
  * RRS-07: only a cooling-off return awaiting receipt can be closed as not returned; a refund already at the gateway cannot be forfeited
  */
 
@@ -71,7 +71,7 @@ function rrsCoolingOffOrder(int $creditPaise = 23000, bool $gateway = true): arr
     $customer = Customer::create(['display_name' => 'RRS Buyer', 'user_id' => $user->id, 'distributor_id' => $distributorId]);
     $order = Order::create([
         'order_no' => 'ORD-RRS-'.random_int(100000, 999999),
-        'customer_id' => $customer->id, 'attribution_source' => 'direct', 'payment_method' => $gateway ? Order::PAYMENT_ONLINE : 'cod',
+        'customer_id' => $customer->id, 'attribution_source' => 'direct', 'payment_method' => Order::PAYMENT_ONLINE,
         'status' => Order::STATUS_DELIVERED, 'self_consumption' => true,
         'subtotal_paise' => 118000, 'gst_paise' => 18000, 'discount_paise' => 0, 'shipping_paise' => 5000,
         'total_paise' => 123000 - $creditPaise,
@@ -209,7 +209,7 @@ it('RRS-04: not-returned forfeits the refund, withholds the entitlements, and re
         ->and(AuditLog::where('action', 'refund.forfeited')->where('subject_type', 'order')->where('subject_id', $order->id)->sole()->details['refund_intent_id'])->toBe($refund->id);
 });
 
-it('RRS-06: a cash-on-delivery return closed as not returned writes the same entry back with no refund intent', function () {
+it('RRS-06: a return on an order with no gateway payment, closed as not returned, writes the same entry back with no refund intent', function () {
     ['order' => $order, 'rq' => $rq, 'distributorId' => $distributorId] = rrsCoolingOffOrder(gateway: false);
     app(RefundOrder::class)->execute($order->fresh(), $rq, 'cooling_off', true, actorUserId: null);
     expect(RefundIntent::where('order_id', $order->id)->exists())->toBeFalse()

@@ -548,14 +548,17 @@ it('leaves the weaker-leg personal top-up untouched by failed days', function ()
         ->and((int) $record->left_genos_bv_paise)->toBe(23_500_000);
 });
 
-it('never returns a negative counted side when reversals exceed the month sum', function (): void {
-    // Group BV can be debited by a cancelled order, so a forfeited range may sum
-    // to more than the month itself. The counted BV clamps at zero per side.
+it('counts exactly zero when the only BV day of the month is forfeited', function (): void {
+    // A group_bv_daily row can never be negative: the columns are unsigned, and
+    // a cancelled order's reversal is absorbed down to zero with the remainder
+    // carried as a group_bv_debts row (GroupBvReversalService). A forfeited
+    // range therefore never exceeds the month it sits in, so the clamp in
+    // countedGenosBvForMonth() can only ever meet equality — pinned here at the
+    // boundary, where every rupee of the month is forfeited.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create();
-    seedGroupBv($dist->id, '2026-08-15', -4_000_000, -4_000_000); // a cancelled order's reversal
-    seedGroupBv($dist->id, '2026-08-25', 5_000_000, 5_000_000); // forfeited: more than the month's 1L net
+    seedGroupBv($dist->id, '2026-08-25', 5_000_000, 5_000_000); // the month's only BV, forfeited
     seedRankCycle($dist->id, '2026-07-24', '2026-08-23', '2026-08-27');
 
     $counted = app(RankQualificationService::class)
@@ -564,26 +567,22 @@ it('never returns a negative counted side when reversals exceed the month sum', 
     expect($counted[$dist->id])->toBe(['left' => 0, 'right' => 0]);
 });
 
-it('subtracts two forfeited ranges as one total, so a negative range cannot add BV back', function (): void {
-    // Two failed cycles inside August, the second range summing negative (a
-    // cancelled order reversed more than that stretch credited). Clamping after
-    // each range would floor the first subtraction at zero and let the negative
-    // second range hand BV back: 3L counted becomes 8L, a rank target inflated
-    // out of thin air. The ranges are totalled, subtracted once, clamped once.
+it('subtracts two forfeited ranges in the same month as one total', function (): void {
+    // Two failed cycles inside August. Both ranges must come off: dropping
+    // either would count 11L or 18L instead of the one compliant day's 3L.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create();
     seedGroupBv($dist->id, '2026-08-03', 15_000_000, 15_000_000);  // forfeited range 1
     seedGroupBv($dist->id, '2026-08-10', 3_000_000, 3_000_000);    // compliant
-    seedGroupBv($dist->id, '2026-08-22', -8_000_000, -8_000_000);  // forfeited range 2, a reversal
+    seedGroupBv($dist->id, '2026-08-22', 8_000_000, 8_000_000);    // forfeited range 2
     seedRankCycle($dist->id, '2026-07-02', '2026-08-01', '2026-08-06'); // forfeits 2-5 Aug
     seedRankCycle($dist->id, '2026-08-06', '2026-08-20', '2026-08-26'); // forfeits 21-25 Aug
 
     $counted = app(RankQualificationService::class)
         ->countedGenosBvForMonth(Carbon::parse('2026-08-01'));
 
-    // Month = 15,000,000 - 8,000,000 + 3,000,000 = 10,000,000 paise; the two
-    // forfeited ranges total 7,000,000; counted = the 3,000,000 credited on the
-    // one compliant day. Clamping per range would have returned 8,000,000.
+    // Month = 26,000,000 paise; the two forfeited ranges total 23,000,000;
+    // counted = the 3,000,000 credited on the one compliant day.
     expect($counted[$dist->id])->toBe(['left' => 3_000_000, 'right' => 3_000_000]);
 });

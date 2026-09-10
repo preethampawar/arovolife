@@ -107,12 +107,14 @@ final class RankQualificationService
                 $forfeitedRight += (int) ($row->right_bv ?? 0);
             }
 
-            // Total the ranges first, then subtract once and clamp once. Group
-            // BV is reversible (a cancelled order debits the day it was credited
-            // on), so a single range can sum negative; clamping inside the loop
-            // would floor an intermediate result at zero and let a later
-            // negative range add BV back, raising the counted target above the
-            // month's own arithmetic.
+            // Total the ranges first, then subtract once and clamp once. The
+            // daily columns are unsigned — a cancelled order's reversal is
+            // absorbed down to zero and the remainder carried as a
+            // group_bv_debts row — so a range never exceeds the month it sits
+            // in and the clamp is a guard, not arithmetic. It stays because it
+            // is cheap, and because clamping inside the loop would be wrong
+            // the day a negative row ever did appear: an intermediate floor at
+            // zero would let a later negative range add BV back.
             $counted[$distributorId]['left'] = max(0, $counted[$distributorId]['left'] - $forfeitedLeft);
             $counted[$distributorId]['right'] = max(0, $counted[$distributorId]['right'] - $forfeitedRight);
         }

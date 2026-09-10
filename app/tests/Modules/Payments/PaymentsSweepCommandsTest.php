@@ -10,7 +10,7 @@ declare(strict_types=1);
  * PSW-03: orders:expire-unpaid cancels an old unpaid order, releases stock, closes the intent and audits it
  * PSW-04: orders:expire-unpaid confirms instead of cancelling when the gateway reports captured
  * PSW-05: orders:expire-unpaid leaves an order alone when the gateway cannot be reached
- * PSW-06: orders:expire-unpaid never touches a young order, a paid order, or a COD order
+ * PSW-06: orders:expire-unpaid never touches a young order or a paid order
  * PSW-07: an expired-and-cancelled order holds no invoice
  * PSW-08: payments:redact-events drops old payloads and keeps the derived record
  */
@@ -34,14 +34,14 @@ use RuntimeException;
 
 uses(RefreshDatabase::class);
 
-function pswOrder(int $minutesAgo, string $method = Order::PAYMENT_ONLINE): Order
+function pswOrder(int $minutesAgo): Order
 {
     $customer = Customer::create(['display_name' => 'PSW Buyer']);
     $order = Order::create([
         'order_no' => 'ORD-PSW-'.random_int(100000, 999999),
         'customer_id' => $customer->id,
         'attribution_source' => 'direct',
-        'payment_method' => $method,
+        'payment_method' => Order::PAYMENT_ONLINE,
         'status' => Order::STATUS_PLACED,
         'subtotal_paise' => 118000, 'gst_paise' => 0, 'discount_paise' => 0, 'shipping_paise' => 0,
         'total_paise' => 118000,
@@ -163,19 +163,17 @@ it('PSW-05: expire leaves an order alone when the gateway cannot be reached', fu
     expect($order->fresh()->status)->toBe(Order::STATUS_PLACED);
 });
 
-it('PSW-06: expire never touches a young order, a paid order, or a COD order', function () {
+it('PSW-06: expire never touches a young order or a paid order', function () {
     $young = pswOrder(5);
     pswIntent($young, 5, 'order_y');
     $paid = pswOrder(60);
     $paid->update(['status' => Order::STATUS_PAID, 'paid_at' => now()]);
-    $cod = pswOrder(600, 'cod');
     Http::fake();
 
     $this->artisan('orders:expire-unpaid')->assertSuccessful();
 
     expect($young->fresh()->status)->toBe(Order::STATUS_PLACED)
-        ->and($paid->fresh()->status)->toBe(Order::STATUS_PAID)
-        ->and($cod->fresh()->status)->toBe(Order::STATUS_PLACED);
+        ->and($paid->fresh()->status)->toBe(Order::STATUS_PAID);
     Http::assertNothingSent();
 });
 

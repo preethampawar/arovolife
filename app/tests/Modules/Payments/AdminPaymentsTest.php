@@ -298,7 +298,10 @@ it('APT-10: a paid order without an invoice is listed; finance issues it, operat
 
 it('APT-11: a refund owed outside the gateway is listed; finance settles it against the order', function () {
     $order = aptOrder(Order::STATUS_REFUND_APPROVED);
-    $order->update(['payment_method' => 'cod', 'refund_approved_at' => now()->subDays(2)]);
+    // No captured PaymentIntent exists for this order, which is what puts a
+    // refund outside the gateway (RefundWorklist::manualRefunds); the
+    // payment_method enum has held only 'online' since 2026-06-25.
+    $order->update(['refund_approved_at' => now()->subDays(2)]);
     app(LedgerPoster::class)->transfer('Returns', 'order.refund_approved', $order->id, 'refund:'.$order->id, 'revenue.sales', 'liability.refund_payable', 118000);
     $finance = aptUser('admin-finance');
     $operations = aptUser('admin-operations');
@@ -307,8 +310,8 @@ it('APT-11: a refund owed outside the gateway is listed; finance settles it agai
         ->and(app(RefundWorklist::class)->attentionCount())->toBe(1);
     $this->actingAs($finance)->get(route('admin.payments.refunds'))->assertOk()->assertSee('owed outside the gateway')->assertSee($order->order_no)->assertSee('1,180.00');
 
-    $this->actingAs($operations)->post(route('admin.payments.orders.settle', $order), ['reference' => 'UTR-COD-123456'])->assertForbidden();
-    $this->actingAs($finance)->post(route('admin.payments.orders.settle', $order), ['reference' => 'UTR-COD-123456', 'note' => 'bank transfer done'])
+    $this->actingAs($operations)->post(route('admin.payments.orders.settle', $order), ['reference' => 'UTR-NEFT-123456'])->assertForbidden();
+    $this->actingAs($finance)->post(route('admin.payments.orders.settle', $order), ['reference' => 'UTR-NEFT-123456', 'note' => 'bank transfer done'])
         ->assertRedirect(route('admin.payments.refunds'));
 
     expect($order->fresh()->status)->toBe(Order::STATUS_REFUNDED)
