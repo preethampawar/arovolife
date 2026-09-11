@@ -289,3 +289,40 @@ it('DEV-12: developer signs in with email and lands on the admin console', funct
 
     expect(auth()->check())->toBeTrue();
 });
+
+it('DEV-12: F111 — the audit log filters by actor, and the filter cannot confirm a developer exists', function () {
+    $admin = devStaff('admin', 'audit-actor-admin@arovolife.test');
+    $other = devStaff('admin-finance', 'audit-actor-other@arovolife.test');
+    $developer = devStaff('developer', 'audit-actor-dev@arovolife.test');
+
+    foreach ([$admin, $other, $developer] as $actor) {
+        AuditLog::create([
+            'actor_id' => $actor->id,
+            'action' => 'admin.settings.changed',
+            'subject_type' => 'settings',
+            'subject_id' => 1,
+            'details' => ['key' => 'comp.tds.rate_bp'],
+        ]);
+    }
+
+    // Filtering by one member of staff narrows to their rows.
+    $this->actingAs($admin)
+        ->get('/admin/audit-log?actor=audit-actor-admin')
+        ->assertOk()
+        ->assertSee('audit-actor-admin@arovolife.test')
+        ->assertDontSee('audit-actor-other@arovolife.test');
+
+    // Naming the platform-configuration account returns nothing rather than a
+    // row with the actor blanked — a blanked row would confirm it exists.
+    $this->actingAs($admin)
+        ->get('/admin/audit-log?actor=audit-actor-dev')
+        ->assertOk()
+        ->assertDontSee('audit-actor-dev@arovolife.test')
+        ->assertSee('No audit entries');
+
+    // The developer themselves still sees their own rows.
+    $this->actingAs($developer)
+        ->get('/admin/audit-log?actor=audit-actor-dev')
+        ->assertOk()
+        ->assertSee('audit-actor-dev@arovolife.test');
+});

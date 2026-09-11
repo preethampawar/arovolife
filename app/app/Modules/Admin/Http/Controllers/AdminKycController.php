@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class AdminKycController extends Controller
 {
@@ -229,7 +230,7 @@ final class AdminKycController extends Controller
         ($this->reject)($id, (int) Auth::id(), $validated['reason']);
 
         return redirect()->route('admin.kyc.index')
-            ->with('status', 'KYC rejected. The applicant has been emailed the reason and a link to re-upload.');
+            ->with('status', 'KYC rejected. The reason and a re-upload link are queued to the applicant by email.');
     }
 
     /**
@@ -246,7 +247,7 @@ final class AdminKycController extends Controller
         ($this->terminate)($id, (int) Auth::id(), $validated['reason']);
 
         return redirect()->route('admin.kyc.index')
-            ->with('status', 'Distributor account terminated. The applicant has been emailed the closure notice.');
+            ->with('status', 'Distributor account terminated. The closure notice is queued to the applicant by email.');
     }
 
     public function uploadDocument(Request $request, int $id): RedirectResponse
@@ -285,7 +286,7 @@ final class AdminKycController extends Controller
                 );
                 try {
                     $disk->delete($existing->object_storage_key);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     Log::warning('admin.kyc.upload: could not delete old S3 key', [
                         'key' => $existing->object_storage_key,
                     ]);
@@ -362,17 +363,36 @@ final class AdminKycController extends Controller
                 'details' => ['document_id' => $document->id, 'type' => $document->type],
                 'ip' => $request->ip(),
             ]);
+        });
 
-            $user = $distributor->user;
-            if ($user !== null) {
+        // Notified after the flag is committed, not inside the transaction: a
+        // transport that refuses must not roll back the reviewer's decision,
+        // and the admin has to be told the truth about what reached the
+        // applicant. The mail leg itself is queued and can still fail later —
+        // the in-app copy is what survives a bad SMTP night.
+        $notified = true;
+        $user = $distributor->user;
+        if ($user !== null) {
+            try {
                 $user->notify(new KycDocumentFlaggedNotification(
                     documentId: $document->id,
                     documentType: $document->type,
                     reason: $validated['reason'],
                 ));
+            } catch (Throwable $e) {
+                $notified = false;
+                Log::error('kyc.document_flag_notification_failed', [
+                    'document_id' => $document->id,
+                    'distributor_id' => $distributor->id,
+                    'exception' => $e->getMessage(),
+                ]);
             }
-        });
+        }
 
-        return back()->with('status', 'Document flagged. The applicant has been emailed a re-upload link.');
+        if ($user === null || ! $notified) {
+            return back()->with('status', 'Document flagged, but the re-upload notice could not be sent. Contact the applicant directly — their re-upload link is live.');
+        }
+
+        return back()->with('status', 'Document flagged. A re-upload link is in the applicant\'s notifications and queued to them by email.');
     }
 }

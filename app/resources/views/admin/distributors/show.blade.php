@@ -193,6 +193,43 @@
     </div>
 </div>
 
+{{-- KYC --}}
+<div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <p class="text-xs text-gray-700 uppercase tracking-wider mb-2">KYC</p>
+            @php
+                $kycTotal = (int) ($kycState->total ?? 0);
+                $kycVerified = (int) ($kycState->verified ?? 0);
+                $kycFlagged = (int) ($kycState->flagged ?? 0);
+            @endphp
+            @if($kycTotal === 0)
+                <p class="text-sm text-gray-700">No documents uploaded.</p>
+            @elseif($kycFlagged > 0)
+                <p class="text-sm text-amber-800 inline-flex items-center gap-1.5">
+                    <x-lucide-flag class="w-4 h-4" />
+                    {{ $kycFlagged }} of {{ $kycTotal }} documents flagged — awaiting the applicant's re-upload.
+                </p>
+            @elseif($kycVerified === $kycTotal)
+                <p class="text-sm text-green-800 inline-flex items-center gap-1.5">
+                    <x-lucide-check class="w-4 h-4" />
+                    All {{ $kycTotal }} documents verified.
+                </p>
+            @else
+                <p class="text-sm text-gray-800">
+                    {{ $kycVerified }} of {{ $kycTotal }} documents verified — awaiting review.
+                </p>
+            @endif
+        </div>
+        @if($kycTotal > 0 && auth()->user()?->can('kyc.review'))
+        <a href="{{ route('admin.kyc.show', $distributor->id) }}"
+            class="shrink-0 inline-flex items-center rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium px-3 py-1.5 text-xs transition-colors">
+            Open KYC review →
+        </a>
+        @endif
+    </div>
+</div>
+
 {{-- Sponsor --}}
 @if($sponsor)
 <div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">

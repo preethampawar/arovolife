@@ -16,6 +16,9 @@
         <option value="{{ $t }}" {{ request()->query('subject_type') === $t ? 'selected' : '' }}>{{ $t }}</option>
         @endforeach
     </select>
+    <input name="actor" type="text" value="{{ request()->query('actor') }}"
+        placeholder="Filter by actor…"
+        class="rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-48">
     <input name="from" type="date" value="{{ request()->query('from') }}"
         class="rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
     <input name="to" type="date" value="{{ request()->query('to') }}"
@@ -23,7 +26,7 @@
     <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
         Filter
     </button>
-    @if(request()->hasAny(['action','subject_type','from','to']))
+    @if(request()->hasAny(['action','subject_type','actor','from','to']))
     <a href="{{ route('admin.audit-log') }}" class="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-800 hover:text-white transition-colors">
         Clear
     </a>

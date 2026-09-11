@@ -153,6 +153,17 @@ the before/after values.
 
 ---
 
+## Reading the audit log
+
+**Admin → Audit log** filters on action, subject type, date range and **actor**.
+The actor box matches a name or an email, so "every change this person made
+last Tuesday" is one query. Rows performed by a platform-configuration account
+are not returned by the actor filter and render without an actor elsewhere;
+that is deliberate and is not a gap in the trail — the actor is retained in the
+table in full.
+
+---
+
 ## Always
 
 - Enter a **clear, specific reason** on every action — it's permanent in the audit log.

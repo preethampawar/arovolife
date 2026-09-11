@@ -11,6 +11,7 @@ use App\Modules\Admin\Services\RejectKycSubmission;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Notifications\KycApprovedNotification;
 use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -364,4 +365,19 @@ it('AKR-10: F110 — approve is refused while a document is flagged for re-uploa
         ->assertOk()
         ->assertSee('Approval on hold')
         ->assertDontSee('action="'.route('admin.kyc.approve', $id).'"', false);
+});
+
+it('AKR-11: F111 — the approval notice is carried in-app as well as by email', function () {
+    // Parity with the document-flag notice. Mail can fail at the transport,
+    // and an approval nobody hears about is an account the distributor does
+    // not know they can use.
+    $notification = new KycApprovedNotification(
+        adn: '123456789',
+        fullName: 'Test Applicant',
+        approvedAtFormatted: '11 Sep 2026',
+    );
+
+    expect($notification->via(new stdClass))->toBe(['mail', 'database'])
+        ->and($notification->toArray(new stdClass))
+        ->toMatchArray(['kind' => 'kyc.approved', 'adn' => '123456789']);
 });

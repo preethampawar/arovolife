@@ -28,6 +28,26 @@ final class AdminAuditLogController extends Controller
             $query->where('audit_log.subject_type', $subject);
         }
 
+        // "Who did this?" was the one question the page could not answer:
+        // there was no way to pull every action by one member of staff.
+        if ($actor = $request->query('actor')) {
+            $query->where(function ($q) use ($actor): void {
+                $q->where('users.email', 'like', "%{$actor}%")
+                    ->orWhere('users.full_name', 'like', "%{$actor}%");
+            });
+
+            // The filter must not become a way to confirm a platform-
+            // configuration account exists. Those rows already render with the
+            // actor blanked; a hit on one would disclose exactly what
+            // maskPrivilegedActors is there to hide.
+            if ($request->user()?->hasRole('developer') !== true) {
+                $privileged = $presenter->privilegedUserIds();
+                if ($privileged !== []) {
+                    $query->whereNotIn('audit_log.actor_id', $privileged);
+                }
+            }
+        }
+
         if ($from = $request->query('from')) {
             $query->whereDate('audit_log.created_at', '>=', $from);
         }

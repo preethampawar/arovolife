@@ -184,3 +184,55 @@ it('LF-05: unknown cooling_off value fails validation', function (): void {
     // session-flashed errors; the page should not render a 200.
     expect($response->status())->not->toBe(200);
 });
+
+it('LF-06: F111 — the register finds a distributor by phone, however it is typed', function (): void {
+    $match = lfSeedDistributor(['phone_e164' => '+919876543210']);
+    $other = lfSeedDistributor(['phone_e164' => '+919000000001']);
+
+    $this->actingAs(lfAdmin());
+
+    // Bare ten digits, spaced, and the stored +91 form all have to land: this
+    // is the number a distributor reads out on the phone.
+    foreach (['9876543210', '98765 43210', '+919876543210'] as $typed) {
+        $this->get(route('admin.distributors.index', ['q' => $typed]))
+            ->assertOk()
+            ->assertSee($match['adn'])
+            ->assertDontSee($other['adn']);
+    }
+});
+
+it('LF-07: F111 — the record shows KYC state and never names the root as its own sponsor', function (): void {
+    // lfSeedDistributor points sponsor_id at the row itself, the root sentinel.
+    $root = lfSeedDistributor();
+
+    $this->actingAs(lfAdmin());
+
+    $this->get(route('admin.distributors.show', $root['distributor_id']))
+        ->assertOk()
+        ->assertDontSee('Sponsor</p>', false)
+        ->assertSee('No documents uploaded.');
+
+    // With documents on file the card says where the submission stands.
+    DB::table('kyc_documents')->insert([
+        'distributor_id' => $root['distributor_id'],
+        'type' => 'pan',
+        'object_storage_key' => 'user_x/pan.jpg',
+        'checksum_sha256' => str_repeat("\xAA", 32),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('kyc_documents')->insert([
+        'distributor_id' => $root['distributor_id'],
+        'type' => 'address_proof_front',
+        'object_storage_key' => 'user_x/address.jpg',
+        'checksum_sha256' => str_repeat("\xBB", 32),
+        'flagged_at' => now(),
+        'flagged_reason' => 'Unreadable; please re-upload.',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('admin.distributors.show', $root['distributor_id']))
+        ->assertOk()
+        ->assertSee('1 of 2 documents flagged');
+});

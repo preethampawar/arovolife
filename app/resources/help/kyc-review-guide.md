@@ -58,6 +58,11 @@ rejecting the whole application:
 - The document is marked flagged with your reason.
 - The distributor is **notified** (email + in-app) and can re-upload **only
   that document** — they don't redo the whole set.
+- The confirmation says the notice is *queued*, not delivered: email leaves our
+  queue and can still be refused by the receiving server. If it says the notice
+  **could not be sent**, the flag is recorded and the re-upload link is live —
+  contact the applicant yourself. The same wording applies to reject and
+  terminate.
 
 This is faster for the applicant and keeps the rest of the verified set intact.
 

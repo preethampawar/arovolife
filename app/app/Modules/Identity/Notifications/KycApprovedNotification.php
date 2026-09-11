@@ -10,7 +10,12 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Welcome email after KYC approval — account is now active.
+ * Welcome notice after KYC approval — the account is now active.
+ *
+ * Carried on both channels, like the document-flag notice. Mail can fail
+ * silently at the transport (it did on staging), and an approval a
+ * distributor never hears about is an account they don't know they can use;
+ * the database copy survives a bad SMTP night.
  */
 final class KycApprovedNotification extends Notification implements ShouldQueue
 {
@@ -25,7 +30,7 @@ final class KycApprovedNotification extends Notification implements ShouldQueue
     /** @return array<int, string> */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -38,5 +43,15 @@ final class KycApprovedNotification extends Notification implements ShouldQueue
                 'approvedAtFormatted' => $this->approvedAtFormatted,
                 'dashboardUrl' => url('/dashboard'),
             ]);
+    }
+
+    /** @return array<string, mixed> */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'kind' => 'kyc.approved',
+            'adn' => $this->adn,
+            'approved_at' => $this->approvedAtFormatted,
+        ];
     }
 }

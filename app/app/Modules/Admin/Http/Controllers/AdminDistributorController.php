@@ -45,10 +45,21 @@ final class AdminDistributorController extends Controller
             );
 
         if ($search = $request->query('q')) {
-            $query->where(function ($q) use ($search) {
+            // Phone matches on digits only, so "98765 43210" and "9876543210"
+            // both find the stored +91 form — the same normalisation
+            // /admin/tree/search uses. Without it the register was the one
+            // search on the console that could not find someone by the number
+            // they called in from.
+            $phoneDigits = preg_replace('/\D+/', '', (string) $search) ?? '';
+
+            $query->where(function ($q) use ($search, $phoneDigits) {
                 $q->where('distributors.adn', 'like', "%{$search}%")
                     ->orWhere('users.email', 'like', "%{$search}%")
                     ->orWhere('users.full_name', 'like', "%{$search}%");
+
+                if ($phoneDigits !== '') {
+                    $q->orWhere('users.phone_e164', 'like', "%{$phoneDigits}%");
+                }
             });
         }
 
@@ -95,7 +106,10 @@ final class AdminDistributorController extends Controller
             ->where('distributors.id', $id)
             ->firstOrFail();
 
-        $sponsor = $distributor->sponsor_id
+        // The root distributor carries itself as sponsor_id — a sentinel, not a
+        // relationship — and rendering it as "sponsored by themselves" reads as
+        // a data error to anyone opening the page.
+        $sponsor = $distributor->sponsor_id && (int) $distributor->sponsor_id !== $id
             ? DB::table('distributors')
                 ->join('users', 'distributors.user_id', '=', 'users.id')
                 ->select('distributors.adn', 'users.full_name', 'users.email')
@@ -159,6 +173,17 @@ final class AdminDistributorController extends Controller
             ->where('distributors.id', '!=', $id)
             ->first();
 
+        // Where this account stands on KYC. The register page showed the
+        // account status but nothing about the documents behind it, so an
+        // admin had to open the review queue to find out whether a pending
+        // account was waiting on us or on the applicant.
+        $kycState = DB::table('kyc_documents')
+            ->where('distributor_id', $id)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN verified_at IS NOT NULL THEN 1 ELSE 0 END) as verified')
+            ->selectRaw('SUM(CASE WHEN flagged_at IS NOT NULL THEN 1 ELSE 0 END) as flagged')
+            ->first();
+
         $nomineeRow = DB::table('distributor_nominees')->where('distributor_id', $id)->first();
 
         // `$distributor` above is a query-builder row, not an Eloquent model, so
@@ -169,7 +194,7 @@ final class AdminDistributorController extends Controller
         return view('admin.distributors.show', compact(
             'distributor', 'sponsor', 'placementParent', 'consents',
             'auditLogs', 'downlineCount', 'leftChild', 'rightChild',
-            'nomineeRow', 'profileRow'
+            'nomineeRow', 'profileRow', 'kycState'
         ));
     }
 
