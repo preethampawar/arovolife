@@ -57,6 +57,16 @@
                 @php
                     $pct = $cap > 0 ? round($row->power_side_bv_paise / $cap * 100, 1) : 0;
                     $atCap = $row->power_side_bv_paise >= $cap;
+                    $powerLabel = match ($row->power_side) {
+                        'L' => 'Left',
+                        'R' => 'Right',
+                        default => null,
+                    };
+                    $weakerLabel = match ($row->power_side) {
+                        'L' => 'Right',
+                        'R' => 'Left',
+                        default => null,
+                    };
                 @endphp
                 <tr class="{{ $atCap ? 'bg-red-50' : '' }}">
                     <td class="px-3 py-2 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
@@ -68,6 +78,7 @@
                     </td>
                     <td class="px-3 py-2 text-right {{ $atCap ? 'text-red-700 font-semibold' : '' }}">
                         @bv($row->power_side_bv_paise)
+                        <span class="block text-[10px] text-gray-500">{{ $powerLabel ?? '—' }}</span>
                     </td>
                     <td class="px-3 py-2 text-center">
                         <div class="flex items-center justify-center gap-2">
@@ -78,8 +89,11 @@
                             <span class="{{ $pct >= 80 ? 'text-red-700 font-medium' : 'text-gray-600' }}">{{ $pct }}%</span>
                         </div>
                     </td>
-                    <td class="px-3 py-2 text-center font-mono">{{ $row->power_side ?? '—' }}</td>
-                    <td class="px-3 py-2 text-right">@bv($row->slab1_weaker_bv_paise)</td>
+                    <td class="px-3 py-2 text-center font-mono">{{ $powerLabel ?? '—' }}</td>
+                    <td class="px-3 py-2 text-right">
+                        @bv($row->slab1_weaker_bv_paise)
+                        <span class="block text-[10px] text-gray-500">{{ $weakerLabel ?? '—' }}</span>
+                    </td>
                     <td class="px-3 py-2 text-right">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
                            class="text-brand-700 text-[10px] hover:underline">Detail →</a>

@@ -121,8 +121,15 @@
                     </td>
                     <td class="px-3 py-2 text-right font-semibold text-gray-800">
                         {{ (int) $row->score }}
+                        @php
+                            $weakerLabel = match ($row->power_side_after) {
+                                'L' => 'Right',
+                                'R' => 'Left',
+                                default => null,
+                            };
+                        @endphp
                         <span class="block text-[10px] text-gray-600 font-normal">
-                            weaker @bv($row->weaker_bv_paise)
+                            weaker ({{ $weakerLabel ?? '—' }}) @bv($row->weaker_bv_paise)
                         </span>
                     </td>
                     <td class="px-3 py-2 text-right text-gray-700">

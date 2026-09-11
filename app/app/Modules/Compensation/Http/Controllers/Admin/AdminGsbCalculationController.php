@@ -156,6 +156,7 @@ final class AdminGsbCalculationController extends Controller
                 'gcr.weaker_bv_paise',
                 'gcr.left_bv_paise',
                 'gcr.right_bv_paise',
+                'gcr.power_side_after',
                 'gcr.gross_gsb_paise',
                 'gcr.net_gsb_paise',
                 'gcr.repurchase_deduction_paise',

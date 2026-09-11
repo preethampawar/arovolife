@@ -73,6 +73,9 @@ function makeCutoff(int $distributorId, int $slab, ?int $score, int $grossPaise,
         'left_bv_paise' => 2_000_000,
         'right_bv_paise' => 1_600_000,
         'weaker_bv_paise' => 1_600_000,
+        // Left is the stronger leg here (2,000,000 > 1,600,000); the weaker
+        // figure below (1,600,000) is therefore Right — F90.
+        'power_side_after' => 'L',
         'slab' => $slab,
         'score' => $score,
         'gross_gsb_paise' => $grossPaise,
@@ -97,6 +100,19 @@ it('shows score, income and a grand total over the full filtered set', function 
         ->assertSee('Grand total (all filtered rows)')
         ->assertSee('24')                 // total score 8 + 16
         ->assertSee('6,000.00');          // total income ₹2,000 + ₹4,000
+});
+
+it('F90: labels the weaker BV figure with an explicit Left/Right side', function () {
+    $a = reportDistributor('ADNAAA', 'Alice');
+    makeCutoff($a, 1, 8, 200_000, today()->toDateString());
+
+    // The fixture's power side is Left (2,000,000 > 1,600,000), so the
+    // weaker figure (Right's 1,600,000 BV) must say so explicitly rather
+    // than leaving the reader to guess which leg it belongs to.
+    $this->actingAs(reportAdmin())
+        ->get(route('admin.compensation.gsb-calculation.index'))
+        ->assertOk()
+        ->assertSee('weaker (Right)', false);
 });
 
 it('filters by ADN search', function () {
