@@ -62,7 +62,16 @@ final class AreteDevelopmentCenterBonusService
                     continue;
                 }
 
-                // Company-default centre has no assigned distributor yet — skip payout.
+                // A company centre never earns the bonus, whatever its owner
+                // column happens to say. Staging carried a distributor id on
+                // the company-default centre and the engine, gating on that id
+                // alone, paid them 3% of the company's own sales (QA F120).
+                // The type is the fact; the column is only a pointer.
+                if ($center->centre_type === AreteCenter::TYPE_COMPANY) {
+                    continue;
+                }
+
+                // A distributor centre awaiting its owner — nothing to pay yet.
                 if ($center->assigned_distributor_id === null) {
                     continue;
                 }

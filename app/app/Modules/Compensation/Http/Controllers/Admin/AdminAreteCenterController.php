@@ -201,14 +201,23 @@ final class AdminAreteCenterController extends Controller
             'contact_number' => ['nullable', 'string', 'regex:/^\+?[0-9]{10,15}$/'],
             'alternate_contact_number' => ['nullable', 'string', 'regex:/^\+?[0-9]{10,15}$/'],
             // Required for a distributor centre (someone must earn the bonus);
-            // blank for a company centre.
-            'assigned_adn' => ['nullable', 'required_if:centre_type,'.AreteCenter::TYPE_DISTRIBUTOR, 'string', 'max:20'],
+            // refused outright for a company centre, which is ownerless by
+            // definition — an owner on it would be paid the ADC Bonus on the
+            // company's own sales (QA F120).
+            'assigned_adn' => [
+                'nullable',
+                'required_if:centre_type,'.AreteCenter::TYPE_DISTRIBUTOR,
+                'prohibited_if:centre_type,'.AreteCenter::TYPE_COMPANY,
+                'string',
+                'max:20',
+            ],
             'development_phase' => ['nullable', 'integer', 'between:1,4'],
             'monthly_cap_override' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'approved_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ], [
             'assigned_adn.required_if' => 'A distributor centre needs an owner ADN.',
+            'assigned_adn.prohibited_if' => 'A company centre is ownerless and earns nothing. Leave the owner ADN blank, or change the type to Distributor centre.',
         ]);
     }
 

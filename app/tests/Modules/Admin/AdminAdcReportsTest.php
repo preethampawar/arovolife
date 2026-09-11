@@ -181,6 +181,40 @@ it('stores a centre with its pincode, district and state', function (): void {
         ->and($center->state)->toBe('Telangana');
 });
 
+it('refuses to assign a distributor to a company centre (F120)', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+
+    $this->actingAs(adcReportAdmin())
+        ->post(route('admin.arete-centres.store'), [
+            'name' => 'Company Centre With An Owner',
+            'centre_type' => AreteCenter::TYPE_COMPANY,
+            'assigned_adn' => $assignee->adn,
+        ])
+        ->assertSessionHasErrors('assigned_adn');
+
+    expect(AreteCenter::where('name', 'Company Centre With An Owner')->exists())->toBeFalse();
+});
+
+it('refuses to give an existing company centre an owner on edit (F120)', function (): void {
+    $assignee = adcReportDistributor('ADCOWN', 'Owner');
+    $center = AreteCenter::create([
+        'name' => 'arovolife Company Centre',
+        'centre_type' => AreteCenter::TYPE_COMPANY,
+        'status' => AreteCenter::STATUS_ACTIVE,
+        'is_company_default' => true,
+    ]);
+
+    $this->actingAs(adcReportAdmin())
+        ->put(route('admin.arete-centres.update', $center), [
+            'name' => 'arovolife Company Centre',
+            'centre_type' => AreteCenter::TYPE_COMPANY,
+            'assigned_adn' => $assignee->adn,
+        ])
+        ->assertSessionHasErrors('assigned_adn');
+
+    expect($center->fresh()->assigned_distributor_id)->toBeNull();
+});
+
 it('rejects a pincode that is not exactly six digits', function (): void {
     $assignee = adcReportDistributor('ADCOWN', 'Owner');
 

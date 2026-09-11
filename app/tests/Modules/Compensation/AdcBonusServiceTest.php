@@ -24,6 +24,9 @@ function makeActiveCenter(int $assignedDistributorId, string $name = 'Test Cente
 {
     return AreteCenter::create([
         'name' => $name,
+        // The column defaults to 'company', and only a distributor centre earns
+        // the bonus — a centre with an owner is one by definition.
+        'centre_type' => AreteCenter::TYPE_DISTRIBUTOR,
         'location' => null,
         'assigned_distributor_id' => $assignedDistributorId,
         'status' => AreteCenter::STATUS_ACTIVE,
@@ -121,6 +124,31 @@ it('credits 3% of the BV collected at the centre to the assigned distributor', f
         ->where('type', 'adc_credit')->first();
     expect($ledger)->not->toBeNull();
     expect($ledger->amount_paise)->toBe(30_000);
+});
+
+it('never pays a company centre, even when one carries an assigned distributor (F120)', function (): void {
+    // Staging had distributor 33 sitting in the company-default centre's
+    // assigned_distributor_id and being credited ₹10,500 for the company's own
+    // sales. A company centre is ownerless by definition: whatever the column
+    // says, it earns nothing.
+    $assignee = Distributor::factory()->create();
+    $buyer = Distributor::factory()->create();
+
+    $center = AreteCenter::create([
+        'name' => 'arovolife Company Centre',
+        'centre_type' => AreteCenter::TYPE_COMPANY,
+        'assigned_distributor_id' => $assignee->id,
+        'is_company_default' => true,
+        'status' => AreteCenter::STATUS_ACTIVE,
+    ]);
+
+    seedCenterOrderBv($buyer->id, $center->id, 35_000_000);   // 3,50,000 BV
+
+    $result = app(AreteDevelopmentCenterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($result['credited'])->toBe(0)
+        ->and(AdcBonusResult::where('center_id', $center->id)->exists())->toBeFalse()
+        ->and(WalletLedgerEntry::where('distributor_id', $assignee->id)->where('type', 'adc_credit')->exists())->toBeFalse();
 });
 
 it('stamps the ADC credit with the month it was earned for', function (): void {
