@@ -131,8 +131,28 @@ final class RecordEngineRun
         unset($this->flagOff[$runId]);
 
         $durationMs = $this->elapsedMs($runId);
+        $outcome = $this->context()->takeOutcome($runId);
 
         try {
+            // The engine declared its own outcome before exiting: a deliberate
+            // refusal (skipped) or a failure it can name. Either way the reason
+            // is written to `error`, which is what the Engine Runs page and the
+            // health digest read — a failed row with error NULL tells nobody
+            // anything, and a refusal recorded as a failure is reported for
+            // thirty days as if a re-run could fix it.
+            if ($outcome !== null && ! ($wasFlagOff && $event->exitCode === 0)) {
+                EngineRun::where('id', $runId)->update([
+                    'status' => $outcome['status'],
+                    'summary' => json_encode(['reason' => $outcome['reason']]),
+                    'error' => $outcome['reason'],
+                    'finished_at' => Carbon::now(),
+                    'duration_ms' => $durationMs,
+                    'updated_at' => Carbon::now(),
+                ]);
+
+                return;
+            }
+
             if ($wasFlagOff && $event->exitCode === 0) {
                 // The command no-opped because its feature flag is off. Recorded
                 // as skipped — never succeeded — so the run cannot count as
@@ -148,8 +168,15 @@ final class RecordEngineRun
                 return;
             }
 
+            $succeeded = $event->exitCode === 0;
+
             EngineRun::where('id', $runId)->update([
-                'status' => $event->exitCode === 0 ? EngineRun::STATUS_SUCCEEDED : EngineRun::STATUS_FAILED,
+                'status' => $succeeded ? EngineRun::STATUS_SUCCEEDED : EngineRun::STATUS_FAILED,
+                // A failed row always carries something: an engine that died
+                // without declaring a reason (an exception the console rendered
+                // and nothing captured) still has to say so on the page, or the
+                // operator is left with a red pill and a dash.
+                ...($succeeded ? [] : ['error' => $this->unexplainedFailure($event->exitCode)]),
                 'finished_at' => Carbon::now(),
                 'duration_ms' => $durationMs,
                 'updated_at' => Carbon::now(),
@@ -251,6 +278,16 @@ final class RecordEngineRun
         }
 
         return $definition->periodStart($definition->defaultPeriodDate());
+    }
+
+    /** What a failed row says when the engine exited without naming a cause. */
+    private function unexplainedFailure(int $exitCode): string
+    {
+        return sprintf(
+            'The engine exited with code %d without recording a reason. The cause is in the application log '
+                .'for the time shown above.',
+            $exitCode,
+        );
     }
 
     private function logFailure(string $message, string $engineKey, Throwable $e): void

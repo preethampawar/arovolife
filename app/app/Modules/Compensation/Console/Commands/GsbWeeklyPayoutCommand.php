@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Services\PayoutService;
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
 use Illuminate\Console\Command;
@@ -44,11 +45,18 @@ final class GsbWeeklyPayoutCommand extends Command
         // week: the entries earned on the leftover days would then wait for
         // — and be swept by — the next real Tuesday batch, a week late.
         if (! $date->isTuesday() && ! $this->option('force')) {
-            $this->error(sprintf(
+            $refusal = sprintf(
                 'A weekly payout batch is dated a Tuesday; %s is a %s. Pass --force only to run a deliberately off-cycle batch.',
                 $date->toDateString(),
                 $date->format('l'),
-            ));
+            );
+
+            $this->error($refusal);
+
+            // A refusal, not a failure: the date can never become a Tuesday, so
+            // recorded as failed it would be reported as an unresolved failure
+            // for thirty days with nothing anyone could do about it.
+            app(EngineRunContext::class)->noteSkipped($refusal);
 
             return self::FAILURE;
         }
@@ -82,6 +90,8 @@ final class GsbWeeklyPayoutCommand extends Command
                 ->update(['status' => PayoutBatch::STATUS_FAILED]);
 
             $this->error("Weekly payout aborted: {$e->getMessage()}");
+
+            app(EngineRunContext::class)->noteFailed("Weekly payout aborted: {$e->getMessage()}");
 
             return self::FAILURE;
         }

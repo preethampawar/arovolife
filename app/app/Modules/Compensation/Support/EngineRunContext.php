@@ -36,6 +36,19 @@ final class EngineRunContext
 
     private ?int $activeRunId = null;
 
+    /**
+     * Run id => the outcome the engine itself declared before exiting.
+     *
+     * CommandFinished carries an exit code and nothing else, so a command that
+     * refuses (a payout batch dated a non-Tuesday) and a command that crashed
+     * both close their row as `failed` with no reason — the shape QA found on
+     * all 49 staging rows. An engine that knows why it is stopping says so
+     * here, and RecordEngineRun writes it onto the row it is about to close.
+     *
+     * @var array<int, array{status: string, reason: string}>
+     */
+    private array $outcomes = [];
+
     public function attribute(string $trigger, ?int $actorId, ?string $chainId): void
     {
         $this->trigger = $trigger;
@@ -51,6 +64,7 @@ final class EngineRunContext
         $this->chainId = null;
         $this->runId = null;
         $this->activeRunId = null;
+        $this->outcomes = [];
     }
 
     public function trigger(): string
@@ -94,5 +108,48 @@ final class EngineRunContext
     public function runId(): ?int
     {
         return $this->runId;
+    }
+
+    /**
+     * The engine decided not to run and said why — a deliberate refusal, not a
+     * failure. Recorded as `skipped`, the same status a flag-off no-op gets, so
+     * the health digest stops reporting a refusal the engine can never satisfy
+     * on that period (a weekly payout dated a Wednesday will never be a
+     * Tuesday) as an unresolved failure for thirty days.
+     */
+    public function noteSkipped(string $reason): void
+    {
+        $this->note(EngineRun::STATUS_SKIPPED, $reason);
+    }
+
+    /** The engine failed and knows the message — an exception, or a broken step. */
+    public function noteFailed(string $reason): void
+    {
+        $this->note(EngineRun::STATUS_FAILED, $reason);
+    }
+
+    /**
+     * Read and clear the outcome the engine declared for this run, if any.
+     *
+     * @return array{status: string, reason: string}|null
+     */
+    public function takeOutcome(int $runId): ?array
+    {
+        $outcome = $this->outcomes[$runId] ?? null;
+        unset($this->outcomes[$runId]);
+
+        return $outcome;
+    }
+
+    private function note(string $status, string $reason): void
+    {
+        // No active run means nothing recorded this invocation (a partial
+        // `--distributor` run, or a command outside the registry). The note has
+        // no row to land on and is dropped rather than leaking to the next one.
+        if ($this->activeRunId === null) {
+            return;
+        }
+
+        $this->outcomes[$this->activeRunId] = ['status' => $status, 'reason' => $reason];
     }
 }

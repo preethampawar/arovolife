@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compensation\Support\ResolvesMonthOption;
 use App\Modules\Compensation\Support\WorkerFreshness;
@@ -89,6 +90,10 @@ final class MonthlyPayoutCloseCommand extends Command
 
             $this->error(sprintf('Monthly payout batch threw %s: %s', $e::class, $e->getMessage()));
 
+            app(EngineRunContext::class)->noteFailed(
+                sprintf('Monthly payout batch threw %s: %s', $e::class, $e->getMessage()),
+            );
+
             return self::FAILURE;
         }
 
@@ -109,6 +114,13 @@ final class MonthlyPayoutCloseCommand extends Command
     private function refuse(Carbon $month, string $reason, ?string $engineKey, string $message): int
     {
         $this->error($message);
+
+        // Recorded as a refusal, not a failure. The crediting engine that is
+        // actually at fault is already reported as a failure in its own right;
+        // repeating it here as a second failed engine sends the reader chasing
+        // the close instead of the step, and the close cannot be "fixed" until
+        // that step is.
+        app(EngineRunContext::class)->noteSkipped($message);
 
         Log::error('compensation.monthly_payout_close.refused', [
             'month' => $month->format('Y-m'),

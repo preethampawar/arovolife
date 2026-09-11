@@ -212,3 +212,19 @@ it('counts an unresolved failure for the admin sidebar badge and clears it on a 
     seedEngineRun('rank.bonus', Carbon::now()->startOfMonth()->subMonthNoOverflow(), EngineRun::STATUS_SUCCEEDED, Carbon::now());
     expect($status->unresolvedFailureCount())->toBe(0);
 });
+
+it('records the refusal as a skipped run carrying its reason', function (): void {
+    // F50: the refusal recorded `failed` with `error NULL`. The engine that is
+    // actually at fault is already reported as a failure in its own right; the
+    // close is reporting a decision, and it must say what that decision was.
+    seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['rank.bonus']);
+    seedEngineRun('rank.bonus', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:30'));
+
+    Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']);
+
+    $run = EngineRun::where('engine_key', 'compensation.monthly-payout-close')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain('Rank Bonus');
+    expect($run->summary['reason'])->toContain('Rank Bonus');
+});

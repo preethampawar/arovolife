@@ -314,3 +314,32 @@ it('rejects a malformed month without invoking anything', function (): void {
     expect($exitCode)->toBe(Command::FAILURE);
     expect(StubEngineCommand::$calls)->toBe([]);
 });
+
+it('records a preflight refusal as skipped with the reason, not as a bare failure', function (): void {
+    // F39: the preflight abort recorded `failed` with `error NULL`, so the
+    // Engine Runs page and the health digest showed a broken close with no
+    // cause — when what is actually owed is the month's last daily cut-off.
+    Sleep::fake();
+    EngineRun::where('engine_key', 'gsb.daily-cutoff')->delete();
+
+    Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
+
+    $run = EngineRun::where('engine_key', 'compensation.monthly-close')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain('gsb:daily-cutoff --date=2026-08-31');
+    expect($run->summary['reason'])->toContain('gsb:daily-cutoff --date=2026-08-31');
+});
+
+it('records a broken step as a failure carrying the step message', function (): void {
+    // The other half of the same rule: a step that actually broke stays a
+    // failure — a refusal is a decision, a broken step is not.
+    StubEngineCommand::$exitCodes = ['rank.bonus' => Command::FAILURE];
+
+    Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
+
+    $run = EngineRun::where('engine_key', 'compensation.monthly-close')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_FAILED);
+    expect($run->error)->toContain('Rank Bonus');
+});

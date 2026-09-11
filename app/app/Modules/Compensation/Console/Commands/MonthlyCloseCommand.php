@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Console\Commands;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\ResolvesMonthOption;
@@ -256,6 +257,19 @@ final class MonthlyCloseCommand extends Command
     private function abort(Carbon $month, string $stage, string $reason): int
     {
         $this->error($reason);
+
+        // A preflight refusal is a decision, not a breakage: the close declined
+        // to price the month against an incomplete last day. Recorded as failed
+        // it reads on the Engine Runs page and in the health digest as a broken
+        // engine to re-run, when what is owed is the missing cut-off. A step
+        // that actually broke stays a failure — with its message.
+        $context = app(EngineRunContext::class);
+
+        if ($stage === 'preflight') {
+            $context->noteSkipped($reason);
+        } else {
+            $context->noteFailed($reason);
+        }
 
         Log::error('compensation.monthly_close.aborted', [
             'month' => $month->format('Y-m'),

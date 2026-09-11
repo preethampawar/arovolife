@@ -195,7 +195,11 @@ final class EngineRunService
         $run->forceFill([
             'status' => $status,
             'summary' => array_merge($run->summary ?? [], $summary),
-            'error' => $error,
+            // Never blank what the listener already recorded: the refusal
+            // reason or the exception message the engine itself declared is the
+            // only account of why the run stopped, and Artisan::call returning
+            // a non-zero exit code without throwing leaves $error null here.
+            'error' => $error ?? $run->error,
             'finished_at' => $run->finished_at ?? Carbon::now(),
         ])->save();
 

@@ -334,3 +334,24 @@ it('pins the cadence note the cut-off period offset is read from', function (): 
     // lives is this note. Reword it and the digest reports the wrong day.
     expect(EngineRegistry::get('gsb.daily-cutoff')->cadence->note)->toContain('previous day');
 });
+
+it('does not report a deliberate refusal as a failure', function (): void {
+    // F43/F50: a weekly batch refused for a Wednesday it can never satisfy was
+    // recorded as failed, and the digest then reported it every morning for
+    // thirty days. A refusal is recorded `skipped` and carries its reason.
+    seedHealthyRuns();
+    engineRun(
+        'gsb.weekly-payout',
+        '2026-09-09',
+        EngineRun::STATUS_SKIPPED,
+        '2026-09-08 05:00:00',
+        error: 'A weekly payout batch is dated a Tuesday; 2026-09-09 is a Wednesday.',
+        reason: 'A weekly payout batch is dated a Tuesday; 2026-09-09 is a Wednesday.',
+    );
+
+    $this->artisan('compensation:engine-health-digest')
+        ->expectsOutputToContain('All engines healthy')
+        ->assertExitCode(0);
+
+    Notification::assertNothingSent();
+});

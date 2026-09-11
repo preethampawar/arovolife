@@ -216,3 +216,57 @@ it('restores the outer run id when a nested command finishes', function (): void
     // one here — so EngineRunService::finalise() can still find its row.
     expect($context->runId())->toBe($innerId);
 });
+
+it('records the reason on a failed run that named none', function (): void {
+    // F81: every failed row carried `error NULL`, so the Engine Runs page showed
+    // a red pill and a dash. A run that dies without declaring a cause must at
+    // least say that, and point at the log.
+    $input = new ArrayInput(['--month' => '2026-05']);
+    $output = new NullOutput;
+
+    event(new CommandStarting('gbb:monthly-run', $input, $output));
+    event(new CommandFinished('gbb:monthly-run', $input, $output, 1));
+
+    $run = EngineRun::sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_FAILED);
+    expect($run->error)->not->toBeNull();
+    expect($run->error)->toContain('exited with code 1');
+});
+
+it('records a deliberate refusal as skipped, with the reason, not as a failure', function (): void {
+    // F43: a weekly payout dated a Wednesday can never succeed for that date, so
+    // recording it `failed` put it in the health digest for thirty days with no
+    // explanation and no remedy.
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    $exitCode = Artisan::call('gsb:weekly-payout', ['--date' => '2026-09-09']);
+
+    expect($exitCode)->toBe(1);
+
+    $run = EngineRun::sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain('is a Wednesday');
+    expect($run->summary['reason'])->toContain('is a Wednesday');
+});
+
+it('keeps the engine declared reason when the run is closed out by the run service', function (): void {
+    // finalise() used to overwrite `error` with the null it holds whenever
+    // Artisan::call returns a non-zero exit code without throwing — which is
+    // exactly the refusal path.
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    app(EngineRunService::class)->runOne(
+        EngineRegistry::get('gsb.weekly-payout'),
+        Carbon::parse('2026-09-09'),
+        EngineRun::TRIGGER_MANUAL,
+        7,
+        'chain-refusal',
+    );
+
+    $run = EngineRun::sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain('is a Wednesday');
+});
