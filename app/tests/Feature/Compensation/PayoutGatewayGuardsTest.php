@@ -17,6 +17,7 @@ use App\Modules\Compensation\Services\PayoutReconciliationService;
 use App\Modules\Compensation\Services\RazorpayPayoutGateway;
 use App\Modules\Compensation\Support\RazorpayPayoutPayloadScrubber;
 use App\Modules\Identity\Models\Distributor;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -170,12 +171,17 @@ it('rejects a webhook whose signature does not verify', function (): void {
 
 // ── Manual NEFT reconciliation ─────────────────────────────────────────
 
-/** A batch with one pending line item for a distributor with the given ADN. */
-function reconcileFixture(string $adn): array
+/**
+ * A batch with one pending line item for a distributor with the given ADN.
+ *
+ * `$daysAgo` moves the batch date: one weekly batch per date, so a test needing
+ * two batches has to place them on different days.
+ */
+function reconcileFixture(string $adn, int $daysAgo = 0): array
 {
     $batch = PayoutBatch::create([
         'batch_type' => PayoutBatch::TYPE_WEEKLY,
-        'batch_date' => now()->toDateString(),
+        'batch_date' => now()->subDays($daysAgo)->toDateString(),
         'status' => PayoutBatch::STATUS_APPROVED,
     ]);
 
@@ -256,6 +262,113 @@ it('reports rows naming an ADN that is not in the batch instead of applying them
     expect($summary['unmatched'])->toBe(['ARV99999'])
         ->and($summary['transferred'])->toBe(0)
         ->and($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING);
+});
+
+it('rejects a bank row whose amount does not match the line it names', function (): void {
+    // QA F14: the import validated no amounts, so a response file belonging to
+    // another batch — or one column out of step — recorded distributors as paid
+    // for amounts that never left the company.
+    [$batch, $line] = reconcileFixture('ARV00010');
+
+    $summary = app(PayoutReconciliationService::class)->import($batch, uploadCsv(
+        "ADN,Net Amount (INR),UTR,Status\n".
+        "ARV00010,750.00,HDFCN52026090400010,SUCCESS\n"
+    ), 1);
+
+    expect($summary['transferred'])->toBe(0)
+        ->and($summary['matched'])->toBe(0)
+        ->and($summary['rejected'])->toHaveCount(1)
+        ->and($summary['rejected'][0])->toContain('ARV00010')
+        ->and($summary['amount_checked'])->toBeTrue()
+        ->and($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->fresh()->utr_number)->toBeNull();
+});
+
+it('settles a row whose amount matches and reports that amounts went unchecked when the column is absent', function (): void {
+    [$batch, $line] = reconcileFixture('ARV00011');
+
+    $summary = app(PayoutReconciliationService::class)->import($batch, uploadCsv(
+        "ADN,Amount,UTR,Status\n".
+        "ARV00011,\"1,000.00\",HDFCN52026090400011,SUCCESS\n"
+    ), 1);
+
+    expect($summary['transferred'])->toBe(1)
+        ->and($summary['amount_checked'])->toBeTrue()
+        ->and($line->fresh()->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED);
+
+    [$noAmountBatch] = reconcileFixture('ARV00012', 7);
+    $second = app(PayoutReconciliationService::class)->import($noAmountBatch, uploadCsv(
+        "ADN,Status\nARV00012,FAILED\n"
+    ), 1);
+
+    expect($second['amount_checked'])->toBeFalse()
+        ->and($second['failed'])->toBe(1);
+});
+
+it('refuses to settle two lines against one bank reference', function (): void {
+    // QA F15: one UTR is one transfer. A response file repeating a reference
+    // marked two distributors paid out of a single NEFT.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_APPROVED,
+    ]);
+
+    $lines = collect(['ARV00013', 'ARV00014'])->map(function (string $adn) use ($batch): PayoutLineItem {
+        $distributor = Distributor::factory()->create(['adn' => $adn]);
+
+        return PayoutLineItem::create([
+            'payout_batch_id' => $batch->id,
+            'distributor_id' => $distributor->id,
+            'wallet_balance_paise' => 100_000,
+            'gross_paise' => 100_000,
+            'repurchase_deduction_paise' => 0,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'net_transferred_paise' => 100_000,
+            'status' => PayoutLineItem::STATUS_PENDING,
+        ]);
+    });
+
+    $summary = app(PayoutReconciliationService::class)->import($batch, uploadCsv(
+        "ADN,UTR,Status\n".
+        "ARV00013,HDFCN52026090400013,SUCCESS\n".
+        "ARV00014,HDFCN52026090400013,SUCCESS\n"
+    ), 1);
+
+    expect($summary['transferred'])->toBe(1)
+        ->and($summary['rejected'])->toHaveCount(1)
+        ->and($summary['rejected'][0])->toContain('ARV00014')
+        ->and($lines[0]->fresh()->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED)
+        ->and($lines[1]->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING);
+});
+
+it('refuses a reference already recorded by an earlier batch', function (): void {
+    [, $firstLine] = reconcileFixture('ARV00015', 7);
+    $firstLine->forceFill([
+        'status' => PayoutLineItem::STATUS_TRANSFERRED,
+        'utr_number' => 'HDFCN52026090400015',
+    ])->save();
+
+    [$batch, $line] = reconcileFixture('ARV00016', 14);
+
+    $summary = app(PayoutReconciliationService::class)->import($batch, uploadCsv(
+        "ADN,UTR,Status\nARV00016,HDFCN52026090400015,SUCCESS\n"
+    ), 1);
+
+    expect($summary['transferred'])->toBe(0)
+        ->and($summary['rejected'])->toHaveCount(1)
+        ->and($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING);
+});
+
+it('the database refuses two line items sharing one UTR', function (): void {
+    [, $first] = reconcileFixture('ARV00017');
+    [, $second] = reconcileFixture('ARV00018', 7);
+
+    $first->forceFill(['utr_number' => 'HDFCN52026090400017'])->save();
+
+    expect(fn () => $second->forceFill(['utr_number' => 'HDFCN52026090400017'])->save())
+        ->toThrow(QueryException::class);
 });
 
 it('refuses a file with no ADN column rather than guessing', function (): void {

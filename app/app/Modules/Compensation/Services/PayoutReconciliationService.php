@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Http\UploadedFile;
 
 /**
@@ -22,6 +23,18 @@ use Illuminate\Http\UploadedFile;
  * unforgiving about what it will change: a row can mark a `pending` line
  * transferred or failed and nothing else. A row naming an unknown ADN, or one
  * already settled, is reported back to the admin rather than applied.
+ *
+ * Two further refusals, because a wrong response file must not be able to
+ * record a distributor as paid when they were not:
+ *
+ *   amount    — when the file carries an amount column, the row's amount has
+ *               to equal the line's `net_transferred_paise`. A file from
+ *               another batch, or one column out of step, is rejected row by
+ *               row instead of importing silently (QA F14).
+ *   reference — one UTR settles one line. A reference already recorded on any
+ *               payout line, in this file or an earlier import, is rejected
+ *               (QA F15); `uniq_payout_line_items_utr` enforces the same rule
+ *               in the database, where a concurrent import is also visible.
  */
 final class PayoutReconciliationService
 {
@@ -34,6 +47,12 @@ final class PayoutReconciliationService
 
     private const REASON_HEADERS = ['failurereason', 'reason', 'remarks', 'errordescription'];
 
+    /**
+     * Columns carrying the rupee amount the bank actually moved. Our own export
+     * writes "Net Amount (₹)", which normalises to `netamount`.
+     */
+    private const AMOUNT_HEADERS = ['amount', 'netamount', 'netamountinr', 'netamountrs', 'nettransferred', 'transferamount', 'amountinr', 'creditamount', 'txnamount', 'transactionamount'];
+
     /** Values in the status column read as "the money arrived". */
     private const SUCCESS_VALUES = ['success', 'successful', 'processed', 'completed', 'paid', 'transferred'];
 
@@ -44,7 +63,8 @@ final class PayoutReconciliationService
     /**
      * @return array{
      *   rows: int, matched: int, transferred: int, failed: int,
-     *   unmatched: list<string>, skipped: list<string>, errors: list<string>
+     *   unmatched: list<string>, skipped: list<string>, rejected: list<string>,
+     *   errors: list<string>, amount_checked: bool
      * }
      */
     public function import(PayoutBatch $batch, UploadedFile $file, int $actorId): array
@@ -56,7 +76,11 @@ final class PayoutReconciliationService
             'failed' => 0,
             'unmatched' => [],
             'skipped' => [],
+            // Rows the file names but this import refuses to apply: the amount
+            // does not match the line, or the bank reference is already in use.
+            'rejected' => [],
             'errors' => [],
+            'amount_checked' => false,
         ];
 
         $handle = fopen($file->getRealPath(), 'r');
@@ -88,9 +112,16 @@ final class PayoutReconciliationService
             return $summary;
         }
 
+        $summary['amount_checked'] = $columns['amount'] !== null;
+
         // One line-item lookup for the whole batch, keyed by ADN — a file of
         // 5,000 rows must not be 5,000 joins.
         $linesByAdn = $this->lineItemsByAdn($batch);
+
+        // Bank references already recorded anywhere in the platform. One
+        // transfer settles one line: a repeated reference means the file is
+        // wrong, not that two distributors were paid by one NEFT.
+        $usedUtrs = $this->utrsAlreadyRecorded();
 
         while (($row = fgetcsv($handle)) !== false) {
             // fgetcsv yields [null] for a blank line.
@@ -127,16 +158,45 @@ final class PayoutReconciliationService
                 continue;
             }
 
+            // The bank's amount has to be the amount this line owes. A response
+            // file whose amounts belong to another batch — or one column out of
+            // step — used to import silently and record the wrong people paid
+            // (QA F14). A blank cell is not a mismatch: banks routinely leave it
+            // empty on a returned transfer.
+            $claimedPaise = $columns['amount'] !== null
+                ? $this->amountPaise($this->cell($row, $columns['amount']))
+                : null;
+
+            if ($claimedPaise !== null && $claimedPaise !== (int) $line->net_transferred_paise) {
+                $summary['rejected'][] = $adn.' (amount '.$this->rupees($claimedPaise).
+                    ' does not match the line’s '.$this->rupees((int) $line->net_transferred_paise).')';
+
+                continue;
+            }
+
+            $utr = $columns['utr'] !== null ? trim($this->cell($row, $columns['utr'])) : '';
+
+            // One UTR, one settled line — within this file and against every
+            // line item already recorded (QA F15). `uniq_payout_line_items_utr`
+            // is the database's half of the same rule.
+            if ($utr !== '' && isset($usedUtrs[strtoupper($utr)])) {
+                $summary['rejected'][] = $adn.' (bank reference already settles another payout line)';
+
+                continue;
+            }
+
             $summary['matched']++;
 
             if ($verdict === PayoutLineItem::STATUS_TRANSFERRED) {
                 $line->forceFill([
                     'status' => PayoutLineItem::STATUS_TRANSFERRED,
-                    'utr_number' => $columns['utr'] !== null
-                        ? (trim($this->cell($row, $columns['utr'])) ?: $line->utr_number)
-                        : $line->utr_number,
+                    'utr_number' => $utr !== '' ? $utr : $line->utr_number,
                     'failure_reason' => null,
                 ])->save();
+
+                if ($utr !== '') {
+                    $usedUtrs[strtoupper($utr)] = true;
+                }
 
                 $summary['transferred']++;
 
@@ -173,6 +233,9 @@ final class PayoutReconciliationService
                 'unmatched' => array_slice($summary['unmatched'], 0, 50),
                 'unmatched_count' => count($summary['unmatched']),
                 'skipped_count' => count($summary['skipped']),
+                'rejected' => array_slice($summary['rejected'], 0, 50),
+                'rejected_count' => count($summary['rejected']),
+                'amount_checked' => $summary['amount_checked'],
             ],
             'ip' => request()->ip(),
         ]);
@@ -208,11 +271,11 @@ final class PayoutReconciliationService
      * punctuation and casing every bank formats differently.
      *
      * @param  list<string|null>  $header
-     * @return array{adn: int|null, utr: int|null, status: int|null, reason: int|null}
+     * @return array{adn: int|null, utr: int|null, status: int|null, reason: int|null, amount: int|null}
      */
     private function mapColumns(array $header): array
     {
-        $found = ['adn' => null, 'utr' => null, 'status' => null, 'reason' => null];
+        $found = ['adn' => null, 'utr' => null, 'status' => null, 'reason' => null, 'amount' => null];
 
         foreach ($header as $index => $label) {
             // Strip the UTF-8 BOM Excel writes onto the first header cell.
@@ -223,6 +286,7 @@ final class PayoutReconciliationService
                 'utr' => self::UTR_HEADERS,
                 'status' => self::STATUS_HEADERS,
                 'reason' => self::REASON_HEADERS,
+                'amount' => self::AMOUNT_HEADERS,
             ] as $field => $candidates) {
                 if ($found[$field] === null && in_array($normalized, $candidates, true)) {
                     $found[$field] = (int) $index;
@@ -243,6 +307,52 @@ final class PayoutReconciliationService
             in_array($value, self::FAILURE_VALUES, true) => PayoutLineItem::STATUS_FAILED,
             default => null,
         };
+    }
+
+    /**
+     * Every bank reference already recorded on a payout line, upper-cased and
+     * keyed for lookup. Platform-wide, not batch-wide: a reference re-used
+     * across two batches is the same double settlement as one re-used inside
+     * a single file.
+     *
+     * @return array<string, true>
+     */
+    private function utrsAlreadyRecorded(): array
+    {
+        $used = [];
+
+        PayoutLineItem::query()
+            ->whereNotNull('utr_number')
+            ->where('utr_number', '!=', '')
+            ->pluck('utr_number')
+            ->each(function (string $utr) use (&$used): void {
+                $used[strtoupper(trim($utr))] = true;
+            });
+
+        return $used;
+    }
+
+    /**
+     * The rupee amount a bank row claims, in paise, or null when the cell is
+     * blank or not a number. Tolerates the ₹ sign, Indian digit grouping and
+     * the parentheses some banks use for a returned amount.
+     */
+    private function amountPaise(string $raw): ?int
+    {
+        $value = trim(str_replace([',', ' ', "\u{20B9}", 'INR', 'Rs.', 'Rs'], '', $raw));
+        $value = trim($value, '()');
+
+        if ($value === '' || ! is_numeric($value)) {
+            return null;
+        }
+
+        return (int) round(((float) $value) * 100);
+    }
+
+    /** ₹ figure for an admin-facing rejection line. */
+    private function rupees(int $paise): string
+    {
+        return '₹'.IndianNumber::format($paise / 100, 2);
     }
 
     /** @param  list<string|null>  $row */

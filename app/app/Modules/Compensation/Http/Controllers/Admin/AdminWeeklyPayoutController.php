@@ -118,6 +118,14 @@ final class AdminWeeklyPayoutController extends Controller
         if ($summary['skipped'] !== []) {
             $message .= ' '.count($summary['skipped']).' row(s) were skipped (already settled or an unrecognised status).';
         }
+        if ($summary['rejected'] !== []) {
+            $message .= ' '.count($summary['rejected']).' row(s) were REJECTED and not applied: '
+                .implode('; ', array_slice($summary['rejected'], 0, 5))
+                .(count($summary['rejected']) > 5 ? '; …' : '').'.';
+        }
+        if (! $summary['amount_checked']) {
+            $message .= ' The file carried no amount column, so amounts were not verified against this batch.';
+        }
 
         return redirect()
             ->route('admin.compensation.weekly-payouts.show', $batch)

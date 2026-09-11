@@ -178,6 +178,20 @@ Two things the import will not do: change a line that has already settled
 (re-importing the same file is safe), and settle a line for an ADN that is not
 in this batch (those are reported as unmatched).
 
+Two more it will **reject** — count them and read the reasons before you treat a
+batch as settled:
+
+- **The amount does not match.** When the file carries an amount column (`Net
+  Amount`, `Amount`, `Transfer Amount` and similar), the row's amount has to
+  equal that line's net. A mismatch means the file belongs to another batch or a
+  column is out of step, so the row is not applied. If the file has no amount
+  column at all, the import says so in its result message — amounts went
+  unverified.
+- **The bank reference is already in use.** One UTR settles one line. A
+  reference repeated inside the file, or already recorded on any earlier line
+  item, is refused: two distributors cannot be paid by one transfer. The
+  database enforces the same rule, so it holds even if two imports run at once.
+
 ## When a transfer fails
 
 Failures come in two kinds, and the difference decides what you do.
