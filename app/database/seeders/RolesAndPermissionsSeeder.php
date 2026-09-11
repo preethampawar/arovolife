@@ -51,6 +51,14 @@ final class RolesAndPermissionsSeeder extends Seeder
         // (`finance.record`): whoever confirms the goods are back is not the
         // person who can then write the payable off or pay it out.
         'returns.receive' => 'admin-operations',    // mark a return received / not returned
+
+        // Added 2026-09-12 with the inventory module. Receiving goods,
+        // transferring them between warehouses and adjusting a count all change
+        // what the company owns, and an adjustment with no counterparty is the
+        // one stock movement nobody else has to agree to — it sits with the
+        // role that physically handles the goods, never with finance, which
+        // reads the valuation those movements produce.
+        'inventory.manage' => 'admin-operations',   // warehouses, suppliers, POs, GRNs, transfers, adjustments
     ];
 
     /**
@@ -98,6 +106,12 @@ final class RolesAndPermissionsSeeder extends Seeder
         // role needs it to do its own job — but admin-finance reading it is
         // also the check on admin-finance, so it stays broad deliberately.
         'audit.read' => ['admin-operations', 'admin-finance', 'admin-compliance'],
+
+        // Stock levels, batch expiry and valuation are read by both the people
+        // who hold the goods and the people who account for them. Reading is
+        // separated from moving (`inventory.manage`) so finance can reconcile
+        // and report without being able to write off a shortage it found.
+        'inventory.view' => ['admin-operations', 'admin-finance'],
     ];
 
     /**

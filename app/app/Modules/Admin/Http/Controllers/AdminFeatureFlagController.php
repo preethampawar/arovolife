@@ -17,6 +17,7 @@ use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use App\Modules\Shared\Features\HibpPasswordCheck;
+use App\Modules\Shared\Features\InventoryFeature;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\MessagingFeature;
@@ -179,6 +180,14 @@ final class AdminFeatureFlagController extends Controller
                 'class' => FaqLibraryFeature::class,
                 'label' => 'FAQ library',
                 'description' => 'A categorised, searchable question-and-answer library for distributors, authored as content pages of type "faq" so entries carry the same draft → published workflow and audit trail as the policy pages, plus an income-projection check on the title and body that the other content types do not have. Settings → Content decides whether it is members-only or public. OFF leaves no trace: no menu item, no routes, and "faq" is refused as a content-page type in the editor.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+
+            'inventory.enforcement' => [
+                'class' => InventoryFeature::class,
+                'label' => 'Inventory enforcement',
+                'description' => 'Turns the stock ledger from a record into a constraint. ON, checkout refuses a tracked item the warehouses cannot cover and the daily low-stock / expiry alert runs. OFF, stock is still recorded in full — every receipt, sale, transfer, adjustment and return — but checkout no longer blocks on availability and the alerts stop. Leave it off until inventory:backfill-opening has opened the existing on-hand figures, inventory:verify reports no drift, and ops has entered a real goods receipt.',
                 'owner' => 'developer',
                 'requires' => [],
             ],

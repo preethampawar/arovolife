@@ -12,6 +12,7 @@ use App\Modules\Fulfilment\FulfilmentServiceProvider;
 use App\Modules\Genealogy\GenealogyServiceProvider;
 use App\Modules\Grievance\GrievanceServiceProvider;
 use App\Modules\Identity\IdentityServiceProvider;
+use App\Modules\Inventory\InventoryServiceProvider;
 use App\Modules\Kyc\KycServiceProvider;
 use App\Modules\Ledger\LedgerServiceProvider;
 use App\Modules\Messaging\MessagingServiceProvider;
@@ -37,6 +38,7 @@ return [
     LedgerServiceProvider::class,
     CatalogServiceProvider::class,
     CommerceServiceProvider::class,
+    InventoryServiceProvider::class,
     CompensationServiceProvider::class,
     TaxServiceProvider::class,
     PaymentsServiceProvider::class,

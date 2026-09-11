@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
+ * @property int $id
+ * @property string $variant_sku
+ * @property int $cost_paise
  * @property string $inventory_policy
  * @property-read InventoryLevel|null $inventory
  */

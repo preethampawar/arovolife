@@ -8,8 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
+ * @property int $id
+ * @property int $product_variant_id
+ * @property string $warehouse_code
  * @property int $reserved
  * @property int $on_hand
+ * @property int $reorder_level
  */
 final class InventoryLevel extends Model
 {
