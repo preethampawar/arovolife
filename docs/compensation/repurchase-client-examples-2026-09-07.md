@@ -96,6 +96,14 @@ requalification and AO-GO (client 2026-09-05) are unchanged.
 
 Mentorship, ADC and Awards & Rewards are outside the repurchase condition.
 
+**Not the same thing as the deduction.** The 10% credit-time repurchase
+deduction *does* apply to Mentorship (client, 2026-09-10 — the fifth deduction
+source alongside GSB, Rank, Growth Booster and Fortune, as the 2026-06-26
+clarifications always had it). What §2.4 says is that a **failed cycle** never
+withholds Mentorship: it is not held, released or forfeited by the cycle, and a
+failed sponsee simply produces no GSB slab for the sponsor to earn from. ADC and
+Awards & Rewards remain outside both the condition and the deduction.
+
 ---
 
 ## 3. Weekly payout — Wednesday-to-Tuesday earning week, paid one Tuesday later

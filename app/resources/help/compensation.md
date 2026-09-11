@@ -93,6 +93,8 @@ The per-day arithmetic is visible under **Compensation → MSB Input & Output / 
 
 The **MSB Calculation Report** also carries the same per-day header (day total received BV, MSB pool and rate, total MSB points, point value, Computed) above its rows, with the point-value formula shown symbolically and then with that day's frozen values (pool = BV × pool %; point value = ⌊pool ÷ total points⌋; income = points × value). At most five days render per page — filter by date to pin one.
 
+**The repurchase deduction applies to MSB** (client, 2026-09-10): Mentorship is the fifth deduction source alongside GSB, Rank, Growth Booster and Fortune. 10% of each MSB credit (within the ₹10,000 monthly ceiling shared by all bonuses, counted per month of income earned) moves to the repurchase wallet the moment the bonus is credited, and the deduction and the credited amount are frozen on the MSB row — both reports and the distributor's own Mentorship page show **Income · Repurchase deduction · Credited to wallet**. Rows credited before that decision took no deduction and show their gross as credited.
+
 This engine replaced the fixed ₹250-per-point model (2026-07-25), which had itself replaced the 10%→1% rate ladder on cumulative sponsee GSB — old rows keep their amounts and show "—" in the points columns.
 
 ## Cancelled / refunded orders — Genos BV reversal
@@ -111,7 +113,7 @@ On the batch list, **Distributors**, and **Net transferred** count only the line
 
 Distributors whose **KYC is not yet verified** (account not `active`) get a `kyc_pending` line ("Awaiting KYC" in the wallet): they still earn and see all income, but nothing is debited, swept, or transferred to the bank until their KYC is approved — the first batch after approval pays it out. (Same rule in the monthly batch.)
 
-Distributors with **no bank account on file** get a `no_bank_account` line: nothing is debited or swept, the balance stays in the wallet, and the first batch after they add bank details pays it out. (Same rule in the monthly batch.)
+Distributors with **no bank account on file** get a `no_bank_account` line: nothing is debited or swept, the balance stays in the wallet, and the first batch after they add bank details pays it out. They add them themselves from **My profile → Bank details** (account number typed twice, OTP-confirmed, audit-logged); admin capture is the fallback, not the only path. (Same rule in the monthly batch.)
 
 Distributors whose **stored bank account cannot be decrypted** get a `bank_decrypt_failed` line ("On hold — contact support" in the wallet): the ciphertext on file is unreadable, so the account number that would go into the NEFT file is not trustworthy. Nothing is debited or swept, a `critical` log is raised for engineering, and the first batch after the bank details are re-captured pays it out. Only that distributor is held — the rest of the batch runs normally. (Same rule in the monthly batch.)
 

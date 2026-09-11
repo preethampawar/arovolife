@@ -35,7 +35,9 @@ final class MessagingSettingsService
         'messaging.rate_limit_per_hour' => 60,
         'messaging.rate_limit_per_recipient_per_day' => 20,
         'messaging.block_list_enabled' => true,
-        'messaging.reporting_enabled' => true,
+        // OFF until the environment's published Privacy Policy carries §4.5b.
+        // See reportingEnabled() for why the default is the restrictive one.
+        'messaging.reporting_enabled' => false,
         'messaging.max_body_chars' => 4000,
     ];
 
@@ -76,6 +78,21 @@ final class MessagingSettingsService
         return $this->scalarBool('messaging.block_list_enabled');
     }
 
+    /**
+     * Whether a distributor can report a message to the company.
+     *
+     * Defaults OFF, unlike every other control here. Moderation means staff
+     * reading a private message, and DPDP §5 requires the purpose to be
+     * published before the processing starts — the moderation purpose (§4.5b)
+     * and the retention rows live in `privacy.md`, which reaches members only
+     * when that environment runs `php artisan content:publish privacy`. An ON
+     * default moderates against a notice the company has not served in any
+     * environment where that step was missed, which is a state nobody can see
+     * from the repo (R-80(a)).
+     *
+     * So it is switched on per environment, as an audited settings edit, once
+     * the live Privacy Policy page has been read and carries §4.5b.
+     */
     public function reportingEnabled(): bool
     {
         return $this->scalarBool('messaging.reporting_enabled');

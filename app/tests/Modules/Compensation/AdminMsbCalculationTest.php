@@ -65,7 +65,7 @@ function msbReportDistributor(string $adn, string $name): int
     return $id;
 }
 
-function makeMbRow(int $sponsorId, int $sponseeId, ?int $slab, ?int $points, ?int $valuePaise, int $grossPaise, string $date): void
+function makeMbRow(int $sponsorId, int $sponseeId, ?int $slab, ?int $points, ?int $valuePaise, int $grossPaise, string $date, int $deductionPaise = 0): void
 {
     MentorshipBonusResult::create([
         'sponsor_id' => $sponsorId,
@@ -76,8 +76,10 @@ function makeMbRow(int $sponsorId, int $sponseeId, ?int $slab, ?int $points, ?in
         'msb_points' => $points,
         'msb_point_value_paise' => $valuePaise,
         'mb_gross_paise' => $grossPaise,
+        'repurchase_deduction_paise' => $deductionPaise,
         'mb_admin_charge_paise' => 0,
         'mb_tds_paise' => 0,
+        'mb_net_paise' => $grossPaise - $deductionPaise,
         'status' => MentorshipBonusResult::STATUS_CREDITED,
     ]);
 }
@@ -99,9 +101,9 @@ it('shows points, value, income and a grand total over the full filtered set', f
         ->assertSee('Grand total (all filtered rows)')
         ->assertSee('39')                 // total points 21 + 18
         ->assertSee('9,750.00')           // total income ₹5,250 + ₹4,500
-        // F91: MSB carries no repurchase deduction, unlike GSB/GBB/RB/FB —
-        // the report must say so rather than leave the absent column silent.
-        ->assertSee('no repurchase deduction applies to MSB', false);
+        // F33: MSB became the fifth repurchase-deduction source (client
+        // 2026-09-10), so the income column is what was credited, not the gross.
+        ->assertSee('gross minus the repurchase deduction taken at credit time', false);
 });
 
 it('filters by sponsor or sponsee ADN search', function () {
@@ -177,16 +179,32 @@ it('renders legacy ladder rows without points and keeps their income in the tota
 it('exports a CSV with a grand-total row', function () {
     $sponsor = msbReportDistributor('MSBAAA', 'Alice');
     $sponsee = msbReportDistributor('MSBSPA', 'Anu');
-    makeMbRow($sponsor, $sponsee, 1, 21, 25_000, 525_000, today()->toDateString());
+    makeMbRow($sponsor, $sponsee, 1, 21, 25_000, 525_000, today()->toDateString(), 52_500);
 
     $res = $this->actingAs(msbReportAdmin())
         ->get(route('admin.compensation.msb-calculation.export'));
 
     $res->assertOk();
     $csv = $res->getContent();
-    expect($csv)->toContain('SNo,Sponsor ADN,Sponsor Name,Title,Date,Sponsee ADN,Sponsee Name,MSB Points,Value (Rs),Income (Rs),Status');
+    expect($csv)->toContain('SNo,Sponsor ADN,Sponsor Name,Title,Date,Sponsee ADN,Sponsee Name,MSB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status');
     expect($csv)->toContain('"TOTAL"');
-    expect($csv)->toContain('5250.00');   // income total
+    expect($csv)->toContain('5250.00');   // gross income total
+    // F33: MSB is the fifth repurchase-deduction source (client 2026-09-10).
+    expect($csv)->toContain('525.00');    // deduction total
+    expect($csv)->toContain('4725.00');   // credited to wallet
+});
+
+it('shows the credited amount with its gross and repurchase deduction beneath it', function () {
+    $sponsor = msbReportDistributor('MSBAAA', 'Alice');
+    $sponsee = msbReportDistributor('MSBSPA', 'Anu');
+    makeMbRow($sponsor, $sponsee, 1, 21, 25_000, 525_000, today()->toDateString(), 52_500);
+
+    $this->actingAs(msbReportAdmin())
+        ->get(route('admin.compensation.msb-calculation.index'))
+        ->assertOk()
+        ->assertSee('Income (credited)')
+        ->assertSee('4,725.00')                                   // net, the headline figure
+        ->assertSee('gross ₹5,250.00 · repurchase ₹525.00', false);
 });
 
 it('hides the MSB reports while the feature is off', function (): void {

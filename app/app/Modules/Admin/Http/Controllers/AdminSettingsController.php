@@ -728,10 +728,10 @@ final class AdminSettingsController extends Controller
                 'group' => 'communications',
                 'feature' => MessagingFeature::class,
                 'label' => 'Let distributors report a message',
-                'description' => 'When ON, a distributor can report a message they received and it lands in Admin → Messaging → Reported messages for operations or compliance to review.',
-                'impact' => 'Turning this OFF removes the only route by which anything said in a private message becomes visible to the company. The public copy audit scans templates; it cannot scan what one distributor types to another, so an income claim made in a chat would go unrecorded.',
+                'description' => 'When ON, a distributor can report a message they received and it lands in Admin → Messaging → Reported messages for operations or compliance to review. Ships OFF: reviewing a report means staff reading a private message, and the published Privacy Policy on this environment has to carry the moderation purpose (§4.5b) before that starts — run `php artisan content:publish privacy` and read the live page first.',
+                'impact' => 'Turning this ON starts staff moderation of private messages, which the Privacy Policy published on this environment must already disclose. Turning it OFF removes the only route by which anything said in a private message becomes visible to the company: the public copy audit scans templates, it cannot scan what one distributor types to another, so an income claim made in a chat would go unrecorded.',
                 'type' => 'bool',
-                'default' => 'true',
+                'default' => 'false',
             ],
             'messaging.max_body_chars' => [
                 'group' => 'communications',

@@ -140,9 +140,14 @@ The notice text lives in the repo, not in the database. **Before any report is
 opened in an environment, check that the published Privacy Policy page in that
 environment actually carries §4.5b** — read the live page, not the markdown. To
 republish it: `php artisan content:publish privacy`. Do **not** use
-`db:seed --class=ContentPageSeeder` for this: it rewrites all five policy pages
-at once, and the compensation page carries payout-week wording that R-75 holds
-back until the DSA §6.2 notice has run.
+`db:seed --class=ContentPageSeeder` for this: it publishes four policy pages at
+once, and it would overwrite a privacy page somebody has since edited.
+
+Reporting therefore **ships OFF**. *Let distributors report a message* is at its
+default (off) until somebody turns it on for that environment, which is an
+audited settings edit: read the live Privacy Policy page first, confirm §4.5b is
+on it, then switch it on. Until then the report button is not shown and the
+report endpoint 404s.
 
 Two things are still open, tracked as **R-80**:
 

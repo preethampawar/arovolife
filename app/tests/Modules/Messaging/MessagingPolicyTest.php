@@ -12,6 +12,7 @@ declare(strict_types=1);
  *   POL-10..11  reporting
  *   POL-12..13  the killswitch leaves no trace
  *   POL-14      opening a report is audit-logged (the DPDP control)
+ *   POL-16      reporting is OFF until the environment switches it on
  *   POL-15      the Aadhaar branch: Verhoeff-valid refused, random 12 digits not
  *
  * Every case asserts through MessageService rather than the controller: the
@@ -19,6 +20,7 @@ declare(strict_types=1);
  * controller would not cover it.
  */
 
+use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Messaging\Exceptions\MessageRefused;
@@ -330,6 +332,8 @@ it('POL-09: the PAN guard holds for staff too — hard rule 8 has no staff excep
 });
 
 it('POL-10: the recipient can report a message they received', function (): void {
+    polSetting('messaging.reporting_enabled', 'true');
+
     $sponsor = polUser('sponsor');
     $downline = polUser('downline');
     $sponsorId = polDistributor($sponsor->id);
@@ -348,6 +352,8 @@ it('POL-10: the recipient can report a message they received', function (): void
 });
 
 it('POL-11: nobody but the recipient can report a message', function (): void {
+    polSetting('messaging.reporting_enabled', 'true');
+
     $sponsor = polUser('sponsor');
     $downline = polUser('downline');
     $sponsorId = polDistributor($sponsor->id);
@@ -450,4 +456,18 @@ it('POL-15: a Verhoeff-valid Aadhaar is refused; a random 12-digit string is not
 
     expect($ok->exists)->toBeTrue()
         ->and(Message::count())->toBe(1);
+});
+
+it('POL-16: reporting is off until the environment turns it on', function (): void {
+    // DPDP §5 / R-80(a): a report is read by staff, and the purpose (Privacy
+    // Notice §4.5b) reaches members only where `content:publish privacy` has
+    // run. With no settings row the restrictive value wins, so an environment
+    // that missed the republish cannot moderate against a notice it has not
+    // served.
+    // No settings row: the registry default and the service default are the
+    // same value, and both are off. MessageController::report() aborts 404 on
+    // this, so the endpoint and the button follow it.
+    expect(DB::table('settings')->where('key', 'messaging.reporting_enabled')->exists())->toBeFalse()
+        ->and(app(MessagingSettingsService::class)->reportingEnabled())->toBeFalse()
+        ->and(AdminSettingsController::registry()['messaging.reporting_enabled']['default'] ?? null)->toBe('false');
 });

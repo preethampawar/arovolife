@@ -39,7 +39,9 @@ use Illuminate\Support\Facades\Log;
  * check below, and the idempotent pool freeze returns the original frozen row —
  * so the surviving accruals price at exactly the same value.
  *
- * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
+ * The repurchase deduction is taken at credit time — Mentorship is the fifth
+ * deduction source (client, 2026-09-10) — and is frozen on the result row.
+ * Admin charge and TDS are applied at payout time, not at credit time.
  */
 final class MentorshipBonusService
 {
@@ -183,20 +185,28 @@ final class MentorshipBonusService
             ]);
 
             if ($mbGross > 0) {
-                $this->wallet->credit(
+                $outcome = $this->wallet->creditWithRepurchaseDeduction(
                     distributorId: $accrual->sponsorId,
-                    amountPaise: $mbGross,
-                    type: 'mb_credit',
+                    grossPaise: $mbGross,
+                    bonusType: 'mb_credit',
                     referenceId: $result->id,
                     referenceType: 'mentorship_bonus_result',
-                    // MB takes no repurchase deduction, but it is one of the
-                    // five bonuses under the monthly income cap, which windows
-                    // on the month the income was earned for.
+                    // MB is the fifth repurchase-deduction source (client,
+                    // 2026-09-10) and one of the five bonuses under the monthly
+                    // income cap; both window on the month the income was
+                    // earned for, not the month it is written in.
                     bonusMonth: Carbon::parse($accrual->cutoffDate)->startOfMonth(),
                     // The cut-off DAY: Mentorship rides the same Wednesday→
                     // Tuesday earning week as GSB (spec §3, assumption A3).
                     earnedOn: Carbon::parse($accrual->cutoffDate),
                 );
+
+                // Freeze what was withheld and what actually landed: the pages
+                // read this row, never the ledger.
+                $result->update([
+                    'repurchase_deduction_paise' => $outcome->repurchaseDeductionPaise,
+                    'mb_net_paise' => $outcome->creditedPaise(),
+                ]);
             }
 
             return $result;

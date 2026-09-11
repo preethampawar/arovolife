@@ -16,7 +16,7 @@
                 <th class="px-3 py-2 text-center text-gray-600">Slab <x-help-tip text="The GSB slab the sponsee matched on this date." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">MSB points <x-help-tip text="Points credited to this sponsor for the sponsee's slab (snapshotted at credit time)." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Point value <x-help-tip text="Rupee value of one MSB point on the day it was credited: the day's 3% MSB pool ÷ the day's total MSB points, floored to whole rupees." /></th>
-                <th class="px-3 py-2 text-right text-gray-600">MB credited <x-help-tip text="MB amount credited to this distributor's wallet (points × value)." /></th>
+                <x-bonus-credit-head gross-label="MB earned" th-class="px-3 py-2 text-right text-gray-600" />
                 <th class="px-3 py-2 text-center text-gray-600">Status</th>
             </tr>
         </thead>
@@ -39,7 +39,7 @@
                 <td class="px-3 py-2 text-right text-gray-600">
                     @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
-                <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->mb_gross_paise / 100, 2) }}</td>
+                <x-bonus-credit-cells td-class="px-3 py-2 text-right" :gross="$row->mb_gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->mb_net_paise" :is-credited="$row->status === 'credited'" />
                 <td class="px-3 py-2 text-center">
                     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
                         {{ ucfirst($row->status) }}

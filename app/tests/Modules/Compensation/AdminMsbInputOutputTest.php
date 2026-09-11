@@ -65,8 +65,10 @@ function msbIoCredit(string $adn, string $name, int $points, int $valuePaise, st
         'msb_points' => $points,
         'msb_point_value_paise' => $valuePaise,
         'mb_gross_paise' => $points * $valuePaise,
+        'repurchase_deduction_paise' => intdiv($points * $valuePaise, 10),
         'mb_admin_charge_paise' => 0,
         'mb_tds_paise' => 0,
+        'mb_net_paise' => $points * $valuePaise - intdiv($points * $valuePaise, 10),
         'status' => MentorshipBonusResult::STATUS_CREDITED,
     ]);
 
@@ -100,8 +102,11 @@ it("renders KP's five-earner day: 75 points at ₹40 totalling ₹3,000", functi
     $res->assertSee('Total MSB score points');
     $res->assertSee('75');
 
-    // F91: the absent deduction column must be explained, not left silent.
-    $res->assertSee('no repurchase deduction applies to MSB', false);
+    // F33: MSB is the fifth repurchase-deduction source (client 2026-09-10),
+    // so the report carries the same Income · deduction · credited columns as
+    // the other bonus reports.
+    $res->assertSee('Repurchase deduction', false);
+    $res->assertSee('Credited to wallet', false);
 });
 
 it('sums a sponsor credited by several sponsees into one line', function () {
@@ -118,8 +123,10 @@ it('sums a sponsor credited by several sponsees into one line', function () {
         'msb_points' => 18,
         'msb_point_value_paise' => 4_000,
         'mb_gross_paise' => 72_000,
+        'repurchase_deduction_paise' => 7_200,
         'mb_admin_charge_paise' => 0,
         'mb_tds_paise' => 0,
+        'mb_net_paise' => 64_800,
         'status' => MentorshipBonusResult::STATUS_CREDITED,
     ]);
 

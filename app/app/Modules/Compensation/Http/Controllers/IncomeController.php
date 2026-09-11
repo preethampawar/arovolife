@@ -278,8 +278,8 @@ final class IncomeController extends Controller
                 ->where('status', MentorshipBonusResult::STATUS_CREDITED);
             $mbThisMonthPaise = (int) (clone $creditedBase)
                 ->whereBetween('cutoff_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
-                ->sum('mb_gross_paise');
-            $mbLifetimePaise = (int) (clone $creditedBase)->sum('mb_gross_paise');
+                ->sum('mb_net_paise');
+            $mbLifetimePaise = (int) (clone $creditedBase)->sum('mb_net_paise');
             $activeSponsees = (int) (clone $creditedBase)->distinct()->count('sponsee_id');
         } catch (QueryException) {
             $rows = collect();

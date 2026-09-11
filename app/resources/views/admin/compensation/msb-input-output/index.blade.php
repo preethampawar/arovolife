@@ -36,7 +36,7 @@
     </a>
 </form>
 
-<p class="mb-4 text-xs text-gray-500">"Income" is the amount credited — no repurchase deduction applies to MSB.</p>
+<p class="mb-4 text-xs text-gray-500">"Income" is the gross the pool awarded; the repurchase deduction is what moved to the repurchase wallet at credit time, and "Credited to wallet" is the difference. Admin charge and TDS are payout-time figures and never appear here.</p>
 
 @if($pools->isEmpty())
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
@@ -54,6 +54,8 @@
         $rows = collect($earners[$dateStr] ?? []);
         $totalPoints = (int) $rows->sum('msb_points');
         $totalIncome = (int) $rows->sum('income_paise');
+        $totalDeduction = (int) $rows->sum('deduction_paise');
+        $totalCredited = (int) $rows->sum('credited_paise');
     @endphp
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
@@ -87,7 +89,7 @@
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">MSB — {{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($pool->pool_rate_bp) }}</th>
                         <th class="px-3 py-2 text-left text-gray-600 font-medium">Individual distributor MSB points <x-help-tip text="Each sponsor who accrued Mentorship Bonus points on this day, with the points they accrued. A sponsor credited by more than one sponsee appears once with their points summed." /></th>
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Point value <x-help-tip text="The MSB pool divided by the day's total MSB score points, floored to whole rupees. One value applies to every earner that day." /></th>
-                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Income</th>
+                        <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-600 font-medium" />
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -103,10 +105,10 @@
                             <span class="ml-1 inline-flex px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-semibold">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $row->msb_points) }} pts</span>
                         </td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(((int) $row->point_value_paise) / 100, 2) }}</td>
-                        <td class="px-3 py-2 text-right font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->income_paise / 100, 2) }}</td>
+                        <x-bonus-credit-cells :gross="(int) $row->income_paise" :deduction="(int) $row->deduction_paise" :credited="(int) $row->credited_paise" td-class="px-3 py-2 text-right" />
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="px-3 py-4 text-center text-gray-600">No Mentorship Bonus earners this day.</td></tr>
+                    <tr><td colspan="8" class="px-3 py-4 text-center text-gray-600">No Mentorship Bonus earners this day.</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
@@ -116,14 +118,16 @@
                         <td class="px-3 py-1.5 text-right text-[11px] text-gray-600">
                             {{ $totalPoints > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 0).' ÷ '.\App\Modules\Shared\Support\IndianNumber::format($totalPoints) : '—' }}
                         </td>
-                        <td></td>
+                        <td colspan="3"></td>
                     </tr>
                     <tr class="font-semibold">
-                        <td class="px-3 py-2 text-right text-xs" colspan="4">Total income</td>
+                        <td class="px-3 py-2 text-right text-xs" colspan="4">Total income / deduction / credited</td>
                         <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-600' }} text-[11px]">
                             leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($pool->leftover_paise) / 100, 2) }}
                         </td>
-                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right {{ $totalDeduction > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $totalDeduction > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($totalDeduction / 100, 2) : '—' }}</td>
+                        <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalCredited / 100, 2) }}</td>
                     </tr>
                 </tfoot>
             </table>

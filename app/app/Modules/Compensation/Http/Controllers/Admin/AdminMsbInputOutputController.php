@@ -76,7 +76,7 @@ final class AdminMsbInputOutputController extends Controller
             $pools->map(fn (MsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total Received BV,MSB Pool (Rs),Sponsor ADN,Sponsor Name,MSB Points,Point Value (Rs),Income (Rs),Computed At\n";
+        $csv = "Day,Week,Date,Day Total Received BV,MSB Pool (Rs),Sponsor ADN,Sponsor Name,MSB Points,Point Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Computed At\n";
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
@@ -85,10 +85,14 @@ final class AdminMsbInputOutputController extends Controller
             $weekNo = $dayNo === null ? null : intdiv($dayNo - 1, 7) + 1;
             $totalPoints = 0;
             $totalIncome = 0;
+            $totalDeduction = 0;
+            $totalCredited = 0;
 
             foreach ($earners[$dateStr] ?? [] as $row) {
                 $totalPoints += (int) $row->msb_points;
                 $totalIncome += (int) $row->income_paise;
+                $totalDeduction += (int) $row->deduction_paise;
+                $totalCredited += (int) $row->credited_paise;
 
                 $csv .= implode(',', [
                     $dayNo ?? '',
@@ -101,6 +105,8 @@ final class AdminMsbInputOutputController extends Controller
                     (int) $row->msb_points,
                     number_format(((int) $row->point_value_paise) / 100, 2, '.', ''),
                     number_format($row->income_paise / 100, 2, '.', ''),
+                    number_format($row->deduction_paise / 100, 2, '.', ''),
+                    number_format($row->credited_paise / 100, 2, '.', ''),
                     $computedAt,
                 ])."\n";
             }
@@ -116,6 +122,8 @@ final class AdminMsbInputOutputController extends Controller
                 $totalPoints,
                 number_format($pool->point_value_paise / 100, 2, '.', ''),
                 number_format($totalIncome / 100, 2, '.', ''),
+                number_format($totalDeduction / 100, 2, '.', ''),
+                number_format($totalCredited / 100, 2, '.', ''),
                 $computedAt,
             ])."\n";
         }
@@ -194,7 +202,7 @@ final class AdminMsbInputOutputController extends Controller
      * — KP's sheet lists one line per earning distributor.
      *
      * @param  list<string>  $dates
-     * @return array<string, list<\stdClass>> date → rows {sponsor_id, adn, full_name, msb_points, point_value_paise, income_paise}
+     * @return array<string, list<\stdClass>> date → rows {sponsor_id, adn, full_name, msb_points, point_value_paise, income_paise, deduction_paise, credited_paise}
      */
     private function earners(array $dates): array
     {
@@ -212,6 +220,8 @@ final class AdminMsbInputOutputController extends Controller
             ->selectRaw('COALESCE(SUM(mbr.msb_points), 0) as msb_points')
             ->selectRaw('MAX(mbr.msb_point_value_paise) as point_value_paise')
             ->selectRaw('COALESCE(SUM(mbr.mb_gross_paise), 0) as income_paise')
+            ->selectRaw('COALESCE(SUM(mbr.repurchase_deduction_paise), 0) as deduction_paise')
+            ->selectRaw('COALESCE(SUM(mbr.mb_net_paise), 0) as credited_paise')
             ->orderByDesc('msb_points')
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->cutoff_date)->toDateString())

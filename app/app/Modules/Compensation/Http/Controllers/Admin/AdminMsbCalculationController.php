@@ -64,6 +64,8 @@ final class AdminMsbCalculationController extends Controller
             'personalBvMap' => $personalBvMap,
             'totalPoints' => $totals['points'],
             'totalIncomePaise' => $totals['income_paise'],
+            'totalDeductionPaise' => $totals['deduction_paise'],
+            'totalCreditedPaise' => $totals['credited_paise'],
         ]);
     }
 
@@ -79,7 +81,7 @@ final class AdminMsbCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($sponsorIds);
         $totals = $this->totals($q, $from, $to, $status, $slab);
 
-        $csv = "SNo,Sponsor ADN,Sponsor Name,Title,Date,Sponsee ADN,Sponsee Name,MSB Points,Value (Rs),Income (Rs),Status\n";
+        $csv = "SNo,Sponsor ADN,Sponsor Name,Title,Date,Sponsee ADN,Sponsee Name,MSB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
 
         foreach ($rows as $i => $row) {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->sponsor_id] ?? 0)->title ?? '';
@@ -94,17 +96,22 @@ final class AdminMsbCalculationController extends Controller
                 $row->msb_points !== null ? (int) $row->msb_points : '',
                 $row->msb_point_value_paise !== null ? number_format($row->msb_point_value_paise / 100, 2, '.', '') : '',
                 number_format($row->mb_gross_paise / 100, 2, '.', ''),
+                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
+                number_format($row->mb_net_paise / 100, 2, '.', ''),
                 $this->csvStr($row->status),
             ])."\n";
         }
 
-        // Grand total row across the full filtered set (MSB points, Income).
+        // Grand total row across the full filtered set (MSB points, Income,
+        // repurchase deduction, credited to wallet).
         $csv .= implode(',', [
             $this->csvStr('TOTAL'),
             '', '', '', '', '', '',
             $totals['points'],
             '',
             number_format($totals['income_paise'] / 100, 2, '.', ''),
+            number_format($totals['deduction_paise'] / 100, 2, '.', ''),
+            number_format($totals['credited_paise'] / 100, 2, '.', ''),
             '',
         ])."\n";
 
@@ -149,6 +156,8 @@ final class AdminMsbCalculationController extends Controller
                 'mbr.msb_point_value_paise',
                 'mbr.sponsee_gsb_paise',
                 'mbr.mb_gross_paise',
+                'mbr.repurchase_deduction_paise',
+                'mbr.mb_net_paise',
                 'mbr.status',
                 'sponsor.adn as sponsor_adn',
                 'sponsor_user.full_name as sponsor_name',
@@ -164,18 +173,22 @@ final class AdminMsbCalculationController extends Controller
      * Legacy ladder rows have null msb_points and drop out of the points sum;
      * their income still counts.
      *
-     * @return array{points: int, income_paise: int}
+     * @return array{points: int, income_paise: int, deduction_paise: int, credited_paise: int}
      */
     private function totals(string $q, ?Carbon $from, ?Carbon $to, ?string $status, ?int $slab): array
     {
         $row = (array) $this->filtered($q, $from, $to, $status, $slab)
             ->selectRaw('COALESCE(SUM(mbr.msb_points), 0) as total_points')
             ->selectRaw('COALESCE(SUM(mbr.mb_gross_paise), 0) as total_income_paise')
+            ->selectRaw('COALESCE(SUM(mbr.repurchase_deduction_paise), 0) as total_deduction_paise')
+            ->selectRaw('COALESCE(SUM(mbr.mb_net_paise), 0) as total_credited_paise')
             ->first();
 
         return [
             'points' => (int) ($row['total_points'] ?? 0),
             'income_paise' => (int) ($row['total_income_paise'] ?? 0),
+            'deduction_paise' => (int) ($row['total_deduction_paise'] ?? 0),
+            'credited_paise' => (int) ($row['total_credited_paise'] ?? 0),
         ];
     }
 

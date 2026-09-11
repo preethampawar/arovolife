@@ -100,7 +100,9 @@ it('credits the sponsor with slab points × the day\'s pooled point value (slab 
     // Sponsor wallet credited with gross, stamped with the CUT-OFF day: the
     // weekly payout's earning week windows on it, and Mentorship rides the same
     // Wednesday-to-Tuesday week as GSB (spec 2026-09-07 §3, A3).
-    $entry = WalletLedgerEntry::where('distributor_id', $sponsor->id)->sole();
+    $entry = WalletLedgerEntry::where('distributor_id', $sponsor->id)
+        ->where('type', 'mb_credit')
+        ->sole();
     expect((int) $entry->amount_paise)->toBe(525_000)
         ->and($entry->earned_on->toDateString())->toBe(today()->toDateString());
 });
@@ -235,8 +237,64 @@ it('is idempotent — calling twice for the same cutoff does not double-credit',
 
     expect($second)->not->toBeNull();
     expect(MentorshipBonusResult::count())->toBe(1);
-    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(1);
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->where('type', 'mb_credit')->count())->toBe(1);
     expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->sum('amount_paise'))->toBe(525_000);
+});
+
+it('takes the repurchase deduction from the MB credit — the fifth deduction source (client 2026-09-10)', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+    freezeMsbPoolAt(25_000);
+
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
+
+    // 10% of ₹5,250 gross moves to the repurchase wallet at credit time.
+    expect($mb->mb_gross_paise)->toBe(525_000)
+        ->and($mb->repurchase_deduction_paise)->toBe(52_500)
+        ->and($mb->mb_net_paise)->toBe(472_500);
+
+    // Three entries, so the statement shows what was earned, what was withheld
+    // and where it went.
+    $entries = WalletLedgerEntry::where('distributor_id', $sponsor->id)
+        ->get()
+        ->groupBy('type')
+        ->map(fn ($rows) => (int) $rows->sum('amount_paise'));
+
+    expect($entries['mb_credit'])->toBe(525_000)
+        ->and($entries['repurchase_transfer'])->toBe(-52_500)
+        ->and($entries['repurchase_deduction'])->toBe(52_500);
+
+    // All three carry the earning day, so the weekly batch sweeps them together.
+    expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)
+        ->whereDate('earned_on', today()->toDateString())
+        ->count())->toBe(3);
+});
+
+it('honours the monthly repurchase cap: a sponsor already at the ceiling is credited gross', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+    freezeMsbPoolAt(25_000);
+
+    // The month's ₹10,000 deduction ceiling is already spent by earlier bonuses.
+    WalletLedgerEntry::create([
+        'distributor_id' => $sponsor->id,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => 1_000_000,
+        'reference_id' => 1,
+        'reference_type' => 'gsb_cutoff_result',
+        'bonus_month' => today()->startOfMonth()->toDateString(),
+        'earned_on' => today()->toDateString(),
+    ]);
+
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1));
+
+    expect($mb->repurchase_deduction_paise)->toBe(0)
+        ->and($mb->mb_net_paise)->toBe(525_000)
+        ->and(WalletLedgerEntry::where('distributor_id', $sponsor->id)->where('type', 'repurchase_transfer')->count())->toBe(0);
 });
 
 it('blocks MB credit when sponsor personal BV is below the minimum threshold', function () {
