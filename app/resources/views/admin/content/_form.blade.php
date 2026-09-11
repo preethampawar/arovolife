@@ -100,6 +100,9 @@
         <input id="content-body-input" type="hidden" name="body" value="{{ old('body', $page->body) }}">
         <trix-editor input="content-body-input"
             class="trix-content bg-white border border-gray-200 rounded-lg min-h-[360px] p-4 focus:outline-none"></trix-editor>
+        {{-- Filled in by the boot check below when the editor never registers,
+             so a dead box says so instead of looking merely empty. --}}
+        <p id="content-body-editor-error" class="mt-1 text-xs text-red-700" role="alert" hidden></p>
         @error('body')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
     </div>
 
@@ -114,7 +117,6 @@
 </div>
 
 @push('styles')
-<link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.1.15/dist/trix.css">
 <style>
     trix-toolbar { background: #f4f7f6; border: 1px solid #e5e7eb; border-bottom: 0; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem; }
     trix-editor  { border-radius: 0 0 0.5rem 0.5rem !important; }
@@ -129,5 +131,26 @@
 @endpush
 
 @push('scripts')
-<script type="text/javascript" src="https://unpkg.com/trix@2.1.15/dist/trix.umd.min.js"></script>
+{{-- Trix ships with the app (resources/js/trix.js). It used to come from
+     unpkg at render time, which meant an unreachable CDN turned the Body
+     field into an inert box with nothing in the console to say why. --}}
+@vite('resources/js/trix.js')
+<script>
+    // Module scripts run before DOMContentLoaded, so by the time this fires the
+    // custom element is either registered or the bundle never arrived.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.customElements && window.customElements.get('trix-editor')) {
+            return;
+        }
+
+        var notice = document.getElementById('content-body-editor-error');
+        if (notice === null) {
+            return;
+        }
+
+        notice.textContent = 'The rich-text editor could not start, so the Body field below is not editable. '
+            + 'Reload the page before making changes — saving now leaves the body exactly as it is.';
+        notice.hidden = false;
+    });
+</script>
 @endpush

@@ -230,7 +230,9 @@ announcements and that the public copy audit reads. That rule is scoped to FAQ
 entries on purpose: the Code of Ethics page quotes those phrases in order to
 forbid them, so a blanket rule would make the Code of Ethics uneditable. What
 FAQ entries also add is a **category** and a **sort order**, because a library
-of forty answers in publication order is not a library.
+of forty answers in publication order is not a library. Leave the sort order
+blank and it saves as 0 — "no particular order", which sorts alphabetically
+within its category.
 
 FAQ entries never appear at `/p/{slug}` — that reader serves the policy pages,
 the blog, news and seminars. An FAQ answer is reachable only through `/faq`,

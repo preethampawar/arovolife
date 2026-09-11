@@ -18,6 +18,23 @@ final class ContentPageRequest extends FormRequest
         return $this->user() !== null && $this->user()->isSuperStaff();
     }
 
+    /**
+     * A blank sort order means "no particular order", which is 0 — not NULL.
+     * The column is `unsignedSmallInteger default 0` and not nullable, so
+     * letting the empty string through as null turned an ordinary save of an
+     * untyped page into a 500 on the insert. Normalised here rather than in
+     * the controller so both store() and update() get it.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Only when the field was actually on the form: the FAQ fields are not
+        // rendered while the library is off, and an absent key must stay absent
+        // so saving a page from that form doesn't reset a stored order to 0.
+        if ($this->has('sort_order') && in_array($this->input('sort_order'), [null, ''], true)) {
+            $this->merge(['sort_order' => 0]);
+        }
+    }
+
     public function rules(): array
     {
         $id = $this->route('page')?->id;

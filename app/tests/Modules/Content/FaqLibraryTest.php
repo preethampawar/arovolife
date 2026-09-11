@@ -245,3 +245,49 @@ it('FAQ-10: the editor offers faq as a type only while the flag is on', function
         ->assertDontSee('faq — FAQ answer')
         ->assertDontSee('FAQ category');
 });
+
+it('FAQ-11: F117 — a blank sort order saves as 0 instead of failing on the insert', function (): void {
+    $staff = faqUser();
+    $staff->assignRole(Role::findOrCreate('admin', 'web'));
+
+    $this->actingAs($staff)
+        ->post(route('admin.content.store'), [
+            'title' => 'Refund window',
+            'slug' => 'refund-window',
+            'type' => '',
+            'category' => '',
+            'sort_order' => '',
+            'body' => '<p>Thirty days from the effective date.</p>',
+            'status' => ContentPage::STATUS_DRAFT,
+        ])
+        ->assertRedirect(route('admin.content.index'))
+        ->assertSessionHasNoErrors();
+
+    expect((int) ContentPage::where('slug', 'refund-window')->value('sort_order'))->toBe(0);
+
+    // A non-numeric order is still a validation error — not a 500.
+    $this->actingAs($staff)
+        ->post(route('admin.content.store'), [
+            'title' => 'Refund window II',
+            'slug' => 'refund-window-ii',
+            'sort_order' => 'first',
+            'body' => '<p>Thirty days.</p>',
+            'status' => ContentPage::STATUS_DRAFT,
+        ])
+        ->assertSessionHasErrors('sort_order');
+});
+
+it('FAQ-12: F117 — the editor loads Trix from the app bundle, not a CDN', function (): void {
+    $staff = faqUser();
+    $staff->assignRole(Role::findOrCreate('admin', 'web'));
+
+    $html = (string) $this->actingAs($staff)
+        ->get(route('admin.content.create'))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->not->toContain('unpkg.com')
+        ->and($html)->toContain('/build/assets/trix')
+        // …and a boot failure is visible under the field rather than silent.
+        ->and($html)->toContain('content-body-editor-error');
+});
