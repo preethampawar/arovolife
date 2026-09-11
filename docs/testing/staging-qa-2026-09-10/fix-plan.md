@@ -141,6 +141,10 @@ Files: `AdminPaymentController`, `AdminDistributorRequestController`, `AdminLine
 - [x] F59/F54 (follow-up) The bell also counts unread database notifications (order status changes, B6 `1c5aa8d6`) and routes to a new minimal `/notifications` list when they are the only thing unread.
 - [x] F34 (follow-up) `ProductCatalogSeeder`'s three `picsum.photos` random-image `image_url`s are null (no local placeholder asset exists to point at); the storefront's existing null-safe fallback (`Product::primaryImageUrl()`) covers it. Two now-invalid `phpstan-baseline.neon` entries removed.
 
+### B13 — audit before/after digests on every admin, KYC and settings mutation (Opus)
+Files: new `Compliance/Support/AuditDigests.php`; ~105 `AuditLog::create` sites across `Admin`, `Catalog`, `Commerce`, `Compensation`, `Compliance`, `Content`, `Grievance`, `Messaging`, `Identity`, `Kyc`, `Genealogy`, `Returns`; `tests/Modules/Compliance/AuditDigestsTest.php`, `tests/Feature/Compliance/AuditRowsCarryDigestsTest.php`; `docs/architecture/data-model.md`.
+- [x] F108 (client Q16, one sweep) Every admin, KYC and settings audit row now carries `before_hash` / `after_hash` through one helper, `AuditDigests::of()` — raw 32 bytes, canonical JSON, `updated_at` dropped, identity numbers digested masked and credentials collapsed to `set`. Creates store a NULL before, deletes a NULL after, and an action that moves nothing (a document view, a refused approval) carries the same digest both sides with a comment saying why. `row_hash` needed no work — `AuditLog::booted()` already chains every row. A source fence test refuses any new `AuditLog::create` on those paths that omits `before_hash`. Scheduler-authored "nothing happened" rows (monthly-close refusal/abort/in-flight, dispatch jobs, purge commands) are deliberately out of scope. Detail: `fixes/B13.md`.
+
 ## B. Client decisions (received 2026-09-11 ~12:45 IST) → Wave 3 batches
 
 | Q | Finding | Decision | Batch |
