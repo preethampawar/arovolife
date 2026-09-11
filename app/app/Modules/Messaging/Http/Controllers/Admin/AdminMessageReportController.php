@@ -48,7 +48,17 @@ final class AdminMessageReportController extends Controller
         $status = is_string($status) ? $status : MessageReport::STATUS_OPEN;
 
         $query = MessageReport::query()
-            ->with(['reporter:id,full_name,email', 'message.fromUser:id,full_name,email', 'reviewer:id,full_name'])
+            // The distributor rows carry the ADN and the id the admin
+            // profile link needs: on a platform where several accounts share
+            // a company name, a name alone does not tell a moderator who
+            // reported whom.
+            ->with([
+                'reporter:id,full_name,email',
+                'reporter.distributor:id,user_id,adn',
+                'message.fromUser:id,full_name,email',
+                'message.fromUser.distributor:id,user_id,adn',
+                'reviewer:id,full_name',
+            ])
             ->orderByDesc('created_at');
 
         if ($status !== 'all') {
@@ -71,7 +81,12 @@ final class AdminMessageReportController extends Controller
     {
         $this->assertChannelOpen();
 
-        $report->load(['reporter', 'message.fromUser', 'message.toUser', 'reviewer']);
+        $report->load([
+            'reporter.distributor',
+            'message.fromUser.distributor',
+            'message.toUser.distributor',
+            'reviewer',
+        ]);
         $message = $report->message;
 
         // A control that lets staff read members' messages needs its own trail.

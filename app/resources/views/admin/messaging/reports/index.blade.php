@@ -61,8 +61,8 @@
                     <tr>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-700">{{ $report->created_at->format('d M Y, h:i A') }}</td>
                         <td class="px-4 py-3">{{ $report->categoryLabel() }}</td>
-                        <td class="px-4 py-3 text-gray-700">{{ $report->message?->fromUser?->full_name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-gray-700">{{ $report->reporter?->full_name ?? '—' }}</td>
+                        <td class="px-4 py-3 text-gray-700"><x-message-party :user="$report->message?->fromUser" /></td>
+                        <td class="px-4 py-3 text-gray-700"><x-message-party :user="$report->reporter" /></td>
                         <td class="px-4 py-3">
                             <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $badge[$report->status] ?? 'bg-gray-100 text-gray-700' }}">
                                 {{ ucfirst($report->status) }}

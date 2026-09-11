@@ -103,9 +103,12 @@ Working a report:
 1. Open it. You see the reported message and three messages either side for
    context — not the whole thread. One line is often unreadable on its own; the
    whole history is more than judging one complaint needs.
-2. **Every open is audit-logged.** A control that lets staff read members'
+2. Both parties are named by **ADN** as well as by name, each linked to their
+   admin record — several accounts are registered under the same company name,
+   so a name alone does not tell you who reported whom.
+3. **Every open is audit-logged.** A control that lets staff read members'
    messages needs its own trail.
-3. Record what you found and what you did, then close it as **Reviewed**
+4. Record what you found and what you did, then close it as **Reviewed**
    (nothing further needed) or **Actioned** (the account was dealt with).
 
 Closing a report never changes the message. Nothing in this screen edits or

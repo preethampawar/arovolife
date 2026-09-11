@@ -74,8 +74,8 @@
             <h2 class="mb-3 text-sm font-semibold text-gray-900">The report</h2>
             <dl class="space-y-2">
                 <div><dt class="text-xs text-gray-600">Reason given</dt><dd class="text-gray-900">{{ $report->categoryLabel() }}</dd></div>
-                <div><dt class="text-xs text-gray-600">Reported by</dt><dd class="text-gray-900">{{ $report->reporter?->full_name ?? '—' }}</dd></div>
-                <div><dt class="text-xs text-gray-600">Sender</dt><dd class="text-gray-900">{{ $report->message?->fromUser?->full_name ?? '—' }}</dd></div>
+                <div><dt class="text-xs text-gray-600">Reported by</dt><dd><x-message-party :user="$report->reporter" /></dd></div>
+                <div><dt class="text-xs text-gray-600">Sender</dt><dd><x-message-party :user="$report->message?->fromUser" /></dd></div>
                 <div><dt class="text-xs text-gray-600">Received</dt><dd class="text-gray-900">{{ $report->created_at->format('d M Y, h:i A') }}</dd></div>
             </dl>
 

@@ -471,3 +471,50 @@ it('POL-16: reporting is off until the environment turns it on', function (): vo
         ->and(app(MessagingSettingsService::class)->reportingEnabled())->toBeFalse()
         ->and(AdminSettingsController::registry()['messaging.reporting_enabled']['default'] ?? null)->toBe('false');
 });
+
+it('POL-16: F116 — a report names both parties by ADN and links to their admin record', function (): void {
+    Role::findOrCreate('admin-compliance', 'web');
+    $permission = Permission::findOrCreate('messaging.moderate', 'web');
+    Role::findByName('admin-compliance', 'web')->givePermissionTo($permission);
+
+    $sponsor = polUser('sponsor');
+    $downline = polUser('downline');
+
+    // The defect as found on staging: both sides carry the same registered
+    // name, so a moderator reading full_name alone cannot tell them apart.
+    $sponsor->update(['full_name' => 'Arovolife Private Limited']);
+    $downline->update(['full_name' => 'Arovolife Private Limited']);
+
+    $sponsorDistributorId = polDistributor($sponsor->id);
+    $downlineDistributorId = polDistributor($downline->id, $sponsorDistributorId);
+
+    $message = app(MessageService::class)->send($sponsor, $downline, 'You will earn a lot');
+
+    $report = MessageReport::create([
+        'message_id' => $message->id,
+        'reported_by_user_id' => $downline->id,
+        'category' => 'income_claim',
+        'reason' => 'Promised earnings',
+        'status' => MessageReport::STATUS_OPEN,
+    ]);
+
+    $moderator = polUser('moderator');
+    $moderator->assignRole('admin-compliance');
+
+    $senderAdn = (string) DB::table('distributors')->where('id', $sponsorDistributorId)->value('adn');
+    $reporterAdn = (string) DB::table('distributors')->where('id', $downlineDistributorId)->value('adn');
+
+    $this->actingAs($moderator)
+        ->get(route('admin.messaging.reports.show', ['report' => $report->id]))
+        ->assertOk()
+        ->assertSee($senderAdn)
+        ->assertSee($reporterAdn)
+        ->assertSee(route('admin.distributors.show', $sponsorDistributorId), false)
+        ->assertSee(route('admin.distributors.show', $downlineDistributorId), false);
+
+    $this->actingAs($moderator)
+        ->get(route('admin.messaging.reports.index'))
+        ->assertOk()
+        ->assertSee($senderAdn)
+        ->assertSee($reporterAdn);
+});
