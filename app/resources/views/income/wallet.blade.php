@@ -7,6 +7,18 @@
 
     @include('income._tabs')
 
+    {{-- Payout held for want of a bank account — the distributor can now fix
+         this themselves (F70), so say where. --}}
+    @if(blank($distributor->bank_account_enc) || blank($distributor->bank_ifsc) || $payoutRows->contains(fn ($row) => $row->status === 'no_bank_account'))
+    <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6 flex items-start gap-2 text-sm text-amber-900">
+        <x-lucide-triangle-alert class="w-4 h-4 mt-0.5 shrink-0" />
+        <p>
+            No bank account on file, so your income stays in your wallet instead of being transferred. Nothing is lost — it is paid in the first payout run after you add one.
+            <a href="{{ route('profile.bank.show') }}" class="font-semibold underline hover:no-underline">Add your bank details →</a>
+        </p>
+    </div>
+    @endif
+
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
@@ -78,7 +90,9 @@
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
-                        <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center gap-1">Date <x-help-tip text="The day the amount was earned — the cut-off date for a daily bonus, the earning month for a monthly one. The smaller date below it is when the entry was written to your wallet, which can be the next day." /></span>
+                        </th>
                         @php
                             // Bonus names in the tip track the feature flags —
                             // a disabled bonus is never mentioned to distributors.
@@ -99,9 +113,15 @@
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center gap-1">Type <x-help-tip :text="'What this wallet entry is: a bonus credit'.$tipBonusParen.', a payout to your bank, the repurchase deduction held back for your monthly repurchase, an amount above the monthly income cap, or a manual adjustment by arovolife.'" /></span>
                         </th>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center gap-1">Bonus month <x-help-tip text="The earning month a monthly bonus belongs to. Daily bonuses are earned on a single cut-off date and leave this blank." /></span>
+                        </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Amount</th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">Running balance <x-help-tip text="Your wallet balance immediately after this entry." /></span>
+                        </th>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center gap-1">Paid in batch <x-help-tip text="The payout run that swept this amount to your bank. Blank until it has been swept." /></span>
                         </th>
                     </tr>
                 </thead>
@@ -116,19 +136,31 @@
                     @php $entry = $item['entry']; $runningBalance = $item['running_balance_paise']; @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
-                        <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-gray-700">
+                            {{-- Dated by when it was EARNED, not when the row was
+                                 written: a 06 Sep cut-off credited at 00:20 on
+                                 07 Sep read "07 Sep" here while GSB History read
+                                 "06 Sep" (F63). The write date stays visible
+                                 underneath so the two can be reconciled. --}}
+                            {{ ($entry->earned_on ?? $entry->bonus_month ?? $entry->created_at)?->format('d M Y') }}
+                            @if(($entry->earned_on ?? $entry->bonus_month) && $entry->created_at && ($entry->earned_on ?? $entry->bonus_month)->format('d M Y') !== $entry->created_at->format('d M Y'))
+                                <span class="block text-xs text-gray-500">credited {{ $entry->created_at->format('d M Y') }}</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-gray-700">
                             {{ $walletTypeLabels[$entry->type] ?? \Illuminate\Support\Str::of($entry->type)->replace('_', ' ')->ucfirst() }}
                             @if($entry->memo)
                                 <span class="block text-xs text-gray-600">{{ $entry->memo }}</span>
                             @endif
                         </td>
+                        <td class="px-4 py-3 text-gray-700">{{ $entry->bonus_month?->format('M Y') ?? '—' }}</td>
                         <td class="px-4 py-3 text-right font-semibold {{ $entry->amount_paise >= 0 ? 'text-green-700' : 'text-red-600' }}">
                             {{ $entry->amount_paise >= 0 ? '+' : '-' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($entry->amount_paise) / 100, 2) }}
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-blue-700">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($runningBalance / 100, 2) }}
                         </td>
+                        <td class="px-4 py-3 text-gray-600 text-xs">{{ $payoutBatchLabels[$entry->swept_by_payout_batch_id] ?? '—' }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -163,7 +195,12 @@
                     @foreach($repurchaseLedgerRows as $entry)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
-                        <td class="px-4 py-3 text-gray-700">{{ $entry->created_at?->format('d M Y') }}</td>
+                        <td class="px-4 py-3 text-gray-700">
+                            {{ ($entry->earned_on ?? $entry->bonus_month ?? $entry->created_at)?->format('d M Y') }}
+                            @if(($entry->earned_on ?? $entry->bonus_month) && $entry->created_at && ($entry->earned_on ?? $entry->bonus_month)->format('d M Y') !== $entry->created_at->format('d M Y'))
+                                <span class="block text-xs text-gray-500">recorded {{ $entry->created_at->format('d M Y') }}</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-gray-700">
                             {{ $entry->type === 'repurchase_deduction' ? 'Repurchase deduction' : 'Credit applied at checkout' }}
                             @if($entry->memo)

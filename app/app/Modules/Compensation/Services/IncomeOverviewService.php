@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -130,5 +131,29 @@ final class IncomeOverviewService
             'nextMonthlyPayout' => $nextMonthlyPayout,
             'hasMonthlyBonuses' => $hasMonthlyBonuses,
         ];
+    }
+
+    /**
+     * Human labels for the payout batches a set of wallet entries were swept
+     * into, keyed by batch id. A wallet row stores only the id, and a
+     * distributor reconciling a credit against their bank statement has to be
+     * able to name the run that paid it.
+     *
+     * @param  array<int, int>  $batchIds
+     * @return array<int, string>
+     */
+    public static function payoutBatchLabels(array $batchIds): array
+    {
+        if ($batchIds === []) {
+            return [];
+        }
+
+        return PayoutBatch::query()
+            ->whereIn('id', $batchIds)
+            ->get(['id', 'batch_type', 'batch_date'])
+            ->mapWithKeys(fn (PayoutBatch $batch): array => [
+                (int) $batch->id => ucfirst((string) $batch->batch_type).' · '.$batch->batch_date->format('d M Y'),
+            ])
+            ->all();
     }
 }

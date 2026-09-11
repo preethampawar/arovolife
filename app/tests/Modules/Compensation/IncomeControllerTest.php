@@ -1236,3 +1236,62 @@ it('dates every mentorship bonus row on the distributor page (F62)', function ()
         ->assertOk()
         ->assertSee('06 Sep 2026');
 });
+
+it('dates the wallet ledger by when the money was earned, and names its bonus month and payout batch (F63)', function (): void {
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+
+    $batchId = DB::table('payout_batches')->insertGetId([
+        'batch_type' => 'weekly',
+        'batch_date' => '2026-09-08',
+        'earnings_through' => '2026-09-07',
+        'status' => 'completed',
+        'total_gross_paise' => 25_600,
+        'total_deductions_paise' => 0,
+        'total_net_paise' => 25_600,
+        'distributor_count' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('wallet_ledger_entries')->insert([
+        // Earned at the 06 Sep 23:59 cut-off, written after midnight on 07 Sep:
+        // GSB History said 06 Sep while the wallet said 07 Sep.
+        [
+            'distributor_id' => $id,
+            'type' => 'gsb_credit',
+            'amount_paise' => 25_600,
+            'earned_on' => '2026-09-06',
+            'bonus_month' => null,
+            'memo' => null,
+            'swept_by_payout_batch_id' => null,
+            'created_at' => '2026-09-07 00:20:00',
+        ],
+        // A monthly bonus carries a bonus month instead of a single earn date,
+        // and this one has already been swept to the bank.
+        [
+            'distributor_id' => $id,
+            'type' => 'gbb_credit',
+            'amount_paise' => 100_000,
+            'earned_on' => null,
+            'bonus_month' => '2026-08-01',
+            'memo' => null,
+            'swept_by_payout_batch_id' => $batchId,
+            'created_at' => '2026-09-01 04:10:00',
+        ],
+    ]);
+
+    $response = $this->actingAs($user)->get(route('income.wallet'))->assertOk();
+
+    $response->assertSee('06 Sep 2026')          // earned date, not the write date
+        ->assertSee('credited 07 Sep 2026')      // the write date, kept as secondary
+        ->assertSee('Aug 2026')                  // bonus month column
+        ->assertSee('Weekly · 08 Sep 2026');     // payout batch column
+
+    // …and the export says exactly the same things.
+    $csv = $this->actingAs($user)->get(route('income.wallet.export'))->assertOk()->streamedContent();
+
+    expect($csv)->toContain('Bonus Month')
+        ->and($csv)->toContain('Paid In Batch')
+        ->and($csv)->toContain('2026-09-06,2026-09-07')
+        ->and($csv)->toContain('Weekly · 08 Sep 2026');
+});

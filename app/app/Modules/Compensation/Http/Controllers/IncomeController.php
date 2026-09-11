@@ -454,6 +454,14 @@ final class IncomeController extends Controller
             $payoutRows = collect();
         }
 
+        // "Paid in batch" labels for the ledger, resolved in one query keyed by
+        // batch id — the ledger row stores only the id, and a distributor
+        // reconciling a credit against their bank statement needs to see which
+        // run swept it.
+        $payoutBatchLabels = IncomeOverviewService::payoutBatchLabels(
+            $ledgerRows->pluck('entry.swept_by_payout_batch_id')->filter()->unique()->all(),
+        );
+
         $walletBalancePaise = $walletService->balancePaise($distributor->id);
         $repurchaseWalletBalancePaise = $walletService->repurchaseWalletBalancePaise($distributor->id);
 
@@ -476,7 +484,7 @@ final class IncomeController extends Controller
         return view('income.wallet', compact(
             'distributor', 'ledgerRows', 'repurchaseLedgerRows', 'payoutRows',
             'walletBalancePaise', 'repurchaseWalletBalancePaise', 'repurchaseWalletStatus',
-            'totalPaidOutPaise', 'nextPayout', 'minThresholdPaise',
+            'totalPaidOutPaise', 'nextPayout', 'minThresholdPaise', 'payoutBatchLabels',
         ));
     }
 
@@ -495,17 +503,27 @@ final class IncomeController extends Controller
 
         $typeLabels = WalletLedgerEntry::typeLabels();
 
-        return response()->streamDownload(function () use ($ledgerRows, $typeLabels): void {
+        // Same columns, in the same order, as the page the export sits under —
+        // an export dated differently from the table above it is a second
+        // version of the truth (F63).
+        $batchLabels = IncomeOverviewService::payoutBatchLabels(
+            $ledgerRows->pluck('entry.swept_by_payout_batch_id')->filter()->unique()->all(),
+        );
+
+        return response()->streamDownload(function () use ($ledgerRows, $typeLabels, $batchLabels): void {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Type', 'Amount (₹)', 'Running Balance (₹)']);
+            fputcsv($out, ['Date', 'Credited On', 'Type', 'Bonus Month', 'Amount (₹)', 'Running Balance (₹)', 'Paid In Batch']);
             foreach ($ledgerRows as $item) {
                 $entry = $item['entry'];
                 $balance = $item['running_balance_paise'];
                 fputcsv($out, [
+                    ($entry->earned_on ?? $entry->bonus_month ?? $entry->created_at)?->toDateString(),
                     $entry->created_at?->toDateString(),
                     $typeLabels[$entry->type] ?? ucfirst(str_replace('_', ' ', $entry->type)),
+                    $entry->bonus_month?->format('M Y') ?? '',
                     number_format($entry->amount_paise / 100, 2, '.', ''),
                     number_format($balance / 100, 2, '.', ''),
+                    $batchLabels[$entry->swept_by_payout_batch_id] ?? '',
                 ]);
             }
             fclose($out);
