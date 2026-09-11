@@ -43,7 +43,16 @@ Wallet copy described payout-time deduction; the shipped model deducts at credit
 ## Notes / follow-ups
 - `PayoutService::bankLast4ForDistributor()` was changed from `private` to `public` (Compensation module) so `ProfileController` (Identity module) could reuse it — the same cross-module pattern this controller already uses for `AreteCenter`/`AreteCenterMember`. No other behaviour of `PayoutService` was touched.
 - Not touched, per the brief's exclusion list: `genos-bv.blade.php`, wallet ledger date logic, `MessageController.php`/`TreeController.php` (only their views), dashboard tooltips, shop product/cart/order views, anything under `admin/`.
-- `docs/testing/staging-qa-2026-09-10/fix-plan.md` is being edited concurrently by other implementers in the same working tree; my commit's diff of that file may also carry a small number of already-ticked lines from other batches (B2/B4a) that were present in the working tree when I staged it — those are their own committed work, not mine, and were not authored by this batch.
+
+### ⚠️ Attribution problem on the committed sha — needs the orchestrator's/user's decision
+All of this batch's work was staged (`git add`) but not yet committed when another implementer, working concurrently in the same tree on F30 (premature-freeze pool alerting), ran a broad commit. That commit — `de602350` ("fix(compensation): surface a pool the self-heal had to keep after a premature freeze") — swept in everything that was staged at the time, including every file this batch touched. `de602350` is still the current `HEAD` with nothing built on top of it.
+
+Consequences:
+- Every B5b file change (code + tests, all listed above) is genuinely present and correct in `de602350` — verified by re-reading each file post-commit and re-running the full B5b test set (182 tests passing) against the committed tree.
+- The commit message and trailers only name F30 and `Co-Authored-By: Claude Opus 5 (1M context)`. It does **not** list F19/F20/F54/F64/F68/F73/F79/F74, and does not carry `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` for this batch's work.
+- `docs/testing/staging-qa-2026-09-10/fix-plan.md`'s ticks for B2/B4a rows (F05/F40/F47/F31, F119/F88/F90/F91/F122) also landed in this same commit for the same reason — not authored by B5b.
+
+I did not amend or rewrite `de602350` — global policy is to never amend without the user's explicit request, and this is exactly the kind of history change that should be a human decision, not something a batch quietly fixes on its own. Since `de602350` is still the tip, the user can safely `git commit --amend` its message/trailers to add the missing `Fixes QA finding F19, F20, F54, F64, F68, F73, F79, F74.` line and the Sonnet 5 co-author trailer, without touching any file content, if they want the history to reflect this accurately.
 
 ## Summary
 - Fixed: F19, F20, F54, F64, F68/F73, F79, F74 (copy half) — 7 of 7 assigned findings.
