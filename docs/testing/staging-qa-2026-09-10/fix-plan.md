@@ -133,6 +133,14 @@ Files: `config/uploads.php`, `ScannedForMalware`, `.env.example`, risk register;
 - [x] F72 `consent:backfill-agreements` (registered in `ConsentServiceProvider`) derives one `agreements` row per accepted version — earliest acceptance's hash and timestamp, supersession chained in effective order — idempotent and re-runnable, reporting two texts recorded under one version string. New `GET /profile/consents` "My consents & agreements" shows the distributor their own rows (title, version as recorded, accepted at, IP, in force/withdrawn) with links to the published pages and the withdrawal route. Ops: run the backfill after deploy.
 - [x] F77 Hours are 10:00–18:00 Mon–Sat (client Q11). Five footers said 9:30–17:30 daily except Sundays; the sentence now lives once in `arovolife.support_hours` and seven templates read it, with a suite-wide scan that fails on any hardcoded hours range. The seeder needed no change — `content/grievance.md` and `returns.md` were already right, so no republish.
 
+### B14 — small follow-ups reported by other batches (Sonnet)
+Files: `AdminPaymentController`, `AdminDistributorRequestController`, `AdminLineChangeController`, `AdminDistributorCreateController`, `admin/catalog/products/form.blade.php`, new `NotificationController` + `notifications/index.blade.php` + `_notification-bell.blade.php`, `ProductCatalogSeeder`.
+- [x] F101 (follow-up) `generateInvoice()` redirects `back()` instead of always to the Payments index, so issuing from the order page returns there.
+- [x] F111 (follow-up) `AdminDistributorRequestController` (approve/reject), `AdminLineChangeController` (reject) and `AdminDistributorCreateController` (store) no longer flash "has been emailed" for mail that is only queued — same wording fix B4b applied to `AdminKycController` (`79e604b2`).
+- [x] F117 (follow-up) The catalog product form loads Trix from the bundled `@vite('resources/js/trix.js')` entry (B4b, `19913b74`), not unpkg; the S3-upload attachment listener still binds.
+- [x] F59/F54 (follow-up) The bell also counts unread database notifications (order status changes, B6 `1c5aa8d6`) and routes to a new minimal `/notifications` list when they are the only thing unread.
+- [x] F34 (follow-up) `ProductCatalogSeeder`'s three `picsum.photos` random-image `image_url`s are null (no local placeholder asset exists to point at); the storefront's existing null-safe fallback (`Product::primaryImageUrl()`) covers it. Two now-invalid `phpstan-baseline.neon` entries removed.
+
 ## B. Client decisions (received 2026-09-11 ~12:45 IST) → Wave 3 batches
 
 | Q | Finding | Decision | Batch |
