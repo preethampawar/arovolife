@@ -168,6 +168,29 @@ INDEX idx_subject (subject_type, subject_id)
 INDEX idx_action_time (action, created_at)
 ```
 
+**Before/after digests are a guarantee, not a convention.** Every admin action,
+KYC change and settings change writes `before_hash` and `after_hash` over the
+state it moved (QA finding F108). The single helper is
+`App\Modules\Compliance\Support\AuditDigests`:
+
+- `AuditDigests::of(Model|array|string|null)` returns the raw 32 bytes the
+  columns hold — never hex, and never `hash('sha256', …)` at a call site.
+- A state that does not exist digests to `NULL`: a create has no before, a
+  delete has no after, an export has no before. An action that moves nothing
+  (a document view, a refused approval) carries the *same* digest both sides,
+  which says so honestly.
+- The digest input is canonical — keys sorted, scalars normalised to their
+  string form, `updated_at` dropped — so a model just written and the same row
+  read back hash alike.
+- Identity numbers reach the digest only in their masked last-4 form;
+  credentials and `*_enc` ciphertext collapse to `set`. A digest is not a store,
+  but it must not become a lookup oracle over a PAN-sized value space.
+
+`tests/Feature/Compliance/AuditRowsCarryDigestsTest.php` holds the fence: every
+`AuditLog::create` under an admin, KYC or settings path must name `before_hash`.
+`row_hash`/`prev_hash` need no call-site care — `AuditLog::booted()` chains
+every new row itself.
+
 ### `agreements`
 ```
 id             BIGINT UNSIGNED PK

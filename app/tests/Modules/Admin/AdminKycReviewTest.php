@@ -130,7 +130,13 @@ it('AKR-01: approve flips user.status to active, stamps verified_at on docs, eve
     $audit = AuditLog::where('action', 'admin.kyc.approved')
         ->where('subject_id', $id)->first();
     expect($audit)->not->toBeNull()
-        ->and($audit->actor_id)->toBe($admin->id);
+        ->and($audit->actor_id)->toBe($admin->id)
+        // F108: the row for the state change that flips a person from pending
+        // to active, and destroys their PII, must say what it moved — 32 raw
+        // bytes a side, never hex.
+        ->and(strlen((string) $audit->before_hash))->toBe(32)
+        ->and(strlen((string) $audit->after_hash))->toBe(32)
+        ->and($audit->before_hash)->not->toBe($audit->after_hash);
 });
 
 it('AKR-02: approve refuses when distributor has zero kyc rows', function () {
