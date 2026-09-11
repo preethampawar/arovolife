@@ -13,6 +13,7 @@ declare(strict_types=1);
  * AD-06: a real change does move the digest
  * AD-07: an identity number never reaches the digest input in the clear
  * AD-08: `$only` pins the digest to the fields an action governs
+ * AD-10: a binary column does not blow up the audit write it belongs to
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -64,7 +65,11 @@ it('AD-07: keeps an identity number out of the digest input', function () {
     expect($masked)->toBe(AuditDigests::of(['pan_number' => 'ZZZZZ000A']))
         ->and($masked)->not->toBe(AuditDigests::of(['pan_number' => 'AAAAA0000B']))
         ->and(AuditDigests::of(['password_hash' => 'one']))
-        ->toBe(AuditDigests::of(['password_hash' => 'another']));
+        ->toBe(AuditDigests::of(['password_hash' => 'another']))
+        // A value already down to four characters is the masked form the
+        // column holds in plaintext; it must still move the digest.
+        ->and(AuditDigests::of(['pan_last4' => '000A']))
+        ->not->toBe(AuditDigests::of(['pan_last4' => '111B']));
 });
 
 it('AD-08: pins a snapshot to the named fields', function () {
@@ -85,4 +90,10 @@ it('AD-09: stores what it returns without the model rewriting it', function () {
 
     expect(strlen((string) $entry->fresh()->before_hash))->toBe(32)
         ->and(strlen((string) $entry->fresh()->after_hash))->toBe(32);
+});
+
+it('AD-10: digests a binary column instead of throwing on it', function () {
+    // A BINARY(32) hash is not valid UTF-8. Letting json_encode throw here
+    // would mean an admin action failing because of its own audit row.
+    expect(strlen((string) AuditDigests::of(['pan_hash' => random_bytes(32)])))->toBe(32);
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Models\Distributor;
@@ -136,6 +137,10 @@ final class AdminDistributorEditController extends Controller
             // the row is held for the duration of this transaction.
             User::query()->where('id', $user->id)->lockForUpdate()->first();
 
+            // The credential itself never reaches a digest: the stamp beside
+            // it moves on every set and says the same thing safely.
+            $before = AuditDigests::of(['password_set_at' => (string) $user->password_set_at]);
+
             $user->update([
                 'password_hash' => $newPasswordHash,
                 'password_set_at' => now(),
@@ -158,6 +163,8 @@ final class AdminDistributorEditController extends Controller
                 'action' => 'admin.distributor.password_set',
                 'subject_type' => 'user',
                 'subject_id' => $user->id,
+                'before_hash' => $before,
+                'after_hash' => AuditDigests::of(['password_set_at' => (string) $user->password_set_at]),
                 // NEVER log raw or hashed passwords — only the fact
                 // that one was set. Audit reviewers see "admin X set a
                 // password for user Y on date Z" and nothing more.
@@ -305,6 +312,8 @@ final class AdminDistributorEditController extends Controller
                     'action' => 'admin.distributor.identity_updated',
                     'subject_type' => 'distributor',
                     'subject_id' => $distributor->id,
+                    'before_hash' => AuditDigests::of($before),
+                    'after_hash' => AuditDigests::of($after),
                     'details' => [
                         'pan_changed' => $newPan !== '',
                         'aadhaar_changed' => $newAadhaar !== '',
@@ -454,6 +463,9 @@ final class AdminDistributorEditController extends Controller
             }
         }
         if (! empty($validated['bank_account'])) {
+            // Only the last 4 of the new account number reaches the digest,
+            // the same masked form the details carry.
+            $after['bank_account_last4'] = substr((string) $validated['bank_account'], -4);
             // NEVER log the plaintext account number — only the last 4 of
             // the new value goes into the audit trail. The "from" side is
             // intentionally opaque ("(previous)") because we'd have to
@@ -471,6 +483,8 @@ final class AdminDistributorEditController extends Controller
                 'action' => 'admin.distributor.updated',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($after),
                 'details' => ['changes' => $changes],
                 'ip' => $request->ip(),
             ]);
@@ -496,6 +510,9 @@ final class AdminDistributorEditController extends Controller
         $user = $distributor->user;
         abort_if($user === null, 404);
 
+        // What this action changes is the live reset token, not the user row.
+        $tokenBefore = DB::table('password_reset_tokens')->where('email', $user->email)->value('created_at');
+
         app(RequestPasswordReset::class)($user->email);
 
         AuditLog::create([
@@ -503,6 +520,10 @@ final class AdminDistributorEditController extends Controller
             'action' => 'admin.distributor.password_reset_sent',
             'subject_type' => 'user',
             'subject_id' => $user->id,
+            'before_hash' => AuditDigests::of(['reset_token_created_at' => $tokenBefore]),
+            'after_hash' => AuditDigests::of([
+                'reset_token_created_at' => DB::table('password_reset_tokens')->where('email', $user->email)->value('created_at'),
+            ]),
             'details' => ['email' => $user->email],
             'ip' => $request->ip(),
         ]);
@@ -548,6 +569,12 @@ final class AdminDistributorEditController extends Controller
             'action' => 'admin.distributor.id_photo_updated',
             'subject_type' => 'user',
             'subject_id' => $user->id,
+            'before_hash' => AuditDigests::of(['id_photo_key' => $meta['old_key']]),
+            'after_hash' => AuditDigests::of([
+                'id_photo_key' => $meta['new_key'],
+                'size_bytes_stored' => $meta['size_bytes_stored'],
+                'mime' => $meta['mime'],
+            ]),
             'details' => [
                 'distributor_id' => $distributor->id,
                 'old_key' => $meta['old_key'],

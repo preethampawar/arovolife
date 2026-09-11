@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Public\Models\ContactInquiry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,6 +81,10 @@ final class AdminContactController extends Controller
             'action' => 'contact_inquiry.viewed',
             'subject_type' => 'contact_inquiry',
             'subject_id' => $inquiry->id,
+            // A view moves nothing; the matching digests pin which state of
+            // the inquiry the admin was shown.
+            'before_hash' => AuditDigests::of($inquiry),
+            'after_hash' => AuditDigests::of($inquiry),
             'details' => [
                 'email' => $inquiry->email,
                 'purpose' => $inquiry->purpose,
@@ -100,6 +105,8 @@ final class AdminContactController extends Controller
                 ->with('status', 'Already marked as handled.');
         }
 
+        $before = AuditDigests::of($inquiry);
+
         $inquiry->update([
             'handled_at' => now(),
             'handled_by' => Auth::id(),
@@ -110,6 +117,8 @@ final class AdminContactController extends Controller
             'action' => 'contact_inquiry.handled',
             'subject_type' => 'contact_inquiry',
             'subject_id' => $inquiry->id,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of($inquiry),
             'details' => [
                 'email' => $inquiry->email,
                 'purpose' => $inquiry->purpose,
@@ -124,6 +133,8 @@ final class AdminContactController extends Controller
     {
         $inquiry = ContactInquiry::query()->findOrFail($id);
 
+        $before = AuditDigests::of($inquiry);
+
         $inquiry->update([
             'handled_at' => null,
             'handled_by' => null,
@@ -134,6 +145,8 @@ final class AdminContactController extends Controller
             'action' => 'contact_inquiry.reopened',
             'subject_type' => 'contact_inquiry',
             'subject_id' => $inquiry->id,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of($inquiry),
             'details' => [
                 'email' => $inquiry->email,
                 'purpose' => $inquiry->purpose,

@@ -8,6 +8,7 @@ use App\Modules\Admin\Events\KycApproved;
 use App\Modules\Admin\Services\Exceptions\KycHasFlaggedDocumentsError;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Kyc\Models\KycDocument;
@@ -79,6 +80,11 @@ final class ApproveKycSubmission
 
             $now = Carbon::now();
 
+            // Everything this approval moves, captured before it moves: the
+            // status of every user in the unit, the verification stamp on
+            // every document, and the distributor rows the PII purge rewrites.
+            $before = $this->auditedState($idsToApprove);
+
             foreach ($docs as $doc) {
                 if ($doc->verified_at !== null) {
                     continue; // idempotent re-approval
@@ -131,6 +137,8 @@ final class ApproveKycSubmission
                 'action' => 'admin.kyc.approved',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributorId,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($this->auditedState($idsToApprove)),
                 'details' => [
                     'verified_at' => $now->toIso8601String(),
                     'document_count' => $docs->count(),
@@ -145,6 +153,39 @@ final class ApproveKycSubmission
                 KycApproved::dispatch($id, $verifierUserId, $now);
             }
         });
+    }
+
+    /**
+     * The state an approval changes, for the before/after audit digests: the
+     * status of every user in the unit, the verification stamp on every
+     * document, and the distributor rows themselves — so the PII purge shows
+     * up as a moved digest rather than only as a detail count.
+     *
+     * @param  list<int>  $distributorIds
+     * @return array<string, mixed>
+     */
+    private function auditedState(array $distributorIds): array
+    {
+        $distributors = Distributor::query()
+            ->whereIn('id', $distributorIds)
+            ->orderBy('id')
+            ->get();
+
+        return [
+            'distributors' => $distributors
+                ->mapWithKeys(fn (Distributor $d): array => [(int) $d->id => AuditDigests::snapshot($d)])
+                ->all(),
+            'user_status' => User::query()
+                ->whereIn('id', $distributors->pluck('user_id')->filter()->all())
+                ->orderBy('id')
+                ->pluck('status', 'id')
+                ->all(),
+            'documents_verified' => KycDocument::query()
+                ->whereIn('distributor_id', $distributorIds)
+                ->orderBy('id')
+                ->pluck('verified_at', 'id')
+                ->all(),
+        ];
     }
 
     /**

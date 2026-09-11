@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\DTOs\PlacementResult;
 use App\Modules\Genealogy\Services\Exceptions\CrossLinePlacementError;
@@ -235,6 +236,16 @@ final class AdminCreateDistributorAction
                     'action' => 'admin.distributor.created',
                     'subject_type' => 'distributor',
                     'subject_id' => $result->distributorId,
+                    // A creation has no before-state: before_hash stays NULL.
+                    'before_hash' => null,
+                    'after_hash' => AuditDigests::of([
+                        'user' => AuditDigests::snapshot($user),
+                        'distributor_id' => $result->distributorId,
+                        'side' => $result->side,
+                        'depth' => $result->depth,
+                        'sponsor_adn' => $sponsorAdn,
+                        'placement_adn' => $placementAdn,
+                    ]),
                     'details' => [
                         'user_id' => $user->id,
                         'sponsor_adn' => $sponsorAdn,

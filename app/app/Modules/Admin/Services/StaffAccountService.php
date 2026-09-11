@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -71,7 +72,15 @@ final class StaffAccountService
             ]);
 
             $user->syncRoles($roles);
-            $this->audit('staff.user.created', $user, ['roles' => $roles, 'existing_user' => false], $actorId);
+            // A creation has no before-state: before_hash stays NULL.
+            $this->audit(
+                'staff.user.created',
+                $user,
+                ['roles' => $roles, 'existing_user' => false],
+                $actorId,
+                null,
+                ['roles' => $roles, 'status' => (string) $user->status],
+            );
 
             return $user;
         });
@@ -92,7 +101,7 @@ final class StaffAccountService
         $this->audit('staff.roles.changed', $staff, [
             'from' => $before,
             'to' => array_values($roles),
-        ], $actorId);
+        ], $actorId, ['roles' => $before], ['roles' => array_values($roles)]);
     }
 
     /** Freeze or reactivate a staff login. */
@@ -105,7 +114,14 @@ final class StaffAccountService
         $before = (string) $staff->status;
         $staff->forceFill(['status' => $status])->save();
 
-        $this->audit('staff.status.changed', $staff, ['from' => $before, 'to' => $status], $actorId);
+        $this->audit(
+            'staff.status.changed',
+            $staff,
+            ['from' => $before, 'to' => $status],
+            $actorId,
+            ['status' => $before],
+            ['status' => $status],
+        );
     }
 
     /**
@@ -131,14 +147,24 @@ final class StaffAccountService
 
     /**
      * @param  array<string, mixed>  $details
+     * @param  array<string, mixed>|null  $before
+     * @param  array<string, mixed>|null  $after
      */
-    private function audit(string $action, User $staff, array $details, ?int $actorId): void
-    {
+    private function audit(
+        string $action,
+        User $staff,
+        array $details,
+        ?int $actorId,
+        ?array $before = null,
+        ?array $after = null,
+    ): void {
         AuditLog::create([
             'actor_id' => $actorId,
             'action' => $action,
             'subject_type' => 'user',
             'subject_id' => $staff->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($after),
             // Email identifies the row for compliance; the password never
             // appears here in any form.
             'details' => $details + ['email' => $staff->email],

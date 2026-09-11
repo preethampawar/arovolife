@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,6 +57,9 @@ final class AdminImpersonationController extends Controller
             'action' => 'admin.impersonate.start',
             'subject_type' => 'user',
             'subject_id' => $target->id,
+            // What moves is who the session acts as, not the target row.
+            'before_hash' => AuditDigests::of(['acting_as' => (int) $admin->id]),
+            'after_hash' => AuditDigests::of(['acting_as' => (int) $target->id]),
             'details' => ['impersonator_email' => $admin->email, 'target_email' => $target->email],
             'ip' => $request->ip(),
         ]);
@@ -97,6 +101,8 @@ final class AdminImpersonationController extends Controller
             'action' => 'admin.impersonate.stop',
             'subject_type' => 'user',
             'subject_id' => $target?->id,
+            'before_hash' => AuditDigests::of(['acting_as' => $target?->id === null ? null : (int) $target->id]),
+            'after_hash' => AuditDigests::of(['acting_as' => (int) $impersonator->id]),
             'details' => ['impersonator_email' => $impersonator->email, 'target_email' => $target?->email],
             'ip' => $request->ip(),
         ]);

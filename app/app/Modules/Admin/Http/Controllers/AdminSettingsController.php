@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AnnouncementsFeature;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
@@ -1707,6 +1708,8 @@ final class AdminSettingsController extends Controller
             'action' => 'admin.settings.changed',
             'subject_type' => 'settings',
             'subject_id' => null,
+            'before_hash' => AuditDigests::of([$key => $old]),
+            'after_hash' => AuditDigests::of([$key => $value]),
             'details' => [
                 'key' => $key,
                 'before' => $old,
@@ -1809,6 +1812,8 @@ final class AdminSettingsController extends Controller
             'action' => 'admin.settings.state_age_minimums.changed',
             'subject_type' => 'settings',
             'subject_id' => null,
+            'before_hash' => AuditDigests::of(['compliance.state_age_minimums' => $old]),
+            'after_hash' => AuditDigests::of(['compliance.state_age_minimums' => $canonical]),
             'details' => ['before' => $old, 'after' => $canonical],
             'ip' => $request->ip(),
         ]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AnnouncementsFeature;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
@@ -253,6 +254,8 @@ final class AdminFeatureFlagController extends Controller
             'action' => 'feature_flag.toggled',
             'subject_type' => 'feature_flag',
             'subject_id' => null,
+            'before_hash' => AuditDigests::of([$key => $before]),
+            'after_hash' => AuditDigests::of([$key => $after]),
             'details' => [
                 'flag' => $key,
                 'class' => $class,

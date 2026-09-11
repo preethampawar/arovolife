@@ -11,6 +11,7 @@ use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Services\AuditLogPresenter;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\DistributorNominee;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Csv;
@@ -209,6 +210,7 @@ final class AdminDistributorController extends Controller
             return back()->withErrors(['reason' => 'User cannot be blocked in current status: '.$user->status]);
         }
 
+        $previousStatus = (string) $user->status;
         $user->update(['status' => 'frozen']);
 
         AuditLog::create([
@@ -216,6 +218,8 @@ final class AdminDistributorController extends Controller
             'action' => 'admin.distributor.frozen',
             'subject_type' => 'distributor',
             'subject_id' => $id,
+            'before_hash' => AuditDigests::of(['user_status' => $previousStatus]),
+            'after_hash' => AuditDigests::of(['user_status' => (string) $user->status]),
             'details' => ['reason' => $request->reason, 'previous_status' => $user->getOriginal('status') ?? 'active'],
             'ip' => $request->ip(),
         ]);
@@ -242,6 +246,8 @@ final class AdminDistributorController extends Controller
             'action' => 'admin.distributor.unfrozen',
             'subject_type' => 'distributor',
             'subject_id' => $id,
+            'before_hash' => AuditDigests::of(['user_status' => 'frozen']),
+            'after_hash' => AuditDigests::of(['user_status' => (string) $user->status]),
             'details' => ['previous_status' => 'frozen'],
             'ip' => $request->ip(),
         ]);
@@ -264,11 +270,16 @@ final class AdminDistributorController extends Controller
         }
 
         $previousStatus = (string) $user->status;
+        $previousState = [
+            'user_status' => $previousStatus,
+            'closure_type' => DB::table('users')->where('id', $distributor->user_id)->value('closure_type'),
+            'distributor_status' => (string) $distributor->status,
+        ];
         $now = Carbon::now();
         $reason = (string) $request->reason;
         $actorId = (int) auth()->id();
 
-        DB::transaction(function () use ($user, $id, $reason, $previousStatus, $request, $actorId): void {
+        DB::transaction(function () use ($user, $id, $reason, $previousStatus, $previousState, $request, $actorId): void {
             $user->update([
                 'status' => 'terminated',
                 'closure_type' => 'admin_termination',
@@ -286,6 +297,12 @@ final class AdminDistributorController extends Controller
                 'action' => 'admin.distributor.terminated',
                 'subject_type' => 'distributor',
                 'subject_id' => $id,
+                'before_hash' => AuditDigests::of($previousState),
+                'after_hash' => AuditDigests::of([
+                    'user_status' => 'terminated',
+                    'closure_type' => 'admin_termination',
+                    'distributor_status' => 'inactive',
+                ]),
                 'details' => ['reason' => $reason, 'previous_status' => $previousStatus],
                 'ip' => $request->ip(),
             ]);
@@ -343,6 +360,13 @@ final class AdminDistributorController extends Controller
             'action' => 'admin.register.exported',
             'subject_type' => 'system',
             'subject_id' => null,
+            // An export changes nothing: no before-state, and the after digest
+            // pins exactly which register left the building.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of([
+                'row_count' => $distributors->count(),
+                'adns' => $distributors->pluck('adn')->all(),
+            ]),
             'details' => ['row_count' => $distributors->count()],
             'ip' => request()->ip(),
         ]);
@@ -420,6 +444,8 @@ final class AdminDistributorController extends Controller
             'action' => 'distributor.status_changed',
             'subject_type' => 'distributor',
             'subject_id' => $id,
+            'before_hash' => AuditDigests::of(['distributor_status' => $previous]),
+            'after_hash' => AuditDigests::of(['distributor_status' => $status]),
             'details' => ['from' => $previous, 'to' => $status, 'adn' => $row->adn],
             'ip' => $request->ip(),
         ]);
@@ -458,6 +484,11 @@ final class AdminDistributorController extends Controller
             'action' => 'nominee_aadhaar_unmasked',
             'subject_type' => 'distributor',
             'subject_id' => $id,
+            // An unmask moves nothing, so the two digests match by design;
+            // what they pin is which nominee row was revealed. The number
+            // itself never reaches the digest — only its masked form.
+            'before_hash' => AuditDigests::of($nominee),
+            'after_hash' => AuditDigests::of($nominee),
             'details' => null,
             'ip' => $request->ip(),
         ]);

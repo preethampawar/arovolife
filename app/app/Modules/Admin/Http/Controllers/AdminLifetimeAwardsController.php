@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\LifetimeAwardReward;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -89,6 +90,8 @@ final class AdminLifetimeAwardsController extends Controller
             'action' => 'admin.lifetime_award.reward_updated',
             'subject_type' => 'lifetime_award_reward',
             'subject_id' => $reward->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of(['item' => $reward->item, 'worth_paise' => $reward->worth_paise]),
             'details' => ['before' => $before, 'after' => ['item' => $reward->item, 'worth_paise' => $reward->worth_paise]],
             'ip' => $request->ip(),
         ]);
@@ -143,6 +146,8 @@ final class AdminLifetimeAwardsController extends Controller
             );
         }
 
+        $before = AuditDigests::of($milestone);
+
         $milestone->update([
             'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
             'disbursement_type' => $data['disbursement_type'],
@@ -159,6 +164,8 @@ final class AdminLifetimeAwardsController extends Controller
             'action' => 'admin.lifetime_award.delivered',
             'subject_type' => 'lifetime_award_milestone',
             'subject_id' => $milestone->id,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of($milestone),
             'details' => [
                 'distributor_id' => $milestone->distributor_id,
                 'rank_number' => $milestone->rank_number,

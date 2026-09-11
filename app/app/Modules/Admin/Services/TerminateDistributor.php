@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Services;
 
 use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Database\DatabaseManager;
@@ -62,6 +63,8 @@ final class TerminateDistributor
 
             $now = Carbon::now();
 
+            $before = $this->closureState($userIds, $idsToClose);
+
             if ($userIds !== []) {
                 User::query()
                     ->whereIn('id', $userIds)
@@ -83,6 +86,8 @@ final class TerminateDistributor
                 'action' => 'admin.distributor.terminated',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributorId,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($this->closureState($userIds, $idsToClose)),
                 'details' => [
                     'reason' => mb_substr($reason, 0, 1024),
                     'terminated_at' => $now->toIso8601String(),
@@ -94,5 +99,33 @@ final class TerminateDistributor
                 DistributorTerminated::dispatch($id, $actorUserId, $reason, $now);
             }
         });
+    }
+
+    /**
+     * The state a termination moves — account status and closure type, and
+     * the distributor rows that follow the account into the terminal state.
+     *
+     * @param  array<int, int>  $userIds
+     * @param  array<int, int>  $distributorIds
+     * @return array<string, mixed>
+     */
+    private function closureState(array $userIds, array $distributorIds): array
+    {
+        return [
+            'users' => User::query()
+                ->whereIn('id', $userIds)
+                ->orderBy('id')
+                ->get(['id', 'status', 'closure_type'])
+                ->mapWithKeys(fn (User $u): array => [(int) $u->id => [
+                    'status' => $u->status,
+                    'closure_type' => $u->closure_type,
+                ]])
+                ->all(),
+            'distributors' => Distributor::query()
+                ->whereIn('id', $distributorIds)
+                ->orderBy('id')
+                ->pluck('status', 'id')
+                ->all(),
+        ];
     }
 }

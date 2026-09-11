@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Services;
 
 use App\Modules\Admin\Events\KycRejected;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Database\DatabaseManager;
@@ -67,6 +68,8 @@ final class RejectKycSubmission
                 ->values()
                 ->all();
 
+            $before = $this->userStatuses($userIds);
+
             if ($userIds !== []) {
                 User::query()
                     ->whereIn('id', $userIds)
@@ -78,6 +81,8 @@ final class RejectKycSubmission
                 'action' => 'admin.kyc.rejected',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributorId,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($this->userStatuses($userIds)),
                 'details' => [
                     'reason' => mb_substr($reason, 0, 1024),
                     'rejected_at' => $now->toIso8601String(),
@@ -89,5 +94,20 @@ final class RejectKycSubmission
                 KycRejected::dispatch($id, $verifierUserId, $reason, $now);
             }
         });
+    }
+
+    /**
+     * The account state a rejection moves, for the before/after digests.
+     *
+     * @param  array<int, int>  $userIds
+     * @return array<int, string|null>
+     */
+    private function userStatuses(array $userIds): array
+    {
+        return User::query()
+            ->whereIn('id', $userIds)
+            ->orderBy('id')
+            ->pluck('status', 'id')
+            ->all();
     }
 }

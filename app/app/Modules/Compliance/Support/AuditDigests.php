@@ -151,6 +151,13 @@ final class AuditDigests
 
         $value = (string) $value;
 
+        // Binary columns (a BINARY(32) hash, a checksum) are not valid UTF-8
+        // and would make json_encode throw inside an audit write — which is
+        // an admin action failing because of its own audit row. Hex them.
+        if (! mb_check_encoding($value, 'UTF-8')) {
+            $value = bin2hex($value);
+        }
+
         return self::redact($key, $value);
     }
 
@@ -170,7 +177,11 @@ final class AuditDigests
 
         foreach (self::MASKED as $needle) {
             if (str_contains($key, $needle)) {
-                return strlen($value) <= 4 ? 'set' : '****'.substr($value, -4);
+                // A value already down to four characters IS the masked
+                // form (`pan_last4`, `account_last4`) — the columns that
+                // hold it are plaintext by design. Keep it, or a before and
+                // an after would collapse onto the same digest.
+                return strlen($value) <= 4 ? $value : '****'.substr($value, -4);
             }
         }
 

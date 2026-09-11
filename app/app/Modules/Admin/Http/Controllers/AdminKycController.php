@@ -10,6 +10,7 @@ use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Admin\Services\RejectKycSubmission;
 use App\Modules\Admin\Services\TerminateDistributor;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
@@ -185,6 +186,10 @@ final class AdminKycController extends Controller
             'action' => 'admin.kyc.document_viewed',
             'subject_type' => 'kyc_document',
             'subject_id' => $doc->id,
+            // A view moves nothing, so the two digests match by design; what
+            // they pin is which document state the reviewer was shown.
+            'before_hash' => AuditDigests::of($doc),
+            'after_hash' => AuditDigests::of($doc),
             'details' => ['type' => $doc->type],
         ]);
 
@@ -278,6 +283,8 @@ final class AdminKycController extends Controller
                 ->latest()
                 ->first();
 
+            $replaced = $existing === null ? null : AuditDigests::of($existing);
+
             if ($existing !== null) {
                 abort_if(
                     $existing->verified_at !== null,
@@ -296,7 +303,7 @@ final class AdminKycController extends Controller
 
             $disk->putFileAs(dirname($path), $file, basename($path));
 
-            KycDocument::create([
+            $document = KycDocument::create([
                 'distributor_id' => $distributor->id,
                 'type' => $type,
                 'object_storage_key' => $path,
@@ -308,6 +315,8 @@ final class AdminKycController extends Controller
                 'action' => 'admin.kyc.document_uploaded',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => $replaced,
+                'after_hash' => AuditDigests::of($document),
                 'details' => [
                     'type' => $type,
                     'path' => $path,
@@ -349,6 +358,8 @@ final class AdminKycController extends Controller
         );
 
         DB::transaction(function () use ($document, $validated, $distributor, $request): void {
+            $before = AuditDigests::of($document);
+
             $document->update([
                 'flagged_reason' => $validated['reason'],
                 'flagged_at' => now(),
@@ -360,6 +371,8 @@ final class AdminKycController extends Controller
                 'action' => 'admin.kyc.document_flagged',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => $before,
+                'after_hash' => AuditDigests::of($document),
                 'details' => ['document_id' => $document->id, 'type' => $document->type],
                 'ip' => $request->ip(),
             ]);
