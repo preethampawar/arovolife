@@ -236,7 +236,11 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        if ((string) config('logging.channels.slack.url', '') === '') {
+        // Only when Slack is actually wired into the active log stack. Warning
+        // about a channel nothing writes to made this the single noisiest line
+        // in the application log — 3,517 of the QA window's 3,525 warnings were
+        // this one message, which is how a real warning gets missed.
+        if ($this->slackIsAnActiveLogChannel() && (string) config('logging.channels.slack.url', '') === '') {
             Log::warning('Ops env check: LOG_SLACK_WEBHOOK_URL is empty — critical alerts will not reach Slack.');
         }
 
@@ -250,5 +254,18 @@ class AppServiceProvider extends ServiceProvider
                 'queue_connection' => $queue,
             ]);
         }
+    }
+
+    /** Whether anything the app logs to would actually be delivered to Slack. */
+    private function slackIsAnActiveLogChannel(): bool
+    {
+        $default = (string) config('logging.default', 'stack');
+
+        if ($default === 'slack') {
+            return true;
+        }
+
+        return $default === 'stack'
+            && in_array('slack', (array) config('logging.channels.stack.channels', []), true);
     }
 }
