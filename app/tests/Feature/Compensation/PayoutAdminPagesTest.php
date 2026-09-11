@@ -7,8 +7,10 @@ use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Crypto\PiiCrypter;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -344,4 +346,129 @@ it('stamps the admin who ran the batch as its maker', function (): void {
         ->runWeeklyBatch(now()->startOfDay());
 
     expect($batch->created_by)->toBe($admin->id);
+});
+
+it('exports a bank file the bank can execute, and audits every download', function (): void {
+    // QA F44/F95: the export carried `Bank Last 4` and no IFSC, so it was a
+    // reconciliation sheet while the admin copy called it a bank upload.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_APPROVED,
+        'total_net_paise' => 150_000,
+        'distributor_count' => 2,
+    ]);
+
+    // Synthetic fixtures — no real account belongs to anyone here.
+    $named = Distributor::factory()->create();
+    DB::table('distributors')->where('id', $named->id)->update([
+        'bank_account_enc' => PiiCrypter::encryptString('900011112222'),
+        'bank_beneficiary_name_enc' => PiiCrypter::encryptString('R Kumar (Savings)'),
+        'bank_ifsc' => 'SBIN0001234',
+    ]);
+
+    // No beneficiary name on file: the registered name is what the bank gets.
+    $unnamed = Distributor::factory()->create();
+    DB::table('distributors')->where('id', $unnamed->id)->update([
+        'bank_account_enc' => PiiCrypter::encryptString('900033334444'),
+        'bank_beneficiary_name_enc' => null,
+        'bank_ifsc' => 'HDFC0000567',
+    ]);
+
+    foreach ([[$named, 100_000], [$unnamed, 50_000]] as [$dist, $net]) {
+        PayoutLineItem::create([
+            'payout_batch_id' => $batch->id,
+            'distributor_id' => $dist->id,
+            'wallet_balance_paise' => $net,
+            'gross_paise' => $net,
+            'repurchase_deduction_paise' => 0,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'net_transferred_paise' => $net,
+            'status' => PayoutLineItem::STATUS_PENDING,
+            'transfer_mode' => 'neft',
+        ]);
+    }
+
+    $finance = User::factory()->create(['status' => 'active']);
+    $finance->assignRole('admin-finance');
+
+    $csv = $this->actingAs($finance)
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8')
+        ->streamedContent();
+
+    expect($csv)
+        ->toContain('Line#,ADN,"Beneficiary Name","Account Number",IFSC')
+        ->toContain('Narration')
+        // The full account number and branch code a bank needs to execute it.
+        ->toContain('900011112222')
+        ->toContain('SBIN0001234')
+        ->toContain('900033334444')
+        ->toContain('HDFC0000567')
+        // The beneficiary name the distributor gave, and the registered-name
+        // fallback for the one who gave none.
+        ->toContain('R Kumar (Savings)')
+        ->toContain($unnamed->user->full_name)
+        // Ungrouped, two decimals — a bank parser reads 1000.00, not 1,000.00.
+        ->toContain('1000.00')
+        ->toContain('arovolife '.$named->adn.' B'.$batch->id);
+
+    $audit = DB::table('audit_log')
+        ->where('action', 'payout.batch.bank_file_exported')
+        ->where('subject_id', $batch->id)
+        ->first();
+
+    expect($audit)->not->toBeNull()
+        ->and((int) $audit->actor_id)->toBe($finance->id)
+        ->and(json_decode((string) $audit->details, true)['line_count'])->toBe(2)
+        // Raw 32 bytes of SHA-256 over the exact file handed over.
+        ->and($audit->after_hash)->toBe(AuditLog::digest($csv));
+
+    // Nothing about the account numbers leaked into the audit details.
+    expect((string) $audit->details)->not->toContain('900011112222');
+});
+
+it('exports a line whose bank details no longer decrypt with no account number', function (): void {
+    // A key rotation between the batch run and the download. The line stays
+    // visible so finance can see who is unpaid, but cannot be executed.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_APPROVED,
+    ]);
+
+    $broken = Distributor::factory()->create();
+    DB::table('distributors')->where('id', $broken->id)->update([
+        'bank_account_enc' => 'not-valid-ciphertext',
+        'bank_ifsc' => 'SBIN0009999',
+    ]);
+
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => $broken->id,
+        'wallet_balance_paise' => 100_000,
+        'gross_paise' => 100_000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 100_000,
+        'status' => PayoutLineItem::STATUS_PENDING,
+        'transfer_mode' => 'neft',
+    ]);
+
+    $finance = User::factory()->create(['status' => 'active']);
+    $finance->assignRole('admin-finance');
+
+    $csv = $this->actingAs($finance)
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($csv)
+        ->toContain('bank_decrypt_failed')
+        ->toContain($broken->adn)
+        // No account number, no IFSC — the row cannot be executed by mistake.
+        ->not->toContain('SBIN0009999');
 });

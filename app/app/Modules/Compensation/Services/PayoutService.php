@@ -1654,4 +1654,80 @@ final class PayoutService
 
         return mb_strlen($accountNumber) >= 4 ? mb_substr($accountNumber, -4) : null;
     }
+
+    /**
+     * The three fields a bank needs to execute one line of the NEFT file
+     * (QA F44/F95): the account number, the IFSC, and the beneficiary name as
+     * the bank itself holds it.
+     *
+     * The account number is PII ciphertext and a failure to decrypt it is the
+     * same hard stop as everywhere else — a blank account number in a payment
+     * instruction is a silently unpaid distributor, so the caller is made to
+     * handle it. The IFSC is a public branch code, stored plain.
+     *
+     * The beneficiary name falls back to the distributor's registered full
+     * name when they have not given one: that is what the file carried before
+     * the column existed, so nothing regresses for the base that pre-dates it.
+     * A name whose ciphertext will not open falls back the same way rather than
+     * stopping the payment — a name mismatch is a bank rejection, a missing
+     * account number is a wrong payment.
+     *
+     * @return array{account_number: string, ifsc: string, beneficiary_name: string}
+     *
+     * @throws BankDecryptionException
+     */
+    public function bankInstructionForDistributor(int $distributorId): array
+    {
+        $row = DB::table('distributors')
+            ->join('users', 'users.id', '=', 'distributors.user_id')
+            ->where('distributors.id', $distributorId)
+            ->selectRaw('distributors.bank_account_enc, distributors.bank_beneficiary_name_enc, distributors.bank_ifsc, users.full_name')
+            ->first();
+
+        $raw = $row?->bank_account_enc;
+
+        if ($row === null || $raw === null || $raw === 'stub') {
+            throw new BankDecryptionException($distributorId);
+        }
+
+        try {
+            $accountNumber = PiiCrypter::decryptString((string) $raw);
+        } catch (Throwable $failure) {
+            Log::critical('Bank account decryption failed — payout held for distributor', [
+                'distributor_id' => $distributorId,
+                'context' => 'bank_decryption_failure',
+                'error' => $failure->getMessage(),
+            ]);
+
+            throw new BankDecryptionException($distributorId);
+        }
+
+        return [
+            'account_number' => $accountNumber,
+            'ifsc' => (string) ($row->bank_ifsc ?? ''),
+            'beneficiary_name' => $this->beneficiaryName($distributorId, $row->bank_beneficiary_name_enc, (string) $row->full_name),
+        ];
+    }
+
+    /** {@see bankInstructionForDistributor()} — the name half, which never throws. */
+    private function beneficiaryName(int $distributorId, mixed $ciphertext, string $fullName): string
+    {
+        if ($ciphertext === null || $ciphertext === '' || $ciphertext === 'stub') {
+            return $fullName;
+        }
+
+        try {
+            $name = trim(PiiCrypter::decryptString((string) $ciphertext));
+        } catch (Throwable $failure) {
+            Log::warning('Beneficiary name decryption failed — falling back to the registered name', [
+                'distributor_id' => $distributorId,
+                'context' => 'bank_decryption_failure',
+                'error' => $failure->getMessage(),
+            ]);
+
+            return $fullName;
+        }
+
+        return $name !== '' ? $name : $fullName;
+    }
 }

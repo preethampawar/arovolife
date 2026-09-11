@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin\Concerns;
 
+use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Jobs\RetryRazorpayPayoutJob;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
@@ -105,7 +106,7 @@ trait HandlesPayoutBatchActions
             ->route($this->payoutRouteName('show'), $batch)
             ->with('success', $settings->isRazorpay()
                 ? 'Batch approved and queued for dispatch. Each transfer is marked transferred only when Razorpay confirms it.'
-                : 'Batch approved. Download the NEFT CSV, upload it to the bank, then import the bank’s response file here.');
+                : 'Batch approved. Download the bank file (NEFT), upload it to the bank, then import the bank’s response file here.');
     }
 
     /**
@@ -247,8 +248,17 @@ trait HandlesPayoutBatchActions
      * instruction for money no one authorised — and, silently, an export of
      * distributor names and bank digits to roles with no reason to hold them
      * (QA F95).
+     *
+     * It is now a file the bank can actually execute (QA F44/F95, client
+     * decision 2026-09-11): full account number, IFSC and the beneficiary name
+     * the bank holds, plus a narration carrying the ADN and the batch so the
+     * distributor can recognise the credit on their statement. That makes the
+     * download itself a disclosure of every payee's bank account, so each one
+     * writes a `payout.batch.bank_file_exported` audit row carrying a SHA-256
+     * of the exact bytes handed over — enough to prove later which file went to
+     * the bank, without the file or any account number being stored anywhere.
      */
-    public function exportNeft(PayoutBatch $batch): StreamedResponse|RedirectResponse
+    public function exportNeft(Request $request, PayoutBatch $batch, PayoutService $payoutService): StreamedResponse|RedirectResponse
     {
         if (! in_array($batch->status, [
             PayoutBatch::STATUS_APPROVED,
@@ -270,34 +280,104 @@ trait HandlesPayoutBatchActions
             ->orderBy('id')
             ->get();
 
-        $filename = 'neft-batch-'.$batch->batch_date->format('Y-m-d').'.csv';
+        // Built in full before anything is sent: the audit row has to carry a
+        // digest of the bytes the admin actually received, which cannot be
+        // known while they are still being streamed.
+        $csv = $this->buildBankFile($batch, $lines, $payoutService);
 
-        return response()->streamDownload(function () use ($lines): void {
-            $out = fopen('php://output', 'w');
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'payout.batch.bank_file_exported',
+            'subject_type' => 'payout_batch',
+            'subject_id' => (int) $batch->id,
+            // Raw 32 bytes, never hex — the column is BINARY(32).
+            'after_hash' => AuditLog::digest($csv),
+            'details' => [
+                'batch_type' => $batch->batch_type,
+                'batch_date' => $batch->batch_date->toDateString(),
+                'line_count' => $lines->count(),
+                'total_net_paise' => $batch->total_net_paise,
+                // Deliberately no account numbers, no names, no file body.
+                'digest_algorithm' => 'sha256',
+            ],
+            'ip' => $request->ip(),
+        ]);
 
-            if ($out === false) {
-                return;
-            }
+        $filename = 'bank-upload-'.$batch->batch_type.'-'.$batch->batch_date->format('Y-m-d').'.csv';
 
-            fputcsv($out, [
-                'Line#', 'ADN', 'Full Name', 'Bank Last 4', 'Net Amount (₹)', 'UTR', 'Status',
-            ]);
-            foreach ($lines as $i => $line) {
-                // Every free-text field goes through Csv::safe(). The name is
-                // whatever the distributor typed at registration, and this is
-                // the file that gets opened in Excel and handed to the bank —
-                // a cell beginning `=` is a formula there, not a name.
-                fputcsv($out, [
-                    $i + 1,
-                    Csv::safe($line->distributor->adn ?? ''),
-                    Csv::safe((string) $line->distributor->user?->full_name),
-                    Csv::safe($line->bank_account_last4 ?? ''),
-                    number_format($line->net_transferred_paise / 100, 2, '.', ''),
-                    Csv::safe($line->utr_number ?? ''),
-                    Csv::safe($line->status),
-                ]);
-            }
-            fclose($out);
+        return response()->streamDownload(static function () use ($csv): void {
+            echo $csv;
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * {@see exportNeft()} — the file itself, as a string.
+     *
+     * @param  EloquentCollection<int, PayoutLineItem>  $lines
+     */
+    private function buildBankFile(PayoutBatch $batch, EloquentCollection $lines, PayoutService $payoutService): string
+    {
+        $handle = fopen('php://temp', 'r+');
+
+        if ($handle === false) {
+            return '';
+        }
+
+        fputcsv($handle, [
+            'Line#', 'ADN', 'Beneficiary Name', 'Account Number', 'IFSC',
+            'Net Amount (₹)', 'Narration', 'UTR', 'Status',
+        ]);
+
+        foreach ($lines as $i => $line) {
+            $adn = (string) ($line->distributor->adn ?? '');
+            $status = $line->status;
+
+            try {
+                $bank = $payoutService->bankInstructionForDistributor((int) $line->distributor_id);
+            } catch (BankDecryptionException) {
+                // The ciphertext opened when the batch was built and does not
+                // open now (a key rotation between the two). The line stays in
+                // the file so finance can see who is unpaid and why, but with
+                // no account number it cannot be executed by mistake.
+                $bank = [
+                    'account_number' => '',
+                    'ifsc' => '',
+                    'beneficiary_name' => (string) $line->distributor->user?->full_name,
+                ];
+                $status = PayoutLineItem::STATUS_BANK_DECRYPT_FAILED;
+            }
+
+            // Every free-text field goes through Csv::safe(). This is the file
+            // that gets opened in Excel and handed to the bank — a cell
+            // beginning `=` is a formula there, not a name or an account.
+            fputcsv($handle, [
+                $i + 1,
+                Csv::safe($adn),
+                Csv::safe($bank['beneficiary_name']),
+                Csv::safe($bank['account_number']),
+                Csv::safe($bank['ifsc']),
+                number_format($line->net_transferred_paise / 100, 2, '.', ''),
+                Csv::safe($this->narrationFor($adn, $batch)),
+                Csv::safe($line->utr_number ?? ''),
+                Csv::safe($status),
+            ]);
+        }
+
+        rewind($handle);
+        $csv = (string) stream_get_contents($handle);
+        fclose($handle);
+
+        return $csv;
+    }
+
+    /**
+     * What the distributor sees on their bank statement, and what finance
+     * reconciles the bank's response against: the payer, the ADN being paid and
+     * the batch that paid it. Kept short — NEFT remittance information is
+     * truncated well before a sentence fits.
+     */
+    private function narrationFor(string $adn, PayoutBatch $batch): string
+    {
+        return 'arovolife '.$adn.' B'.$batch->id;
     }
 }

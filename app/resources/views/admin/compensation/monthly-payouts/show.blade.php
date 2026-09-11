@@ -59,7 +59,7 @@
              than an instruction, but it still only exists after approval. --}}
         <a href="{{ route('admin.compensation.monthly-payouts.neft', $batch) }}"
            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-            <x-lucide-download class="w-4 h-4" /> NEFT CSV
+            <x-lucide-download class="w-4 h-4" /> Download bank file (NEFT)
         </a>
         @endif
         @endcan
@@ -80,7 +80,7 @@
             <form method="POST" action="{{ route('admin.compensation.monthly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve payout batch"
                   data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this approval.' : '' }}"
-                  data-confirm-impact="Impact: the batch is signed off for payment. Holds are re-checked first — anyone whose KYC or bank details arrived since the batch was built is released into it. No money moves until you upload the NEFT CSV to the bank and import the bank's response file here.">
+                  data-confirm-impact="Impact: the batch is signed off for payment. Holds are re-checked first — anyone whose KYC or bank details arrived since the batch was built is released into it. No money moves until you upload the bank file (NEFT) to the bank and import the bank's response file here.">
                 @csrf
                 <button type="submit"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">

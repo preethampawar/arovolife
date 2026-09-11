@@ -23,7 +23,7 @@ under.
 | | Manual NEFT | Razorpay Payouts |
 |---|---|---|
 | What approval does | Marks the batch `approved`. No money moves. | Marks the batch `dispatched` and queues every payable line item to the RazorpayX API. **Real bank transfers start immediately.** |
-| Who moves the money | Finance, by uploading the NEFT CSV to the company bank's portal. | Razorpay, automatically. |
+| Who moves the money | Finance, by uploading the bank file (NEFT) to the company bank's portal. | Razorpay, automatically. |
 | How a line becomes `transferred` | You import the bank's response file on the batch page. | Razorpay's `payout.processed` webhook, which also carries the UTR. |
 | How long it takes | As long as the bank takes, plus the human steps. | Minutes to hours, depending on the rail. |
 | What it needs | Nothing beyond bank access. | `RAZORPAYX_KEY_ID`, `RAZORPAYX_KEY_SECRET`, `RAZORPAYX_WEBHOOK_SECRET` and `RAZORPAYX_ACCOUNT_NUMBER` in the server environment. |
@@ -120,11 +120,13 @@ On **Compensation → Payouts → (a batch)**:
   *holds*: their money stayed in the wallet, was never debited, and will be
   picked up by the first batch after the block is cleared. They are shown so
   you can see who is waiting and why.
-- **NEFT CSV** downloads every payable line. It appears only once the batch has
-  been approved, and only for finance: the file is the instruction the bank acts
-  on and it names every payee with their bank digits. In Razorpay mode it is a
-  record to reconcile against rather than an instruction, but it still waits for
-  approval.
+- **Download bank file (NEFT)** produces the file the company bank executes —
+  one line per payable distributor, with their **full account number**, IFSC and
+  beneficiary name. It appears only once the batch has been approved, and only
+  for finance. In Razorpay mode it is a record to reconcile against rather than
+  an instruction, but it still waits for approval. See
+  [The bank file](#the-bank-file-neft) below for the columns and what each
+  download records.
 
 Check the net total against what the engines reported before approving.
 Approval cannot be undone from this screen.
@@ -201,10 +203,42 @@ Every delivery is stored once, keyed on Razorpay's event id, so a redelivery
 is a no-op. A late event that would walk a settled transfer backwards is
 ignored.
 
+## The bank file (NEFT)
+
+The download is the instruction the bank acts on, so it carries what a bank
+needs to execute a transfer — not a reconciliation sheet:
+
+| Column | What it holds |
+|---|---|
+| `Line#` | Row number within this file. |
+| `ADN` | The distributor being paid. |
+| `Beneficiary Name` | The account holder's name **as the bank holds it**, from the distributor's Bank details page. Falls back to their registered full name when they have not given one. |
+| `Account Number` | The full account number. |
+| `IFSC` | The branch code. |
+| `Net Amount (₹)` | What leaves the company for that line, after every deduction. Plain digits with two decimals and no grouping — a bank parser reads `1234.50`, not `1,234.50`. |
+| `Narration` | `arovolife <ADN> B<batch id>` — what the distributor sees on their statement, and what ties a credit back to a batch. |
+| `UTR` | Blank until the bank's response file is imported. |
+| `Status` | The line's state at the moment of download. |
+
+**Every download is audited.** A `payout.batch.bank_file_exported` row records
+who downloaded it, which batch, how many lines, and a SHA-256 of the exact
+bytes handed over. The file itself is never stored and no account number is
+ever written to the audit log or to any application log — the digest is there so
+that a file produced later can be proved identical to (or different from) the
+one that went to the bank.
+
+**A line the platform can no longer decrypt** — a bank account whose ciphertext
+does not open, which normally means a key rotation between the batch run and the
+download — still appears in the file, with its `Account Number` and `IFSC`
+blank and its `Status` reading `bank_decrypt_failed`. It cannot be executed, and
+it is visible rather than silently missing. Fix the distributor's bank details
+and re-run the batch date.
+
 ## Manual NEFT mode: export, upload, import
 
 1. **Approve batch** — the batch moves to `approved`. Nothing has moved.
-2. **NEFT CSV** — download it and upload it to the company bank's portal.
+2. **Download bank file (NEFT)** — download it and upload it to the company
+   bank's portal.
 3. The bank returns a response file naming which lines settled.
 4. **Import bank response** on the batch page. Rows are matched on ADN. A row
    marks that line `transferred` (with its UTR) or `failed` (with the bank's
@@ -317,6 +351,7 @@ Every action leaves an `audit_log` row. In Compliance → Audit log, look for:
 | `payout.batch.created` / `payout.batch.finalised` | The engine run that produced the batch. |
 | `payout.batch.approved` | Who approved it, under which gateway, for how much. |
 | `payout.batch.self_approval_refused` | An approver was refused their own batch: who tried, and who created it. |
+| `payout.batch.bank_file_exported` | Who downloaded the bank file, for which batch, how many lines, and a SHA-256 of the exact bytes. |
 | `payout.batch.dispatched` | How many line items were sent, how many failed on the way out. |
 | `payout.batch.reconciled` | A bank response import: file name, rows, matched, transferred, failed. |
 | `payout.batch.settled` | The batch reaching completed / partially failed / failed. |

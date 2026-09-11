@@ -52,7 +52,7 @@
             </p>
         @else
             <p>
-                Approving a batch moves it to <strong>Approved</strong> and nothing else. Finance downloads the NEFT CSV,
+                Approving a batch moves it to <strong>Approved</strong> and nothing else. Finance downloads the bank file (NEFT),
                 uploads it to the company bank, and imports the bank's response file back on the batch page —
                 that import is what marks each line transferred or failed.
             </p>
