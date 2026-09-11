@@ -200,6 +200,7 @@ Generated from the findings register of the last run (status not Closed/Info). B
 - **F121** [FIXED — re-verify] Medium (observability) (T36, Open): `grievance:sla-sweep` is not in `EngineRegistry`, so it never writes `engine_runs`, and it logs nothing on no-op runs — its hourly execution cannot …
 
 - **F122** [FIXED — re-verify] High (compliance report) (T42, Open — fix before launch): `/admin/grievances/report/export` 500s once a resolved ticket yields a fractional median — `Csv::safe()` rejects floats. Regression check: resolve one ticket, then export.
+- **F125** [OPEN — code] Medium (recompute calendar): the replay cuts off day D at D 00:10 and today at real now; the scheduler cuts off D at D+1 00:10. A recompute inside 00:00–00:10 IST makes the next scheduled `gsb.daily-cutoff` fail on the carry-forward guard (staging run 95, 12 Sept). Regression check next run: trigger a recompute after 00:10, then confirm the next 00:10 scheduler run succeeds and logs only the premature-freeze self-heal.
 - **F123 note** (T42): the SSH user's crontab belongs to another Cloudways app; verify ahdhesuhty's cron via overnight `engine_runs` rows instead. Silence the `LOG_SLACK_WEBHOOK_URL is empty` warning (3,517 lines/day) before the next sweep.
 
 _Appendix generated 2026-09-11 from F01–F123 (complete first run); re-tagged 2026-09-11 evening after the fix run — FIXED items must be re-verified on staging next run, not re-found._
@@ -215,3 +216,17 @@ How the 123 findings were fixed, and what to do differently next time.
 - **Dev DB.** Batches must not run `php artisan migrate` on the dev DB mid-run (they would apply each other's half-written migrations); the orchestrator applies them once at the end inside the container.
 - **Decisions that came back from the client (2026-09-11)** are in `staging-qa-2026-09-10/fix-plan.md` §B and drive the next run's expectations: members pay the distributor price; MSB is a deduction source; company centres never earn ADC; maker-checker (`finance.approve`, admin only); NEFT export is a real bank file; self-service bank page; COD off; whole-order returns; guests may browse; several live announcements; helpline 10:00–18:00 Mon–Sat; malware scanning disabled by client decision (R-83); audit digests everywhere.
 - **Deploy/cleanup sequence** for a fix branch: `staging-qa-2026-09-10/deploy-checklist.md`.
+
+## 11. Full-recompute verification (added 2026-09-12)
+
+After the client-side go-ahead and the 5-point warning, the user triggers the FULL `compensation:recompute-all` from the Engine Runs page (the assistant cannot type the unlock word). Verify it like this, in order, all read-only:
+
+1. `audit_log` rows `compensation.recompute_all.queued` / `compensation.recompute_all` — mode, from/to, `rows_removed`, `engines_run`, `duration_seconds`, `warnings` (must be `[]`).
+2. `jobs` = 0; `engine_runs` all `succeeded`, earliest `period_start` = first paid order's month; no failed row survives.
+3. Pools by `cutoff_date` (`msb_daily_pools`, `gsb_daily_pools` — columns are `company_bv_paise`, `pool_paise`, `total_points`, `point_value_paise`, `payout_paise`); compare the busiest day with the previous run.
+4. Ledger: every `gsb_credit` / `mb_credit` / `rank_credit` has a `repurchase_transfer` + `repurchase_deduction`; `repurchase_wallet_used` rows preserved; batch debits (admin, TDS, payout) 3 per line.
+5. `payout_batches` + `payout_line_items` (column is `payout_batch_id`), `created_by` NULL, all pending; explain every count that moved against the previous run — expect August-period artefacts to disappear when the window starts in September (rank rows, AO-GO, lifetime milestones, and any offer grant that a stale rank qualification had blocked).
+6. `distributors.gsb_frozen_at` all NULL; `adc_bonus_results` 0 for the company centre.
+7. Reports: from the signed-in admin tab, `fetch()` each `/admin/compensation/...` report page (no `credentials` option — the browser safety filter blocks it; same-origin sends the cookie anyway), strip to text, grep `₹` figures and the words Failed/Exception; all must be 200. List in `deploy-checklist.md` §4a.
+8. `laravel.log` for the run's minute: no warning/error/exception/`premature_freeze`.
+9. Never run a recompute between 00:00 and 00:10 IST (F125), and expect the first scheduled cut-off afterwards to log the premature-freeze self-heal for the day the replay froze early.
