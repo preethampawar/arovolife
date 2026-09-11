@@ -10,11 +10,12 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Seeds the five public content pages: ethics, terms, grievance, compensation, privacy.
+ * Seeds the six public content pages: ethics, terms, grievance, compensation,
+ * privacy, returns.
  *
- * Four of them are published. `compensation` is seeded as a draft and left
- * unpublished — see {@see ContentPageSeeder::HELD_SLUGS} for why, and for the
- * one command that publishes it.
+ * Four of them are published. `compensation` and `returns` are seeded as
+ * drafts and left unpublished — see {@see ContentPageSeeder::HELD_SLUGS} for
+ * why, and for the one command that publishes them.
  *
  * Source of truth for each page is a Markdown file under
  * `database/seeders/content/<slug>.md`. The seeder reads each file, strips
@@ -66,6 +67,11 @@ final class ContentPageSeeder extends Seeder
             'title' => 'Privacy Policy',
             'meta_description' => 'How arovolife collects, uses, stores, shares and protects personal data under the DPDP Act 2023 — including PAN, Aadhaar and KYC handling.',
         ],
+        [
+            'slug' => 'returns',
+            'title' => 'Refunds, returns & shipping',
+            'meta_description' => 'How arovolife handles cancellations, returns, refunds, buy-back and delivery — the 30-day cooling-off window, what each return reason refunds, refund timelines, and where we deliver.',
+        ],
     ];
 
     /**
@@ -79,9 +85,16 @@ final class ContentPageSeeder extends Seeder
      * draft, so the copy is in the environment and one named command publishes
      * it: `php artisan content:publish compensation`.
      *
+     * `returns` is held for a different reason: DSR 2021 Rule 5 requires the
+     * return, refund and cancellation policy to be displayed, and the page is
+     * written — but its windows follow the buy-back matrix the platform
+     * actually applies, which is not what DSA §5.4 currently says (15-day
+     * customer return window). The client reviews and reconciles the two
+     * before it goes public (QA F35).
+     *
      * @var list<string>
      */
-    public const HELD_SLUGS = ['compensation'];
+    public const HELD_SLUGS = ['compensation', 'returns'];
 
     public function run(): void
     {
@@ -90,7 +103,7 @@ final class ContentPageSeeder extends Seeder
 
         $this->command->info('Seeded '.($published + $held).' content pages.');
         $this->command->warn(
-            'Held unpublished (R-75, DSA §6.2 notice): '.implode(', ', self::HELD_SLUGS).'. '
+            'Held unpublished pending review: '.implode(', ', self::HELD_SLUGS).'. '
             .'Publish with: php artisan content:publish '.implode(' ', self::HELD_SLUGS)
         );
     }

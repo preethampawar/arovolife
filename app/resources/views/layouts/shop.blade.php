@@ -40,6 +40,9 @@
                 <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Terms</a>
                 <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance</a>
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
+                <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Refunds &amp; returns</a>
+                @endif
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
             </div>
         </div>

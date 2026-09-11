@@ -674,6 +674,12 @@
                         <li><a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Direct Seller Agreement</a></li>
                         <li><a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy Policy</a></li>
                         <li><a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a></li>
+                        {{-- Rendered only once the page is published: the seeder
+                             holds it as a draft for the client's review, and a
+                             footer link to an unpublished page is a link to a 404. --}}
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
+                        <li><a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Refunds, returns &amp; shipping</a></li>
+                        @endif
                         <li><a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a></li>
                     </ul>
                 </div>

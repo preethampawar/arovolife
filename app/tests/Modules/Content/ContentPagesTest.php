@@ -117,7 +117,7 @@ it('returns 404 for a draft content page even when the slug exists', function ()
 
 it('is idempotent — re-seeding does not duplicate rows and refreshes the body content', function (): void {
     $before = ContentPage::query()->count();
-    expect($before)->toBe(5);
+    expect($before)->toBe(6);
 
     $page = ContentPage::query()->where('slug', 'terms')->firstOrFail();
     $page->update(['body' => '<p>stale draft</p>']);
@@ -125,7 +125,7 @@ it('is idempotent — re-seeding does not duplicate rows and refreshes the body 
     $this->seed(ContentPageSeeder::class);
 
     $after = ContentPage::query()->count();
-    expect($after)->toBe(5);
+    expect($after)->toBe(6);
 
     $page->refresh();
     expect($page->body)
