@@ -56,15 +56,19 @@ final class ConsentWithdrawalController extends Controller
             'confirmation.required' => 'Type WITHDRAW in capitals to confirm.',
         ]);
 
-        $count = $this->withdraw->execute(
-            $distributor,
-            $validated['reason'] ?? 'No reason given.',
-        );
-
-        if ($count === 0) {
+        // Asked before the call, not inferred from its return value: an
+        // account whose acceptance was never recorded withdraws zero rows and
+        // is still terminated, so "nothing was marked" and "there was nothing
+        // to take back" are different answers (F71).
+        if (! $this->withdraw->hasLiveConsent($distributor)) {
             return redirect()->route('profile.show')
                 ->with('status', 'Your consent had already been withdrawn.');
         }
+
+        $this->withdraw->execute(
+            $distributor,
+            $validated['reason'] ?? 'No reason given.',
+        );
 
         // Log them out: the ADN is closed, and leaving the session live would
         // show a dashboard for a distributorship that no longer exists.

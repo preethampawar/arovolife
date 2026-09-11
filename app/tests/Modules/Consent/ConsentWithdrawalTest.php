@@ -19,6 +19,9 @@ declare(strict_types=1);
  * CWD-06: a second submission does not terminate twice
  * CWD-07: the withdrawal page belongs to the signed-in distributor
  * CWD-08: the profile links to it plainly rather than hiding it
+ * CWD-09: an account with no consent rows still gets the full flow
+ * CWD-10: withdrawing without consent rows terminates, and only once
+ * CWD-11: an account that has withdrawn sees the already-withdrawn screen
  */
 
 use App\Modules\Admin\Events\DistributorTerminated;
@@ -168,4 +171,69 @@ it('CWD-08: the profile links to withdrawal plainly', function () {
         ->get(route('profile.show'))
         ->assertOk()
         ->assertSee('Withdraw consent');
+});
+
+it('CWD-09: an account with no consent rows still gets the full withdrawal flow (F71)', function () {
+    // Staging had 271 rows under `1.0.0` and 15 under `2026-08-30` against a
+    // much larger base: plenty of active ADNs have no acceptance row at all.
+    // Counting live rows made "never recorded" indistinguishable from "taken
+    // back", so those accounts were told there was nothing to withdraw. DPDP
+    // §6(5) wants withdrawal as easy as giving; a missing row is the
+    // platform's bookkeeping gap, not the distributor's decision.
+    $user = User::factory()->create(['status' => 'active']);
+    $distributor = Distributor::factory()->create(['user_id' => $user->id, 'status' => 'active']);
+
+    expect(app(WithdrawConsent::class)->hasLiveConsent($distributor))->toBeTrue();
+
+    $this->actingAs($user)
+        ->get(route('consent.withdraw'))
+        ->assertOk()
+        ->assertSee('it closes your ADN')
+        ->assertSee('Type')
+        ->assertSee('Keep my account')
+        ->assertSee('dpo@arovolife.com')
+        ->assertDontSee('already been withdrawn');
+});
+
+it('CWD-10: withdrawing without consent rows terminates and stays idempotent (F71)', function () {
+    Event::fake([DistributorTerminated::class]);
+
+    $user = User::factory()->create(['status' => 'active']);
+    $distributor = Distributor::factory()->create(['user_id' => $user->id, 'status' => 'active']);
+
+    $this->actingAs($user)
+        ->post(route('consent.withdraw.store'), ['confirmation' => 'WITHDRAW', 'reason' => 'Done.'])
+        ->assertRedirect(route('login'));
+
+    $distributor = $distributor->fresh();
+    expect($distributor->status)->toBe('inactive')
+        ->and($distributor->user->status)->toBe('terminated')
+        ->and($distributor->user->closure_type)->toBe('consent_withdrawn')
+        // Nothing to mark, so nothing is invented: no acceptance row is
+        // fabricated to carry the withdrawal.
+        ->and(Consent::where('distributor_id', $distributor->id)->count())->toBe(0);
+
+    $entry = AuditLog::where('action', 'consent.withdrawn')->firstOrFail();
+    expect($entry->details['consents_withdrawn'])->toBe(0);
+
+    // The closure is the only trace such a withdrawal can leave, so it is what
+    // closes the flow the second time round.
+    expect(app(WithdrawConsent::class)->hasLiveConsent($distributor))->toBeFalse()
+        ->and(app(WithdrawConsent::class)->execute($distributor, 'again'))->toBe(0);
+
+    Event::assertDispatchedTimes(DistributorTerminated::class, 1);
+});
+
+it('CWD-11: an account that has withdrawn sees the already-withdrawn screen (F71)', function () {
+    $distributor = cwdDistributor();
+
+    app(WithdrawConsent::class)->execute($distributor, 'Changed my mind.');
+
+    // Only an explicit withdrawal record closes the flow — and this account
+    // has four of them.
+    $this->actingAs($distributor->user)
+        ->get(route('consent.withdraw'))
+        ->assertOk()
+        ->assertSee('already been withdrawn')
+        ->assertDontSee('Withdraw consent and close my ADN');
 });

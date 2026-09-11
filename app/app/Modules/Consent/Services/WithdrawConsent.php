@@ -50,16 +50,16 @@ final class WithdrawConsent
     {
         $at ??= Carbon::now();
 
-        $live = DB::table('consents')
-            ->where('distributor_id', $distributor->id)
-            ->whereNull('withdrawn_at')
-            ->count();
-
-        if ($live === 0) {
+        if (! $this->hasLiveConsent($distributor)) {
             // Idempotent rather than an error: a double-submitted form must
             // not produce a second termination event.
             return 0;
         }
+
+        $live = DB::table('consents')
+            ->where('distributor_id', $distributor->id)
+            ->whereNull('withdrawn_at')
+            ->count();
 
         $user = $distributor->user;
 
@@ -112,12 +112,36 @@ final class WithdrawConsent
         return $live;
     }
 
-    /** Whether this distributor still has live consent to withdraw. */
+    /**
+     * Whether this distributor still has live consent to withdraw.
+     *
+     * A **missing** consent row is live consent, not a withdrawn one (staging
+     * QA F74's sibling, F71). Counting live rows made "never recorded" and
+     * "taken back" the same answer, so an active ADN whose acceptance rows
+     * predate `ConsentDocuments` — or were never written at all — was told
+     * "your consent has already been withdrawn" and shown no way to withdraw
+     * it. Under DPDP §6(5) withdrawal has to be as easy as giving was; hiding
+     * the flow behind a row the distributor never controlled fails that for
+     * the accounts least likely to have complete records.
+     *
+     * So only an explicit withdrawal closes the flow: a consent row stamped
+     * `withdrawn_at`, or — for an account that had no rows to stamp — the
+     * `consent_withdrawn` closure this service itself writes, which is the
+     * only trace such a withdrawal can leave.
+     */
     public function hasLiveConsent(Distributor $distributor): bool
     {
-        return DB::table('consents')
-            ->where('distributor_id', $distributor->id)
-            ->whereNull('withdrawn_at')
-            ->exists();
+        $rows = DB::table('consents')->where('distributor_id', $distributor->id);
+
+        if ((clone $rows)->whereNull('withdrawn_at')->exists()) {
+            return true;
+        }
+
+        if ($rows->exists()) {
+            // Rows on file and every one of them withdrawn.
+            return false;
+        }
+
+        return $distributor->user?->closure_type !== 'consent_withdrawn';
     }
 }

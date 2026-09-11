@@ -56,6 +56,16 @@
 
         <div class="rounded-xl border border-gray-200 bg-white p-6 mb-6">
             <h2 class="text-sm font-semibold text-gray-800 mb-3">What you consented to</h2>
+            @if ($consents->isEmpty())
+                {{-- No row on file is not "no consent given" — it is an
+                     acceptance this platform did not record, and saying so
+                     plainly beats an empty list the reader has to interpret. --}}
+                <p class="text-sm text-gray-700">
+                    We do not hold a dated acceptance record for your ADN. You accepted the agreement,
+                    the code of ethics, the plan and the privacy notice when you registered, and you can
+                    withdraw that consent here in the same way.
+                </p>
+            @else
             <ul class="divide-y divide-gray-100 text-sm">
                 @foreach ($consents as $consent)
                     <li class="flex items-center justify-between py-2">
@@ -70,6 +80,7 @@
                     </li>
                 @endforeach
             </ul>
+            @endif
         </div>
 
         <form method="POST" action="{{ route('consent.withdraw.store') }}"
