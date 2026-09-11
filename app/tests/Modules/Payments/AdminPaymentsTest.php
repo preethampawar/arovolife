@@ -282,14 +282,19 @@ it('APT-10: a paid order without an invoice is listed; finance issues it, operat
     $this->actingAs($operations)->get(route('admin.payments.index'))->assertOk()->assertSee('without a GST invoice')->assertSee($order->order_no);
     $this->actingAs($operations)->post(route('admin.payments.invoices.generate', $order))->assertForbidden();
 
-    $this->actingAs($finance)->post(route('admin.payments.invoices.generate', $order))->assertRedirect(route('admin.payments.index'));
+    // Issuing from the order detail page returns to the order detail page, not the payments index.
+    $this->actingAs($finance)->from(route('admin.commerce.orders.show', $order))
+        ->post(route('admin.payments.invoices.generate', $order))
+        ->assertRedirect(route('admin.commerce.orders.show', $order));
 
     $invoice = Invoice::where('order_id', $order->id)->sole();
     expect(app(InvoiceGapWorklist::class)->count())->toBe(0)
         ->and(AuditLog::where('action', 'invoice.generated_manually')->where('subject_id', $order->id)->sole()->details['invoice_no'])->toBe($invoice->invoice_no);
 
-    // Again is a no-op: the same invoice, never a second number.
-    $this->actingAs($finance)->post(route('admin.payments.invoices.generate', $order))->assertRedirect();
+    // Issuing from the payments index (again is a no-op: the same invoice, never a second number) returns there.
+    $this->actingAs($finance)->from(route('admin.payments.index'))
+        ->post(route('admin.payments.invoices.generate', $order))
+        ->assertRedirect(route('admin.payments.index'));
     expect(Invoice::where('order_id', $order->id)->count())->toBe(1);
 
     // Unpaid orders are refused outright.

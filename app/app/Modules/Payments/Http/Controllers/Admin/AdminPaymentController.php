@@ -105,7 +105,7 @@ final class AdminPaymentController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        return redirect()->route('admin.payments.index')->with('status', "Invoice {$invoice->invoice_no} issued for {$order->order_no}.");
+        return back()->with('status', "Invoice {$invoice->invoice_no} issued for {$order->order_no}.");
     }
 
     public function show(PaymentIntent $intent): View
