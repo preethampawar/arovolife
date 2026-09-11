@@ -193,22 +193,23 @@ final class AdminKycController extends Controller
             'details' => ['type' => $doc->type],
         ]);
 
-        // For S3, redirect to a short-lived signed URL. Streaming via
-        // Storage::response() worked locally but failed on Cloudways
-        // PHP-FPM (combination of output buffering + S3 SDK stream
-        // wrapper). The browser follows the 302 transparently — no
-        // change to the <img src> consumer.
-        if (config('filesystems.disks.kyc.driver') === 's3') {
-            $url = (string) $disk->temporaryUrl(
-                $doc->object_storage_key,
-                now()->addMinutes(15),
-            );
+        // Serve the bytes from this audited route — never a presigned URL, which
+        // would work for anyone holding it, with no session and no audit row
+        // (F106). `Storage::response()` failed on Cloudways PHP-FPM (output
+        // buffering + the S3 stream wrapper), so read the object outright:
+        // KYC scans are a few MB at most.
+        $contents = $disk->get($doc->object_storage_key);
 
-            return redirect()->away($url);
+        if ($contents === null) {
+            abort(404, 'KYC document file not found.');
         }
 
-        // Local disk (dev) — keep the byte-stream pattern.
-        return $disk->response($doc->object_storage_key);
+        return response($contents, 200, [
+            'Content-Type' => $disk->mimeType($doc->object_storage_key) ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="kyc-document-'.$doc->id.'"',
+            'Cache-Control' => 'no-store, private',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function approve(int $id): RedirectResponse
