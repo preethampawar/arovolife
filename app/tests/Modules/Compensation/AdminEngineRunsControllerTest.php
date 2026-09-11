@@ -397,6 +397,30 @@ it('still allows in-flight periods for engines that do not freeze economics', fu
 |--------------------------------------------------------------------------
 */
 
+it('warns on every reader that the recompute gate is open and the in-flight month is runnable (F82)', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+
+    // Not only the developer: any admin on this page can trigger an engine, and
+    // with the gate open the period pickers accept the month still in flight.
+    foreach (['developer', 'admin', 'admin-finance'] as $role) {
+        $this->actingAs(engineRunsUser($role))
+            ->get(route('admin.compensation.engine-runs.index'))
+            ->assertOk()
+            ->assertSee('Recompute testing gate is OPEN on this database')
+            ->assertSee('Do not run a period that has not ended');
+    }
+});
+
+it('shows no trace of the gate warning when the gate is closed (F82)', function (): void {
+    config(['arovolife.recompute.enabled' => false]);
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('Recompute testing gate is OPEN on this database')
+        ->assertDontSee('Do not run a period that has not ended');
+});
+
 it('hides the recompute card entirely when the gate is closed', function (): void {
     config(['arovolife.recompute.enabled' => false]);
 

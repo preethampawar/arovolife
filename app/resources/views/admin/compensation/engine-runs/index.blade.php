@@ -12,6 +12,19 @@
     and every trigger is permanently audit-logged with your admin ID and the reason you provide.
 </div>
 
+{{-- The recompute testing gate lifts the closed-period rule for EVERY engine on
+     this page, so the period pickers accept the month that is still in flight —
+     the 24-Aug bug class, where a run froze a day's pool on partial sales. The
+     warning goes to every reader, not only the developer who can see the
+     recompute card: any admin here can trigger an engine (QA F82). --}}
+@if($recomputeAllowed)
+<div class="mb-5 rounded-lg border-2 border-red-400 bg-red-50 p-4 text-sm text-red-900">
+    <strong>Recompute testing gate is OPEN on this database</strong> — engines can be run for the current, in-flight
+    month. Do not run a period that has not ended: the engine freezes that period's pool economics on the sales
+    recorded so far, permanently, and everyone who earns later that period is priced against the partial figure.
+</div>
+@endif
+
 {{-- Flash messages (status / error / validation) are rendered by the admin
      layout for every page. Do not repeat them here. --}}
 

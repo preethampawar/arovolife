@@ -110,6 +110,12 @@ Files: new `BankDetailsController` + `BankDetailsRequest` + `BankDetailsUpdatedN
 - [x] F70 `GET/POST /profile/bank`: account number typed twice, IFSC, optional bank name, beneficiary name; OTP-gated exactly like the contact change; PiiCrypter ciphertext; `distributor.bank_details_updated` audit row with before/after digests; mail+database receipt. Wallet page banner links to it while the hold stands.
 - [x] F28 `distributors.bank_beneficiary_name_enc` added (VARBINARY(512), PiiCrypter) for the B9 bank-upload export, plus plain `bank_name`.
 
+### B11 — MSB deduction, company Arete Centre, recompute-gate banner (Opus)
+Files: `MentorshipBonusService` + `mentorship_bonus_results` migration and the four MSB surfaces, `AreteDevelopmentCenterBonusService`, `AdminAreteCenterController`, `engine-runs/index.blade.php`, help + compensation docs.
+- [x] F33 MSB (`mb_credit`) becomes the fifth repurchase-deduction source (client Q6): credits go through `WalletService::creditWithRepurchaseDeduction()`, the deduction and the credited amount are frozen on the result row, and every MSB surface (both admin reports + CSVs, the admin tab, the distributor page) shows Income · Repurchase deduction · Credited to wallet. The B4a "no repurchase deduction applies to MSB" note is inverted; help and the repurchase doc updated.
+- [x] F120 The ADC engine skips `centre_type = 'company'` before it reads `assigned_distributor_id`, so a company centre never earns the bonus (client Q2); the admin form refuses an owner ADN on a company centre with a validation error. `adc_bonus_results` and `wallet_ledger_entries` are already in recompute `DerivedTables`, so the staging row rebuilds.
+- [x] F82 Engine Runs shows a red banner while `RecomputeGuard::isPermitted()` is true — "engines can be run for the current, in-flight month. Do not run a period that has not ended" — to every reader of the page (client Q18: staging keeps the gate open). Gate closed = zero trace.
+
 ## B. Client decisions (received 2026-09-11 ~12:45 IST) → Wave 3 batches
 
 | Q | Finding | Decision | Batch |
