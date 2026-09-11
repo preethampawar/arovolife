@@ -63,12 +63,12 @@ Files: `resources/views/admin/kyc/show.blade.php`, `AdminKycController`, messagi
 
 ### B5a — Distributor UI logic (Opus)
 Files: `Messaging/Http/Controllers/MessageController.php` + policy, `resources/views/income/genos-bv.blade.php`, income controllers, wallet page, `Genealogy/Http/Controllers/TreeController.php`, `_binary-node.blade.php`, distributor-requests controller, dashboard tooltips.
-- [ ] F25/F75 `MessageController::show()` → 404 unless the viewer may message the target (audience rule) or a thread already exists between them; policy test enumerating a stranger id.
-- [ ] F61/F62 `/income/genos-bv` shows the STORED weaker side / `power_side` per day (no recompute in the view); "Power CF after" labelled Left/Right; Genos Ledger row for the personal-BV top-up day; Mentorship table gets a Date column.
-- [ ] F63 Wallet ledger dated by `earned_on`/`bonus_month` (created_at shown as secondary), with bonus month and payout batch columns.
-- [ ] F67 Re-rooted `/tree/{adn}`: "YOU" ribbon only on the viewer's own node; banner says "Showing {name}'s placement".
-- [ ] F78 Distributor-request submit failure keeps input (`withInput()`).
-- [ ] F53 Payout-week / 8th-of-month cadence copy in dashboard + My Business tooltips renders only while the `compensation` content page is published (same gate as R-75).
+- [x] F25/F75 `MessageController::show()` → 404 unless the viewer may message the target (audience rule) or a thread already exists between them; policy test enumerating a stranger id.
+- [x] F61/F62 `/income/genos-bv` shows the STORED weaker side / `power_side` per day (no recompute in the view); "Power CF after" labelled Left/Right; Genos Ledger row for the personal-BV top-up day; Mentorship table gets a Date column.
+- [x] F63 Wallet ledger dated by `earned_on`/`bonus_month` (created_at shown as secondary), with bonus month and payout batch columns.
+- [x] F67 Re-rooted `/tree/{adn}`: "YOU" ribbon only on the viewer's own node; banner says "Showing {name}'s placement".
+- [!] F78 Distributor-request submit failure keeps input (`withInput()`). — not reproducible: both refusal routes already flash input and the form reads it back via `old()`; pinned with a regression test, see `fixes/B5a.md`.
+- [x] F53 Payout-week / 8th-of-month cadence copy in dashboard + My Business tooltips renders only while the `compensation` content page is published (same gate as R-75).
 
 ### B5b — Distributor copy & small UI (Sonnet)
 Files: `resources/views/income/wallet.blade.php`, `shop/pay-unavailable.blade.php`, notification bell partial, My Business view, enums/labels, membership card back, profile views, `ScannedForMalware.php`, flash partials.
