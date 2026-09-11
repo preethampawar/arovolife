@@ -173,9 +173,13 @@ final class TreeController extends Controller
      * 8 matching distributors from the caller's own subtree (self-row + all
      * descendants), closest-first by closure depth. Same matching predicate as
      * search() (partial mode) so the dropdown and the Find button agree.
-     * Results carry name + adn + email + phone (the caller can already see
-     * their own downline's contact details). Queries are never logged. A
-     * <3-char query short-circuits to an empty list to avoid noisy lookups.
+     * Results carry ADN + name only. A distributor may still FIND a downline
+     * member by typing an email or a phone number they already know — the
+     * match predicate is unchanged — but the response never echoes contact
+     * details back, so a partial-email query cannot be used to harvest the
+     * addresses and mobile numbers of a subtree (QA finding F69). Queries are
+     * never logged. A <3-char query short-circuits to an empty list to avoid
+     * noisy lookups.
      */
     public function suggest(Request $request): JsonResponse
     {
@@ -190,7 +194,7 @@ final class TreeController extends Controller
         }
 
         $rows = self::buildMatchQuery($q, partial: true)
-            ->with('user:id,full_name,email,phone_e164')
+            ->with('user:id,full_name')
             // Restrict to the caller's subtree (self-row + all descendants).
             ->join('genealogy_closure as gc', 'gc.descendant_id', '=', 'distributors.id')
             ->where('gc.ancestor_id', $authDistributor->id)
@@ -205,8 +209,6 @@ final class TreeController extends Controller
                 'adn' => $d->adn,
                 'id' => (int) $d->id,
                 'name' => $d->user?->full_name ?? '—',
-                'email' => $d->user?->email,
-                'phone' => $d->user?->phone_e164,
             ])->values()->all(),
         ]);
     }

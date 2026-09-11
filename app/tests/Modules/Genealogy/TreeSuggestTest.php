@@ -98,14 +98,34 @@ it('TSG-01: distributor suggest returns matching downline distributors as a list
     $res = $this->actingAs($rootUser)
         ->getJson(route('tree.suggest', ['q' => 'Khanna']))
         ->assertOk()
-        ->assertJsonStructure(['results' => [['adn', 'id', 'name', 'email', 'phone']]]);
+        ->assertJsonStructure(['results' => [['adn', 'id', 'name']]]);
 
     $ids = collect($res->json('results'))->pluck('id')->all();
     expect($ids)->toContain($aId)->toContain($bId);
 
-    // Each row carries name + adn + email + phone.
+    // ADN + name only — the typeahead must not hand back a downline member's
+    // email or mobile number (F69).
     $first = $res->json('results.0');
-    expect(array_keys($first))->toEqualCanonicalizing(['adn', 'id', 'name', 'email', 'phone']);
+    expect(array_keys($first))->toEqualCanonicalizing(['adn', 'id', 'name']);
+    $res->assertDontSee($a->email)->assertDontSee($b->email)
+        ->assertDontSee($a->phone_e164)->assertDontSee($b->phone_e164);
+});
+
+it('TSG-01b: a distributor can still find a downline member by an email they already know, without it coming back (F69)', function () {
+    $rootUser = tsgUser('root');
+    $rootId = tsgSeed($rootUser->id);
+
+    $child = tsgUser('child', name: 'Findable Child', email: 'findable-child@test.com', phone: '+919812345678');
+    $childId = tsgSeed($child->id, parentId: $rootId);
+
+    foreach (['findable-child@test.com', '9812345678'] as $query) {
+        $res = $this->actingAs($rootUser)
+            ->getJson(route('tree.suggest', ['q' => $query]))
+            ->assertOk();
+
+        expect(collect($res->json('results'))->pluck('id')->all())->toContain($childId);
+        $res->assertDontSee('findable-child@test.com')->assertDontSee('9812345678');
+    }
 });
 
 it('TSG-02: distributor suggest excludes distributors outside the caller downline', function () {
