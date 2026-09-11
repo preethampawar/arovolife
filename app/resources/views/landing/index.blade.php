@@ -41,7 +41,7 @@
                     'note' => 'Registration is free. No payment required to sign up.',
                 ],
                 [
-                    'eyebrow' => 'arovolife Shopping Mall',
+                    'eyebrow' => 'arovolife',
                     'title_plain' => 'Quality Essentials',
                     'title_accent' => 'Delivered to Your Door',
                     'body' => 'Browse our curated range of personal care, health and food products — responsibly sourced, independently quality-checked, and backed by an invoice on every order.',
@@ -251,13 +251,16 @@
             }
         </style>
 
-        {{-- Prev / Next arrows --}}
+        {{-- Prev / Next arrows. Hidden on phones: vertically centred on the
+             slide, they sat on top of the body copy and ate characters at both
+             edges (QA F37). Touch users swipe, and the dots below still move
+             between slides. --}}
         <button type="button" data-slider-prev aria-label="Previous slide"
-                class="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-brand-700 hover:text-brand-900 transition-colors">
+                class="hidden md:flex absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white border border-gray-200 shadow-md items-center justify-center text-brand-700 hover:text-brand-900 transition-colors">
             <x-lucide-chevron-left class="w-5 h-5" />
         </button>
         <button type="button" data-slider-next aria-label="Next slide"
-                class="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white border border-gray-200 shadow-md flex items-center justify-center text-brand-700 hover:text-brand-900 transition-colors">
+                class="hidden md:flex absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/80 hover:bg-white border border-gray-200 shadow-md items-center justify-center text-brand-700 hover:text-brand-900 transition-colors">
             <x-lucide-chevron-right class="w-5 h-5" />
         </button>
 

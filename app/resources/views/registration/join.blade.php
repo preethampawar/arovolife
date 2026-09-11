@@ -18,6 +18,13 @@
         @endif
     </p>
 
+    {{-- Hard rule #1 / T&C §4: a visitor who arrives straight on a referral
+         link never sees the home page, so the free-of-cost statement has to be
+         on this screen too, not only on step 1 (QA F37). --}}
+    <p class="text-sm font-medium text-brand-800 bg-brand-50 border border-brand-200 rounded-lg px-4 py-2.5 mb-6">
+        Joining arovolife is free of cost. There is no registration fee and no purchase is required at any step.
+    </p>
+
     <form method="POST" action="{{ route('join.submit') }}"
           class="space-y-5 bg-white rounded-2xl border border-gray-200 p-8">
         @csrf
