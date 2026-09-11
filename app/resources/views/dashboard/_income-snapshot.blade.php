@@ -3,6 +3,13 @@
      is money already credited to the wallet; nothing here is a projection. --}}
 @php
     $fmt = \App\Modules\Shared\Support\IndianNumber::class;
+    // R-75 / QA F53: the Wednesday-to-Tuesday payout week and the 8th-of-month
+    // monthly run are plan disclosures. While the `compensation` policy page is
+    // held back for the DSA §6.2 30-day notice, no distributor surface may state
+    // them — a tooltip that says what the unpublished page has not yet said is
+    // the same disclosure by another route. Falls back to the cadence that is
+    // already published.
+    $payoutCadencePublished = \App\Modules\Content\Models\ContentPage::isSlugPublished('compensation');
     $monthKeys = array_keys($creditsByMonth);
     $monthVals = array_values($creditsByMonth);
     $mn = count($monthVals);
@@ -63,17 +70,23 @@
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next weekly</p>
-                        <x-help-tip text="Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), provided your balance meets the minimum payout." />
+                        <x-help-tip :text="$payoutCadencePublished
+                            ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), provided your balance meets the minimum payout.'
+                            : 'Weekly income is transferred in the Tuesday payout run (03:00 IST), provided your balance meets the minimum payout.'" />
                     </div>
                     <p class="text-xl font-bold text-gray-900 leading-tight">{{ $keyDates['nextWeeklyPayout']->format('D, d M') }}</p>
+                    @if($payoutCadencePublished)
                     <p class="text-[11px] text-gray-500 mt-0.5">Covers earnings through {{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($keyDates['nextWeeklyPayout'])['end']->format('d M') }}</p>
+                    @endif
                 </div>
 
                 {{-- Next monthly payout (if any monthly bonuses are active, else show payout label) --}}
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next monthly</p>
-                        <x-help-tip text="Monthly bonuses transfer to your bank on the 8th of each month, provided your balance meets the minimum payout." />
+                        <x-help-tip :text="$payoutCadencePublished
+                            ? 'Monthly bonuses transfer to your bank on the 8th of each month, provided your balance meets the minimum payout.'
+                            : 'Monthly bonuses transfer to your bank in the monthly payout run, provided your balance meets the minimum payout.'" />
                     </div>
                     @if($keyDates['hasMonthlyBonuses'] ?? false)
                         <p class="text-xl font-bold text-gray-900 leading-tight">{{ $keyDates['nextMonthlyPayout']->format('D, d M') }}</p>

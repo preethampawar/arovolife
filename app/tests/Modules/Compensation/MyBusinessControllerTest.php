@@ -117,6 +117,20 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
     ['user' => $user] = myBusinessDistributor();
     $this->actingAs($user);
 
+    // The payout-week wording in the wallet help tip only renders while the
+    // compensation policy page is published (F53 / R-75).
+    DB::table('content_pages')->updateOrInsert(
+        ['slug' => 'compensation'],
+        [
+            'title' => 'Compensation Plan',
+            'body' => 'x',
+            'status' => 'published',
+            'published_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
     $this->get(route('my-business'))
         ->assertOk()
         ->assertSee('My Business')

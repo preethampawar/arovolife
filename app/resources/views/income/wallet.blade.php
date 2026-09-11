@@ -5,7 +5,16 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Wallet &amp; Payouts</h1>
 
-    @include('income._tabs')
+    @php
+    // R-75 / QA F53: the Wednesday-to-Tuesday payout week and the 8th-of-month
+    // monthly run are plan disclosures. While the `compensation` policy page is
+    // held back for the DSA §6.2 30-day notice, no distributor surface may state
+    // them — a tooltip that says what the unpublished page has not yet said is
+    // the same disclosure by another route. Falls back to the cadence that is
+    // already published.
+    $payoutCadencePublished = \App\Modules\Content\Models\ContentPage::isSlugPublished('compensation');
+@endphp
+@include('income._tabs')
 
     {{-- Payout held for want of a bank account — the distributor can now fix
          this themselves (F70), so say where. --}}
@@ -22,7 +31,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday, and monthly income in the monthly payout on the 8th — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of each bonus (max ₹10,000 per calendar month) moves to your repurchase wallet the moment the bonus is credited, to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
+        Your wallet receives Genos Sales Bonus and other weekly bonus credits after each 23:59 cut-off, and monthly bonus income when its month is calculated. {{ $payoutCadencePublished ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday, and monthly income in the monthly payout on the 8th' : 'Weekly income is transferred in the Tuesday payout run, and monthly income in the monthly payout run' }} — provided the balance is at least ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}. Repurchase deduction: 10% of each bonus (max ₹10,000 per calendar month) moves to your repurchase wallet the moment the bonus is credited, to fund your mandatory monthly repurchase. Balances below ₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }} roll over to the next payout.
     </div>
     @enddeveloper
 
@@ -47,10 +56,14 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Next Payout Date</p>
-                <x-help-tip text="Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday, at 03:00 IST." />
+                <x-help-tip :text="$payoutCadencePublished
+                    ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday, at 03:00 IST.'
+                    : 'Weekly income is transferred in the Tuesday payout run, at 03:00 IST.'" />
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ $nextPayout->format('d M') }}</p>
+            @if($payoutCadencePublished)
             <p class="text-xs text-gray-600 mt-0.5">Covers earnings through {{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($nextPayout)['end']->format('d M Y') }}</p>
+            @endif
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
@@ -222,7 +235,7 @@
     @if($payoutRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center">
             <p class="text-gray-600 font-medium">No payouts yet.</p>
-            <p class="text-sm text-gray-600 mt-1">Your first bank transfer will appear here after the Tuesday payout run — each one pays a Wednesday-to-Tuesday earning week.</p>
+            <p class="text-sm text-gray-600 mt-1">Your first bank transfer will appear here after the Tuesday payout run{{ $payoutCadencePublished ? ' — each one pays a Wednesday-to-Tuesday earning week' : '' }}.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">

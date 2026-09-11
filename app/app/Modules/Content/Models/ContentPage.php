@@ -66,6 +66,23 @@ final class ContentPage extends Model
         return $this->status === self::STATUS_PUBLISHED;
     }
 
+    /**
+     * Is the policy page at this slug live for readers right now — the same
+     * test PublicContentPageController applies before serving it?
+     *
+     * Surfaces inside the app ask this before repeating a disclosure the
+     * published page has not yet made. A plan cadence held back for the DSA
+     * §6.2 30-day notice must not reach distributors through a dashboard
+     * tooltip while the page itself is unpublished (R-75, QA finding F53).
+     */
+    public static function isSlugPublished(string $slug): bool
+    {
+        return self::query()
+            ->where('slug', $slug)
+            ->where('status', self::STATUS_PUBLISHED)
+            ->exists();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'id';

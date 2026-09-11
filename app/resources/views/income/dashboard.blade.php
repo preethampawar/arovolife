@@ -5,15 +5,24 @@
 <div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Income</h1>
 
-    @include('income._tabs')
+    @php
+    // R-75 / QA F53: the Wednesday-to-Tuesday payout week and the 8th-of-month
+    // monthly run are plan disclosures. While the `compensation` policy page is
+    // held back for the DSA §6.2 30-day notice, no distributor surface may state
+    // them — a tooltip that says what the unpublished page has not yet said is
+    // the same disclosure by another route. Falls back to the cadence that is
+    // already published.
+    $payoutCadencePublished = \App\Modules\Content\Models\ContentPage::isSlugPublished('compensation');
+@endphp
+@include('income._tabs')
 
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         @if ($gsbOn)
-            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off. Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
+            This dashboard shows a live snapshot of your Genos Income. Genos BV updates as your Genos members make purchases throughout the day. The 23:59 daily cut-off locks the BV for that day and calculates your Genos Sales Bonus. Your wallet is credited after the cut-off. @if($payoutCadencePublished)Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}.@else Weekly income is transferred in the Tuesday payout run{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout run' : '' }}.@endif The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @else
-            This dashboard shows a live snapshot of your income. Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}. The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
+            This dashboard shows a live snapshot of your income. @if($payoutCadencePublished)Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout on the 8th' : '' }}.@else Weekly income is transferred in the Tuesday payout run{{ ($keyDates['hasMonthlyBonuses'] ?? false) ? ', and monthly bonuses in the monthly payout run' : '' }}.@endif The repurchase deduction (10% of each bonus, up to ₹10,000 a month) is taken when the bonus is credited; the 3% admin charge and 5% TDS are applied at transfer.
         @endif
     </div>
     @enddeveloper
@@ -58,7 +67,9 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600 font-medium">Next weekly payout</p>
-                <x-help-tip text="Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday. This Tuesday's transfer{{ $gsbOn ? ' — Genos Sales Bonus and other weekly credits —' : '' }} therefore covers the week that closed last Tuesday, after deductions and provided your balance meets the minimum. See Wallet &amp; Payouts for the exact rules." />
+                <x-help-tip :text="$payoutCadencePublished
+                        ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday. This Tuesday\'s transfer'.($gsbOn ? ' — Genos Sales Bonus and other weekly credits —' : '').' therefore covers the week that closed last Tuesday, after deductions and provided your balance meets the minimum. See Wallet & Payouts for the exact rules.'
+                        : 'Weekly income is transferred in the Tuesday payout run'.($gsbOn ? ' — Genos Sales Bonus and other weekly credits —' : '').' after deductions, and provided your balance meets the minimum. See Wallet & Payouts for the exact rules.'" />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextWeeklyPayout']->format('D, d M') }}</p>
             <p class="text-xs text-gray-600 mt-1">Weekly bonus income</p>
@@ -67,7 +78,9 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600 font-medium">Next monthly payout</p>
-                <x-help-tip text="Monthly bonus income for the previous month is calculated at the start of each month and transfers to your bank in the monthly payout on the 8th." />
+                <x-help-tip :text="$payoutCadencePublished
+                    ? 'Monthly bonus income for the previous month is calculated at the start of each month and transfers to your bank in the monthly payout on the 8th.'
+                    : 'Monthly bonus income for the previous month is calculated at the start of each month and transfers to your bank in the monthly payout run.'" />
             </div>
             <p class="text-xl font-bold text-gray-900">{{ $keyDates['nextMonthlyPayout']->format('D, d M') }}</p>
             <p class="text-xs text-gray-600 mt-1">Monthly bonuses for the previous month</p>

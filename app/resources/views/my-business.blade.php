@@ -5,6 +5,14 @@
 @php
     use App\Modules\Shared\Support\IndianNumber as Number;
 
+    // R-75 / QA F53: the Wednesday-to-Tuesday payout week and the 8th-of-month
+    // monthly run are plan disclosures. While the `compensation` policy page is
+    // held back for the DSA §6.2 30-day notice, no distributor surface may state
+    // them — a tooltip that says what the unpublished page has not yet said is
+    // the same disclosure by another route. Falls back to the cadence that is
+    // already published.
+    $payoutCadencePublished = \App\Modules\Content\Models\ContentPage::isSlugPublished('compensation');
+
     // Every Genos figure is gated by eligibility: below the personal-BV minimum
     // the cut-off discards group BV, so the page shows 0 rather than a number
     // the distributor will never be credited for.
@@ -106,7 +114,10 @@
         <div class="bg-gradient-to-br from-brand-600 to-brand-800 rounded-2xl p-5 text-white sm:col-span-3">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-white/80 font-medium">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
-                <x-help-tip :light="true" text="Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), so the {{ $nextPayout->format('d M Y') }} transfer covers earnings through {{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($nextPayout)['end']->format('d M Y') }}; monthly bonus income transfers in the monthly payout on the 8th. This is the balance sitting in your wallet right now, not a forecast. The repurchase deduction was already taken when each bonus was credited; at payout the balance is transferred after the 3% admin charge and 5% TDS; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout." />
+                <x-help-tip :light="true" :text="($payoutCadencePublished
+                    ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), so the '.$nextPayout->format('d M Y').' transfer covers earnings through '.\App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($nextPayout)['end']->format('d M Y').'; monthly bonus income transfers in the monthly payout on the 8th.'
+                    : 'Weekly income is transferred in the Tuesday payout run (03:00 IST); monthly bonus income transfers in the monthly payout run.')
+                    .' This is the balance sitting in your wallet right now, not a forecast. The repurchase deduction was already taken when each bonus was credited; at payout the balance is transferred after the 3% admin charge and 5% TDS; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout.'" />
             </div>
             <p class="text-2xl font-bold">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
             <p class="text-xs text-white/80 mt-1">Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.</p>

@@ -65,6 +65,22 @@ function incomeDistributor(): array
     return ['user' => $user, 'distributorId' => $id];
 }
 
+/** Publish the `compensation` policy page, the gate the payout-cadence copy sits behind (F53). */
+function publishCompensationPage(): void
+{
+    DB::table('content_pages')->updateOrInsert(
+        ['slug' => 'compensation'],
+        [
+            'title' => 'Compensation Plan',
+            'body' => 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday.',
+            'status' => 'published',
+            'published_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+}
+
 it('redirects unauthenticated users from all income routes', function (): void {
     $routes = [
         route('income.dashboard'),
@@ -103,6 +119,10 @@ it('returns 403 for authenticated user with no distributor record', function ():
 it('renders income dashboard for a distributor', function (): void {
     ['user' => $user] = incomeDistributor();
     $this->actingAs($user);
+
+    // The payout-week wording only exists while the compensation page is
+    // published (F53), so publish it for this assertion.
+    publishCompensationPage();
 
     $this->get(route('income.dashboard'))
         ->assertOk()
@@ -474,6 +494,10 @@ it('returns 404 for growth booster page when feature flag is off', function (): 
 it('renders wallet page with empty state', function (): void {
     ['user' => $user] = incomeDistributor();
     $this->actingAs($user);
+
+    // The payout-week wording only renders while the compensation page is
+    // published (F53).
+    publishCompensationPage();
 
     $this->get(route('income.wallet'))
         ->assertOk()
@@ -1294,4 +1318,38 @@ it('dates the wallet ledger by when the money was earned, and names its bonus mo
         ->and($csv)->toContain('Paid In Batch')
         ->and($csv)->toContain('2026-09-06,2026-09-07')
         ->and($csv)->toContain('Weekly · 08 Sep 2026');
+});
+
+it('keeps the payout-week and 8th-of-month cadence off every distributor surface while the compensation page is unpublished (F53/R-75)', function (): void {
+    ['user' => $user] = incomeDistributor();
+    $this->actingAs($user);
+
+    $surfaces = [route('income.dashboard'), route('income.wallet'), route('my-business')];
+
+    // Unpublished (the staging state: no compensation row at all).
+    foreach ($surfaces as $url) {
+        $this->get($url)
+            ->assertOk()
+            ->assertDontSee('Wednesday-to-Tuesday')
+            ->assertDontSee('Covers earnings through')
+            ->assertDontSee('on the 8th of each month')
+            ->assertDontSee('in the monthly payout on the 8th');
+    }
+
+    // A draft is not a publication either.
+    DB::table('content_pages')->updateOrInsert(
+        ['slug' => 'compensation'],
+        ['title' => 'Compensation Plan', 'body' => 'x', 'status' => 'draft', 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    $this->get(route('income.wallet'))->assertOk()->assertDontSee('Wednesday-to-Tuesday');
+
+    // Published — the cadence may be stated.
+    publishCompensationPage();
+
+    $this->get(route('income.wallet'))
+        ->assertOk()
+        ->assertSee('Wednesday-to-Tuesday')
+        ->assertSee('Covers earnings through');
+    $this->get(route('my-business'))->assertOk()->assertSee('Wednesday-to-Tuesday');
 });
