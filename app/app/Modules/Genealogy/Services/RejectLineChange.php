@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Genealogy\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Genealogy\Events\LineChangeRejected;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeNotPendingError;
@@ -32,6 +33,7 @@ final class RejectLineChange
             }
 
             $now = Carbon::now();
+            $before = AuditDigests::snapshot($request);
             $request->status = 'rejected';
             $request->decision_note = mb_substr($decisionNote, 0, 1024);
             $request->reviewed_by = $reviewerUserId;
@@ -43,6 +45,8 @@ final class RejectLineChange
                 'action' => 'genealogy.line_change.rejected',
                 'subject_type' => 'distributor',
                 'subject_id' => (int) $request->distributor_id,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($request),
                 'details' => [
                     'request_id' => $requestId,
                     'decision_note' => $request->decision_note,

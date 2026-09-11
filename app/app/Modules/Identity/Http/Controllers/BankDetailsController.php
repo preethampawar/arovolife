@@ -7,6 +7,7 @@ namespace App\Modules\Identity\Http\Controllers;
 use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Requests\BankDetailsRequest;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -150,8 +151,8 @@ final class BankDetailsController extends Controller
                 'account_last4' => $pending['account_last4'],
                 'via' => 'self_service_otp',
             ],
-            'before_hash' => AuditLog::digest($before),
-            'after_hash' => AuditLog::digest($after),
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($after),
             'ip' => $request->ip(),
         ]);
 
@@ -269,11 +270,17 @@ final class BankDetailsController extends Controller
      */
     private function audit(User $user, Distributor $distributor, string $action, array $details): void
     {
+        // Sending the OTP moves nothing: the bank details on file stand until
+        // the code is confirmed, and the matching digests say exactly that.
+        $state = AuditDigests::of($this->stateLabel($distributor));
+
         AuditLog::create([
             'actor_id' => $user->id,
             'action' => $action,
             'subject_type' => 'distributor',
             'subject_id' => $distributor->id,
+            'before_hash' => $state,
+            'after_hash' => $state,
             'details' => $details,
             'ip' => request()->ip(),
         ]);

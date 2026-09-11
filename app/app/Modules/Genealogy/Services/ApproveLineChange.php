@@ -6,6 +6,7 @@ namespace App\Modules\Genealogy\Services;
 
 use App\Modules\Commerce\Services\DistributorCommerceActivity;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Genealogy\Events\LineChangeApproved;
 use App\Modules\Genealogy\Models\LineChangeRequest;
 use App\Modules\Genealogy\Services\Exceptions\LineChangeHasCommerceError;
@@ -160,6 +161,19 @@ final class ApproveLineChange
                     'action' => 'genealogy.line_change.approved',
                     'subject_type' => 'distributor',
                     'subject_id' => $distributorId,
+                    // The placement itself is what moves: parent, side, depth.
+                    'before_hash' => AuditDigests::of([
+                        'placement_parent_id' => $fromParentId,
+                        'placement_side' => $fromSide,
+                        'depth' => $fromDepth,
+                        'request_status' => 'pending',
+                    ]),
+                    'after_hash' => AuditDigests::of([
+                        'placement_parent_id' => $newParentId,
+                        'placement_side' => $chosenSide,
+                        'depth' => $newDepth,
+                        'request_status' => $request->status,
+                    ]),
                     'details' => [
                         'request_id' => $requestId,
                         'from_placement_parent_id' => $fromParentId,

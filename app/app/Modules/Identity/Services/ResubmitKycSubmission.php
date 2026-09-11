@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Events\KycResubmitted;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -117,6 +118,12 @@ final class ResubmitKycSubmission
             // Move the user (and the spouse, for couple registrations) back
             // into the review queue. Limited to status='rejected' so we don't
             // accidentally pull an already-active spouse back into review.
+            $statusesBefore = User::query()
+                ->whereIn('id', $userIdsToReactivate)
+                ->orderBy('id')
+                ->pluck('status', 'id')
+                ->all();
+
             User::query()
                 ->whereIn('id', $userIdsToReactivate)
                 ->where('status', 'rejected')
@@ -127,6 +134,15 @@ final class ResubmitKycSubmission
                 'action' => 'kyc.resubmitted',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributorId,
+                'before_hash' => AuditDigests::of(['user_status' => $statusesBefore]),
+                'after_hash' => AuditDigests::of([
+                    'user_status' => User::query()
+                        ->whereIn('id', $userIdsToReactivate)
+                        ->orderBy('id')
+                        ->pluck('status', 'id')
+                        ->all(),
+                    'documents_replaced' => $replaced,
+                ]),
                 'details' => [
                     'document_types' => $replaced,
                     'resubmitted_at' => $now->toIso8601String(),

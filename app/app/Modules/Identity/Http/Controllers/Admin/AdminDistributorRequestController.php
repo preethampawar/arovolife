@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers\Admin;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\DistributorRequest;
 use App\Modules\Identity\Models\DistributorRequestDocument;
 use App\Modules\Identity\Models\User;
@@ -136,6 +137,10 @@ final class AdminDistributorRequestController extends Controller
             'action' => 'distributor_request.document_viewed',
             'subject_type' => 'distributor_request',
             'subject_id' => $distributorRequest->id,
+            // A view moves nothing; the matching digests pin which document
+            // state the reviewer was shown.
+            'before_hash' => AuditDigests::of($document),
+            'after_hash' => AuditDigests::of($document),
             'details' => ['document_id' => $document->id, 'type' => $document->type],
             'ip' => request()->ip(),
         ]);

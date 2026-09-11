@@ -10,6 +10,7 @@ use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Payments\Services\RazorpayRefundService;
 use App\Modules\Returns\Events\OrderRefundApproved;
@@ -253,6 +254,11 @@ final class RefundOrder
             // Advance order to refund_approved: the ledger has moved; the
             // order becomes `refunded` only when the gateway (or a manual
             // NEFT) settles the payable.
+            $before = AuditDigests::of([
+                'order_status' => (string) $order->status,
+                'return_status' => (string) $returnRequest->status,
+            ]);
+
             $order->update([
                 'status' => Order::STATUS_REFUND_APPROVED,
                 'refund_approved_at' => Carbon::now(),
@@ -266,6 +272,12 @@ final class RefundOrder
                 'action' => 'order.refund_approved',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,
+                'before_hash' => $before,
+                'after_hash' => AuditDigests::of([
+                    'order_status' => (string) $order->status,
+                    'return_status' => (string) $returnRequest->status,
+                    'net_refund_paise' => $netRefundPaise,
+                ]),
                 'details' => [
                     'order_no' => $order->order_no,
                     'reason' => $reason,

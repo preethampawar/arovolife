@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
@@ -144,7 +145,11 @@ final class KycDocumentSelfServiceController extends Controller
             ->where('type', $type)
             ->whereNull('verified_at')
             ->value('id');
+        $replaced = null;
+
         if ($previousId !== null) {
+            $previous = KycDocument::query()->where('id', $previousId)->first();
+            $replaced = $previous === null ? null : AuditDigests::of($previous);
             KycDocument::query()->where('id', $previousId)->delete();
         }
 
@@ -162,6 +167,8 @@ final class KycDocumentSelfServiceController extends Controller
             'action' => 'profile.kyc_document.uploaded',
             'subject_type' => 'distributor',
             'subject_id' => $distributor->id,
+            'before_hash' => $replaced,
+            'after_hash' => AuditDigests::of($doc),
             'details' => [
                 'type' => $type,
                 'document_id' => $doc->id,

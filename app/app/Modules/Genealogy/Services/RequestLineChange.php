@@ -6,6 +6,7 @@ namespace App\Modules\Genealogy\Services;
 
 use App\Modules\Commerce\Services\DistributorCommerceActivity;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Genealogy\Events\LineChangeRequested;
 use App\Modules\Genealogy\Models\GenealogyClosure;
 use App\Modules\Genealogy\Models\LineChangeRequest;
@@ -141,6 +142,10 @@ final class RequestLineChange
                 'action' => 'genealogy.line_change.requested',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributorId,
+                // A request has no before-state: the placement has not moved,
+                // and the row it creates is the after.
+                'before_hash' => null,
+                'after_hash' => AuditDigests::of($request),
                 'details' => [
                     'request_id' => $request->id,
                     'from_placement_parent_id' => $fromParentId,

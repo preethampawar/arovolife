@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Kyc\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification;
@@ -65,7 +66,9 @@ final class KycDocumentReuploadController extends Controller
 
         $oldPath = $document->object_storage_key;
 
-        DB::transaction(function () use ($document, $disk, $file, $newPath, $sha256, $oldPath, $request): void {
+        $before = AuditDigests::snapshot($document);
+
+        DB::transaction(function () use ($document, $disk, $file, $newPath, $sha256, $oldPath, $request, $before): void {
             $disk->putFileAs(dirname($newPath), $file, basename($newPath));
 
             $document->update([
@@ -81,6 +84,8 @@ final class KycDocumentReuploadController extends Controller
                 'action' => 'distributor.kyc.document_reuploaded',
                 'subject_type' => 'distributor',
                 'subject_id' => $document->distributor_id,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($document),
                 'details' => ['document_id' => $document->id, 'type' => $document->type],
                 'ip' => $request->ip(),
             ]);

@@ -9,6 +9,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Returns\Models\ReturnRequest;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -64,6 +65,7 @@ final class OpenReturn
                 'status' => ReturnRequest::STATUS_OPENED,
             ]);
 
+            $orderStatusBefore = (string) $order->status;
             $order->update(['status' => Order::STATUS_REFUND_REQUESTED]);
 
             AuditLog::create([
@@ -71,6 +73,14 @@ final class OpenReturn
                 'action' => 'return.opened',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,
+                'before_hash' => AuditDigests::of([
+                    'order_status' => $orderStatusBefore,
+                    'return_request' => null,
+                ]),
+                'after_hash' => AuditDigests::of([
+                    'order_status' => (string) $order->status,
+                    'return_request' => AuditDigests::snapshot($returnRequest),
+                ]),
                 'details' => [
                     'order_no' => $order->order_no,
                     'rma_no' => $returnRequest->rma_no,

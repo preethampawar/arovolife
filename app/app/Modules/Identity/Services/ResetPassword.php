@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\Exceptions\InvalidResetTokenError;
 use Illuminate\Database\DatabaseManager;
@@ -58,6 +59,10 @@ final class ResetPassword
 
             $user = User::query()->where('email', $email)->firstOrFail();
 
+            // The credential itself never reaches a digest: the stamp beside
+            // it moves on every set and says the same thing safely.
+            $before = AuditDigests::of(['password_set_at' => (string) $user->password_set_at]);
+
             $user->update([
                 'password_hash' => Hash::make($newPassword),
                 'password_set_at' => Carbon::now(),
@@ -70,6 +75,8 @@ final class ResetPassword
                 'action' => 'identity.password.reset',
                 'subject_type' => 'user',
                 'subject_id' => $user->id,
+                'before_hash' => $before,
+                'after_hash' => AuditDigests::of(['password_set_at' => (string) $user->password_set_at]),
                 'details' => ['email' => $email],
             ]);
 

@@ -6,6 +6,7 @@ namespace App\Modules\Returns\Services;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Returns\Models\BuybackDecision;
 use App\Modules\Returns\Models\ReturnInspection;
 use App\Modules\Returns\Models\ReturnRequest;
@@ -88,6 +89,7 @@ final class InspectReturn
                 ],
             );
 
+            $orderStatusBefore = (string) $order->status;
             $order->update(['status' => Order::STATUS_REFUND_INSPECTION]);
 
             AuditLog::create([
@@ -95,6 +97,12 @@ final class InspectReturn
                 'action' => 'return.inspected',
                 'subject_type' => 'return_request',
                 'subject_id' => $returnRequest->id,
+                'before_hash' => AuditDigests::of(['order_status' => $orderStatusBefore]),
+                'after_hash' => AuditDigests::of([
+                    'order_status' => (string) $order->status,
+                    'condition' => $condition,
+                    'net_refund_paise' => $netRefund,
+                ]),
                 'details' => [
                     'order_no' => $order->order_no,
                     'condition' => $condition,
@@ -160,6 +168,11 @@ final class InspectReturn
         }
 
         $this->db->transaction(function () use ($returnRequest, $order, $actorUserId): void {
+            $before = AuditDigests::of([
+                'return_status' => (string) $returnRequest->status,
+                'order_status' => (string) $order->status,
+            ]);
+
             $returnRequest->update(['status' => ReturnRequest::STATUS_REJECTED]);
 
             // Revert order back to delivered — customer keeps remaining cooling-off days.
@@ -170,6 +183,11 @@ final class InspectReturn
                 'action' => 'return.rejected',
                 'subject_type' => 'return_request',
                 'subject_id' => $returnRequest->id,
+                'before_hash' => $before,
+                'after_hash' => AuditDigests::of([
+                    'return_status' => (string) $returnRequest->status,
+                    'order_status' => (string) $order->status,
+                ]),
                 'details' => ['order_no' => $order->order_no],
             ]);
         });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\DistributorRequest;
 use App\Modules\Identity\Models\DistributorRequestDocument;
@@ -182,6 +183,8 @@ final class DistributorRequestService
             'action' => 'profile.identity_corrected',
             'subject_type' => 'user',
             'subject_id' => $user->id,
+            'before_hash' => AuditDigests::of([$field => $old]),
+            'after_hash' => AuditDigests::of([$field => $value]),
             'details' => [
                 'before' => [$field => $old],
                 'after' => [$field => $value],
@@ -285,12 +288,16 @@ final class DistributorRequestService
      */
     private function audit(DistributorRequest $request, string $action, ?array $before, ?string $ip, ?User $actor = null, array $extra = []): void
     {
+        $after = $this->snapshot($request->refresh());
+
         AuditLog::create([
             'actor_id' => $actor !== null ? $actor->id : $request->distributor->user_id,
             'action' => $action,
             'subject_type' => 'distributor_request',
             'subject_id' => $request->id,
-            'details' => ['before' => $before, 'after' => $this->snapshot($request->refresh()), 'request_no' => $request->request_no, ...$extra],
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($after),
+            'details' => ['before' => $before, 'after' => $after, 'request_no' => $request->request_no, ...$extra],
             'ip' => $ip,
         ]);
     }
