@@ -135,10 +135,13 @@
 
         @if($distributor && $variant->hasDistributorPrice())
         {{-- After-login distributor price tier — a factual catalogue price for
-             distributors, shown only once authenticated. Not an earnings figure. --}}
-        <div class="flex items-baseline gap-2 mb-3 -mt-1">
-            <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Distributor price</span>
+             distributors, shown only once authenticated. Not an earnings figure.
+             This is the price actually charged to a signed-in Direct Seller
+             (client decision 2026-09-11, QA F55), so the line says so. --}}
+        <div class="flex items-baseline flex-wrap gap-2 mb-3 -mt-1">
+            <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Your distributor price</span>
             <span class="text-xl font-bold text-emerald-700">{{ $variant->displayDistributorPrice() }}</span>
+            <span class="text-xs text-emerald-700">— charged at checkout</span>
         </div>
         @endif
 

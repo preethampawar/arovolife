@@ -127,12 +127,6 @@ parameters:
 			path: app/Modules/Catalog/Models/Product.php
 
 		-
-			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:galleryImages\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Catalog/Models/Product.php
-
-		-
 			message: '#^Method App\\Modules\\Catalog\\Models\\Product\:\:images\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -189,7 +183,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$distributor_price_paise\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 3
 			path: app/Modules/Catalog/Models/ProductVariant.php
 
 		-
@@ -201,7 +195,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
 			identifier: property.notFound
-			count: 4
+			count: 5
 			path: app/Modules/Catalog/Models/ProductVariant.php
 
 		-
@@ -584,12 +578,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$gst_rate_bp\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Services/CartService.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Services/CartService.php

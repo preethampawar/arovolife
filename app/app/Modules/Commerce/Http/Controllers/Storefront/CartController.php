@@ -97,7 +97,7 @@ final class CartController extends Controller
 
         $cart = $this->cartService->currentCart($request);
         $variantId = (int) $validated['product_variant_id'];
-        $this->cartService->addItem($cart, $variantId, (int) ($validated['qty'] ?? 1));
+        $this->cartService->addItem($cart, $variantId, (int) ($validated['qty'] ?? 1), $request->user());
 
         // AJAX add (from a listing card): stay on the page — return the new cart
         // count + message for the toast instead of redirecting to the cart.
@@ -223,7 +223,7 @@ final class CartController extends Controller
                 continue; // product archived / variant pulled since the link was made
             }
 
-            $this->cartService->addItem($cart, $variantId, $qty);
+            $this->cartService->addItem($cart, $variantId, $qty, $request->user());
             $added++;
         }
 

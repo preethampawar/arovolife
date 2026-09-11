@@ -9,6 +9,7 @@ use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Services\DTOs\CouponResult;
+use App\Modules\Identity\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -23,6 +24,11 @@ final class CartService
     {
         $cart = $this->findCart($request);
         if ($cart !== null) {
+            // A guest builds the cart, then signs in to check out — the price
+            // tier has to follow them, or the member is charged the price the
+            // product page told them they would not pay (QA F55).
+            $this->repriceForBuyer($cart, $request->user());
+
             return $cart;
         }
 
@@ -80,7 +86,7 @@ final class CartService
         return $cart === null ? 0 : (int) $cart->items()->sum('qty');
     }
 
-    public function addItem(Cart $cart, int $variantId, int $qty = 1): CartItem
+    public function addItem(Cart $cart, int $variantId, int $qty = 1, ?User $buyer = null): CartItem
     {
         $variant = ProductVariant::with('product')->findOrFail($variantId);
 
@@ -96,10 +102,62 @@ final class CartService
             'cart_id' => $cart->id,
             'product_variant_id' => $variant->id,
             'qty' => $qty,
-            'unit_price_paise' => $variant->sale_price_paise,
+            'unit_price_paise' => $this->unitPricePaise($variant, $buyer),
             'bv_paise' => $variant->bv_paise,
             'gst_rate_bp' => $variant->gst_rate_bp,
         ]);
+    }
+
+    /**
+     * The unit price this buyer pays for this variant.
+     *
+     * A logged-in Direct Seller pays the distributor price wherever the
+     * catalogue sets one below the sale price — the tier their product page
+     * already shows them (client decision 2026-09-11, QA F55). Everyone else
+     * pays the sale price. BV is unaffected: it is a property of the SKU, not
+     * of the price paid.
+     */
+    public function unitPricePaise(ProductVariant $variant, ?User $buyer): int
+    {
+        return $variant->priceForTierPaise($buyer?->distributor !== null);
+    }
+
+    /**
+     * Move every line of an existing cart onto the price tier this buyer is
+     * entitled to, so what the cart charges is what the catalogue shows them.
+     *
+     * Deliberately narrow: a line is only ever flipped between the two known
+     * catalogue tiers. A line whose snapshot matches neither — the catalogue
+     * price moved after it was added — keeps the price the buyer was quoted.
+     */
+    public function repriceForBuyer(Cart $cart, ?User $buyer): void
+    {
+        $lines = CartItem::query()->where('cart_id', $cart->id)->get();
+        if ($lines->isEmpty()) {
+            return;
+        }
+
+        $variants = ProductVariant::query()
+            ->whereIn('id', $lines->pluck('product_variant_id')->all())
+            ->get()
+            ->keyBy('id');
+
+        foreach ($lines as $item) {
+            $variant = $variants->get($item->product_variant_id);
+            if ($variant === null || ! $variant->hasDistributorPrice()) {
+                continue;
+            }
+
+            $tiers = [$variant->priceForTierPaise(false), $variant->priceForTierPaise(true)];
+            $target = $this->unitPricePaise($variant, $buyer);
+            $current = (int) $item->getAttribute('unit_price_paise');
+
+            if ($current !== $target && in_array($current, $tiers, true)) {
+                $item->setAttribute('unit_price_paise', $target);
+                $item->save();
+                $cart->unsetRelation('items');
+            }
+        }
     }
 
     public function updateQty(CartItem $item, int $qty): void

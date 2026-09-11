@@ -194,7 +194,8 @@ it('SCAT-04: a logged-in distributor sees the distributor price, BV and the Easy
     $dist = scatDistributor('AV12345678');
 
     $response = $this->actingAs($dist)->get(route('shop.product', 'dp-prod'))->assertOk();
-    $response->assertSee('Distributor price');                   // after-login pricing visible
+    $response->assertSee('Your distributor price');              // after-login pricing visible
+    $response->assertSee('charged at checkout');                 // and it is the price charged (F55)
     $response->assertSee('₹700.00');                             // distributor_price_paise 70000
     $response->assertSee('550 BV');                              // BV visible to distributor
     $response->assertSee('Easy Purchase');                       // share affordance visible
