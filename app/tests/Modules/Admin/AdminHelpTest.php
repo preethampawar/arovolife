@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Admin\Http\Controllers\AdminHelpController;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -109,4 +110,23 @@ it('AH-04: a non-admin user cannot reach the help section', function (): void {
 
 it('AH-05: a guest is redirected to login', function (): void {
     $this->get(route('admin.help.index'))->assertRedirect(route('login'));
+});
+
+it('AH-08: F109 — every card on the index points at a doc that is actually there', function (): void {
+    // The Franchise Programme card outlived its markdown file: the index
+    // advertised a "3% fulfilment commission" on a link that 404'd. A card is
+    // a promise that the doc exists, so assert it for all of them at once.
+    $docs = (new ReflectionClass(AdminHelpController::class))
+        ->getConstant('DOCS');
+
+    foreach ($docs as $slug => $doc) {
+        expect(is_file(resource_path('help/'.$doc['file'])))
+            ->toBeTrue("Help card '{$slug}' points at a missing file: {$doc['file']}");
+    }
+
+    $this->actingAs(helpAdmin())
+        ->get(route('admin.help.index'))
+        ->assertOk()
+        ->assertDontSee('Franchise')
+        ->assertDontSee('fulfilment commission');
 });

@@ -76,11 +76,6 @@ final class AdminHelpController extends Controller
             'description' => 'The half-price monthly product and the redeem-points streak for unranked distributors: who qualifies, why points are not money, and the two readings that need KP before launch.',
             'file' => 'purchase-offers.md',
         ],
-        'franchise-programme' => [
-            'title' => 'Franchise Programme',
-            'description' => 'Pickup points operated by distributors: what a franchise is and is not, the 3% fulfilment commission, the approval lifecycle, and the three gates before it goes live.',
-            'file' => 'franchise-programme.md',
-        ],
         'dormancy-termination' => [
             'title' => 'Dormancy & Termination (§21)',
             'description' => 'The twelve-month no-sale rule, the seven-day notice, the master switch that ships off, and the re-registration wait afterwards.',
