@@ -77,6 +77,7 @@ final class AdminContentPageController extends Controller
         $data['body'] = $this->purify($data['body'] ?? '');
         $data['updated_by_user_id'] = Auth::id();
 
+        $previousStatus = (string) $page->status;
         $wasPublished = $page->isPublished();
         $nowPublished = $data['status'] === ContentPage::STATUS_PUBLISHED;
 
@@ -86,9 +87,21 @@ final class AdminContentPageController extends Controller
 
         $page->update($data);
 
-        $this->audit('content_page.updated', $page, [
-            'status_changed' => $wasPublished !== $nowPublished,
-        ]);
+        // Putting a page in front of the public, and taking it back down, are
+        // not the same event as fixing a typo. Logging all three as
+        // `content_page.updated` made the moment a policy page went live
+        // indistinguishable from a copy edit in the audit trail.
+        $action = match (true) {
+            $previousStatus === $data['status'] => 'content_page.updated',
+            $nowPublished => 'content_page.published',
+            $data['status'] === ContentPage::STATUS_ARCHIVED => 'content_page.archived',
+            default => 'content_page.updated',
+        };
+
+        $this->audit($action, $page, [
+            'status_changed' => $previousStatus !== $data['status'],
+            'previous_status' => $previousStatus,
+        ], $previousStatus);
 
         return redirect()
             ->route('admin.content.edit', $page)
@@ -98,12 +111,15 @@ final class AdminContentPageController extends Controller
     public function destroy(ContentPage $page): RedirectResponse
     {
         $title = $page->title;
+        $previousStatus = (string) $page->status;
         $page->update([
             'status' => ContentPage::STATUS_ARCHIVED,
             'updated_by_user_id' => Auth::id(),
         ]);
 
-        $this->audit('content_page.archived', $page);
+        $this->audit('content_page.archived', $page, [
+            'previous_status' => $previousStatus,
+        ], $previousStatus);
 
         return redirect()
             ->route('admin.content.index')
@@ -115,13 +131,19 @@ final class AdminContentPageController extends Controller
         return $dirty === '' ? '' : Purifier::clean($dirty);
     }
 
-    private function audit(string $action, ContentPage $page, array $extra = []): void
+    /**
+     * @param  array<string, mixed>  $extra
+     * @param  string|null  $previousStatus  when a status transition is being recorded, digests it as before/after
+     */
+    private function audit(string $action, ContentPage $page, array $extra = [], ?string $previousStatus = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'content_page',
             'subject_id' => $page->id,
+            'before_hash' => $previousStatus === null ? null : AuditLog::digest($previousStatus),
+            'after_hash' => $previousStatus === null ? null : AuditLog::digest((string) $page->status),
             'details' => array_merge([
                 'slug' => $page->slug,
                 'title' => $page->title,

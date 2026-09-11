@@ -291,3 +291,53 @@ it('FAQ-12: F117 — the editor loads Trix from the app bundle, not a CDN', func
         // …and a boot failure is visible under the field rather than silent.
         ->and($html)->toContain('content-body-editor-error');
 });
+
+it('FAQ-13: F118 — publishing and archiving a page audit as their own actions', function (): void {
+    $staff = faqUser();
+    $staff->assignRole(Role::findOrCreate('admin', 'web'));
+
+    $page = ContentPage::create([
+        'slug' => 'seminar-'.uniqid(),
+        'type' => 'seminar',
+        'title' => 'Regional seminar',
+        'body' => '<p>Saturday, 10am.</p>',
+        'status' => ContentPage::STATUS_DRAFT,
+    ]);
+
+    $save = fn (string $status) => $this->actingAs($staff)->patch(
+        route('admin.content.update', ['page' => $page->id]),
+        [
+            'title' => $page->title,
+            'slug' => $page->slug,
+            'type' => $page->type,
+            'body' => '<p>Saturday, 10am.</p>',
+            'status' => $status,
+        ],
+    )->assertSessionHasNoErrors();
+
+    $save(ContentPage::STATUS_PUBLISHED);
+    $save(ContentPage::STATUS_PUBLISHED); // a copy edit, not a transition
+    $save(ContentPage::STATUS_ARCHIVED);
+
+    $actions = DB::table('audit_log')
+        ->where('subject_type', 'content_page')
+        ->where('subject_id', $page->id)
+        ->orderBy('id')
+        ->pluck('action')
+        ->all();
+
+    expect($actions)->toBe([
+        'content_page.published',
+        'content_page.updated',
+        'content_page.archived',
+    ]);
+
+    // The transition rows carry the before/after digest the plain edit cannot.
+    $published = DB::table('audit_log')
+        ->where('subject_id', $page->id)
+        ->where('action', 'content_page.published')
+        ->first();
+
+    expect($published->before_hash)->not->toBeNull()
+        ->and($published->after_hash)->not->toBeNull();
+});
