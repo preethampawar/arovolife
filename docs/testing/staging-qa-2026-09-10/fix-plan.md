@@ -58,8 +58,8 @@ Files: `resources/views/admin/kyc/show.blade.php`, `AdminKycController`, messagi
 - [x] F116 Message report shows ADN + link to admin distributor page for reporter and sender.
 - [x] F117 `sort_order` validated (`nullable|integer`, default 0) → 422 not 500; vendor Trix JS+CSS via npm/Vite (no unpkg); Body field shows an error if the editor fails to boot.
 - [x] F118 Publish/archive transitions audit as `content_page.published` / `content_page.archived` (announcements too).
-- [ ] F109 Remove the Franchise Programme help card (or restore the doc without the 3% claim); note the orphan `FranchiseFeature` flag row for staging cleanup.
-- [ ] F111 Approval notification via `['mail','database']`; `/admin/distributors` search matches phone; distributor detail gets a KYC-state row; audit log gets an actor filter; root not shown as its own sponsor; flash "has been emailed" only after a successful send (queue failure → "email could not be sent").
+- [x] F109 Remove the Franchise Programme help card (or restore the doc without the 3% claim); note the orphan `FranchiseFeature` flag row for staging cleanup.
+- [x] F111 Approval notification via `['mail','database']`; `/admin/distributors` search matches phone; distributor detail gets a KYC-state row; audit log gets an actor filter; root not shown as its own sponsor; flash "has been emailed" only after a successful send (queue failure → "email could not be sent").
 
 ### B5a — Distributor UI logic (Opus)
 Files: `Messaging/Http/Controllers/MessageController.php` + policy, `resources/views/income/genos-bv.blade.php`, income controllers, wallet page, `Genealogy/Http/Controllers/TreeController.php`, `_binary-node.blade.php`, distributor-requests controller, dashboard tooltips.
