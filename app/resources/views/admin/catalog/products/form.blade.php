@@ -3,7 +3,6 @@
 @section('heading', $product->exists ? 'Edit: '.$product->name : 'New product')
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/trix@2.1.15/dist/trix.css">
 <style>
     trix-editor { min-height: 14rem; background: #fff; border-radius: 0.5rem; border-color: #d1d5db; }
     trix-editor h1 { font-size: 1.25rem; font-weight: 700; }
@@ -265,7 +264,9 @@
 @endsection
 
 @push('scripts')
-<script src="https://unpkg.com/trix@2.1.15/dist/trix.umd.min.js"></script>
+{{-- Trix ships with the app (resources/js/trix.js), not fetched from unpkg
+     at render time — see the content-page editor for why. --}}
+@vite('resources/js/trix.js')
 {{-- TinyMCE (GPL, self-hosted via jsdelivr) for the rich, table/image-capable attribute values. --}}
 <script src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js" referrerpolicy="origin"></script>
 <script>

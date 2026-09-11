@@ -339,3 +339,13 @@ it('ACAT-06: a non-admin cannot reach the catalog admin', function (): void {
         ->get(route('admin.catalog.products.create'))
         ->assertForbidden();
 });
+
+it('ACAT-12: the product form loads Trix from the bundled asset, never unpkg', function (): void {
+    $admin = acatAdmin();
+
+    $this->actingAs($admin)
+        ->get(route('admin.catalog.products.create'))
+        ->assertOk()
+        ->assertDontSee('unpkg.com')
+        ->assertSee('assets/trix-', false);
+});
