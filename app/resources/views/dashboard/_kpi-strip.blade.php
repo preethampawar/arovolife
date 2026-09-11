@@ -99,7 +99,7 @@
                 <x-help-tip :text="$tile['tip']" />
             </div>
             <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">{{ $tile['label'] }}</p>
-            <p class="mt-1 text-xl sm:text-2xl font-bold {{ $tone['value'] }} leading-tight truncate">{{ $tile['value'] }}</p>
+            <p class="mt-1 text-xl sm:text-2xl font-bold {{ $tone['value'] }} leading-tight">{{ $tile['value'] }}</p>
             <p class="mt-1 text-[11px] text-gray-600 leading-snug">{{ $tile['sub'] }}</p>
         </{{ $tag }}>
     @endforeach

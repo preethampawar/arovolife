@@ -13,7 +13,7 @@
             <p class="text-sm text-gray-600 mt-2">The items will be released back to the shop shortly. You can place a new order any time.</p>
         @elseif ($reason === 'closed')
             <h1 class="text-xl font-bold text-gray-900 mb-2">This order is no longer awaiting payment</h1>
-            <p class="text-sm text-gray-600">Order <span class="font-mono text-gray-900">{{ $order->order_no }}</span> is {{ str_replace('_', ' ', $order->status) }}. If you believe a payment was deducted, it will be matched to the order or returned automatically.</p>
+            <p class="text-sm text-gray-600">Order <span class="font-mono text-gray-900">{{ $order->order_no }}</span> is {{ str_replace('_', ' ', $order->status) }}. If you believe a payment was deducted, it will be matched to the order or returned to your original payment method within 7 working days.</p>
         @else
             <h1 class="text-xl font-bold text-gray-900 mb-2">Payment is unavailable right now</h1>
             <p class="text-sm text-gray-600">We could not start the payment for order <span class="font-mono text-gray-900">{{ $order->order_no }}</span>. Nothing has been charged. Please try again in a few minutes.</p>

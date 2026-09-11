@@ -43,10 +43,6 @@
     @endif
 </div>
 
-@if(session('status'))
-    <div class="mb-4 rounded-lg border border-leaf-200 bg-leaf-50 px-4 py-3 text-sm text-leaf-800">{{ session('status') }}</div>
-@endif
-
 @if($hasBlocked)
     <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         You have blocked this person. They cannot send you new messages, and they have not been told.

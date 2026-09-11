@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\FortuneMonthlyPool;
 use App\Modules\Compensation\Models\FortuneMonthlyPoolLevel;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Support\Carbon;
@@ -772,9 +773,18 @@ final class FortuneBonusService
         if ((clone $results)
             ->where('status', FortuneBonusResult::STATUS_CREDITED)
             ->exists()) {
-            Log::warning('fortune.pool.premature_freeze_kept', $details + [
-                'reason' => 'results were already credited against this pool; re-freezing would change economics a distributor has been told about',
-            ]);
+            $reason = 'results were already credited against this pool; re-freezing would change economics a distributor has been told about';
+
+            Log::warning('fortune.pool.premature_freeze_kept', $details + ['reason' => $reason]);
+
+            PrematureFreezeAlert::kept(
+                engineKey: 'fortune.payout',
+                subjectType: 'fortune_monthly_pool',
+                subjectId: $existing->id,
+                period: Carbon::parse($existing->month_start)->format('Y-m'),
+                reason: $reason,
+                details: $details,
+            );
 
             return false;
         }

@@ -20,10 +20,10 @@ Files: `Compensation/Listeners/RecordEngineRun.php`, `Compensation/Support/Engin
 
 ### B2 — Monthly close & engine gates (Opus)
 Files: `Compensation/Services/EngineStatusService.php`, `Compensation/Support/MonthlyEngineCompletionGate.php`, `Compensation/Support/OpenMonthGuard.php`, `Compensation/Console/Commands/{MonthlyPayoutCommand,GsbDailyCutoffCommand,MonthlyCloseCommand}.php`, `Compensation/Support/DerivedTables.php`, ADC credit writer, rank pools migration, `AdminGbbController` / `AdminFortuneBonusController` index.
-- [ ] F05 `hasSucceededRun()` (resume check + payout-close gate) must require `started_at` after the period end (same shape as `hasSucceededRunAfterDay`). Tests: an in-period run does not satisfy the gate.
-- [ ] F40 `MonthlyEngineCompletionGate::blockingFailure()` also treats a FAILED `compensation.monthly-close` run for the month (newer than the last success) as blocking.
-- [ ] F47 `payout:monthly-run`: add to `OpenMonthGuard::FREEZING_COMMANDS`, run `MonthlyEngineCompletionGate` before sweeping, and default `--month` to the PREVIOUS month. Refuse the current month without `--in-flight`. Tests for each gate.
-- [ ] F31 `gsb:daily-cutoff`: explicit closed-day guard on the CLI (`--date` must be < today unless `--in-flight`), independent of the repurchase gate; `--force` does not lift it.
+- [x] F05 `hasSucceededRun()` (resume check + payout-close gate) must require `started_at` after the period end (same shape as `hasSucceededRunAfterDay`). Tests: an in-period run does not satisfy the gate.
+- [x] F40 `MonthlyEngineCompletionGate::blockingFailure()` also treats a FAILED `compensation.monthly-close` run for the month (newer than the last success) as blocking.
+- [x] F47 `payout:monthly-run`: add to `OpenMonthGuard::FREEZING_COMMANDS`, run `MonthlyEngineCompletionGate` before sweeping, and default `--month` to the PREVIOUS month. Refuse the current month without `--in-flight`. Tests for each gate.
+- [x] F31 `gsb:daily-cutoff`: explicit closed-day guard on the CLI (`--date` must be < today unless `--in-flight`), independent of the repurchase gate; `--force` does not lift it.
 - [ ] F06 Backfill `rank_monthly_pools` for months that have credited `rank_bonus_results` but no pool row (new migration, idempotent), so `refuseUnfrozenPaidMonth()` does not throw on `--restart`.
 - [ ] F07 Add `purchase_offer_grants` to recompute `DerivedTables` (and its test).
 - [ ] F09 `adc_credit` wallet rows must carry `bonus_month` (the ADC month).
@@ -44,11 +44,11 @@ Files: `Compensation/Services/{PayoutService,PayoutReconciliationService,WalletS
 
 ### B4a — Admin reports & analytics (Sonnet)
 Files: `resources/views/admin/analytics/index.blade.php`, `Commerce/Support/Bv.php`, GBB/Fortune month views, GSB/MSB report views + CSV controllers, `Shared/Support/Csv.php`, `AdminGrievanceReportController`, BV ledger admin routes.
-- [ ] F119 Remove the `/ 100` at analytics lines 50 and 202 (pass paise to `@bv`); `Bv::format` uses `IndianNumber`. Test: 2,039,999 BV renders as `20,39,999`.
-- [ ] F88 BV never carries ₹: GBB/Fortune month pages "Company BV" via `@bv`; CSV headers "Day Total BV" (no "(Rs)").
-- [ ] F90 Every weaker/power/carry-forward figure in GSB reports (daily calc, I&O, carry-forwards) shows an explicit Left/Right label from the stored `power_side`.
-- [ ] F91 MSB reports note "No repurchase deduction applies to MSB"; rank-bonus month page uses one qualifier count; tiles keep paise (no truncation); carry-forwards gets a CSV export; "leg" → "group" in daily-cutoffs help text.
-- [ ] F122 `Csv::safe()` accepts `int|float|string|null`; grievance report export formats the float to 2 dp. Test: export with a fractional median returns 200.
+- [x] F119 Remove the `/ 100` at analytics lines 50 and 202 (pass paise to `@bv`); `Bv::format` uses `IndianNumber`. Test: 2,039,999 BV renders as `20,39,999`.
+- [x] F88 BV never carries ₹: GBB/Fortune month pages "Company BV" via `@bv`; CSV headers "Day Total BV" (no "(Rs)").
+- [x] F90 Every weaker/power/carry-forward figure in GSB reports (daily calc, I&O, carry-forwards) shows an explicit Left/Right label from the stored `power_side`.
+- [x] F91 MSB reports note "No repurchase deduction applies to MSB"; rank-bonus month page uses one qualifier count; tiles keep paise (no truncation); carry-forwards gets a CSV export; "leg" → "group" in daily-cutoffs help text.
+- [x] F122 `Csv::safe()` accepts `int|float|string|null`; grievance report export formats the float to 2 dp. Test: export with a fractional median returns 200.
 - [ ] F103 BV-ledger admin routes gated `can:audit.read`; headings "Personal BV" / "Lifetime personal BV".
 
 ### B4b — Admin KYC, content, messaging (Opus)
@@ -72,13 +72,13 @@ Files: `Messaging/Http/Controllers/MessageController.php` + policy, `resources/v
 
 ### B5b — Distributor copy & small UI (Sonnet)
 Files: `resources/views/income/wallet.blade.php`, `shop/pay-unavailable.blade.php`, notification bell partial, My Business view, enums/labels, membership card back, profile views, `ScannedForMalware.php`, flash partials.
-- [ ] F19 Wallet copy describes credit-time deduction (not "after your first payout").
-- [ ] F20 Pay-unavailable copy adds the 7-working-day refund timeline.
-- [ ] F54 Bell links to announcements when only announcements are unread; carry-forward vs carry-over hint text; unify hero-card gradient.
-- [ ] F64 Hold status label map ("No bank account on file" etc.) on page + CSV; `/income` title "My Income — Overview".
-- [ ] F68/F73 `/tree` banner drops "binary placement tree"; membership-card back uses contractor wording; PERSONAL BV tile no truncation; profile bank mask shows real last-4; password messages say "password" not `new_password`; single page title; DSA PAN mask 10 chars; reserved accounts (0-day cooling-off) do not print "30-day window"; bank field width.
-- [ ] F79 Flash rendered once (remove the duplicate in the view or layout); grievance-reply confirm modal gets specific copy.
-- [ ] F74 (copy half) Malware-scan refusal message names the document, not `documents.id_proof.0`.
+- [x] F19 Wallet copy describes credit-time deduction (not "after your first payout").
+- [x] F20 Pay-unavailable copy adds the 7-working-day refund timeline.
+- [x] F54 Bell links to announcements when only announcements are unread; carry-forward vs carry-over hint text; unify hero-card gradient.
+- [x] F64 Hold status label map ("No bank account on file" etc.) on page + CSV; `/income` title "My Income — Overview".
+- [x] F68/F73 `/tree` banner drops "binary placement tree"; membership-card back uses contractor wording; PERSONAL BV tile no truncation; profile bank mask shows real last-4; password messages say "password" not `new_password`; single page title; DSA PAN mask 10 chars; reserved accounts (0-day cooling-off) do not print "30-day window"; bank field width.
+- [x] F79 Flash rendered once (remove the duplicate in the view or layout); grievance-reply confirm modal gets specific copy.
+- [x] F74 (copy half) Malware-scan refusal message names the document, not `documents.id_proof.0`.
 
 ### B6 — Commerce (Opus)
 Files: cart view/`CartService`, checkout address validation, `shop/product.blade.php`, order detail views, returns form, admin order/payment views, footer, `ContentPageSeeder` (policy page only — coordinate: B7 owns publish-state), shop banner/category views.

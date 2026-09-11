@@ -248,10 +248,11 @@ All of the above rates and caps are admin-editable under **Settings → Compensa
 ## Daily engine-health email
 Every morning at **08:00 IST**, after every overnight engine has finished, the platform checks the compensation engines and emails a monitored mailbox **only when something needs a person**. A healthy day sends nothing, so an email arriving is itself the signal. The mailbox is part of the platform configuration and is not editable from this console — ask the platform team if it needs to change.
 
-It reports three things:
+It reports four things:
 
-- **Failed runs** — an engine that ran and errored in the last 30 days and has not since been re-run successfully for the same period. This is the same set the sidebar **Engine failures** badge counts.
+- **Failed runs** — an engine that ran and errored in the last 30 days and has not since been re-run successfully for the same period. This is the same set the sidebar **Engine failures** badge counts. A run that *refused* — a weekly batch dated a day that is not a Tuesday, a payout close over a month whose crediting is incomplete — is recorded as *skipped* with its reason, not as a failure, so it is not reported here: the engine actually at fault is.
 - **Scheduled runs that did not happen** — the period the last scheduled fire should have produced, with no run of any kind recorded for it. Nothing else in the platform shows this: a run that never started leaves no row, so not even the badge appears.
+- **Periods priced against a pool frozen too early** — a pool that was frozen before its day or month had finished, and that could no longer be replaced because money had already moved at that price. The run that finds it succeeds, so nothing else marks it; see **F** below.
 - **Runs that appear stuck** — a run still marked *running* more than 3 hours after it started. That is the compensation queue worker having died mid-run, not a slow engine.
 
 Every line in the email carries its own numbered instructions. They are reproduced here so the same guidance exists without the email:
@@ -275,6 +276,8 @@ Every line in the email carries its own numbered instructions. They are reproduc
 **D. Monthly Close (crediting)** — the close stopped at one step, and that step is listed separately in the same email with its own instructions. Re-run that step, then the steps after it in order — Rank Qualification Check → Rank Bonus → Growth Booster Bonus → Fortune Bonus Enrolment → ADC Bonus → Fortune Bonus Payout → Purchase Offers — skipping any card that already reads *succeeded* for the month. Once every step is succeeded, the payout on the 8th proceeds on its own.
 
 **E. A stuck run** — do not trigger anything for that engine yet: a second run is refused while one is recorded as running. Ask the platform team to restart the compensation worker and to mark the dead run failed if it does not finish within the hour. Once the card no longer shows *running*, follow **A** for the same period.
+
+**F. A period priced against a pool frozen too early** — **do not re-run the engine**: it would price against the same wrong snapshot, and a second run credits nobody the difference. The pool for that period was frozen before the period had finished, so everybody who earned in it was paid at a rate calculated on partial BV, and the payout for it may be short. Send the email to the platform team the same day — correcting it means rebuilding the period from the orders, which only they can do — and treat that period's figures on every report as provisional until they confirm.
 
 To check that the mailbox is receiving mail, the platform team can run `php artisan compensation:engine-health-digest --always`, which sends the digest even on a healthy day.
 

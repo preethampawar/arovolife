@@ -66,9 +66,9 @@
 
             {{-- 5) BANK ACCOUNT DETAILS (IFSC + on-file indicator; account number never shown) --}}
             <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Bank account details <x-help-tip text="your account number is encrypted and never shown; only the branch IFSC is displayed." /></label>
+                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Bank account details <x-help-tip text="your account number is encrypted and never shown in full; only the last 4 digits and the branch IFSC are displayed." /></label>
                 @if(filled($distributor->bank_ifsc))
-                    <input type="text" value="Account on file ••••  ·  IFSC {{ $distributor->bank_ifsc }}" disabled class="{{ $lockedInput }} font-mono">
+                    <input type="text" value="Account on file ••••{{ $bankLast4 ?? '' }} · IFSC {{ $distributor->bank_ifsc }}" disabled class="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs sm:text-sm text-gray-600 font-mono truncate" title="Account on file ••••{{ $bankLast4 ?? '' }} · IFSC {{ $distributor->bank_ifsc }}">
                 @else
                     <input type="text" value="Not added yet" disabled class="{{ $lockedInput }}">
                 @endif

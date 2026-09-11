@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
@@ -193,9 +194,18 @@ final class GsbDailyPoolService
         if (GsbCutoffResult::whereDate('cutoff_date', $existing->cutoff_date->toDateString())
             ->whereIn('status', GsbCutoffResult::POOL_FUNDED_STATUSES)
             ->exists()) {
-            Log::warning('gsb.pool.premature_freeze_kept', $details + [
-                'reason' => 'results were already priced against this pool; re-freezing would change economics money moved on',
-            ]);
+            $reason = 'results were already priced against this pool; re-freezing would change economics money moved on';
+
+            Log::warning('gsb.pool.premature_freeze_kept', $details + ['reason' => $reason]);
+
+            PrematureFreezeAlert::kept(
+                engineKey: 'gsb.daily-cutoff',
+                subjectType: 'gsb_daily_pool',
+                subjectId: $existing->id,
+                period: $existing->cutoff_date->toDateString(),
+                reason: $reason,
+                details: $details,
+            );
 
             return false;
         }

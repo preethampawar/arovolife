@@ -15,12 +15,6 @@
         </a>
     </div>
 
-    @if (session('status'))
-        <div class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {{ session('status') }}
-        </div>
-    @endif
-
     @if ($tickets->isEmpty())
         <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <p class="text-gray-900 font-medium mb-1">You have not raised any grievances.</p>

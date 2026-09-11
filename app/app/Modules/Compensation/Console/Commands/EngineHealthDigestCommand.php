@@ -47,6 +47,11 @@ final class EngineHealthDigestCommand extends Command
             $report->missing,
         ));
 
+        $this->renderSection('Periods priced against a pool frozen too early', ['Engine', 'Period', 'Pool frozen at', 'Detected'], array_map(
+            static fn (array $item): array => [$item['engine'], $item['period'], $item['frozen_at'], $item['detected_at']],
+            $report->prematureFreezes,
+        ));
+
         $this->renderSection('Runs that appear stuck', ['Engine', 'Period', 'Running since'], array_map(
             static fn (array $item): array => [$item['engine'], $item['period'], $item['started_at']],
             $report->stuck,
@@ -81,6 +86,7 @@ final class EngineHealthDigestCommand extends Command
             'failures' => count($report->failures),
             'missing' => count($report->missing),
             'stuck' => count($report->stuck),
+            'premature_freezes' => count($report->prematureFreezes),
         ]);
 
         $this->info("Digest sent — {$report->total()} item(s).");

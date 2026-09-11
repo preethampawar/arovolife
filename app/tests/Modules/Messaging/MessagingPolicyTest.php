@@ -185,6 +185,23 @@ it('POL-05: the block is one-directional — the blocker can still write', funct
     expect(app(MessageService::class)->send($downline, $sponsor, 'Leave me alone')->exists)->toBeTrue();
 });
 
+it('POL-05b: the thread page renders its flash status once, not twice (F79)', function (): void {
+    $alice = polUser('alice');
+    $bob = polUser('bob');
+    polDistributor($alice->id);
+    polDistributor($bob->id);
+
+    $response = $this->actingAs($alice)
+        ->withSession(['status' => 'You have blocked this person. They cannot send you new messages, and they have not been told.'])
+        ->get(route('messages.show', ['user' => $bob->id]))
+        ->assertOk();
+
+    expect(substr_count(
+        $response->getContent(),
+        'You have blocked this person. They cannot send you new messages, and they have not been told.',
+    ))->toBe(1);
+});
+
 it('POL-06: the hourly cap refuses the send past the limit', function (): void {
     polSetting('messaging.rate_limit_per_hour', '2');
     polSetting('messaging.rate_limit_per_recipient_per_day', '0');

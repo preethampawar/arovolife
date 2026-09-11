@@ -119,6 +119,10 @@ it('PP-02: low-entropy passwords are rejected by zxcvbn', function () {
         'password_confirmation' => 'password1234',
     ]);
     $response->assertSessionHasErrors('password');
+
+    // F73: the message must say "Your password", never the raw field name.
+    $errors = session('errors')->getBag('default')->get('password');
+    expect(implode(' ', $errors))->toContain('Your password is too easy to guess');
 });
 
 it('PP-03: a password that HIBP says is breached is rejected', function () {
@@ -139,6 +143,10 @@ it('PP-03: a password that HIBP says is breached is rejected', function () {
         'password_confirmation' => $password,
     ]);
     $response->assertSessionHasErrors('password');
+
+    // F73: the message must say "Your password", never the raw field name.
+    $errors = session('errors')->getBag('default')->get('password');
+    expect(implode(' ', $errors))->toContain('Your password has appeared in known data breaches');
 });
 
 it('PP-04: a strong, non-breached password registers successfully', function () {

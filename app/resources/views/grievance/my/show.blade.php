@@ -16,12 +16,6 @@
         </span>
     </div>
 
-    @if (session('status'))
-        <div class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {{ session('status') }}
-        </div>
-    @endif
-
     @error('note')
         <div class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ $message }}</div>
     @enderror
@@ -99,7 +93,10 @@
 
     @if ($ticket->status->acceptsComplainantReply())
         <form method="POST" action="{{ route('my.grievances.reply', $ticket->id) }}" enctype="multipart/form-data"
-              class="mt-6 space-y-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              class="mt-6 space-y-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+              data-confirm="Add this reply to your grievance?"
+              data-confirm-title="Add your reply"
+              data-confirm-impact="Your reply is added to the grievance history and the assigned reviewer is notified. This cannot be edited or removed afterwards.">
             @csrf
             <label for="note" class="block text-sm font-medium text-gray-700">Add something to this grievance</label>
             <textarea id="note" name="note" rows="4" maxlength="2000" required

@@ -3,10 +3,17 @@
 
 @section('content')
 
+@php
+    // F73(f): a handful of reserved/company accounts carry a 0-day window
+    // (cooling_off_end_at === effective_date) — the copy must state the
+    // actual window for THIS registration, never a hardcoded "30-day".
+    $coolingOffDays = (int) $distributor->effective_date->diffInDays($distributor->cooling_off_end_at);
+@endphp
+
 <div>
     <h1 class="text-2xl font-bold mb-2">Cancel your arovolife registration</h1>
     <p class="text-sm text-gray-600 mb-8">
-        You may cancel your distributor registration at any time during your 30-day cooling-off
+        You may cancel your distributor registration at any time during your {{ $coolingOffDays }}-day cooling-off
         window, in line with the Direct Seller Agreement and the Consumer Protection (Direct Selling)
         Rules, 2021.
     </p>
@@ -46,7 +53,7 @@
     <form method="POST" action="{{ route('cooling-off.cancel') }}"
         data-confirm="Cancel your arovolife registration?"
         data-confirm-title="Confirm cancellation"
-        data-confirm-impact="This closes your distributor account during the 30-day cooling-off window and signs you out. You will no longer be able to log in or use any distributor features. This cannot be undone — you would need to register again.">
+        data-confirm-impact="This closes your distributor account during the {{ $coolingOffDays }}-day cooling-off window and signs you out. You will no longer be able to log in or use any distributor features. This cannot be undone — you would need to register again.">
         @csrf
         <input type="hidden" name="confirm" value="yes">
         <button type="submit"
@@ -62,7 +69,7 @@
     <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-700">
         <p class="font-semibold mb-2">Your cooling-off window has ended.</p>
         <p>
-            The 30-day window expired on {{ $distributor->cooling_off_end_at->format('d M Y') }}.
+            The {{ $coolingOffDays }}-day window expired on {{ $distributor->cooling_off_end_at->format('d M Y') }}.
             For account closure outside this window, please contact
             <a class="text-brand-700 underline" href="mailto:support@arovolife.com">support@arovolife.com</a>.
         </p>

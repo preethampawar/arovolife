@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\DTOs\RankMonthRoster;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
@@ -615,9 +616,18 @@ final class RankBonusService
             RankBonusResult::STATUS_CREDITED,
             RankBonusResult::STATUS_REVERSED,
         ])->exists()) {
-            Log::warning('rank.pool.premature_freeze_kept', $details + [
-                'reason' => 'results were already credited against these pools; re-freezing would change economics money moved on',
-            ]);
+            $reason = 'results were already credited against these pools; re-freezing would change economics money moved on';
+
+            Log::warning('rank.pool.premature_freeze_kept', $details + ['reason' => $reason]);
+
+            PrematureFreezeAlert::kept(
+                engineKey: 'rank.bonus',
+                subjectType: 'rank_monthly_pool',
+                subjectId: $pools[1]->id,
+                period: Carbon::parse($monthStart)->format('Y-m'),
+                reason: $reason,
+                details: $details,
+            );
 
             return false;
         }

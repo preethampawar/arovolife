@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Identity\Models\User;
@@ -105,6 +107,9 @@ it('renders income dashboard for a distributor', function (): void {
     $this->get(route('income.dashboard'))
         ->assertOk()
         ->assertSee('Income')
+        // F64: the page title must follow the "My Income — …" pattern every
+        // other income tab uses.
+        ->assertSee('My Income — Overview', false)
         ->assertSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
         ->assertDontSee('cooling-off');
 });
@@ -612,6 +617,49 @@ it('shows friendly wallet ledger type labels, never raw machine types', function
         ->assertSee('Repurchase deduction')
         ->assertDontSee('gsb_credit')
         ->assertDontSee('repurchase_deduction');
+});
+
+it('streams the same friendly wallet ledger type labels in the CSV export (F64)', function (): void {
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $id, 'type' => 'gsb_credit', 'amount_paise' => 200_000, 'created_at' => now()],
+    ]);
+
+    $csv = $this->actingAs($user)
+        ->get(route('income.wallet.export'))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($csv)->toContain('Genos Sales Bonus')
+        ->and($csv)->not->toContain('gsb_credit');
+});
+
+it('labels a "no bank account on file" payout hold instead of the raw enum (F64)', function (): void {
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_COMPLETED,
+    ]);
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => $id,
+        'wallet_balance_paise' => 50_000,
+        'gross_paise' => 50_000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 0,
+        'status' => PayoutLineItem::STATUS_NO_BANK_ACCOUNT,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('income.wallet'))
+        ->assertOk()
+        ->assertSee('No bank account on file')
+        ->assertDontSee('No_bank_account');
 });
 
 it('hides every GSB surface for distributors while the feature is off', function (): void {

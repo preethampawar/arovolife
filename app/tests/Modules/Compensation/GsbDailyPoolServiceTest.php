@@ -6,6 +6,7 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -104,6 +105,15 @@ it('keeps a premature pool once results were priced against it', function (): vo
     expect($kept->id)->toBe($premature->id)
         ->and($kept->company_bv_paise)->toBe(0)
         ->and(AuditLog::where('action', 'gsb.pool.refrozen')->exists())->toBeFalse();
+
+    // F30: keeping it is the right call, and it is also a money-affecting fact
+    // the day's earners were paid at the wrong rate on. It gets a durable row
+    // the health digest reads — a log line went unread for a month on staging.
+    $kept = AuditLog::where('action', PrematureFreezeAlert::ACTION)->sole();
+
+    expect($kept->details['engine_key'])->toBe('gsb.daily-cutoff')
+        ->and($kept->details['period'])->toBe('2026-08-24')
+        ->and($kept->subject_type)->toBe('gsb_daily_pool');
 });
 
 it('reuses a pool frozen after the day closed — the normal crash re-run path', function (): void {

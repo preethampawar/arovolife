@@ -65,7 +65,10 @@ final class NotPwned implements ValidationRule
                     continue; // padding rows are zero-suffixes; skip
                 }
                 if (strcasecmp($lineSuffix, $suffix) === 0) {
-                    $fail("The {$attribute} has appeared in known data breaches. Choose a different password.");
+                    // "Your password", never the raw field name (F73) — this
+                    // rule is shared by registration and the profile
+                    // change-password form, whose field names differ.
+                    $fail('Your password has appeared in known data breaches. Choose a different password.');
 
                     return;
                 }

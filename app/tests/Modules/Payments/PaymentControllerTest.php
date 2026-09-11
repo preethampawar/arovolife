@@ -211,3 +211,14 @@ it('PCT-08: a misconfigured gateway closes checkout only — the shop, the cart 
     ]);
     $this->actingAs($user)->get(route('orders.index'))->assertOk();
 });
+
+it('PCT-09: an order no longer awaiting payment states the 7-working-day refund timeline (F20)', function () {
+    $order = pctOrder();
+    $order->update(['status' => Order::STATUS_CANCELLED]);
+
+    $this->withSession(['recent_order_nos' => [$order->order_no]])
+        ->get(route('shop.pay', $order->order_no))
+        ->assertOk()
+        ->assertSee('This order is no longer awaiting payment')
+        ->assertSee('returned to your original payment method within 7 working days');
+});

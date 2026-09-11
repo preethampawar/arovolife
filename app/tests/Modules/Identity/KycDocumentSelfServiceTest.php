@@ -105,6 +105,9 @@ it('KDS-01: GET /dashboard/documents lists current docs by type with verified/pe
     $response->assertSee('Pending review');
     $response->assertSee('Cancelled cheque or passbook page');
     $response->assertSee('(optional)', false);
+    // F73(c): the layout already appends " — arovolife"; the section must
+    // not repeat it, or the tab reads "My documents — arovolife — arovolife".
+    $response->assertSee('<title>My documents — arovolife</title>', false);
 });
 
 it('KDS-02: POST /dashboard/documents stores an optional doc + writes an audit row + flips no other state', function () {

@@ -19,8 +19,12 @@ final class StrongPassword implements ValidationRule
 {
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
+        // "Your password", never the raw field name (F73): this rule is
+        // reused by registration, password reset and the profile change-
+        // password form, whose field names differ (`password`,
+        // `new_password`) but none of that belongs in front of a distributor.
         if (! is_string($value) || $value === '') {
-            $fail("The {$attribute} is required.");
+            $fail('Your password is required.');
 
             return;
         }
@@ -28,7 +32,7 @@ final class StrongPassword implements ValidationRule
         $score = (int) ((new Zxcvbn)->passwordStrength($value)['score'] ?? 0);
 
         if ($score < 3) {
-            $fail("The {$attribute} is too easy to guess. Use a longer phrase or mix unrelated words.");
+            $fail('Your password is too easy to guess. Use a longer phrase or mix unrelated words.');
         }
     }
 }

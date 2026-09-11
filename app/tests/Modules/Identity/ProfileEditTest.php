@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Crypto\PiiCrypter;
 use App\Modules\Shared\Notifications\OtpCodeNotification;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -97,6 +98,49 @@ it('PROF-01: shows masked identity (read-only) and editable contact fields', fun
     $response->assertSee('name="phone_e164"', false);
     $response->assertSee('name="email"', false);
     $response->assertSee('name="address"', false);
+});
+
+it('PROF-11: shows a real bank last-4 instead of a meaningless literal mask (F73)', function (): void {
+    $user = profUser();
+    $distributorId = profDistributor($user);
+    DB::table('distributors')->where('id', $distributorId)
+        ->update(['bank_account_enc' => PiiCrypter::encryptString('123456789012')]);
+
+    $this->actingAs($user)->get(route('profile.show'))
+        ->assertOk()
+        ->assertSee('Account on file ••••9012', false)
+        ->assertDontSee('Account on file •••• ', false);
+});
+
+it('PROF-12: falls back to no last-4 (not a 500) when the bank ciphertext cannot be decrypted', function (): void {
+    $user = profUser();
+    $distributorId = profDistributor($user);
+    DB::table('distributors')->where('id', $distributorId)
+        ->update(['bank_account_enc' => 'not-valid-ciphertext']);
+
+    $this->actingAs($user)->get(route('profile.show'))
+        ->assertOk()
+        ->assertSee('Account on file ••••', false);
+});
+
+it('PROF-13: the change-password form never leaks the raw "new_password" field name (F73)', function (): void {
+    $user = profUser();
+    profDistributor($user);
+
+    $response = $this->actingAs($user)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->from(route('profile.password.show'))
+        ->post(route('profile.password.update'), [
+            'current_password' => 'prof-test-pwd-2026',
+            'new_password' => 'password123',
+            'new_password_confirmation' => 'password123',
+        ]);
+
+    $response->assertSessionHasErrors('new_password');
+    $errors = session('errors')->getBag('default')->get('new_password');
+    expect(implode(' ', $errors))
+        ->toContain('Your password')
+        ->not->toContain('new_password');
 });
 
 it('PROF-02: an address-only change saves immediately with no OTP', function (): void {

@@ -28,12 +28,21 @@
         $unreadAnnouncements = $announcementsOn
             ? app(\App\Modules\Content\Services\AnnouncementService::class)->unreadCountFor(auth()->user())
             : 0;
+        // Land on whichever channel actually holds the unread items — a
+        // badge that says "3" must not open an empty inbox while 3
+        // announcements sit unread on the other page.
+        $bellDestination = match (true) {
+            $unreadMessages > 0 => 'messages',
+            $unreadAnnouncements > 0 => 'announcements',
+            $messagingOn => 'messages',
+            default => 'announcements',
+        };
     @endphp
     @if($messagingOn || $announcementsOn)
-    <a href="{{ $messagingOn ? route('messages.index') : route('announcements.index') }}"
+    <a href="{{ $bellDestination === 'messages' ? route('messages.index') : route('announcements.index') }}"
        class="relative {{ $bellLayout ?? '' }} text-brand-50 hover:text-white transition-colors"
        aria-label="Notifications{{ ($unreadMessages + $unreadAnnouncements) > 0 ? ' ('.($unreadMessages + $unreadAnnouncements).' unread)' : '' }}"
-       title="{{ $messagingOn ? 'Messages' : 'Announcements' }}">
+       title="{{ $bellDestination === 'messages' ? 'Messages' : 'Announcements' }}">
         <x-lucide-bell class="w-5 h-5" />
         @php $unreadTotal = $unreadMessages + $unreadAnnouncements; @endphp
         @if($unreadTotal > 0)

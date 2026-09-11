@@ -152,6 +152,34 @@ it('DSH-04: dashboard keeps every legacy element alongside the new KPI strip and
     }
 });
 
+it('DSH-04b: the Personal BV KPI tile shows the full value, never truncated (F68)', function () {
+    $user = dshUser('active');
+    $distributorId = dshDistributor($user);
+
+    disableTestForeignKeys();
+    try {
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => 999_997,
+            'bv_paise' => 28_060_000, // 2,80,600 BV
+            'type' => 'accrual',
+            'effective_at' => now()->format('Y-m-d H:i:s.v'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $response = $this->actingAs($user)->get(route('dashboard'))->assertOk();
+
+    $response->assertSee('2,80,600 BV', false);
+    // assertSee only proves the text is IN the HTML — a CSS `truncate` still
+    // ellipsises it visually without removing it from the source. Assert the
+    // class itself is gone from the Personal BV (tone=leaf) value paragraph.
+    $response->assertDontSee('text-leaf-800 leading-tight truncate', false);
+});
+
 it('DSH-05: flag-gated dashboard surfaces leave no trace while their features are off', function () {
     $user = dshUser('active');
     dshDistributor($user);

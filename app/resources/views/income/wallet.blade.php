@@ -107,22 +107,10 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @php
-                        // Friendly labels for a first-time distributor; the raw
-                        // machine type stays available in the CSV export.
-                        $walletTypeLabels = [
-                            'gsb_credit' => 'Genos Sales Bonus',
-                            'mb_credit' => 'Mentorship Bonus',
-                            'gbb_credit' => 'Growth Booster Bonus',
-                            'rank_credit' => 'Rank Bonus',
-                            'fortune_credit' => 'Fortune Bonus',
-                            'adc_credit' => 'ADC Bonus',
-                            'payout_debit' => 'Payout to bank',
-                            'admin_charge_debit' => 'Admin charge',
-                            'tds_debit' => 'TDS (Tax Deducted at Source)',
-                            'repurchase_transfer' => 'Repurchase obligation (bonus deduction)',
-                            'income_cap_forfeit' => 'Monthly income cap',
-                            'manual_credit' => 'Manual adjustment',
-                        ];
+                        // Friendly labels for a first-time distributor; the same
+                        // map backs the CSV export so neither one leaks the raw
+                        // machine type.
+                        $walletTypeLabels = \App\Modules\Compensation\Models\WalletLedgerEntry::typeLabels();
                     @endphp
                     @foreach($ledgerRows as $item)
                     @php $entry = $item['entry']; $runningBalance = $item['running_balance_paise']; @endphp
@@ -156,7 +144,7 @@
     @if($repurchaseLedgerRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
             <p class="text-gray-600 font-medium">No repurchase wallet activity yet.</p>
-            <p class="text-sm text-gray-600 mt-1">Deductions appear here after your first payout is processed.</p>
+            <p class="text-sm text-gray-600 mt-1">Deductions appear here the moment your first bonus is credited.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto mb-6">
@@ -166,7 +154,7 @@
                         <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center gap-1">Type <x-help-tip text="Deduction = withheld from payout into this wallet. Credit applied = used at checkout." /></span>
+                            <span class="flex items-center gap-1">Type <x-help-tip text="Deduction = moved here the moment a bonus was credited. Credit applied = used at checkout." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">Amount</th>
                     </tr>
@@ -252,8 +240,12 @@
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">On hold — contact support</span>
                             @elseif($row->status === 'income_cap_forfeited')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Above the monthly income cap — not paid (forfeited)</span>
+                            @elseif($row->status === 'no_bank_account')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">No bank account on file</span>
+                            @elseif($row->status === 'web_only')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Below 3,000 BV — web only</span>
                             @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ ucfirst($row->status) }}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ ucfirst(str_replace('_', ' ', $row->status)) }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $row->utr_number ?? '—' }}</td>

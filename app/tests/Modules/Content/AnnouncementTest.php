@@ -12,6 +12,7 @@ declare(strict_types=1);
  *   ANN-08      reading one marks it read; the unread count follows
  *   ANN-09..10  income-projection copy is refused, on save and on publish
  *   ANN-11      an announcement addressed elsewhere 404s by id
+ *   ANN-12      the bell links to announcements when only announcements are unread (F54)
  */
 
 use App\Modules\Content\Models\Announcement;
@@ -190,6 +191,20 @@ it('ANN-08: opening one marks it read and the unread count follows', function ()
         ->assertOk();
 
     expect(app(AnnouncementService::class)->unreadCountFor($user->fresh()))->toBe(0);
+});
+
+it('ANN-12: the bell links to announcements when only announcements are unread', function (): void {
+    Feature::for(null)->activate(MessagingFeature::class);
+
+    $user = annUser('bell');
+    annDistributor($user->id);
+    annPublished();
+
+    $this->actingAs($user);
+    $bell = (string) view('partials._notification-bell')->render();
+
+    expect($bell)->toContain('href="'.route('announcements.index').'"')
+        ->and($bell)->not->toContain('href="'.route('messages.index').'"');
 });
 
 it('ANN-09: copy implying a future income is refused on save', function (): void {

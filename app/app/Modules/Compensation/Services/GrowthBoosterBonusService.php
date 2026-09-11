@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\DTOs\GbbMonthRoster;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
@@ -372,9 +373,18 @@ final class GrowthBoosterBonusService
         if ($results->clone()
             ->whereIn('status', GbbMonthlyResult::POOL_FUNDED_STATUSES)
             ->exists()) {
-            Log::warning('gbb.pool.premature_freeze_kept', $details + [
-                'reason' => 'results were already priced against this pool; re-freezing would change economics money moved on',
-            ]);
+            $reason = 'results were already priced against this pool; re-freezing would change economics money moved on';
+
+            Log::warning('gbb.pool.premature_freeze_kept', $details + ['reason' => $reason]);
+
+            PrematureFreezeAlert::kept(
+                engineKey: 'gbb.monthly',
+                subjectType: 'gbb_monthly_pool',
+                subjectId: $existing->id,
+                period: Carbon::parse($existing->month_start)->format('Y-m'),
+                reason: $reason,
+                details: $details,
+            );
 
             return false;
         }

@@ -58,6 +58,31 @@ final class WalletLedgerEntry extends Model
     }
 
     /**
+     * Friendly label for each `type`, keyed by the raw machine value. Shared
+     * by the distributor-facing wallet ledger page and its CSV export so
+     * neither one leaks the internal enum (e.g. `gsb_credit`) to a distributor.
+     *
+     * @return array<string, string>
+     */
+    public static function typeLabels(): array
+    {
+        return [
+            'gsb_credit' => 'Genos Sales Bonus',
+            'mb_credit' => 'Mentorship Bonus',
+            'gbb_credit' => 'Growth Booster Bonus',
+            'rank_credit' => 'Rank Bonus',
+            'fortune_credit' => 'Fortune Bonus',
+            'adc_credit' => 'ADC Bonus',
+            'payout_debit' => 'Payout to bank',
+            'admin_charge_debit' => 'Admin charge',
+            'tds_debit' => 'TDS (Tax Deducted at Source)',
+            'repurchase_transfer' => 'Repurchase obligation (bonus deduction)',
+            'income_cap_forfeit' => 'Monthly income cap',
+            'manual_credit' => 'Manual adjustment',
+        ];
+    }
+
+    /**
      * Drop every entry belonging to a bonus an admin has reversed.
      *
      * A reversal writes a `reversal` debit against the SAME (reference_type,
@@ -124,6 +149,51 @@ final class WalletLedgerEntry extends Model
     {
         $query->where(function (Builder $window) use ($date): void {
             $window->whereDate('earned_on', '<=', $date)->orWhereNull('earned_on');
+        });
+    }
+
+    /**
+     * Rows a monthly payout batch for `$month` is due to settle — the monthly
+     * counterpart of {@see earnedOnOrBefore()}.
+     *
+     * The monthly batch used to have no earning window at all: it swept every
+     * unswept row, so the batch for August paid income earned in September as
+     * well, while the engine-completion gate only ever certified August (QA
+     * F48). The window closes that gap.
+     *
+     * Three readings of "when was this earned", in order of authority:
+     *
+     *   bonus_month — the month the income was EARNED for, which is what the
+     *                 monthly engines stamp when they close a month on the 1st
+     *                 of the next one. `<= $month` because income held back by
+     *                 a hold or the minimum payout rolls forward.
+     *   earned_on   — the earning DAY, for streams that carry one.
+     *   created_at  — the last resort for a credit with neither (a Lifetime
+     *                 Award released by hand). App time is IST, so the month
+     *                 boundary needs no conversion.
+     *
+     * Rows written before either column existed carry neither and fall to
+     * created_at, which for a historical batch is the same answer the old
+     * unwindowed sweep gave.
+     *
+     * @param  Builder<WalletLedgerEntry>  $query
+     */
+    #[Scope]
+    protected function earnedForMonthOrBefore(Builder $query, Carbon $month): void
+    {
+        $monthStart = $month->copy()->startOfMonth();
+        $monthEnd = $month->copy()->endOfMonth();
+
+        $query->where(function (Builder $window) use ($monthStart, $monthEnd): void {
+            $window->whereDate('bonus_month', '<=', $monthStart)
+                ->orWhere(function (Builder $byDay) use ($monthEnd): void {
+                    $byDay->whereNull('bonus_month')->whereDate('earned_on', '<=', $monthEnd);
+                })
+                ->orWhere(function (Builder $byWriteTime) use ($monthEnd): void {
+                    $byWriteTime->whereNull('bonus_month')
+                        ->whereNull('earned_on')
+                        ->where('created_at', '<=', $monthEnd);
+                });
         });
     }
 

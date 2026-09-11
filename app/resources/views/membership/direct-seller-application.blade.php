@@ -54,7 +54,7 @@
             ['label' => 'Phone',              'value' => $distributor->phone_e164 ?? $user?->phone_e164],
             ['label' => 'Date of birth',      'value' => $user?->date_of_birth],
             ['label' => 'State',              'value' => $distributor->state],
-            ['label' => 'PAN (last 4)',       'value' => $distributor->pan_last4 ? 'XXXXXX'.$distributor->pan_last4.'X' : null, 'mono' => true],
+            ['label' => 'PAN (last 4)',       'value' => $distributor->pan_last4 ? 'XXXXXX'.$distributor->pan_last4 : null, 'mono' => true],
             ['label' => 'Aadhaar (last 4)',   'value' => $distributor->aadhaar_last4 ? 'XXXXXXXX'.$distributor->aadhaar_last4 : null, 'mono' => true],
             ['label' => 'Bank IFSC',          'value' => $distributor->bank_ifsc,                    'mono' => true],
             ['label' => 'Sponsor',            'value' => $sponsor ? trim(($sponsor->user?->full_name ?: 'Distributor').' ('.$sponsor->adn.')') : null],

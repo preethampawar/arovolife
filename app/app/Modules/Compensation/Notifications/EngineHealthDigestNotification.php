@@ -84,6 +84,16 @@ final class EngineHealthDigestNotification extends Notification implements Shoul
             }
         }
 
+        if ($this->report->prematureFreezes !== []) {
+            $mail->line('**Periods priced against a pool frozen too early**');
+
+            foreach ($this->report->prematureFreezes as $item) {
+                $position++;
+                $mail->line("**{$position}. {$item['engine']} — {$item['period']}** (pool frozen {$item['frozen_at']}, kept because money had already moved on it)");
+                $this->appendSteps($mail, $item['steps']);
+            }
+        }
+
         if ($this->report->stuck !== []) {
             $mail->line('**Runs that appear stuck**');
 

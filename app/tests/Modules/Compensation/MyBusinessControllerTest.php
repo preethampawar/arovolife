@@ -137,7 +137,9 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         // Note block — the partner's canonical carry over / carry forward definitions.
         ->assertSee('Business that occurs before matching is called carry over.')
         ->assertSee('The remaining BVs after matching are called carry forward.')
-        // Group 2
+        // Group 2 — hero cards share the dashboard's brand-blue gradient (F54).
+        ->assertSee('from-brand-600 to-brand-800', false)
+        ->assertDontSee('from-indigo-600 to-purple-600', false)
         ->assertSee('Personal BV (lifetime)')
         ->assertSee('No title yet')
         ->assertSee('Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.')
@@ -297,6 +299,37 @@ it('shows carry forward as the remainder of the last slab match only', function 
         ->assertSee('Reset at your last slab match ('.$expectedDate.')', false)
         ->assertSee('6,000')
         ->assertDontSee('No slab matched yet');
+});
+
+it('hints that carry over and carry forward coincide when nothing new has arrived since the last match (F54)', function (): void {
+    ['user' => $user, 'distributorId' => $rootId] = myBusinessDistributor();
+    $this->actingAs($user);
+
+    myBusinessGivePersonalBv($rootId, 60_000, 888_003); // 600 BV — eligible
+
+    // Yesterday slab 1 matched and nothing has moved on either side since —
+    // Left's carried-over Genos BV equals its carry forward exactly.
+    GsbCutoffResult::create([
+        'distributor_id' => $rootId,
+        'cutoff_date' => Carbon::yesterday('Asia/Kolkata')->toDateString(),
+        'left_bv_paise' => 2_100_000,
+        'right_bv_paise' => 1_500_000,
+        'weaker_bv_paise' => 1_500_000,
+        'slab' => 1,
+        'score' => 8,
+        'score_value_paise' => 25_000,
+        'gross_gsb_paise' => 200_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_gsb_paise' => 200_000,
+        'power_cf_after_paise' => 600_000,
+        'power_side_after' => 'L',
+        'status' => GsbCutoffResult::STATUS_CREDITED,
+    ]);
+
+    $this->get(route('my-business'))
+        ->assertOk()
+        ->assertSee('No new business on this side since your last match — same as your carry forward.');
 });
 
 it('shows zero genos figures on my business below the personal bv minimum', function (): void {

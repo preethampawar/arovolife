@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Controllers;
 
+use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\AreteCenterMember;
+use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
@@ -63,12 +65,25 @@ final class ProfileController extends Controller
 
         $availableCenters = AreteCenter::query()->selectable()->get();
 
+        // A real last-4 instead of a meaningless literal mask (F73). Decrypt
+        // failures hold payouts elsewhere; here they just fall back to no
+        // last-4 rather than breaking the profile page.
+        $bankLast4 = null;
+        if ($distributor !== null && filled($distributor->bank_ifsc)) {
+            try {
+                $bankLast4 = app(PayoutService::class)->bankLast4ForDistributor($distributor->id);
+            } catch (BankDecryptionException) {
+                $bankLast4 = null;
+            }
+        }
+
         return view('profile.show', [
             'user' => $user,
             // The distributor record backs the read-only identity block
             // (ADN + masked PAN/Aadhaar/bank). Null for a non-distributor
             // (e.g. an admin) — the view hides that block.
             'distributor' => $distributor,
+            'bankLast4' => $bankLast4,
             'areteCenter' => $areteCenter,
             'availableCenters' => $availableCenters,
         ]);

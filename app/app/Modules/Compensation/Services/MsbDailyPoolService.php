@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Support\Money;
 use Illuminate\Support\Carbon;
@@ -148,9 +149,18 @@ final class MsbDailyPoolService
         if (MentorshipBonusResult::whereDate('cutoff_date', $existing->cutoff_date->toDateString())
             ->where('status', MentorshipBonusResult::STATUS_CREDITED)
             ->exists()) {
-            Log::warning('msb.pool.premature_freeze_kept', $details + [
-                'reason' => 'mentors were already credited at this point value; re-freezing would change economics money moved on',
-            ]);
+            $reason = 'mentors were already credited at this point value; re-freezing would change economics money moved on';
+
+            Log::warning('msb.pool.premature_freeze_kept', $details + ['reason' => $reason]);
+
+            PrematureFreezeAlert::kept(
+                engineKey: 'gsb.daily-cutoff',
+                subjectType: 'msb_daily_pool',
+                subjectId: $existing->id,
+                period: $existing->cutoff_date->toDateString(),
+                reason: $reason,
+                details: $details,
+            );
 
             return false;
         }

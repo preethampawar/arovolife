@@ -6,6 +6,8 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Notifications\EngineHealthDigestNotification;
 use App\Modules\Compensation\Services\EngineHealthService;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
+use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Carbon;
@@ -354,4 +356,57 @@ it('does not report a deliberate refusal as a failure', function (): void {
         ->assertExitCode(0);
 
     Notification::assertNothingSent();
+});
+
+it('reports a pool the self-heal had to keep after a premature freeze', function (): void {
+    // F30: the 05 Sep staging cut-off was frozen mid-day and kept because
+    // mentors had already been credited at the wrong point value. That fact
+    // existed only as a log line — no audit row, no failed run, nothing in this
+    // email — and went unnoticed for a month while a distributor was ₹7,488 short.
+    seedHealthyRuns();
+
+    AuditLog::create([
+        'actor_id' => null,
+        'action' => PrematureFreezeAlert::ACTION,
+        'subject_type' => 'gsb_daily_pool',
+        'subject_id' => 11,
+        'details' => [
+            'engine_key' => 'gsb.daily-cutoff',
+            'period' => '2026-09-05',
+            'frozen_at' => '2026-09-05 14:03:29',
+            'reason' => 'results were already priced against this pool',
+        ],
+    ]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)
+        ->toContain('Compensation engines need attention — 1 item(s)')
+        ->toContain('GSB Daily Cut-off (incl. MSB) — 05 Sep 2026')
+        ->toContain('pool frozen 2026-09-05 14:03:29')
+        ->toContain('Do NOT re-run the engine');
+});
+
+it('records a kept premature freeze once, however many runs re-detect it', function (): void {
+    // The condition is permanent: every later run for the day finds it again.
+    PrematureFreezeAlert::kept(
+        engineKey: 'gsb.daily-cutoff',
+        subjectType: 'gsb_daily_pool',
+        subjectId: 11,
+        period: '2026-09-05',
+        reason: 'results were already priced against this pool',
+        details: ['company_bv_paise' => 55_940_000],
+    );
+    PrematureFreezeAlert::kept(
+        engineKey: 'gsb.daily-cutoff',
+        subjectType: 'gsb_daily_pool',
+        subjectId: 11,
+        period: '2026-09-05',
+        reason: 'results were already priced against this pool',
+        details: ['company_bv_paise' => 55_940_000],
+    );
+
+    expect(AuditLog::where('action', PrematureFreezeAlert::ACTION)->count())->toBe(1);
 });

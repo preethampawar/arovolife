@@ -14,6 +14,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\AogoOfferService;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
@@ -492,7 +493,9 @@ final class IncomeController extends Controller
             $ledgerRows = collect();
         }
 
-        return response()->streamDownload(function () use ($ledgerRows): void {
+        $typeLabels = WalletLedgerEntry::typeLabels();
+
+        return response()->streamDownload(function () use ($ledgerRows, $typeLabels): void {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Date', 'Type', 'Amount (₹)', 'Running Balance (₹)']);
             foreach ($ledgerRows as $item) {
@@ -500,7 +503,7 @@ final class IncomeController extends Controller
                 $balance = $item['running_balance_paise'];
                 fputcsv($out, [
                     $entry->created_at?->toDateString(),
-                    $entry->type,
+                    $typeLabels[$entry->type] ?? ucfirst(str_replace('_', ' ', $entry->type)),
                     number_format($entry->amount_paise / 100, 2, '.', ''),
                     number_format($balance / 100, 2, '.', ''),
                 ]);

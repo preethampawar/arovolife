@@ -10,6 +10,8 @@ use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
+use App\Modules\Compensation\Support\PrematureFreezeAlert;
+use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
 
 /**
@@ -25,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @phpstan-import-type FailureItem from EngineHealthReport
  * @phpstan-import-type MissingItem from EngineHealthReport
  * @phpstan-import-type StuckItem from EngineHealthReport
+ * @phpstan-import-type PrematureFreezeItem from EngineHealthReport
  */
 final class EngineHealthService
 {
@@ -53,6 +56,7 @@ final class EngineHealthService
             failures: $failures,
             missing: $this->missing($now, $failures),
             stuck: $this->stuck(),
+            prematureFreezes: $this->prematureFreezes($now),
         );
     }
 
@@ -171,6 +175,67 @@ final class EngineHealthService
         }
 
         return $items;
+    }
+
+    /**
+     * Pools the self-heal found frozen too early and had to KEEP, because money
+     * had already moved at the wrong price.
+     *
+     * Read from `audit_log`, not `engine_runs`: the run that detects a kept
+     * freeze succeeds — everything else about it is correct — so there is no
+     * failed row for this to hang off, and on staging it lived only in a log
+     * line nobody read for a month (F30).
+     *
+     * @return list<PrematureFreezeItem>
+     */
+    private function prematureFreezes(Carbon $now): array
+    {
+        $items = [];
+
+        $rows = AuditLog::query()
+            ->where('action', PrematureFreezeAlert::ACTION)
+            ->where('created_at', '>=', $now->copy()->subDays(self::FAILURE_WINDOW_DAYS))
+            ->orderBy('id')
+            ->get();
+
+        foreach ($rows as $row) {
+            $details = $row->details ?? [];
+            $key = is_string($details['engine_key'] ?? null) ? $details['engine_key'] : '';
+            $definition = $this->definitionFor($key);
+            $periodValue = is_string($details['period'] ?? null) ? $details['period'] : '';
+
+            $period = $periodValue === '' || $definition === null
+                ? null
+                : $definition->parsePeriod($periodValue);
+
+            $items[] = [
+                'engine' => $definition === null ? $key : $definition->label,
+                'key' => $key,
+                'period' => $period === null ? $periodValue : $definition->displayPeriod($period),
+                'period_value' => $periodValue,
+                'frozen_at' => is_string($details['frozen_at'] ?? null) ? $details['frozen_at'] : 'unknown',
+                'detected_at' => $row->created_at->format('d M Y H:i'),
+                'steps' => $this->prematureFreezeSteps($definition === null ? $key : $definition->label, $periodValue),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * There is no button for this one, and there must not be: a re-run prices
+     * against the same wrong snapshot, and a second credit is not the fix.
+     *
+     * @return list<string>
+     */
+    private function prematureFreezeSteps(string $label, string $period): array
+    {
+        return [
+            'Do NOT re-run the engine: it would price against the same wrong snapshot and credit nobody the difference.',
+            "The pool for {$period} was frozen before the period had finished, so {$label} priced that period on partial BV — everybody who earned in it was paid at the wrong rate.",
+            'Send this email to the developer today. Correcting it means rebuilding the period from the orders, which only they can do.',
+            'Until then, treat that period as provisional on every report; the payout for it may be short.',
+        ];
     }
 
     /**

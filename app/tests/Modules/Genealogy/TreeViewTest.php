@@ -113,6 +113,17 @@ it('TV-01: distributor /tree renders own ADN and immediate children', function (
     $response->assertSee($childAdn);
 });
 
+it('TV-01b: /tree never leaks "binary" into the user-facing intro banner (F68)', function () {
+    $rootUser = tvUser('root-copy');
+    tvSeedRoot($rootUser->id);
+
+    $this->actingAs($rootUser->refresh())
+        ->get('/tree')
+        ->assertOk()
+        ->assertSee('Your Genos is your placement tree')
+        ->assertDontSee('binary placement tree');
+});
+
 it('TV-02: distributor /tree shows ONLY own subtree, never an ancestor or sibling subtree', function () {
     $rootUser = tvUser('root');
     $rootId = tvSeedRoot($rootUser->id);

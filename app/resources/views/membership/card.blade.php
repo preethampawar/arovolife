@@ -155,9 +155,9 @@
                 </svg>
                 <p class="relative text-[11px] uppercase tracking-wider text-brand-700 font-semibold mb-2">Cardholder instructions</p>
                 <ul class="relative space-y-1.5 text-[12px] sm:text-[13px] text-gray-700 leading-snug list-disc pl-4 flex-1">
-                    <li>This ID card must be displayed at all times while in office and on customer premises.</li>
+                    <li>This ID card must be displayed at all times while representing arovolife and on customer premises.</li>
                     <li>This card must not be used for any other purpose.</li>
-                    <li>In case of loss or damage, bring this to HR's notice immediately.</li>
+                    <li>In case of loss or damage, bring this to the Support team's notice immediately.</li>
                     <li>If found, please return it to the office address below or hand it over to the building security.</li>
                 </ul>
                 <div class="relative pt-2 mt-2 border-t border-brand-200/40 text-center">
