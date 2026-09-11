@@ -51,7 +51,7 @@ Medium and Low items (≈78) are in the register with repro steps; the playbook 
 
 ## 4. Decisions only you can make
 
-1. **F10 windowed recompute on staging from 2026-09-01** — deletes September derived rows (pools, wallet rows, payout batches 1–3, orphan invoices). Destructive; I will present the 5-point warning and run only on an explicit yes.
+1. **F10 windowed recompute on staging from 2026-09-01** — DONE 2026-09-12 00:06 IST after the 5-point warning and the user's yes (audit 3272/3307): 2,473 rows removed, 12 days replayed, all 10 engine runs succeeded; September re-verified in `deploy-checklist.md` §4.
 2. **F120** — is the company centre allowed an assigned distributor? If not, the engine must exclude `centre_type='company'` and the ₹10,500 credit must be reversed.
 3. **F94** — introduce `finance.approve` (maker-checker) before launch, or accept single-role approval for now?
 4. **F70** — add a self-service bank-details page (with confirmation + beneficiary name, F28) or keep bank capture admin-only?

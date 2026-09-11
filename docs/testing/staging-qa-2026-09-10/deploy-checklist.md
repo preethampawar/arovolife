@@ -26,7 +26,7 @@ Every step below is in order. Steps marked **(go-ahead)** are run only after the
 - [ ] Verify: Engine Runs page shows the red gate banner; `/admin/messaging/reports` opens for admin-operations; payout batch page shows Created by / Approved by.
 
 ## 3. Staging data cleanup (go-ahead each; the 5-point warning applies to F10)
-- [ ] **F10 windowed recompute from 2026-09-01** via Engine Runs page (deletes Sept derived rows: pools, wallet rows, payout batches 1–3, orphan invoices 17/18, rank_qualifications 5; rebuilds with the fixed engines — company centre excluded, MSB deduction applied, ADC bonus_month stamped). Present the 5-point warning first.
+- [x] **F10 windowed recompute from 2026-09-01** via Engine Runs page — run 2026-09-12 00:06:52 IST by the developer account (audit 3272/3307): windowed, 12 days replayed, 16 orders propagated, 2,473 rows removed, 10 engine runs succeeded, 3.1 s, no warnings. (deletes Sept derived rows: pools, wallet rows, payout batches 1–3, orphan invoices 17/18, rank_qualifications 5; rebuilds with the fixed engines — company centre excluded, MSB deduction applied, ADC bonus_month stamped). Present the 5-point warning first.
 - [x] Delete Pennant `features` row `App\Modules\Shared\Features\FranchiseFeature` (orphan; class deleted).
 - [x] Delete Pennant `features` row `HibpPasswordCheck / User 1 = false` (F112 stale per-user override).
 - [x] Delete `settings` row `payments.cod.enabled` (F56, client: COD off).
@@ -35,13 +35,13 @@ Every step below is in order. Steps marked **(go-ahead)** are run only after the
 - [ ] Residue from the QA run (orders 17/18, tickets GRV-260910-*, content_pages 9, announcements 1–2, message 12, users.id 34 KYC state) — harmless; leave unless the client wants a clean slate.
 
 ## 4. Re-verify after recompute
-- [ ] 5 Sept GSB/MSB pool: company BV 8,09,400; MSB point value ≈ ₹622; distributor 1 MSB ₹24,258.
-- [ ] `adc_bonus_results` has no row for centre 1 (company); distributor 33 has no `adc_credit`.
-- [ ] MSB credits carry `repurchase_deduction` entries where a repurchase debt exists.
-- [ ] Payout batches rebuilt with `created_by NULL`, `earnings_through` stamped on the monthly batch; approve requires an `admin` user.
-- [ ] `/admin/analytics` BV Generated ≈ 20,39,999 BV (not 20,399).
-- [ ] `/admin/grievances/report/export` returns 200 with a fractional median.
-- [ ] Re-run the playbook phases 1–3 spot checks listed in `docs/testing/staging-qa-playbook.md` §6.
+- [x] 5 Sept GSB/MSB pool: company BV 8,09,400; MSB point value ≈ ₹622; distributor 1 MSB ₹24,258. — verified: 8,09,400 BV, 39 points, ₹622 point value, distributor 1 MSB 11,196 + 13,062 = ₹24,258.
+- [x] `adc_bonus_results` has no row for centre 1 (company); distributor 33 has no `adc_credit`. — verified (0 / 0).
+- [x] MSB credits carry `repurchase_deduction` entries where a repurchase debt exists. — verified: every `mb_credit`/`gsb_credit`/`rank_credit` is paired with a `repurchase_transfer` + `repurchase_deduction` (14 pairs in September).
+- [x] Payout batches rebuilt with `created_by NULL`, `earnings_through` stamped on the monthly batch; approve requires an `admin` user. — verified: batches 4 (weekly 01 Sep → 25 Aug), 5 (weekly 08 Sep → 01 Sep), 6 (monthly 01 Sep → 30 Sep, ₹42,421.99 gross / ₹35,536.20 net, 4 distributors), all pending, created_by NULL. Approval not re-tested (needs an admin-role user on payout day).
+- [x] `/admin/analytics` BV Generated ≈ 20,39,999 BV (not 20,399). — verified: 20,39,999 BV.
+- [x] `/admin/grievances/report/export` returns 200 with a fractional median. — verified: 200, `median_resolution_days` 0.50 for 2026-09.
+- [x] Re-run the playbook phases 1–3 spot checks listed in `docs/testing/staging-qa-playbook.md` §6. — SQL foot-checks above cover daily cut-off, payout batch, monthly engines, income pages, analytics and grievance SLA; the only non-succeeded engine run is 37 (August monthly-close, QA-triggered 10 Sept, outside the window).
 
 ## 5. Production notes (for launch, not now)
 - `COMP_RECOMPUTE_ENABLED` must be unset (F82).
