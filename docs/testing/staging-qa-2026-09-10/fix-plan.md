@@ -24,11 +24,11 @@ Files: `Compensation/Services/EngineStatusService.php`, `Compensation/Support/Mo
 - [x] F40 `MonthlyEngineCompletionGate::blockingFailure()` also treats a FAILED `compensation.monthly-close` run for the month (newer than the last success) as blocking.
 - [x] F47 `payout:monthly-run`: add to `OpenMonthGuard::FREEZING_COMMANDS`, run `MonthlyEngineCompletionGate` before sweeping, and default `--month` to the PREVIOUS month. Refuse the current month without `--in-flight`. Tests for each gate.
 - [x] F31 `gsb:daily-cutoff`: explicit closed-day guard on the CLI (`--date` must be < today unless `--in-flight`), independent of the repurchase gate; `--force` does not lift it.
-- [ ] F06 Backfill `rank_monthly_pools` for months that have credited `rank_bonus_results` but no pool row (new migration, idempotent), so `refuseUnfrozenPaidMonth()` does not throw on `--restart`.
-- [ ] F07 Add `purchase_offer_grants` to recompute `DerivedTables` (and its test).
-- [ ] F09 `adc_credit` wallet rows must carry `bonus_month` (the ADC month).
-- [ ] F08 Fortune enrolment must not be permanently closed by a premature `fortune_monthly_pools` row: enrolment reads participants at freeze time from the self-healed row; document the behaviour if you decide it is already covered by the self-heal.
-- [ ] F87 `/admin/compensation/gbb` and `/fortune-bonus` index: read pool rows (frozen/credited) so "engine has not yet run" only shows when neither pool nor result rows exist.
+- [x] F06 Backfill `rank_monthly_pools` for months that have credited `rank_bonus_results` but no pool row (new migration, idempotent), so `refuseUnfrozenPaidMonth()` does not throw on `--restart`.
+- [x] F07 Add `purchase_offer_grants` to recompute `DerivedTables` (and its test).
+- [x] F09 `adc_credit` wallet rows must carry `bonus_month` (the ADC month).
+- [x] F08 Fortune enrolment must not be permanently closed by a premature `fortune_monthly_pools` row: enrolment reads participants at freeze time from the self-healed row; document the behaviour if you decide it is already covered by the self-heal.
+- [x] F87 `/admin/compensation/gbb` and `/fortune-bonus` index: read pool rows (frozen/credited) so "engine has not yet run" only shows when neither pool nor result rows exist.
 
 ### B3 — Payout operations (Opus)
 Files: `Compensation/Services/{PayoutService,PayoutReconciliationService,WalletService}.php`, `AdminWeeklyPayoutController`, `AdminMonthlyPayoutController`, payout views, NEFT export route, dashboard income snapshot, new migration for `utr_number` unique index.
