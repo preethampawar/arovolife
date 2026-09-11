@@ -162,6 +162,12 @@ final class WindowedStateWiper
                     continue;
                 }
 
+                if ($table === 'purchase_offer_grants') {
+                    $removed[$table] = $this->regrantableGrants($monthStart)->delete();
+
+                    continue;
+                }
+
                 $filter = DerivedTables::dateFilter($table);
 
                 if ($filter === null) {
@@ -236,9 +242,11 @@ final class WindowedStateWiper
 
             $boundary = $filter['granularity'] === 'month' ? $monthStart : $dayStart;
 
-            $count = (int) $this->db->table($table)
-                ->whereDate($filter['column'], '>=', $boundary->toDateString())
-                ->count();
+            $count = $table === 'purchase_offer_grants'
+                ? (int) $this->regrantableGrants($monthStart)->count()
+                : (int) $this->db->table($table)
+                    ->whereDate($filter['column'], '>=', $boundary->toDateString())
+                    ->count();
 
             if ($count > 0) {
                 $counts[$table] = $count;
@@ -547,6 +555,22 @@ final class WindowedStateWiper
      *                                                              for a child table that also holds rows belonging to
      *                                                              nobody in $parentTable
      */
+    /**
+     * The purchase-offer grants of the window that a replay may hand out again.
+     *
+     * A grant an order has already consumed is left alone: the discount was
+     * taken on a purchase that survives the wipe, so re-deriving the grant
+     * would let the same order's discount be taken a second time (F124;
+     * client decision 2026-09-11 — no re-grant). The surviving row is what
+     * makes PurchaseOfferService::alreadyGranted() skip the month on replay.
+     */
+    private function regrantableGrants(Carbon $monthStart): QueryBuilder
+    {
+        return $this->db->table('purchase_offer_grants')
+            ->whereDate('month_start', '>=', $monthStart->toDateString())
+            ->whereNull('consumed_order_id');
+    }
+
     private function deleteByParent(
         string $childTable,
         string $foreignKey,

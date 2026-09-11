@@ -539,3 +539,45 @@ it('takes a purchase-offer grant with the points it awarded, and leaves the ones
     expect($ledger->pluck('points')->all())->toBe([200, -50])
         ->and($ledger->pluck('reference_id')->all())->toBe([$older, 9_001]);
 });
+
+it('keeps a grant an order has already consumed, so the replay cannot hand the discount out twice', function (): void {
+    // F124 (client decision 2026-09-11): the order that consumed a half-price
+    // grant is a purchase and survives the wipe; deleting the grant would let
+    // the replay grant it again to a distributor who has already used it.
+    $dist = Distributor::factory()->create();
+
+    $orderId = DB::table('orders')->insertGetId([
+        'order_no' => 'O'.uniqid('', true),
+        'customer_id' => 1,
+        'attributed_distributor_id' => $dist->id,
+        'self_consumption' => true,
+        'idempotency_key' => 'k'.uniqid('', true),
+        'created_at' => '2026-09-05 10:00:00',
+        'updated_at' => '2026-09-05 10:00:00',
+    ]);
+
+    $row = static fn (string $month, ?int $consumedBy): array => [
+        'distributor_id' => $dist->id,
+        'offer_type' => 'half_price_product',
+        'month_start' => $month,
+        'qualifying_bv_paise' => 100_000,
+        'streak_months' => 1,
+        'status' => $consumedBy === null ? 'granted' : 'consumed',
+        'consumed_order_id' => $consumedBy,
+        'consumed_at' => $consumedBy === null ? null : '2026-09-05 10:00:00',
+        'created_at' => '2026-09-01 00:35:00',
+        'updated_at' => '2026-09-01 00:35:00',
+    ];
+
+    $consumed = DB::table('purchase_offer_grants')->insertGetId($row('2026-08-01', $orderId));
+    $unused = DB::table('purchase_offer_grants')->insertGetId(['offer_type' => 'redeem_points'] + $row('2026-08-01', null));
+
+    $wiper = app(WindowedStateWiper::class);
+
+    expect($wiper->preview(Carbon::parse('2026-08-15'))['purchase_offer_grants'] ?? 0)->toBe(1);
+
+    $wiper->wipe(Carbon::parse('2026-08-15'));
+
+    expect(DB::table('purchase_offer_grants')->pluck('id')->all())->toBe([$consumed])
+        ->and(DB::table('purchase_offer_grants')->find($unused))->toBeNull();
+});
