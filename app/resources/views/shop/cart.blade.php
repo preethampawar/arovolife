@@ -6,10 +6,12 @@
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-bold">Your Cart</h1>
     @if(! $cart->items->isEmpty())
+    {{-- Units, not lines: one line of qty 2 is two items to the buyer. --}}
+    @php $cartUnits = (int) $cart->items->sum('qty'); @endphp
     <form method="POST" action="{{ route('shop.cart.clear') }}"
           data-confirm="Remove all items from your cart?"
           data-confirm-title="Clear cart"
-          data-confirm-impact="All {{ $cart->items->count() }} {{ $cart->items->count() === 1 ? 'item' : 'items' }} will be removed. This cannot be undone.">
+          data-confirm-impact="All {{ $cartUnits }} {{ $cartUnits === 1 ? 'item' : 'items' }} will be removed. This cannot be undone.">
         @csrf @method('DELETE')
         <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-sm font-medium text-red-700 transition-colors">
             <x-lucide-trash-2 class="w-3.5 h-3.5" />

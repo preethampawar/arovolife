@@ -21,4 +21,19 @@ final class OrderNotificationChannels
     {
         return ['mail'];
     }
+
+    /**
+     * The default channels plus the in-app notification record.
+     *
+     * For the events a buyer expects to find in the product afterwards — a
+     * shipment, a delivery — email alone left no trace anywhere in the account
+     * (QA F59). Anonymous (guest) recipients are routed by email only;
+     * Laravel skips the database channel for them.
+     *
+     * @return array<int, string>
+     */
+    public static function withDatabase(): array
+    {
+        return [...self::default(), 'database'];
+    }
 }

@@ -267,6 +267,9 @@
                     Same as shipping
                 </label>
             </div>
+            {{-- With "same as shipping" ticked (the default) the fields below are
+                 hidden; without this line the card is an empty white box. --}}
+            <p id="billingSameNote" class="text-sm text-gray-600">We will bill this order to your delivery address above.</p>
             <div id="billingFields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Address Line 1</label>
@@ -457,8 +460,12 @@
     (function () {
         const same = document.getElementById('billingSame');
         const fields = document.getElementById('billingFields');
+        const note = document.getElementById('billingSameNote');
         if (!same || !fields) return;
-        const sync = () => { fields.style.display = same.checked ? 'none' : ''; };
+        const sync = () => {
+            fields.style.display = same.checked ? 'none' : '';
+            if (note) { note.style.display = same.checked ? '' : 'none'; }
+        };
         same.addEventListener('change', sync);
         sync();
     })();
