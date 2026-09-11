@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Messaging\Http\Controllers\Admin;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Messaging\Models\Message;
 use App\Modules\Messaging\Models\MessageReport;
 use App\Modules\Shared\Features\MessagingFeature;
@@ -95,6 +96,10 @@ final class AdminMessageReportController extends Controller
             'action' => 'messaging.report_opened',
             'subject_type' => 'message_report',
             'subject_id' => $report->id,
+            // Opening moves nothing; the matching digests pin which report
+            // state the reviewer was shown.
+            'before_hash' => AuditDigests::of($report),
+            'after_hash' => AuditDigests::of($report),
             'details' => ['message_id' => (int) $report->message_id, 'category' => $report->category],
             'ip' => request()->ip(),
         ]);
@@ -116,6 +121,7 @@ final class AdminMessageReportController extends Controller
         ]);
 
         $beforeStatus = (string) $report->status;
+        $before = AuditDigests::snapshot($report);
 
         $report->update([
             'status' => $data['status'],
@@ -129,8 +135,8 @@ final class AdminMessageReportController extends Controller
             'action' => 'messaging.report_reviewed',
             'subject_type' => 'message_report',
             'subject_id' => $report->id,
-            'before_hash' => AuditLog::digest($beforeStatus),
-            'after_hash' => AuditLog::digest($data['status']),
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($report),
             'details' => ['message_id' => (int) $report->message_id, 'category' => $report->category],
             'ip' => request()->ip(),
         ]);

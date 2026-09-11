@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Content\Http\Controllers\Admin;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Content\Http\Requests\ContentPageRequest;
 use App\Modules\Content\Models\ContentPage;
 use App\Modules\Shared\Features\FaqLibraryFeature;
@@ -78,6 +79,7 @@ final class AdminContentPageController extends Controller
         $data['updated_by_user_id'] = Auth::id();
 
         $previousStatus = (string) $page->status;
+        $before = AuditDigests::snapshot($page);
         $wasPublished = $page->isPublished();
         $nowPublished = $data['status'] === ContentPage::STATUS_PUBLISHED;
 
@@ -101,7 +103,7 @@ final class AdminContentPageController extends Controller
         $this->audit($action, $page, [
             'status_changed' => $previousStatus !== $data['status'],
             'previous_status' => $previousStatus,
-        ], $previousStatus);
+        ], $before);
 
         return redirect()
             ->route('admin.content.edit', $page)
@@ -112,6 +114,7 @@ final class AdminContentPageController extends Controller
     {
         $title = $page->title;
         $previousStatus = (string) $page->status;
+        $before = AuditDigests::snapshot($page);
         $page->update([
             'status' => ContentPage::STATUS_ARCHIVED,
             'updated_by_user_id' => Auth::id(),
@@ -119,7 +122,7 @@ final class AdminContentPageController extends Controller
 
         $this->audit('content_page.archived', $page, [
             'previous_status' => $previousStatus,
-        ], $previousStatus);
+        ], $before);
 
         return redirect()
             ->route('admin.content.index')
@@ -133,17 +136,20 @@ final class AdminContentPageController extends Controller
 
     /**
      * @param  array<string, mixed>  $extra
-     * @param  string|null  $previousStatus  when a status transition is being recorded, digests it as before/after
+     * @param  array<string, mixed>|null  $before  the page as it stood before
+     *                                             this write; NULL on a create
      */
-    private function audit(string $action, ContentPage $page, array $extra = [], ?string $previousStatus = null): void
+    private function audit(string $action, ContentPage $page, array $extra = [], ?array $before = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'content_page',
             'subject_id' => $page->id,
-            'before_hash' => $previousStatus === null ? null : AuditLog::digest($previousStatus),
-            'after_hash' => $previousStatus === null ? null : AuditLog::digest((string) $page->status),
+            // The whole page, not only its status: a body edit to a policy
+            // page is exactly the thing a compliance review asks about.
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($page),
             'details' => array_merge([
                 'slug' => $page->slug,
                 'title' => $page->title,

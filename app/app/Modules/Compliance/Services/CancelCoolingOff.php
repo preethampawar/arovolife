@@ -9,6 +9,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Models\CoolingOffEvent;
 use App\Modules\Compliance\Services\Exceptions\CoolingOffAlreadyCancelledError;
 use App\Modules\Compliance\Services\Exceptions\CoolingOffWindowExpiredError;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -110,6 +111,12 @@ final class CancelCoolingOff
         // Scoped to this distributor's user only. Calling ->user()->update()
         // on a BelongsTo runs unscoped on some Laravel versions and would
         // terminate every user; updating the loaded model directly is safe.
+        $before = AuditDigests::of([
+            'user_status' => $distributor->user?->status,
+            'closure_type' => $distributor->user?->closure_type,
+            'distributor_status' => $distributor->status,
+        ]);
+
         if ($distributor->user !== null) {
             $distributor->user->update([
                 'status' => 'terminated',
@@ -128,6 +135,12 @@ final class CancelCoolingOff
             'action' => 'compliance.cooling_off.cancelled',
             'subject_type' => 'distributor',
             'subject_id' => $distributorId,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of([
+                'user_status' => $distributor->user?->status,
+                'closure_type' => $distributor->user?->closure_type,
+                'distributor_status' => $distributor->status,
+            ]),
             'details' => [
                 'cancelled_at' => $now->toIso8601String(),
                 'self_cancel' => $actorUserId === (int) $distributor->user_id,

@@ -6,6 +6,7 @@ namespace App\Modules\Compliance\Http\Controllers\Admin;
 
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Models\ComplianceDocument;
+use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -67,6 +68,9 @@ final class AdminComplianceDocumentController extends Controller
             'action' => 'admin.compliance_document.uploaded',
             'subject_type' => 'compliance_document',
             'subject_id' => $doc->id,
+            // A creation has no before-state: before_hash stays NULL.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of($doc),
             'details' => ['title' => $doc->title, 'original_name' => $doc->original_name],
             'ip' => $request->ip(),
         ]);
@@ -76,6 +80,7 @@ final class AdminComplianceDocumentController extends Controller
 
     public function togglePublish(Request $request, ComplianceDocument $document): RedirectResponse
     {
+        $before = AuditDigests::of($document);
         $document->update(['is_published' => ! $document->is_published]);
 
         AuditLog::create([
@@ -83,6 +88,8 @@ final class AdminComplianceDocumentController extends Controller
             'action' => 'admin.compliance_document.'.($document->is_published ? 'published' : 'unpublished'),
             'subject_type' => 'compliance_document',
             'subject_id' => $document->id,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of($document),
             'details' => ['title' => $document->title],
             'ip' => $request->ip(),
         ]);
@@ -101,6 +108,9 @@ final class AdminComplianceDocumentController extends Controller
             'action' => 'admin.compliance_document.deleted',
             'subject_type' => 'compliance_document',
             'subject_id' => $document->id,
+            // Nothing remains after a delete: after_hash stays NULL.
+            'before_hash' => AuditDigests::of($document),
+            'after_hash' => null,
             'details' => ['title' => $document->title, 'original_name' => $document->original_name],
             'ip' => $request->ip(),
         ]);

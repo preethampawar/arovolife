@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Grievance\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Grievance\DTOs\FileGrievanceData;
 use App\Modules\Grievance\Enums\EscalationLevel;
 use App\Modules\Grievance\Enums\TicketCategory;
@@ -106,6 +107,10 @@ final class AdminGrievanceController extends Controller
             'action' => 'grievance.viewed',
             'subject_type' => 'ticket',
             'subject_id' => $ticket->id,
+            // A view moves nothing; the matching digests pin which state of
+            // the ticket the officer was shown.
+            'before_hash' => AuditDigests::of($ticket),
+            'after_hash' => AuditDigests::of($ticket),
             'details' => ['ticket_no' => $ticket->ticket_no, 'category' => $ticket->category->value],
         ]);
 
@@ -196,6 +201,7 @@ final class AdminGrievanceController extends Controller
 
         $this->attachments->storeMany($ticket, $request->file('attachments', []), (int) Auth::id());
 
+        // A recording has no before-state: before_hash stays NULL.
         $this->audit($ticket, 'grievance.recorded', [
             'channel' => $ticket->channel->value,
             'received_at' => $ticket->created_at->toDateString(),
@@ -208,13 +214,14 @@ final class AdminGrievanceController extends Controller
     public function respond(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         $validated = $request->validate([
             'note' => ['required', 'string', 'max:5000', new NoRawGovernmentId],
         ]);
 
         $this->grievances->addStaffResponse($ticket, $validated['note'], (int) Auth::id());
-        $this->audit($ticket, 'grievance.responded');
+        $this->audit($ticket, 'grievance.responded', before: $before);
 
         return back()->with('status', 'Response recorded.');
     }
@@ -229,6 +236,7 @@ final class AdminGrievanceController extends Controller
     public function internalNote(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         $validated = $request->validate([
             'note' => ['required', 'string', 'max:5000', new NoRawGovernmentId],
@@ -241,7 +249,7 @@ final class AdminGrievanceController extends Controller
             note: $validated['note'],
         );
 
-        $this->audit($ticket, 'grievance.internal_note_added');
+        $this->audit($ticket, 'grievance.internal_note_added', before: $before);
 
         return back()->with('status', 'Internal note added. The complainant cannot see it.');
     }
@@ -249,6 +257,7 @@ final class AdminGrievanceController extends Controller
     public function assign(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         $validated = $request->validate([
             'assigned_to_user_id' => ['nullable', 'integer', 'exists:users,id'],
@@ -257,7 +266,7 @@ final class AdminGrievanceController extends Controller
         $assignee = $validated['assigned_to_user_id'] ?? null;
 
         $this->grievances->assign($ticket, $assignee === null ? null : (int) $assignee, (int) Auth::id());
-        $this->audit($ticket, 'grievance.assigned', ['assigned_to_user_id' => $assignee]);
+        $this->audit($ticket, 'grievance.assigned', ['assigned_to_user_id' => $assignee], $before);
 
         return back()->with('status', $assignee === null ? 'Assignment cleared.' : 'Ticket assigned.');
     }
@@ -265,6 +274,7 @@ final class AdminGrievanceController extends Controller
     public function escalate(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         if ($ticket->escalation_level->next() === null) {
             return back()->withErrors([
@@ -277,7 +287,7 @@ final class AdminGrievanceController extends Controller
         ]);
 
         $ticket = $this->grievances->escalate($ticket, (int) Auth::id(), $validated['reason'] ?? null);
-        $this->audit($ticket, 'grievance.escalated', ['to_level' => $ticket->escalation_level->value]);
+        $this->audit($ticket, 'grievance.escalated', ['to_level' => $ticket->escalation_level->value], $before);
 
         return back()->with('status', 'Escalated to the '.$ticket->escalation_level->label().'.');
     }
@@ -285,6 +295,7 @@ final class AdminGrievanceController extends Controller
     public function markThirdParty(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         if ($ticket->third_party_dependent) {
             return back()->withErrors([
@@ -299,7 +310,7 @@ final class AdminGrievanceController extends Controller
         $ticket = $this->grievances->markThirdPartyDependent($ticket, $validated['reason'], (int) Auth::id());
         $this->audit($ticket, 'grievance.third_party_extension', [
             'resolution_due' => $ticket->sla_resolution_at?->toDateString(),
-        ]);
+        ], $before);
 
         return back()->with('status', 'Resolution window extended. A progress update is now owed every '.$this->settings->statusUpdateIntervalDays().' days.');
     }
@@ -307,13 +318,14 @@ final class AdminGrievanceController extends Controller
     public function publishStatusUpdate(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         $validated = $request->validate([
             'note' => ['required', 'string', 'max:2000', new NoRawGovernmentId],
         ]);
 
         $this->grievances->publishStatusUpdate($ticket, $validated['note'], (int) Auth::id());
-        $this->audit($ticket, 'grievance.status_update_sent');
+        $this->audit($ticket, 'grievance.status_update_sent', before: $before);
 
         return back()->with('status', 'Progress update sent to the complainant.');
     }
@@ -321,13 +333,14 @@ final class AdminGrievanceController extends Controller
     public function resolve(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         $validated = $request->validate([
             'resolution_note' => ['required', 'string', 'max:5000', new NoRawGovernmentId],
         ]);
 
         $this->grievances->resolve($ticket, $validated['resolution_note'], (int) Auth::id());
-        $this->audit($ticket, 'grievance.resolved');
+        $this->audit($ticket, 'grievance.resolved', before: $before);
 
         return back()->with('status', 'Grievance resolved. The complainant has been told how to escalate if they disagree.');
     }
@@ -335,6 +348,7 @@ final class AdminGrievanceController extends Controller
     public function close(Request $request, int $id): RedirectResponse
     {
         $ticket = $this->findOrFail($id);
+        $before = AuditDigests::snapshot($ticket);
 
         if ($ticket->status !== TicketStatus::Resolved) {
             return back()->withErrors([
@@ -347,7 +361,7 @@ final class AdminGrievanceController extends Controller
         ]);
 
         $ticket = $this->grievances->close($ticket, (int) Auth::id(), $validated['note'] ?? null);
-        $this->audit($ticket, 'grievance.closed', ['retention_until' => $ticket->retention_until?->toDateString()]);
+        $this->audit($ticket, 'grievance.closed', ['retention_until' => $ticket->retention_until?->toDateString()], $before);
 
         return back()->with('status', 'Grievance closed. Records retained until '.$ticket->retention_until?->format('d M Y').'.');
     }
@@ -369,6 +383,8 @@ final class AdminGrievanceController extends Controller
             'action' => 'grievance.attachment_viewed',
             'subject_type' => 'ticket_attachment',
             'subject_id' => $attachment->id,
+            'before_hash' => AuditDigests::of($attachment),
+            'after_hash' => AuditDigests::of($attachment),
             // The attachment id, not the filename. The store's own docblock
             // argues that "aadhaar-card-scan.pdf" should not survive upload —
             // and then the audit row kept it forever, which is where a
@@ -484,14 +500,19 @@ final class AdminGrievanceController extends Controller
 
     /**
      * @param  array<string, mixed>  $details
+     * @param  array<string, mixed>|null  $before  the ticket as it stood before
+     *                                             this action; NULL when it is
+     *                                             the ticket's own creation
      */
-    private function audit(Ticket $ticket, string $action, array $details = []): void
+    private function audit(Ticket $ticket, string $action, array $details = [], ?array $before = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'ticket',
             'subject_id' => $ticket->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($ticket->refresh()),
             'details' => array_merge(['ticket_no' => $ticket->ticket_no], $details),
         ]);
     }

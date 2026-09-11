@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Content\Http\Controllers\Admin;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Content\Models\Announcement;
 use App\Modules\Content\Services\AnnouncementService;
 use App\Modules\Content\Services\AnnouncementSettingsService;
@@ -97,9 +98,10 @@ final class AdminAnnouncementController extends Controller
         $data = $this->validated($request);
         $this->assertPinnable($service, $data, $announcement);
 
+        $before = AuditDigests::snapshot($announcement);
         $announcement->update($data);
 
-        $this->log('announcement.updated', $announcement);
+        $this->log('announcement.updated', $announcement, $before);
 
         return back()->with('status', 'Saved.');
     }
@@ -139,6 +141,7 @@ final class AdminAnnouncementController extends Controller
         }
 
         $before = (string) $announcement->status;
+        $beforeState = AuditDigests::snapshot($announcement);
 
         $announcement->update([
             'status' => $data['status'],
@@ -152,8 +155,8 @@ final class AdminAnnouncementController extends Controller
             'action' => 'announcement.'.$data['status'],
             'subject_type' => 'announcement',
             'subject_id' => $announcement->id,
-            'before_hash' => AuditLog::digest($before),
-            'after_hash' => AuditLog::digest($data['status']),
+            'before_hash' => AuditDigests::of($beforeState),
+            'after_hash' => AuditDigests::of($announcement),
             'details' => ['title' => $announcement->title, 'audience' => $announcement->audienceLabel()],
             'ip' => request()->ip(),
         ]);
@@ -220,13 +223,20 @@ final class AdminAnnouncementController extends Controller
         }
     }
 
-    private function log(string $action, Announcement $announcement): void
+    /**
+     * @param  array<string, mixed>|null  $before  the announcement as it stood
+     *                                             before this write; NULL on a
+     *                                             create, which has no before
+     */
+    private function log(string $action, Announcement $announcement, ?array $before = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'announcement',
             'subject_id' => $announcement->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($announcement),
             'details' => ['title' => $announcement->title, 'audience' => $announcement->audienceLabel()],
             'ip' => request()->ip(),
         ]);

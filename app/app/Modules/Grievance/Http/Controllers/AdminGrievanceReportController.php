@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Grievance\Http\Controllers;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Services\GrievanceComplianceReport;
 use App\Modules\Shared\Support\Csv;
@@ -51,6 +52,15 @@ final class AdminGrievanceReportController extends Controller
             'action' => 'grievance.report_exported',
             'subject_type' => 'grievance_report',
             'subject_id' => null,
+            // An export changes nothing; the after digest pins exactly which
+            // rows left the building.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of([
+                'ending_month' => $month->format('Y-m'),
+                'months' => self::TRAILING_MONTHS,
+                'scoped' => $hidden !== [],
+                'rows' => $rows,
+            ]),
             'details' => [
                 'ending_month' => $month->format('Y-m'),
                 'months' => self::TRAILING_MONTHS,

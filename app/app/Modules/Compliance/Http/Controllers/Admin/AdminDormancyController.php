@@ -7,6 +7,7 @@ namespace App\Modules\Compliance\Http\Controllers\Admin;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Services\ComplianceTerminationSettings;
 use App\Modules\Compliance\Services\InactivityTerminationService;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -94,6 +95,11 @@ final class AdminDormancyController extends Controller
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
+        $noticeBefore = AuditDigests::of([
+            'inactivity_notice_at' => $distributor->inactivity_notice_at,
+            'inactivity_notice_expires_at' => $distributor->inactivity_notice_expires_at,
+        ]);
+
         $this->inactivity->clearNotice($distributor, $validated['reason']);
 
         AuditLog::create([
@@ -101,6 +107,11 @@ final class AdminDormancyController extends Controller
             'action' => 'distributor.inactivity_notice_withdrawn',
             'subject_type' => 'distributor',
             'subject_id' => $distributor->id,
+            'before_hash' => $noticeBefore,
+            'after_hash' => AuditDigests::of([
+                'inactivity_notice_at' => $distributor->inactivity_notice_at,
+                'inactivity_notice_expires_at' => $distributor->inactivity_notice_expires_at,
+            ]),
             'details' => ['adn' => $distributor->adn, 'reason' => $validated['reason']],
             'ip' => $request->ip(),
         ]);

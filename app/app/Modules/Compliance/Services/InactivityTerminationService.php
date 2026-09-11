@@ -8,6 +8,7 @@ use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Compliance\DTOs\InactivityAssessment;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Notifications\InactivityTerminationNoticeNotification;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -77,7 +78,9 @@ final class InactivityTerminationService
 
         $assessment = $this->assess($distributor, $at);
 
-        DB::transaction(function () use ($distributor, $at, $expiresAt, $assessment): void {
+        $before = AuditDigests::snapshot($distributor);
+
+        DB::transaction(function () use ($distributor, $at, $expiresAt, $assessment, $before): void {
             $distributor->forceFill([
                 'inactivity_notice_at' => $at,
                 'inactivity_notice_expires_at' => $expiresAt,
@@ -88,6 +91,8 @@ final class InactivityTerminationService
                 'action' => 'distributor.inactivity_notice_issued',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($distributor),
                 'details' => [
                     'adn' => $distributor->adn,
                     'last_sale_at' => $assessment->lastSaleAt?->toDateString(),
@@ -123,7 +128,9 @@ final class InactivityTerminationService
             return;
         }
 
-        DB::transaction(function () use ($distributor, $reason): void {
+        $before = AuditDigests::snapshot($distributor);
+
+        DB::transaction(function () use ($distributor, $reason, $before): void {
             $distributor->forceFill([
                 'inactivity_notice_at' => null,
                 'inactivity_notice_expires_at' => null,
@@ -134,6 +141,8 @@ final class InactivityTerminationService
                 'action' => 'distributor.inactivity_notice_cleared',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => AuditDigests::of($before),
+                'after_hash' => AuditDigests::of($distributor),
                 'details' => ['adn' => $distributor->adn, 'reason' => $reason],
             ]);
         });
@@ -175,7 +184,13 @@ final class InactivityTerminationService
             $distributor->inactivity_notice_at?->format('d M Y') ?? 'previously'
         );
 
-        DB::transaction(function () use ($distributor, $user, $at, $allowedFrom, $reason, $highestRank, $waitYears): void {
+        $before = AuditDigests::of([
+            'user_status' => $user->status,
+            'closure_type' => $user->closure_type,
+            'distributor' => AuditDigests::snapshot($distributor),
+        ]);
+
+        DB::transaction(function () use ($distributor, $user, $at, $allowedFrom, $reason, $highestRank, $waitYears, $before): void {
             $user->update([
                 'status' => 'terminated',
                 'closure_type' => 'admin_termination',
@@ -193,6 +208,12 @@ final class InactivityTerminationService
                 'action' => 'distributor.inactivity_terminated',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => $before,
+                'after_hash' => AuditDigests::of([
+                    'user_status' => $user->status,
+                    'closure_type' => $user->closure_type,
+                    'distributor' => AuditDigests::snapshot($distributor),
+                ]),
                 'details' => [
                     'adn' => $distributor->adn,
                     'highest_rank' => $highestRank,
