@@ -36,6 +36,7 @@ declare(strict_types=1);
  * GRV-026: the compliance report separates acknowledgements owed from those never owed
  * GRV-027: the compliance report hides ethics counts from anyone who cannot open an ethics ticket
  * GRV-028: staff-authored fields reject a raw Aadhaar the same way complainant fields do
+ * GRV-029: the compliance-report CSV export renders a fractional median without a 500
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -627,6 +628,27 @@ it('GRV-028: staff-authored fields reject a raw Aadhaar the same way complainant
     $this->actingAs($staff)->post(route('admin.grievances.respond', $ticket->id), [
         'note' => 'Please confirm PAN ABCDE1234F.',
     ])->assertSessionHasErrors('note');
+});
+
+it('GRV-029: the compliance-report CSV export renders a fractional median without a 500 (F122)', function () {
+    Notification::fake();
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $staff = grvStaff();
+    $staff->assignRole('admin-compliance');
+
+    $a = grvService()->resolve(grvFile(), 'Resolved.', $staff->id);
+    $b = grvService()->resolve(grvFile(['reporterEmail' => 'meera@example.com']), 'Resolved.', $staff->id);
+
+    // Force median_resolution_days to a fractional value (1.5) so the export
+    // must handle a float column, not just whole-number ones.
+    Ticket::whereKey($a->id)->update(['created_at' => now()->subDay(), 'resolved_at' => now()]);
+    Ticket::whereKey($b->id)->update(['created_at' => now()->subDays(2), 'resolved_at' => now()]);
+
+    $response = $this->actingAs($staff)->get(route('admin.grievances.report.export'));
+
+    $response->assertOk();
+    expect($response->streamedContent())->toContain('1.50');
 });
 
 it('GRV-020: an attachment whose bytes are not what it claims is rejected', function () {

@@ -24,3 +24,7 @@ it('coerces ints and null safely', function (): void {
     expect(Csv::safe(null))->toBe('');
     expect(Csv::safe(''))->toBe('');
 });
+
+it('coerces a float safely (F122: grievance median_resolution_days is a float)', function (): void {
+    expect(Csv::safe(3.5))->toBe('3.5');
+});

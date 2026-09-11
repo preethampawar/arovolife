@@ -17,7 +17,7 @@ final class Csv
      * export. Prefixing such a cell with a single quote forces it to render as
      * plain text. Empty and safe values pass through unchanged.
      */
-    public static function safe(int|string|null $value): string
+    public static function safe(int|float|string|null $value): string
     {
         $string = (string) ($value ?? '');
 

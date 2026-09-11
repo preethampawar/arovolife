@@ -75,7 +75,18 @@ final class AdminGrievanceReportController extends Controller
                 // request, to a regulator — both of whom open it in a
                 // spreadsheet, where a cell starting `=` is a formula.
                 fputcsv($handle, array_map(
-                    static fn (string $column): string => Csv::safe($row[$column] ?? ''),
+                    static function (string $column) use ($row): string {
+                        $value = $row[$column] ?? '';
+
+                        // median_resolution_days is a ?float (days, one decimal
+                        // place at source); render it to a fixed 2 dp rather
+                        // than passing the raw float through.
+                        if (is_float($value)) {
+                            $value = number_format($value, 2, '.', '');
+                        }
+
+                        return Csv::safe($value);
+                    },
                     GrievanceComplianceReport::csvColumns()
                 ));
             }
