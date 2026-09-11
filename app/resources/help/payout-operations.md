@@ -129,6 +129,28 @@ On **Compensation → Payouts → (a batch)**:
 Check the net total against what the engines reported before approving.
 Approval cannot be undone from this screen.
 
+## Who may approve a batch
+
+Approving is a separate authority from running the payout. Two rules, both
+enforced in code:
+
+1. **Approval needs `finance.approve`.** Only `admin` (and the developer role)
+   holds it. `admin-finance` deliberately does not: that role runs the batch,
+   pulls the bank file, imports the bank's response and retries a failed
+   transfer — the *making* and *settling* of a payment run. The person who signs
+   the money off is a different person. `admin-compliance` and
+   `admin-operations` hold neither and can only look.
+2. **Whoever created the batch cannot approve it.** Every batch records its
+   maker in `created_by`: the admin who ran it from Engine Runs, or the admin
+   whose action on a payout page created it. If that is you, the Approve button
+   is not shown, the route refuses the request, and a
+   `payout.batch.self_approval_refused` audit row is written. Ask a second
+   approver.
+
+A batch the **scheduler** built has no maker (`created_by` is empty, shown on
+the batch page as "Created by the scheduler"), so any approver may sign it off.
+That is the normal case: the weekly and monthly runs are cron jobs.
+
 **Holds are re-read at approval.** Every held line is re-checked against the
 income gates the moment you approve: anyone whose KYC was approved or whose bank
 details arrived after the batch was generated is released into *this* batch and
@@ -217,10 +239,24 @@ batch as settled:
 Failures come in two kinds, and the difference decides what you do.
 
 **The bank details are wrong** — invalid IFSC, invalid account number, an
-account that no longer exists. Retrying changes nothing. Correct the
-distributor's bank details first (Distributors → the distributor → bank
-details), then retry. In Razorpay mode a corrected account produces a new fund
-account automatically.
+account that no longer exists. Retrying changes nothing. The details have to be
+corrected first, then retry. In Razorpay mode a corrected account produces a new
+fund account automatically.
+
+Two paths now correct them, and the distributor's own is the better one:
+
+- **The distributor, from My profile → Bank details.** They type the account
+  number twice, give the IFSC and the account holder's name as their bank has
+  it, and confirm a 6-digit code emailed to them; nothing is written until the
+  code is confirmed. Every change writes an audit row
+  (`distributor.bank_details_updated`, last-4 only) and emails them a receipt.
+  Point them here rather than keying an account number in for them — a number
+  read out over a phone call is a number you can mistype.
+- **You, from Distributors → the distributor → bank details**, when they cannot
+  do it themselves.
+
+Either way the held line clears on its own: holds are re-read from live state
+when the batch is re-run and again at approval.
 
 **Something transient went wrong** — a gateway blip, a rate limit, a RazorpayX
 balance that was short at the time. Retrying is exactly the right answer.
@@ -254,7 +290,7 @@ bank details cannot be read at all, and only re-capturing them fixes it.
 | `below_minimum` | Net fell under the minimum payout threshold. | Held in the wallet; rolls into a later batch. |
 | `web_only` | Personal BV below the NEFT eligibility threshold. | Held in the wallet. Income still accrues and is visible. |
 | `kyc_pending` | KYC not yet verified. | Held in the wallet. Released by the first batch after approval. |
-| `no_bank_account` | No bank account on file. | Held in the wallet. |
+| `no_bank_account` | No bank account on file. The distributor can add one themselves from My profile → Bank details. | Held in the wallet. |
 | `bank_decrypt_failed` | Bank details on file cannot be decrypted. | Held in the wallet. Needs the details re-captured. |
 
 ### Batch statuses
@@ -280,6 +316,7 @@ Every action leaves an `audit_log` row. In Compliance → Audit log, look for:
 |---|---|
 | `payout.batch.created` / `payout.batch.finalised` | The engine run that produced the batch. |
 | `payout.batch.approved` | Who approved it, under which gateway, for how much. |
+| `payout.batch.self_approval_refused` | An approver was refused their own batch: who tried, and who created it. |
 | `payout.batch.dispatched` | How many line items were sent, how many failed on the way out. |
 | `payout.batch.reconciled` | A bank response import: file name, rows, matched, transferred, failed. |
 | `payout.batch.settled` | The batch reaching completed / partially failed / failed. |

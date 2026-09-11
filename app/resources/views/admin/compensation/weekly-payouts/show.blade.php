@@ -33,6 +33,12 @@
     $totalLines = (int) collect($statusCounts)->sum();
     $failedCount = $countOf('failed');
     $canApprove = $batch->status === 'pending';
+    // Maker-checker (QA F94): approving is `finance.approve` — which the role
+    // that RUNS the batch does not hold — and never by the admin who created
+    // this batch. A scheduler-built batch has no maker and any approver may
+    // sign it off.
+    $isOwnBatch = $batch->created_by !== null && (int) $batch->created_by === (int) auth()->id();
+    $mayApprove = $canApprove && auth()->user()?->can('finance.approve') && ! $isOwnBatch;
     $canReconcile = in_array($batch->status, ['approved', 'partially_failed', 'failed'], true);
     // The NEFT file is the instruction the bank acts on, so it exists only once
     // finance has signed the amount off — and only for finance (QA F95).
@@ -59,7 +65,7 @@
         @endif
         @endcan
 
-        @if($canApprove)
+        @if($mayApprove)
             @if($isRazorpay)
             <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve and dispatch to the bank"
@@ -100,11 +106,19 @@
     </div>
 </div>
 
-@if($batch->approved_at)
 <p class="mb-4 text-xs text-gray-600">
-    Approved by {{ $batch->approvedByUser?->full_name ?? 'system' }}
-    on {{ $batch->approved_at->format('d M Y H:i') }}.
+    Created by {{ $batch->createdByUser?->full_name ?? 'the scheduler' }}.
+    @if($batch->approved_at)
+        Approved by {{ $batch->approvedByUser?->full_name ?? 'system' }}
+        on {{ $batch->approved_at->format('d M Y H:i') }}.
+    @endif
 </p>
+
+@if($canApprove && $isOwnBatch)
+<div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    You created this batch, so a second person has to approve it. Separation of duties keeps the hand that builds a
+    payout run apart from the hand that signs it off.
+</div>
 @endif
 
 @if($canApprove && $isRazorpay && ! $gatewayReady)

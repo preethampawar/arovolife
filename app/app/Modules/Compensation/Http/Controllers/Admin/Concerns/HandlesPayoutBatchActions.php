@@ -63,6 +63,32 @@ trait HandlesPayoutBatchActions
             return back()->with('error', 'Batch cannot be approved in its current state.');
         }
 
+        // Maker-checker (QA F94). The route already restricts approval to
+        // `finance.approve`, which `finance.record` — the role that runs the
+        // batch, imports the bank response and retries a transfer — does not
+        // hold. This is the second half: even a holder of both may not sign off
+        // a batch they themselves created. A batch the scheduler built carries
+        // no maker (`created_by` NULL) and any approver may check it.
+        $actorId = (int) $request->user()->id;
+
+        if ($batch->created_by !== null && (int) $batch->created_by === $actorId) {
+            AuditLog::create([
+                'actor_id' => $actorId,
+                'action' => 'payout.batch.self_approval_refused',
+                'subject_type' => 'payout_batch',
+                'subject_id' => (int) $batch->id,
+                'details' => [
+                    'batch_type' => $batch->batch_type,
+                    'batch_date' => $batch->batch_date->toDateString(),
+                    'created_by' => (int) $batch->created_by,
+                    'total_net_paise' => $batch->total_net_paise,
+                ],
+                'ip' => $request->ip(),
+            ]);
+
+            return back()->with('error', 'You created this batch, so you cannot also approve it. Separation of duties requires a second person to sign a payout batch off.');
+        }
+
         // Approving in Razorpay mode initiates real bank transfers. Refusing
         // here — rather than letting the job fail every line item one by one —
         // keeps a misconfigured environment from turning an approval into a

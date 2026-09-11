@@ -11,6 +11,7 @@ use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutsJob;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,7 +30,30 @@ final class PayoutService
         private readonly BvLedgerService $bvLedger,
         private readonly CompensationPlanSettingsService $plan,
         private readonly PayoutGatewaySettings $payoutSettings,
+        private readonly EngineRunContext $engineRunContext,
     ) {}
+
+    /**
+     * The maker of a batch this run is about to create (QA F94).
+     *
+     * Three ways a batch comes into being, and each knows the actor
+     * differently: an admin hitting a payout page carries an authenticated
+     * session; an admin running the engine from the Engine Runs console has
+     * their id bound on the (container-scoped) run context by EngineRunService
+     * before it calls artisan, because the queue worker running the command has
+     * no session; the scheduler has neither, and its batches are stamped NULL —
+     * a machine-made batch has no maker, so any approver may check it.
+     */
+    private function batchCreatorId(): ?int
+    {
+        $authenticated = Auth::id();
+
+        if (is_numeric($authenticated)) {
+            return (int) $authenticated;
+        }
+
+        return $this->engineRunContext->actorId();
+    }
 
     /**
      * Batch states a re-run must never touch. A batch that has been approved
@@ -134,6 +158,9 @@ final class PayoutService
                 // before this column existed keep null and read "—".
                 'earnings_through' => $earnedThrough->toDateString(),
                 'status' => PayoutBatch::STATUS_PENDING,
+                // The maker half of maker-checker: whoever asked for this
+                // batch cannot later approve it (QA F94).
+                'created_by' => $this->batchCreatorId(),
             ]);
             $wasCreated = true;
         }
@@ -143,7 +170,17 @@ final class PayoutService
             return $batch;
         }
 
-        $batch->update(['status' => PayoutBatch::STATUS_PROCESSING]);
+        $update = ['status' => PayoutBatch::STATUS_PROCESSING];
+
+        // A re-run adds line items to a batch, which is making, not checking —
+        // so an unattributed (scheduler-built) batch picks up the admin who
+        // re-ran it as its maker. An existing maker is never overwritten: the
+        // first hand on the batch is the one barred from approving it (QA F94).
+        if ($batch->created_by === null && ($reRunMaker = $this->batchCreatorId()) !== null) {
+            $update['created_by'] = $reRunMaker;
+        }
+
+        $batch->update($update);
 
         // A re-run of an existing batch re-reads its holds first: the
         // per-distributor guard below skips anyone who already has a line, so
@@ -239,6 +276,9 @@ final class PayoutService
                 // certified (QA F48).
                 'earnings_through' => $earnedThrough->toDateString(),
                 'status' => PayoutBatch::STATUS_PENDING,
+                // The maker half of maker-checker: whoever asked for this
+                // batch cannot later approve it (QA F94).
+                'created_by' => $this->batchCreatorId(),
             ]);
             $wasCreated = true;
         }
@@ -248,7 +288,17 @@ final class PayoutService
             return $batch;
         }
 
-        $batch->update(['status' => PayoutBatch::STATUS_PROCESSING]);
+        $update = ['status' => PayoutBatch::STATUS_PROCESSING];
+
+        // A re-run adds line items to a batch, which is making, not checking —
+        // so an unattributed (scheduler-built) batch picks up the admin who
+        // re-ran it as its maker. An existing maker is never overwritten: the
+        // first hand on the batch is the one barred from approving it (QA F94).
+        if ($batch->created_by === null && ($reRunMaker = $this->batchCreatorId()) !== null) {
+            $update['created_by'] = $reRunMaker;
+        }
+
+        $batch->update($update);
 
         // See runWeeklyBatch(): re-read this batch's holds before adding to it.
         $this->releaseClearedHolds($batch);

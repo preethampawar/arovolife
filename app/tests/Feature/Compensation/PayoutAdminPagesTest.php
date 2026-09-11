@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Services\PayoutService;
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -228,4 +231,117 @@ it('posts the monthly batch actions at the monthly routes and names the held inc
         // The column holds gross minus the credit-time repurchase deduction.
         ->assertSee('Payable before deductions')
         ->assertDontSee('Wallet balance at time of batch generation');
+});
+
+it('keeps approving a payout batch out of the hands that build and settle it', function (): void {
+    // QA F94: approve, reconcile and retry all shared `finance.record`, so the
+    // role that runs a batch and settles it against the bank also signed it
+    // off. Approving is `finance.approve` now, and admin-finance does not hold
+    // it; admin does.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_PENDING,
+    ]);
+
+    $finance = User::factory()->create(['status' => 'active']);
+    $finance->assignRole('admin-finance');
+
+    expect($finance->can('finance.record'))->toBeTrue()
+        ->and($finance->can('finance.approve'))->toBeFalse();
+
+    $this->actingAs($finance)
+        ->post(route('admin.compensation.weekly-payouts.approve', $batch))
+        ->assertForbidden();
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PENDING);
+
+    $admin = User::factory()->create(['status' => 'active']);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.weekly-payouts.approve', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch));
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_APPROVED)
+        ->and($batch->fresh()->approved_by)->toBe($admin->id);
+});
+
+it('refuses to let the admin who created a batch approve it', function (): void {
+    // The second half of maker-checker: holding `finance.approve` is not enough
+    // if you are the hand that built this batch (QA F94).
+    $maker = User::factory()->create(['status' => 'active']);
+    $maker->assignRole('admin');
+
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_PENDING,
+        'created_by' => $maker->id,
+    ]);
+
+    $this->actingAs($maker)
+        ->from(route('admin.compensation.weekly-payouts.show', $batch))
+        ->post(route('admin.compensation.weekly-payouts.approve', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertSessionHas('error');
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PENDING)
+        ->and(DB::table('audit_log')
+            ->where('action', 'payout.batch.self_approval_refused')
+            ->where('subject_id', $batch->id)
+            ->count())->toBe(1);
+
+    // The batch page tells them why the button is gone.
+    $this->actingAs($maker)
+        ->get(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertOk()
+        ->assertSee('a second person has to approve it')
+        ->assertDontSee(route('admin.compensation.weekly-payouts.approve', $batch));
+
+    // A second approver with the same permission signs it off.
+    $checker = User::factory()->create(['status' => 'active']);
+    $checker->assignRole('admin');
+
+    $this->actingAs($checker)
+        ->post(route('admin.compensation.weekly-payouts.approve', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch));
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_APPROVED);
+});
+
+it('lets any approver sign off a batch the scheduler built', function (): void {
+    // Nobody was logged in when the cron ran, so `created_by` is NULL and the
+    // self-approval bar has nobody to bar (QA F94).
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => now()->startOfMonth()->toDateString(),
+        'status' => PayoutBatch::STATUS_PENDING,
+    ]);
+
+    expect($batch->created_by)->toBeNull();
+
+    $admin = User::factory()->create(['status' => 'active']);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->post(route('admin.compensation.monthly-payouts.approve', $batch))
+        ->assertRedirect(route('admin.compensation.monthly-payouts.show', $batch));
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_APPROVED);
+});
+
+it('stamps the admin who ran the batch as its maker', function (): void {
+    // The engine console runs on a queue worker with no session, so the actor
+    // comes off the run context EngineRunService binds before calling artisan.
+    $admin = User::factory()->create(['status' => 'active']);
+    $admin->assignRole('admin');
+
+    app(EngineRunContext::class)
+        ->attribute(EngineRun::TRIGGER_MANUAL, $admin->id, null);
+
+    $batch = app(PayoutService::class)
+        ->runWeeklyBatch(now()->startOfDay());
+
+    expect($batch->created_by)->toBe($admin->id);
 });

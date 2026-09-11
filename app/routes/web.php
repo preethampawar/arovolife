@@ -520,7 +520,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::get('/', [AdminMonthlyPayoutController::class, 'index'])->name('index');
             Route::get('/{batch}', [AdminMonthlyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
             Route::post('/{batch}/approve', [AdminMonthlyPayoutController::class, 'approve'])
-                ->middleware('can:finance.record')->name('approve')->whereNumber('batch');
+                ->middleware('can:finance.approve')->name('approve')->whereNumber('batch');
             Route::get('/{batch}/neft', [AdminMonthlyPayoutController::class, 'exportNeft'])
                 ->middleware('can:finance.record')->name('neft')->whereNumber('batch');
             Route::post('/{batch}/reconcile', [AdminMonthlyPayoutController::class, 'reconcile'])
@@ -535,10 +535,14 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
             Route::get('/', [AdminWeeklyPayoutController::class, 'index'])->name('index');
             Route::get('/{batch}', [AdminWeeklyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
-            // Separation of duties: only finance may approve a payout batch
-            // (admin-compliance / admin-operations can view but not approve).
+            // Separation of duties, maker-checker half (QA F94): approving is
+            // `finance.approve`, which `admin-finance` deliberately does NOT
+            // hold — the role that RUNS a batch and settles it against the bank
+            // is not the role that signs the money off. `admin` and `developer`
+            // hold it. The controller adds the second half: whoever created the
+            // batch cannot approve that batch.
             Route::post('/{batch}/approve', [AdminWeeklyPayoutController::class, 'approve'])
-                ->middleware('can:finance.record')->name('approve')->whereNumber('batch');
+                ->middleware('can:finance.approve')->name('approve')->whereNumber('batch');
             // The NEFT file is the payment instruction itself and carries every
             // payee's name and bank digits — and will carry full account
             // numbers and IFSC codes once it becomes a real bank-upload file —

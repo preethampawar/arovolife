@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int $total_net_paise
  * @property int $distributor_count
  * @property Carbon|null $processed_at
+ * @property int|null $created_by
  * @property int|null $approved_by
  * @property Carbon|null $approved_at
  */
@@ -73,7 +74,7 @@ final class PayoutBatch extends Model
     protected $fillable = [
         'batch_type', 'batch_date', 'earnings_through', 'status',
         'total_gross_paise', 'total_deductions_paise', 'total_net_paise',
-        'distributor_count', 'processed_at', 'approved_by', 'approved_at',
+        'distributor_count', 'processed_at', 'created_by', 'approved_by', 'approved_at',
     ];
 
     protected function casts(): array
@@ -144,5 +145,17 @@ final class PayoutBatch extends Model
     public function approvedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * The maker: the admin whose action created this batch, or null when the
+     * scheduler built it with nobody logged in. Read at approval time, where a
+     * maker who is also the checker is refused (QA F94).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function createdByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

@@ -104,6 +104,16 @@ final class RolesAndPermissionsSeeder extends Seeder
     private const SUPER_ONLY = [
         'distributor.credentials',  // set-password, password-reset, identity, id-photo
         'settings.write',           // any settings mutation, including the age rules
+
+        // Added 2026-09-11 (QA F94). The checker half of maker-checker on
+        // payouts. `finance.record` is the maker: it runs a batch, imports the
+        // bank's response and retries a failed transfer. Signing a batch off —
+        // the decision that releases the money — is deliberately NOT in the
+        // same hand, so admin-finance does not hold it and neither does
+        // admin-compliance (which has no business in the payment run at all).
+        // On top of that, whoever created a batch cannot approve that batch,
+        // checked against `payout_batches.created_by` at approval time.
+        'finance.approve',          // sign a payout batch off for payment
     ];
 
     public function run(): void
