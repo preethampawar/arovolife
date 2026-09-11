@@ -7,6 +7,7 @@ namespace App\Modules\Inventory\Models;
 use App\Modules\Catalog\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One batch of one variant on a supplier invoice.
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $purchase_invoice_id
  * @property int $product_variant_id
  * @property string $batch_no
+ * @property Carbon|null $mfg_date
+ * @property Carbon|null $expiry_date
  * @property int $qty
  * @property int $unit_cost_paise
  * @property int $gst_rate_bp

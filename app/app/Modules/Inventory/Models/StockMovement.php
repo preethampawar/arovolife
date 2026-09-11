@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $unit_cost_paise
  * @property string|null $reference_type
  * @property int|null $reference_id
+ * @property string|null $reason
  */
 final class StockMovement extends Model
 {

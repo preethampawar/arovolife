@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,6 +16,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $supplier_id
  * @property string $warehouse_code
  * @property string $status
+ * @property string|null $notes
+ * @property Carbon|null $expected_at
+ * @property Carbon|null $sent_at
+ * @property Carbon|null $closed_at
+ * @property int|null $created_by_user_id
  */
 final class PurchaseOrder extends Model
 {
@@ -58,6 +64,12 @@ final class PurchaseOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    /** @return HasMany<PurchaseInvoice, $this> */
+    public function purchaseInvoices(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoice::class);
     }
 
     /** @return BelongsTo<Warehouse, $this> */

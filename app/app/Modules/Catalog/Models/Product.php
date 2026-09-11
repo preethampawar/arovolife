@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
+ * @property string $name
  * @property string|null $food_type
  * @property string|null $image_url
  * @property int|null $category_id

@@ -106,6 +106,9 @@ use App\Modules\Identity\Http\Controllers\ProfileStatsController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Identity\Http\Controllers\TeamRosterController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminPurchaseInvoiceController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminPurchaseOrderController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminSupplierController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Messaging\Http\Controllers\Admin\AdminMessageReportController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
@@ -389,6 +392,37 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
         Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
         Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
+    });
+
+    // Inventory — suppliers, purchase orders, goods receipts (GRNs). Every
+    // write here commits spend or moves stock, so all of it sits behind
+    // `inventory.manage` (admin-operations, R-17).
+    Route::prefix('inventory')->name('inventory.')->middleware('can:inventory.manage')->group(function (): void {
+        Route::get('/suppliers', [AdminSupplierController::class, 'index'])->name('suppliers.index');
+        Route::get('/suppliers/create', [AdminSupplierController::class, 'create'])->name('suppliers.create');
+        Route::post('/suppliers', [AdminSupplierController::class, 'store'])->name('suppliers.store');
+        Route::get('/suppliers/{supplier}/edit', [AdminSupplierController::class, 'edit'])->name('suppliers.edit');
+        Route::put('/suppliers/{supplier}', [AdminSupplierController::class, 'update'])->name('suppliers.update');
+        Route::post('/suppliers/{supplier}/archive', [AdminSupplierController::class, 'archive'])->name('suppliers.archive');
+        Route::post('/suppliers/{supplier}/reactivate', [AdminSupplierController::class, 'reactivate'])->name('suppliers.reactivate');
+
+        Route::get('/purchase-orders', [AdminPurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+        Route::get('/purchase-orders/create', [AdminPurchaseOrderController::class, 'create'])->name('purchase-orders.create');
+        Route::post('/purchase-orders', [AdminPurchaseOrderController::class, 'store'])->name('purchase-orders.store');
+        Route::get('/purchase-orders/{purchaseOrder}', [AdminPurchaseOrderController::class, 'show'])->name('purchase-orders.show');
+        Route::get('/purchase-orders/{purchaseOrder}/edit', [AdminPurchaseOrderController::class, 'edit'])->name('purchase-orders.edit');
+        Route::put('/purchase-orders/{purchaseOrder}', [AdminPurchaseOrderController::class, 'update'])->name('purchase-orders.update');
+        Route::post('/purchase-orders/{purchaseOrder}/send', [AdminPurchaseOrderController::class, 'send'])->name('purchase-orders.send');
+        Route::post('/purchase-orders/{purchaseOrder}/cancel', [AdminPurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
+
+        Route::get('/grns', [AdminPurchaseInvoiceController::class, 'index'])->name('grns.index');
+        Route::get('/grns/create', [AdminPurchaseInvoiceController::class, 'create'])->name('grns.create');
+        Route::post('/grns', [AdminPurchaseInvoiceController::class, 'store'])->name('grns.store');
+        Route::get('/grns/{purchaseInvoice}', [AdminPurchaseInvoiceController::class, 'show'])->name('grns.show');
+        Route::get('/grns/{purchaseInvoice}/edit', [AdminPurchaseInvoiceController::class, 'edit'])->name('grns.edit');
+        Route::put('/grns/{purchaseInvoice}', [AdminPurchaseInvoiceController::class, 'update'])->name('grns.update');
+        Route::post('/grns/{purchaseInvoice}/post', [AdminPurchaseInvoiceController::class, 'post'])->name('grns.post');
+        Route::post('/grns/{purchaseInvoice}/cancel', [AdminPurchaseInvoiceController::class, 'cancel'])->name('grns.cancel');
     });
 
     // Returns — admin inspection / approve / reject (finance.record, R-17; ADR-0009).

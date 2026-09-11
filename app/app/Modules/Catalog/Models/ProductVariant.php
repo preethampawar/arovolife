@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $id
  * @property string $variant_sku
  * @property int $cost_paise
+ * @property int $gst_rate_bp
  * @property string $inventory_policy
  * @property-read InventoryLevel|null $inventory
  */
@@ -42,6 +43,7 @@ final class ProductVariant extends Model
         ];
     }
 
+    /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
