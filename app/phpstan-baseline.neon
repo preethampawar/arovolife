@@ -775,36 +775,6 @@ parameters:
 			path: app/Modules/Compensation/Http/Controllers/Admin/AdminPlanSettingsController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$net_transferred_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
-
-		-
-			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
-
-		-
-			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Modules/Compensation/Http/Controllers/Admin/AdminWeeklyPayoutController.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Compensation\\Models\\MentorshipBonusResult\:\:\$sponsee_adn\.$#'
 			identifier: property.notFound
 			count: 1

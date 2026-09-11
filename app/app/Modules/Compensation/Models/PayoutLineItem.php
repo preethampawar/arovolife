@@ -30,6 +30,8 @@ use Illuminate\Support\Carbon;
  * @property int $retry_count
  * @property Carbon|null $last_retried_at
  * @property Carbon|null $dispatched_at
+ * @property-read Distributor|null $distributor
+ * @property-read PayoutBatch|null $payoutBatch
  */
 final class PayoutLineItem extends Model
 {

@@ -125,6 +125,10 @@ final class TreeController extends Controller
 
         return view('tree.binary', [
             'self' => $self,
+            // The person looking, which is not the root once the canvas is
+            // re-rooted at a downline ADN. The "You" ribbon and the banner
+            // both key off this rather than off the root.
+            'viewerId' => (int) $authDistributor->id,
             'nodesById' => $nodesById,
             'childByParentSide' => $childByParentSide,
             'maxDepth' => $levels,
@@ -358,6 +362,7 @@ final class TreeController extends Controller
 
         return view('tree.sponsorship', [
             'self' => $self,
+            'viewerId' => (int) $authDistributor->id,
             'childrenByParent' => $childrenByParent,
             'maxDepth' => $levels,
             'totalDescendants' => $totalDescendants,

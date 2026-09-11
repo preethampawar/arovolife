@@ -512,9 +512,24 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::get('/export', [AdminGsbPersonalBvTopupController::class, 'export'])->name('export');
         });
 
+        // The monthly batch page carries the same actions as the weekly one and
+        // used to post them all at `weekly-payouts/*`, which bounced the admin
+        // onto the weekly page afterwards (QA F97). Same guards on both:
+        // approving, settling and pulling the bank file are finance's alone.
         Route::prefix('monthly-payouts')->name('monthly-payouts.')->group(function (): void {
             Route::get('/', [AdminMonthlyPayoutController::class, 'index'])->name('index');
             Route::get('/{batch}', [AdminMonthlyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
+            Route::post('/{batch}/approve', [AdminMonthlyPayoutController::class, 'approve'])
+                ->middleware('can:finance.record')->name('approve')->whereNumber('batch');
+            Route::get('/{batch}/neft', [AdminMonthlyPayoutController::class, 'exportNeft'])
+                ->middleware('can:finance.record')->name('neft')->whereNumber('batch');
+            Route::post('/{batch}/reconcile', [AdminMonthlyPayoutController::class, 'reconcile'])
+                ->middleware('can:finance.record')->name('reconcile')->whereNumber('batch');
+            Route::post('/{batch}/retry-failed', [AdminMonthlyPayoutController::class, 'retryFailedLineItems'])
+                ->middleware('can:finance.record')->name('retry-failed')->whereNumber('batch');
+            Route::post('/{batch}/line-items/{line}/retry', [AdminMonthlyPayoutController::class, 'retryLineItem'])
+                ->middleware('can:finance.record')->name('line-items.retry')
+                ->whereNumber('batch')->whereNumber('line');
         });
 
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
@@ -524,7 +539,12 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             // (admin-compliance / admin-operations can view but not approve).
             Route::post('/{batch}/approve', [AdminWeeklyPayoutController::class, 'approve'])
                 ->middleware('can:finance.record')->name('approve')->whereNumber('batch');
-            Route::get('/{batch}/neft', [AdminWeeklyPayoutController::class, 'exportNeft'])->name('neft')->whereNumber('batch');
+            // The NEFT file is the payment instruction itself and carries every
+            // payee's name and bank digits — and will carry full account
+            // numbers and IFSC codes once it becomes a real bank-upload file —
+            // so it is finance's to pull, not every admin role's (QA F95).
+            Route::get('/{batch}/neft', [AdminWeeklyPayoutController::class, 'exportNeft'])
+                ->middleware('can:finance.record')->name('neft')->whereNumber('batch');
             // Settling a batch is the same authority as approving it: these
             // decide whether a distributor is recorded as paid.
             Route::post('/{batch}/reconcile', [AdminWeeklyPayoutController::class, 'reconcile'])

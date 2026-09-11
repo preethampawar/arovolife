@@ -610,7 +610,7 @@ class WalletService
      *
      * @param  string[]  $types
      */
-    public function sumUnsweptByTypes(int $distributorId, array $types, ?Carbon $earnedOnOrBefore = null): int
+    public function sumUnsweptByTypes(int $distributorId, array $types, ?Carbon $earnedOnOrBefore = null, ?Carbon $earnedForMonthOrBefore = null): int
     {
         return (int) WalletLedgerEntry::where('distributor_id', $distributorId)
             ->whereIn('type', $types)
@@ -618,6 +618,7 @@ class WalletService
             ->where('amount_paise', '>', 0)
             ->notReversed()
             ->when($earnedOnOrBefore !== null, fn ($q) => $q->earnedOnOrBefore($earnedOnOrBefore))
+            ->when($earnedForMonthOrBefore !== null, fn ($q) => $q->earnedForMonthOrBefore($earnedForMonthOrBefore))
             ->sum('amount_paise');
     }
 

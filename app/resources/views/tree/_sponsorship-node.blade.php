@@ -11,7 +11,7 @@
      */
     $adminContext = $adminContext ?? false;
     $children     = $childrenByParent[$node->id] ?? [];
-    $isSelf       = isset($self) && $self->id === $node->id;
+    $isSelf       = isset($viewerId) && (int) $viewerId === (int) $node->id;
     $title        = $isSelf ? 'You' : 'Direct';
 
     // Children rendered as long as we haven't hit the depth cap. Sponsorship

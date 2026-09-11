@@ -219,6 +219,29 @@ it('TV-04: /tree/{adn} re-roots at a descendant ADN — root and sibling are hid
     $response->assertDontSee($siblingAdn);
 });
 
+it('TV-04b: a re-rooted /tree/{adn} carries no "You" ribbon and names whose placement it is (F67)', function () {
+    $rootUser = tvUser('root');
+    $rootId = tvSeedRoot($rootUser->id);
+    $rootUser->forceFill(['full_name' => 'Root Viewer'])->save();
+
+    $midUser = tvUser('mid');
+    $midUser->forceFill(['full_name' => 'Middle Member'])->save();
+    $middleId = tvPlace($rootId, $midUser, 'L');
+    $middleAdn = DB::table('distributors')->where('id', $middleId)->value('adn');
+
+    // Own tree: exactly one card is ribboned "You", and the banner is first-person.
+    $own = $this->actingAs($rootUser->refresh())->get('/tree')->assertOk();
+    expect(substr_count($own->getContent(), '>You</p>'))->toBe(1);
+    $own->assertSee('Showing your placement and descendants up to');
+
+    // Re-rooted at the downline: no card is "You" — the viewer is an ancestor
+    // of this canvas and so is not drawn on it at all.
+    $rerooted = $this->actingAs($rootUser->refresh())->get('/tree/'.$middleAdn)->assertOk();
+    expect(substr_count($rerooted->getContent(), '>You</p>'))->toBe(0);
+    $rerooted->assertDontSee('Showing your placement and descendants up to');
+    $rerooted->assertSee('Showing Middle Member’s placement and descendants up to', false);
+});
+
 it('TV-05: /tree/{adn} for a foreign ADN bounces back to /tree (no leak)', function () {
     // Two separate trees, no shared ancestry.
     $treeAuser = tvUser('a-root');

@@ -2,7 +2,7 @@
     $adminContext = $adminContext ?? false;
     $left  = $childByParentSide[$node->id]['L'] ?? null;
     $right = $childByParentSide[$node->id]['R'] ?? null;
-    $isSelf = isset($self) && $self->id === $node->id;
+    $isSelf = isset($viewerId) && (int) $viewerId === (int) $node->id;
     $title = $isSelf
         ? 'You'
         : ($node->placement_side === 'L'

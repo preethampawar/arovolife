@@ -16,6 +16,11 @@
        $showSponsorshipLink — bool, show "direct referrals on a separate page" link
        $adminContext        — bool, applies the admin styling tweaks --}}
 @php
+    // Whose canvas this is vs who is looking at it. They differ once the
+    // canvas is re-rooted at a downline ADN, and only the viewer's own card
+    // may carry the "You" ribbon. Defaults to the root so the admin view,
+    // which has no distributor viewer, keeps its existing behaviour.
+    $viewerId            = isset($viewerId) ? (int) $viewerId : (int) $self->id;
     $contextTitle        = $contextTitle        ?? 'My Genos';
     $contextSubtitlePre  = $contextSubtitlePre  ?? 'Showing your placement and descendants up to ';
     $contextSubtitleHi   = $contextSubtitleHi   ?? null;

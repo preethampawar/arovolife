@@ -149,3 +149,83 @@ it('excludes the repurchase wallet from the admin Pending payouts tile', functio
         ->assertSee('₹900.00')
         ->assertDontSee('₹1,000.00');
 });
+
+it('refuses the NEFT file for a batch nobody has approved', function (): void {
+    // QA F95: the export downloaded a header-only file for an unapproved batch.
+    // The file is the instruction the bank acts on; it must not exist before
+    // finance has signed the amount off.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_PENDING,
+    ]);
+
+    $this->actingAs(smokeAdmin())
+        ->from(route('admin.compensation.weekly-payouts.show', $batch))
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertSessionHas('error');
+
+    $batch->update(['status' => PayoutBatch::STATUS_APPROVED]);
+
+    $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+});
+
+it('keeps the NEFT file to finance', function (): void {
+    // Every admin role could pull it. It names every payee and their bank
+    // digits, and will carry full account numbers once it becomes a real
+    // bank-upload file (QA F95).
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_APPROVED,
+    ]);
+
+    $compliance = User::factory()->create(['status' => 'active']);
+    $compliance->assignRole('admin-compliance');
+
+    expect($compliance->can('finance.record'))->toBeFalse();
+
+    $this->actingAs($compliance)
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertForbidden();
+});
+
+it('posts the monthly batch actions at the monthly routes and names the held income before approval', function (): void {
+    // QA F97: every button on the monthly page submitted to `weekly-payouts/*`,
+    // and the confirmation offered "₹0.00 to 0 distributor(s)" while the batch
+    // sat on held income.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => now()->startOfMonth()->toDateString(),
+        'status' => PayoutBatch::STATUS_PENDING,
+        'total_net_paise' => 0,
+        'distributor_count' => 0,
+    ]);
+    $dist = Distributor::factory()->create();
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => $dist->id,
+        'wallet_balance_paise' => 7_989_000,
+        'gross_paise' => 7_989_000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 0,
+        'status' => PayoutLineItem::STATUS_KYC_PENDING,
+    ]);
+
+    $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.monthly-payouts.show', $batch))
+        ->assertOk()
+        ->assertSee(route('admin.compensation.monthly-payouts.approve', $batch))
+        ->assertDontSee(route('admin.compensation.weekly-payouts.approve', $batch))
+        // The held total the confirmation now names, beside the ₹0 being approved.
+        ->assertSee('₹79,890.00 of income for 1 distributor(s) is held', false)
+        // The column holds gross minus the credit-time repurchase deduction.
+        ->assertSee('Payable before deductions')
+        ->assertDontSee('Wallet balance at time of batch generation');
+});

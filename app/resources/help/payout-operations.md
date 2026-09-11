@@ -52,7 +52,12 @@ Nobody creates a payout batch by hand.
    The **monthly payout** runs on the 8th at
    04:00 IST for Growth Booster, Rank, Fortune, Awards and ADC — a week after
    the crediting engines close the month on the 1st, and only if every one of
-   them succeeded (see § Monthly close below).
+   them succeeded (see § Monthly close below). It pays ONE month, the one it is
+   named for: income earned for a later month stays in the wallet for that
+   month's own batch. The month a credit belongs to is the month it was earned
+   FOR, not the day it was written — the engines close a month on the 1st of the
+   next one. The batch records the last day it pays for under **Earnings
+   through**, the same column the weekly batches use.
 3. Each run computes one line item per distributor: gross → repurchase
    deduction (already taken at credit time; the batch only sweeps and reports
    it) → admin charge → TDS → net. The wallet is debited at this moment,
@@ -90,8 +95,9 @@ month is not waiting on somebody opening the console — see
 **Compensation → Daily engine-health email** in the compensation help page.
 
 The week between the two is the only window in which a bad month can still be
-fixed: the monthly batch is idempotent per month, so once it has swept the
-wallet, a credit that lands afterwards has nowhere to go.
+fixed: the monthly batch is idempotent per month, so once it has swept that
+month, a credit written for it afterwards has nowhere to go. A credit for a
+LATER month is untouched — each batch only sweeps its own month.
 
 If a month is refused: open **Compensation → Engine Runs → Events**, filter to
 **Failed**, re-run the engine the refusal named (Engine Runs, or the printed
@@ -114,12 +120,26 @@ On **Compensation → Payouts → (a batch)**:
   *holds*: their money stayed in the wallet, was never debited, and will be
   picked up by the first batch after the block is cleared. They are shown so
   you can see who is waiting and why.
-- **NEFT CSV** downloads every payable line. It is always available, in both
-  modes — in Razorpay mode it is a record to reconcile against rather than an
-  instruction to the bank.
+- **NEFT CSV** downloads every payable line. It appears only once the batch has
+  been approved, and only for finance: the file is the instruction the bank acts
+  on and it names every payee with their bank digits. In Razorpay mode it is a
+  record to reconcile against rather than an instruction, but it still waits for
+  approval.
 
 Check the net total against what the engines reported before approving.
 Approval cannot be undone from this screen.
+
+**Holds are re-read at approval.** Every held line is re-checked against the
+income gates the moment you approve: anyone whose KYC was approved or whose bank
+details arrived after the batch was generated is released into *this* batch and
+paid by it, and a hold that still stands but for a different reason is restated
+before it is signed off. The batch totals are re-derived from the lines that
+then exist, so the figure you confirm is the figure that goes out. The
+`payout.batch.holds_reevaluated` audit row records what changed.
+
+The confirmation also names the income the batch is NOT moving — the held total
+and how many distributors it belongs to — beside the net going to the bank, so a
+batch of nothing but holds no longer reads as "₹0.00 to 0 distributor(s)".
 
 ## Razorpay mode: approve and dispatch
 

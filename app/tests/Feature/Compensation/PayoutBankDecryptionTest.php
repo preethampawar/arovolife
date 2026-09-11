@@ -79,7 +79,7 @@ it('LOG-2-01: a corrupt ciphertext holds that distributor and logs critical, wee
 it('LOG-2-02: the same hold applies in the monthly batch', function (): void {
     $broken = pbdDistributor('not-valid-ciphertext');
 
-    app(WalletService::class)->credit($broken->id, 500_000, 'gbb_credit', walletRef(), 'test_reference');
+    app(WalletService::class)->credit($broken->id, 500_000, 'gbb_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1));
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 

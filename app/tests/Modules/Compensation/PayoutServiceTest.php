@@ -14,7 +14,9 @@ use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -335,9 +337,11 @@ it('monthly batch: Group-B admin charge excludes a stream whose applies_to toggl
     $dist = makePayoutEligibleDistributor();
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 1_000_000, 'gbb_credit', walletRef(), 'test_reference');     // ₹10,000
-    $wallet->credit($dist->id, 1_000_000, 'rank_credit', walletRef(), 'test_reference');    // ₹10,000
-    $wallet->credit($dist->id, 1_000_000, 'fortune_credit', walletRef(), 'test_reference'); // ₹10,000
+    // The monthly batch pays ONE month, so every monthly credit carries the
+    // month it was earned for, exactly as the engines stamp it.
+    $wallet->credit($dist->id, 1_000_000, 'gbb_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1));     // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'rank_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1));    // ₹10,000
+    $wallet->credit($dist->id, 1_000_000, 'fortune_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1)); // ₹10,000
 
     setPayoutSetting('comp.admin_charge.applies_to_fortune', 'false');
 
@@ -395,7 +399,7 @@ it('monthly batch: rank credits above the income cap are forfeited with a ledger
     setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 800_000, 'rank_credit', walletRef(), 'test_reference'); // ₹8,000 — ₹3,000 above cap
+    $wallet->credit($dist->id, 800_000, 'rank_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1)); // ₹8,000 — ₹3,000 above cap
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
@@ -458,7 +462,7 @@ it('monthly batch: a fully-exempt group is charged nothing', function () {
     $dist = makePayoutEligibleDistributor();
 
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 1_000_000, 'adc_credit', walletRef(), 'test_reference'); // ₹10,000 — Group D
+    $wallet->credit($dist->id, 1_000_000, 'adc_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1)); // ₹10,000 — Group D
 
     setPayoutSetting('comp.admin_charge.applies_to_adc', 'false');
 
@@ -500,6 +504,117 @@ it('weekly batch: holds payout as no_bank_account when no bank details are on fi
     expect($walletSvc->balancePaise($dist->id))->toBe(0);
 });
 
+it('holds one sweep lock for the whole batch, so two sweeps cannot share a ceiling', function () {
+    // QA F45: the weekly batch (Tue 03:00) and the monthly close (8th 04:00)
+    // both read the remaining room under the shared ₹50L monthly ceiling and
+    // then sweep against it. Only the clock kept them apart, so a manual run —
+    // or one that overran — had both spend the same room.
+    $heldDuringSweep = [];
+
+    // Fired from inside the sweep. A second acquire of the same key fails while
+    // the sweep is holding it, whoever the owner is.
+    Event::listen('eloquent.creating: '.PayoutBatch::class, function () use (&$heldDuringSweep): void {
+        $heldDuringSweep[] = ! Cache::lock('compensation:payout-sweep', 5)->get();
+    });
+
+    $svc = app(PayoutService::class);
+    $svc->runWeeklyBatch(Carbon::create(2026, 7, 21));
+    $svc->runMonthlyBatch(Carbon::create(2026, 7, 1));
+
+    expect($heldDuringSweep)->toBe([true, true]);
+});
+
+it('releases a hold that cleared before approval, into the batch being approved', function () {
+    // QA F93: hold reasons were frozen at batch creation. A distributor who
+    // supplied bank details and passed KYC that same week was carried into
+    // approval — and into the batch's audit record — as "No bank account", and
+    // their money waited for the next batch with nothing blocking it.
+    $dist = makePayoutEligibleDistributor();
+    $dist->update(['bank_account_enc' => null]);
+    $dist->user->update(['status' => 'pending']);
+
+    $batchDate = Carbon::today()->startOfMonth()->addDays(7);
+    $walletSvc = app(WalletService::class);
+    $walletSvc->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: earnedForBatch($batchDate));
+
+    $svc = app(PayoutService::class);
+    $batch = $svc->runWeeklyBatch($batchDate);
+
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole()->status)
+        ->toBe(PayoutLineItem::STATUS_KYC_PENDING)
+        ->and($batch->distributor_count)->toBe(0);
+
+    // KYC approved and bank details captured after the batch was built.
+    $dist->user->update(['status' => 'active']);
+    $dist->update(['bank_account_enc' => 'stub']);
+
+    $approved = $svc->approve($batch->fresh(), 1);
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->net_transferred_paise)->toBe(92_150)
+        // The batch totals an admin signs off are re-derived from the lines
+        // that now exist, not from the ones that existed when it was built.
+        ->and($approved->distributor_count)->toBe(1)
+        ->and($approved->total_net_paise)->toBe(92_150)
+        ->and($approved->status)->toBe(PayoutBatch::STATUS_APPROVED)
+        ->and($walletSvc->balancePaise($dist->id))->toBe(0);
+
+    // The release is an audit fact, not a silent correction.
+    $audit = DB::table('audit_log')->where('action', 'payout.batch.holds_reevaluated')->sole();
+    $details = json_decode((string) $audit->details, true);
+    expect($details['released'])->toBe(1)
+        ->and($details['changes'][0]['from'])->toBe(PayoutLineItem::STATUS_KYC_PENDING);
+});
+
+it('restates a hold whose reason changed instead of approving a stale one', function () {
+    // Still held, but no longer for the reason the batch recorded. Approving a
+    // batch that asserts "No bank account" about someone who has one puts a
+    // falsehood in the audit trail (QA F93).
+    $dist = makePayoutEligibleDistributor();
+    $dist->update(['bank_account_enc' => null]);
+
+    $batchDate = Carbon::today()->startOfMonth()->addDays(7);
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: earnedForBatch($batchDate));
+
+    $svc = app(PayoutService::class);
+    $batch = $svc->runWeeklyBatch($batchDate);
+
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->sole()->status)
+        ->toBe(PayoutLineItem::STATUS_NO_BANK_ACCOUNT);
+
+    // Bank details arrived; KYC lapsed in the meantime.
+    $dist->update(['bank_account_enc' => 'stub']);
+    $dist->user->update(['status' => 'pending']);
+
+    $svc->approve($batch->fresh(), 1);
+
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->sole()->status)
+        ->toBe(PayoutLineItem::STATUS_KYC_PENDING);
+});
+
+it('releases a hold that cleared before a re-run of the same batch', function () {
+    $dist = makePayoutEligibleDistributor();
+    $dist->update(['bank_account_enc' => null]);
+
+    $batchDate = Carbon::today()->startOfMonth()->addDays(7);
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: earnedForBatch($batchDate));
+
+    $svc = app(PayoutService::class);
+    $batch = $svc->runWeeklyBatch($batchDate);
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->sole()->status)
+        ->toBe(PayoutLineItem::STATUS_NO_BANK_ACCOUNT);
+
+    // A re-run used to skip anyone who already had a line, so a hold recorded
+    // on the first run could never clear within the same batch.
+    $dist->update(['bank_account_enc' => 'stub']);
+    $batch->update(['processed_at' => null]);
+    $rerun = $svc->runWeeklyBatch($batchDate);
+
+    expect(PayoutLineItem::where('payout_batch_id', $rerun->id)->where('distributor_id', $dist->id)->sole()->status)
+        ->toBe(PayoutLineItem::STATUS_PENDING);
+});
+
 it('weekly batch: GSB above the monthly income cap is trimmed and forfeited', function () {
     $dist = makePayoutEligibleDistributor();
     setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
@@ -530,7 +645,7 @@ it('monthly income cap is shared across all five cash bonuses and across batches
     app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 14));
 
     // Monthly batch in the same month: rank ₹4,000 against ₹2,000 remaining room.
-    $wallet->credit($dist->id, 400_000, 'rank_credit', walletRef(), 'test_reference');
+    $wallet->credit($dist->id, 400_000, 'rank_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1));
     $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
     $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
@@ -608,7 +723,7 @@ it('monthly batch: sweeps repurchase_transfer entries for gbb/rank/fortune credi
         bonusType: 'gbb_credit',
         referenceId: walletRef(),
         referenceType: 'gbb_monthly_result',
-        bonusMonth: now()->startOfMonth(),
+        bonusMonth: Carbon::create(2026, 7, 1),
     );
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
@@ -638,7 +753,7 @@ it('monthly batch: no repurchase deduction when no repurchase_transfer entries e
     $dist = makePayoutEligibleDistributor();
     $wallet = app(WalletService::class);
 
-    $wallet->credit($dist->id, 100_000, 'gbb_credit', walletRef(), 'test_reference');
+    $wallet->credit($dist->id, 100_000, 'gbb_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1));
 
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
@@ -1126,7 +1241,7 @@ it('counts a historical credit with no bonus_month under the batch that swept it
 
     // The ₹3,000 it swept still consumes July's room, so a ₹4,000 rank bonus in
     // the same month is trimmed to the ₹2,000 that is left.
-    $wallet->credit($dist->id, 400_000, 'rank_credit', walletRef(), 'test_reference');
+    $wallet->credit($dist->id, 400_000, 'rank_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 7, 1));
     $monthly = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
 
     $line = PayoutLineItem::where('payout_batch_id', $monthly->id)->where('distributor_id', $dist->id)->first();
@@ -1534,10 +1649,57 @@ it('stamps the earning week it pays onto the weekly batch it creates', function 
         ->toBe('2026-09-15');
 });
 
-it('leaves the monthly batch without an earning week', function (): void {
-    // A monthly batch pays a calendar month, not a Wednesday-to-Tuesday week.
+it('stamps the last day of the month it pays onto the monthly batch it creates', function (): void {
+    // A monthly batch pays a calendar month, not a Wednesday-to-Tuesday week —
+    // but it does have an earning window, and had none before QA F48: it swept
+    // whatever was in the wallet, including income earned after the month whose
+    // engines the completion gate had certified.
     $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 9, 1));
 
-    expect($batch->earnings_through)->toBeNull()
-        ->and($batch->weeklyEarningThrough())->toBeNull();
+    expect($batch->earnings_through?->toDateString())->toBe('2026-09-30')
+        // weeklyEarningThrough() names a Wednesday-to-Tuesday week; a monthly
+        // batch has none, so the weekly report keeps reading a dash.
+        ->and($batch->batch_type)->toBe(PayoutBatch::TYPE_MONTHLY);
+});
+
+it('leaves next month’s income unswept when it pays a month', function (): void {
+    // QA F48: the monthly batch had no earning window at all, so August's batch
+    // paid September's income while the gate had only certified August.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    $august = $wallet->credit($dist->id, 400_000, 'gbb_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 8, 1));
+    $september = $wallet->credit($dist->id, 700_000, 'rank_credit', walletRef(), 'test_reference', bonusMonth: Carbon::create(2026, 9, 1));
+
+    $batch = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 8, 1));
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->gross_paise)->toBe(400_000)
+        ->and($august->fresh()->swept_by_payout_batch_id)->toBe($batch->id)
+        ->and($september->fresh()->swept_by_payout_batch_id)->toBeNull()
+        // September's income is still in the wallet, waiting for its own batch.
+        ->and($wallet->balancePaise($dist->id))->toBe(700_000);
+
+    $next = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 9, 1));
+
+    expect(PayoutLineItem::where('payout_batch_id', $next->id)->where('distributor_id', $dist->id)->sole()->gross_paise)
+        ->toBe(700_000)
+        ->and($september->fresh()->swept_by_payout_batch_id)->toBe($next->id);
+});
+
+it('leaves an ADC credit with no earned month to the batch for the month it was written in', function (): void {
+    // adc_credit now carries bonus_month (the month the centre served), so it
+    // is paid by that month's batch rather than the next one.
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+
+    $adc = $wallet->credit($dist->id, 500_000, 'adc_credit', walletRef(), 'adc_bonus_result', bonusMonth: Carbon::create(2026, 8, 1));
+
+    $july = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 7, 1));
+    expect(PayoutLineItem::where('payout_batch_id', $july->id)->where('distributor_id', $dist->id)->exists())->toBeFalse();
+
+    $august = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 8, 1));
+    expect(PayoutLineItem::where('payout_batch_id', $august->id)->where('distributor_id', $dist->id)->sole()->gross_paise)
+        ->toBe(500_000)
+        ->and($adc->fresh()->swept_by_payout_batch_id)->toBe($august->id);
 });

@@ -34,6 +34,9 @@
     $failedCount = $countOf('failed');
     $canApprove = $batch->status === 'pending';
     $canReconcile = in_array($batch->status, ['approved', 'partially_failed', 'failed'], true);
+    // The NEFT file is the instruction the bank acts on, so it exists only once
+    // finance has signed the amount off — and only for finance (QA F95).
+    $canExportNeft = in_array($batch->status, ['approved', 'dispatched', 'completed', 'partially_failed', 'failed'], true);
 @endphp
 
 <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
@@ -45,18 +48,22 @@
             {{ $batchStatusLabel['text'] }}
         </span>
 
-        {{-- The CSV is always available: finance reconciles against it even in
-             Razorpay mode, where it is a record rather than an instruction. --}}
+        @can('finance.record')
+        @if($canExportNeft)
+        {{-- In Razorpay mode the file is a record to reconcile against rather
+             than an instruction, but it still only exists after approval. --}}
         <a href="{{ route('admin.compensation.weekly-payouts.neft', $batch) }}"
            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <x-lucide-download class="w-4 h-4" /> NEFT CSV
         </a>
+        @endif
+        @endcan
 
         @if($canApprove)
             @if($isRazorpay)
             <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve and dispatch to the bank"
-                  data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?"
+                  data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this dispatch.' : '' }}"
                   data-confirm-impact="Impact: this initiates REAL BANK TRANSFERS immediately. Each transfer is confirmed by Razorpay's webhook and cannot be recalled from this screen.">
                 @csrf
                 <button type="submit" @disabled(! $gatewayReady)
@@ -67,8 +74,8 @@
             @else
             <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve payout batch"
-                  data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?"
-                  data-confirm-impact="Impact: the batch is signed off for payment. No money moves until you upload the NEFT CSV to the bank and import the bank's response file here.">
+                  data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this approval.' : '' }}"
+                  data-confirm-impact="Impact: the batch is signed off for payment. Holds are re-checked first — anyone whose KYC or bank details arrived since the batch was built is released into it. No money moves until you upload the NEFT CSV to the bank and import the bank's response file here.">
                 @csrf
                 <button type="submit"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
@@ -206,7 +213,7 @@
                     <th class="px-3 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-600">Name</th>
                     <th class="px-3 py-2 text-right text-gray-600">
-                        Wallet balance <x-help-tip text="Wallet balance at time of batch generation." />
+                        Payable before deductions <x-help-tip text="What was left in the main wallet for this batch: gross minus the repurchase deduction already taken at credit time. The admin charge and TDS come off it below." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
                         Gross <x-help-tip text="Bonus income swept into this batch, before any deduction." />

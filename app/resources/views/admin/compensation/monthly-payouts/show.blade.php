@@ -33,6 +33,9 @@
     $failedCount = $countOf('failed');
     $canApprove = $batch->status === 'pending';
     $canReconcile = in_array($batch->status, ['approved', 'partially_failed', 'failed'], true);
+    // The NEFT file is the instruction the bank acts on, so it exists only once
+    // finance has signed the amount off — and only for finance (QA F95).
+    $canExportNeft = in_array($batch->status, ['approved', 'dispatched', 'completed', 'partially_failed', 'failed'], true);
 @endphp
 
 <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
@@ -44,16 +47,22 @@
             {{ $batchStatusLabel['text'] }}
         </span>
 
-        <a href="{{ route('admin.compensation.weekly-payouts.neft', $batch) }}"
+        @can('finance.record')
+        @if($canExportNeft)
+        {{-- In Razorpay mode the file is a record to reconcile against rather
+             than an instruction, but it still only exists after approval. --}}
+        <a href="{{ route('admin.compensation.monthly-payouts.neft', $batch) }}"
            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <x-lucide-download class="w-4 h-4" /> NEFT CSV
         </a>
+        @endif
+        @endcan
 
         @if($canApprove)
             @if($isRazorpay)
-            <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
+            <form method="POST" action="{{ route('admin.compensation.monthly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve and dispatch to the bank"
-                  data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?"
+                  data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this dispatch.' : '' }}"
                   data-confirm-impact="Impact: this initiates REAL BANK TRANSFERS immediately. Each transfer is confirmed by Razorpay's webhook and cannot be recalled from this screen.">
                 @csrf
                 <button type="submit" @disabled(! $gatewayReady)
@@ -62,10 +71,10 @@
                 </button>
             </form>
             @else
-            <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
+            <form method="POST" action="{{ route('admin.compensation.monthly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve payout batch"
-                  data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?"
-                  data-confirm-impact="Impact: the batch is signed off for payment. No money moves until you upload the NEFT CSV to the bank and import the bank's response file here.">
+                  data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this approval.' : '' }}"
+                  data-confirm-impact="Impact: the batch is signed off for payment. Holds are re-checked first — anyone whose KYC or bank details arrived since the batch was built is released into it. No money moves until you upload the NEFT CSV to the bank and import the bank's response file here.">
                 @csrf
                 <button type="submit"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
@@ -76,7 +85,7 @@
         @endif
 
         @if($isRazorpay && $failedCount > 0)
-        <form method="POST" action="{{ route('admin.compensation.weekly-payouts.retry-failed', $batch) }}"
+        <form method="POST" action="{{ route('admin.compensation.monthly-payouts.retry-failed', $batch) }}"
               data-confirm-title="Retry failed payouts"
               data-confirm="Re-send all {{ $failedCount }} failed transfer(s) in this batch?"
               data-confirm-impact="Impact: each eligible line item is queued for another attempt with Razorpay. Lines that have reached the retry limit ({{ $maxRetries }}) are skipped.">
@@ -126,7 +135,7 @@
             <x-help-tip text="The response file your bank returns after processing the NEFT upload. Rows are matched on ADN; each one marks that line item transferred (with its UTR) or failed (with the bank's reason)." />
         </span>
     </div>
-    <form method="POST" action="{{ route('admin.compensation.weekly-payouts.reconcile', $batch) }}"
+    <form method="POST" action="{{ route('admin.compensation.monthly-payouts.reconcile', $batch) }}"
           enctype="multipart/form-data" class="p-5 flex flex-wrap items-end gap-3"
           data-confirm-title="Import bank response file"
           data-confirm="Apply this bank response file to the batch?"
@@ -199,7 +208,7 @@
                     <th class="px-3 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-3 py-2 text-left text-gray-600">Name</th>
                     <th class="px-3 py-2 text-right text-gray-600">
-                        Wallet balance <x-help-tip text="Wallet balance at time of batch generation." />
+                        Payable before deductions <x-help-tip text="What was left in the main wallet for this batch: gross minus the repurchase deduction already taken at credit time. The admin charge and TDS come off it below." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
                         Gross <x-help-tip text="Bonus income swept into this batch, before any deduction." />
@@ -281,7 +290,7 @@
                     @if($isRazorpay)
                     <td class="px-3 py-2 text-center">
                         @if($line->status === 'failed' && $line->razorpay_payout_id === null && $line->retry_count < $maxRetries && $line->net_transferred_paise > 0)
-                        <form method="POST" action="{{ route('admin.compensation.weekly-payouts.line-items.retry', [$batch, $line]) }}"
+                        <form method="POST" action="{{ route('admin.compensation.monthly-payouts.line-items.retry', [$batch, $line]) }}"
                               data-confirm-title="Retry this payout"
                               data-confirm="Re-send {{ $rupees($line->net_transferred_paise) }} to ADN {{ $line->distributor->adn ?? $line->distributor_id }}?"
                               data-confirm-impact="Impact: this queues another real bank transfer attempt. Attempt {{ $line->retry_count + 1 }} of {{ $maxRetries }}.">

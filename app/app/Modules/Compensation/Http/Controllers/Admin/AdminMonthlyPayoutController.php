@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
+use App\Modules\Compensation\Http\Controllers\Admin\Concerns\HandlesPayoutBatchActions;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
@@ -14,6 +15,13 @@ use Illuminate\Routing\Controller;
 
 final class AdminMonthlyPayoutController extends Controller
 {
+    use HandlesPayoutBatchActions;
+
+    protected function payoutRouteName(string $action): string
+    {
+        return 'admin.compensation.monthly-payouts.'.$action;
+    }
+
     public function index(CompensationPlanSettingsService $plan): View
     {
         // distributor_count is the paying lines only; the held count sits
@@ -40,6 +48,7 @@ final class AdminMonthlyPayoutController extends Controller
             'batch' => $batch,
             'lines' => $lines,
             'statusCounts' => $statusCounts,
+            'held' => $this->heldTotals($batch),
             'isRazorpay' => $settings->isRazorpay(),
             'gatewayReady' => $settings->razorpayReady(),
             'maxRetries' => $settings->maxRetries(),
