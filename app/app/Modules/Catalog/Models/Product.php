@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property string|null $food_type
+ * @property string|null $image_url
  * @property int|null $category_id
  * @property string|null $category
  * @property string $slug
@@ -77,9 +78,29 @@ final class Product extends Model
         return $this->hasMany(ProductAttribute::class)->orderBy('sort')->orderBy('id');
     }
 
+    /** @return HasMany<ProductImage, $this> */
     public function galleryImages(): HasMany
     {
         return $this->images()->where('kind', ProductImage::KIND_GALLERY);
+    }
+
+    /**
+     * The one picture that represents this product: its first gallery image,
+     * falling back to the legacy `image_url` column for a product whose
+     * gallery has not been uploaded yet, and null when there is neither.
+     *
+     * Every surface that shows a single thumbnail reads this, so the cart line
+     * can never disagree with the product page's hero (QA F34).
+     */
+    public function primaryImageUrl(): ?string
+    {
+        $first = $this->relationLoaded('galleryImages')
+            ? $this->galleryImages->first()
+            : $this->galleryImages()->first();
+
+        $url = $first?->url();
+
+        return ($url !== null && $url !== '') ? $url : ($this->image_url ?: null);
     }
 
     public function primaryVariant(): ?ProductVariant

@@ -31,7 +31,9 @@ final class CartController extends Controller
     public function show(Request $request): View
     {
         $cart = $this->cartService->currentCart($request);
-        $cart->load('items.variant.product', 'coupon');
+        // `galleryImages` rides along so the line thumbnails — the same image
+        // the product page shows — don't fire a query per line.
+        $cart->load('items.variant.product.galleryImages', 'coupon');
 
         // Re-validate any attached coupon at view time so a now-invalid code
         // (expired, min no longer met, limit reached) is silently dropped

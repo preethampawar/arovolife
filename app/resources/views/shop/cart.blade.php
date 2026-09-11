@@ -32,8 +32,9 @@
         @php $justAdded = $addedVariantId > 0 && (int) $item->product_variant_id === $addedVariantId; @endphp
         <div class="bg-white rounded-2xl border border-gray-200 p-4 flex items-start gap-4 scroll-mt-24 {{ $justAdded ? 'cart-line-added' : '' }}" @if($justAdded) data-cart-added @endif>
             <div class="w-20 h-20 rounded-lg bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center shrink-0">
-                @if($item->variant->product->image_url)
-                <img src="{{ $item->variant->product->image_url }}" class="w-full h-full object-cover rounded-lg">
+                @php $thumbnail = $item->variant->product->primaryImageUrl(); @endphp
+                @if($thumbnail)
+                <img src="{{ $thumbnail }}" alt="{{ $item->variant->product->name }}" class="w-full h-full object-cover rounded-lg">
                 @else
                 <x-lucide-image class="w-10 h-10 text-brand-400" />
                 @endif
