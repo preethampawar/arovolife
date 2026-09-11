@@ -30,7 +30,13 @@ final class StubMonthlyPayoutCommand extends Command
     /** @var list<string> The `--month` value of each invocation. */
     public static array $calls = [];
 
-    protected $signature = 'payout:monthly-run {--month=}';
+    /** @var list<bool> Whether each invocation carried `--in-flight`. */
+    public static array $inFlight = [];
+
+    // Same options as the real command: the close lifts the batch command's
+    // open-month refusal, and a stub that could not accept the override would
+    // hide a call the real command would reject.
+    protected $signature = 'payout:monthly-run {--month=} {--force} {--in-flight}';
 
     protected $description = 'Test stub for the monthly payout batch';
 
@@ -38,6 +44,7 @@ final class StubMonthlyPayoutCommand extends Command
     {
         $month = $this->option('month');
         self::$calls[] = is_string($month) ? $month : '';
+        self::$inFlight[] = (bool) $this->option('in-flight');
 
         return self::SUCCESS;
     }
@@ -102,6 +109,7 @@ beforeEach(function (): void {
     }
 
     StubMonthlyPayoutCommand::$calls = [];
+    StubMonthlyPayoutCommand::$inFlight = [];
     app(Kernel::class)->registerCommand(new StubMonthlyPayoutCommand);
 });
 
@@ -114,6 +122,21 @@ it('pays out when every crediting engine has succeeded, dating the batch the fol
     // August's credits are paid in the September batch — the month the money
     // actually moves, which is what payout:monthly-run has always been given.
     expect(StubMonthlyPayoutCommand::$calls)->toBe(['2026-09']);
+});
+
+it('lifts the batch command\'s open-month refusal, because the batch month is in flight by design', function (): void {
+    // F47: payout:monthly-run now refuses a batch dated a month that has not
+    // closed — which is EVERY batch, on the 8th of its own month. The close is
+    // the one caller allowed to say so; a hand-typed run is not.
+    Carbon::setTestNow(Carbon::parse('2026-09-08 04:00:00'));
+    seedSucceededCrediting(Carbon::parse('2026-08-01'));
+
+    Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']);
+
+    expect(StubMonthlyPayoutCommand::$calls)->toBe(['2026-09'])
+        ->and(StubMonthlyPayoutCommand::$inFlight)->toBe([true]);
+
+    Carbon::setTestNow();
 });
 
 it('refuses when a crediting engine failed, naming it and the command that re-runs it', function (): void {
@@ -198,6 +221,50 @@ it('--force pays out over an incomplete month', function (): void {
     $exitCode = Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08', '--force' => true]);
 
     expect($exitCode)->toBe(0);
+    expect(StubMonthlyPayoutCommand::$calls)->toBe(['2026-09']);
+});
+
+it('refuses when every run for an engine started while the month was still in flight', function (): void {
+    // F05 at the payout gate: the crediting rows exist and say succeeded, but
+    // they were written on the 14th out of half a month's BV. Paying on them
+    // settles a month nobody has computed in full.
+    seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['gbb.monthly']);
+    seedEngineRun('gbb.monthly', Carbon::parse('2026-08-01'), EngineRun::STATUS_SUCCEEDED, Carbon::parse('2026-08-14 14:03'));
+
+    $exitCode = Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']);
+
+    expect($exitCode)->toBe(Command::FAILURE);
+    expect(StubMonthlyPayoutCommand::$calls)->toBe([]);
+    expect(AuditLog::where('action', 'compensation.monthly_payout_close.refused')->sole()->details['reason'])
+        ->toBe('succeeded_in_flight');
+});
+
+it('refuses when the monthly close itself failed and has not succeeded since', function (): void {
+    // F40: the close can abort before step 1 — a stale worker, a daily cut-off
+    // that never finished — leaving every engine carrying an OLDER succeeded
+    // run. The seven engine keys alone read that month as ready to pay.
+    seedSucceededCrediting(Carbon::parse('2026-08-01'));
+    seedEngineRun('compensation.monthly-close', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:20'));
+
+    $exitCode = Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']);
+    $output = Artisan::output();
+
+    expect($exitCode)->toBe(Command::FAILURE);
+    expect(StubMonthlyPayoutCommand::$calls)->toBe([]);
+    expect($output)->toContain('compensation:monthly-close --month=2026-08');
+    expect(AuditLog::where('action', 'compensation.monthly_payout_close.refused')->sole()->details['reason'])
+        ->toBe('close_failed');
+});
+
+it('pays once the failed close has been re-run successfully', function (): void {
+    seedSucceededCrediting(Carbon::parse('2026-08-01'));
+    seedEngineRun('compensation.monthly-close', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:20'));
+
+    expect(Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']))->toBe(Command::FAILURE);
+
+    seedEngineRun('compensation.monthly-close', Carbon::parse('2026-08-01'), EngineRun::STATUS_SUCCEEDED, Carbon::parse('2026-09-02 09:00'));
+
+    expect(Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']))->toBe(0);
     expect(StubMonthlyPayoutCommand::$calls)->toBe(['2026-09']);
 });
 

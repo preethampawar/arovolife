@@ -29,14 +29,28 @@ final class OpenMonthGuard
 {
     public const OPTION = 'in-flight';
 
-    /** @var list<string> command signatures that freeze a month's economics */
+    /**
+     * Command signatures that freeze a period's economics — or, for the two
+     * batch commands, spend them: a batch marks the credits it sweeps paid out
+     * and will not re-sweep them, which is as irreversible as a freeze and is
+     * why they answer to the same override.
+     *
+     * `gsb:daily-cutoff` is a DAY, not a month; it is listed because
+     * {@see self::overrideFor()} is how the replay and the admin console's
+     * developer gate hand an engine its in-flight override, and the cut-off
+     * carries the same refusal on the command line for the day it is given.
+     *
+     * @var list<string>
+     */
     public const FREEZING_COMMANDS = [
+        'gsb:daily-cutoff',
         'rank:monthly-run',
         'gbb:monthly-run',
         'fortune:enroll-eligible',
         'fortune:monthly-run',
         'adc:monthly-run',
         'offers:monthly-run',
+        'payout:monthly-run',
         'compensation:monthly-close',
         'compensation:monthly-payout-close',
     ];

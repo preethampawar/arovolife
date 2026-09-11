@@ -128,7 +128,13 @@ final class EngineRun extends Model
             : (int) max(0, $this->started_at->diffInSeconds($this->finished_at, absolute: true));
     }
 
-    /** Human-readable duration for the admin table ("—", "820ms", "1m 12s"). */
+    /**
+     * Human-readable duration for the admin table ("—", "820ms", "1.4s", "1m 12s").
+     *
+     * Sub-second precision is kept below ten seconds: rounding a 557 ms manual
+     * trigger to "1s" hid exactly the fact the operator was looking for, which
+     * is that the run did no work.
+     */
     public function durationForHumans(): string
     {
         if ($this->duration_ms === null) {
@@ -139,6 +145,10 @@ final class EngineRun extends Model
 
         if ($this->duration_ms < 1000) {
             return $this->duration_ms.'ms';
+        }
+
+        if ($this->duration_ms < 10_000) {
+            return rtrim(rtrim(number_format($this->duration_ms / 1000, 1), '0'), '.').'s';
         }
 
         $seconds = (int) round($this->duration_ms / 1000);

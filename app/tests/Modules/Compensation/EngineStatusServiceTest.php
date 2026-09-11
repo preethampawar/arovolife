@@ -116,3 +116,53 @@ it('hasSucceededRunOnOrAfter compares dates, not timestamps', function (): void 
     expect(app(EngineStatusService::class)
         ->hasSucceededRunOnOrAfter('repurchase.evaluate', Carbon::parse('2026-08-25 09:00:00')))->toBeTrue();
 });
+
+it('hasSucceededRun rejects a month-typed run that started while the month was still in flight', function (): void {
+    // F05: the 05 Sep recompute stamped every September step SUCCEEDED for
+    // 2026-09-01 on a month that was 12% short. The monthly close read those
+    // rows as "already done" and never repriced the month.
+    EngineRun::create([
+        'engine_key' => 'rank.bonus',
+        'period_start' => '2026-09-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-09-05 14:03:29'),
+        'finished_at' => Carbon::parse('2026-09-05 14:03:31'),
+    ]);
+
+    expect(app(EngineStatusService::class)
+        ->hasSucceededRun('rank.bonus', Carbon::parse('2026-09-01')))->toBeFalse();
+});
+
+it('hasSucceededRun accepts a month-typed run that started once the month had closed', function (): void {
+    EngineRun::create([
+        'engine_key' => 'rank.bonus',
+        'period_start' => '2026-09-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-10-01 00:30:00'),
+        'finished_at' => Carbon::parse('2026-10-01 00:31:00'),
+    ]);
+
+    expect(app(EngineStatusService::class)
+        ->hasSucceededRun('rank.bonus', Carbon::parse('2026-09-01')))->toBeTrue();
+});
+
+it('hasSucceededRun rejects a date-typed run that started before the day ended', function (): void {
+    seedEngineStatusRun('gsb.daily-cutoff', '2026-08-25', EngineRun::STATUS_SUCCEEDED);
+
+    $status = app(EngineStatusService::class);
+
+    expect($status->hasSucceededRun('gsb.daily-cutoff', Carbon::parse('2026-08-25')))->toBeFalse();
+
+    EngineRun::create([
+        'engine_key' => 'gsb.daily-cutoff',
+        'period_start' => '2026-08-25',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-08-26 00:10:00'),
+        'finished_at' => Carbon::parse('2026-08-26 00:12:00'),
+    ]);
+
+    expect($status->hasSucceededRun('gsb.daily-cutoff', Carbon::parse('2026-08-25')))->toBeTrue();
+});

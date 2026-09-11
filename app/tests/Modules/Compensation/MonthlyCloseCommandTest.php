@@ -179,6 +179,26 @@ it('resumes past step 1 when a scheduled run already completed it', function ():
     expect(EngineRun::where('engine_key', 'rank.check')->count())->toBe(1);
 });
 
+it('does not resume past a step whose succeeded run started while the month was still in flight', function (): void {
+    // F05: a mid-month recompute (or a manual trigger, or a pre-deploy
+    // schedule) records a SUCCEEDED run dated the month's first day. Read as
+    // "already done" it made the 1st-of-next-month close skip every step and
+    // leave the month priced on partial BV for good.
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => Carbon::parse('2026-08-01'),
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => Carbon::parse('2026-08-14 14:03:00'),
+        'finished_at' => Carbon::parse('2026-08-14 14:03:10'),
+    ]);
+
+    $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
+
+    expect($exitCode)->toBe(0);
+    expect(StubEngineCommand::$calls)->toContain('rank.check');
+});
+
 it('aborts at the first non-zero exit and never reaches the later steps', function (): void {
     StubEngineCommand::$exitCodes = ['fortune.enroll' => Command::FAILURE];
 

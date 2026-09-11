@@ -122,3 +122,36 @@ it('the replay fires repurchase:evaluate before the cut-off on every replayed da
     expect($cutoff->isScheduled())->toBeTrue();
     expect($evaluate->time)->toBeLessThan($cutoff->time);
 });
+
+it('refuses a cut-off for today, because the day has not ended', function (): void {
+    // F31: the CLI default is today. The cut-off freezes the day's GSB and MSB
+    // pools on whatever BV exists at that instant and the scheduled run after
+    // midnight keeps that pricing — the 24 Aug 2026 staging incident.
+    $exitCode = Artisan::call('gsb:daily-cutoff');
+    $output = Artisan::output();
+
+    expect($exitCode)->toBe(1)
+        ->and($output)->toContain('that day has not ended')
+        ->and(GsbCutoffResult::count())->toBe(0);
+});
+
+it('refuses a cut-off dated in the future', function (): void {
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => Carbon::tomorrow()->toDateString()]))->toBe(1)
+        ->and(GsbCutoffResult::count())->toBe(0);
+});
+
+it('--force does not lift the closed-day guard, because it answers a different question', function (): void {
+    // --force says "run without a repurchase verdict for the day". It is not a
+    // statement that a partial day may be frozen, and reading it as one is how
+    // the only barrier in front of a same-day cut-off came to be liftable.
+    expect(Artisan::call('gsb:daily-cutoff', ['--force' => true]))->toBe(1)
+        ->and(GsbCutoffResult::count())->toBe(0);
+});
+
+it('--in-flight runs today deliberately, for a provisional test cut-off', function (): void {
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
+});
+
+it('runs a closed day with no override at all', function (): void {
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => Carbon::yesterday()->toDateString()]))->toBe(0);
+});

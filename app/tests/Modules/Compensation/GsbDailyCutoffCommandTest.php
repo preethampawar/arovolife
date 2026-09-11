@@ -49,7 +49,7 @@ function seedGsbCreditingPair(): array
 it('no-ops when the Genos Sales Bonus feature is off (default)', function (): void {
     seedGsbCreditingPair();
 
-    $code = Artisan::call('gsb:daily-cutoff');
+    $code = Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]);
 
     expect($code)->toBe(0);
     expect(Artisan::output())->toContain('Genos Sales Bonus is disabled');
@@ -62,7 +62,7 @@ it('runs GSB but skips the Mentorship Bonus when only the GSB feature is on', fu
     Feature::for(null)->activate(GenosSalesBonusFeature::class);
     // MentorshipBonusFeature stays off (default).
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     expect(GsbCutoffResult::where('distributor_id', $sponsee->id)->where('status', GsbCutoffResult::STATUS_CREDITED)->exists())->toBeTrue();
     expect(MentorshipBonusResult::count())->toBe(0); // MB skipped by its flag
@@ -73,7 +73,7 @@ it('runs both GSB and the Mentorship Bonus when both features are on', function 
     Feature::for(null)->activate(GenosSalesBonusFeature::class);
     Feature::for(null)->activate(MentorshipBonusFeature::class);
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     expect(GsbCutoffResult::where('distributor_id', $sponsee->id)->where('status', GsbCutoffResult::STATUS_CREDITED)->exists())->toBeTrue();
     expect(MentorshipBonusResult::where('sponsor_id', $sponsor->id)->exists())->toBeTrue();
@@ -92,7 +92,7 @@ it('freezes one MSB pool for the day and prices every sponsor from it', function
     Feature::for(null)->activate(GenosSalesBonusFeature::class);
     Feature::for(null)->activate(MentorshipBonusFeature::class);
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     $pool = MsbDailyPool::whereDate('cutoff_date', today()->toDateString())->first();
     expect($pool)->not->toBeNull();
@@ -116,11 +116,11 @@ it('does not re-price or double-pay MSB when the day is re-run', function (): vo
     Feature::for(null)->activate(GenosSalesBonusFeature::class);
     Feature::for(null)->activate(MentorshipBonusFeature::class);
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
     $first = MentorshipBonusResult::where('sponsor_id', $sponsor->id)->firstOrFail();
 
     // A second full run over the same day — cut-offs are already settled.
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     expect(MsbDailyPool::count())->toBe(1);
     expect(MentorshipBonusResult::where('sponsor_id', $sponsor->id)->count())->toBe(1);
@@ -178,7 +178,7 @@ it('reproduces the KP 2026-07-29 worked example: 10L BV day prices slabs 3–7 a
         }
     }
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     $pool = GsbDailyPool::firstOrFail();
     expect($pool->company_bv_paise)->toBe(100_000_000);
@@ -210,7 +210,7 @@ it('reproduces the KP 2026-07-29 worked example: 10L BV day prices slabs 3–7 a
         ->toBe(44_864_000);                                      // ₹4,48,640
 
     // Re-run of the same date is idempotent: pool economics frozen, no double credit.
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
     expect(GsbDailyPool::count())->toBe(1);
     expect(GsbDailyPool::firstOrFail()->variable_score_value_paise)->toBe(22_000);
     expect((int) DB::table('wallet_ledger_entries')->where('type', 'gsb_credit')->sum('amount_paise'))
@@ -223,7 +223,7 @@ it('writes no pool row and pays legacy fixed bonuses when the pool flag is off',
     seedCompanyDayBv(100_000_000);
     $slab3 = seedSlabAchiever(3);
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     expect(GsbDailyPool::count())->toBe(0);
     $row = GsbCutoffResult::where('distributor_id', $slab3->id)->firstOrFail();
@@ -239,7 +239,7 @@ it('prices slabs 3–7 at ₹0 on a starved day while slabs 1–2 still pay in f
     $slab1 = seedSlabAchiever(1);
     $slab3 = seedSlabAchiever(3);
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     $pool = GsbDailyPool::firstOrFail();
     expect($pool->pool_paise)->toBe(0);
@@ -261,7 +261,7 @@ it('freezes the cap as the day value when no slab 3–7 achiever exists', functi
     seedCompanyDayBv(10_000_000);
     seedSlabAchiever(1);
 
-    expect(Artisan::call('gsb:daily-cutoff'))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true]))->toBe(0);
 
     // A later admin retry landing on slab 3–7 prices at the full ₹250 (pool had room).
     expect(GsbDailyPool::firstOrFail()->variable_score_value_paise)->toBe(25_000);
@@ -281,7 +281,7 @@ it('reuses the frozen pool value on a single-distributor retry and never recompu
 
     $slab3 = seedSlabAchiever(3);
 
-    expect(Artisan::call('gsb:daily-cutoff', ['--distributor' => $slab3->id]))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--distributor' => $slab3->id, '--in-flight' => true]))->toBe(0);
 
     expect(GsbDailyPool::count())->toBe(1); // single runs never freeze a new pool
     $row = GsbCutoffResult::where('distributor_id', $slab3->id)->firstOrFail();
@@ -295,7 +295,7 @@ it('falls back to the fixed bonus on a single run for a date with no pool row', 
 
     $slab3 = seedSlabAchiever(3);
 
-    expect(Artisan::call('gsb:daily-cutoff', ['--distributor' => $slab3->id]))->toBe(0);
+    expect(Artisan::call('gsb:daily-cutoff', ['--distributor' => $slab3->id, '--in-flight' => true]))->toBe(0);
 
     expect(GsbDailyPool::count())->toBe(0);
     expect(GsbCutoffResult::where('distributor_id', $slab3->id)->value('gross_gsb_paise'))->toBe(800_000);

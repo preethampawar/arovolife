@@ -12,6 +12,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -42,14 +43,47 @@ final class EngineStatusService
         return $this->hasDerivedProof($key, $period);
     }
 
-    /** A succeeded run recorded in the run log itself. */
+    /**
+     * A succeeded run recorded in the run log that is proven to have seen the
+     * WHOLE period — i.e. one that started after the period had ended.
+     *
+     * The date alone is not a sufficient key. Every engine here freezes its
+     * period's economics the first time it runs and credits from that snapshot,
+     * so a run stamped INSIDE its own period priced a partial period: September
+     * frozen on the 5th is priced on five days of BV. Accepting such a row as
+     * "this period is done" is worse than not having it — the monthly close
+     * then resumes past the step and never reprices the month, and the payout
+     * gate a week later reads the same row as a completed month and pays on it
+     * (staging, 05 Sep 2026: all seven September steps recorded succeeded by a
+     * mid-month recompute, 12.3 % short and silently permanent).
+     *
+     * Same rule as {@see hasSucceededRunAfterDay()}, one period type wider: the
+     * boundary is the app-timezone midnight that opens the next day for a
+     * date-typed engine and the next month for a month-typed one.
+     */
     public function hasSucceededRun(string $key, Carbon $period): bool
     {
         return EngineRun::query()
             ->where('engine_key', $key)
             ->whereDate('period_start', $period->toDateString())
             ->where('status', EngineRun::STATUS_SUCCEEDED)
+            ->where('started_at', '>=', self::periodEndsAt($key, $period)->toDateTimeString())
             ->exists();
+    }
+
+    /**
+     * The first instant AFTER the period $key works on — the next day for a
+     * date engine, the first of the next month for a month engine.
+     *
+     * An unregistered key is treated as date-typed: the only callers are
+     * registry keys, and a day boundary is the narrower assumption.
+     */
+    public static function periodEndsAt(string $key, Carbon $period): Carbon
+    {
+        return EngineRegistry::has($key)
+            && EngineRegistry::get($key)->periodType === EnginePeriodType::Month
+                ? $period->copy()->startOfMonth()->addMonthNoOverflow()
+                : $period->copy()->startOfDay()->addDay();
     }
 
     /**

@@ -191,7 +191,19 @@ final class EngineReplayService
                     $this->invoke($prerequisite['definition'], $prerequisite['period'], $at);
                 }
 
-                $this->invoke($definition, $period, $at, $this->overridesCutoffEvaluateGuard($definition, $period));
+                // Travel before asking the guard: the question is whether the
+                // period was still in flight at the instant the scheduler would
+                // have fired, not whether it is now. Every replayed day is
+                // "today" and every batch month is the live month at its own
+                // firing instant, so the engines that refuse an open period
+                // need the same override here that their real caller passes.
+                Carbon::setTestNow($at);
+
+                $this->invoke($definition, $period, $at, [
+                    ...$this->overridesCutoffEvaluateGuard($definition, $period),
+                    ...$this->overridesMonthlyPayoutGate($definition),
+                    ...OpenMonthGuard::overrideFor($definition->commandSignature, $period),
+                ]);
             }
 
             $days++;
@@ -353,7 +365,10 @@ final class EngineReplayService
 
             $options = $this->overridesGuardAtHorizon($entry['definition'], $entry['period'], $horizon)
                 ? ['--force' => true]
-                : $this->overridesCutoffEvaluateGuard($entry['definition'], $entry['period']);
+                : [
+                    ...$this->overridesCutoffEvaluateGuard($entry['definition'], $entry['period']),
+                    ...$this->overridesMonthlyPayoutGate($entry['definition']),
+                ];
 
             // The month in flight at the horizon is computed provisionally by
             // design ("this month's bonuses, computed as at this moment"); the
@@ -364,6 +379,27 @@ final class EngineReplayService
 
             $this->invoke($entry['definition'], $entry['period'], $stampAt, $options);
         }
+    }
+
+    /**
+     * The monthly batch's crediting-completion gate, lifted for a replay.
+     *
+     * `payout:monthly-run` refuses to build a batch while the month whose
+     * credits it sweeps has a crediting engine that has not succeeded — the
+     * guarantee that nobody pays a month by hand before it has been looked at.
+     * A replay is the opposite situation: it has just rebuilt (or, for a
+     * selective replay, deliberately not rebuilt) those very engines seconds
+     * earlier inside the same process, and refusing would abort the rebuild
+     * after the wipe, leaving no batch at all.
+     *
+     * Narrow, like the other two overrides: only `payout.monthly`, and only
+     * from the replay, which is developer-gated and testing-only.
+     *
+     * @return array<string, bool> `--force` for the batch, empty otherwise
+     */
+    private function overridesMonthlyPayoutGate(EngineDefinition $definition): array
+    {
+        return $definition->key === 'payout.monthly' ? ['--force' => true] : [];
     }
 
     /**

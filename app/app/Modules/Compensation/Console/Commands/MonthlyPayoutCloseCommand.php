@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\ResolvesMonthOption;
 use App\Modules\Compensation\Support\WorkerFreshness;
 use App\Modules\Compliance\Models\AuditLog;
@@ -79,7 +80,15 @@ final class MonthlyPayoutCloseCommand extends Command
         }
 
         try {
-            $exitCode = Artisan::call('payout:monthly-run', ['--month' => $batchMonth->format('Y-m')]);
+            $exitCode = Artisan::call('payout:monthly-run', [
+                '--month' => $batchMonth->format('Y-m'),
+                // The batch month is in flight BY DESIGN — the 8th of it is the
+                // day this close runs — so the batch command's open-month
+                // refusal is lifted here and only here. Typed by hand it stands,
+                // which is what keeps this close the only unattended path to a
+                // monthly batch.
+                ...OpenMonthGuard::overrideFor('payout:monthly-run', $batchMonth),
+            ]);
         } catch (Throwable $e) {
             Log::error('compensation.monthly_payout_close.crashed', [
                 'month' => $month->format('Y-m'),

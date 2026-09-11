@@ -79,7 +79,7 @@ it('writes bulk rows identical to the ones the engine would settle', function ()
         'right_bv_paise' => 300_000,
     ]);
 
-    Artisan::call('gsb:daily-cutoff', ['--date' => $dateStr]);
+    Artisan::call('gsb:daily-cutoff', ['--date' => $dateStr, '--in-flight' => true]);
 
     $viaBulk = [
         'below_min' => idleBatchRowShape($belowMin->id, $dateStr),
@@ -130,7 +130,7 @@ it('still shortcuts an idle distributor on the days after their first', function
 
     // ...and the row it writes is the one the engine would have settled, side
     // fields included — power_side_before carries yesterday's recorded side.
-    Artisan::call('gsb:daily-cutoff', ['--date' => $date->toDateString()]);
+    Artisan::call('gsb:daily-cutoff', ['--date' => $date->toDateString(), '--in-flight' => true]);
     $viaBulk = idleBatchRowShape($idle->id, $date->toDateString());
 
     GsbCutoffResult::where('distributor_id', $idle->id)->whereDate('cutoff_date', $date)->delete();
@@ -167,7 +167,7 @@ it('never shortcuts a distributor with carry-forward, BV or an existing row', fu
         ->and($partition['below_min'])->not->toContain($withCf->id);
 
     // Its real cut-off keeps the carry-forward on the Right side.
-    Artisan::call('gsb:daily-cutoff', ['--date' => $dateStr]);
+    Artisan::call('gsb:daily-cutoff', ['--date' => $dateStr, '--in-flight' => true]);
 
     $row = idleBatchRowShape($withCf->id, $dateStr);
     expect($row['power_cf_before_paise'])->toBe(700_000)
@@ -261,7 +261,7 @@ it('an idle failed-cycle distributor gets no_match with the store unchanged', fu
         ->partition(Distributor::query()->get(['id', 'gsb_frozen_at']), $date)['idle']))
         ->toContain($idle->id);
 
-    Artisan::call('gsb:daily-cutoff', ['--date' => $dateStr]);
+    Artisan::call('gsb:daily-cutoff', ['--date' => $dateStr, '--in-flight' => true]);
 
     $row = idleBatchRowShape($idle->id, $dateStr);
     expect($row['status'])->toBe(GsbCutoffResult::STATUS_NO_MATCH)

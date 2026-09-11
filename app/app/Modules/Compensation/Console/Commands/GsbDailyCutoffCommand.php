@@ -14,6 +14,8 @@ use App\Modules\Compensation\Services\GsbIdleCutoffBatch;
 use App\Modules\Compensation\Services\IncomeEligibilityService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Compensation\Services\MsbDailyPoolService;
+use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -28,7 +30,8 @@ final class GsbDailyCutoffCommand extends Command
     protected $signature = 'gsb:daily-cutoff
                             {--date= : Override the cut-off date (YYYY-MM-DD, default: today)}
                             {--distributor= : Run for a single distributor ID only (admin retry)}
-                            {--force : Run even though repurchase:evaluate has not run for the date}';
+                            {--force : Run even though repurchase:evaluate has not run for the date}
+                            {--in-flight : Testing only — cut off a day that has not ended; the day\'s pool is provisional}';
 
     protected $description = 'Run the 23:59 GSB cut-off for all active distributors';
 
@@ -62,6 +65,47 @@ final class GsbDailyCutoffCommand extends Command
             $date = Carbon::createFromFormat('Y-m-d', $rawDate)->startOfDay();
         } else {
             $date = Carbon::today();
+        }
+
+        // A day still in flight has no final BV. The cut-off freezes the day's
+        // GSB and MSB pools the first time it runs and prices every match
+        // against that snapshot; run at noon it prices the day on half its BV,
+        // and the scheduled run after midnight then KEEPS that pricing, because
+        // freezePoolForDate() returns the existing row unchanged (the 24 Aug
+        // 2026 staging incident). Until now the only thing standing in the way
+        // was the repurchase guard below — which `--force` lifts, and which is
+        // not there at all while the repurchase engine is off.
+        //
+        // `--force` deliberately does NOT lift this one: it answers a different
+        // question (has the day been judged) and an operator forcing past a
+        // missing evaluation is not thereby asking to freeze a partial day.
+        if (! $this->option(OpenMonthGuard::OPTION) && $date->gte(Carbon::today())) {
+            $this->error(sprintf(
+                'Refusing to run the %s GSB cut-off: that day has not ended (today is %s). The cut-off '
+                ."freezes the day's GSB and MSB pools on the BV that exists at this instant, and the "
+                .'scheduled run after midnight keeps that pricing rather than repricing the full day, so '
+                .'every distributor who earns later today is priced out of it permanently.
+'
+                .'Run it for a day that has closed — php artisan gsb:daily-cutoff --date=%s — or pass '
+                .'--in-flight for a deliberate, provisional test cut-off.',
+                $date->toDateString(),
+                Carbon::today()->toDateString(),
+                Carbon::yesterday()->toDateString(),
+            ));
+
+            Log::warning('gsb.cutoff.refused_open_day', [
+                'date' => $date->toDateString(),
+                'today' => Carbon::today()->toDateString(),
+            ]);
+
+            // Resolved per call: EngineRunContext is container-scoped while a
+            // console command is a process-lifetime singleton.
+            app(EngineRunContext::class)->noteSkipped(sprintf(
+                'The %s GSB cut-off was refused: the day has not ended.',
+                $date->toDateString(),
+            ));
+
+            return self::FAILURE;
         }
 
         $singleId = $this->option('distributor')

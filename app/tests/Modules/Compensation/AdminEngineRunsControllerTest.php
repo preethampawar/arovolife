@@ -868,3 +868,83 @@ it('shows the engine-failure badge to admin-finance without audit.read', functio
         ->assertSee('Engine failures')
         ->assertSee(route('admin.compensation.engine-runs.events', ['status' => 'failed']), false);
 });
+
+it('renders the run summary as labelled fields rather than raw JSON', function (): void {
+    // F83: the DETAILS cell printed `{"output":"","exit_code":0}` verbatim.
+    $user = engineRunsUser('admin');
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    EngineRun::create([
+        'engine_key' => 'rank.bonus',
+        'period_start' => Carbon::parse('2026-08-01'),
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'summary' => ['exit_code' => 0, 'output' => ''],
+        'started_at' => Carbon::parse('2026-09-01 00:30'),
+        'finished_at' => Carbon::parse('2026-09-01 00:31'),
+        'duration_ms' => 557,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.events'))
+        ->assertOk();
+
+    $response->assertSee('Exit code:');
+    $response->assertSee('No console output was captured.');
+    $response->assertDontSee('{"output"', false);
+    // F85: 557 ms rounded to "1s" hid the very fact the operator was after.
+    $response->assertSee('557ms');
+});
+
+it('says so when a run re-ran a period that was already computed', function (): void {
+    $user = engineRunsUser('admin');
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    foreach (['2026-09-01 00:30' => '2026-09-01 00:31', '2026-09-05 10:00' => '2026-09-05 10:01'] as $started => $finished) {
+        EngineRun::create([
+            'engine_key' => 'rank.bonus',
+            'period_start' => Carbon::parse('2026-08-01'),
+            'status' => EngineRun::STATUS_SUCCEEDED,
+            'trigger' => EngineRun::TRIGGER_CONSOLE,
+            'summary' => ['exit_code' => 0, 'output' => ''],
+            'started_at' => Carbon::parse($started),
+            'finished_at' => Carbon::parse($finished),
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.events'))
+        ->assertOk()
+        ->assertSee('Already processed — nothing to do.', false)
+        ->assertSeeText('This period was already computed by the run of 01 Sep 2026 00:30;');
+});
+
+it('names a retired engine rather than leaking its key', function (): void {
+    // F85: `repurchase.snapshot` rows survive in engine_runs; the command does
+    // not, so the registry cannot carry a definition for it.
+    $user = engineRunsUser('admin');
+
+    EngineRun::create([
+        'engine_key' => 'repurchase.snapshot',
+        'period_start' => Carbon::parse('2026-08-01'),
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-09-01 00:05'),
+        'finished_at' => Carbon::parse('2026-09-01 00:05'),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('admin.compensation.engine-runs.events'))
+        ->assertOk()
+        ->assertSee('Repurchase Snapshot (retired)');
+});
+
+it('names the chosen period in the trigger confirmation, not just "the chosen period"', function (): void {
+    Feature::activate(GrowthBoosterBonusFeature::class);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('data-engine-trigger', false)
+        ->assertSee("form.dataset.confirmTitle = 'Confirm: Run ' + form.dataset.engineLabel + ' for ' + value;", false);
+});

@@ -40,6 +40,21 @@ use InvalidArgumentException;
  */
 final class EngineRegistry
 {
+    /**
+     * Engines that were retired but whose runs are still in `engine_runs`.
+     *
+     * Not registry entries: they have no command, no schedule and no report, so
+     * a definition would be a lie the dependency resolver could act on. The run
+     * events page still has to name them — a bare `repurchase.snapshot` in the
+     * Engine column is an internal key leaking to an admin who has no way to
+     * find out what it was (F85).
+     *
+     * @var array<string, string>
+     */
+    private const RETIRED_LABELS = [
+        'repurchase.snapshot' => 'Repurchase Snapshot (retired)',
+    ];
+
     /** @var array<string, EngineDefinition>|null */
     private static ?array $memo = null;
 
@@ -68,6 +83,19 @@ final class EngineRegistry
     public static function keys(): array
     {
         return array_keys(self::all());
+    }
+
+    /**
+     * The name to show for an engine key, retired engines included. Falls back
+     * to the key itself, which is all a row from a future engine can offer.
+     */
+    public static function labelFor(string $key): string
+    {
+        if (self::has($key)) {
+            return self::get($key)->label;
+        }
+
+        return self::RETIRED_LABELS[$key] ?? $key;
     }
 
     /** Reverse lookup for the console listener: artisan name → definition. */

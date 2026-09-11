@@ -5,6 +5,7 @@
 @section('content')
 
 @php use App\Modules\Compensation\Models\EngineRun; @endphp
+@php use App\Modules\Compensation\Support\EngineRegistry; @endphp
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-gray-600">
@@ -65,23 +66,38 @@
                     $run->status === EngineRun::STATUS_FAILED => ['bg-red-100 text-red-700', 'failed'],
                     default => ['bg-gray-100 text-gray-600', $run->status],
                 };
-                $duration = $run->durationSeconds();
                 $ledger = $ledgerByRun[$run->id] ?? null;
                 $ledgerEntries = $ledger === null ? 0 : (int) $ledger->entries;
                 $ledgerNetPaise = $ledger === null ? 0 : (int) $ledger->net_paise;
                 $ledgerCommittedByFailedRun = $ledgerEntries > 0 && $run->status === EngineRun::STATUS_FAILED;
+
+                // An earlier succeeded run for the same engine and period means
+                // this one re-ran a period that was already computed. Together
+                // with "wrote no wallet entries" that is what "nothing to do"
+                // actually means — the empty console capture proves nothing.
+                $firstSucceeded = $firstSucceededAt[$run->engine_key.'@'.$run->period_start->toDateString()] ?? null;
+                $reRanComputedPeriod = $run->status === EngineRun::STATUS_SUCCEEDED
+                    && $firstSucceeded !== null
+                    && $firstSucceeded->lt($run->started_at);
+
+                $summary = $run->summary ?? [];
+                $summaryOutput = trim((string) ($summary['output'] ?? ''));
+                $summaryReason = trim((string) ($summary['reason'] ?? ''));
+                $summaryDetail = trim((string) ($summary['detail'] ?? ''));
+                $summaryExitCode = $summary['exit_code'] ?? null;
+                // Anything the run service did not put there itself — a future
+                // engine's own keys — is still shown rather than dropped.
+                $summaryExtra = collect($summary)->except(['output', 'reason', 'detail', 'exit_code'])->all();
             @endphp
             <tr class="text-gray-600 align-top">
                 <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $runs->firstItem() + $loop->index }}</td>
-                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ $definition?->label ?? $run->engine_key }}</td>
+                <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{{ EngineRegistry::labelFor($run->engine_key) }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ $definition?->displayPeriod($run->period_start) ?? $run->period_start->toDateString() }}</td>
                 <td class="px-4 py-3"><span class="inline-flex px-2 py-0.5 rounded font-medium {{ $pill[0] }}">{{ $pill[1] }}</span></td>
                 <td class="px-4 py-3">{{ $run->trigger }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ $run->actor?->email ?? 'scheduler / CLI' }}</td>
                 <td class="px-4 py-3 whitespace-nowrap">{{ $run->started_at->format('d M Y H:i:s') }}</td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    @if($duration === null) — @elseif($duration < 60) {{ $duration }}s @else {{ intdiv($duration, 60) }}m {{ $duration % 60 }}s @endif
-                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ $run->durationForHumans() }}</td>
                 <td class="px-4 py-3 whitespace-nowrap {{ $ledgerCommittedByFailedRun ? 'text-red-700 font-medium' : '' }}">
                     @if($ledgerEntries === 0)
                     —
@@ -95,19 +111,49 @@
                 </td>
                 <td class="px-4 py-3 font-mono text-[10px] text-gray-600">{{ $run->chain_id ? substr($run->chain_id, 0, 8) : '—' }}</td>
                 <td class="px-4 py-3 max-w-xs">
-                    @if(! empty($run->summary))
-                    <details>
-                        <summary class="cursor-pointer text-indigo-600 hover:text-indigo-800 select-none">summary</summary>
-                        <pre class="mt-1 whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-[10px] text-gray-600">{{ json_encode($run->summary, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
-                    </details>
+                    @if($reRanComputedPeriod && $ledgerEntries === 0)
+                    <p class="mb-1 font-medium text-gray-700">Already processed — nothing to do.</p>
+                    <p class="mb-1 text-[10px] text-gray-600">
+                        This period was already computed by the run of {{ $firstSucceeded->format('d M Y H:i') }};
+                        this run credited nothing and changed nothing.
+                    </p>
                     @endif
-                    @if($run->error !== null)
+
+                    @if($summaryReason !== '')
+                    <p class="mb-1"><span class="font-medium text-gray-700">Reason:</span> {{ $summaryReason }}</p>
+                    @endif
+                    @if($summaryDetail !== '')
+                    <p class="mb-1"><span class="font-medium text-gray-700">Detail:</span> {{ $summaryDetail }}</p>
+                    @endif
+                    @if($summaryExitCode !== null)
+                    <p class="mb-1"><span class="font-medium text-gray-700">Exit code:</span> {{ $summaryExitCode }}</p>
+                    @endif
+                    @foreach($summaryExtra as $summaryKey => $summaryValue)
+                    <p class="mb-1">
+                        <span class="font-medium text-gray-700">{{ ucfirst(str_replace('_', ' ', (string) $summaryKey)) }}:</span>
+                        {{ is_scalar($summaryValue) ? $summaryValue : json_encode($summaryValue, JSON_UNESCAPED_SLASHES) }}
+                    </p>
+                    @endforeach
+
+                    @if($summaryOutput !== '')
                     <details>
-                        <summary class="cursor-pointer text-red-600 hover:text-red-800 select-none">error</summary>
+                        <summary class="cursor-pointer text-indigo-600 hover:text-indigo-800 select-none">Console output</summary>
+                        <pre class="mt-1 whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-[10px] text-gray-600">{{ $summaryOutput }}</pre>
+                    </details>
+                    @elseif($summaryExitCode !== null)
+                    <p class="text-[10px] text-gray-600">No console output was captured.</p>
+                    @endif
+
+                    @if($run->error !== null)
+                    <details @if($run->status === EngineRun::STATUS_FAILED) open @endif>
+                        <summary class="cursor-pointer text-red-600 hover:text-red-800 select-none">
+                            {{ $run->status === EngineRun::STATUS_SKIPPED ? 'Why it did not run' : 'Error' }}
+                        </summary>
                         <pre class="mt-1 whitespace-pre-wrap break-words rounded bg-red-50 p-2 text-[10px] text-red-700">{{ Str::limit($run->error, 1000) }}</pre>
                     </details>
                     @endif
-                    @if(empty($run->summary) && $run->error === null) — @endif
+
+                    @if(empty($run->summary) && $run->error === null && ! $reRanComputedPeriod) — @endif
                 </td>
             </tr>
             @endforeach

@@ -573,7 +573,10 @@
             @else
             <form method="POST" action="{{ route('admin.compensation.engine-runs.trigger') }}"
                   class="w-full lg:w-80 shrink-0 rounded-lg border border-gray-100 bg-gray-50 p-3"
+                  data-engine-trigger
+                  data-engine-label="{{ $definition->label }}"
                   data-confirm="This queues {{ $definition->label }} for the chosen period{{ count($engine['dependencyLabels']) > 0 ? ', after first running any missing prerequisite periods of: '.implode(', ', $engine['dependencyLabels']) : '' }}."
+                  data-confirm-suffix="{{ count($engine['dependencyLabels']) > 0 ? ', after first running any missing prerequisite periods of: '.implode(', ', $engine['dependencyLabels']) : '' }}."
                   data-confirm-title="Confirm: Run {{ $definition->label }}"
                   data-confirm-impact="Wallet credits and result rows are written exactly as a scheduled run would write them. Idempotent — periods already computed are skipped, and nobody is credited twice.">
                 @csrf
@@ -608,5 +611,38 @@
     </div>
     @endforeach
 </div>
+
+<script>
+// The period is chosen in the form, so the confirmation modal has to read it
+// back: "for the chosen period" let an operator confirm a month they had not
+// noticed the picker was still on (F83). Re-read on every change rather than
+// rendered once, because the picker is what is being confirmed.
+(function () {
+    document.querySelectorAll('form[data-engine-trigger]').forEach(function (form) {
+        var period = form.querySelector('input[name="period"]');
+        if (!period) { return; }
+
+        function sync() {
+            var value = period.value;
+
+            if (value === '') {
+                form.dataset.confirmTitle = 'Confirm: Run ' + form.dataset.engineLabel;
+                form.dataset.confirm = 'This queues ' + form.dataset.engineLabel
+                    + ' for the chosen period' + form.dataset.confirmSuffix;
+
+                return;
+            }
+
+            form.dataset.confirmTitle = 'Confirm: Run ' + form.dataset.engineLabel + ' for ' + value;
+            form.dataset.confirm = 'This queues ' + form.dataset.engineLabel + ' for ' + value
+                + form.dataset.confirmSuffix;
+        }
+
+        period.addEventListener('change', sync);
+        period.addEventListener('input', sync);
+        sync();
+    });
+})();
+</script>
 
 @endsection

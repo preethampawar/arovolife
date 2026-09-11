@@ -33,6 +33,15 @@ use Throwable;
  *     reason a month is incomplete. It does NOT block.
  *   • FAILED with no later SUCCEEDED run for the same period — the engine
  *     stopped part-way. It DOES block, and the refusal names it.
+ *
+ * Two more refusals sit on top of the per-engine question, both from the same
+ * family — a row that says "done" without being proof of a completed month:
+ *   • SUCCEEDED but started while the month was still in flight — the engine
+ *     froze and credited the month on partial BV. It blocks: the money it
+ *     computed is not this month's money.
+ *   • The close itself FAILED with no later success — it can abort before step
+ *     1 and leave every engine carrying an older succeeded run, so a month
+ *     whose crediting never ran would otherwise read as ready to pay.
  */
 final class MonthlyEngineCompletionGate
 {
@@ -54,6 +63,12 @@ final class MonthlyEngineCompletionGate
     ];
 
     /**
+     * The orchestrator that runs {@see self::ENGINE_KEYS} — not one of them, and
+     * able to fail on its own before any of them is reached.
+     */
+    private const CLOSE_ENGINE_KEY = 'compensation.monthly-close';
+
+    /**
      * Why the month is not ready to be paid, or null when every crediting
      * engine has succeeded (or is flag-off and therefore not owed a run).
      *
@@ -62,6 +77,7 @@ final class MonthlyEngineCompletionGate
     public static function blockingFailure(Carbon $month): ?array
     {
         $monthStart = $month->copy()->startOfMonth();
+        $monthClosedAt = $monthStart->copy()->addMonthNoOverflow();
         $runs = self::runsForMonth($monthStart);
 
         foreach (self::ENGINE_KEYS as $key) {
@@ -88,20 +104,82 @@ final class MonthlyEngineCompletionGate
                 ));
             }
 
-            foreach ($engineRuns as $run) {
-                if ($run->status === EngineRun::STATUS_SUCCEEDED) {
+            $succeeded = array_values(array_filter(
+                $engineRuns,
+                static fn (EngineRun $run): bool => $run->status === EngineRun::STATUS_SUCCEEDED,
+            ));
+
+            if ($succeeded === []) {
+                return self::describe($definition, $monthStart, 'never_succeeded', sprintf(
+                    '%s has no succeeded run for %s.',
+                    $definition->label,
+                    $monthStart->format('F Y'),
+                ));
+            }
+
+            foreach ($succeeded as $run) {
+                if ($run->started_at->gte($monthClosedAt)) {
                     continue 2;
                 }
             }
 
-            return self::describe($definition, $monthStart, 'never_succeeded', sprintf(
-                '%s has no succeeded run for %s.',
+            // Succeeded, but every run started while the month was still in
+            // flight: it froze and credited the month on partial BV. Paying on
+            // it would settle a month nobody has ever computed in full.
+            $premature = end($succeeded);
+
+            return self::describe($definition, $monthStart, 'succeeded_in_flight', sprintf(
+                '%s last succeeded for %s on %s — while %s was still in flight, so it priced the month on partial BV.',
                 $definition->label,
+                $definition->displayPeriod($premature->period_start),
+                $premature->started_at->format('d M Y H:i'),
                 $monthStart->format('F Y'),
             ));
         }
 
-        return null;
+        return self::closeFailure($monthStart);
+    }
+
+    /**
+     * The close itself failed after its steps last succeeded.
+     *
+     * The seven engine keys are not the whole month: `compensation:monthly-close`
+     * can abort before step 1 (a stale worker, the closed month's last daily
+     * cut-off never finishing) and leave every engine carrying an OLDER
+     * succeeded run — a month that never ran this time reading "ready to pay"
+     * on the 8th. The orchestrator's own run row is the only record of that, so
+     * the gate reads it too.
+     *
+     * @return array{engine_key: string, reason: string, message: string}|null
+     */
+    private static function closeFailure(Carbon $monthStart): ?array
+    {
+        $runs = array_values(EngineRun::query()
+            ->where('engine_key', self::CLOSE_ENGINE_KEY)
+            ->whereBetween('period_start', [
+                $monthStart->toDateString(),
+                $monthStart->copy()->endOfMonth()->endOfDay()->toDateTimeString(),
+            ])
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get()
+            ->all());
+
+        $failure = self::unresolvedFailure($runs);
+
+        if ($failure === null) {
+            return null;
+        }
+
+        $definition = EngineRegistry::get(self::CLOSE_ENGINE_KEY);
+
+        return self::describe($definition, $monthStart, 'close_failed', sprintf(
+            '%s FAILED for %s (run #%d, %s) and has not succeeded since, so the month\'s crediting stopped part-way.',
+            $definition->label,
+            $definition->displayPeriod($failure->period_start),
+            $failure->id,
+            $failure->started_at->format('d M Y H:i'),
+        ));
     }
 
     /**

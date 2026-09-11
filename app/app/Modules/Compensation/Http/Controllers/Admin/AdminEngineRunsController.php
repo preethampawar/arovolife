@@ -419,6 +419,12 @@ final class AdminEngineRunsController extends Controller
         return view('admin.compensation.engine-runs.events', [
             'runs' => $runs,
             'ledgerByRun' => $ledgerByRun,
+            // engine_key@period => the first succeeded run's start, so a row can
+            // say "already processed" on the strength of an earlier run rather
+            // than on an empty console capture. An idempotent re-run writes
+            // nothing and prints nothing, which is indistinguishable from a run
+            // that did not work — QA's F83.
+            'firstSucceededAt' => $this->firstSucceededRunPerPeriod($runs->items()),
             'engineKey' => $engineKey,
             'statusFilter' => $status,
             // Full map so historical rows of a now-disabled engine keep their
@@ -430,6 +436,47 @@ final class AdminEngineRunsController extends Controller
                     || Feature::for(null)->active($definition->featureFlagClass),
             ),
         ]);
+    }
+
+    /**
+     * The earliest succeeded run for each engine+period on the page.
+     *
+     * @param  array<int, EngineRun>  $runs
+     * @return array<string, Carbon>
+     */
+    private function firstSucceededRunPerPeriod(array $runs): array
+    {
+        if ($runs === []) {
+            return [];
+        }
+
+        $earliest = [];
+        $periods = array_map(
+            static fn (EngineRun $run): string => $run->period_start->toDateString(),
+            $runs,
+        );
+
+        EngineRun::query()
+            ->select('engine_key', 'period_start')
+            ->selectRaw('MIN(started_at) AS first_started_at')
+            ->where('status', EngineRun::STATUS_SUCCEEDED)
+            ->whereIn('engine_key', array_unique(array_map(
+                static fn (EngineRun $run): string => $run->engine_key,
+                $runs,
+            )))
+            // whereDate over a range, not an IN list of dates: the column holds
+            // a midnight timestamp, so a plain equality against 'YYYY-MM-DD'
+            // matches nothing at all.
+            ->whereDate('period_start', '>=', min($periods))
+            ->whereDate('period_start', '<=', max($periods))
+            ->groupBy('engine_key', 'period_start')
+            ->get()
+            ->each(function (EngineRun $row) use (&$earliest): void {
+                $key = $row->engine_key.'@'.$row->period_start->toDateString();
+                $earliest[$key] = Carbon::parse((string) $row->getAttribute('first_started_at'));
+            });
+
+        return $earliest;
     }
 
     public function trigger(Request $request): RedirectResponse

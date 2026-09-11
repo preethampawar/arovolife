@@ -3,7 +3,13 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
@@ -14,6 +20,21 @@ beforeEach(function (): void {
     disableTestForeignKeys();
     Feature::for(null)->activate(GenosSalesBonusFeature::class);
 });
+
+/** Every flag the monthly completion gate reads; a flag-off engine is excused. */
+function activateCreditingFeatures(): void
+{
+    foreach ([
+        RankBonusFeature::class,
+        GrowthBoosterBonusFeature::class,
+        FortuneBonusFeature::class,
+        AreteDevelopmentCenterBonusFeature::class,
+        PurchaseOffersFeature::class,
+        RepurchaseEngineFeature::class,
+    ] as $feature) {
+        Feature::for(null)->activate($feature);
+    }
+}
 
 /**
  * Make the batch runner throw AFTER the batch row has been flipped to
@@ -64,11 +85,49 @@ it('gsb:weekly-payout names the earning week it pays, not just the batch date', 
 it('payout:monthly-run marks a stuck batch failed and exits non-zero', function () {
     throwOnBatchFinalize();
 
-    $this->artisan('payout:monthly-run', ['--month' => Carbon::today()->format('Y-m')])
-        ->assertExitCode(1);
+    // The two gates are exercised on their own below; this test is about what
+    // happens once the batch is running, so it is handed the same overrides the
+    // payout close hands it on the 8th.
+    $this->artisan('payout:monthly-run', [
+        '--month' => Carbon::today()->format('Y-m'),
+        '--in-flight' => true,
+        '--force' => true,
+    ])->assertExitCode(1);
 
     $batch = PayoutBatch::where('batch_type', PayoutBatch::TYPE_MONTHLY)->first();
 
     expect($batch)->not->toBeNull();
     expect($batch->status)->toBe(PayoutBatch::STATUS_FAILED);
+});
+
+it('payout:monthly-run refuses a batch month that has not closed', function () {
+    // F47: typed bare it used to default to the month in flight and sweep every
+    // unswept Group B/C/D credit — the 1st→8th buffer defeated by one command.
+    $this->artisan('payout:monthly-run', ['--month' => Carbon::today()->format('Y-m')])
+        ->expectsOutputToContain('has not closed yet')
+        ->assertExitCode(1);
+
+    expect(PayoutBatch::count())->toBe(0);
+});
+
+it('payout:monthly-run refuses while the month it pays has incomplete crediting', function () {
+    // The batch month is closed, so only the completion gate can refuse: no
+    // crediting engine has a run for the month whose credits it would sweep.
+    // (A flag-off engine is excused by the gate, so they are on here.)
+    activateCreditingFeatures();
+    $this->artisan('payout:monthly-run', ['--month' => '2026-08'])
+        ->expectsOutputToContain('crediting is incomplete')
+        ->assertExitCode(1);
+
+    expect(PayoutBatch::count())->toBe(0);
+});
+
+it('payout:monthly-run defaults to the month that has just ended, never the live one', function () {
+    activateCreditingFeatures();
+
+    $this->artisan('payout:monthly-run')
+        ->expectsOutputToContain(Carbon::today()->startOfMonth()->subMonthNoOverflow()->format('F Y'))
+        ->assertExitCode(1);
+
+    expect(PayoutBatch::count())->toBe(0);
 });
