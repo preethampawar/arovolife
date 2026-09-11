@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Carry-forward state persists between daily cut-offs. The power side (stronger leg) carries forward up to 4,50,000 BV — excess is flushed at each cut-off. The slab-1 weaker side accumulates indefinitely until the 15,000 BV match. If a BV reversal happens after a cut-off, use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Recalculate Carry-forward</a> to correct the state.
+    Carry-forward state persists between daily cut-offs. The power side (stronger group) carries forward up to 4,50,000 BV — excess is flushed at each cut-off. The slab-1 weaker side accumulates indefinitely until the 15,000 BV match. If a BV reversal happens after a cut-off, use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Recalculate Carry-forward</a> to correct the state.
 </div>
 @enddeveloper
 
@@ -19,6 +19,10 @@
         Near cap (&gt;80%)
     </label>
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <a href="{{ route('admin.compensation.carry-forwards.export', array_filter(['q' => request('q'), 'filter' => request('filter')])) }}"
+       class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
+        ↓ Download CSV
+    </a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

@@ -541,6 +541,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         });
 
         Route::get('carry-forwards', [AdminCarryForwardController::class, 'index'])->name('carry-forwards.index');
+        Route::get('carry-forwards/export', [AdminCarryForwardController::class, 'export'])->name('carry-forwards.export');
 
         Route::get('genos-transactions', [AdminGenosTransactionsController::class, 'index'])->name('genos-transactions.index');
         Route::get('genos-transactions/export', [AdminGenosTransactionsController::class, 'export'])->name('genos-transactions.export');

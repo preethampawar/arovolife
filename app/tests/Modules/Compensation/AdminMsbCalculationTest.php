@@ -98,7 +98,10 @@ it('shows points, value, income and a grand total over the full filtered set', f
         ->assertSee('MSBBBB')
         ->assertSee('Grand total (all filtered rows)')
         ->assertSee('39')                 // total points 21 + 18
-        ->assertSee('9,750.00');          // total income ₹5,250 + ₹4,500
+        ->assertSee('9,750.00')           // total income ₹5,250 + ₹4,500
+        // F91: MSB carries no repurchase deduction, unlike GSB/GBB/RB/FB —
+        // the report must say so rather than leave the absent column silent.
+        ->assertSee('no repurchase deduction applies to MSB', false);
 });
 
 it('filters by sponsor or sponsee ADN search', function () {

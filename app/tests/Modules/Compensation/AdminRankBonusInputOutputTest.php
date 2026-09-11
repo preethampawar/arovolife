@@ -391,6 +391,28 @@ it('carries the blocked count into the rank bonus I&O CSV', function () {
     expect($csv)->toContain(',1,0,1,');
 });
 
+it('F91: rank-bonus tiles use the stored qualifier count and never truncate the pool/credited paise', function () {
+    // Two RAP qualifiers plus one AO-GO grantee: the engine writes the same
+    // frozen qualifier_count (2) onto every row for the rank+month. Before
+    // the fix, the tile recomputed COUNT(*) over the rows (3) and disagreed
+    // with the "Qualifiers 2" formula strip above it, on the same screen.
+    foreach ([201, 202] as $id) {
+        rbIoResult($id, '2026-09-01', 1, 2_504_320, 2, 900_900);
+    }
+    rbIoResult(203, '2026-09-01', 1, 2_504_320, 2, 450_450);
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', ['month' => '2026-09']))
+        ->assertOk();
+
+    $res->assertSee('2 qualifiers', false);
+    $res->assertDontSee('3 qualifiers', false);
+    // Pool ₹25,043.20 and credited ₹22,522.50 must render to the paisa,
+    // never truncated to whole rupees.
+    $res->assertSee('₹25,043.20');
+    $res->assertSee('₹22,522.50');
+});
+
 /**
  * A distributor who reaches a rank after the month's pool was frozen is refused
  * by the engine — a divided pool is never re-divided. The admin report is where

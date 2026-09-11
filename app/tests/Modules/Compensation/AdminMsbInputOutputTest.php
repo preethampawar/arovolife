@@ -99,6 +99,9 @@ it("renders KP's five-earner day: 75 points at ₹40 totalling ₹3,000", functi
     $res->assertSee('360.00');   // 9 × 40
     $res->assertSee('Total MSB score points');
     $res->assertSee('75');
+
+    // F91: the absent deduction column must be explained, not left silent.
+    $res->assertSee('no repurchase deduction applies to MSB', false);
 });
 
 it('sums a sponsor credited by several sponsees into one line', function () {

@@ -53,7 +53,7 @@ final class AdminRankBonusController extends Controller
         $rankSummaries = RankBonusResult::query()
             ->selectRaw('
                 rank_number,
-                COUNT(*) as qualifier_count,
+                MAX(qualifier_count) as qualifier_count,
                 MAX(pool_paise) as pool_paise,
                 SUM(gross_paise) as total_gross_paise,
                 SUM(net_paise) as total_net_paise

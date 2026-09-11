@@ -115,6 +115,27 @@ it('ADC-02: an admin plan edit moves the tooltip with it', function (): void {
         ->assertDontSee('3=1L,');
 });
 
+it('F91: the developer help note says "group", never "leg" — house terminology', function (): void {
+    cutoffRowForToday();
+
+    $developer = User::create([
+        'full_name' => 'Cut-off Developer',
+        'email' => 'cutoff-dev-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.str_pad((string) random_int(7000000000, 9999999999), 10, '0'),
+        'password_hash' => bcrypt('x'),
+        'status' => 'active',
+        'email_verified_at' => now(),
+    ]);
+    $developer->assignRole('developer');
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.daily-cutoffs.index'))
+        ->assertOk()
+        ->assertSee('weaker group resets to zero, power group carries forward')
+        ->assertDontSee('weaker leg')
+        ->assertDontSee('power leg');
+});
+
 it('shows gross, the credit-time repurchase deduction and the credited amount — never admin charge or TDS — on both cut-off screens', function (): void {
     cutoffRowForToday();
     $admin = cutoffAdmin();

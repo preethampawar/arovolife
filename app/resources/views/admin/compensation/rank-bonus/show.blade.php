@@ -35,9 +35,9 @@
     @foreach($rankSummaries as $rankNum => $summary)
     <div class="bg-white rounded-xl border border-gray-200 p-3 text-center">
         <p class="text-[10px] text-gray-600 mb-1 font-medium uppercase tracking-wide">{{ $rankNames[$rankNum] ?? 'Rank '.$rankNum }}</p>
-        <p class="text-sm font-bold text-indigo-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->pool_paise / 100, 0) }}</p>
+        <p class="text-sm font-bold text-indigo-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->pool_paise / 100, 2) }}</p>
         <p class="text-[10px] text-gray-600">pool · {{ $summary->qualifier_count }} qualifiers</p>
-        <p class="text-xs font-semibold text-green-700 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 0) }} credited to wallets</p>
+        <p class="text-xs font-semibold text-green-700 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }} credited to wallets</p>
     </div>
     @endforeach
 </div>

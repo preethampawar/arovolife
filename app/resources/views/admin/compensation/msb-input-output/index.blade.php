@@ -36,6 +36,8 @@
     </a>
 </form>
 
+<p class="mb-4 text-xs text-gray-500">"Income" is the amount credited — no repurchase deduction applies to MSB.</p>
+
 @if($pools->isEmpty())
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
     <p class="px-6 py-8 text-sm text-gray-600 text-center">

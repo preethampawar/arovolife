@@ -6,6 +6,9 @@ declare(strict_types=1);
  * F90: every weaker/power/carry-forward BV figure on the carry-forwards page
  * must carry an explicit Left/Right label from the stored `power_side`,
  * never left for the reader to infer.
+ *
+ * F91: carry-forwards was the only report under /admin/compensation with no
+ * CSV export.
  */
 
 use App\Modules\Compensation\Models\GsbCarryforward;
@@ -88,4 +91,25 @@ it('F90: labels both the power-side and the slab-1 weaker CF with an explicit Le
         // Right; the slab-1 weaker CF is therefore on Left.
         ->assertSee('Right')
         ->assertSee('Left');
+});
+
+it('F91: exports the carry-forwards CSV with BV points and explicit side labels', function () {
+    $distributorId = cfDistributor('CFAAA1');
+
+    GsbCarryforward::create([
+        'distributor_id' => $distributorId,
+        'power_side_bv_paise' => 30_000_000,
+        'power_side' => 'R',
+        'slab1_weaker_bv_paise' => 500_000,
+    ]);
+
+    $csv = $this->actingAs(cfAdmin())
+        ->get(route('admin.compensation.carry-forwards.export'))
+        ->assertOk()
+        ->getContent();
+
+    expect($csv)->toContain('ADN,Power-side CF BV,Power Side,Slab-1 Weaker CF BV,Weaker Side')
+        // BV in a CSV is ungrouped points, never a rupee figure: 30,000,000
+        // paise = 3,00,000 BV → 300000.
+        ->toContain('CFAAA1,300000,Right,5000,Left');
 });

@@ -43,6 +43,8 @@
     </a>
 </form>
 
+<p class="mb-4 text-xs text-gray-500">"Income" is the amount credited — no repurchase deduction applies to MSB.</p>
+
 {{-- Per cut-off day: frozen pool header + the score/point-value formula, symbolic then with the day's values --}}
 @foreach($dayPools as $pool)
     @include('admin.compensation._formulas.msb-day', ['pool' => $pool, 'open' => count($dayPools) === 1])
