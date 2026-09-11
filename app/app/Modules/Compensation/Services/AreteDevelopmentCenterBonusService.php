@@ -131,6 +131,12 @@ final class AreteDevelopmentCenterBonusService
                         referenceId: $result->id,
                         referenceType: 'adc_bonus_result',
                         memo: 'Arete Dev Center Bonus — '.$center->name.' '.$monthStart,
+                        // The month this bonus was EARNED for, not the 1st of the
+                        // next month it is written on. The monthly payout batch
+                        // pays one month's income (QA F48) and reads this; without
+                        // it every ADC credit fell to its write time and waited a
+                        // further month for the bank.
+                        bonusMonth: Carbon::parse($monthStart)->startOfMonth(),
                     );
 
                     $totalNet += $gross;

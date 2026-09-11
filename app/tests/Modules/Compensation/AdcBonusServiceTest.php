@@ -123,6 +123,25 @@ it('credits 3% of the BV collected at the centre to the assigned distributor', f
     expect($ledger->amount_paise)->toBe(30_000);
 });
 
+it('stamps the ADC credit with the month it was earned for', function (): void {
+    // F09: adc_credit was the one monthly stream written with bonus_month NULL,
+    // so no report that groups on the earned month could attribute it — and the
+    // monthly payout batch, which windows on it, cannot either.
+    $assignee = Distributor::factory()->create();
+    $buyer = Distributor::factory()->create();
+
+    $center = makeActiveCenter($assignee->id);
+    seedCenterOrderBv($buyer->id, $center->id, 1_000_000);
+
+    app(AreteDevelopmentCenterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    $ledger = WalletLedgerEntry::where('distributor_id', $assignee->id)
+        ->where('type', 'adc_credit')->sole();
+
+    expect($ledger->bonus_month)->not->toBeNull()
+        ->and($ledger->bonus_month->toDateString())->toBe('2026-06-01');
+});
+
 it('applies the monthly cap of ₹1,00,000 (10,000,000 paise)', function (): void {
     $assignee = Distributor::factory()->create();
     $buyer = Distributor::factory()->create();
