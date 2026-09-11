@@ -82,14 +82,18 @@ Files: `resources/views/income/wallet.blade.php`, `shop/pay-unavailable.blade.ph
 
 ### B6 — Commerce (Opus)
 Files: cart view/`CartService`, checkout address validation, `shop/product.blade.php`, order detail views, returns form, admin order/payment views, footer, `ContentPageSeeder` (policy page only — coordinate: B7 owns publish-state), shop banner/category views.
-- [ ] F34 Cart thumbnail = product's primary gallery image (same source as PDP), never `image_url` hot-links.
-- [ ] F57 Enforce `commerce.shipping.india_mainland_only`: refuse Andaman & Nicobar (744xxx) and Lakshadweep (682551–682559) pincodes at address save + checkout with a clear message.
-- [ ] F58 "GST invoice" badge → "Invoice issued for every order" until R-28 ships.
-- [ ] F59 Distributor price via `IndianNumber`; hide empty Billing card; "1 item" singular; cooling-off counter inclusive (30 days remaining on day 0); database notification on order status change.
-- [ ] F100 Buyer's return form shows the buy-back deduction per reason (less GST where applicable; shipping refunded only on cooling-off) from the same matrix admin renders.
-- [ ] F101 Admin order detail links the invoice (`payments/orders/{order}/invoice`) and its payment intent.
-- [ ] F35 Add a public "Refunds, returns & shipping" policy page (draft, from T&C §4 + buyback matrix + 7-working-day refund) and a footer link; leave it unpublished for the client's review.
-- [ ] F37 `/join` states joining is free; policy pages get the print contact footer; banner "arovolife" (no "Shopping Mall"); shop category list = the 6 homepage categories; carousel arrows do not overlap hero text on mobile; Immunity Booster listing uses its own art. (Officer names stay a launch-gate item.)
+- [x] F34 Cart thumbnail = product's primary gallery image (same source as PDP), never `image_url` hot-links.
+- [x] F57 Enforce `commerce.shipping.india_mainland_only`: refuse Andaman & Nicobar (744xxx) and Lakshadweep (682551–682559) pincodes at address save + checkout with a clear message.
+- [x] F58 "GST invoice" badge → "Invoice issued for every order" until R-28 ships.
+- [x] F59 Distributor price via `IndianNumber`; hide empty Billing card; "1 item" singular; cooling-off counter inclusive (30 days remaining on day 0); database notification on order status change.
+- [x] F100 Buyer's return form shows the buy-back deduction per reason (less GST where applicable; shipping refunded only on cooling-off) from the same matrix admin renders.
+- [x] F101 Admin order detail links the invoice (`payments/orders/{order}/invoice`) and its payment intent.
+- [x] F35 Add a public "Refunds, returns & shipping" policy page (draft, from T&C §4 + buyback matrix + 7-working-day refund) and a footer link; leave it unpublished for the client's review.
+- [!] F37 `/join` states joining is free; policy pages get the print contact footer; banner "arovolife" (no "Shopping Mall"); shop category list = the 6 homepage categories; carousel arrows do not overlap hero text on mobile; Immunity Booster listing uses its own art. (Officer names stay a launch-gate item.)
+- [x] F55 (client Q7) Signed-in Direct Sellers are charged the distributor price; guests, MRP and BV unchanged; cart repriced on sign-in.
+- [x] F56 (client Q14) Verified: `payments.cod.enabled` exists nowhere in the code — staging DB row only, pinned by a test. Ops must delete the row.
+- [x] F102 (client Q15) The return form states that a return covers the whole order; partial returns go to customer care.
+- Notes: F59's "distributor price via IndianNumber" was already correct (`ProductVariant` aliases `IndianNumber as Number`). F37 is `[!]` because two of its sub-items are staging data, not code — the 7th shop category and the Immunity Booster pack art. Both, plus the F35 DSA §5.4 conflict, are written up in `fixes/B6.md`.
 
 ### B7 — Compliance seeding & guards (Opus)
 Files: `database/seeders/{ContentPageSeeder,RolesAndPermissionsSeeder}.php`, `Shared/Rules/NoIncomeProjection.php`, messaging settings defaults, `routes/web.php` gates.
