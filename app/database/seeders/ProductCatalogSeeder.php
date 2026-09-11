@@ -15,9 +15,13 @@ final class ProductCatalogSeeder extends Seeder
 {
     public function run(): void
     {
-        // Demo imagery: royalty-free Unsplash / Picsum stock photos chosen to
-        // show generic, unbranded products. Real product photography replaces
-        // these when the catalogue goes live. Prices/BV in paise; gst in bp.
+        // Demo imagery: royalty-free Unsplash stock photos chosen to show
+        // generic, unbranded products, where one is available. Three later
+        // additions had no such photo and pointed at a random-image
+        // placeholder service (QA F34) — those are null; the storefront
+        // already falls back to a generic icon (Product::primaryImageUrl()).
+        // Real product photography replaces all of these when the catalogue
+        // goes live. Prices/BV in paise; gst in bp.
         //
         // `category_slug` maps to a ProductCategory (seeded by
         // ProductCategorySeeder, which runs first — see DatabaseSeeder).
@@ -80,7 +84,7 @@ final class ProductCatalogSeeder extends Seeder
                 'short_description' => '60 capsules. Zinc, C & elderberry.',
                 'description' => 'Daily immunity support with vitamin C, zinc and elderberry extract.',
                 'hsn_code' => '3004',
-                'image_url' => 'https://picsum.photos/seed/immunity/800/800',
+                'image_url' => null,
                 'mrp' => 65000, 'sale' => 54900, 'cost' => 18000, 'dist' => 45000, 'bv' => 30000, 'gst_bp' => 1800,
             ],
             [
@@ -89,7 +93,7 @@ final class ProductCatalogSeeder extends Seeder
                 'short_description' => '30 ml. Brightening day serum.',
                 'description' => 'A lightweight vitamin C face serum for daily brightening and even tone.',
                 'hsn_code' => '3304',
-                'image_url' => 'https://picsum.photos/seed/vitaminc/800/800',
+                'image_url' => null,
                 'mrp' => 89900, 'sale' => 74900, 'cost' => 24000, 'dist' => 62000, 'bv' => 40000, 'gst_bp' => 1800,
             ],
             [
@@ -98,7 +102,7 @@ final class ProductCatalogSeeder extends Seeder
                 'short_description' => '150 ml. Gentle daily cleanser.',
                 'description' => 'A gentle aloe vera face wash for daily use. Soap-free and pH-balanced.',
                 'hsn_code' => '3401',
-                'image_url' => 'https://picsum.photos/seed/aloe/800/800',
+                'image_url' => null,
                 'mrp' => 35000, 'sale' => 29900, 'cost' => 9000, 'dist' => 25000, 'bv' => 18000, 'gst_bp' => 1800,
             ],
         ];

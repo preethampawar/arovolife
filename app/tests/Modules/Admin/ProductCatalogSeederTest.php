@@ -17,6 +17,9 @@ beforeEach(function (): void {
 });
 
 it('PCS-01: seeds the new products with category, distributor price, BV and image', function (): void {
+    // These three had no Unsplash photo and used to hot-link a random-image
+    // placeholder service (picsum.photos, QA F34); they are null now, and the
+    // storefront falls back to a generic icon (Product::primaryImageUrl()).
     $expected = [
         ['sku' => 'AV-IB-001', 'cat' => 'Health Care', 'dist' => 45000, 'bv' => 30000],
         ['sku' => 'AV-VCS-001', 'cat' => 'Skin and Beauty', 'dist' => 62000, 'bv' => 40000],
@@ -28,10 +31,12 @@ it('PCS-01: seeds the new products with category, distributor price, BV and imag
         expect($p)->not->toBeNull()
             ->and($p->status)->toBe(Product::STATUS_ACTIVE)
             ->and($p->productCategory?->name)->toBe($e['cat'])
-            ->and($p->image_url)->toStartWith('https://')
+            ->and($p->image_url)->toBeNull()
             ->and($p->variants->first()->distributor_price_paise)->toBe($e['dist'])
             ->and($p->variants->first()->bv_paise)->toBe($e['bv']);
     }
+
+    expect(Product::query()->where('image_url', 'like', '%picsum.photos%')->exists())->toBeFalse();
 });
 
 it('PCS-02: Multi-Vitamin gets a distributor price + sorted rich attributes (incl. a table)', function (): void {
