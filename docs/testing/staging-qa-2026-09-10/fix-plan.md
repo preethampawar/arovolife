@@ -32,15 +32,15 @@ Files: `Compensation/Services/EngineStatusService.php`, `Compensation/Support/Mo
 
 ### B3 — Payout operations (Opus)
 Files: `Compensation/Services/{PayoutService,PayoutReconciliationService,WalletService}.php`, `AdminWeeklyPayoutController`, `AdminMonthlyPayoutController`, payout views, NEFT export route, dashboard income snapshot, new migration for `utr_number` unique index.
-- [ ] F14 NEFT import validates the amount column against `net_amount_paise` per line; mismatch → line rejected with reason, batch import reports counts.
-- [ ] F15 Duplicate-UTR guard in import + unique index on `payout_line_items.utr_number` (nullable unique).
-- [ ] F93 Hold reasons re-evaluated at `approve()` (and at batch creation): lines whose hold cleared are released into the batch; the stored `hold_reason` and audit row reflect the re-evaluated state. Test: bank+KYC added after creation → line payable after approve.
-- [ ] F48 Monthly batch gets an earning window: stamp `earnings_through` = last day of the paid month and select only wallet rows with `bonus_month <= month` (or `earned_on <= earnings_through`). Test: next-month credits stay unswept.
-- [ ] F45 Weekly and monthly sweeps take a shared cache/DB lock around the ₹50L cap check + sweep.
-- [ ] F95 (clear half) NEFT export: `can:finance.record`, 403/redirect with a flash on an unapproved batch. Column content stays as-is pending decision D5.
-- [ ] F96 covered by F14/F15/F48 — verify only.
-- [ ] F97 "Wallet balance" column shows gross with the deduction in a separate column (or rename to "Payable before deductions"); confirm modal shows the real held/payable totals; monthly pages post to `monthly-payouts/*` routes.
-- [ ] F52/F89 `WalletService::creditTotalsByMonth()` excludes `repurchase_deduction` (and any non-income types); dashboard THIS MONTH / LIFETIME / chart use it; "Pending payouts" tile = cash-payable only (exclude repurchase wallet). Tests with a deduction row.
+- [x] F14 NEFT import validates the amount column against `net_amount_paise` per line; mismatch → line rejected with reason, batch import reports counts.
+- [x] F15 Duplicate-UTR guard in import + unique index on `payout_line_items.utr_number` (nullable unique).
+- [x] F93 Hold reasons re-evaluated at `approve()` (and at batch creation): lines whose hold cleared are released into the batch; the stored `hold_reason` and audit row reflect the re-evaluated state. Test: bank+KYC added after creation → line payable after approve.
+- [x] F48 Monthly batch gets an earning window: stamp `earnings_through` = last day of the paid month and select only wallet rows with `bonus_month <= month` (or `earned_on <= earnings_through`). Test: next-month credits stay unswept.
+- [x] F45 Weekly and monthly sweeps take a shared cache/DB lock around the ₹50L cap check + sweep.
+- [x] F95 (clear half) NEFT export: `can:finance.record`, 403/redirect with a flash on an unapproved batch. Column content stays as-is pending decision D5.
+- [x] F96 covered by F14/F15/F48 — verify only.
+- [x] F97 "Wallet balance" column shows gross with the deduction in a separate column (or rename to "Payable before deductions"); confirm modal shows the real held/payable totals; monthly pages post to `monthly-payouts/*` routes.
+- [x] F52/F89 `WalletService::creditTotalsByMonth()` excludes `repurchase_deduction` (and any non-income types); dashboard THIS MONTH / LIFETIME / chart use it; "Pending payouts" tile = cash-payable only (exclude repurchase wallet). Tests with a deduction row.
 
 ### B4a — Admin reports & analytics (Sonnet)
 Files: `resources/views/admin/analytics/index.blade.php`, `Commerce/Support/Bv.php`, GBB/Fortune month views, GSB/MSB report views + CSV controllers, `Shared/Support/Csv.php`, `AdminGrievanceReportController`, BV ledger admin routes.
