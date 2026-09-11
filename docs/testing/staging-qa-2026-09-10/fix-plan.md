@@ -55,9 +55,9 @@ Files: `resources/views/admin/analytics/index.blade.php`, `Commerce/Support/Bv.p
 Files: `resources/views/admin/kyc/show.blade.php`, `AdminKycController`, messaging reports view/controller, `Content/Http/Controllers/Admin/*`, content form request, `resources/views/admin/help/*`, Trix asset loading, `ApproveKycSubmission` (F108 only if trivial).
 - [x] F106 KYC previews go through the audited streaming route (`admin.kyc.document_viewed` per view), no presigned URL in the page; the stream route requires the admin session + `kyc.review`. Test: `<img src>` points at the app route; unauthenticated GET is 403.
 - [x] F110 KYC queue "awaiting re-upload" tile counts `flagged_at IS NOT NULL` documents; Approve disabled (and server-side refused) while any document is flagged and unresolved.
-- [ ] F116 Message report shows ADN + link to admin distributor page for reporter and sender.
-- [ ] F117 `sort_order` validated (`nullable|integer`, default 0) → 422 not 500; vendor Trix JS+CSS via npm/Vite (no unpkg); Body field shows an error if the editor fails to boot.
-- [ ] F118 Publish/archive transitions audit as `content_page.published` / `content_page.archived` (announcements too).
+- [x] F116 Message report shows ADN + link to admin distributor page for reporter and sender.
+- [x] F117 `sort_order` validated (`nullable|integer`, default 0) → 422 not 500; vendor Trix JS+CSS via npm/Vite (no unpkg); Body field shows an error if the editor fails to boot.
+- [x] F118 Publish/archive transitions audit as `content_page.published` / `content_page.archived` (announcements too).
 - [ ] F109 Remove the Franchise Programme help card (or restore the doc without the 3% claim); note the orphan `FranchiseFeature` flag row for staging cleanup.
 - [ ] F111 Approval notification via `['mail','database']`; `/admin/distributors` search matches phone; distributor detail gets a KYC-state row; audit log gets an actor filter; root not shown as its own sponsor; flash "has been emailed" only after a successful send (queue failure → "email could not be sent").
 
@@ -93,10 +93,10 @@ Files: cart view/`CartService`, checkout address validation, `shop/product.blade
 
 ### B7 — Compliance seeding & guards (Opus)
 Files: `database/seeders/{ContentPageSeeder,RolesAndPermissionsSeeder}.php`, `Shared/Rules/NoIncomeProjection.php`, messaging settings defaults, `routes/web.php` gates.
-- [ ] F17 `ContentPageSeeder` seeds `compensation` as draft (never published); `platform:reset` path too. Test asserts compensation is unpublished after seeding.
-- [ ] F18 Messaging `reporting_enabled` defaults OFF (until the privacy page is published); admin toggle stays.
-- [ ] F26 New `content.publish` permission (announcement publish/email, content-page publish/archive) → `admin`, `admin-operations`, `admin-compliance` (NOT admin-finance); recompute/reset endpoints → `role:developer` (coordinate with B1 F84: B1 owns the controller, B7 owns the seeder + route gate).
-- [ ] F113 `NoIncomeProjection` adds pattern matching on top of the phrase list: currency amount + period (`₹|rs|inr … per (day|week|month|year)`), `earn/make/income … (per|a|every) (day|week|month)`, `guaranteed|assured|fixed … (income|earning|return)`, percentages of return. Keep an allow-list for the historical-fact copy already seeded. Tests with the T35 sentence and 10 variants, plus 5 legitimate sentences that must pass.
+- [x] F17 `ContentPageSeeder` seeds `compensation` as draft (never published); `platform:reset` path too. Test asserts compensation is unpublished after seeding.
+- [x] F18 Messaging `reporting_enabled` defaults OFF (until the privacy page is published); admin toggle stays.
+- [x] F26 New `content.publish` permission (announcement publish/email, content-page publish/archive) → `admin`, `admin-operations`, `admin-compliance` (NOT admin-finance); recompute/reset endpoints → `role:developer` (coordinate with B1 F84: B1 owns the controller, B7 owns the seeder + route gate).
+- [x] F113 `NoIncomeProjection` adds pattern matching on top of the phrase list: currency amount + period (`₹|rs|inr … per (day|week|month|year)`), `earn/make/income … (per|a|every) (day|week|month)`, `guaranteed|assured|fixed … (income|earning|return)`, percentages of return. Keep an allow-list for the historical-fact copy already seeded. Tests with the T35 sentence and 10 variants, plus 5 legitimate sentences that must pass.
 
 ### B8 — Repurchase (Opus)
 Files: `2026_09_06_100003_backfill_verdicts…` migration, new migration, `RepurchaseEvaluateCommand` + service.
