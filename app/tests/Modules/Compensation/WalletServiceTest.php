@@ -100,6 +100,26 @@ it('creditTotalsByMonth buckets positive credits into six zero-filled IST months
         ->and(array_sum($series))->toBe(300_000);
 });
 
+it('creditTotalsByMonth ignores the repurchase-wallet credit so a month can never exceed lifetime income', function () {
+    // QA F52: `repurchase_deduction` is a POSITIVE row — the credit that lands
+    // in the repurchase wallet, not income — so counting it made the dashboard
+    // report more income THIS MONTH than LIFETIME, by exactly the deduction.
+    $dist = Distributor::factory()->create();
+    $svc = app(WalletService::class);
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $dist->id, 'type' => 'gsb_credit', 'amount_paise' => 200_000, 'created_at' => now()],
+        ['distributor_id' => $dist->id, 'type' => 'repurchase_deduction', 'amount_paise' => 20_000, 'created_at' => now()],
+        ['distributor_id' => $dist->id, 'type' => 'repurchase_transfer', 'amount_paise' => -20_000, 'created_at' => now()],
+    ]);
+
+    $series = $svc->creditTotalsByMonth($dist->id, 6);
+    $thisMonth = now()->timezone('Asia/Kolkata')->format('Y-m');
+
+    expect($series[$thisMonth])->toBe(200_000)
+        ->and(array_sum($series))->toBe(200_000);
+});
+
 it('stamps the earned month on all three entries of a bonus credit', function () {
     // The gross credit, the repurchase_transfer debit and the repurchase_deduction
     // credit are one economic event and must agree on which month they belong to.

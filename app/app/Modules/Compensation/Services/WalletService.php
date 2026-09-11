@@ -72,6 +72,12 @@ class WalletService
      * Same "money that actually reached the wallet" source as
      * creditTotalsByType(), bucketed on IST month boundaries.
      *
+     * Repurchase-wallet types are excluded, exactly as {@see balancePaise()}
+     * excludes them: `repurchase_deduction` is a POSITIVE row — the credit that
+     * lands in the repurchase wallet — so counting it made a month's income
+     * exceed the lifetime total by the size of the deduction on the dashboard
+     * tile, the totals row and the six-month chart (QA F52/F89).
+     *
      * @return array<string, int> Y-m => total paise
      */
     public function creditTotalsByMonth(int $distributorId, int $months = 6): array
@@ -81,6 +87,7 @@ class WalletService
         $start = $nowIst->copy()->startOfMonth()->subMonthsNoOverflow($months - 1);
 
         $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
+            ->whereNotIn('type', self::REPURCHASE_TYPES)
             ->where('amount_paise', '>', 0)
             ->where('created_at', '>=', $start->copy()->timezone(config('app.timezone')))
             ->get(['amount_paise', 'created_at']);

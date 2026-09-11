@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -128,4 +129,23 @@ it('reads the earning window off the batch and never re-derives it', function ()
     expect($stamped->weeklyEarningThrough()?->toDateString())->toBe('2026-09-15')
         ->and($unstamped->weeklyEarningThrough())->toBeNull()
         ->and($legacy->weeklyEarningThrough())->toBeNull();
+});
+
+it('excludes the repurchase wallet from the admin Pending payouts tile', function (): void {
+    // QA F89: the tile summed the raw ledger, so the repurchase wallet — a pot
+    // that never reaches a bank — was reported as cash queued for transfer.
+    $dist = Distributor::factory()->create();
+
+    DB::table('wallet_ledger_entries')->insert([
+        ['distributor_id' => $dist->id, 'type' => 'gsb_credit', 'amount_paise' => 100_000, 'created_at' => now()],
+        ['distributor_id' => $dist->id, 'type' => 'repurchase_transfer', 'amount_paise' => -10_000, 'created_at' => now()],
+        ['distributor_id' => $dist->id, 'type' => 'repurchase_deduction', 'amount_paise' => 10_000, 'created_at' => now()],
+    ]);
+
+    $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.overview'))
+        ->assertOk()
+        // Cash payable is ₹900, not the ₹1,000 the whole ledger sums to.
+        ->assertSee('₹900.00')
+        ->assertDontSee('₹1,000.00');
 });

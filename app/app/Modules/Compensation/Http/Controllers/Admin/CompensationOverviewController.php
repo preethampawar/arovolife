@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\IncomeOverviewService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -34,7 +35,13 @@ final class CompensationOverviewController extends Controller
             default => 'pending',
         };
 
-        $pendingPayoutPaise = (int) WalletLedgerEntry::selectRaw('SUM(amount_paise) as total')->value('total');
+        // Main-wallet balance only, exactly as WalletService::balancePaise()
+        // scopes one distributor's: the repurchase-wallet types are a separate
+        // pot that never goes to a bank, and summing the raw ledger put it in
+        // the cash figure finance reads before approving a batch (QA F89).
+        $pendingPayoutPaise = (int) WalletLedgerEntry::whereNotIn('type', WalletService::REPURCHASE_TYPES)
+            ->selectRaw('SUM(amount_paise) as total')
+            ->value('total');
 
         // The next weekly batch date comes from IncomeOverviewService (which
         // already knows a Tuesday stops being "next" once 03:00 IST has passed);

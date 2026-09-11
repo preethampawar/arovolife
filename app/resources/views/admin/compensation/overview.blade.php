@@ -38,7 +38,7 @@
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Pending payouts
-            <x-help-tip text="Total amount queued for the next Tuesday bank transfer ({{ $nextWeeklyPayout->format('d M Y') }}), which pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}. Does not include wallets below the ₹{{ \App\Modules\Shared\Support\IndianNumber::format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum." />
+            <x-help-tip text="Total amount queued for the next Tuesday bank transfer ({{ $nextWeeklyPayout->format('d M Y') }}), which pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}. Does not include wallets below the ₹{{ \App\Modules\Shared\Support\IndianNumber::format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum. Cash payable only — repurchase wallet balances are excluded." />
         </p>
         <p class="mt-1 text-lg font-bold text-blue-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pendingPayoutPaise / 100, 2) }}</p>
     </div>
