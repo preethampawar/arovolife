@@ -16,8 +16,9 @@
      layout for every page. Do not repeat them here. --}}
 
 {{-- TESTING-ONLY purchase-data reset. Same guard as the recompute above: when
-     it refuses, nothing here is rendered at all. --}}
-@if($recomputeAllowed)
+     it refuses, nothing here is rendered at all — including the database name
+     and the row counts, which are not for the whole admin role family. --}}
+@if($destructiveToolsVisible)
 @php $purchaseResetTotal = array_sum($purchaseResetRowCounts); @endphp
 <div class="mb-6 rounded-xl border-2 border-red-300 bg-red-50 p-4">
     <p class="text-sm font-bold text-red-900">Testing tool — reset purchase data (start a fresh test cycle)</p>
@@ -93,9 +94,10 @@
 </script>
 @endif
 
-{{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it,
-     so on any environment where it is off there is no trace of it here. --}}
-@if($recomputeAllowed)
+{{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it
+     AND the reader holds the developer role, so on any environment where it is
+     off — or for any other admin — there is no trace of it here. --}}
+@if($destructiveToolsVisible)
 @php $recomputeTotal = array_sum($recomputeRowCounts); @endphp
 <div class="mb-6 rounded-xl border-2 border-red-300 bg-red-50 p-4">
     <p class="text-sm font-bold text-red-900">Testing tool — recompute everything from scratch</p>

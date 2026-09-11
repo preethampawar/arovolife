@@ -400,7 +400,7 @@ it('still allows in-flight periods for engines that do not freeze economics', fu
 it('hides the recompute card entirely when the gate is closed', function (): void {
     config(['arovolife.recompute.enabled' => false]);
 
-    $response = $this->actingAs(engineRunsUser('admin'))
+    $response = $this->actingAs(engineRunsUser('developer'))
         ->get(route('admin.compensation.engine-runs.index'));
 
     $response->assertOk();
@@ -409,10 +409,10 @@ it('hides the recompute card entirely when the gate is closed', function (): voi
     $response->assertDontSee('recompute-all');
 });
 
-it('shows the recompute card to an admin when the gate is open', function (): void {
+it('shows the recompute card to the developer when the gate is open', function (): void {
     config(['arovolife.recompute.enabled' => true]);
 
-    $response = $this->actingAs(engineRunsUser('admin'))
+    $response = $this->actingAs(engineRunsUser('developer'))
         ->get(route('admin.compensation.engine-runs.index'));
 
     $response->assertOk();
@@ -426,10 +426,46 @@ it('shows the recompute card to an admin when the gate is open', function (): vo
     $response->assertSee('Testing tool — reset purchase data (start a fresh test cycle)', false);
 });
 
+it('keeps both testing tools away from every admin who is not the developer', function (): void {
+    // F84: the cards rendered on RecomputeGuard alone, so `admin`,
+    // `admin-finance`, `admin-compliance` and `admin-operations` all saw two
+    // destructive buttons — with the target database name and its row counts
+    // printed beside them. The guard answers for the environment, never for
+    // the reader.
+    config(['arovolife.recompute.enabled' => true]);
+
+    foreach (['admin', 'admin-finance', 'admin-compliance', 'admin-operations'] as $role) {
+        $user = engineRunsUser($role);
+
+        $this->actingAs($user)
+            ->get(route('admin.compensation.engine-runs.index'))
+            ->assertOk()
+            ->assertDontSee('Testing tool — recompute everything from scratch', false)
+            ->assertDontSee('Testing tool — reset purchase data (start a fresh test cycle)', false)
+            ->assertDontSee('recompute-all')
+            ->assertDontSee('reset-purchase-data');
+
+        // 404 from the controller for the roles that hold `finance.record`,
+        // 403 from the route's own permission gate for the roles that do not.
+        // Either way the tool is out of reach.
+        expect($this->actingAs($user)
+            ->post(route('admin.compensation.engine-runs.recompute-all'))
+            ->status())->toBeIn([403, 404]);
+
+        expect($this->actingAs($user)
+            ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => 'x'])
+            ->status())->toBeIn([403, 404]);
+
+        $this->actingAs($user)
+            ->get(route('admin.compensation.engine-runs.recompute-progress'))
+            ->assertNotFound();
+    }
+});
+
 it('hides the purchase-data reset when the gate is closed', function (): void {
     config(['arovolife.recompute.enabled' => false]);
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->get(route('admin.compensation.engine-runs.index'))
         ->assertOk()
         ->assertDontSee('Testing tool — reset purchase data (start a fresh test cycle)', false)
@@ -439,7 +475,7 @@ it('hides the purchase-data reset when the gate is closed', function (): void {
 it('404s the purchase-data reset when the gate is closed', function (): void {
     config(['arovolife.recompute.enabled' => false]);
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => 'x'])
         ->assertNotFound();
 });
@@ -447,7 +483,7 @@ it('404s the purchase-data reset when the gate is closed', function (): void {
 it('refuses a purchase-data reset unless the database name is typed exactly', function (): void {
     config(['arovolife.recompute.enabled' => true]);
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->from(route('admin.compensation.engine-runs.index'))
         ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => 'not-the-db'])
         ->assertSessionHasErrors('confirm_database');
@@ -469,7 +505,7 @@ it('wipes orders on a confirmed purchase-data reset but keeps the distributors',
 
     $database = app(RecomputeGuard::class)->targetDatabase();
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => $database])
         ->assertRedirect(route('admin.compensation.engine-runs.index'))
         ->assertSessionHas('status');
@@ -483,7 +519,7 @@ it('wipes orders on a confirmed purchase-data reset but keeps the distributors',
 it('404s the recompute endpoint when the gate is closed', function (): void {
     config(['arovolife.recompute.enabled' => false]);
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.recompute-all'))
         ->assertNotFound();
 });
@@ -492,7 +528,7 @@ it('queues the recompute rather than running it inline', function (): void {
     config(['arovolife.recompute.enabled' => true]);
     Queue::fake();
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.recompute-all'))
         ->assertRedirect(route('admin.compensation.engine-runs.index'))
         ->assertSessionHas('status');
@@ -521,7 +557,7 @@ it('replaces the previous run summary with a queued state the moment a new run i
         durationSeconds: 32.5,
     ));
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.recompute-all'));
 
     $state = $progress->read();
@@ -561,7 +597,7 @@ it('refuses the whole scaffold when the connected database is not on the allow-l
 
     expect(app(RecomputeGuard::class)->isPermitted())->toBeFalse();
 
-    $admin = engineRunsUser('admin');
+    $admin = engineRunsUser('developer');
 
     $this->actingAs($admin)
         ->get(route('admin.compensation.engine-runs.index'))
@@ -594,7 +630,7 @@ it('names the database in the refusal so the operator sees which one it read', f
 it('records who ordered a purchase reset and what was standing before it ran', function (): void {
     config(['arovolife.recompute.enabled' => true]);
 
-    $admin = engineRunsUser('admin');
+    $admin = engineRunsUser('developer');
     $distributor = Distributor::factory()->create();
     DB::table('bv_ledger_entries')->insert([
         'distributor_id' => $distributor->id,
@@ -648,7 +684,7 @@ it('refuses a purchase reset while the replay lock is held rather than stealing 
     // thing a re-run cannot recover from, so the reset must stand down.
     Cache::lock(RecomputeAllJob::LOCK_KEY, 900)->get();
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->from(route('admin.compensation.engine-runs.index'))
         ->post(route('admin.compensation.engine-runs.reset-purchase-data'), [
             'confirm_database' => app(RecomputeGuard::class)->targetDatabase(),
@@ -663,7 +699,7 @@ it('requires the operator to acknowledge the engines a partial replay will not r
     config(['arovolife.recompute.enabled' => true]);
     Queue::fake();
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->from(route('admin.compensation.engine-runs.index'))
         ->post(route('admin.compensation.engine-runs.recompute-all'), [
             'from' => today()->toDateString(),
@@ -674,7 +710,7 @@ it('requires the operator to acknowledge the engines a partial replay will not r
 
     Queue::assertNothingPushed();
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.recompute-all'), [
             'from' => today()->toDateString(),
             'windowed' => '1',
@@ -692,7 +728,7 @@ it('accepts a To date through the end of next month and rejects later ones', fun
 
     $nextMonthEnd = Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString();
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.recompute-all'), [
             'to' => $nextMonthEnd,
         ])
@@ -705,7 +741,7 @@ it('accepts a To date through the end of next month and rejects later ones', fun
 
     $tooFar = Carbon::today()->addMonthNoOverflow()->endOfMonth()->addDay()->toDateString();
 
-    $this->actingAs(engineRunsUser('admin'))
+    $this->actingAs(engineRunsUser('developer'))
         ->post(route('admin.compensation.engine-runs.recompute-all'), [
             'to' => $tooFar,
         ])

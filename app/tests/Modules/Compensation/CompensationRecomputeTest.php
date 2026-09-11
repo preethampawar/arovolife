@@ -41,17 +41,18 @@ beforeEach(function (): void {
     config(['arovolife.recompute.enabled' => true]);
 });
 
+/** The recompute console is developer-only (F84), on top of RecomputeGuard. */
 function recomputeAdmin(): User
 {
     $user = User::create([
-        'full_name' => 'Recompute Admin',
+        'full_name' => 'Recompute Developer',
         'email' => 'recompute-admin-'.uniqid().'@test.com',
         'phone_e164' => '+91'.str_pad((string) random_int(7000000000, 9999999999), 10, '0'),
         'password_hash' => bcrypt('x'),
         'status' => 'active',
         'email_verified_at' => now(),
     ]);
-    $user->assignRole('admin');
+    $user->assignRole('developer');
 
     return $user;
 }

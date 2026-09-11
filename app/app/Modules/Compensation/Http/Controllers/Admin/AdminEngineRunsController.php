@@ -52,7 +52,7 @@ final class AdminEngineRunsController extends Controller
         private readonly RecomputeProgress $recomputeProgress,
     ) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $definitions = EngineRegistry::all();
         $lastRuns = $this->status->lastRunPerEngine(EngineRegistry::keys());
@@ -96,25 +96,34 @@ final class AdminEngineRunsController extends Controller
             ];
         }
 
+        // The destructive testing cards are developer-only ON TOP of the guard.
+        // The guard answers for the environment; it cannot answer for the
+        // reader, and `admin`, `admin-finance`, `admin-compliance` and
+        // `admin-operations` all reach this page. A route-level `role:developer`
+        // gate covers the POSTs; this decides whether the cards — and the
+        // database name and row counts printed on them — exist at all.
+        $destructiveToolsVisible = $this->destructiveToolsAllowed($request);
+
         return view('admin.compensation.engine-runs.index', [
             'engines' => $engines,
-            // TESTING-ONLY recompute. The view asks the guard rather than
+            // TESTING-ONLY recompute. The view asks the controller rather than
             // re-deciding; when it refuses, the card is not rendered at all.
             'recomputeAllowed' => $this->recomputeGuard->isPermitted(),
+            'destructiveToolsVisible' => $destructiveToolsVisible,
             'recomputeTargetDatabase' => $this->recomputeGuard->targetDatabase(),
-            'recomputeRowCounts' => $this->recomputeGuard->isPermitted() ? $this->wiper->preview() : [],
+            'recomputeRowCounts' => $destructiveToolsVisible ? $this->wiper->preview() : [],
             // Engine checkboxes for a partial replay, and the purchase-reset
             // card's own preview — both only when the guard permits.
             // Orchestrators are excluded: the replay drives the individual
             // engines directly and skips the closes, so a ticked box would
             // silently replay nothing.
-            'recomputeEngines' => $this->recomputeGuard->isPermitted()
+            'recomputeEngines' => $destructiveToolsVisible
                 ? array_filter(
                     EngineRegistry::all(),
                     static fn (EngineDefinition $definition): bool => ! $definition->isOrchestrator,
                 )
                 : [],
-            'purchaseResetRowCounts' => $this->recomputeGuard->isPermitted()
+            'purchaseResetRowCounts' => $destructiveToolsVisible
                 ? app(PurchaseDataResetAction::class)->preview()
                 : [],
             'recomputePresets' => [
@@ -136,7 +145,7 @@ final class AdminEngineRunsController extends Controller
      */
     public function recomputeAll(Request $request, IncomeEligibilityService $eligibility): RedirectResponse
     {
-        abort_unless($this->recomputeGuard->isPermitted(), 404);
+        abort_unless($this->destructiveToolsAllowed($request), 404);
 
         $validated = $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
@@ -274,7 +283,7 @@ final class AdminEngineRunsController extends Controller
      */
     public function resetPurchaseData(Request $request, PurchaseDataResetAction $reset): RedirectResponse
     {
-        abort_unless($this->recomputeGuard->isPermitted(), 404);
+        abort_unless($this->destructiveToolsAllowed($request), 404);
 
         $validated = $request->validate([
             'confirm_database' => ['required', 'string', Rule::in([$this->recomputeGuard->targetDatabase()])],
@@ -350,11 +359,24 @@ final class AdminEngineRunsController extends Controller
      * Read-only and cheap — it reads one cache key, never the database, which
      * matters because the replay is mid-truncation for part of its life.
      */
-    public function recomputeProgress(): JsonResponse
+    public function recomputeProgress(Request $request): JsonResponse
     {
-        abort_unless($this->recomputeGuard->isPermitted(), 404);
+        abort_unless($this->destructiveToolsAllowed($request), 404);
 
         return response()->json($this->recomputeProgress->read() ?? ['state' => 'idle']);
+    }
+
+    /**
+     * Both testing tools destroy data, and both print the target database name
+     * and its row counts before they do. The environment guard is necessary and
+     * not sufficient: it says the DATA may be destroyed here, never that THIS
+     * reader may destroy it. Enforced in the controller as well as on the route
+     * so either gate alone is enough.
+     */
+    private function destructiveToolsAllowed(Request $request): bool
+    {
+        return $this->recomputeGuard->isPermitted()
+            && $request->user()?->hasRole('developer') === true;
     }
 
     public function events(Request $request): View
