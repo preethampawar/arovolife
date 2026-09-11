@@ -100,6 +100,7 @@ use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController;
 use App\Modules\Identity\Http\Controllers\KycResubmitController;
 use App\Modules\Identity\Http\Controllers\MembershipCardController;
+use App\Modules\Identity\Http\Controllers\NotificationController;
 use App\Modules\Identity\Http\Controllers\ProfileController;
 use App\Modules\Identity\Http\Controllers\ProfileStatsController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
@@ -993,6 +994,12 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])
         ->whereNumber('announcement')->name('announcements.show');
+
+    // The distributor's own in-app notification inbox (database channel,
+    // e.g. an order status change — F59). Not flag-gated: it is the same
+    // bell as messages/announcements (F54), but always-on.
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/{id}/open', [NotificationController::class, 'open'])->name('notifications.open');
 
     // The distributor's own offers: point balance, streak and entitlements.
     Route::get('/my/offers', [MyOffersController::class, 'index'])->name('my.offers.index');

@@ -1843,6 +1843,12 @@ parameters:
 			path: tests/Modules/Admin/AdminDistributorCreateTest.php
 
 		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminDistributorCreateTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 7
@@ -1947,6 +1953,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminLineChangeControllerTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
 			count: 1
 			path: tests/Modules/Admin/AdminLineChangeControllerTest.php
 
@@ -3295,6 +3307,12 @@ parameters:
 			path: tests/Modules/Identity/DistributorRequestTest.php
 
 		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 3
+			path: tests/Modules/Identity/DistributorRequestTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -3383,6 +3401,12 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/Identity/KycResubmitTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Modules/Identity/NotificationControllerTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
