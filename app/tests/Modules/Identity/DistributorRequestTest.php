@@ -9,6 +9,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Notifications\DistributorRequestDecidedNotification;
 use App\Modules\Identity\Notifications\DistributorRequestSubmittedNotification;
 use App\Modules\Shared\Features\DistributorRequestsFeature;
+use App\Modules\Shared\Security\ScannerUnavailableException;
+use App\Modules\Shared\Security\VirusScanner;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -170,4 +172,76 @@ test('transfer and cancellation are decided by compliance and approval only ackn
     $doc = $transfer->documents()->firstOrFail();
     $this->actingAs($compliance)->get(route('admin.distributor-requests.document', [$transfer, $doc]))->assertOk();
     expect(AuditLog::where('action', 'distributor_request.document_viewed')->where('subject_id', $transfer->id)->exists())->toBeTrue();
+});
+
+test('a refused submit keeps everything the distributor typed (F78)', function (): void {
+    $distributor = Distributor::factory()->create();
+
+    // The document is missing, so validation refuses the submit. The name and
+    // the free-text reason must survive the round trip — retyping a 2,000-char
+    // reason after a server-side refusal is the defect this pins.
+    $refused = $this->actingAs($distributor->user)
+        ->from(route('my.requests.create', ['type' => 'name_correction']))
+        ->post(route('my.requests.store'), [
+            'type' => 'name_correction',
+            'requested_full_name' => 'Ravi Kumar Reddy',
+            'reason' => 'My surname is missing from the certificate.',
+        ]);
+
+    $refused->assertRedirect(route('my.requests.create', ['type' => 'name_correction']));
+    $refused->assertSessionHasInput('requested_full_name', 'Ravi Kumar Reddy');
+    $refused->assertSessionHasInput('reason', 'My surname is missing from the certificate.');
+
+    // …and the re-rendered form actually puts them back in the fields.
+    $this->actingAs($distributor->user)
+        ->get(route('my.requests.create', ['type' => 'name_correction']))
+        ->assertOk()
+        ->assertSee('Ravi Kumar Reddy')
+        ->assertSee('My surname is missing from the certificate.');
+
+    // The staging repro was a scanner refusal — a file WAS attached, so the
+    // flashed input has to survive having the UploadedFile stripped out of it.
+    $this->instance(VirusScanner::class, new class implements VirusScanner
+    {
+        public function assertClean(UploadedFile $file): void
+        {
+            throw new ScannerUnavailableException('no scanner configured');
+        }
+    });
+
+    $this->actingAs($distributor->user)
+        ->from(route('my.requests.create', ['type' => 'name_correction']))
+        ->post(route('my.requests.store'), [
+            'type' => 'name_correction',
+            'requested_full_name' => 'Ravi Kumar Reddy',
+            'reason' => 'Scanner was down when I first tried.',
+            'documents' => ['id_proof' => [drPdf('pan.pdf')]],
+        ])
+        ->assertRedirect(route('my.requests.create', ['type' => 'name_correction']))
+        ->assertSessionHasInput('requested_full_name', 'Ravi Kumar Reddy')
+        ->assertSessionHasInput('reason', 'Scanner was down when I first tried.');
+
+    $this->app->forgetInstance(VirusScanner::class);
+
+    // A second refusal — this time the service refuses, not the validator —
+    // must behave the same way.
+    $this->actingAs($distributor->user)
+        ->from(route('my.requests.create', ['type' => 'name_correction']))
+        ->post(route('my.requests.store'), [
+            'type' => 'name_correction',
+            'requested_full_name' => 'Ravi Kumar Reddy',
+            'reason' => 'Second attempt.',
+            'documents' => ['id_proof' => [drPdf('pan.pdf')]],
+        ])->assertRedirect(route('my.requests.index'));
+
+    $this->actingAs($distributor->user)
+        ->from(route('my.requests.create', ['type' => 'name_correction']))
+        ->post(route('my.requests.store'), [
+            'type' => 'name_correction',
+            'requested_full_name' => 'Ravi Kumar Reddy',
+            'reason' => 'A duplicate open request.',
+            'documents' => ['id_proof' => [drPdf('pan.pdf')]],
+        ])
+        ->assertRedirect(route('my.requests.create', ['type' => 'name_correction']))
+        ->assertSessionHasInput('reason', 'A duplicate open request.');
 });
