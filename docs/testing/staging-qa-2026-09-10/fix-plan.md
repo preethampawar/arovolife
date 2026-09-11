@@ -49,7 +49,7 @@ Files: `resources/views/admin/analytics/index.blade.php`, `Commerce/Support/Bv.p
 - [x] F90 Every weaker/power/carry-forward figure in GSB reports (daily calc, I&O, carry-forwards) shows an explicit Left/Right label from the stored `power_side`.
 - [x] F91 MSB reports note "No repurchase deduction applies to MSB"; rank-bonus month page uses one qualifier count; tiles keep paise (no truncation); carry-forwards gets a CSV export; "leg" → "group" in daily-cutoffs help text.
 - [x] F122 `Csv::safe()` accepts `int|float|string|null`; grievance report export formats the float to 2 dp. Test: export with a fractional median returns 200.
-- [ ] F103 BV-ledger admin routes gated `can:audit.read`; headings "Personal BV" / "Lifetime personal BV".
+- [x] F103 BV-ledger admin routes gated `can:audit.read`; headings "Personal BV" / "Lifetime personal BV".
 
 ### B4b — Admin KYC, content, messaging (Opus)
 Files: `resources/views/admin/kyc/show.blade.php`, `AdminKycController`, messaging reports view/controller, `Content/Http/Controllers/Admin/*`, content form request, `resources/views/admin/help/*`, Trix asset loading, `ApproveKycSubmission` (F108 only if trivial).
@@ -105,27 +105,40 @@ Files: `2026_09_06_100003_backfill_verdicts…` migration, new migration, `Repur
 - [ ] F23 `repurchase:evaluate` isolates per-distributor exceptions (continue, collect), exits non-zero with a `failed_partial` summary listing the ADNs; `gsb:daily-cutoff` gate reads that summary and refuses only when the failure count is non-zero — document the choice.
 - [ ] F24 `repurchase:evaluate` writes a run summary (evaluated / fulfilled / failed / forfeited counts).
 
-## B. Awaiting user decision (Wave 2) — see the yes/no list sent 2026-09-11
-- [?] F10 windowed recompute on staging (destructive; 5-point warning before running)
-- [?] F120 company centre assignment / engine exclusion + reversal of ₹10,500
-- [?] F94 maker-checker (`finance.approve`, `created_by`, self-approval blocked)
-- [?] F70 self-service bank-details page (+ F28 confirmation & beneficiary name)
-- [?] F44/F95 NEFT export columns
-- [?] F33 MSB as repurchase-deduction source
-- [?] F55 which price members pay
-- [?] F115 announcement publish rule
-- [?] F71/F72 consent withdrawal copy + agreements registry
-- [?] F107 purge scope on KYC approval
-- [?] F82 staging recompute gate
-- [?] F114 re-seed permissions on staging
-- [?] F77 helpline hours
-- [?] F36 guest browsing
-- [?] F65/F69 downline ADNs + suggest endpoint under R-65
-- [?] F56 COD
-- [?] F102 per-line returns
-- [?] F108 audit before/after hashes scope
-- [?] F11 supervisor timeout on staging
-- [?] F74 ClamAV on staging
+## B. Client decisions (received 2026-09-11 ~12:45 IST) → Wave 3 batches
+
+| Q | Finding | Decision | Batch |
+|---|---|---|---|
+| 1 | F10 | YES — windowed recompute on staging from 2026-09-01, after deploy of this branch; 5-point warning first | ops |
+| 2 | F120 | NO — engine excludes `centre_type='company'`; admin cannot assign a distributor to a company centre; the ₹10,500 stays with the company (staging row rebuilt by F10) | B11 |
+| 3 | F94 | YES — `finance.approve` (admin only), `payout_batches.created_by`, creator cannot approve own batch | B9 |
+| 4 | F70 | YES — self-service Bank details page (account ×2, IFSC, beneficiary name, OTP, audit) | B10 |
+| 5 | F44/F95 | YES — NEFT export becomes a bank-upload file (account no, IFSC, beneficiary name), approved batches only, finance only, audited per download | B9 |
+| 6 | F33 | YES — MSB becomes the 5th repurchase-deduction source | B11 |
+| 7 | F55 | YES — members pay the distributor price | B6 |
+| 8 | F115 | NO — several live announcements; pin limit 3 stays. Closed by design | — |
+| 9 | F71/F72 | YES both — missing consent row = live consent for the withdrawal flow; backfill `agreements`; "My consents & agreements" page | B12 |
+| 10 | F107 | CLIENT: keep ALL KYC images (incl. PAN + Aadhaar front) and fix R-31 wording. **Compliance stop on the Aadhaar images (hard rule 8)** — compliant alternative offered 2026-09-11; awaiting answer | [?] |
+| 11 | F77 | YES — 10:00–18:00 Mon–Sat; footer + Grievance Redressal Policy to match | B12 |
+| 12 | F36 | keep guest browsing. Closed by design | — |
+| 13 | F65 | keep ADN list; strip email/phone from `/tree/suggest` | B5a |
+| 14 | F56 | COD stays off — remove the orphan setting | B6 |
+| 15 | F102 | NO — whole-order returns; say so on the form | B6 |
+| 16 | F108 | YES — before/after digests on every admin/KYC/settings mutation | B13 (last) |
+| 17 | F114 | YES — seeder run on staging 2026-09-11 12:50 IST: permissions 12→13, `messaging.moderate` on admin/admin-operations/admin-compliance/developer. Re-run after deploy for `content.publish`/`finance.approve` | done |
+| 18 | F82 | YES — gate stays open on staging; red banner on Engine Runs while open | B11 |
+| 19 | F11 | YES — file is root-owned (`/etc/supervisor/conf.d/ahdhesuhty_3.conf`); user edits the compensation worker in the Cloudways panel: `--timeout=7200` | user |
+| 20 | F74 | CLIENT: disable ClamAV on staging and prod, never block uploads → `CLAMAV_ENABLED=false` switch, fail-open only when explicitly disabled, warning log per unscanned upload, risk-register entry. `.env` change on staging at deploy time | B12 + ops |
+| 21 | F04 | YES — digest arrived. Closed | — |
+
+### Wave 3 batches
+- B9 (Opus, after B3): F94, F44/F95 (+F28 beneficiary name column shared with B10)
+- B10 (Opus): F70 + F28
+- B11 (Opus): F33, F120, F82 banner
+- B12 (Opus): F71, F72, F77, F74 switch
+- B13 (Opus, last): F108
+- B4b (Opus): F106, F110, F116, F117, F118, F109, F111 (F107 excluded — pending)
+- B8 (Opus, after B2): F21, F22, F23, F24
 
 ## C. Not code — client / ops / data
 - [-] F01 real BV values (client)   · [-] F03 ElasticEmail daily limit (ops)   · [-] F04 digest inbox (user)
