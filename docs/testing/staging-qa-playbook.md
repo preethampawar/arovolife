@@ -203,3 +203,15 @@ Generated from the findings register of the last run (status not Closed/Info). B
 - **F123 note** (T42): the SSH user's crontab belongs to another Cloudways app; verify ahdhesuhty's cron via overnight `engine_runs` rows instead. Silence the `LOG_SLACK_WEBHOOK_URL is empty` warning (3,517 lines/day) before the next sweep.
 
 _Appendix generated 2026-09-11 from F01–F123 (complete first run)._
+
+## 10. Fix phase (added 2026-09-11 after the first fix run)
+
+How the 123 findings were fixed, and what to do differently next time.
+
+- **Plan first, one document.** `fix-plan.md` splits findings into (A) clear-path code batches by module with disjoint file sets, (B) decisions for the user in yes/no form with a one-line explanation and a recommendation, (C) not-code (client/ops/data). The user forwards (B) to the client and returns "Client yes/no" per question; record the answers in the same file.
+- **Batches.** 14 batches of 3–11 findings, Opus for logic, Sonnet for copy/report batches; each gets `fixes/IMPLEMENTER-BRIEF.md` + its section of the plan + the F-rows, writes `fixes/<batch>.md` incrementally and ticks the plan. Keep ≤ 8 concurrent: 10 concurrent burned the Opus session limit twice (kills at 12:40 and 17:40 IST); each kill costs a resume round trip. `SendMessage` to the agent id resumes it with context — always resume, never relaunch.
+- **Shared working tree = commit races.** Every batch `git add`-ed only its files, but `git commit` commits the whole index, so batches repeatedly swept each other's staged files into their commits (attribution and `Compliance-Review` trailers lost on ~6 commits). Rule for next time: `git add <paths> && git commit -- <paths>` in every brief from the start, or give each batch its own worktree (needs `composer install` + `.env` per worktree, and the MySQL container only mounts the main tree).
+- **Full suite.** `php artisan test` dies at the 256 MB default on this suite; run `php -d memory_limit=3G vendor/bin/pest --compact` (SQLite, ~65 s) and the same inside `arovolife-app` with `DB_CONNECTION=mysql DB_DATABASE=arovolife_test` (MySQL). Larastan drifts with every fix (stale baseline entries + Pest `TestCall::actingAs` false positives in new test files): regenerate the baseline at the end, then confirm 0 errors, rather than per batch.
+- **Dev DB.** Batches must not run `php artisan migrate` on the dev DB mid-run (they would apply each other's half-written migrations); the orchestrator applies them once at the end inside the container.
+- **Decisions that came back from the client (2026-09-11)** are in `staging-qa-2026-09-10/fix-plan.md` §B and drive the next run's expectations: members pay the distributor price; MSB is a deduction source; company centres never earn ADC; maker-checker (`finance.approve`, admin only); NEFT export is a real bank file; self-service bank page; COD off; whole-order returns; guests may browse; several live announcements; helpline 10:00–18:00 Mon–Sat; malware scanning disabled by client decision (R-83); audit digests everywhere.
+- **Deploy/cleanup sequence** for a fix branch: `staging-qa-2026-09-10/deploy-checklist.md`.
