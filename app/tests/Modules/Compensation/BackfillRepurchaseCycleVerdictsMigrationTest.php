@@ -121,3 +121,43 @@ it('leaves a cycle still inside its window untouched', function (): void {
         ->and($cycle->fulfilled_on)->toBeNull()
         ->and($cycle->failure_reason)->toBeNull();
 });
+
+it('leaves a COMPLETED cycle whose window is still open untouched', function (): void {
+    // F21: the guard the docblock always claimed. Without it the backfill
+    // settled every in-flight window as fulfilled on its own due date, against
+    // a wallet condition it never measured — and nothing undoes a premature
+    // *completed* verdict, so it stands forever. Seven live staging cycles,
+    // 2026-09-10.
+    $dist = Distributor::factory()->create();
+    $due = Carbon::today()->addDays(10)->toDateString();
+    $id = legacyCycle($dist->id, 'completed', Carbon::today()->subDays(20)->toDateString(), $due);
+
+    runVerdictBackfill();
+
+    $cycle = RepurchaseCycle::findOrFail($id);
+
+    expect($cycle->resolved_at)->toBeNull()
+        ->and($cycle->fulfilled_on)->toBeNull()
+        ->and($cycle->wallet_zeroed)->toBeNull();
+});
+
+it('leaves a window closing TODAY untouched, because it closes at 23:59', function (): void {
+    $dist = Distributor::factory()->create();
+    $id = legacyCycle($dist->id, 'completed', Carbon::today()->subDays(30)->toDateString(), Carbon::today()->toDateString());
+
+    runVerdictBackfill();
+
+    expect(RepurchaseCycle::findOrFail($id)->resolved_at)->toBeNull();
+});
+
+it('leaves a suspended cycle whose window is still open untouched', function (): void {
+    $dist = Distributor::factory()->create();
+    $id = legacyCycle($dist->id, 'suspended', Carbon::today()->subDays(20)->toDateString(), Carbon::today()->addDays(10)->toDateString());
+
+    runVerdictBackfill();
+
+    $cycle = RepurchaseCycle::findOrFail($id);
+
+    expect($cycle->resolved_at)->toBeNull()
+        ->and($cycle->failure_reason)->toBeNull();
+});

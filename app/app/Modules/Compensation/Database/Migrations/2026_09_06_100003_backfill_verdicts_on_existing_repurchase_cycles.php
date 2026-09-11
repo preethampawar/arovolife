@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -29,11 +30,27 @@ return new class extends Migration
      * left NULL rather than guessed: the old engine never recorded it, and the
      * honest answer is "not measured", which is also the fail-open answer.
      * Cycles still inside their window are untouched — they resolve normally.
+     *
+     * That last sentence is enforced by `due_date < today`, which the first
+     * version of this migration only claimed. Without it the backfill settled
+     * every in-flight window it found as fulfilled on its own due date,
+     * against conditions it never measured — permanently, because
+     * `RepurchaseCycleService::refresh()` only ever undoes a premature FAILED
+     * verdict, never a premature completed one. Seven live staging cycles were
+     * settled that way on 2026-09-10 (QA F21); production has not run this
+     * migration, so adding the guard here is the fix rather than a second
+     * migration undoing the first.
+     *
+     * A window due TODAY is still in flight — it closes at 23:59 — so the
+     * comparison is strictly less-than.
      */
     public function up(): void
     {
+        $today = Carbon::today()->toDateString();
+
         DB::table('repurchase_cycles')
             ->whereNull('resolved_at')
+            ->whereDate('due_date', '<', $today)
             ->where('status', 'completed')
             ->update([
                 'fulfilled_on' => DB::raw('due_date'),
@@ -43,6 +60,7 @@ return new class extends Migration
 
         DB::table('repurchase_cycles')
             ->whereNull('resolved_at')
+            ->whereDate('due_date', '<', $today)
             ->whereIn('status', ['grace', 'suspended'])
             ->update([
                 'failure_reason' => 'bv_short',
