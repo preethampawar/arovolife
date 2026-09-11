@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Admin\Events\KycApproved;
 use App\Modules\Admin\Events\KycRejected;
 use App\Modules\Admin\Services\ApproveKycSubmission;
+use App\Modules\Admin\Services\Exceptions\KycHasFlaggedDocumentsError;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Admin\Services\RejectKycSubmission;
 use App\Modules\Compliance\Models\AuditLog;
@@ -250,4 +251,117 @@ it('AKR-04: admin queue lists pending distributors only', function () {
 
     $response->assertSee($pendingAdn);
     $response->assertDontSee($activeAdn);
+});
+
+it('AKR-07: F106 — document previews point at the audited stream route, which logs every view', function () {
+    Storage::fake('kyc');
+
+    [$user, $id] = array_values(akrSeedDistributorPending());
+    Storage::disk('kyc')->put("user_{$id}/address_front.jpg", 'stub-bytes');
+    $doc = KycDocument::create([
+        'distributor_id' => $id,
+        'type' => 'address_proof_front',
+        'object_storage_key' => "user_{$id}/address_front.jpg",
+        'checksum_sha256' => str_repeat("\xAA", 32),
+    ]);
+    $admin = akrAdmin();
+
+    $audited = route('admin.kyc.document', [$id, $doc->id]);
+
+    $page = $this->actingAs($admin)->get("/admin/kyc/{$id}");
+    $page->assertOk();
+
+    // The thumbnail itself goes through the audited route — not a pre-signed
+    // storage URL that would work for anyone it was pasted to.
+    expect($page->getContent())->toContain('<img src="'.$audited.'"')
+        ->and($page->getContent())->not->toContain('X-Amz-Signature');
+
+    // …and each actual view of the bytes writes its own audit row. (On an S3
+    // disk the route answers with a 302 to a short-lived signed URL issued
+    // per audited request; the audit row is written either way.)
+    $this->actingAs($admin)->get($audited);
+
+    $viewed = AuditLog::where('action', 'admin.kyc.document_viewed')
+        ->where('subject_type', 'kyc_document')
+        ->where('subject_id', $doc->id)
+        ->get();
+    expect($viewed)->toHaveCount(1)
+        ->and($viewed->first()->actor_id)->toBe($admin->id);
+});
+
+it('AKR-08: F106 — the document stream route is useless without an admin session', function () {
+    Storage::fake('kyc');
+
+    [$user, $id] = array_values(akrSeedDistributorPending());
+    Storage::disk('kyc')->put("user_{$id}/address_front.jpg", 'stub-bytes');
+    $doc = KycDocument::create([
+        'distributor_id' => $id,
+        'type' => 'address_proof_front',
+        'object_storage_key' => "user_{$id}/address_front.jpg",
+        'checksum_sha256' => str_repeat("\xAA", 32),
+    ]);
+
+    $this->get(route('admin.kyc.document', [$id, $doc->id]))->assertRedirect('/login');
+
+    expect(AuditLog::where('action', 'admin.kyc.document_viewed')->count())->toBe(0);
+});
+
+it('AKR-09: F110 — a flagged document surfaces in the queue tab, its count and the row badge', function () {
+    [$flaggedUser, $flaggedId] = array_values(akrSeedDistributorPending());
+    akrSeedDocuments($flaggedId, ['address_proof_front']);
+    KycDocument::where('distributor_id', $flaggedId)->update([
+        'flagged_at' => now(),
+        'flagged_reason' => 'Address proof is unreadable; please re-upload.',
+    ]);
+
+    [$cleanUser, $cleanId] = array_values(akrSeedDistributorPending());
+    akrSeedDocuments($cleanId, ['address_proof_front']);
+
+    $flaggedAdn = DB::table('distributors')->where('id', $flaggedId)->value('adn');
+    $cleanAdn = DB::table('distributors')->where('id', $cleanId)->value('adn');
+
+    $admin = akrAdmin();
+
+    // The flagged tab holds exactly the submission waiting on the applicant.
+    $flaggedTab = $this->actingAs($admin)->get('/admin/kyc?tab=flagged');
+    $flaggedTab->assertOk()
+        ->assertSee($flaggedAdn)
+        ->assertDontSee($cleanAdn);
+
+    // …and the pending tab, where it also appears, says why it is parked.
+    $pendingTab = $this->actingAs($admin)->get('/admin/kyc');
+    $pendingTab->assertOk()
+        ->assertSee($flaggedAdn)
+        ->assertSee('Awaiting re-upload');
+});
+
+it('AKR-10: F110 — approve is refused while a document is flagged for re-upload', function () {
+    Storage::fake('kyc');
+    Event::fake();
+
+    [$user, $id] = array_values(akrSeedDistributorPending());
+    akrSeedDocuments($id, ['pan', 'address_proof_front']);
+    KycDocument::where('distributor_id', $id)
+        ->where('type', 'address_proof_front')
+        ->update(['flagged_at' => now(), 'flagged_reason' => 'Unreadable; please re-upload.']);
+
+    $admin = akrAdmin();
+
+    expect(fn () => app(ApproveKycSubmission::class)($id, $admin->id))
+        ->toThrow(KycHasFlaggedDocumentsError::class);
+
+    // Nothing moved: no activation, no verified_at, no PII purge.
+    $user->refresh();
+    expect($user->status)->toBe('pending')
+        ->and(KycDocument::where('distributor_id', $id)->whereNotNull('verified_at')->count())->toBe(0)
+        ->and(KycDocument::where('distributor_id', $id)->where('type', 'pan')->exists())->toBeTrue();
+
+    // The admin sees why, and the Approve button is not offered.
+    $this->actingAs($admin)->post("/admin/kyc/{$id}/approve")
+        ->assertSessionHasErrors('kyc');
+
+    $this->actingAs($admin)->get("/admin/kyc/{$id}")
+        ->assertOk()
+        ->assertSee('Approval on hold')
+        ->assertDontSee('action="'.route('admin.kyc.approve', $id).'"', false);
 });

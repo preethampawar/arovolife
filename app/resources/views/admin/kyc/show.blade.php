@@ -74,30 +74,22 @@
         @if($distributor->kycDocuments->isEmpty())
         <p class="text-sm text-gray-600">No documents uploaded.</p>
         @else
-        @php
-            // Pre-sign one URL per document up front, valid for 30 minutes,
-            // so the <img> tag points straight at S3 (or local) and the
-            // browser doesn't have to round-trip through the streamDocument
-            // controller for every image. The "Open full size" link still
-            // hits the controller so admin clicks are audit-logged and
-            // RBAC-checked at view time.
-            $diskKyc = \Illuminate\Support\Facades\Storage::disk('kyc');
-            $isS3Disk = config('filesystems.disks.kyc.driver') === 's3';
-        @endphp
+        {{-- Every rendering of an identity document — thumbnail included —
+             goes through the streamDocument route, so each one writes an
+             `admin.kyc.document_viewed` row and is re-checked against the
+             admin session and `kyc.review` at the moment the bytes are
+             served. A pre-signed storage URL was embedded here before; it
+             produced one audit row for a page of documents, and the URL
+             kept working for anyone it was pasted to, with no session at
+             all. Access to identity documents has to be logged and
+             revocable (DPDP 2023; hard rule 8), which a bearer URL is
+             not. --}}
         <ul class="text-sm space-y-3">
             @foreach($distributor->kycDocuments as $doc)
                 @php
                     $ext = strtolower(pathinfo($doc->object_storage_key, PATHINFO_EXTENSION));
                     $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
                     $auditedUrl = route('admin.kyc.document', [$distributor->id, $doc->id]);
-
-                    // Direct-from-S3 signed URL for the inline thumbnail.
-                    // temporaryUrl() is pure SigV4 math — no S3 round-trip —
-                    // so this stays cheap even with 7 docs in a couple unit.
-                    // Local disk (dev) falls back to the audited route.
-                    $directUrl = $isS3Disk
-                        ? (string) $diskKyc->temporaryUrl($doc->object_storage_key, now()->addMinutes(30))
-                        : $auditedUrl;
                 @endphp
                 <li class="border border-gray-200 rounded-lg overflow-hidden">
                     <div class="flex justify-between items-center px-3 py-2 bg-gray-50">
@@ -107,7 +99,7 @@
                     </div>
                     @if($isImage)
                         <a href="{{ $auditedUrl }}" target="_blank" class="block bg-gray-100">
-                            <img src="{{ $directUrl }}" alt="{{ $doc->type }}"
+                            <img src="{{ $auditedUrl }}" alt="{{ $doc->type }}"
                                  class="w-full h-40 object-contain bg-white"
                                  onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'text-xs text-red-600 p-3',textContent:'Image could not be loaded — file may be missing on disk.'}))">
                         </a>
@@ -159,6 +151,27 @@
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    @if($hasFlaggedDocument)
+    {{-- Approval is blocked while a flag is unresolved: approving would accept
+         the document a reviewer just sent back, and would break the
+         applicant's re-upload link. The server refuses it too. --}}
+    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+        <p class="text-base font-semibold text-amber-900 mb-2 inline-flex items-center gap-2">
+            <x-lucide-flag class="w-4 h-4" />
+            Approval on hold
+        </p>
+        <p class="text-xs text-amber-800 mb-4">
+            A document above is flagged for re-upload and the applicant has not
+            replaced it yet. Approving now would accept the document you asked
+            them to replace, and their re-upload link would stop working.
+            Wait for the replacement, or reject the whole submission.
+        </p>
+        <button type="button" disabled
+            class="w-full inline-flex justify-center items-center rounded-lg bg-gray-200 text-gray-600 font-medium px-4 py-2.5 text-sm cursor-not-allowed">
+            Approve
+        </button>
+    </div>
+    @else
     <form method="POST" action="{{ route('admin.kyc.approve', $distributor->id) }}"
         data-confirm="Approve this KYC submission?"
         data-confirm-title="Confirm KYC approval"
@@ -175,6 +188,7 @@
             Approve
         </button>
     </form>
+    @endif
 
     <form method="POST" action="{{ route('admin.kyc.reject', $distributor->id) }}"
         data-confirm="Reject this KYC submission?"

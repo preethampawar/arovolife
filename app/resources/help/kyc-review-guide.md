@@ -61,6 +61,17 @@ rejecting the whole application:
 
 This is faster for the applicant and keeps the rest of the verified set intact.
 
+While a flag is unresolved:
+
+- The submission appears under the **Awaiting re-upload** tab on the KYC queue,
+  and its row in the Pending tab carries an *Awaiting re-upload* badge — so a
+  second reviewer can see it is parked on the applicant.
+- **Approve is blocked** for that submission, on the page and on the server.
+  Approving would accept the document you asked to have replaced, and the
+  applicant's re-upload link stops working the moment the flag clears. Wait for
+  the replacement, or reject the whole submission.
+- The flag clears by itself when the applicant re-uploads that document.
+
 ---
 
 ## Handling personal data — non-negotiable
@@ -68,8 +79,11 @@ This is faster for the applicant and keeps the rest of the verified set intact.
 - **Never** read aloud, type, screenshot, message, or store a full Aadhaar or
   PAN number. We keep only a secure reference + last-4.
 - Document images live on a **private** store — never share a direct link or
-  download to anyone outside the review.
-- Access a document only when a review task requires it.
+  download to anyone outside the review. Every image on the review page, preview
+  included, is served through the audited route, so a copied link is useless to
+  anyone without an admin session.
+- Access a document only when a review task requires it — **each view is logged
+  against your account**.
 - Every admin action on a KYC record is audit-logged with before/after — that
   is by design; don't try to work around it.
 

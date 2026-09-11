@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Services;
 
 use App\Modules\Admin\Events\KycApproved;
+use App\Modules\Admin\Services\Exceptions\KycHasFlaggedDocumentsError;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
@@ -22,7 +23,8 @@ use Throwable;
  * applicant submitted.
  *
  * Refuses to run on a distributor with zero kyc_documents — this prevents
- * an admin from rubber-stamping a fully-stub registration.
+ * an admin from rubber-stamping a fully-stub registration — and on one whose
+ * documents include an unresolved re-upload flag.
  */
 final class ApproveKycSubmission
 {
@@ -59,6 +61,19 @@ final class ApproveKycSubmission
             if ($docs->isEmpty()) {
                 throw new KycHasNoDocumentsError(
                     "Distributor {$distributorId} has no KYC documents to approve.",
+                );
+            }
+
+            // Refuses to run while a document is flagged for re-upload. The
+            // flag is a reviewer saying "this one is not acceptable"; approving
+            // over it accepts that document anyway and silently revokes the
+            // applicant's re-upload link, which only works while the flag
+            // stands. The rows are already held under lockForUpdate, so a
+            // concurrent flag either lands before this check or waits for it.
+            $flagged = $docs->filter(fn (KycDocument $doc): bool => $doc->flagged_at !== null);
+            if ($flagged->isNotEmpty()) {
+                throw new KycHasFlaggedDocumentsError(
+                    "Distributor {$distributorId} has {$flagged->count()} document(s) flagged for re-upload.",
                 );
             }
 

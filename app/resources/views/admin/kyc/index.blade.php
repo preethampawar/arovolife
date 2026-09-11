@@ -24,10 +24,22 @@
     <a href="{{ route('admin.kyc.index', ['tab' => 'rejected']) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
             {{ $currentTab === 'rejected' ? 'border-red-500 bg-red-500 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
-        Rejected — awaiting re-upload
+        Rejected — awaiting resubmission
         <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold
             {{ $currentTab === 'rejected' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700' }}">
             {{ $rejectedCount }}
+        </span>
+    </a>
+    {{-- Submissions parked on the applicant because one document was flagged.
+         They sit at status 'pending' and were previously indistinguishable
+         from a fresh submission, so nobody could see what was blocked. --}}
+    <a href="{{ route('admin.kyc.index', ['tab' => 'flagged']) }}"
+        class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
+            {{ $currentTab === 'flagged' ? 'border-amber-500 bg-amber-500 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
+        Awaiting re-upload
+        <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold
+            {{ $currentTab === 'flagged' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700' }}">
+            {{ $flaggedCount }}
         </span>
     </a>
 </div>
@@ -37,6 +49,8 @@
     <div class="p-8 text-center text-sm text-gray-600">
         @if($currentTab === 'rejected')
             No rejected submissions waiting on the applicant.
+        @elseif($currentTab === 'flagged')
+            No documents are flagged for re-upload.
         @else
             No pending KYC submissions.
         @endif
@@ -62,6 +76,12 @@
                     @if($resubmittedIds->contains($row->id) && $currentTab !== 'rejected')
                         <span class="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-medium text-amber-800 tracking-normal">
                             Resubmitted
+                        </span>
+                    @endif
+                    @if($flaggedIds->contains($row->id))
+                        <span class="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[10px] font-medium text-amber-900 tracking-normal">
+                            <x-lucide-flag class="w-3 h-3" />
+                            Awaiting re-upload
                         </span>
                     @endif
                 </td>

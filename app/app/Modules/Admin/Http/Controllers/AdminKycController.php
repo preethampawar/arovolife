@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Admin\Services\ApproveKycSubmission;
+use App\Modules\Admin\Services\Exceptions\KycHasFlaggedDocumentsError;
 use App\Modules\Admin\Services\Exceptions\KycHasNoDocumentsError;
 use App\Modules\Admin\Services\RejectKycSubmission;
 use App\Modules\Admin\Services\TerminateDistributor;
@@ -35,11 +36,14 @@ final class AdminKycController extends Controller
 
     public function index(Request $request): View
     {
-        // Queue surfaces both 'pending' (new + resubmitted) and 'rejected'
-        // (awaiting the applicant's re-upload) so admins can find and reopen
-        // cases that were previously declined but never resubmitted. Tabs:
+        // Queue surfaces 'pending' (new + resubmitted), 'rejected' (declined,
+        // awaiting the applicant's resubmission) and 'flagged' (one document
+        // was sent back for re-upload and has not been replaced yet), so
+        // admins can find and reopen cases that are parked on the applicant.
+        // Tabs:
         //   ?tab=pending  — pending review (default)
         //   ?tab=rejected — declined, awaiting applicant resubmission
+        //   ?tab=flagged  — a document is flagged, awaiting re-upload
         //
         // Couple registrations: only the primary appears in the queue.
         // The secondary is reviewed alongside the primary on the show
@@ -48,16 +52,24 @@ final class AdminKycController extends Controller
         // solo distributors and primary halves of couples; it
         // suppresses secondaries.
         $tab = $request->query('tab', 'pending');
-        $statusFilter = $tab === 'rejected' ? 'rejected' : 'pending';
+        $tab = in_array($tab, ['pending', 'rejected', 'flagged'], true) ? $tab : 'pending';
 
         $base = Distributor::query()
-            ->whereHas('user', fn ($q) => $q->where('status', $statusFilter))
             ->where(function ($q) {
                 $q->whereNull('spouse_distributor_id')
                     ->orWhere('is_primary_couple', true);
             })
             ->with('user')
             ->withCount('kycDocuments');
+
+        if ($tab === 'flagged') {
+            // Waiting on the applicant: at least one document was flagged for
+            // re-upload and has not been replaced — the re-upload clears
+            // `flagged_at`, so a non-null value is by definition unresolved.
+            $base->whereHas('kycDocuments', fn ($q) => $q->whereNotNull('flagged_at'));
+        } else {
+            $base->whereHas('user', fn ($q) => $q->where('status', $tab));
+        }
 
         $rows = $base->orderBy('created_at')->paginate(50)->withQueryString();
 
@@ -71,6 +83,15 @@ final class AdminKycController extends Controller
             ->pluck('subject_id')
             ->unique();
 
+        // …and whether a document on the row is flagged, so a submission
+        // parked on the applicant is visible in the pending tab too and not
+        // picked up by a second reviewer as an ordinary new case.
+        $flaggedIds = $ids === [] ? collect() : KycDocument::query()
+            ->whereIn('distributor_id', $ids)
+            ->whereNotNull('flagged_at')
+            ->pluck('distributor_id')
+            ->unique();
+
         // Counts for the tab buttons.
         $pendingCount = Distributor::query()
             ->whereHas('user', fn ($q) => $q->where('status', 'pending'))
@@ -82,13 +103,20 @@ final class AdminKycController extends Controller
             ->where(function ($q) {
                 $q->whereNull('spouse_distributor_id')->orWhere('is_primary_couple', true);
             })->count();
+        $flaggedCount = Distributor::query()
+            ->whereHas('kycDocuments', fn ($q) => $q->whereNotNull('flagged_at'))
+            ->where(function ($q) {
+                $q->whereNull('spouse_distributor_id')->orWhere('is_primary_couple', true);
+            })->count();
 
         return view('admin.kyc.index', [
             'pending' => $rows,
             'resubmittedIds' => $resubmittedIds,
+            'flaggedIds' => $flaggedIds,
             'currentTab' => $tab,
             'pendingCount' => $pendingCount,
             'rejectedCount' => $rejectedCount,
+            'flaggedCount' => $flaggedCount,
         ]);
     }
 
@@ -114,10 +142,25 @@ final class AdminKycController extends Controller
             ? ($lastRejection->details['reason'] ?? null)
             : null;
 
+        // Approving a submission whose document is flagged would accept the
+        // very document the reviewer asked to have replaced, and would kill
+        // the applicant's re-upload link (the re-upload page 404s once the
+        // flag is gone). The button is hidden while that is true; the same
+        // condition is enforced in ApproveKycSubmission for the couple unit,
+        // which is what actually stops a second reviewer.
+        $hasFlaggedDocument = KycDocument::query()
+            ->whereIn('distributor_id', array_filter([
+                $distributor->id,
+                $distributor->spouse_distributor_id,
+            ]))
+            ->whereNotNull('flagged_at')
+            ->exists();
+
         return view('admin.kyc.show', [
             'distributor' => $distributor,
             'hasPriorRejection' => $hasPriorRejection,
             'lastRejectionReason' => $lastRejectionReason,
+            'hasFlaggedDocument' => $hasFlaggedDocument,
         ]);
     }
 
@@ -168,6 +211,10 @@ final class AdminKycController extends Controller
             ($this->approve)($id, (int) Auth::id());
         } catch (KycHasNoDocumentsError) {
             return back()->withErrors(['kyc' => 'This distributor has no uploaded documents to approve.']);
+        } catch (KycHasFlaggedDocumentsError) {
+            return back()->withErrors([
+                'kyc' => 'A document on this submission is flagged for re-upload. Wait for the applicant to replace it, or reject the whole submission.',
+            ]);
         }
 
         return redirect()->route('admin.kyc.index')->with('status', 'KYC approved.');
