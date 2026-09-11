@@ -8,15 +8,15 @@ Status legend: `[ ]` todo · `[~]` running · `[x]` fixed + committed · `[!]` b
 
 ### B1 — Engine-run observability (Opus)
 Files: `Compensation/Listeners/RecordEngineRun.php`, `Compensation/Support/EngineRegistry.php`, `Compensation/Console/Commands/EngineHealthDigestCommand.php` + notification, `Compensation/Http/Controllers/Admin/AdminEngineRunsController.php`, `resources/views/admin/compensation/engine-runs/*`, `Compensation/Jobs/{Propagate,Reverse}GroupBvJob.php`, `config/logging.php`, grievance sla-sweep command.
-- [ ] F81 `RecordEngineRun::finished()` must persist the failure message in `engine_runs.error` (exception message, or the refusal reason). Test: a failing engine run leaves `error` non-null.
-- [ ] F43/F50/F39 Deliberate refusals (non-Tuesday weekly payout, payout-close gate refusal, monthly-close preflight failure) must not be recorded as `failed` with `error NULL`: record status `skipped` with the reason in `error` (or `summary.reason`), consistent with the existing flag-off=skipped rule; exceptions stay `failed` with the message. Digest must not report `skipped` rows as failures. Tests for both paths.
-- [ ] F30 (design half) Health digest gets an item when the premature-freeze self-heal *kept* a funded row (`premature_freeze_kept` log line today): write an `engine_runs`-independent signal (audit_log row `compensation.premature_freeze_kept`) and list it in the digest.
-- [ ] F83 Engine Runs page: render summary as labelled fields (rows processed / already processed / exit code), show "Already processed — nothing to do" when the run changed nothing; confirm modal names engine + period.
-- [ ] F84 Recompute-all / reset-purchase-data cards and routes: require `role:developer` in addition to `RecomputeGuard::isPermitted()`; plain `admin`/`admin-finance` never see them. Test: admin gets 404/403 and no HTML trace.
-- [ ] F85 Events page shows duration in ms below 10 s; `repurchase.snapshot` gets a registry label (retired) or is filtered from the page.
-- [ ] F121 Register `grievance:sla-sweep` in `EngineRegistry` (writes `engine_runs`, summary = tickets checked/escalated), or at minimum log a structured no-op line each run.
-- [ ] F12 `PropagateGroupBvJob` / `ReverseGroupBvJob`: `$tries = 1` (ADR-0011); add the deviation note to `docs/compliance/risk-register.md` only if you keep 3 (do not keep 3).
-- [ ] F123 Silence the `LOG_SLACK_WEBHOOK_URL is empty` warning (only register the slack channel when the URL is set).
+- [x] F81 `RecordEngineRun::finished()` must persist the failure message in `engine_runs.error` (exception message, or the refusal reason). Test: a failing engine run leaves `error` non-null.
+- [x] F43/F50/F39 Deliberate refusals (non-Tuesday weekly payout, payout-close gate refusal, monthly-close preflight failure) must not be recorded as `failed` with `error NULL`: record status `skipped` with the reason in `error` (or `summary.reason`), consistent with the existing flag-off=skipped rule; exceptions stay `failed` with the message. Digest must not report `skipped` rows as failures. Tests for both paths.
+- [x] F30 (design half) Health digest gets an item when the premature-freeze self-heal *kept* a funded row (`premature_freeze_kept` log line today): write an `engine_runs`-independent signal (audit_log row `compensation.premature_freeze_kept`) and list it in the digest.
+- [x] F83 Engine Runs page: render summary as labelled fields (rows processed / already processed / exit code), show "Already processed — nothing to do" when the run changed nothing; confirm modal names engine + period.
+- [x] F84 Recompute-all / reset-purchase-data cards and routes: require `role:developer` in addition to `RecomputeGuard::isPermitted()`; plain `admin`/`admin-finance` never see them. Test: admin gets 404/403 and no HTML trace.
+- [x] F85 Events page shows duration in ms below 10 s; `repurchase.snapshot` gets a registry label (retired) or is filtered from the page.
+- [x] F121 Register `grievance:sla-sweep` in `EngineRegistry` (writes `engine_runs`, summary = tickets checked/escalated), or at minimum log a structured no-op line each run.
+- [x] F12 `PropagateGroupBvJob` / `ReverseGroupBvJob`: `$tries = 1` (ADR-0011); add the deviation note to `docs/compliance/risk-register.md` only if you keep 3 (do not keep 3).
+- [x] F123 Silence the `LOG_SLACK_WEBHOOK_URL is empty` warning (only register the slack channel when the URL is set).
 
 ### B2 — Monthly close & engine gates (Opus)
 Files: `Compensation/Services/EngineStatusService.php`, `Compensation/Support/MonthlyEngineCompletionGate.php`, `Compensation/Support/OpenMonthGuard.php`, `Compensation/Console/Commands/{MonthlyPayoutCommand,GsbDailyCutoffCommand,MonthlyCloseCommand}.php`, `Compensation/Support/DerivedTables.php`, ADC credit writer, rank pools migration, `AdminGbbController` / `AdminFortuneBonusController` index.
