@@ -14,8 +14,6 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
-use Throwable;
 
 /**
  * Manual KYC approval. Replaces the automated PAN/Aadhaar/bank gateway gate
@@ -126,11 +124,14 @@ final class ApproveKycSubmission
                     ]);
             }
 
-            // Post-verification PII purge (accepted-risk design from 2026-05).
-            // Now that an admin has confirmed the documents match the text the
-            // applicant submitted, we no longer need the full PAN / Aadhaar /
-            // ID-card images. Drop them; keep only last-4 + hash + reference.
-            $purged = $this->purgeIdNumbersAndFiles($idsToApprove);
+            // Post-verification number purge. Now that an admin has confirmed
+            // the documents match the text the applicant submitted, the full
+            // PAN / Aadhaar numbers go; only last-4 + hash remain. The scans
+            // themselves stay — encrypted, served only through the audited
+            // admin route, and erased by `kyc:purge-expired-documents` once
+            // the published retention period has run (client decision
+            // 2026-09-11, R-31).
+            $numbersNulled = $this->purgeIdNumbers($idsToApprove);
 
             AuditLog::create([
                 'actor_id' => $verifierUserId,
@@ -143,9 +144,8 @@ final class ApproveKycSubmission
                     'verified_at' => $now->toIso8601String(),
                     'document_count' => $docs->count(),
                     'distributor_ids' => $idsToApprove,
-                    'purged_files' => $purged['paths'],
-                    'purged_doc_ids' => $purged['doc_ids'],
-                    'encrypted_numbers_nulled' => $purged['rows_updated'],
+                    'documents_retained' => $docs->count(),
+                    'encrypted_numbers_nulled' => $numbersNulled,
                 ],
             ]);
 
@@ -189,64 +189,24 @@ final class ApproveKycSubmission
     }
 
     /**
-     * Wipe full PAN + Aadhaar + their uploaded ID-card files. Called after a
-     * successful approval, inside the same transaction so that a downstream
-     * failure rolls back the verified_at flip too.
+     * Null the full PAN + Aadhaar numbers. Called after a successful approval,
+     * inside the same transaction so that a downstream failure rolls back the
+     * verified_at flip too.
      *
      * @param  list<int>  $distributorIds
-     * @return array{paths: list<string>, doc_ids: list<int>, rows_updated: int}
+     * @return int distributor rows updated
      */
-    private function purgeIdNumbersAndFiles(array $distributorIds): array
+    private function purgeIdNumbers(array $distributorIds): int
     {
         if ($distributorIds === []) {
-            return ['paths' => [], 'doc_ids' => [], 'rows_updated' => 0];
+            return 0;
         }
 
-        /** @var list<KycDocument> $idDocs */
-        $idDocs = KycDocument::query()
-            ->whereIn('distributor_id', $distributorIds)
-            ->whereIn('type', ['pan', 'aadhaar'])
-            ->get()
-            ->all();
-
-        $disk = Storage::disk('kyc');
-        $paths = [];
-        $docIds = [];
-
-        foreach ($idDocs as $doc) {
-            $paths[] = $doc->object_storage_key;
-            $docIds[] = (int) $doc->id;
-
-            // S3 delete() returns true/false; we don't fail the approval on a
-            // missing object (already-purged or never-uploaded) — but we do
-            // capture the path in the audit log either way. Any other error
-            // (auth, network) bubbles up and rolls back the transaction.
-            try {
-                $disk->delete($doc->object_storage_key);
-            } catch (Throwable $e) {
-                report($e);
-                // Re-throw so the transaction rolls back and the admin sees
-                // the failure rather than silently approving with files left
-                // on disk. The retry mechanism is "try again from admin UI".
-                throw $e;
-            }
-        }
-
-        if ($docIds !== []) {
-            KycDocument::query()->whereIn('id', $docIds)->delete();
-        }
-
-        $rowsUpdated = Distributor::query()
+        return (int) Distributor::query()
             ->whereIn('id', $distributorIds)
             ->update([
                 'pan_encrypted' => null,
                 'aadhaar_encrypted' => null,
             ]);
-
-        return [
-            'paths' => $paths,
-            'doc_ids' => $docIds,
-            'rows_updated' => (int) $rowsUpdated,
-        ];
     }
 }

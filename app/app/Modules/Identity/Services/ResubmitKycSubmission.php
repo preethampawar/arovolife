@@ -10,6 +10,7 @@ use App\Modules\Identity\Events\KycResubmitted;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Kyc\Models\KycDocument;
+use App\Modules\Kyc\Services\KycDocumentVault;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -31,6 +32,7 @@ final class ResubmitKycSubmission
 {
     public function __construct(
         private readonly DatabaseManager $db,
+        private readonly KycDocumentVault $vault,
     ) {}
 
     /**
@@ -103,13 +105,14 @@ final class ResubmitKycSubmission
                     $existing->delete();
                 }
 
-                $disk->putFileAs(dirname($path), $file, basename($path));
+                $this->vault->store($file, $path);
 
                 KycDocument::create([
                     'distributor_id' => $distributorId,
                     'type' => $type,
                     'object_storage_key' => $path,
                     'checksum_sha256' => hex2bin($sha256),
+                    'encrypted_at' => $now,
                 ]);
 
                 $replaced[] = $type;

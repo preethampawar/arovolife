@@ -9,6 +9,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
+use App\Modules\Kyc\Console\Commands\PurgeExpiredDocumentsCommand;
 use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
 use App\Modules\Payments\Console\Commands\PaymentsRedactEventsCommand;
@@ -149,6 +150,14 @@ Schedule::command(GrievanceSlaSweepCommand::class)
 // the decision (DPDP §8(7) storage limitation, R-62). Daily, quiet hour.
 Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
     ->dailyAt('03:15')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
+
+// KYC scans are kept for the admin-owned retention period
+// (`kyc.document_retention_days`) after the review they served, then erased
+// (DPDP §8(7), R-31; client decision 2026-09-11). Daily, quiet hour.
+Schedule::command(PurgeExpiredDocumentsCommand::class)
+    ->dailyAt('03:25')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 

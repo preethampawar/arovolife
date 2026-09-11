@@ -9,13 +9,13 @@ use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
+use App\Modules\Kyc\Services\KycDocumentVault;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 /**
@@ -133,7 +133,7 @@ final class KycDocumentSelfServiceController extends Controller
         $sha256 = (string) hash_file('sha256', $file->getRealPath());
         $path = "user_{$userId}/{$type}_".substr($sha256, 0, 12).'.'.$extension;
 
-        Storage::disk('kyc')->putFileAs(dirname($path), $file, basename($path));
+        app(KycDocumentVault::class)->store($file, $path);
 
         // Delete the previous unverified row for this type (if any) so
         // the admin reviewer sees one document per type, not a stack
@@ -158,6 +158,7 @@ final class KycDocumentSelfServiceController extends Controller
             'type' => $type,
             'object_storage_key' => $path,
             'checksum_sha256' => hex2bin($sha256),
+            'encrypted_at' => now(),
             'verified_at' => null,
             'verifier_id' => null,
         ]);

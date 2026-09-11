@@ -48,6 +48,18 @@ is not yet a complete set.
 Every decision is recorded in the **audit log** with a reason — always enter a
 clear, specific reason (the applicant may see it).
 
+### What happens to the scans after approval
+
+- The uploaded scans stay on file after approval. They are stored encrypted and
+  can only be opened from this page — every view is written to the audit log.
+- Approval erases the full PAN and Aadhaar **numbers**; only the last four
+  digits remain.
+- Scans are deleted automatically once the retention period in **Settings →
+  Registration & KYC → KYC document retention (days)** has passed (counted from
+  approval, or from upload for a scan that was never verified). The default is
+  eight years, matching the Privacy Policy. Shortening it deletes older scans on
+  the next nightly run and cannot be undone.
+
 ---
 
 ## Flag a single document for re-upload (preferred for one bad doc)

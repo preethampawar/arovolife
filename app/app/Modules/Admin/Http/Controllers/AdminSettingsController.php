@@ -89,6 +89,16 @@ final class AdminSettingsController extends Controller
                 'type' => 'json',
                 'default' => '{"MH":21}',
             ],
+            'kyc.document_retention_days' => [
+                'group' => 'registration',
+                'label' => 'KYC document retention (days)',
+                'description' => 'How long uploaded KYC scans (PAN, Aadhaar, cheque, address proof, photo) are kept after the review they served — counted from approval, or from upload for a document that was never verified. Scans are stored encrypted and every admin view is logged. Once the period has passed the nightly sweep deletes the image files; the PAN hash, the last-4 digits and the distributor record are not affected. Default 2,920 days (eight years), the period published in the Privacy Policy.',
+                'impact' => 'Shortening this deletes older scans on the next nightly run; they cannot be recovered. The published Privacy Policy retention period must match this value.',
+                'type' => 'int',
+                'min' => 30,
+                'max' => 7300,
+                'default' => '2920',
+            ],
 
             // ── Security / rate-limiting ───────────────────────────────────
             'security.registration_throttle_requests' => [

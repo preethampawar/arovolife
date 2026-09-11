@@ -15,6 +15,7 @@ use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification;
+use App\Modules\Kyc\Services\KycDocumentVault;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,6 +35,7 @@ final class AdminKycController extends Controller
         private readonly ApproveKycSubmission $approve,
         private readonly RejectKycSubmission $reject,
         private readonly TerminateDistributor $terminate,
+        private readonly KycDocumentVault $vault,
     ) {}
 
     public function index(Request $request): View
@@ -172,12 +174,10 @@ final class AdminKycController extends Controller
             ->where('distributor_id', $id)
             ->findOrFail($docId);
 
-        $disk = Storage::disk('kyc');
-
         // Confirm the object actually exists before logging "admin viewed
         // this" — an orphaned DB row shouldn't produce a misleading audit
         // entry. Surfaces a clean 404 for the <img> onerror handler too.
-        if (! $disk->exists($doc->object_storage_key)) {
+        if (! $this->vault->disk()->exists($doc->object_storage_key)) {
             abort(404, 'KYC document file not found.');
         }
 
@@ -197,15 +197,16 @@ final class AdminKycController extends Controller
         // would work for anyone holding it, with no session and no audit row
         // (F106). `Storage::response()` failed on Cloudways PHP-FPM (output
         // buffering + the S3 stream wrapper), so read the object outright:
-        // KYC scans are a few MB at most.
-        $contents = $disk->get($doc->object_storage_key);
+        // KYC scans are a few MB at most. The vault decrypts; the bucket
+        // holds ciphertext.
+        $contents = $this->vault->read($doc);
 
         if ($contents === null) {
             abort(404, 'KYC document file not found.');
         }
 
         return response($contents, 200, [
-            'Content-Type' => $disk->mimeType($doc->object_storage_key) ?: 'application/octet-stream',
+            'Content-Type' => $this->vault->mimeType($contents),
             'Content-Disposition' => 'inline; filename="kyc-document-'.$doc->id.'"',
             'Cache-Control' => 'no-store, private',
             'X-Content-Type-Options' => 'nosniff',
@@ -272,7 +273,7 @@ final class AdminKycController extends Controller
         $distributor = Distributor::query()->findOrFail($id);
         $file = $request->file('document');
         $type = $validated['type'];
-        $disk = Storage::disk('kyc');
+        $disk = $this->vault->disk();
         $sha256 = hash_file('sha256', $file->getRealPath());
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
         $path = "admin_{$distributor->id}/{$type}_".substr($sha256, 0, 12).".{$extension}";
@@ -302,13 +303,14 @@ final class AdminKycController extends Controller
                 $existing->delete();
             }
 
-            $disk->putFileAs(dirname($path), $file, basename($path));
+            $this->vault->store($file, $path);
 
             $document = KycDocument::create([
                 'distributor_id' => $distributor->id,
                 'type' => $type,
                 'object_storage_key' => $path,
                 'checksum_sha256' => hex2bin($sha256),
+                'encrypted_at' => now(),
             ]);
 
             AuditLog::create([

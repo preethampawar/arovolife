@@ -115,14 +115,13 @@ it('AKR-01: approve flips user.status to active, stamps verified_at on docs, eve
     $user->refresh();
     expect($user->status)->toBe('active');
 
-    // PAN + Aadhaar rows are purged by approval (AKR-05 covers that path);
-    // any non-id docs (e.g. cheque) survive with verified_at stamped.
+    // Every document — the ID scans included — survives approval with
+    // verified_at stamped; retention is the nightly sweep's job (AKR-05).
     $docs = KycDocument::where('distributor_id', $id)->get();
-    expect($docs)->not->toBeEmpty();
+    expect($docs)->toHaveCount(3);
     foreach ($docs as $doc) {
         expect($doc->verified_at)->not->toBeNull()
-            ->and($doc->verifier_id)->toBe($admin->id)
-            ->and($doc->type)->not->toBeIn(['pan', 'aadhaar']);
+            ->and($doc->verifier_id)->toBe($admin->id);
     }
 
     Event::assertDispatched(KycApproved::class, fn ($e) => $e->distributorId === $id);
@@ -173,15 +172,16 @@ it('AKR-03: reject flips user.status to rejected (recoverable) with reason in au
     Event::assertDispatched(KycRejected::class);
 });
 
-it('AKR-05: approve purges PAN/Aadhaar files + nulls encrypted columns; non-id docs untouched', function () {
+it('AKR-05: approve nulls the encrypted numbers and keeps every scan for the retention sweep', function () {
     Storage::fake('kyc');
 
     [$user, $id] = array_values(akrSeedDistributorPending());
     $admin = akrAdmin();
 
-    // Seed three KYC docs: pan + aadhaar are the privacy-sensitive pair that
-    // gets purged; cheque is left alone so we can prove the surgical scope.
-    foreach (['pan', 'aadhaar', 'cheque'] as $type) {
+    // Client decision 2026-09-11 (R-31): the scans stay — encrypted, served
+    // only via the audited route, erased by kyc:purge-expired-documents once
+    // the published retention period has run. Only the full numbers go.
+    foreach (['pan', 'aadhaar', 'aadhaar_back', 'cheque'] as $type) {
         Storage::disk('kyc')->put("user_{$id}/{$type}_test.jpg", 'stub-bytes');
         KycDocument::create([
             'distributor_id' => $id,
@@ -191,7 +191,6 @@ it('AKR-05: approve purges PAN/Aadhaar files + nulls encrypted columns; non-id d
         ]);
     }
 
-    // Pre-populate the encrypted columns so we can assert they get nulled.
     DB::table('distributors')->where('id', $id)->update([
         'pan_encrypted' => Crypt::encryptString('ABCDE1234F'),
         'aadhaar_encrypted' => Crypt::encryptString('123456789012'),
@@ -199,16 +198,11 @@ it('AKR-05: approve purges PAN/Aadhaar files + nulls encrypted columns; non-id d
 
     app(ApproveKycSubmission::class)($id, $admin->id);
 
-    // PAN + Aadhaar files gone from S3.
-    Storage::disk('kyc')->assertMissing("user_{$id}/pan_test.jpg");
-    Storage::disk('kyc')->assertMissing("user_{$id}/aadhaar_test.jpg");
-    // Cheque still present.
-    Storage::disk('kyc')->assertExists("user_{$id}/cheque_test.jpg");
-
-    // PAN + Aadhaar kyc_documents rows are gone; cheque survives.
-    expect(KycDocument::where('distributor_id', $id)->where('type', 'pan')->exists())->toBeFalse()
-        ->and(KycDocument::where('distributor_id', $id)->where('type', 'aadhaar')->exists())->toBeFalse()
-        ->and(KycDocument::where('distributor_id', $id)->where('type', 'cheque')->exists())->toBeTrue();
+    foreach (['pan', 'aadhaar', 'aadhaar_back', 'cheque'] as $type) {
+        Storage::disk('kyc')->assertExists("user_{$id}/{$type}_test.jpg");
+    }
+    expect(KycDocument::where('distributor_id', $id)->whereNull('verified_at')->exists())->toBeFalse()
+        ->and(KycDocument::where('distributor_id', $id)->count())->toBe(4);
 
     // Encrypted columns nulled — last-4 only remains as the on-disk number.
     $row = DB::table('distributors')->where('id', $id)
@@ -218,12 +212,12 @@ it('AKR-05: approve purges PAN/Aadhaar files + nulls encrypted columns; non-id d
         ->and($row->aadhaar_encrypted)->toBeNull()
         ->and($row->pan_last4)->toBe('0000'); // unchanged from seed
 
-    // Audit log captures what was purged.
     $audit = AuditLog::where('action', 'admin.kyc.approved')
         ->where('subject_id', $id)->first();
     expect($audit)->not->toBeNull()
         ->and($audit->details['encrypted_numbers_nulled'] ?? 0)->toBeGreaterThan(0)
-        ->and(count($audit->details['purged_files'] ?? []))->toBe(2);
+        ->and($audit->details['documents_retained'] ?? null)->toBe(4)
+        ->and($audit->details)->not->toHaveKey('purged_files');
 });
 
 it('AKR-06: distributor.pan_masked / aadhaar_masked return XXXXXX-prefixed strings', function () {
@@ -283,10 +277,9 @@ it('AKR-07: F106 — document previews point at the audited stream route, which 
     expect($page->getContent())->toContain('<img src="'.$audited.'"')
         ->and($page->getContent())->not->toContain('X-Amz-Signature');
 
-    // …and each actual view of the bytes writes its own audit row. (On an S3
-    // disk the route answers with a 302 to a short-lived signed URL issued
-    // per audited request; the audit row is written either way.)
-    $this->actingAs($admin)->get($audited);
+    // …and each actual view of the bytes writes its own audit row, and the
+    // bytes are the plaintext even though the bucket holds ciphertext.
+    $this->actingAs($admin)->get($audited)->assertOk()->assertHeader('Cache-Control', 'no-store, private');
 
     $viewed = AuditLog::where('action', 'admin.kyc.document_viewed')
         ->where('subject_type', 'kyc_document')

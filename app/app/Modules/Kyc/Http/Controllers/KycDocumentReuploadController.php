@@ -9,6 +9,7 @@ use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification;
+use App\Modules\Kyc\Services\KycDocumentVault;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,6 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -59,7 +59,7 @@ final class KycDocumentReuploadController extends Controller
         ]);
 
         $file = $request->file('document');
-        $disk = Storage::disk('kyc');
+        $vault = app(KycDocumentVault::class);
         $sha256 = hash_file('sha256', $file->getRealPath());
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
         $newPath = "distributor_{$document->distributor_id}/{$document->type}_".substr($sha256, 0, 12).".{$extension}";
@@ -68,12 +68,13 @@ final class KycDocumentReuploadController extends Controller
 
         $before = AuditDigests::snapshot($document);
 
-        DB::transaction(function () use ($document, $disk, $file, $newPath, $sha256, $oldPath, $request, $before): void {
-            $disk->putFileAs(dirname($newPath), $file, basename($newPath));
+        DB::transaction(function () use ($document, $vault, $file, $newPath, $sha256, $oldPath, $request, $before): void {
+            $vault->store($file, $newPath);
 
             $document->update([
                 'object_storage_key' => $newPath,
                 'checksum_sha256' => hex2bin($sha256),
+                'encrypted_at' => now(),
                 'flagged_reason' => null,
                 'flagged_at' => null,
                 'flagged_by' => null,
@@ -92,7 +93,7 @@ final class KycDocumentReuploadController extends Controller
 
             if ($oldPath !== $newPath) {
                 try {
-                    $disk->delete($oldPath);
+                    $vault->delete($oldPath);
                 } catch (\Throwable) {
                     Log::warning('kyc.reupload: could not delete old storage key', ['key' => $oldPath]);
                 }

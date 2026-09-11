@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property string $type
  * @property string $object_storage_key
  * @property string $checksum_sha256
+ * @property Carbon|null $encrypted_at
  * @property Carbon|null $verified_at
  * @property int|null $verifier_id
  * @property string|null $flagged_reason
@@ -36,6 +37,7 @@ final class KycDocument extends Model
         'type',
         'object_storage_key',
         'checksum_sha256',
+        'encrypted_at',
         'verified_at',
         'verifier_id',
         'flagged_reason',
@@ -52,6 +54,7 @@ final class KycDocument extends Model
     {
         return [
             'verified_at' => 'datetime',
+            'encrypted_at' => 'datetime',
             'flagged_at' => 'datetime',
         ];
     }

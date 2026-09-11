@@ -164,6 +164,7 @@ class RegistrationService
                     'type' => $type,
                     'object_storage_key' => $doc['path'],
                     'checksum_sha256' => hex2bin($doc['sha256']),
+                    'encrypted_at' => ! empty($doc['encrypted']) ? $now : null,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
@@ -395,6 +396,7 @@ class RegistrationService
                 'type' => $type,
                 'object_storage_key' => $doc['path'],
                 'checksum_sha256' => hex2bin($doc['sha256']),
+                'encrypted_at' => ! empty($doc['encrypted']) ? $now : null,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);

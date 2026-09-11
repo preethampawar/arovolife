@@ -19,8 +19,8 @@ use App\Modules\Identity\Services\Exceptions\IncompleteRegistrationDataError;
 use App\Modules\Identity\Services\RegistrationService;
 use App\Modules\Identity\Services\WizardStateService;
 use App\Modules\Identity\Support\SponsorPreview;
+use App\Modules\Kyc\Services\KycDocumentVault;
 use App\Modules\Shared\Features\RegistrationKillswitch;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +31,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 
@@ -40,6 +39,7 @@ final class RegistrationWizardController extends Controller
     public function __construct(
         private readonly WizardStateService $wizard,
         private readonly RegistrationService $registrationService,
+        private readonly KycDocumentVault $vault,
     ) {}
 
     /**
@@ -835,10 +835,9 @@ final class RegistrationWizardController extends Controller
             'spouse_aadhaar_doc' => 'your spouse\'s Aadhaar scan',
         ]);
 
-        $disk = Storage::disk('kyc');
         $pathPrefix = 'reg_'.$this->wizard->registrationSessionId();
 
-        $stored = $this->storeKycFiles($request, self::KYC_DOC_FIELDS, $pathPrefix, $disk);
+        $stored = $this->storeKycFiles($request, self::KYC_DOC_FIELDS, $pathPrefix);
         $this->wizard->saveStepData(10, [
             'documents' => $stored,
             'spouse_documents' => [],
@@ -849,13 +848,12 @@ final class RegistrationWizardController extends Controller
 
     /**
      * @param  array<string, string>  $fields  type → form-field map
-     * @return array<string, array<string, string>> type → {path, sha256, original_filename}
+     * @return array<string, array<string, string|bool>> type → {path, sha256, original_filename, encrypted}
      */
     private function storeKycFiles(
         Request $request,
         array $fields,
         string $pathPrefix,
-        Filesystem $disk,
     ): array {
         $stored = [];
         foreach ($fields as $type => $field) {
@@ -871,12 +869,15 @@ final class RegistrationWizardController extends Controller
             $sha256 = (string) hash_file('sha256', $file->getRealPath());
             $path = "{$pathPrefix}/{$type}_".substr($sha256, 0, 12).".{$extension}";
 
-            $disk->putFileAs(dirname($path), $file, basename($path));
+            // Encrypted before it reaches the bucket; the finalise step copies
+            // the flag onto the kyc_documents row so the read path knows.
+            $this->vault->store($file, $path);
 
             $stored[$type] = [
                 'path' => $path,
                 'sha256' => $sha256,
                 'original_filename' => $file->getClientOriginalName(),
+                'encrypted' => true,
             ];
         }
 
