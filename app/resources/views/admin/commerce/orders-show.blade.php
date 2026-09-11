@@ -124,6 +124,49 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Payment</p>
             <p class="text-sm font-medium text-gray-900">Online</p>
+            @if($paymentIntent)
+            <p class="text-xs text-gray-600 mt-2">
+                {{ ucfirst($paymentIntent->gateway) }} · <span class="capitalize">{{ str_replace('_', ' ', $paymentIntent->status) }}</span>
+            </p>
+            <a href="{{ route('admin.payments.show', $paymentIntent) }}"
+               class="inline-flex items-center gap-1 mt-2 text-sm font-medium text-brand-700 hover:text-brand-800">
+                <x-lucide-credit-card class="w-4 h-4" />
+                View payment #{{ $paymentIntent->id }}
+            </a>
+            @else
+            <p class="text-xs text-gray-600 mt-2">No gateway payment recorded for this order.</p>
+            @endif
+        </div>
+
+        {{-- Invoice. Support needs to see the document the buyer was issued,
+             and to re-issue it when generation failed at checkout (QA F101). --}}
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Invoice</p>
+            @if($invoice)
+            <p class="text-sm font-mono text-gray-900">{{ $invoice->invoice_no }}</p>
+            <p class="text-xs text-gray-600 mt-1">
+                Issued {{ $invoice->issued_at?->format('d M Y H:i') ?? '—' }} ·
+                ₹{{ \App\Modules\Shared\Support\IndianNumber::format($invoice->total_paise / 100, 2) }}
+            </p>
+            @else
+            <p class="text-sm italic text-gray-600">No invoice issued yet.</p>
+            @endif
+
+            @can('finance.record')
+            @if($order->paid_at)
+            <form method="POST" action="{{ route('admin.payments.invoices.generate', $order) }}" class="mt-3"
+                  data-confirm="{{ $invoice ? 'Issue a replacement invoice for this order?' : 'Issue the invoice for this order?' }}"
+                  data-confirm-title="Confirm invoice"
+                  data-confirm-impact="Impact: consumes the next invoice number and records the document against this order. It is logged against your user and cannot be undone.">
+                @csrf
+                <button type="submit" class="w-full py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm font-medium text-gray-800">
+                    {{ $invoice ? 'Re-issue invoice' : 'Generate invoice' }}
+                </button>
+            </form>
+            @else
+            <p class="text-xs text-gray-600 mt-2">An invoice is issued only once the order is paid.</p>
+            @endif
+            @endcan
         </div>
 
         @if($order->coolingOff)

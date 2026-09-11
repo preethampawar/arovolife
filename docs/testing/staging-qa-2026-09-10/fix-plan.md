@@ -53,8 +53,8 @@ Files: `resources/views/admin/analytics/index.blade.php`, `Commerce/Support/Bv.p
 
 ### B4b — Admin KYC, content, messaging (Opus)
 Files: `resources/views/admin/kyc/show.blade.php`, `AdminKycController`, messaging reports view/controller, `Content/Http/Controllers/Admin/*`, content form request, `resources/views/admin/help/*`, Trix asset loading, `ApproveKycSubmission` (F108 only if trivial).
-- [ ] F106 KYC previews go through the audited streaming route (`admin.kyc.document_viewed` per view), no presigned URL in the page; the stream route requires the admin session + `kyc.review`. Test: `<img src>` points at the app route; unauthenticated GET is 403.
-- [ ] F110 KYC queue "awaiting re-upload" tile counts `flagged_at IS NOT NULL` documents; Approve disabled (and server-side refused) while any document is flagged and unresolved.
+- [x] F106 KYC previews go through the audited streaming route (`admin.kyc.document_viewed` per view), no presigned URL in the page; the stream route requires the admin session + `kyc.review`. Test: `<img src>` points at the app route; unauthenticated GET is 403.
+- [x] F110 KYC queue "awaiting re-upload" tile counts `flagged_at IS NOT NULL` documents; Approve disabled (and server-side refused) while any document is flagged and unresolved.
 - [ ] F116 Message report shows ADN + link to admin distributor page for reporter and sender.
 - [ ] F117 `sort_order` validated (`nullable|integer`, default 0) → 422 not 500; vendor Trix JS+CSS via npm/Vite (no unpkg); Body field shows an error if the editor fails to boot.
 - [ ] F118 Publish/archive transitions audit as `content_page.published` / `content_page.archived` (announcements too).
@@ -104,6 +104,11 @@ Files: `2026_09_06_100003_backfill_verdicts…` migration, new migration, `Repur
 - [ ] F22 New migration re-dates OPEN cycles from `start+29` to `start+30`.
 - [ ] F23 `repurchase:evaluate` isolates per-distributor exceptions (continue, collect), exits non-zero with a `failed_partial` summary listing the ADNs; `gsb:daily-cutoff` gate reads that summary and refuses only when the failure count is non-zero — document the choice.
 - [ ] F24 `repurchase:evaluate` writes a run summary (evaluated / fulfilled / failed / forfeited counts).
+
+### B10 — Self-service bank details (Opus)
+Files: new `BankDetailsController` + `BankDetailsRequest` + `BankDetailsUpdatedNotification`, `profile/bank.blade.php`, migration `2026_09_11_120000_add_bank_beneficiary_name_to_distributors`, `routes/web.php`, `profile/show.blade.php`, `income/wallet.blade.php`, help docs.
+- [x] F70 `GET/POST /profile/bank`: account number typed twice, IFSC, optional bank name, beneficiary name; OTP-gated exactly like the contact change; PiiCrypter ciphertext; `distributor.bank_details_updated` audit row with before/after digests; mail+database receipt. Wallet page banner links to it while the hold stands.
+- [x] F28 `distributors.bank_beneficiary_name_enc` added (VARBINARY(512), PiiCrypter) for the B9 bank-upload export, plus plain `bank_name`.
 
 ## B. Client decisions (received 2026-09-11 ~12:45 IST) → Wave 3 batches
 

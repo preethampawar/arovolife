@@ -6,6 +6,8 @@ namespace App\Modules\Commerce\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Payments\Models\PaymentIntent;
+use App\Modules\Tax\Models\Invoice;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,7 +44,14 @@ final class AdminOrderController extends Controller
     {
         $order->load(['customer', 'items.variant', 'coolingOff', 'distributor']);
 
-        return view('admin.commerce.orders-show', ['order' => $order]);
+        // The tax invoice and the gateway intent are owned by other modules but
+        // belong on this page: support could otherwise neither see a buyer's
+        // invoice nor reach the payment behind the order (QA F101).
+        return view('admin.commerce.orders-show', [
+            'order' => $order,
+            'invoice' => Invoice::where('order_id', $order->id)->latest('id')->first(),
+            'paymentIntent' => PaymentIntent::where('order_id', $order->id)->latest('id')->first(),
+        ]);
     }
 
     public function markShipped(Request $request, Order $order): RedirectResponse

@@ -15,7 +15,7 @@
 
     <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">
         <p class="font-semibold mb-1">Your profile</p>
-        <p class="leading-relaxed">Your name, ADN and KYC details (PAN, Aadhaar, bank) are <strong>locked</strong> — they are your verified identity and can only be changed by arovolife after KYC review. You can update your <strong>mobile, email and address</strong> below.</p>
+        <p class="leading-relaxed">Your name, ADN and KYC numbers (PAN, Aadhaar) are <strong>locked</strong> — they are your verified identity and can only be changed by arovolife after KYC review. You can update your <strong>mobile, email and address</strong> below, and your <strong>bank details</strong> on their own page.</p>
     </div>
 
     @if(session('status'))
@@ -72,6 +72,10 @@
                 @else
                     <input type="text" value="Not added yet" disabled class="{{ $lockedInput }}">
                 @endif
+                <p class="mt-1.5 text-xs text-gray-500">
+                    Account holder: <span class="text-gray-700">{{ $bankBeneficiary ?? $user->full_name }}</span>
+                    <a href="{{ route('profile.bank.show') }}" class="ml-2 text-brand-700 hover:text-brand-800 font-medium">Update bank details →</a>
+                </p>
             </div>
             @endif
         </div>

@@ -33,7 +33,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $aadhaar_last4
  * @property string|null $aadhaar_encrypted
  * @property string $bank_account_enc
+ * @property string|null $bank_beneficiary_name_enc
  * @property string $bank_ifsc
+ * @property string|null $bank_name
  * @property string|null $razorpay_contact_id
  * @property int $sponsor_id
  * @property int|null $placement_id_at_registration
@@ -76,7 +78,11 @@ final class Distributor extends Model
         'aadhaar_last4',
         'aadhaar_encrypted',
         'bank_account_enc',
+        // The account holder's name as the bank holds it — PII, stored as
+        // PiiCrypter ciphertext like the account number itself.
+        'bank_beneficiary_name_enc',
         'bank_ifsc',
+        'bank_name',
         // Opaque RazorpayX contact id (`cont_...`), cached on first payout
         // dispatch so later batches reuse it. Not PII.
         'razorpay_contact_id',
@@ -106,6 +112,7 @@ final class Distributor extends Model
         'pan_encrypted',
         'aadhaar_encrypted',
         'bank_account_enc',
+        'bank_beneficiary_name_enc',
     ];
 
     protected function casts(): array

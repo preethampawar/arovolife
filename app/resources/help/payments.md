@@ -109,6 +109,11 @@ order stays paid but has no invoice — a gap the Payments screen lists at the
 top in red. Finance presses **Issue invoice**: the next consecutive number is
 allocated, never a duplicate, and the action is audit-logged.
 
+The same control sits on the order itself (Commerce → Orders → an order), in
+the **Invoice** panel, alongside the invoice number and the amount once one has
+been issued, and a link to the gateway payment behind the order. Re-issuing
+from there allocates a fresh number and is audit-logged in the same way.
+
 ## When something looks wrong
 
 - *Order says placed, buyer says paid.* Open the payment and press **Sync
@@ -117,7 +122,7 @@ allocated, never a duplicate, and the action is audit-logged.
   confirmation refuses it, logs a critical alert, and the money stays where it
   is until finance looks. It is never applied.
 - *A paid order has no invoice.* It is listed on the Payments screen; issue it
-  there. The `payments:reconcile` sweep also counts these every five minutes.
+  there, or from the order's own Invoice panel. The `payments:reconcile` sweep also counts these every five minutes.
 - *Checkout shows "temporarily unavailable".* The Razorpay gateway is switched
   on but its keys are missing, malformed, or the wrong mode for this host
   (test keys on production, live keys anywhere else). Nobody can order until

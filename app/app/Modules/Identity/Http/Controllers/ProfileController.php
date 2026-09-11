@@ -12,6 +12,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Crypto\PiiCrypter;
 use App\Modules\Shared\Notifications\OtpCodeNotification;
 use App\Modules\Shared\Otp\OtpService;
 use Illuminate\Http\RedirectResponse;
@@ -24,17 +25,20 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 /**
  * Logged-in profile management.
  *
  * Two flows live here:
  *
- *   - Profile view + edit. Identity fields are READ-ONLY: full name, ADN, and
- *     the KYC numbers (PAN / Aadhaar / bank) are locked because they are
- *     verified identity — changes go through admin KYC review, not self-service
+ *   - Profile view + edit. Identity fields are READ-ONLY: full name, ADN and
+ *     the KYC numbers (PAN / Aadhaar) are locked because they are verified
+ *     identity — changes go through admin KYC review, not self-service
  *     (hard rule #6, #8). Only the contact details — mobile, email, address —
- *     are editable. KYC numbers are only ever shown MASKED (last-4).
+ *     are editable. KYC numbers are only ever shown MASKED (last-4). Bank
+ *     details are editable too, but on their own OTP-gated page
+ *     ({@see BankDetailsController}); they are not accepted here.
  *   - Change-password (current + new + confirm) — uses the same Password
  *     rule as the registration wizard so policy stays in sync.
  *
@@ -77,6 +81,18 @@ final class ProfileController extends Controller
             }
         }
 
+        // The account holder's name as the bank has it, once the distributor
+        // has supplied it on the bank-details page (F28). Unreadable ciphertext
+        // falls back to no name rather than breaking the page.
+        $bankBeneficiary = null;
+        if ($distributor !== null && filled($distributor->bank_beneficiary_name_enc)) {
+            try {
+                $bankBeneficiary = PiiCrypter::decryptString((string) $distributor->bank_beneficiary_name_enc);
+            } catch (Throwable) {
+                $bankBeneficiary = null;
+            }
+        }
+
         return view('profile.show', [
             'user' => $user,
             // The distributor record backs the read-only identity block
@@ -84,6 +100,7 @@ final class ProfileController extends Controller
             // (e.g. an admin) — the view hides that block.
             'distributor' => $distributor,
             'bankLast4' => $bankLast4,
+            'bankBeneficiary' => $bankBeneficiary,
             'areteCenter' => $areteCenter,
             'availableCenters' => $availableCenters,
         ]);
