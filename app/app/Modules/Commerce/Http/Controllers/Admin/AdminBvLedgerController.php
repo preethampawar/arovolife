@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -273,6 +274,16 @@ final class AdminBvLedgerController extends Controller
             'action' => 'bv.report.exported',
             'subject_type' => 'system',
             'subject_id' => null,
+            // An export changes nothing; the after digest pins exactly which
+            // slice of the ledger left the building.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of([
+                'scope' => $scope,
+                'row_count' => $rowCount,
+                'from' => $from?->toDateString(),
+                'to' => $to?->toDateString(),
+                'search' => $search,
+            ]),
             'details' => [
                 'scope' => $scope,
                 'row_count' => $rowCount,

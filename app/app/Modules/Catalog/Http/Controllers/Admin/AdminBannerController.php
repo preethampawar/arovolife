@@ -8,6 +8,7 @@ use App\Modules\Catalog\Models\Banner;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Services\ProductImageStorage;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,6 +77,7 @@ final class AdminBannerController extends Controller
     public function update(Request $request, Banner $banner): RedirectResponse
     {
         $data = $this->validated($request);
+        $before = AuditDigests::snapshot($banner);
 
         $banner->fill([
             'category_id' => $data['category_id'] ?? null,
@@ -101,16 +103,17 @@ final class AdminBannerController extends Controller
         }
 
         $banner->save();
-        $this->audit('catalog.banner.updated', $banner);
+        $this->audit('catalog.banner.updated', $banner, $before);
 
         return redirect()->route('admin.catalog.banners.edit', $banner)->with('status', 'Banner saved.');
     }
 
     public function destroy(Banner $banner): RedirectResponse
     {
+        $before = AuditDigests::snapshot($banner);
         $this->images->deleteKey($banner->s3_key);
         $banner->delete();
-        $this->audit('catalog.banner.deleted', $banner);
+        $this->audit('catalog.banner.deleted', $banner, $before);
 
         return redirect()->route('admin.catalog.banners.index')->with('status', 'Banner removed.');
     }
@@ -142,13 +145,20 @@ final class AdminBannerController extends Controller
             ->get(['id', 'name']);
     }
 
-    private function audit(string $action, Banner $banner): void
+    /**
+     * @param  array<string, mixed>|null  $before  the pre-mutation state; NULL
+     *                                             on a create, which has none
+     */
+    private function audit(string $action, Banner $banner, ?array $before = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'banner',
             'subject_id' => $banner->id,
+            'before_hash' => AuditDigests::of($before),
+            // A deleted row has no after-state: `exists` is already false.
+            'after_hash' => $banner->exists ? AuditDigests::of($banner) : null,
             'details' => ['title' => $banner->title, 'status' => $banner->status],
         ]);
     }

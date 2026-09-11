@@ -9,6 +9,7 @@ use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Commerce\Http\Requests\CouponRequest;
 use App\Modules\Commerce\Models\Coupon;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
@@ -51,16 +52,18 @@ final class AdminCouponController extends Controller
 
     public function update(CouponRequest $request, Coupon $coupon): RedirectResponse
     {
+        $before = AuditDigests::snapshot($coupon);
         $coupon->update($this->fromRequest($request));
-        $this->audit('commerce.coupon.updated', $coupon);
+        $this->audit('commerce.coupon.updated', $coupon, $before);
 
         return redirect()->route('admin.commerce.coupons.edit', $coupon)->with('status', 'Coupon saved.');
     }
 
     public function archive(Coupon $coupon): RedirectResponse
     {
+        $before = AuditDigests::snapshot($coupon);
         $coupon->update(['status' => Coupon::STATUS_ARCHIVED]);
-        $this->audit('commerce.coupon.archived', $coupon);
+        $this->audit('commerce.coupon.archived', $coupon, $before);
 
         return redirect()->route('admin.commerce.coupons.index')->with('status', "Coupon \"{$coupon->code}\" archived.");
     }
@@ -109,13 +112,19 @@ final class AdminCouponController extends Controller
         return Product::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']);
     }
 
-    private function audit(string $action, Coupon $coupon): void
+    /**
+     * @param  array<string, mixed>|null  $before  the pre-mutation state; NULL
+     *                                             on a create, which has none
+     */
+    private function audit(string $action, Coupon $coupon, ?array $before = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'coupon',
             'subject_id' => $coupon->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => $coupon->exists ? AuditDigests::of($coupon) : null,
             'details' => [
                 'code' => $coupon->code,
                 'type' => $coupon->type,

@@ -8,6 +8,7 @@ use App\Modules\Catalog\Http\Requests\CategoryRequest;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Services\ProductImageStorage;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
@@ -80,6 +81,7 @@ final class AdminCategoryController extends Controller
     public function update(CategoryRequest $request, ProductCategory $category): RedirectResponse
     {
         $data = $request->validated();
+        $before = AuditDigests::snapshot($category);
 
         $category->fill([
             'slug' => $data['slug'],
@@ -111,7 +113,7 @@ final class AdminCategoryController extends Controller
         }
 
         $category->save();
-        $this->audit('catalog.category.updated', $category);
+        $this->audit('catalog.category.updated', $category, $before);
 
         return redirect()
             ->route('admin.catalog.categories.edit', $category)
@@ -120,8 +122,9 @@ final class AdminCategoryController extends Controller
 
     public function archive(ProductCategory $category): RedirectResponse
     {
+        $before = AuditDigests::snapshot($category);
         $category->update(['status' => ProductCategory::STATUS_ARCHIVED]);
-        $this->audit('catalog.category.archived', $category);
+        $this->audit('catalog.category.archived', $category, $before);
 
         return redirect()
             ->route('admin.catalog.categories.index')
@@ -143,13 +146,19 @@ final class AdminCategoryController extends Controller
             ->get();
     }
 
-    private function audit(string $action, ProductCategory $category): void
+    /**
+     * @param  array<string, mixed>|null  $before  the pre-mutation state; NULL
+     *                                             on a create, which has none
+     */
+    private function audit(string $action, ProductCategory $category, ?array $before = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'product_category',
             'subject_id' => $category->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => $category->exists ? AuditDigests::of($category) : null,
             'details' => ['slug' => $category->slug, 'name' => $category->name, 'status' => $category->status],
         ]);
     }

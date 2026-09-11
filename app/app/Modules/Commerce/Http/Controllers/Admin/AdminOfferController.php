@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\MonthlyOfferProduct;
 use App\Modules\Commerce\Models\PurchaseOfferGrant;
 use App\Modules\Commerce\Services\PurchaseOfferSettings;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -113,6 +114,8 @@ final class AdminOfferController extends Controller
             'action' => 'offers.product_announced',
             'subject_type' => 'monthly_offer_product',
             'subject_id' => $announcement->id,
+            'before_hash' => $before === null ? null : AuditDigests::of(['product_variant_id' => $before]),
+            'after_hash' => AuditDigests::of(['product_variant_id' => $announcement->product_variant_id]),
             // Before AND after: an audit row that records only the new value
             // cannot answer "what did this replace?", which is the question
             // asked when an announcement turns out to have been wrong.

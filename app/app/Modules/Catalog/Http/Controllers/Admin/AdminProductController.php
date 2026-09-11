@@ -13,6 +13,7 @@ use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Catalog\Services\ProductImageStorage;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -98,6 +99,7 @@ final class AdminProductController extends Controller
     public function update(ProductRequest $request, Product $product): RedirectResponse
     {
         $data = $request->validated();
+        $before = AuditDigests::snapshot($product);
 
         DB::transaction(function () use ($product, $data, $request): void {
             $product->update([
@@ -121,7 +123,7 @@ final class AdminProductController extends Controller
             $this->storeGalleryImageUrls($product, $data);
         });
 
-        $this->audit('catalog.product.updated', $product);
+        $this->audit('catalog.product.updated', $product, $before);
 
         return redirect()
             ->route('admin.catalog.products.edit', $product)
@@ -130,8 +132,9 @@ final class AdminProductController extends Controller
 
     public function archive(Product $product): RedirectResponse
     {
+        $before = AuditDigests::snapshot($product);
         $product->update(['status' => Product::STATUS_ARCHIVED]);
-        $this->audit('catalog.product.archived', $product);
+        $this->audit('catalog.product.archived', $product, $before);
 
         return redirect()
             ->route('admin.catalog.products.index')
@@ -280,13 +283,19 @@ final class AdminProductController extends Controller
             ->get();
     }
 
-    private function audit(string $action, Product $product): void
+    /**
+     * @param  array<string, mixed>|null  $before  the pre-mutation state; NULL
+     *                                             on a create, which has none
+     */
+    private function audit(string $action, Product $product, ?array $before = null): void
     {
         AuditLog::create([
             'actor_id' => Auth::id(),
             'action' => $action,
             'subject_type' => 'product',
             'subject_id' => $product->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => $product->exists ? AuditDigests::of($product) : null,
             'details' => [
                 'sku' => $product->sku,
                 'name' => $product->name,
