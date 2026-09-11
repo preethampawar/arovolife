@@ -319,3 +319,25 @@ it('ANL-013: an absurd date window is clamped rather than run', function (): voi
     // 730 days back from the `to` date, not 1900.
     $response->assertSee('2024-08-17');
 });
+
+it('ANL-014: the headline BV figure is not divided by 100 twice', function (): void {
+    // F119: the view passed bv_paise/100 into @bv on top of Bv::format's own
+    // conversion, under-reporting BV a hundredfold. 203,999,900 paise is
+    // 2,039,999 BV, which must render lakh-grouped as 20,39,999 — not 20,399.
+    $distributor = Distributor::factory()->create();
+    $orderId = anlOrder((int) $distributor->id, Carbon::parse('2026-08-05'));
+
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributor->id,
+        'order_id' => $orderId,
+        'bv_paise' => 203999900,
+        'type' => 'accrual',
+        'effective_at' => Carbon::parse('2026-08-05'),
+    ]);
+
+    $this->actingAs(anlAdmin())
+        ->get('/admin/analytics?from=2026-08-01&to=2026-08-31')
+        ->assertOk()
+        ->assertSee('20,39,999 BV')
+        ->assertDontSee('20,399 BV');
+});

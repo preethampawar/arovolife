@@ -47,7 +47,7 @@
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">BV generated</p>
-        <p class="mt-1 text-lg font-bold text-green-700 whitespace-nowrap">@bv($totals['bv_paise'] / 100)</p>
+        <p class="mt-1 text-lg font-bold text-green-700 whitespace-nowrap">@bv($totals['bv_paise'])</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Cancelled / refunded</p>
@@ -199,7 +199,7 @@
                                    class="text-brand-700 hover:underline">{{ $row['adn'] }}</a>
                             </td>
                             <td class="py-2 pr-4 text-gray-700">{{ $row['name'] ?? '—' }}</td>
-                            <td class="py-2 pr-4 font-medium text-gray-900">@bv($row['bv_paise'] / 100)</td>
+                            <td class="py-2 pr-4 font-medium text-gray-900">@bv($row['bv_paise'])</td>
                             <td class="py-2 pr-4 text-gray-600">{{ IndianNumber::format($row['orders']) }}</td>
                             <td class="py-2 text-gray-600">{{ IndianNumber::format($row['team_size']) }}</td>
                         </tr>
