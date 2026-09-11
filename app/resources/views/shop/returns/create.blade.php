@@ -7,9 +7,11 @@
 
     <h1 class="text-2xl font-bold text-gray-900 mt-3 mb-2">Return order <span class="font-mono text-brand-700">{{ $order->order_no }}</span></h1>
 
-    {{-- Context note --}}
+    {{-- Context note. The whole-order rule is stated plainly: OpenReturn writes
+         no order_item_id or qty, so a return covers every line on the order and
+         a buyer must not discover that after submitting (QA F102). --}}
     <p class="text-sm text-gray-600 mb-6">
-        Use this form to request a return or refund. Cooling-off cancellations (within 30 days of delivery) are processed immediately. Other reasons go to our review team.
+        Use this form to request a return or refund. <strong class="text-gray-800">A return covers the whole order</strong> — every item on it, in full. If you want to return only part of this order, please contact customer care instead and we will arrange it. Cooling-off cancellations (within 30 days of delivery) are processed immediately; other reasons go to our review team.
     </p>
 
     @if($errors->any())
@@ -116,6 +118,7 @@
             <div class="mb-6 rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-600">
                 <p class="font-medium text-gray-800 mb-1">What happens next?</p>
                 <ul class="space-y-1 list-disc list-inside">
+                    <li><strong>Every item on the order</strong> is returned — partial returns are handled by customer care, not by this form.</li>
                     <li><strong>Cooling-off:</strong> your cancellation takes effect immediately. Once we receive the returned product, the refund is credited to your original payment method within 7 working days.</li>
                     <li><strong>All other reasons:</strong> our team reviews the request and may contact you to arrange collection of the product. Refund decision is communicated by email within 5 working days.</li>
                 </ul>

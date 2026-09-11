@@ -97,3 +97,12 @@ it('F100-03: says plainly that shipping is refunded on cooling-off only', functi
     expect(substr_count($html, 'Shipping of ₹50.00 is refunded.'))->toBe(1)
         ->and(substr_count($html, 'Shipping of ₹50.00 is <strong>not</strong> refunded.'))->toBe(4);
 });
+
+it('F102-01: says plainly that a return covers the whole order', function (): void {
+    [$user, $order] = rfdOrder();
+
+    $this->actingAs($user)->get(route('orders.return.create', $order->order_no))
+        ->assertOk()
+        ->assertSee('A return covers the whole order', escape: false)
+        ->assertSee('partial returns are handled by customer care', escape: false);
+});
