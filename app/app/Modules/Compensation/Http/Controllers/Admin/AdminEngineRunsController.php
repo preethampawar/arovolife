@@ -20,6 +20,7 @@ use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -233,6 +234,15 @@ final class AdminEngineRunsController extends Controller
             'action' => 'compensation.recompute_all.queued',
             'subject_type' => 'platform',
             'subject_id' => 0,
+            // Queueing changes nothing yet; the after digest pins exactly what
+            // was asked for, which is what a later replay is judged against.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of([
+                'from' => $from,
+                'to' => $to,
+                'mode' => $windowed ? 'windowed' : 'full',
+                'engines' => $engines === [] ? 'all' : $engines,
+            ]),
             'details' => [
                 'note' => 'Testing-only compensation recompute queued from the admin console.',
                 'from' => $from,
@@ -319,6 +329,10 @@ final class AdminEngineRunsController extends Controller
             'action' => 'platform.purchase_reset.requested',
             'subject_type' => 'platform',
             'subject_id' => 0,
+            // The rows still standing when the reset was asked for — the
+            // before-state the wipe is measured against.
+            'before_hash' => AuditDigests::of($removed),
+            'after_hash' => null,
             'details' => [
                 'note' => 'Testing-only purchase-data reset requested from the admin console.',
                 'database' => $this->recomputeGuard->targetDatabase(),
@@ -519,6 +533,16 @@ final class AdminEngineRunsController extends Controller
             'action' => 'compensation.engine.manual_run',
             'subject_type' => 'engine',
             'subject_id' => null,
+            // A trigger changes nothing itself; the after digest pins the
+            // chain that was authorised, warnings included.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of([
+                'engine' => $engine->key,
+                'period' => $engine->formatPeriod($period),
+                'chain_id' => $chainId,
+                'planned_chain' => $plan->toAuditPreview(),
+                'warnings' => $plan->warnings,
+            ]),
             'details' => [
                 'engine' => $engine->key,
                 'period' => $engine->formatPeriod($period),

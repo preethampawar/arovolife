@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\AreteCenterApplicationDocument;
 use App\Modules\Compensation\Services\AreteCenterApplicationService;
 use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Support\IndianStates;
@@ -142,6 +143,10 @@ final class AdminAreteCenterApplicationController extends Controller
             'action' => 'adc.application.document_viewed',
             'subject_type' => 'arete_center_application',
             'subject_id' => $application->id,
+            // A view moves nothing; the matching digests pin which document
+            // state the reviewer was shown.
+            'before_hash' => AuditDigests::of($document),
+            'after_hash' => AuditDigests::of($document),
             'details' => ['document_id' => $document->id, 'type' => $document->type],
             'ip' => request()->ip(),
         ]);

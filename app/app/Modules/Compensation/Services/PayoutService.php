@@ -13,6 +13,7 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -795,6 +796,24 @@ final class PayoutService
     }
 
     /**
+     * Every line's status and hold reason on a batch, for the before/after
+     * digests of a hold re-evaluation.
+     *
+     * @return array<int, array{status: string, failure_reason: string|null}>
+     */
+    private function holdState(PayoutBatch $batch): array
+    {
+        return PayoutLineItem::where('payout_batch_id', $batch->id)
+            ->orderBy('id')
+            ->get(['id', 'status', 'failure_reason'])
+            ->mapWithKeys(fn (PayoutLineItem $line): array => [(int) $line->id => [
+                'status' => (string) $line->status,
+                'failure_reason' => $line->failure_reason,
+            ]])
+            ->all();
+    }
+
+    /**
      * Re-read every hold on a batch and act on what has changed since the batch
      * was built: a hold that has cleared is replaced by a real, payable line in
      * this same batch, and a hold that still stands but for a different reason
@@ -818,6 +837,8 @@ final class PayoutService
             ->whereIn('status', PayoutLineItem::HELD_STATUSES)
             ->orderBy('id')
             ->get();
+
+        $holdsBefore = $this->holdState($batch);
 
         $released = 0;
         $restated = 0;
@@ -880,6 +901,8 @@ final class PayoutService
                 'action' => 'payout.batch.holds_reevaluated',
                 'subject_type' => 'payout_batch',
                 'subject_id' => (int) $batch->id,
+                'before_hash' => AuditDigests::of($holdsBefore),
+                'after_hash' => AuditDigests::of($this->holdState($batch)),
                 'details' => [
                     'batch_type' => $batch->batch_type,
                     'batch_date' => $batch->batch_date->toDateString(),
@@ -1100,6 +1123,14 @@ final class PayoutService
             'action' => 'payout.income_cap_forfeited',
             'subject_type' => 'distributor',
             'subject_id' => $distributorId,
+            'before_hash' => AuditDigests::of([
+                'gross_paise' => $grossPaise,
+                'repurchase_deduction_paise' => $repurchasePaise,
+            ]),
+            'after_hash' => AuditDigests::of([
+                'forfeited_paise' => array_sum($forfeitByMonth),
+                'forfeited_by_earned_month' => $forfeitByMonth,
+            ]),
             'details' => [
                 'payout_batch_id' => $batch->id,
                 'payout_line_item_id' => $lineItem->id,
@@ -1243,6 +1274,8 @@ final class PayoutService
         $netPaise = (int) $paid->net;
         $distributorCount = (int) $paid->cnt;
 
+        $before = AuditDigests::of($batch);
+
         $batch->update([
             'status' => $failedCount > 0
                 ? PayoutBatch::STATUS_PARTIALLY_FAILED
@@ -1259,6 +1292,8 @@ final class PayoutService
             'action' => 'payout.batch.finalised',
             'subject_type' => 'payout_batch',
             'subject_id' => $batch->id,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of($batch),
             'details' => [
                 'batch_id' => $batch->id,
                 'batch_type' => $batch->batch_type,
@@ -1283,6 +1318,9 @@ final class PayoutService
             'action' => 'payout.batch.created',
             'subject_type' => 'payout_batch',
             'subject_id' => $batch->id,
+            // A creation has no before-state: before_hash stays NULL.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of($batch),
             'details' => [
                 'batch_id' => $batch->id,
                 'period' => $period,
@@ -1420,6 +1458,7 @@ final class PayoutService
         }
 
         $razorpay = $this->payoutSettings->isRazorpay();
+        $before = AuditDigests::of($batch);
 
         DB::transaction(function () use ($batch, $approvedByUserId, $razorpay): void {
             $batch->update([
@@ -1434,6 +1473,8 @@ final class PayoutService
             'action' => 'payout.batch.approved',
             'subject_type' => 'payout_batch',
             'subject_id' => (int) $batch->id,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of($batch),
             'details' => [
                 'batch_type' => $batch->batch_type,
                 'batch_date' => $batch->batch_date->toDateString(),

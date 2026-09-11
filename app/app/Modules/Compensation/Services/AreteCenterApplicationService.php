@@ -12,6 +12,7 @@ use App\Modules\Compensation\Notifications\AreteCenterApplicationReviewedNotific
 use App\Modules\Compensation\Notifications\AreteCenterApplicationSubmittedNotification;
 use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -230,6 +231,9 @@ final class AreteCenterApplicationService
                 'action' => 'adc.center.created',
                 'subject_type' => 'arete_center',
                 'subject_id' => $center->id,
+                // A creation has no before-state: before_hash stays NULL.
+                'before_hash' => null,
+                'after_hash' => AuditDigests::of($center),
                 'details' => ['before' => null, 'after' => $center->only(['name', 'centre_type', 'city', 'state', 'pincode', 'assigned_distributor_id', 'status', 'development_phase']), 'application_id' => $application->id],
                 'ip' => $ip,
             ]);
@@ -408,12 +412,16 @@ final class AreteCenterApplicationService
      */
     private function audit(AreteCenterApplication $application, string $action, ?array $before, ?string $ip, ?User $actor = null, array $extra = []): void
     {
+        $after = $this->snapshot($application->refresh());
+
         AuditLog::create([
             'actor_id' => $actor !== null ? $actor->id : $application->distributor->user_id,
             'action' => $action,
             'subject_type' => 'arete_center_application',
             'subject_id' => $application->id,
-            'details' => ['before' => $before, 'after' => $this->snapshot($application->refresh()), ...$extra],
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($after),
+            'details' => ['before' => $before, 'after' => $after, ...$extra],
             'ip' => $ip,
         ]);
     }

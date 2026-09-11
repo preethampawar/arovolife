@@ -12,6 +12,7 @@ use App\Modules\Compensation\Services\PayoutGatewaySettings;
 use App\Modules\Compensation\Services\PayoutReconciliationService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\Csv;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
@@ -78,6 +79,10 @@ trait HandlesPayoutBatchActions
                 'action' => 'payout.batch.self_approval_refused',
                 'subject_type' => 'payout_batch',
                 'subject_id' => (int) $batch->id,
+                // A refusal moves nothing: the batch stands exactly as it was,
+                // and the matching digests say so.
+                'before_hash' => AuditDigests::of($batch),
+                'after_hash' => AuditDigests::of($batch),
                 'details' => [
                     'batch_type' => $batch->batch_type,
                     'batch_date' => $batch->batch_date->toDateString(),
@@ -186,6 +191,10 @@ trait HandlesPayoutBatchActions
             'action' => 'payout.batch.retry_requested',
             'subject_type' => 'payout_batch',
             'subject_id' => (int) $batch->id,
+            // Queueing moves nothing yet; the after digest pins which lines
+            // were authorised for another attempt.
+            'before_hash' => AuditDigests::of($batch),
+            'after_hash' => AuditDigests::of(['line_item_ids' => $lineIds->all()]),
             'details' => [
                 'batch_type' => $batch->batch_type,
                 'batch_date' => $batch->batch_date->toDateString(),
@@ -228,6 +237,10 @@ trait HandlesPayoutBatchActions
             'action' => 'payout.line_item.retry_requested',
             'subject_type' => 'payout_line_item',
             'subject_id' => (int) $line->id,
+            // The retry job moves the line, not this request; the digests pin
+            // the state it was authorised against.
+            'before_hash' => AuditDigests::of($line),
+            'after_hash' => AuditDigests::of($line),
             'details' => [
                 'payout_batch_id' => $batch->id,
                 'distributor_id' => $line->distributor_id,
@@ -290,6 +303,8 @@ trait HandlesPayoutBatchActions
             'action' => 'payout.batch.bank_file_exported',
             'subject_type' => 'payout_batch',
             'subject_id' => (int) $batch->id,
+            // An export moves nothing, so there is no before-state.
+            'before_hash' => null,
             // Raw 32 bytes, never hex — the column is BINARY(32).
             'after_hash' => AuditLog::digest($csv),
             'details' => [

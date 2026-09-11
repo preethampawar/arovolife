@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Http\UploadedFile;
 
@@ -61,6 +62,24 @@ final class PayoutReconciliationService
     public function __construct(private readonly RazorpayPayoutDispatchService $dispatcher) {}
 
     /**
+     * Every line's settlement state on a batch, for the before/after digests
+     * of a bank-response import.
+     *
+     * @return array<int, array{status: string, utr_number: string|null}>
+     */
+    private function lineStatuses(PayoutBatch $batch): array
+    {
+        return PayoutLineItem::where('payout_batch_id', $batch->id)
+            ->orderBy('id')
+            ->get(['id', 'status', 'utr_number'])
+            ->mapWithKeys(fn (PayoutLineItem $line): array => [(int) $line->id => [
+                'status' => (string) $line->status,
+                'utr_number' => $line->utr_number,
+            ]])
+            ->all();
+    }
+
+    /**
      * @return array{
      *   rows: int, matched: int, transferred: int, failed: int,
      *   unmatched: list<string>, skipped: list<string>, rejected: list<string>,
@@ -69,6 +88,8 @@ final class PayoutReconciliationService
      */
     public function import(PayoutBatch $batch, UploadedFile $file, int $actorId): array
     {
+        $lineStatusesBefore = AuditDigests::of($this->lineStatuses($batch));
+
         $summary = [
             'rows' => 0,
             'matched' => 0,
@@ -220,6 +241,8 @@ final class PayoutReconciliationService
             'action' => 'payout.batch.reconciled',
             'subject_type' => 'payout_batch',
             'subject_id' => (int) $batch->id,
+            'before_hash' => $lineStatusesBefore,
+            'after_hash' => AuditDigests::of($this->lineStatuses($batch)),
             'details' => [
                 'batch_type' => $batch->batch_type,
                 'batch_date' => $batch->batch_date->toDateString(),

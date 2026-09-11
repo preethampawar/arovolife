@@ -8,6 +8,7 @@ use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -242,6 +243,8 @@ final class AdminPlanSettingsController extends Controller
             'action' => 'compensation.plan.'.$area.'.updated',
             'subject_type' => $table,
             'subject_id' => null,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of((array) DB::table($table)->where($keyColumn, $keyValue)->first()),
             'details' => [
                 'key' => $eventKey,
                 'before' => $before,

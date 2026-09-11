@@ -9,6 +9,7 @@ use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
@@ -80,6 +81,9 @@ final class AdminManualControlsController extends Controller
                 ->where('status', GsbCutoffResult::STATUS_FAILED)
                 ->first();
 
+            // The failed row the retry replaces, digested before it goes.
+            $beforeState = $before === null ? null : AuditDigests::of($before);
+
             $before?->delete();
 
             $result = $this->cutoff->runForDistributor($distributor->id, $date);
@@ -120,6 +124,8 @@ final class AdminManualControlsController extends Controller
                 'action' => 'compensation.cutoff.manual_retry',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => $beforeState,
+                'after_hash' => AuditDigests::of($result),
                 'details' => [
                     'adn' => $distributor->adn,
                     'date' => $date->toDateString(),
@@ -153,6 +159,7 @@ final class AdminManualControlsController extends Controller
         $distributor = Distributor::where('adn', $request->input('adn'))->firstOrFail();
         $freeze = $request->input('freeze') === 'freeze';
 
+        $frozenBefore = $distributor->gsb_frozen_at;
         $distributor->update(['gsb_frozen_at' => $freeze ? now() : null]);
 
         AuditLog::create([
@@ -160,6 +167,8 @@ final class AdminManualControlsController extends Controller
             'action' => $freeze ? 'compensation.gsb.frozen' : 'compensation.gsb.unfrozen',
             'subject_type' => 'distributor',
             'subject_id' => $distributor->id,
+            'before_hash' => AuditDigests::of(['gsb_frozen_at' => $frozenBefore]),
+            'after_hash' => AuditDigests::of(['gsb_frozen_at' => $distributor->gsb_frozen_at]),
             'details' => ['adn' => $distributor->adn, 'reason' => $request->input('reason')],
             'ip' => $request->ip(),
         ]);
@@ -217,6 +226,16 @@ final class AdminManualControlsController extends Controller
                 'action' => 'compensation.gsb.reversed',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => AuditDigests::of([
+                    'status' => GsbCutoffResult::STATUS_CREDITED,
+                    'wallet_paise' => $before,
+                    'repurchase_wallet_paise' => $repurchaseBefore,
+                ]),
+                'after_hash' => AuditDigests::of([
+                    'status' => $result->status,
+                    'wallet_paise' => $this->wallet->balancePaise($distributor->id),
+                    'repurchase_wallet_paise' => $this->wallet->repurchaseWalletBalancePaise($distributor->id),
+                ]),
                 'details' => [
                     'adn' => $distributor->adn,
                     'date' => $result->cutoff_date->toDateString(),
@@ -259,6 +278,10 @@ final class AdminManualControlsController extends Controller
             'action' => 'compensation.carryforward.recalculated',
             'subject_type' => 'distributor',
             'subject_id' => $distributor->id,
+            // Nothing is rebuilt yet (Phase 4), so the two digests match: the
+            // carry-forward state stands exactly as it did.
+            'before_hash' => AuditDigests::of($distributor),
+            'after_hash' => AuditDigests::of($distributor),
             'details' => [
                 'adn' => $distributor->adn,
                 'reason' => $request->input('reason'),
@@ -311,6 +334,8 @@ final class AdminManualControlsController extends Controller
                 'action' => 'compensation.gsb.manual_credit',
                 'subject_type' => 'distributor',
                 'subject_id' => $distributor->id,
+                'before_hash' => AuditDigests::of(['wallet_paise' => $before]),
+                'after_hash' => AuditDigests::of(['wallet_paise' => $this->wallet->balancePaise($distributor->id)]),
                 'details' => [
                     'adn' => $distributor->adn,
                     'gsb_cutoff_result_id' => $cutoffResult->id,
@@ -344,6 +369,10 @@ final class AdminManualControlsController extends Controller
             'action' => 'compensation.payout.force_triggered',
             'subject_type' => 'distributor',
             'subject_id' => $distributor->id,
+            // Nothing moves here — the batch runs at its scheduled time. The
+            // digests pin the distributor state the request was made against.
+            'before_hash' => AuditDigests::of($distributor),
+            'after_hash' => AuditDigests::of($distributor),
             'details' => ['adn' => $distributor->adn, 'reason' => $request->input('reason')],
             'ip' => $request->ip(),
         ]);

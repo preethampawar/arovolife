@@ -9,6 +9,7 @@ use App\Modules\Compensation\Exceptions\PayoutGatewayNotConfiguredException;
 use App\Modules\Compensation\Services\PayoutGatewaySettings;
 use App\Modules\Compensation\Services\RazorpayPayoutGateway;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -104,6 +105,10 @@ final class AdminPayoutSettingsController extends Controller
                 'action' => 'payout.gateway.connection_tested',
                 'subject_type' => 'settings',
                 'subject_id' => null,
+                // A connection test changes no setting; the digest pins the
+                // result it reported.
+                'before_hash' => null,
+                'after_hash' => AuditDigests::of(['result' => 'error', 'mode' => $this->settings->razorpayMode()]),
                 'details' => ['result' => 'error', 'message' => mb_substr($e->getMessage(), 0, 500)],
                 'ip' => $request->ip(),
             ]);
@@ -119,6 +124,8 @@ final class AdminPayoutSettingsController extends Controller
             'action' => 'payout.gateway.connection_tested',
             'subject_type' => 'settings',
             'subject_id' => null,
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of(['result' => 'ok', 'mode' => $this->settings->razorpayMode()]),
             'details' => ['result' => 'ok', 'mode' => $this->settings->razorpayMode()],
             'ip' => $request->ip(),
         ]);

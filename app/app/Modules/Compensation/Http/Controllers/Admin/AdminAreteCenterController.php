@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Compensation\Notifications\AreteCenterDeactivatedNotification;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Support\IndianStates;
 use Illuminate\Contracts\View\View;
@@ -112,6 +113,9 @@ final class AdminAreteCenterController extends Controller
             'action' => 'adc.center.created',
             'subject_type' => 'arete_center',
             'subject_id' => $center->id,
+            // A creation has no before-state: before_hash stays NULL.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of($this->auditAttributes($center)),
             'details' => ['before' => null, 'after' => $this->auditAttributes($center)],
             'ip' => $request->ip(),
         ]);
@@ -148,6 +152,8 @@ final class AdminAreteCenterController extends Controller
             'action' => 'adc.center.updated',
             'subject_type' => 'arete_center',
             'subject_id' => $center->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($this->auditAttributes($center)),
             'details' => ['before' => $before, 'after' => $this->auditAttributes($center)],
             'ip' => $request->ip(),
         ]);
@@ -305,6 +311,8 @@ final class AdminAreteCenterController extends Controller
             'action' => 'adc.center.status_changed',
             'subject_type' => 'arete_center',
             'subject_id' => $center->id,
+            'before_hash' => AuditDigests::of($before),
+            'after_hash' => AuditDigests::of($this->auditAttributes($center)),
             'details' => ['before' => $before, 'after' => $this->auditAttributes($center), 'reason' => $validated['reason'] ?? null],
             'ip' => $request->ip(),
         ]);
@@ -336,6 +344,8 @@ final class AdminAreteCenterController extends Controller
             'action' => 'adc.center.default_changed',
             'subject_type' => 'arete_center',
             'subject_id' => $center->id,
+            'before_hash' => AuditDigests::of(['company_default_ids' => $previous->pluck('id')->all()]),
+            'after_hash' => AuditDigests::of(['company_default_ids' => [$center->id]]),
             'details' => ['before' => $previous->pluck('id')->all(), 'after' => [$center->id]],
             'ip' => $request->ip(),
         ]);
