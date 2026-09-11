@@ -42,7 +42,7 @@
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-brand-700 text-xs font-semibold border border-brand-200 shadow-sm">
                     <x-lucide-check class="w-3.5 h-3.5" />
-                    GST invoice
+                    Invoice on every order
                 </span>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-sunrise-700 text-xs font-semibold border border-sunrise-200 shadow-sm">
                     <x-lucide-check class="w-3.5 h-3.5" />

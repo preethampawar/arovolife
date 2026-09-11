@@ -201,7 +201,10 @@
             </div>
             <div class="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <x-lucide-circle-check class="w-5 h-5 text-brand-700 shrink-0" />
-                <span><strong class="text-gray-900 block">GST invoice</strong><span class="text-gray-600">Issued for every order.</span></span>
+                {{-- Not "GST invoice": the document issued today is an order summary /
+                     payment receipt and says so, because the GSTIN + CGST/SGST split is
+                     deferred (R-28). Promising a GST invoice contradicted it (QA F58). --}}
+                <span><strong class="text-gray-900 block">Invoice</strong><span class="text-gray-600">Issued for every order.</span></span>
             </div>
         </div>
 

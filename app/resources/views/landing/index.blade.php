@@ -44,7 +44,7 @@
                     'eyebrow' => 'arovolife Shopping Mall',
                     'title_plain' => 'Quality Essentials',
                     'title_accent' => 'Delivered to Your Door',
-                    'body' => 'Browse our curated range of personal care, health and food products — responsibly sourced, independently quality-checked, and backed by a GST invoice on every order.',
+                    'body' => 'Browse our curated range of personal care, health and food products — responsibly sourced, independently quality-checked, and backed by an invoice on every order.',
                     'cta_primary' => ['label' => 'Shop Now →', 'url' => route('shop.index')],
                     'cta_secondary' => ['label' => 'Browse Categories', 'url' => route('shop.index')],
                     'note' => '30-day return window on every order.',
