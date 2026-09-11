@@ -135,6 +135,18 @@ final class MessageController extends Controller
         abort_if($me === null, 401);
         abort_if($me->id === $user->id, 422, 'You cannot open a chat with yourself.');
 
+        // Reading a thread is an authorisation decision, not a UX one. Without
+        // this the endpoint answered 200 for any sequential user id and handed
+        // back that account's display name, which enumerates the whole
+        // distributor base. A thread opens only if the viewer may write to the
+        // other party (the same audience rule the send path applies) or the two
+        // have already exchanged a message — the second arm keeps the history
+        // readable after a block, or after the audience setting moves.
+        $mayOpen = $service->canMessage($me, $user)
+            || Message::query()->threadBetween((int) $me->id, (int) $user->id)->exists();
+
+        abort_unless($mayOpen, 404);
+
         $messages = Message::query()
             ->threadBetween($me->id, $user->id)
             ->with(['fromUser:id,full_name,email'])

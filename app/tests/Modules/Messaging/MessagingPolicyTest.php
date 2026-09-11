@@ -186,20 +186,76 @@ it('POL-05: the block is one-directional — the blocker can still write', funct
 });
 
 it('POL-05b: the thread page renders its flash status once, not twice (F79)', function (): void {
-    $alice = polUser('alice');
-    $bob = polUser('bob');
-    polDistributor($alice->id);
-    polDistributor($bob->id);
+    $sponsor = polUser('sponsor');
+    $downline = polUser('downline');
+    $sponsorId = polDistributor($sponsor->id);
+    polDistributor($downline->id, $sponsorId);
 
-    $response = $this->actingAs($alice)
+    $response = $this->actingAs($sponsor)
         ->withSession(['status' => 'You have blocked this person. They cannot send you new messages, and they have not been told.'])
-        ->get(route('messages.show', ['user' => $bob->id]))
+        ->get(route('messages.show', ['user' => $downline->id]))
         ->assertOk();
 
     expect(substr_count(
         $response->getContent(),
         'You have blocked this person. They cannot send you new messages, and they have not been told.',
     ))->toBe(1);
+});
+
+it('POL-05c: opening a thread with someone outside your line 404s (F25/F75)', function (): void {
+    $alice = polUser('alice');
+    $stranger = polUser('stranger');
+    polDistributor($alice->id);
+    polDistributor($stranger->id);
+
+    $this->actingAs($alice)
+        ->get(route('messages.show', ['user' => $stranger->id]))
+        ->assertNotFound();
+});
+
+it('POL-05d: walking sequential user ids reveals no name (F25/F75)', function (): void {
+    $sponsor = polUser('sponsor');
+    $downline = polUser('downline');
+    $sponsorId = polDistributor($sponsor->id);
+    polDistributor($downline->id, $sponsorId);
+
+    // Everyone the enumerator is not on a line with, plus an id that does
+    // not exist at all — the two must be indistinguishable from outside.
+    $strangers = [polUser('s1'), polUser('s2'), polUser('s3')];
+    foreach ($strangers as $stranger) {
+        polDistributor($stranger->id);
+    }
+
+    foreach ($strangers as $stranger) {
+        $response = $this->actingAs($sponsor)
+            ->get(route('messages.show', ['user' => $stranger->id]))
+            ->assertNotFound();
+
+        expect($response->getContent())->not->toContain($stranger->full_name)
+            ->and($response->getContent())->not->toContain($stranger->email);
+    }
+
+    $this->actingAs($sponsor)->get(route('messages.show', ['user' => 999999]))->assertNotFound();
+
+    // The viewer's own line still opens.
+    $this->actingAs($sponsor)->get(route('messages.show', ['user' => $downline->id]))->assertOk();
+});
+
+it('POL-05e: a thread already exchanged stays readable after a block (F25/F75)', function (): void {
+    $sponsor = polUser('sponsor');
+    $downline = polUser('downline');
+    $sponsorId = polDistributor($sponsor->id);
+    polDistributor($downline->id, $sponsorId);
+
+    app(MessageService::class)->send($sponsor, $downline, 'Well done this week');
+
+    MessageBlock::create(['blocker_user_id' => $downline->id, 'blocked_user_id' => $sponsor->id]);
+
+    expect(app(MessageService::class)->canMessage($sponsor, $downline))->toBeFalse();
+
+    $this->actingAs($sponsor)
+        ->get(route('messages.show', ['user' => $downline->id]))
+        ->assertOk();
 });
 
 it('POL-06: the hourly cap refuses the send past the limit', function (): void {
