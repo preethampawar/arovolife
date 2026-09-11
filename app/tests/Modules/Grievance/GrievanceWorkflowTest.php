@@ -37,6 +37,8 @@ declare(strict_types=1);
  * GRV-027: the compliance report hides ethics counts from anyone who cannot open an ethics ticket
  * GRV-028: staff-authored fields reject a raw Aadhaar the same way complainant fields do
  * GRV-029: the compliance-report CSV export renders a fractional median without a 500
+ * GRV-030: the hourly sweep logs one structured line per run, no-op runs included
+ * GRV-031: that line counts the tickets checked and the breaches stamped
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -57,6 +59,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
@@ -373,6 +376,30 @@ it('GRV-015: every grievance screen renders — public, distributor and admin', 
     $this->actingAs($staff)->get(route('admin.grievances.report'))->assertOk();
     $this->actingAs($staff)->get(route('admin.grievances.report.export'))->assertOk();
     $this->actingAs($staff)->get(route('admin.help.show', 'grievance-handling'))->assertOk();
+});
+
+it('GRV-042: the "My grievances" flash banner renders once, not twice (F79)', function () {
+    $distributorUser = grvDistributorUser();
+
+    $response = $this->actingAs($distributorUser)
+        ->withSession(['status' => 'Your grievance has been registered as GRV-TEST-00001.'])
+        ->get(route('my.grievances.index'))
+        ->assertOk();
+
+    expect(substr_count($response->getContent(), 'Your grievance has been registered as GRV-TEST-00001.'))->toBe(1);
+});
+
+it('GRV-041: the reply form gets specific confirm-modal copy, not the generic fallback (F79)', function () {
+    $distributorUser = grvDistributorUser();
+    $ticket = grvFile(['distributorId' => $distributorUser->distributor->id]);
+
+    expect($ticket->status->acceptsComplainantReply())->toBeTrue();
+
+    $this->actingAs($distributorUser)
+        ->get(route('my.grievances.show', $ticket->id))
+        ->assertOk()
+        ->assertSee('data-confirm-title="Add your reply"', false)
+        ->assertSee('data-confirm-impact="Your reply is added to the grievance history', false);
 });
 
 it('GRV-016: a complaint with no anonymity answer is rejected, not silently filed without contact details', function () {
@@ -729,4 +756,39 @@ it('GRV-040: distributor-conduct complaints (poaching, competitive business, e-c
         'body' => 'A distributor in my city is listing arovolife products on an online marketplace.',
         'category' => TicketCategory::ECommerceSelling->value,
     ])->assertRedirect();
+});
+
+it('GRV-030: logs one structured line per sweep, no-op runs included', function () {
+    // F121: the hourly sweep writes no `engine_runs` row and logged nothing when
+    // it found nothing, so there was no evidence it was running at all.
+    Notification::fake();
+    Log::spy();
+
+    $this->artisan('grievance:sla-sweep')->assertSuccessful();
+
+    Log::shouldHaveReceived('info')
+        ->withArgs(fn (string $message, array $context): bool => $message === 'grievance.sla_sweep.completed'
+            && $context['tickets_checked'] === 0
+            && $context['breaches_stamped'] === 0
+            && $context['escalations'] === 0
+            && $context['update_nudges'] === 0
+            && $context['dry_run'] === false)
+        ->once();
+});
+
+it('GRV-031: counts the tickets it checked and the breaches it stamped', function () {
+    Notification::fake();
+
+    $ticket = grvFile();
+    $ticket->forceFill(['sla_resolution_at' => Carbon::now()->subDay()])->save();
+
+    Log::spy();
+
+    $this->artisan('grievance:sla-sweep')->assertSuccessful();
+
+    Log::shouldHaveReceived('info')
+        ->withArgs(fn (string $message, array $context): bool => $message === 'grievance.sla_sweep.completed'
+            && $context['tickets_checked'] === 1
+            && $context['breaches_stamped'] === 1)
+        ->once();
 });

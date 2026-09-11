@@ -12,6 +12,7 @@ use App\Modules\Grievance\Services\GrievanceService;
 use App\Modules\Grievance\Services\GrievanceSettingsService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -47,6 +48,7 @@ final class GrievanceSlaSweepCommand extends Command
         $now = Carbon::now();
         $dryRun = (bool) $this->option('dry-run');
 
+        $checked = 0;
         $breaches = 0;
         $escalations = 0;
         $updateNudges = 0;
@@ -55,14 +57,28 @@ final class GrievanceSlaSweepCommand extends Command
             ->unsettled()
             ->orderBy('id')
             ->chunkById(200, function ($tickets) use (
-                $grievances, $settings, $now, $dryRun, &$breaches, &$escalations, &$updateNudges
+                $grievances, $settings, $now, $dryRun, &$checked, &$breaches, &$escalations, &$updateNudges
             ): void {
                 foreach ($tickets as $ticket) {
+                    $checked++;
                     $breaches += $this->stampBreaches($grievances, $ticket, $now, $dryRun);
                     $escalations += $this->autoEscalate($grievances, $settings, $ticket, $now, $dryRun);
                     $updateNudges += $this->nudgeStatusUpdate($grievances, $settings, $ticket, $now, $dryRun);
                 }
             });
+
+        // One structured line per run, no-op runs included. This command is not
+        // a compensation engine, so it writes no `engine_runs` row: without this
+        // line an hourly sweep that has quietly stopped firing is indistinguishable
+        // from one that found nothing to do, which is the only evidence the
+        // published SLA clocks are actually being enforced (F121).
+        Log::info('grievance.sla_sweep.completed', [
+            'tickets_checked' => $checked,
+            'breaches_stamped' => $breaches,
+            'escalations' => $escalations,
+            'update_nudges' => $updateNudges,
+            'dry_run' => $dryRun,
+        ]);
 
         $this->info(sprintf(
             '%s%d breach(es) stamped, %d ticket(s) escalated, %d progress-update nudge(s) sent.',
