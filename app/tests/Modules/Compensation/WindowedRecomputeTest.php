@@ -476,3 +476,66 @@ it('counts the verdict resets in the preview', function (): void {
     expect(app(WindowedStateWiper::class)->preview(Carbon::parse('2026-08-01')))
         ->toHaveKey('repurchase_cycles (verdict reset)', 1);
 });
+
+it('takes a purchase-offer grant with the points it awarded, and leaves the ones outside the window', function (): void {
+    // F07: the grants used to survive every recompute, so `alreadyGranted()`
+    // refused to re-grant the month for ever. Deleting them without their
+    // accruals would have been worse — the re-grant would award the points a
+    // second time.
+    $dist = Distributor::factory()->create();
+
+    $older = DB::table('purchase_offer_grants')->insertGetId([
+        'distributor_id' => $dist->id,
+        'offer_type' => 'redeem_points',
+        'month_start' => '2026-07-01',
+        'qualifying_bv_paise' => 100_000,
+        'streak_months' => 6,
+        'points_awarded' => 200,
+        'status' => 'consumed',
+        'created_at' => Carbon::parse('2026-08-01 00:35'),
+        'updated_at' => Carbon::parse('2026-08-01 00:35'),
+    ]);
+
+    $inWindow = DB::table('purchase_offer_grants')->insertGetId([
+        'distributor_id' => $dist->id,
+        'offer_type' => 'redeem_points',
+        'month_start' => '2026-08-01',
+        'qualifying_bv_paise' => 120_000,
+        'streak_months' => 7,
+        'points_awarded' => 300,
+        'status' => 'consumed',
+        'created_at' => Carbon::parse('2026-09-01 00:35'),
+        'updated_at' => Carbon::parse('2026-09-01 00:35'),
+    ]);
+
+    foreach ([[$older, 200], [$inWindow, 300]] as [$grantId, $points]) {
+        DB::table('redeem_point_entries')->insert([
+            'distributor_id' => $dist->id,
+            'points' => $points,
+            'type' => 'accrual',
+            'reference_type' => 'purchase_offer_grant',
+            'reference_id' => $grantId,
+            'created_at' => Carbon::parse('2026-09-01 00:35'),
+        ]);
+    }
+
+    // What the distributor SPENT is a purchase, not a derived figure — even
+    // though it happened inside the window.
+    DB::table('redeem_point_entries')->insert([
+        'distributor_id' => $dist->id,
+        'points' => -50,
+        'type' => 'redemption',
+        'reference_type' => 'order',
+        'reference_id' => 9_001,
+        'created_at' => Carbon::parse('2026-09-03 10:00'),
+    ]);
+
+    app(WindowedStateWiper::class)->wipe(Carbon::parse('2026-08-15'));
+
+    expect(DB::table('purchase_offer_grants')->pluck('id')->all())->toBe([$older]);
+
+    $ledger = DB::table('redeem_point_entries')->orderBy('id')->get();
+
+    expect($ledger->pluck('points')->all())->toBe([200, -50])
+        ->and($ledger->pluck('reference_id')->all())->toBe([$older, 9_001]);
+});

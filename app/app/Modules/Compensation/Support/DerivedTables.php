@@ -82,6 +82,17 @@ final class DerivedTables
         'fortune_monthly_pools',
         'adc_bonus_results',
 
+        // Purchase offers. The grants are derived — the monthly run re-grants
+        // them from the month's BV — but they are also the idempotency guard
+        // (`alreadyGranted()`), so a survivor makes every later recompute skip
+        // the month: a distributor who crossed the threshold after a premature
+        // run was permanently denied their offer and no tool in the repo could
+        // repair it. The redeem-point ACCRUALS the grants wrote go with them
+        // (see PURCHASE_OFFER_POINT_REFERENCE); the points a distributor spent
+        // at checkout do not — those are purchases, like the repurchase-wallet
+        // debits above.
+        'purchase_offer_grants',
+
         // Eligibility state rebuilt from the BV ledger and the wallet ledger.
         // Each cycle's verdict is frozen once and never rewritten, so a
         // survivor would judge every replayed window on a wallet balance
@@ -136,6 +147,7 @@ final class DerivedTables
         'fortune_bonus_participants' => ['column' => 'month_start', 'granularity' => 'month'],
         'fortune_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'adc_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
+        'purchase_offer_grants' => ['column' => 'month_start', 'granularity' => 'month'],
     ];
 
     /**
@@ -148,6 +160,21 @@ final class DerivedTables
      * @var list<string>
      */
     public const PRESERVED_WALLET_TYPES = ['repurchase_wallet_used'];
+
+    /**
+     * `redeem_point_entries.reference_type` for the accrual a redeem-points
+     * grant writes. Those accruals are the only derived rows in that ledger:
+     * redemptions and their refunds record what a distributor spent at
+     * checkout and no replay recreates them.
+     *
+     * They are deleted with their parent grant, never by date — a grant that
+     * survives the window must keep the points it awarded, and a grant that
+     * goes must take them, or the re-grant accrues the same points twice.
+     */
+    public const PURCHASE_OFFER_POINT_REFERENCE = 'purchase_offer_grant';
+
+    /** The ledger the offer grants accrue into. */
+    public const REDEEM_POINT_TABLE = 'redeem_point_entries';
 
     /**
      * @return list<string>

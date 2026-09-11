@@ -57,6 +57,22 @@ final class CompensationStateWiper
                     $query->delete();
                     $removed[$table] = $count;
                 } else {
+                    if ($table === 'purchase_offer_grants') {
+                        // The points these grants awarded go with them. Left
+                        // behind, the re-granted month accrues the same points a
+                        // second time; the points a distributor SPENT are not
+                        // derived and stay.
+                        $accruals = $this->db->table(DerivedTables::REDEEM_POINT_TABLE)
+                            ->where('reference_type', DerivedTables::PURCHASE_OFFER_POINT_REFERENCE);
+                        $accrualCount = (int) $accruals->clone()->count();
+                        $accruals->delete();
+
+                        if ($accrualCount > 0) {
+                            $removed[DerivedTables::REDEEM_POINT_TABLE] = $accrualCount;
+                            $log(sprintf('  %-28s %d row(s)', DerivedTables::REDEEM_POINT_TABLE, $accrualCount));
+                        }
+                    }
+
                     $count = (int) $this->db->table($table)->count();
                     $this->db->table($table)->truncate();
                     $removed[$table] = $count;

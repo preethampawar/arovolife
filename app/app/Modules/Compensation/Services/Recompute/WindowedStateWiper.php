@@ -123,6 +123,23 @@ final class WindowedStateWiper
                 $monthStart,
             );
 
+            // The redeem points a purchase-offer grant awarded, deleted with the
+            // grants this window removes and only those: the accrual is dated
+            // the month AFTER the month it was earned for, so a date filter
+            // would strand the points of a surviving grant and take the points
+            // of one that goes. Everything else in that ledger — what a
+            // distributor spent at checkout and its refunds — is a purchase, not
+            // a derived figure.
+            $removed[DerivedTables::REDEEM_POINT_TABLE] = $this->deleteByParent(
+                DerivedTables::REDEEM_POINT_TABLE,
+                'reference_id',
+                'purchase_offer_grants',
+                'month_start',
+                $monthStart,
+                fn (QueryBuilder $query): QueryBuilder => $query
+                    ->where('reference_type', DerivedTables::PURCHASE_OFFER_POINT_REFERENCE),
+            );
+
             // Wallet entries older than the window that a deleted batch had
             // already swept must become sweepable again — otherwise the
             // rebuilt payout skips money it is supposed to pay.
@@ -523,13 +540,20 @@ final class WindowedStateWiper
         }
     }
 
-    /** Delete a child table by the ids of the parents this window removes. */
+    /**
+     * Delete a child table by the ids of the parents this window removes.
+     *
+     * @param  (Closure(QueryBuilder): QueryBuilder)|null  $narrow  extra constraint
+     *                                                              for a child table that also holds rows belonging to
+     *                                                              nobody in $parentTable
+     */
     private function deleteByParent(
         string $childTable,
         string $foreignKey,
         string $parentTable,
         string $parentDateColumn,
         Carbon $boundary,
+        ?Closure $narrow = null,
     ): int {
         if (! $this->db->getSchemaBuilder()->hasTable($childTable)) {
             return 0;
@@ -543,7 +567,9 @@ final class WindowedStateWiper
             return 0;
         }
 
-        return $this->db->table($childTable)->whereIn($foreignKey, $parentIds)->delete();
+        $query = $this->db->table($childTable)->whereIn($foreignKey, $parentIds);
+
+        return ($narrow === null ? $query : $narrow($query))->delete();
     }
 
     /**

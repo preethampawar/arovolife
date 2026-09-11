@@ -41,6 +41,11 @@ final class PurchaseDataResetAction
      */
     private const COMMERCE_TABLES = [
         'bv_ledger_entries',
+        // Every row in it references either a purchase-offer grant (truncated
+        // with the derived tables) or an order (truncated below), so keeping it
+        // would leave a redeem-points balance earned from purchases that no
+        // longer exist.
+        'redeem_point_entries',
         'coupon_redemptions',
         'return_inspections',
         'buyback_decisions',

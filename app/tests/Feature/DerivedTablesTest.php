@@ -71,3 +71,21 @@ it('wipes purchase data through the same registry, never a second list', functio
     expect($reset)->toContain('orders')
         ->and($reset)->toContain('bv_ledger_entries');
 });
+
+it('registers the purchase-offer grants and the points they awarded', function (): void {
+    // F07: the grants survived every recompute, and `alreadyGranted()` made the
+    // survivor a permanent refusal to re-grant — a distributor who crossed the
+    // threshold after a premature monthly run was denied the month for good.
+    expect(DerivedTables::contains('purchase_offer_grants'))->toBeTrue()
+        ->and(DerivedTables::dateFilter('purchase_offer_grants'))
+        ->toBe(['column' => 'month_start', 'granularity' => 'month']);
+
+    // The accruals are deleted with their parent grant, never by date: the
+    // accrual is written in the month AFTER the one it was earned for.
+    expect(DerivedTables::contains(DerivedTables::REDEEM_POINT_TABLE))->toBeFalse()
+        ->and(DerivedTables::dateFilter(DerivedTables::REDEEM_POINT_TABLE))->toBeNull();
+
+    // A full purchase reset takes the whole ledger: every row in it references a
+    // grant or an order, and both are wiped.
+    expect(PurchaseDataResetAction::wipeTables())->toContain(DerivedTables::REDEEM_POINT_TABLE);
+});
