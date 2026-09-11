@@ -123,6 +123,18 @@ final class GenosBvLedgerService
             ->get()
             ->groupBy(fn ($row) => Carbon::parse((string) $row->date)->toDateString());
 
+        // The cut-off's conditional personal-BV top-up. It moves BV onto the
+        // weaker group without any Genos member having bought anything, so
+        // without a line here the ledger reads "No Genos BV added this day"
+        // beside a day that matched a slab.
+        $topups = DB::table('gsb_personal_bv_topups')
+            ->where('distributor_id', $distributorId)
+            ->whereIn('date', $dates->all())
+            ->select('date', 'order_id', 'bv_paise', 'side', 'reversed_at')
+            ->orderBy('order_id')
+            ->get()
+            ->groupBy(fn ($row) => Carbon::parse((string) $row->date)->toDateString());
+
         $cutoffs = GsbCutoffResult::where('distributor_id', $distributorId)
             ->whereIn('cutoff_date', $dates->all())
             ->get()
@@ -133,6 +145,7 @@ final class GenosBvLedgerService
             credits: $credits->get($date)?->values()->all() ?? [],
             reversals: $reversals->get($date)?->values()->all() ?? [],
             cutoff: $cutoffs->get($date),
+            topups: $topups->get($date)?->values()->all() ?? [],
         ))->values();
 
         // Rebuilt (rather than $days->through()) so the paginator carries the

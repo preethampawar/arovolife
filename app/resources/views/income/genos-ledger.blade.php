@@ -85,7 +85,7 @@
                             {{ \Illuminate\Support\Carbon::parse($day->date)->format('d M Y') }}
                         </td>
                     </tr>
-                    @if(count($day->credits) === 0 && count($day->reversals) === 0)
+                    @if(count($day->credits) === 0 && count($day->reversals) === 0 && count($day->topups) === 0)
                     <tr>
                         <td colspan="5" class="px-4 py-2.5 text-gray-600 italic">No Genos BV added this day.</td>
                     </tr>
@@ -126,6 +126,26 @@
                         </td>
                     </tr>
                     @endforeach
+                    @foreach($day->topups as $topup)
+                    <tr class="bg-amber-50/40">
+                        <td class="px-4 py-2.5"></td>
+                        <td class="px-4 py-2.5 text-amber-800">
+                            Your own purchase BV added to your weaker group
+                            @if($topup->reversed_at)
+                            <span class="block text-xs text-amber-700">reversed — that order was cancelled</span>
+                            @else
+                            <span class="block text-xs text-amber-700">applied at the cut-off to your {{ $topup->side === 'L' ? 'Left' : 'Right' }} group</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-2.5 font-mono text-gray-700">{{ $distributor->adn }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono font-medium {{ $topup->side === 'L' && ! $topup->reversed_at ? 'text-green-700' : 'text-gray-300' }}">
+                            {{ $topup->side === 'L' && ! $topup->reversed_at ? '+'.\App\Modules\Shared\Support\IndianNumber::format($topup->bv_paise / 100, 0) : '—' }}
+                        </td>
+                        <td class="px-4 py-2.5 text-right font-mono font-medium {{ $topup->side === 'R' && ! $topup->reversed_at ? 'text-green-700' : 'text-gray-300' }}">
+                            {{ $topup->side === 'R' && ! $topup->reversed_at ? '+'.\App\Modules\Shared\Support\IndianNumber::format($topup->bv_paise / 100, 0) : '—' }}
+                        </td>
+                    </tr>
+                    @endforeach
                     @if($day->cutoff)
                     @php
                         $c = $day->cutoff;
@@ -146,7 +166,7 @@
                             @endif
                         </td>
                         <td colspan="2" class="px-4 py-2.5 text-right text-indigo-900 text-xs">
-                            {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ $c->power_side_after ? '('.$c->power_side_after.') ' : '' }}{{ \App\Modules\Shared\Support\IndianNumber::format($c->power_cf_after_paise / 100, 0) }}</span>
+                            {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ match ($c->power_side_after) { 'L' => '(Left) ', 'R' => '(Right) ', default => '' } }}{{ \App\Modules\Shared\Support\IndianNumber::format($c->power_cf_after_paise / 100, 0) }}</span>
                             · <span class="font-mono font-medium">slab-1 weaker {{ \App\Modules\Shared\Support\IndianNumber::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
                         </td>
                     </tr>

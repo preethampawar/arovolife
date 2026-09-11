@@ -1112,3 +1112,127 @@ it('shows no not-counted note when the month has no forfeited days', function ()
         ->assertSee('Left Genos BV this month')
         ->assertDontSee('not counted (repurchase condition not met)');
 });
+
+it('shows the stored weaker side and a Left/Right power label on the genos bv page, never a recompute (F61/F62)', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    // The day the QA run caught: the Left leg reads 0 BV for the day, yet the
+    // cut-off stored Left as the power side, because Left carried 50,000 BV
+    // in from the day before. Recomputing from the two leg figures calls Left
+    // the weaker side; the stored result says the weaker side is Right.
+    DB::table('gsb_cutoff_results')->insert([
+        'distributor_id' => $distributorId,
+        'cutoff_date' => '2026-09-06',
+        'left_bv_paise' => 0,
+        'right_bv_paise' => 200_000,
+        'weaker_bv_paise' => 150_000,
+        'slab' => 3,
+        'power_cf_before_paise' => 5_000_000,
+        'power_side_before' => 'L',
+        'power_cf_after_paise' => 1_200_000,
+        'power_side_after' => 'L',
+        'slab1_weaker_cf_before_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'credited',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $response = $this->get(route('income.genos-bv'))->assertOk();
+
+    // Weaker side cell: the side the engine stored — Right, the one that is
+    // not the power side — plus the BV it was actually matched on, 1,500,
+    // which is neither leg figure. A view that recomputed from the legs would
+    // print Left here.
+    expect($response->getContent())->toMatch(
+        '/Right\s*<span class="block text-xs text-gray-500 font-mono">1,500 BV<\/span>/',
+    );
+    // "Power CF after" carries its Left/Right label (house rule).
+    $response->assertSee('Left group');
+});
+
+it('gives the personal-BV top-up its own genos ledger line instead of "No Genos BV added this day" (F62)', function (): void {
+    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
+    $this->actingAs($user);
+
+    disableTestForeignKeys();
+    try {
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => 999_991,
+            'bv_paise' => 60_000,
+            'type' => 'accrual',
+            'effective_at' => now()->format('Y-m-d H:i:s.v'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // A day with no Genos purchase at all, but the cut-off matched a slab
+        // because it topped the weaker group up with the distributor's own
+        // purchase BV.
+        DB::table('gsb_personal_bv_topups')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => 999_991,
+            'bv_paise' => 60_000,
+            'side' => 'R',
+            'date' => today()->toDateString(),
+            'created_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    DB::table('gsb_cutoff_results')->insert([
+        'distributor_id' => $distributorId,
+        'cutoff_date' => today()->toDateString(),
+        'left_bv_paise' => 0,
+        'right_bv_paise' => 60_000,
+        'weaker_bv_paise' => 60_000,
+        'slab' => 1,
+        'power_cf_before_paise' => 0,
+        'power_side_before' => 'L',
+        'power_cf_after_paise' => 0,
+        'power_side_after' => 'L',
+        'slab1_weaker_cf_before_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'credited',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.genos-ledger'))
+        ->assertOk()
+        ->assertSee('Your own purchase BV added to your weaker group')
+        ->assertSee('applied at the cut-off to your Right group')
+        ->assertSee('+600')
+        ->assertSee('power (Left)')
+        ->assertDontSee('No Genos BV added this day.');
+});
+
+it('dates every mentorship bonus row on the distributor page (F62)', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    ['distributorId' => $sponseeId] = incomeDistributor();
+    $this->actingAs($user);
+
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    DB::table('mentorship_bonus_results')->insert([
+        'sponsor_id' => $sponsorId,
+        'sponsee_id' => $sponseeId,
+        'cutoff_date' => '2026-09-06',
+        'sponsee_gsb_paise' => 1_000_00,
+        'slab' => 2,
+        'msb_points' => 4,
+        'msb_point_value_paise' => 25_000,
+        'mb_gross_paise' => 100_000,
+        'mb_net_paise' => 100_000,
+        'status' => 'credited',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.mentorship'))
+        ->assertOk()
+        ->assertSee('06 Sep 2026');
+});

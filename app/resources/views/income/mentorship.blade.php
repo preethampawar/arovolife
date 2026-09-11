@@ -17,11 +17,14 @@
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-600 mb-1">MB Earned This Month</p>
+            <p class="text-xs text-gray-600 mb-1">
+                MB Credited This Month
+                <x-help-tip text="Mentorship Bonus that landed in your main wallet this month — gross minus the repurchase deduction taken when each bonus was credited." />
+            </p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-600 mb-1">MB Earned Lifetime</p>
+            <p class="text-xs text-gray-600 mb-1">MB Credited Lifetime</p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbLifetimePaise ?? 0) / 100, 2) }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
@@ -53,10 +56,13 @@
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-            <table class="w-full text-sm min-w-[700px]">
+            <table class="w-full text-sm min-w-[780px]">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">
+                            <span class="flex items-center gap-1">Date <x-help-tip text="The 23:59 cut-off date on which your sponsee matched this slab — the same date the filter above works on." /></span>
+                        </th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center gap-1">Sponsee ADN <x-help-tip text="Your directly sponsored distributor's ADN, partially masked for privacy." /></span>
                         </th>
@@ -69,13 +75,14 @@
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">Point value <x-help-tip text="Rupee value of one MSB point on the day it was credited: that day's Mentorship Bonus pool divided by everyone's MSB points for the day. It changes daily, depends on that day's company-wide sales, and can be ₹0 on a low-sales day." /></span>
                         </th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">MB earned</th>
+                        <x-bonus-credit-head gross-label="MB earned" th-class="text-right px-4 py-3 font-semibold text-gray-600" />
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($rows as $row)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>
+                        <td class="px-4 py-3 text-gray-700">{{ $row->cutoff_date->format('d M Y') }}</td>
                         <td class="px-4 py-3 font-mono text-gray-700">
                             {{ $row->sponsee_adn }}
                         </td>
@@ -92,7 +99,7 @@
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
                             @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 0) }}@else<span class="text-gray-600">—</span>@endif
                         </td>
-                        <td class="px-4 py-3 text-right font-mono font-semibold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->mb_gross_paise / 100, 0) }}</td>
+                        <x-bonus-credit-cells td-class="px-4 py-3 text-right font-mono" :gross="$row->mb_gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->mb_net_paise" :is-credited="$row->status === 'credited'" />
                     </tr>
                     @endforeach
                 </tbody>
