@@ -7,7 +7,16 @@ namespace App\Modules\Consent\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property string $type
+ * @property string $version
+ * @property string|null $pdf_hash
+ * @property Carbon $effective_from
+ * @property int|null $supersedes_id
+ */
 final class Agreement extends Model
 {
     public $timestamps = false;

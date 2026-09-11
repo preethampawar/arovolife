@@ -120,6 +120,9 @@
             back as it was to give.
         </p>
         <div class="flex flex-wrap items-center gap-4">
+            <a href="{{ route('consent.record') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">
+                My consents &amp; agreements →
+            </a>
             <a href="{{ url('/p/privacy') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">
                 Read the Privacy Policy →
             </a>

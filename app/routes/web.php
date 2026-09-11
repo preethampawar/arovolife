@@ -70,6 +70,7 @@ use App\Modules\Compliance\Http\Controllers\Admin\AdminComplianceDocumentControl
 use App\Modules\Compliance\Http\Controllers\Admin\AdminDormancyController;
 use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
+use App\Modules\Consent\Http\Controllers\ConsentRecordController;
 use App\Modules\Consent\Http\Controllers\ConsentWithdrawalController;
 use App\Modules\Content\Http\Controllers\Admin\AdminAnnouncementController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
@@ -1082,6 +1083,13 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Profile + change-password (any logged-in user; admins included).
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+
+    // The distributor's own record of what they agreed to (DPDP 2023 §5, §6).
+    // A right to withdraw is hard to exercise against an agreement you cannot
+    // find, so the record sits one click from the profile, beside the
+    // withdrawal it explains.
+    Route::get('/profile/consents', [ConsentRecordController::class, 'show'])
+        ->name('consent.record');
 
     // Consent withdrawal (DPDP 2023 §6(4)-(6); Privacy Policy §10.5). Sits on
     // the distributor's own profile and needs no approval from anyone —
