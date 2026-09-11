@@ -108,7 +108,7 @@ final class AdminDistributorRequestController extends Controller
         try {
             $message = match ($action) {
                 'review' => $this->requests->markUnderReview($distributorRequest, $admin, $request->ip())->statusLabel().' — no email is sent for this step.',
-                'reject' => $this->requests->reject($distributorRequest, $admin, (string) $reason, $request->ip())->statusLabel().' — the distributor has been emailed your reason.',
+                'reject' => $this->requests->reject($distributorRequest, $admin, (string) $reason, $request->ip())->statusLabel().' — your reason is queued to the distributor by email.',
                 'approve' => $this->approveMessage($this->requests->approve($distributorRequest, $admin, $reason, $request->ip())),
                 default => abort(404),
             };
@@ -150,8 +150,8 @@ final class AdminDistributorRequestController extends Controller
     private function approveMessage(DistributorRequest $request): string
     {
         return $request->appliesOnApproval()
-            ? 'Approved — the distributor\'s record has been updated and they have been emailed.'
-            : 'Approved — the distributor has been emailed. Carry out the change with the account tools on the distributor\'s page.';
+            ? 'Approved — the distributor\'s record has been updated and the decision is queued to them by email.'
+            : 'Approved — the decision is queued to the distributor by email. Carry out the change with the account tools on the distributor\'s page.';
     }
 
     private function guardFeature(): void

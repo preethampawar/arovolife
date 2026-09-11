@@ -93,6 +93,7 @@ test('a name correction is filed with its document, then approved by operations 
     $ops = drStaff('admin-operations');
     $this->actingAs($ops)->post(route('admin.distributor-requests.decide', [$request, 'review']))->assertSessionHasNoErrors();
     $this->actingAs($ops)->post(route('admin.distributor-requests.decide', [$request, 'approve']), ['reason' => 'Matches PAN'])->assertSessionHasNoErrors();
+    expect(session('success'))->toContain('queued to them by email')->not->toContain('has been emailed');
 
     $request->refresh();
     expect($request->status)->toBe('approved')
@@ -124,6 +125,7 @@ test('a DOB correction must be 18+, and rejection needs a reason and emails it',
     $ops = drStaff('admin-operations');
     $this->actingAs($ops)->post(route('admin.distributor-requests.decide', [$request, 'reject']))->assertSessionHasErrors('reason');
     $this->actingAs($ops)->post(route('admin.distributor-requests.decide', [$request, 'reject']), ['reason' => 'Document unreadable'])->assertSessionHasNoErrors();
+    expect(session('success'))->toContain('queued to the distributor by email')->not->toContain('has been emailed');
 
     expect($request->fresh()->status)->toBe('rejected')
         ->and($request->fresh()->applied_at)->toBeNull();
@@ -160,6 +162,7 @@ test('transfer and cancellation are decided by compliance and approval only ackn
 
     $compliance = drStaff('admin-compliance');
     $this->actingAs($compliance)->post(route('admin.distributor-requests.decide', [$transfer, 'approve']), ['reason' => 'Accepted in principle'])->assertSessionHasNoErrors();
+    expect(session('success'))->toContain('queued to the distributor by email')->not->toContain('has been emailed');
 
     expect($transfer->fresh()->status)->toBe('approved')
         ->and($transfer->fresh()->applied_at)->toBeNull()

@@ -111,6 +111,6 @@ final class AdminDistributorCreateController extends Controller
 
         return redirect()
             ->route('admin.distributors.show', $result->distributorId)
-            ->with('status', 'Distributor created. An activation link has been emailed to '.$validated['email'].'.');
+            ->with('status', 'Distributor created. An activation link is queued to '.$validated['email'].' by email.');
     }
 }

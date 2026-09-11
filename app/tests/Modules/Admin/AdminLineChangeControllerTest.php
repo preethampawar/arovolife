@@ -130,7 +130,8 @@ it('ALCC-03: reject requires a note and marks rejected', function () {
         ->post(route('admin.line-changes.reject', $reqId), ['decision_note' => 'Target leg is not eligible for this move.'])
         ->assertRedirect(route('admin.line-changes.index'));
 
-    expect(LineChangeRequest::find($reqId)->status)->toBe('rejected');
+    expect(LineChangeRequest::find($reqId)->status)->toBe('rejected')
+        ->and(session('status'))->toContain('queued to the distributor by email')->not->toContain('has been emailed');
 });
 
 it('ALCC-04: approve onto a taken slot fails and request stays pending', function () {

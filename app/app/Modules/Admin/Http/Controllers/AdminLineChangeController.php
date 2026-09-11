@@ -113,6 +113,6 @@ final class AdminLineChangeController extends Controller
                 ->with('status', 'That request was already decided by another admin.');
         }
 
-        return redirect()->route('admin.line-changes.index')->with('status', 'Line change rejected. The distributor has been emailed.');
+        return redirect()->route('admin.line-changes.index')->with('status', 'Line change rejected. The decision is queued to the distributor by email.');
     }
 }

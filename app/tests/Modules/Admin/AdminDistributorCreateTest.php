@@ -119,6 +119,7 @@ it('ADC-01: admin creates a valid distributor; ADN allocated; closure rows writt
         ->post(route('admin.distributors.store'), $payload);
     $response->assertRedirect();
     $response->assertSessionMissing('errors');
+    expect(session('status'))->toContain('is queued to')->not->toContain('has been emailed');
 
     $newRow = DB::table('distributors')->where('id', '!=', $sponsorId)->first();
     expect($newRow)->not->toBeNull()
