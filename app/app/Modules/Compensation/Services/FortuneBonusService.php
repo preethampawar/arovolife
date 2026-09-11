@@ -108,6 +108,17 @@ final class FortuneBonusService
      * denominator, so the month would pay out more than pool_paise. The month
      * is closed to new entrants the moment runForMonth() freezes it.
      *
+     * A PREMATURE pool does not close it. The row written by a stray mid-month
+     * run is discarded here before the refusal is even considered, so the month
+     * reopens to everyone it locked out (QA F08: the September staging month had
+     * a 05 Sep pool and zero participants, and looked permanently shut — it was
+     * not the freeze that shut it, it was the monthly close never invoking this
+     * engine again, which is F05). The one case that stays shut is a premature
+     * pool something was already CREDITED against: those economics moved money
+     * and cannot be re-priced, so the row is kept deliberately, and since F30
+     * that keep writes a `compensation.premature_freeze_kept` audit row and is
+     * reported by the health digest rather than only logged.
+     *
      * @return array{enrolled: int, skipped_ineligible: int, skipped_matrix_full: int, refused_pool_frozen: bool}
      */
     public function enrollEligible(Carbon $month): array
