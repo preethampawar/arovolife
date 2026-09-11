@@ -62,7 +62,21 @@ make build
 make reset-force
 # Equivalent to: docker exec arovolife-app php artisan platform:reset --force
 # This wipes any pre-existing test data and re-seeds everything in one shot.
+
+# 9. Publish the Compensation Plan Disclosure — NOT done by the seeder
+docker exec arovolife-app php artisan content:publish compensation
 ```
+
+**Why step 9 is separate.** `ContentPageSeeder` publishes four of the five
+policy pages and seeds `compensation` as a **draft**: the Wednesday-to-Tuesday
+payout week and the 8th-of-month cadence in `compensation.md` are a §6.2
+material amendment that R-75 holds until the 30-day notice has run, and no
+blanket path (`db:seed`, `platform:reset`, the test bootstrap) may publish that
+as a side effect. Registration needs it published — it is one of the four
+documents a joiner consents to — so on a dev or test environment publish it
+with the command above. **On staging or production, publish it only when the
+§6.2 notice has run**; until then registration will refuse with "the
+'compensation' content page is not published".
 
 ### What you have after step 8
 
@@ -137,7 +151,9 @@ ADNs are deterministic.
    - Users: `password_reset_tokens`, `sessions`, `users`
 3. **Re-seed platform metadata** — runs (idempotently) `AdminUserSeeder`,
    `SettingsSeeder`, `ContentPageSeeder`, `LedgerAccountSeeder`,
-   `CommerceFeatureFlagSeeder`, `ProductCatalogSeeder`.
+   `CommerceFeatureFlagSeeder`, `ProductCatalogSeeder`. `ContentPageSeeder`
+   leaves `compensation` unpublished (R-75) — see step 9 of the fresh install
+   above; the reset prints the command that publishes it.
 4. **Reserved distributor tree** — inserts 31 users + 31 distributor rows in
    a complete 5-level Genos (binary tree: 1 + 2 + 4 + 8 + 16 = 31), populates
    `genealogy_closure` (129 rows = 31 self + 98 ancestor edges), sets the

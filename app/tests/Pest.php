@@ -152,4 +152,22 @@ function seedConsentDocuments(): void
     // `$this->seed()` rather than instantiating the seeder: it wires the
     // console the seeder writes its summary to, which is null otherwise.
     test()->seed(ContentPageSeeder::class);
+
+    // The seeder holds `compensation` unpublished (R-75, DSA §6.2) and one of
+    // the four consents points at it, so a registration test has to do what a
+    // deploy does: name the page it means to publish.
+    publishHeldContentPages();
+}
+
+/**
+ * Publish the policy pages `ContentPageSeeder` deliberately leaves in draft.
+ *
+ * The seeder holds `compensation` back so that no blanket path — `db:seed`,
+ * `platform:reset`, this bootstrap — can publish an un-notified §6.2 plan
+ * amendment as a side effect. A test that needs the published page does what
+ * a deploy does: `php artisan content:publish compensation`.
+ */
+function publishHeldContentPages(): void
+{
+    (new ContentPageSeeder)->publish(ContentPageSeeder::HELD_SLUGS);
 }

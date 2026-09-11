@@ -12,6 +12,10 @@ use RuntimeException;
 /**
  * Seeds the five public content pages: ethics, terms, grievance, compensation, privacy.
  *
+ * Four of them are published. `compensation` is seeded as a draft and left
+ * unpublished — see {@see ContentPageSeeder::HELD_SLUGS} for why, and for the
+ * one command that publishes it.
+ *
  * Source of truth for each page is a Markdown file under
  * `database/seeders/content/<slug>.md`. The seeder reads each file, strips
  * any leading HTML comment used for the "DRAFT — LEGAL REVIEW REQUIRED"
@@ -64,11 +68,31 @@ final class ContentPageSeeder extends Seeder
         ],
     ];
 
+    /**
+     * Slugs this seeder writes but never publishes.
+     *
+     * R-75 holds the Wednesday-to-Tuesday payout week and the 8th-of-month
+     * cadence in `compensation.md` until the DSA §6.2 30-day material-amendment
+     * notice has run. `run()` is the blanket path — `db:seed`, `platform:reset`,
+     * the test bootstrap — and publishing an un-notified plan amendment must
+     * not be a side effect of any of them. The page is still seeded, as a
+     * draft, so the copy is in the environment and one named command publishes
+     * it: `php artisan content:publish compensation`.
+     *
+     * @var list<string>
+     */
+    public const HELD_SLUGS = ['compensation'];
+
     public function run(): void
     {
-        $count = $this->publish();
+        $published = $this->publish(array_values(array_diff(self::slugs(), self::HELD_SLUGS)));
+        $held = $this->seedAsDraft(self::HELD_SLUGS);
 
-        $this->command->info('Seeded '.$count.' content pages.');
+        $this->command->info('Seeded '.($published + $held).' content pages.');
+        $this->command->warn(
+            'Held unpublished (R-75, DSA §6.2 notice): '.implode(', ', self::HELD_SLUGS).'. '
+            .'Publish with: php artisan content:publish '.implode(' ', self::HELD_SLUGS)
+        );
     }
 
     /**
@@ -110,6 +134,49 @@ final class ContentPageSeeder extends Seeder
         }
 
         return $count;
+    }
+
+    /**
+     * Create the named pages as drafts where they do not exist, and leave
+     * them exactly as they are where they do.
+     *
+     * Deliberately not `updateOrCreate`. An environment in which the §6.2
+     * notice has run and the page is legitimately published must not be
+     * demoted to a draft by an unrelated re-seed — taking a statutory
+     * disclosure offline is the other way to get this wrong, and registration
+     * depends on this page being published (ConsentDocuments) — and its
+     * body must not be silently rewritten from a source that has moved on
+     * since the notice was served.
+     *
+     * @param  list<string>  $slugs
+     * @return int the number of pages created
+     */
+    private function seedAsDraft(array $slugs): int
+    {
+        $created = 0;
+
+        foreach (self::PAGES as $meta) {
+            if (! in_array($meta['slug'], $slugs, true)) {
+                continue;
+            }
+
+            if (ContentPage::query()->where('slug', $meta['slug'])->exists()) {
+                continue;
+            }
+
+            ContentPage::create([
+                'slug' => $meta['slug'],
+                'title' => $meta['title'],
+                'meta_description' => $meta['meta_description'],
+                'body' => $this->renderBody($meta['slug']),
+                'status' => ContentPage::STATUS_DRAFT,
+                'published_at' => null,
+            ]);
+
+            $created++;
+        }
+
+        return $created;
     }
 
     /** @return list<string> every slug this seeder knows how to publish */

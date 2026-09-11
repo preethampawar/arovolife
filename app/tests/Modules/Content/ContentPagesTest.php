@@ -9,7 +9,10 @@ declare(strict_types=1);
  *                     when the seeder has run, and the rendered HTML contains
  *                     the statutory phrases required for that page.
  * CP-008          /p/compensation publishes the plan formulas and the
- *                 no-income-projection statement required by DSR 5(1)(d).
+ *                 no-income-projection statement required by DSR 5(1)(d),
+ *                 once the held page has been published by name.
+ * CP-009          the seeder leaves `compensation` a draft (R-75): no blanket
+ *                 seed path may publish the §6.2 payout-week amendment.
  * CP-005          unknown slug under /p/{slug} returns 404.
  * CP-006          a page in draft status under a valid slug returns 404
  *                 (we only publish `published` rows).
@@ -141,7 +144,19 @@ it('never exposes the engineer-only legal-review draft banner to end users', fun
     }
 });
 
+it('holds the compensation plan disclosure unpublished until it is named (R-75)', function (): void {
+    // The seeder writes the page so the copy is in the environment, but leaves
+    // it a draft: the payout-week wording in `compensation.md` is a §6.2
+    // material amendment and a blanket re-seed must not publish it.
+    $page = ContentPage::query()->where('slug', 'compensation')->firstOrFail();
+
+    expect($page->status)->toBe(ContentPage::STATUS_DRAFT)
+        ->and($page->published_at)->toBeNull();
+});
+
 it('publishes the compensation plan formulas and the no-projection statement', function (): void {
+    publishHeldContentPages();
+
     $body = (string) $this->get('/p/compensation')->assertOk()->getContent();
 
     expect($body)
@@ -159,6 +174,8 @@ it('publishes the compensation plan formulas and the no-projection statement', f
 });
 
 it('flags that the pooled methods are not yet in force until the §6.2 date is set', function (): void {
+    publishHeldContentPages();
+
     $body = (string) $this->get('/p/compensation')->getContent();
 
     // Guard against the page going live claiming an effective date it does not
