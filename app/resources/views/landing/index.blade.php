@@ -658,8 +658,7 @@
                             <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a>
                         </li>
                         <li class="text-gray-600 leading-relaxed">
-                            9:30 am – 5:30 pm, every day<br>
-                            except Sundays &amp; public holidays
+                            {{ config('arovolife.support_hours') }}
                         </li>
                     </ul>
                 </div>

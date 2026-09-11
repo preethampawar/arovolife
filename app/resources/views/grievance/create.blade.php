@@ -198,7 +198,7 @@
         <div class="mt-10 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700">
             <p class="font-semibold mb-1.5">Other ways to reach us</p>
             <p>Email <a href="mailto:grievance@arovolife.com" class="underline">grievance@arovolife.com</a>,
-               call <a href="tel:+918886662949" class="underline">+91 88866 62949</a> (10:00–18:00 IST, Mon–Sat),
+               call <a href="tel:+918886662949" class="underline">+91 88866 62949</a> ({{ config('arovolife.support_hours') }}),
                or write to the Grievance Officer at our registered office. Every channel lands in the same tracker.</p>
         </div>
     </div>

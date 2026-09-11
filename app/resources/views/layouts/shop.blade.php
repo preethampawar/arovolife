@@ -50,7 +50,7 @@
             Customer Care:
             <a href="tel:+918886662949" class="hover:text-white">+91 88866 62949</a> ·
             <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·
-            9:30 am – 5:30 pm, every day except Sundays &amp; public holidays
+            {{ config('arovolife.support_hours') }}
         </div>
     </footer>
 

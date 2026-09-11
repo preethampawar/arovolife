@@ -41,6 +41,20 @@ return [
     'support_email' => env('SUPPORT_EMAIL', 'support@arovolife.com'),
 
     /*
+    | Helpline hours, in one place.
+    |
+    | The same sentence was typed into five footers and two policy pages, and
+    | the footers drifted: they promised 9:30–17:30 daily except Sundays while
+    | `/help` and the published Grievance Redressal Policy said 10:00–18:00
+    | Mon–Sat (staging QA F77). Published hours are a commitment under DSR 2021
+    | Rule 5(1)(a) and the grievance SLA, so two answers is not a typo — it is
+    | the company saying two different things about when a complaint can
+    | reach a person. Every footer now reads this key; the wording matches the
+    | policy text verbatim so the two cannot disagree again.
+    */
+    'support_hours' => '10:00 – 18:00 IST, Monday to Saturday',
+
+    /*
     |--------------------------------------------------------------------------
     | Analytics
     |--------------------------------------------------------------------------
