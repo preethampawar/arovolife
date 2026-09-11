@@ -26,7 +26,7 @@
 {{-- Summary cards --}}
 <div class="grid grid-cols-3 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Lifetime Net BV</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Lifetime personal BV</p>
         <p class="mt-1 text-lg font-bold text-brand-700 whitespace-nowrap">@bv($lifetimeNet)</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">

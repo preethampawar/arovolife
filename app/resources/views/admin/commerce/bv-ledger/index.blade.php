@@ -12,7 +12,7 @@
 {{-- ── Headline cards (date-scoped) ─────────────────────────────────── --}}
 <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Net BV</p>
+        <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Personal BV</p>
         <p class="mt-1 text-lg font-bold text-brand-700 whitespace-nowrap">@bv($cards['net'])</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
@@ -87,7 +87,7 @@
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Distributor</th>
                     <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Accrued</th>
                     <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Reversed</th>
-                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Net BV</th>
+                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Personal BV</th>
                     <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Orders</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Last activity</th>
                     <th class="px-4 py-3"></th>

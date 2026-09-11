@@ -118,7 +118,10 @@ it('summary tab shows a distributor accrued/reversed/net and links to their ledg
         ->assertSee('3,630 BV')   // accrued
         ->assertSee('1,000 BV')   // reversed
         ->assertSee('2,630 BV')   // net
-        ->assertSee(route('admin.commerce.bv-ledger.show', $id));
+        ->assertSee(route('admin.commerce.bv-ledger.show', $id))
+        // F103: BV is a distributor's own personal purchase BV, never "Net BV".
+        ->assertSee('Personal BV')
+        ->assertDontSee('Net BV');
 });
 
 it('summary tab filters by ADN/name search', function (): void {
@@ -167,7 +170,10 @@ it('individual ledger shows a running balance that nets to the lifetime total', 
     // Ascending: 2,130 → 3,630 (running) then reversal → 2,630 net.
     $res->assertSee('2,130 BV')   // running after first accrual
         ->assertSee('3,630 BV')   // running after second accrual
-        ->assertSee('2,630 BV');  // running after reversal == lifetime net
+        ->assertSee('2,630 BV')   // running after reversal == lifetime net
+        // F103.
+        ->assertSee('Lifetime personal BV')
+        ->assertDontSee('Lifetime Net BV');
 });
 
 it('summary CSV export returns text/csv, includes the row, and is audit-logged', function (): void {
@@ -208,4 +214,18 @@ it('forbids a non-admin from the BV ledger report', function (): void {
         ->withoutMiddleware(PreventRequestForgery::class)
         ->get(route('admin.commerce.bv-ledger.index'))
         ->assertForbidden();
+});
+
+it('F103: every BV-ledger route carries the audit.read gate, like Analytics', function (): void {
+    // A company-wide BV report is the same league-table exposure as
+    // /admin/analytics (T-6.1 finding M-9) and must carry the same gate —
+    // it previously carried none at all.
+    $gates = collect(app('router')->getRoutes()->getRoutes())
+        ->filter(fn ($route) => str_starts_with((string) $route->getName(), 'admin.commerce.bv-ledger.'))
+        ->mapWithKeys(fn ($route) => [
+            $route->getName() => collect($route->gatherMiddleware())->first(fn ($m) => str_starts_with((string) $m, 'can:')),
+        ]);
+
+    expect($gates)->toHaveCount(4)
+        ->and($gates->unique()->values()->all())->toBe(['can:audit.read']);
 });

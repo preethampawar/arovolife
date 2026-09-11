@@ -425,12 +425,17 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         ->middleware('can:audit.read')->name('analytics.index');
 
     // Commerce — BV Ledger report (admin financial reporting; ADR-0006).
+    // Gated on `audit.read` for the same league-table reason as Analytics
+    // above: a company-wide BV report is a different thing from the
+    // single-distributor screens each role already reaches.
     // The static `export` path is declared before the {distributor} wildcard
     // so "export" is never captured as a distributor id.
-    Route::get('/commerce/bv-ledger', [AdminBvLedgerController::class, 'index'])->name('commerce.bv-ledger.index');
-    Route::get('/commerce/bv-ledger/export', [AdminBvLedgerController::class, 'export'])->name('commerce.bv-ledger.export');
-    Route::get('/commerce/bv-ledger/{distributor}', [AdminBvLedgerController::class, 'show'])->whereNumber('distributor')->name('commerce.bv-ledger.show');
-    Route::get('/commerce/bv-ledger/{distributor}/export', [AdminBvLedgerController::class, 'exportShow'])->whereNumber('distributor')->name('commerce.bv-ledger.show.export');
+    Route::middleware('can:audit.read')->group(function (): void {
+        Route::get('/commerce/bv-ledger', [AdminBvLedgerController::class, 'index'])->name('commerce.bv-ledger.index');
+        Route::get('/commerce/bv-ledger/export', [AdminBvLedgerController::class, 'export'])->name('commerce.bv-ledger.export');
+        Route::get('/commerce/bv-ledger/{distributor}', [AdminBvLedgerController::class, 'show'])->whereNumber('distributor')->name('commerce.bv-ledger.show');
+        Route::get('/commerce/bv-ledger/{distributor}/export', [AdminBvLedgerController::class, 'exportShow'])->whereNumber('distributor')->name('commerce.bv-ledger.show.export');
+    });
 
     // Compensation (Phase 4) — GSB + Mentorship Bonus admin
     // Arete Development Centres — an entity of their own (registration Step 11,
