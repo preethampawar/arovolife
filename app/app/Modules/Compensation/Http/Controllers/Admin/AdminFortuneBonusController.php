@@ -36,13 +36,37 @@ final class AdminFortuneBonusController extends Controller
             ->orderByDesc('month_start')
             ->get();
 
-        // Frozen pool economics per month, keyed by month_start. Null for a
-        // month run before the pool snapshot existed — the view degrades to "—"
-        // rather than recomputing anything.
+        // Frozen pool economics per month, keyed by the month as Y-m-d. Null for
+        // a month run before the pool snapshot existed — the view degrades to
+        // "—" rather than recomputing anything.
         $pools = FortuneMonthlyPool::query()
             ->orderByDesc('month_start')
             ->get()
-            ->keyBy('month_start');
+            ->keyBy(static fn (FortuneMonthlyPool $pool): string => Carbon::parse((string) $pool->month_start)->toDateString());
+
+        // A frozen month that credited nobody has no result rows at all — and
+        // for Fortune that is the ordinary shape of a month where the matrix
+        // stayed empty. Reading only credited results, the index said "engine
+        // has not yet run" over two frozen pools (F87), which invites an admin
+        // to re-trigger a month the platform refuses to re-freeze.
+        $credited = $months->map(
+            static fn (object $row): string => Carbon::parse((string) $row->month_start)->toDateString(),
+        );
+
+        $months = $months->concat(
+            $pools->keys()
+                ->diff($credited)
+                ->map(static fn (string $month): object => (object) [
+                    'month_start' => $month,
+                    'participant_count' => 0,
+                    'total_gross_paise' => 0,
+                    'total_deduction_paise' => 0,
+                    'total_net_paise' => 0,
+                    'credited_at' => null,
+                ]),
+        )
+            ->sortByDesc(static fn (object $row): string => Carbon::parse((string) $row->month_start)->toDateString())
+            ->values();
 
         return view('admin.compensation.fortune-bonus.index', compact('months', 'pools'));
     }

@@ -12,7 +12,7 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($months->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No GBB batches yet — engine has not yet run.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No GBB months yet — the engine has not run for any month.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -39,7 +39,14 @@
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->distributor_count) }}</td>
                     <td class="px-4 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::format($m->total_agp) }}</td>
                     <x-bonus-credit-cells :gross="(int) $m->total_gross_paise" :deduction="(int) $m->total_deduction_paise" :credited="(int) $m->total_net_paise" :is-credited="true" td-class="px-4 py-2 text-right" />
-                    <td class="px-4 py-2 text-right text-gray-600">{{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">
+                        @if($m->credited_at)
+                        {{ \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') }}
+                        @else
+                        <span class="text-amber-700">Not credited</span>
+                        <x-help-tip text="The month's pool was frozen but no distributor was credited — a legitimate zero month. The pool is never re-frozen, so re-running the engine will not change it." />
+                        @endif
+                    </td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.gbb.show', \Illuminate\Support\Carbon::parse($m->year_month)->format('Y-m')) }}"
                            class="text-brand-700 text-xs hover:underline">View →</a>

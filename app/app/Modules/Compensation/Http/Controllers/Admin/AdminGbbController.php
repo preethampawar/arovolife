@@ -10,6 +10,7 @@ use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Laravel\Pennant\Feature;
 
 final class AdminGbbController extends Controller
@@ -30,7 +31,53 @@ final class AdminGbbController extends Controller
             ->orderByDesc('year_month')
             ->get();
 
+        // A month can be frozen and credit nobody — the pool row is written
+        // BEFORE any credit, and an eligible-but-empty month is a legitimate ₹0
+        // outcome. Reading only credited results, the index said "engine has not
+        // yet run" over two frozen pools (F87), which invites an admin to
+        // re-trigger a month the platform refuses to re-freeze.
+        $months = $this->withFrozenMonths(
+            $months,
+            'year_month',
+            GbbMonthlyPool::query()->orderByDesc('month_start')->pluck('month_start'),
+        );
+
         return view('admin.compensation.gbb.index', compact('months'));
+    }
+
+    /**
+     * Append the months that have a frozen pool but no credited result row, as
+     * zero rows carrying the same shape the view already renders.
+     *
+     * @param  iterable<int, object>  $months
+     * @param  iterable<int, mixed>  $frozenMonths
+     * @return Collection<int, object>
+     */
+    private function withFrozenMonths(iterable $months, string $monthColumn, iterable $frozenMonths): Collection
+    {
+        $months = collect($months);
+
+        $credited = $months->map(
+            static fn (object $row): string => Carbon::parse((string) $row->{$monthColumn})->toDateString(),
+        );
+
+        $extra = collect($frozenMonths)
+            ->map(static fn ($month): string => Carbon::parse((string) $month)->toDateString())
+            ->unique()
+            ->diff($credited)
+            ->map(static fn (string $month): object => (object) [
+                $monthColumn => $month,
+                'distributor_count' => 0,
+                'total_agp' => 0,
+                'total_gross_paise' => 0,
+                'total_deduction_paise' => 0,
+                'total_net_paise' => 0,
+                'credited_at' => null,
+            ]);
+
+        return $months->concat($extra)
+            ->sortByDesc(static fn (object $row): string => Carbon::parse((string) $row->{$monthColumn})->toDateString())
+            ->values();
     }
 
     public function show(string $month): View

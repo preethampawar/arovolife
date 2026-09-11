@@ -258,6 +258,37 @@ it('lists the pool and point value per month on the fortune batch list', functio
         ->assertSee('₹2.00');
 });
 
+it('lists a month whose pool is frozen even though it credited nobody', function () {
+    // F87: for Fortune this is the ordinary shape of a month where the matrix
+    // stayed empty — the pool row is written before any credit, so the index
+    // said "engine has not yet run" over two frozen pools on staging.
+    FortuneMonthlyPool::create([
+        'month_start' => '2026-09-01',
+        'company_bv_paise' => 178_880_000,
+        'pool_rate_bp' => 500,
+        'pool_paise' => 8_944_000,
+        'total_points' => 0,
+        'point_value_paise' => 0,
+        'payout_paise' => 0,
+        'leftover_paise' => 8_944_000,
+    ]);
+
+    $this->actingAs(fbReportAdmin())
+        ->get(route('admin.compensation.fortune-bonus.index'))
+        ->assertOk()
+        ->assertSee('September 2026')
+        ->assertSee('Not credited')
+        ->assertSee('₹89,440.00')
+        ->assertDontSee('the engine has not run for any month');
+});
+
+it('still says the engine has not run when there is neither a pool nor a result', function () {
+    $this->actingAs(fbReportAdmin())
+        ->get(route('admin.compensation.fortune-bonus.index'))
+        ->assertOk()
+        ->assertSee('the engine has not run for any month');
+});
+
 it('shows the distributor their own FB points times the frozen point value', function () {
     $alice = fbReportDistributor('FBAAA1', 'Alice');
     makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01');

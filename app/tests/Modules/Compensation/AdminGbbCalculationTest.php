@@ -335,6 +335,36 @@ it('lists credited GBB batches without tripping the reserved YEAR_MONTH keyword'
         ->assertDontSee('No GBB batches yet');
 });
 
+it('lists a month whose pool is frozen even though it credited nobody', function () {
+    // F87: the index read only credited results, so a month that ran and paid
+    // ₹0 vanished and the page said "engine has not yet run" over a frozen pool
+    // — inviting an admin to re-trigger a month the platform will not re-freeze.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-08-01',
+        'company_bv_paise' => 10_000_000,
+        'pool_rate_bp' => 500,
+        'pool_paise' => 500_000,
+        'total_agp' => 0,
+        'point_value_paise' => 0,
+        'payout_paise' => 0,
+        'leftover_paise' => 500_000,
+    ]);
+
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb.index'))
+        ->assertOk()
+        ->assertSee('August 2026')
+        ->assertSee('Not credited')
+        ->assertDontSee('the engine has not run for any month');
+});
+
+it('still says the engine has not run when there is neither a pool nor a result', function () {
+    $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb.index'))
+        ->assertOk()
+        ->assertSee('the engine has not run for any month');
+});
+
 it('hides the GBB calculation report while the feature is off', function (): void {
     Feature::for(null)->deactivate(GrowthBoosterBonusFeature::class);
 

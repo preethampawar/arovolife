@@ -12,7 +12,7 @@
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($months->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No Fortune Bonus batches yet — engine has not yet run.</p>
+        <p class="px-6 py-10 text-sm text-gray-600 text-center">No Fortune Bonus months yet — the engine has not run for any month.</p>
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -40,7 +40,7 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
                 @foreach($months as $m)
-                @php($pool = $pools[$m->month_start] ?? null)
+                @php($pool = $pools[\Illuminate\Support\Carbon::parse($m->month_start)->toDateString()] ?? null)
                 <tr>
                     <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                     <td class="px-4 py-2 font-medium">{{ \Illuminate\Support\Carbon::parse($m->month_start)->format('F Y') }}</td>
@@ -50,7 +50,12 @@
                     <td class="px-4 py-2 text-right text-gray-600">{{ $pool ? ($pool->point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : 'Per level') : '—' }}</td>
                     <x-bonus-credit-cells :gross="(int) $m->total_gross_paise" :deduction="(int) $m->total_deduction_paise" :credited="(int) $m->total_net_paise" :is-credited="true" td-class="px-4 py-2 text-right" />
                     <td class="px-4 py-2 text-right text-gray-600">
-                        {{ $m->credited_at ? \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') : '—' }}
+                        @if($m->credited_at)
+                        {{ \Illuminate\Support\Carbon::parse($m->credited_at)->format('d M Y H:i') }}
+                        @else
+                        <span class="text-amber-700">Not credited</span>
+                        <x-help-tip text="The month's pool was frozen but no participant was credited — a legitimate zero month. The pool is never re-frozen, so re-running the engine will not change it." />
+                        @endif
                     </td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.fortune-bonus.show', \Illuminate\Support\Carbon::parse($m->month_start)->format('Y-m')) }}"
