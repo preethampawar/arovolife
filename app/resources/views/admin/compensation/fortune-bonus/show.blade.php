@@ -12,7 +12,7 @@
             <x-help-tip text="Written once, before any credit, and never recomputed — a re-run prices against this snapshot so the month's economics never move under a distributor who was already paid." />
         </span>
         <span class="text-gray-600">Company BV
-            <strong class="text-gray-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->company_bv_paise / 100, 2) : '—' }}</strong></span>
+            <strong class="text-gray-700">{{ $pool ? \App\Modules\Commerce\Support\Bv::format($pool->company_bv_paise) : '—' }}</strong></span>
         <span class="text-gray-600">Pool rate
             <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::percentFromBp($pool->pool_rate_bp) : '—' }}</strong></span>
         <span class="text-gray-600">Pool

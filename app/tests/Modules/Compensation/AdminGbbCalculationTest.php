@@ -229,7 +229,9 @@ it('surfaces the frozen monthly pool on the GBB month screen', function () {
         // Literal Indian-grouped strings: this doubles as the display-format
         // guard — Illuminate\Support\Number would render 200,000.00 here
         // because modern ICU dropped lakh grouping from the Indian locales.
-        ->assertSee('₹2,00,000.00')   // company BV
+        // Company BV is BV, not money — F88: it must never carry a ₹ sign.
+        ->assertSee('2,00,000 BV')    // company BV
+        ->assertDontSee('₹2,00,000') // never a currency sign on BV
         ->assertSee('5%')             // pool rate
         ->assertSee('₹10,000.00')     // pool and payout
         ->assertSee('₹250.00');       // point value

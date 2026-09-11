@@ -121,7 +121,8 @@ it('exports the per-day CSV with sections, day totals and the leftover', functio
 
     $res->assertOk();
     $csv = $res->getContent();
-    expect($csv)->toContain('Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs)');
+    // F88: BV never carries a currency sign — the column is BV, not rupees.
+    expect($csv)->toContain('Day,Week,Date,Day Total BV,GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs)');
     expect($csv)->toContain('"Fixed"');
     expect($csv)->toContain('"Variable"');
     expect($csv)->toContain('220.00');       // pro-rated score value

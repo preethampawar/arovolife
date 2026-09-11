@@ -92,7 +92,7 @@ final class AdminGsbInputOutputController extends Controller
             $pools->map(fn (GsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total BV (Rs),GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs),Computed At\n";
+        $csv = "Day,Week,Date,Day Total BV,GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs),Computed At\n";
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
