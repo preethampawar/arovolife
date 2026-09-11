@@ -649,11 +649,19 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             // TESTING ONLY — gated by RecomputeGuard (never production, requires
             // COMP_RECOMPUTE_ENABLED). Removed with the recompute scaffold at
             // client sign-off.
-            Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all')->middleware('can:finance.record');
+            // `role:developer`, not a permission (QA F26): a full wipe-and-replay
+            // of every BV-derived table is the testing scaffold, and the one
+            // role that must never touch compensation state is the one that
+            // held it before — admin-finance. The controller's RecomputeGuard
+            // is an environment gate (never production), not a role gate.
+            Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all')->middleware('role:developer');
+            // The poller keeps the controller's 404 instead of a role gate: a
+            // 403 here would tell a reader that a role they do not hold exists,
+            // and the developer role is never surfaced (F84 covers the check).
             Route::get('recompute-progress', [AdminEngineRunsController::class, 'recomputeProgress'])->name('recompute-progress');
             // TESTING ONLY — wipes the purchases as well, for a clean-slate test
             // cycle. Same guard, same scaffold, removed at the same sign-off.
-            Route::post('reset-purchase-data', [AdminEngineRunsController::class, 'resetPurchaseData'])->name('reset-purchase-data')->middleware('can:finance.record');
+            Route::post('reset-purchase-data', [AdminEngineRunsController::class, 'resetPurchaseData'])->name('reset-purchase-data')->middleware('role:developer');
         });
     });
 
@@ -699,22 +707,27 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::put('/catalog/banners/{banner}', [AdminBannerController::class, 'update'])->name('catalog.banners.update');
     Route::delete('/catalog/banners/{banner}', [AdminBannerController::class, 'destroy'])->name('catalog.banners.destroy');
 
-    // Content pages CRUD
-    Route::get('/content', [AdminContentPageController::class, 'index'])->name('content.index');
-    Route::get('/content/create', [AdminContentPageController::class, 'create'])->name('content.create');
-    Route::post('/content', [AdminContentPageController::class, 'store'])->name('content.store');
-    Route::get('/content/{page}/edit', [AdminContentPageController::class, 'edit'])->name('content.edit');
-    Route::patch('/content/{page}', [AdminContentPageController::class, 'update'])->name('content.update');
-    Route::delete('/content/{page}', [AdminContentPageController::class, 'destroy'])->name('content.destroy');
+    // Content pages CRUD. `content.publish` (QA F26, R-17): publishing a page
+    // is a company statement to every member, and archiving one takes a
+    // statutory page (Privacy, Ethics, T&C) off the public site — neither is
+    // finance's to make. Operations and compliance hold it; admin-finance does
+    // not. `store`/`update` additionally require super staff in
+    // ContentPageRequest::authorize(), which this does not relax.
+    Route::get('/content', [AdminContentPageController::class, 'index'])->middleware('can:content.publish')->name('content.index');
+    Route::get('/content/create', [AdminContentPageController::class, 'create'])->middleware('can:content.publish')->name('content.create');
+    Route::post('/content', [AdminContentPageController::class, 'store'])->middleware('can:content.publish')->name('content.store');
+    Route::get('/content/{page}/edit', [AdminContentPageController::class, 'edit'])->middleware('can:content.publish')->name('content.edit');
+    Route::patch('/content/{page}', [AdminContentPageController::class, 'update'])->middleware('can:content.publish')->name('content.update');
+    Route::delete('/content/{page}', [AdminContentPageController::class, 'destroy'])->middleware('can:content.publish')->name('content.destroy');
 
     // Company announcements (flag-gated in the controller: AnnouncementsFeature).
     // Same permission as the content pages they sit beside — this is publishing.
-    Route::get('/announcements', [AdminAnnouncementController::class, 'index'])->name('announcements.index');
-    Route::get('/announcements/create', [AdminAnnouncementController::class, 'create'])->name('announcements.create');
-    Route::post('/announcements', [AdminAnnouncementController::class, 'store'])->name('announcements.store');
-    Route::get('/announcements/{announcement}/edit', [AdminAnnouncementController::class, 'edit'])->whereNumber('announcement')->name('announcements.edit');
-    Route::patch('/announcements/{announcement}', [AdminAnnouncementController::class, 'update'])->whereNumber('announcement')->name('announcements.update');
-    Route::post('/announcements/{announcement}/transition', [AdminAnnouncementController::class, 'transition'])->whereNumber('announcement')->name('announcements.transition');
+    Route::get('/announcements', [AdminAnnouncementController::class, 'index'])->middleware('can:content.publish')->name('announcements.index');
+    Route::get('/announcements/create', [AdminAnnouncementController::class, 'create'])->middleware('can:content.publish')->name('announcements.create');
+    Route::post('/announcements', [AdminAnnouncementController::class, 'store'])->middleware('can:content.publish')->name('announcements.store');
+    Route::get('/announcements/{announcement}/edit', [AdminAnnouncementController::class, 'edit'])->middleware('can:content.publish')->whereNumber('announcement')->name('announcements.edit');
+    Route::patch('/announcements/{announcement}', [AdminAnnouncementController::class, 'update'])->middleware('can:content.publish')->whereNumber('announcement')->name('announcements.update');
+    Route::post('/announcements/{announcement}/transition', [AdminAnnouncementController::class, 'transition'])->middleware('can:content.publish')->whereNumber('announcement')->name('announcements.transition');
 
     // Compliance documents — admin upload/manage; published ones are listed
     // publicly at /compliance-documents.

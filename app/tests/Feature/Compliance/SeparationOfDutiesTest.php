@@ -21,12 +21,15 @@ declare(strict_types=1);
  * SOD-08: no scoped role can change credentials — that is admin/developer only
  * SOD-09: no scoped role can both mark a return received and settle its refund — the two halves of a cooling-off refund sit with different people
  * SOD-10: admin-finance cannot read a reported private message
+ * SOD-11: admin-finance cannot publish a content page or an announcement
+ * SOD-12: no admin-family role can trigger the recompute scaffold — developer only
  */
 
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Identity\Models\User;
 use App\Modules\Returns\Models\ReturnRequest;
+use App\Modules\Shared\Features\AnnouncementsFeature;
 use App\Modules\Shared\Features\MessagingFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -184,4 +187,43 @@ it('SOD-10: admin-finance cannot read a reported private message', function () {
         expect($this->actingAs(sodUser($role))->get('/admin/messaging/reports')->status())
             ->not->toBe(403);
     }
+});
+
+it('SOD-11: admin-finance cannot publish a content page or an announcement', function () {
+    // An announcement reaches every distributor the moment it is published and
+    // an archived content page takes a statutory disclosure off the public
+    // site. Neither is finance's statement to make (QA F26, R-17).
+    Feature::for(null)->activate(AnnouncementsFeature::class);
+
+    $finance = sodUser('admin-finance');
+
+    $this->actingAs($finance)->get('/admin/content')->assertForbidden();
+    $this->actingAs($finance)->get('/admin/announcements')->assertForbidden();
+    $this->actingAs($finance)->post('/admin/announcements', [
+        'title' => 'From finance',
+        'body' => 'Please ignore.',
+        'audience' => 'all',
+    ])->assertForbidden();
+
+    // Operations and compliance can, or nobody could run the queue.
+    foreach (['admin-operations', 'admin-compliance'] as $role) {
+        expect($this->actingAs(sodUser($role))->get('/admin/announcements')->status())
+            ->not->toBe(403);
+    }
+});
+
+it('SOD-12: the recompute scaffold is developer-only, whatever a finance role holds', function () {
+    // recompute-all wipes and replays every BV-derived table. It was gated on
+    // `finance.record`, so the one role that must never touch compensation
+    // state could run it (QA F26). RecomputeGuard in the controller is an
+    // environment gate, not a role gate.
+    foreach (['admin-finance', 'admin-operations', 'admin-compliance'] as $role) {
+        $this->actingAs(sodUser($role))
+            ->post('/admin/compensation/engine-runs/recompute-all')
+            ->assertForbidden();
+    }
+
+    $this->actingAs(sodUser('admin-finance'))
+        ->post('/admin/compensation/engine-runs/reset-purchase-data')
+        ->assertForbidden();
 });

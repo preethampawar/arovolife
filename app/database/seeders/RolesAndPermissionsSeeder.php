@@ -85,6 +85,15 @@ final class RolesAndPermissionsSeeder extends Seeder
         // finance has no business reading a complaint about itself.
         'messaging.moderate' => ['admin-operations', 'admin-compliance'],
 
+        // Added 2026-09-11 (QA F26). Publishing a content page or an
+        // announcement is a company statement to the whole distributor base,
+        // and archiving a page takes a statutory disclosure — the Privacy
+        // Notice, the Code of Ethics, the T&C — off the public site. Both were
+        // open to every admin-family role, admin-finance included, behind
+        // nothing but a phrase list. It sits with the two roles that already
+        // answer for what the company says (R-17); finance does not hold it.
+        'content.publish' => ['admin-operations', 'admin-compliance'],
+
         // Reading the audit log is monitoring, not action, and every scoped
         // role needs it to do its own job — but admin-finance reading it is
         // also the check on admin-finance, so it stays broad deliberately.
