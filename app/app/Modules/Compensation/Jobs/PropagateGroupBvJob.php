@@ -19,9 +19,15 @@ final class PropagateGroupBvJob implements ShouldQueue
 {
     use InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-
-    public int $backoff = 60;
+    /**
+     * One attempt, per ADR-0011. The compensation worker runs `--tries=1` and a
+     * job-level override would quietly raise it back: the DB transaction below
+     * already retries the deadlock it can recover from, and anything that
+     * escapes it is a fault a blind retry cannot fix — it belongs in
+     * `failed_jobs` with the critical alert `failed()` raises, where ops can
+     * see it, rather than replayed twice more in silence.
+     */
+    public int $tries = 1;
 
     public function __construct(
         private readonly int $orderId,

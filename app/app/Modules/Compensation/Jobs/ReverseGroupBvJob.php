@@ -24,9 +24,15 @@ final class ReverseGroupBvJob implements ShouldQueue
 {
     use InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-
-    public int $backoff = 60;
+    /**
+     * One attempt, per ADR-0011. The compensation worker runs `--tries=1` and a
+     * job-level override would quietly raise it back. The reversal service is
+     * idempotent, so a retry would be safe — but it would also be blind: what
+     * escapes the service is a fault a second pass cannot fix, and it belongs
+     * in `failed_jobs` with the critical alert `failed()` raises, where ops can
+     * see it, rather than replayed twice more in silence.
+     */
+    public int $tries = 1;
 
     public function __construct(
         private readonly int $orderId,

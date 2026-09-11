@@ -74,3 +74,16 @@ it('keeps the redis-named connection on the database driver for Cloudways', func
         ->toBe(config('queue.connections.database'))
         ->and(config('queue.connections.redis.driver'))->toBe('database');
 });
+
+/**
+ * ADR-0011: the `compensation` worker runs on exactly one process with tries 1.
+ * A job-level `$tries` overrides the worker flag, so a group-BV job declaring 3
+ * would be replayed twice more than the ADR allows — silently, because a retry
+ * that eventually succeeds leaves no `failed_jobs` row and raises no alert.
+ * The Razorpay webhook job is deliberately not covered: it talks to an external
+ * HTTP endpoint, where a retry is the recovery.
+ */
+it('leaves the group-BV jobs on the single attempt ADR-0011 mandates', function () {
+    expect((new PropagateGroupBvJob(1, 1, 100, '2026-09-11'))->tries)->toBe(1);
+    expect((new ReverseGroupBvJob(1))->tries)->toBe(1);
+});
