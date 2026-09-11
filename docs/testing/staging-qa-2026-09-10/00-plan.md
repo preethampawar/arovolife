@@ -67,9 +67,13 @@ Status legend: `[ ]` not started · `[~]` running · `[x]` done · `[!]` done wi
 - [x] T42 Log + failed-jobs sweep across the whole QA window. (sonnet) — PASS-with-notes, results/T42-log-sweep.md (F122–F123)
 - [x] T43 Reusable staging QA playbook written: `docs/testing/staging-qa-playbook.md` (fable, 2026-09-11)
 
-## STATUS (2026-09-11 ~09:00 IST) — first full run COMPLETE
+## STATUS (2026-09-11 ~20:30 IST) — QA run COMPLETE, fix run COMPLETE on branch `fix/staging-qa-2026-09-10`
 
-All 30 tasks done (T01–T02, T10–T18, T20–T26, T30–T36, T40–T43). Findings F01–F123 in the register below; consolidated report in `99-final-report.md`; reusable playbook at `docs/testing/staging-qa-playbook.md`. The original RESUME POINT (13:30 IST on 2026-09-10) is retired — it sat inside the findings table and has been removed.
+- QA: 30 tasks, findings F01–F124. Report `99-final-report.md` (§7 = fix-run addendum).
+- Fixes: 87 findings fixed + committed (14 batches, results in `fixes/B*.md`, per-finding map in `fix-plan.md`); 2 partly fixed (F78 not reproducible, F37 data items); client decisions for 21 questions recorded in `fix-plan.md` §B; F107 (Aadhaar images) and F124 (re-granted offers) still awaiting the client.
+- Verification: SQLite 2,302 passed / 1 skipped / 0 failed; MySQL see §7 of the report; Pint clean; Larastan 0 errors (baseline regenerated, tests-only entries); compliance spot-review of hard-rule areas clean.
+- Next: `deploy-checklist.md` — deploy (go-ahead), `.env` CLAMAV_ENABLED=false, seeder re-run, consent backfill, supervisor timeout (user, Cloudways panel), F10 windowed recompute (5-point warning), staging cleanup rows, re-verify September.
+- Playbook `docs/testing/staging-qa-playbook.md` §10 records how the fix phase ran; its appendix is re-tagged (FIXED = re-verify next run).
 
 ## Findings register (filled by the orchestrator from result files)
 

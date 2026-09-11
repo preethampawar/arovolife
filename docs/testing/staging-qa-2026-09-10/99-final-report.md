@@ -74,3 +74,24 @@ Orders 17 (returned + refunded ₹1,497, `RMA-1SKZGBQL9R`, refund_intents 1) and
 ## 6. Verified working (so nobody re-tests it needlessly)
 
 Idempotent manual engine trigger through the queue (run 49, zero ledger change); overnight scheduler + digest; GSB pool priced the T33 reversal correctly (59,900 paise net); OTP-gated mobile change, password round-trip, HIBP refusal; PAN/Aadhaar guards in messaging; block/unblock/report; grievance SLA stamps exactly 48 h / 5 working days / 30 days; public tracking; KYC resubmit/re-upload guards; return → refund → BV reversal with wallet untouched (R-60); Payout Settings and developer surfaces hidden from `admin`; all exports ungrouped with PII limited to ADN + name; 0 PII hits in logs; console clean on every page; slowest page 926 ms (`/admin/tree`), everything else under 600 ms.
+
+## 7. Fix run — 2026-09-11 (addendum)
+
+Branch `fix/staging-qa-2026-09-10` from `main` @ 6f114500. 14 implementer batches (B1–B14), one atomic commit per finding where the shared tree allowed it (see `fix-plan.md` §A for the finding → commit map and `fixes/B*.md` for detail).
+
+**Outcome**
+- 87 findings fixed and committed; 2 partly (F78 not reproducible in code, regression test added; F37 has two staging-data items left).
+- 21 client decisions received and applied (`fix-plan.md` §B). Still awaiting the client: F107 (Aadhaar images — compliance stop, alternative offered) and F124 (consumed purchase-offer grants re-granted by a windowed recompute).
+- Closed by decision: F36 guest browsing, F115 several live announcements, F65 downline ADNs, F04 digest arrived.
+- Not code (ops/data): F10 recompute, F11 supervisor timeout, F74 `CLAMAV_ENABLED=false`, F114 seeder (run on staging 12:50 IST; re-run after deploy), F112/F109 Pennant rows, F56 settings row, F01 BV values, F03 mail limit.
+
+**Verification on the final tree**
+- SQLite full suite: 2,302 passed, 1 skipped, 0 failed.
+- MySQL full suite (arovolife_test, container): 1 skipped, 2302 passed (12491 assertions).
+- Pint: clean. Larastan: 0 errors after regenerating the baseline (new entries are test-file Pest false positives only; no application path added).
+- Compliance spot-review (orchestrator): no decrypted account/PAN/Aadhaar in logs, flashes or audit details; bank OTP payload holds ciphertext; NEFT file, approve, KYC preview, recompute routes gated as intended; company centre excluded from ADC; MSB deduction routed through the shared wallet method; income-projection guard pattern-based with the plan's cap statements still allowed. One extra fix applied by the orchestrator: the S3 branch of the KYC preview route still redirected to a presigned URL — now serves bytes (1931a560).
+- Six forward-only migrations applied to the local dev DB; none touched staging.
+
+**Behaviour changes to tell the client** (also in `deploy-checklist.md` §5): members pay the distributor price; MSB credits carry the repurchase deduction; approving a payout batch needs the `admin` role and cannot be done by its creator; the NEFT download is a real bank file (narration `arovolife <ADN> B<batch id>` — confirm); Lifetime Award cash released in month M pays on the 8th of M+1; malware scanning is off by client decision (R-83); helpline hours 10:00–18:00 Mon–Sat everywhere.
+
+**Process notes**: the shared working tree caused commit-attribution collisions (six commits carry other batches' files; content verified, history not rewritten); two session-limit kills (12:40, 17:40 IST) — playbook §10 records the mitigations.
