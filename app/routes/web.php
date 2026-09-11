@@ -108,7 +108,11 @@ use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Identity\Http\Controllers\TeamRosterController;
 use App\Modules\Inventory\Http\Controllers\Admin\AdminPurchaseInvoiceController;
 use App\Modules\Inventory\Http\Controllers\Admin\AdminPurchaseOrderController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminStockAdjustmentController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminStockController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminStockTransferController;
 use App\Modules\Inventory\Http\Controllers\Admin\AdminSupplierController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminWarehouseController;
 use App\Modules\Kyc\Http\Controllers\KycDocumentReuploadController;
 use App\Modules\Messaging\Http\Controllers\Admin\AdminMessageReportController;
 use App\Modules\Messaging\Http\Controllers\MessageController;
@@ -394,9 +398,15 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
     });
 
-    // Inventory — suppliers, purchase orders, goods receipts (GRNs). Every
-    // write here commits spend or moves stock, so all of it sits behind
-    // `inventory.manage` (admin-operations, R-17).
+    // Inventory — stock on hand is read-only for anyone with `inventory.view`
+    // (admin-operations and admin-finance, R-17); it moves nothing on its own.
+    Route::prefix('inventory')->name('inventory.')->middleware('can:inventory.view')->group(function (): void {
+        Route::get('/stock', [AdminStockController::class, 'index'])->name('stock.index');
+    });
+
+    // Inventory — suppliers, purchase orders, goods receipts (GRNs), warehouses,
+    // transfers, adjustments. Every write here commits spend or moves stock, so
+    // all of it sits behind `inventory.manage` (admin-operations, R-17).
     Route::prefix('inventory')->name('inventory.')->middleware('can:inventory.manage')->group(function (): void {
         Route::get('/suppliers', [AdminSupplierController::class, 'index'])->name('suppliers.index');
         Route::get('/suppliers/create', [AdminSupplierController::class, 'create'])->name('suppliers.create');
@@ -423,6 +433,26 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::put('/grns/{purchaseInvoice}', [AdminPurchaseInvoiceController::class, 'update'])->name('grns.update');
         Route::post('/grns/{purchaseInvoice}/post', [AdminPurchaseInvoiceController::class, 'post'])->name('grns.post');
         Route::post('/grns/{purchaseInvoice}/cancel', [AdminPurchaseInvoiceController::class, 'cancel'])->name('grns.cancel');
+
+        Route::get('/warehouses', [AdminWarehouseController::class, 'index'])->name('warehouses.index');
+        Route::get('/warehouses/create', [AdminWarehouseController::class, 'create'])->name('warehouses.create');
+        Route::post('/warehouses', [AdminWarehouseController::class, 'store'])->name('warehouses.store');
+        Route::get('/warehouses/{warehouse}/edit', [AdminWarehouseController::class, 'edit'])->name('warehouses.edit');
+        Route::put('/warehouses/{warehouse}', [AdminWarehouseController::class, 'update'])->name('warehouses.update');
+        Route::post('/warehouses/{warehouse}/archive', [AdminWarehouseController::class, 'archive'])->name('warehouses.archive');
+        Route::post('/warehouses/{warehouse}/reactivate', [AdminWarehouseController::class, 'reactivate'])->name('warehouses.reactivate');
+
+        Route::get('/transfers', [AdminStockTransferController::class, 'index'])->name('transfers.index');
+        Route::get('/transfers/create', [AdminStockTransferController::class, 'create'])->name('transfers.create');
+        Route::post('/transfers', [AdminStockTransferController::class, 'store'])->name('transfers.store');
+        Route::get('/transfers/{stockTransfer}', [AdminStockTransferController::class, 'show'])->name('transfers.show');
+        Route::post('/transfers/{stockTransfer}/dispatch', [AdminStockTransferController::class, 'dispatch'])->name('transfers.dispatch');
+        Route::post('/transfers/{stockTransfer}/receive', [AdminStockTransferController::class, 'receive'])->name('transfers.receive');
+        Route::post('/transfers/{stockTransfer}/cancel', [AdminStockTransferController::class, 'cancel'])->name('transfers.cancel');
+
+        Route::get('/adjustments', [AdminStockAdjustmentController::class, 'index'])->name('adjustments.index');
+        Route::get('/adjustments/create', [AdminStockAdjustmentController::class, 'create'])->name('adjustments.create');
+        Route::post('/adjustments', [AdminStockAdjustmentController::class, 'store'])->name('adjustments.store');
     });
 
     // Returns — admin inspection / approve / reject (finance.record, R-17; ADR-0009).

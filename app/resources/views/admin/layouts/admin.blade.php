@@ -232,14 +232,22 @@
                         ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => 'hourglass', 'prefix' => 'admin.dormancy']]
                         : []),
                     ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders'],
-                    // Inventory: suppliers, purchase orders, goods receipts.
-                    // Stock, warehouses, transfers, adjustments and reports
-                    // land here in later slices of the same module.
+                    // Inventory: stock, warehouses, suppliers, purchase orders,
+                    // goods receipts, transfers, adjustments. Reports land here
+                    // in a later slice of the same module. Stock is `inventory.view`
+                    // (also open to admin-finance); everything else moves stock
+                    // or commits spend and stays behind `inventory.manage`.
+                    ...(auth()->user()?->can('inventory.view')
+                        ? [['route' => 'admin.inventory.stock.index', 'label' => 'Stock', 'icon' => 'boxes', 'prefix' => 'admin.inventory.stock']]
+                        : []),
                     ...(auth()->user()?->can('inventory.manage')
                         ? [
+                            ['route' => 'admin.inventory.warehouses.index', 'label' => 'Warehouses', 'icon' => 'warehouse', 'prefix' => 'admin.inventory.warehouses'],
                             ['route' => 'admin.inventory.suppliers.index', 'label' => 'Suppliers', 'icon' => 'truck', 'prefix' => 'admin.inventory.suppliers'],
                             ['route' => 'admin.inventory.purchase-orders.index', 'label' => 'Purchase Orders', 'icon' => 'clipboard-list', 'prefix' => 'admin.inventory.purchase-orders'],
                             ['route' => 'admin.inventory.grns.index', 'label' => 'Goods Receipts (GRN)', 'icon' => 'package-check', 'prefix' => 'admin.inventory.grns'],
+                            ['route' => 'admin.inventory.transfers.index', 'label' => 'Transfers', 'icon' => 'arrow-left-right', 'prefix' => 'admin.inventory.transfers'],
+                            ['route' => 'admin.inventory.adjustments.index', 'label' => 'Adjustments', 'icon' => 'sliders-horizontal', 'prefix' => 'admin.inventory.adjustments'],
                         ]
                         : []),
                     // Payments and the unsettled-refunds worklist. Monitoring

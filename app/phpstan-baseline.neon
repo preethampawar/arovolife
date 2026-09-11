@@ -1430,6 +1430,30 @@ parameters:
 			path: tests/Feature/Inventory/AdminInventoryScreensTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 15
+			path: tests/Feature/Inventory/AdminWarehouseTransferAdjustmentScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/AdminWarehouseTransferAdjustmentScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Inventory/StockIndexScreenTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/StockIndexScreenTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $product_variant_id
  * @property string $warehouse_code
  * @property string $batch_no
+ * @property CarbonInterface|null $mfg_date
  * @property CarbonInterface|null $expiry_date
  * @property int $unit_cost_paise
  * @property int $qty_on_hand
