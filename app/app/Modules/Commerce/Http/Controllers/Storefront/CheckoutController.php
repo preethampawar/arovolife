@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
+use App\Modules\Commerce\Http\Rules\ServiceablePincode;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\SharedCart;
@@ -193,7 +194,11 @@ final class CheckoutController extends Controller
             'ship_line2' => ['nullable', 'string', 'max:255'],
             'ship_city' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:100'],
             'ship_state' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:64'],
-            'ship_pincode' => [Rule::requiredIf(! $isCollection), 'nullable', 'regex:/^\d{6}$/'],
+            // Delivery pincode: format, then the mainland-India serving area
+            // (skipped for ADC collection — the centre's own pincode is used).
+            'ship_pincode' => $isCollection
+                ? ['nullable', 'regex:/^\d{6}$/']
+                : ['required', 'regex:/^\d{6}$/', app(ServiceablePincode::class)],
             'payment_method' => ['required', Rule::in($allowedMethods)],
             'billing_same' => ['nullable', 'boolean'],
             // Billing fields are required only when "same as shipping" is OFF.

@@ -23,6 +23,20 @@ final class ShippingService
     private const DEFAULT_FREE_THRESHOLD_RUPEES = 4000;
 
     /**
+     * Pincode ranges outside mainland India, as [first, last] inclusive.
+     *
+     * The Andaman & Nicobar Islands hold the whole 744xxx series; Lakshadweep
+     * sits inside Kerala's 682xxx series on 682551-682559 (Kavaratti and the
+     * other inhabited islands), so the range — not the prefix — is the test.
+     *
+     * @var array<int, array{int, int}>
+     */
+    private const NON_MAINLAND_RANGES = [
+        [744001, 744999], // Andaman & Nicobar Islands
+        [682551, 682559], // Lakshadweep
+    ];
+
+    /**
      * Shipping charge (in paise) for a cart whose merchandise value (before any
      * coupon) is $subtotalPaise. Returns 0 once the free-shipping threshold is met.
      */
@@ -49,6 +63,40 @@ final class ShippingService
     public function amountToFreeShippingPaise(int $subtotalPaise): int
     {
         return max(0, $this->freeThresholdPaise() - $subtotalPaise);
+    }
+
+    /**
+     * True when the admin restricts delivery to mainland India
+     * (`commerce.shipping.india_mainland_only`). Defaults to ON, matching the
+     * seeded value — a missing row must not silently open the islands.
+     */
+    public function mainlandOnly(): bool
+    {
+        return DB::table('settings')
+            ->where('key', 'commerce.shipping.india_mainland_only')
+            ->value('value') !== 'false';
+    }
+
+    /**
+     * True when a delivery address with this pincode can be served under the
+     * current setting. A malformed pincode is left to the format rule, so it
+     * passes here rather than producing two errors for one field.
+     */
+    public function servesPincode(string $pincode): bool
+    {
+        if (preg_match('/^\d{6}$/', $pincode) !== 1 || ! $this->mainlandOnly()) {
+            return true;
+        }
+
+        $code = (int) $pincode;
+
+        foreach (self::NON_MAINLAND_RANGES as [$first, $last]) {
+            if ($code >= $first && $code <= $last) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function settingRupeesToPaise(string $key, int $defaultRupees): int

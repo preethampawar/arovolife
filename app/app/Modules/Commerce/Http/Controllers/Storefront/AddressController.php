@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
+use App\Modules\Commerce\Http\Rules\ServiceablePincode;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\CustomerAddress;
 use App\Modules\Commerce\Services\CustomerAddressService;
@@ -102,7 +103,7 @@ final class AddressController extends Controller
             'line2' => ['nullable', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:100'],
             'state' => ['required', 'string', 'max:64'],
-            'pincode' => ['required', 'regex:/^\d{6}$/'],
+            'pincode' => ['required', 'regex:/^\d{6}$/', app(ServiceablePincode::class)],
         ], [
             'phone.regex' => 'Enter a valid 10-digit Indian mobile number.',
             'pincode.regex' => 'Pincode must be 6 digits.',
