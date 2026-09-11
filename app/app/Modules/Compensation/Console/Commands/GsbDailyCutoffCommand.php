@@ -123,9 +123,23 @@ final class GsbDailyCutoffCommand extends Command
         if ($this->eligibility->engineActive()
             && ! $this->option('force')
             && ! $this->engineStatus->hasSucceededRunAfterDay('repurchase.evaluate', $date)) {
+            // Why the gate is shut, when the evaluation ran and named its
+            // casualties. `repurchase:evaluate` isolates a throwing distributor
+            // and carries on, then exits non-zero with a `failed_partial`
+            // summary; the run is `failed`, so the gate above is unmoved — a
+            // non-zero failure count means somebody's verdict is stale, and the
+            // cut-off prices a day permanently. Fail-closed platform-wide is
+            // deliberate: refusing only the named distributors would still
+            // freeze the day's pools without their BV. What changes is that the
+            // operator is told which ADNs to fix instead of being left to read
+            // the log.
+            $partial = $this->repurchaseFailureNote($date);
+
             Log::critical('gsb.cutoff.refused_missing_evaluate', [
                 'date' => $date->toDateString(),
                 'distributor_id' => $singleId,
+                'evaluate_failures' => $partial['failed'],
+                'evaluate_failed_adns' => $partial['adns'],
             ]);
 
             $nextDay = $date->copy()->addDay()->toDateString();
@@ -135,6 +149,7 @@ final class GsbDailyCutoffCommand extends Command
                 ."`repurchase:evaluate` has no succeeded run that has seen the whole of {$date->toDateString()} "
                 .'— it needs a run for a later date, or a run for that date that started after the day ended. '
                 ."Otherwise a cycle fulfilled later that day would still read as failed, and be forfeited.\n"
+                .$partial['message']
                 ."Run `php artisan repurchase:evaluate --date={$nextDay}` first, then re-run this "
                 .'command (or pass --force to override).'
             );
@@ -317,5 +332,47 @@ final class GsbDailyCutoffCommand extends Command
         $this->info("Done — total: {$total}, engine: ".$distributors->count().", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
 
         return ($failed > 0 || $mbFailed > 0) ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * What the last `repurchase:evaluate` run that covers $date reported.
+     *
+     * Returns the failure count, the ADNs it named and a line to append to the
+     * refusal. Empty when there is no such run (the evaluation simply never
+     * ran) or when it recorded no summary — an older run, or one whose
+     * bookkeeping failed.
+     *
+     * @return array{failed: int, adns: list<string>, message: string}
+     */
+    private function repurchaseFailureNote(Carbon $date): array
+    {
+        $run = $this->engineStatus->latestRunAfterDay('repurchase.evaluate', $date);
+        $summary = is_array($run?->summary) ? $run->summary : [];
+
+        $failed = (int) ($summary['failed'] ?? 0);
+
+        if ($failed < 1) {
+            return ['failed' => 0, 'adns' => [], 'message' => ''];
+        }
+
+        $adns = array_values(array_map(
+            fn ($adn): string => (string) $adn,
+            is_array($summary['failed_adns'] ?? null) ? $summary['failed_adns'] : [],
+        ));
+
+        $classes = is_array($summary['failure_classes'] ?? null) ? $summary['failure_classes'] : [];
+
+        return [
+            'failed' => $failed,
+            'adns' => $adns,
+            'message' => sprintf(
+                "That run did complete, but %d distributor(s) threw and still carry the previous run's "
+                    ."verdict%s%s.\nFix them first — the cut-off stays shut while any failure stands, because "
+                    ."the day's pools are frozen once and never repriced.\n",
+                $failed,
+                $adns === [] ? '' : ' — ADN '.implode(', ', $adns),
+                $classes === [] ? '' : ' ('.implode(', ', array_map(strval(...), $classes)).')',
+            ),
+        ];
     }
 }

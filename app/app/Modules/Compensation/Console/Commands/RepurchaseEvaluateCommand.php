@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
+use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\RepurchaseCycleService;
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Console\Command;
@@ -19,9 +22,27 @@ use Laravel\Pennant\Feature;
  * cycles, refreshes completion from self-purchase BV, and moves each cycle
  * between active, suspended and completed (emitting the domain events). The GSB
  * cut-off reads the resulting status; this command keeps it current.
+ *
+ * Every run writes its counts to `engine_runs.summary`. `fulfilled` and
+ * `forfeited` are the verdicts this run took — windows that closed while it
+ * ran; `withheld` is the standing count of distributors whose current cycle is
+ * suspended, which is the number that answers "who is not earning tonight".
  */
 final class RepurchaseEvaluateCommand extends Command
 {
+    /** Every distributor the run could evaluate. */
+    public const OUTCOME_COMPLETED = 'completed';
+
+    /**
+     * The run finished, but at least one distributor threw and still carries
+     * the previous run's verdict. Recorded — and exited — as a failure: the
+     * cut-off must not price a day against a verdict nobody refreshed.
+     */
+    public const OUTCOME_FAILED_PARTIAL = 'failed_partial';
+
+    /** Cap on the ADNs named in the summary; the log has them all. */
+    private const MAX_REPORTED_FAILURES = 50;
+
     protected $signature = 'repurchase:evaluate
                             {--date= : Override the as-of date (YYYY-MM-DD, default: today)}
                             {--distributor= : Evaluate a single distributor ID only}';
@@ -65,15 +86,35 @@ final class RepurchaseEvaluateCommand extends Command
         $this->info("Repurchase evaluation — as of {$asOf->toDateString()}");
 
         $distributors = $this->withPossibleCycle($query->pluck('id'));
+        $startedAt = Carbon::now();
         $evaluated = 0;
-        $failed = 0;
+        $withheld = 0;
+        $noCycle = 0;
+
+        /** @var list<int> $failedIds */
+        $failedIds = [];
+        /** @var array<string, true> $failureClasses */
+        $failureClasses = [];
 
         foreach ($distributors as $distributorId) {
+            // One distributor's data problem must not cost the other N their
+            // evaluation: the cut-off reads the verdict this writes, and a run
+            // abandoned half way would leave every distributor after the
+            // throwing one judged on yesterday's state. Collect and carry on;
+            // the failure count is what the run's verdict rests on.
             try {
-                $this->cycles->evaluate((int) $distributorId, $asOf);
+                $cycle = $this->cycles->evaluate((int) $distributorId, $asOf);
                 $evaluated++;
+
+                if ($cycle === null) {
+                    $noCycle++;
+                } elseif ($cycle->status === RepurchaseCycle::STATUS_SUSPENDED) {
+                    $withheld++;
+                }
             } catch (\Throwable $e) {
-                $failed++;
+                $failedIds[] = (int) $distributorId;
+                $failureClasses[$e::class] = true;
+
                 Log::error('repurchase.evaluate.exception', [
                     'distributor_id' => $distributorId,
                     'error' => $e->getMessage(),
@@ -84,9 +125,136 @@ final class RepurchaseEvaluateCommand extends Command
             }
         }
 
-        $this->info("Done — evaluated: {$evaluated}, failed: {$failed}");
+        $failed = count($failedIds);
+        $verdicts = $this->verdictsTakenSince($startedAt);
+        $fulfilled = $verdicts[RepurchaseCycle::STATUS_COMPLETED];
+        $forfeited = $verdicts[RepurchaseCycle::STATUS_SUSPENDED];
+
+        $this->recordRunSummary([
+            'outcome' => $failed > 0 ? self::OUTCOME_FAILED_PARTIAL : self::OUTCOME_COMPLETED,
+            'as_of' => $asOf->toDateString(),
+            'evaluated' => $evaluated,
+            'fulfilled' => $fulfilled,
+            'forfeited' => $forfeited,
+            'withheld' => $withheld,
+            'no_cycle' => $noCycle,
+            'failed' => $failed,
+            'failed_adns' => $this->adnsFor($failedIds),
+            'failure_classes' => array_keys($failureClasses),
+            'reason' => $failed > 0
+                ? sprintf(
+                    'Evaluated %d distributor(s) as of %s; %d could not be evaluated and still carry the '
+                        .'previous run\'s verdict. The GSB cut-off refuses until every one of them is fixed '
+                        .'and the evaluation re-run.',
+                    $evaluated,
+                    $asOf->toDateString(),
+                    $failed,
+                )
+                : sprintf(
+                    'Evaluated %d distributor(s) as of %s with no failures.',
+                    $evaluated,
+                    $asOf->toDateString(),
+                ),
+        ]);
+
+        $this->info(
+            "Done — evaluated: {$evaluated}, fulfilled: {$fulfilled}, forfeited: {$forfeited}, "
+            ."withheld: {$withheld}, failed: {$failed}"
+        );
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * The verdicts this run actually took, by outcome.
+     *
+     * A verdict is taken exactly once per window, the moment
+     * `RepurchaseCycleService::resolveAtWindowEnd()` stamps `resolved_at` — so
+     * "resolved since this run started" is the run's own work and nobody
+     * else's. The returned cycle cannot answer this: a fulfilled window rolls
+     * into the next one within the same call, so the cycle handed back is
+     * almost always the fresh, active one.
+     *
+     * @return array{completed: int, suspended: int}
+     */
+    private function verdictsTakenSince(Carbon $startedAt): array
+    {
+        $query = DB::table('repurchase_cycles')
+            ->where('resolved_at', '>=', $startedAt->toDateTimeString());
+
+        if ($this->option('distributor')) {
+            $query->where('distributor_id', (int) $this->option('distributor'));
+        }
+
+        $byStatus = $query->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return [
+            RepurchaseCycle::STATUS_COMPLETED => (int) ($byStatus[RepurchaseCycle::STATUS_COMPLETED] ?? 0),
+            RepurchaseCycle::STATUS_SUSPENDED => (int) ($byStatus[RepurchaseCycle::STATUS_SUSPENDED] ?? 0),
+        ];
+    }
+
+    /**
+     * The ADNs behind the failed distributor ids, capped so one systemic
+     * failure cannot write an unbounded blob into `engine_runs.summary`.
+     *
+     * ADNs, never names or contact details: the summary is read by the Engine
+     * Runs page and the health digest, and an ADN is the identifier every
+     * admin surface already uses to look a distributor up.
+     *
+     * @param  list<int>  $failedIds
+     * @return list<string>
+     */
+    private function adnsFor(array $failedIds): array
+    {
+        if ($failedIds === []) {
+            return [];
+        }
+
+        return array_values(
+            Distributor::query()
+                ->whereIn('id', array_slice($failedIds, 0, self::MAX_REPORTED_FAILURES))
+                ->orderBy('id')
+                ->pluck('adn')
+                ->map(fn ($adn): string => (string) $adn)
+                ->all()
+        );
+    }
+
+    /**
+     * Attach this run's counts to its own `engine_runs` row.
+     *
+     * RecordEngineRun opens and closes the row from the console events but has
+     * nothing to say about what the engine actually did; on the plain
+     * success/failure path it leaves `summary` alone, so the counts written
+     * here survive it. Bookkeeping never breaks the engine: a missing row or a
+     * locked table is logged and swallowed.
+     *
+     * @param  array<string, mixed>  $summary
+     */
+    private function recordRunSummary(array $summary): void
+    {
+        $runId = app(EngineRunContext::class)->activeRunId();
+
+        // No row: a `--distributor` run (deliberately unlogged) or a run that
+        // started before the listener could record it.
+        if ($runId === null) {
+            return;
+        }
+
+        try {
+            EngineRun::where('id', $runId)->update([
+                'summary' => json_encode($summary),
+                'updated_at' => Carbon::now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('repurchase.evaluate.summary_write_failed', [
+                'engine_run_id' => $runId,
+                'exception' => $e::class,
+            ]);
+        }
     }
 
     /**

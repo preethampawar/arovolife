@@ -60,6 +60,48 @@ it('refuses when no evaluate run has seen the whole cut-off day', function (): v
         ->and(GsbCutoffResult::count())->toBe(0);
 });
 
+it('names the distributors the evaluation could not judge when it refuses', function (): void {
+    // F23: `repurchase:evaluate` isolates a throwing distributor and carries
+    // on, so the run finishes — as `failed`, with a `failed_partial` summary.
+    // The gate is unmoved (a non-zero failure count means somebody's verdict is
+    // stale, and the day's pools are frozen once), but the operator is now told
+    // which ADNs to fix instead of being sent to the log.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    EngineRun::create([
+        'engine_key' => 'repurchase.evaluate',
+        'period_start' => '2026-08-26',
+        'status' => EngineRun::STATUS_FAILED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-08-26 00:05:00'),
+        'finished_at' => Carbon::parse('2026-08-26 00:06:00'),
+        'summary' => [
+            'outcome' => 'failed_partial',
+            'evaluated' => 6,
+            'failed' => 1,
+            'failed_adns' => ['ADN12345'],
+            'failure_classes' => ['RuntimeException'],
+        ],
+    ]);
+
+    Log::shouldReceive('critical')
+        ->once()
+        ->withArgs(fn (string $message, array $context): bool => $message === 'gsb.cutoff.refused_missing_evaluate'
+            && $context['evaluate_failures'] === 1
+            && $context['evaluate_failed_adns'] === ['ADN12345']);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(1)
+        ->and(Artisan::output())->toContain('ADN12345')
+        ->and(GsbCutoffResult::count())->toBe(0);
+});
+
+it('says nothing about failures when the evaluation simply never ran', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(1)
+        ->and(Artisan::output())->not->toContain('threw and still carry');
+});
+
 it('records a FAILED engine run when refused', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 

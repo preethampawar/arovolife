@@ -121,19 +121,48 @@ final class EngineStatusService
      */
     public function hasSucceededRunAfterDay(string $key, Carbon $day): bool
     {
-        $dayEnds = $day->copy()->startOfDay()->addDay();
-
         return EngineRun::query()
             ->where('engine_key', $key)
             ->where('status', EngineRun::STATUS_SUCCEEDED)
-            ->where(function (Builder $query) use ($day, $dayEnds): void {
-                $query->whereDate('period_start', '>', $day->toDateString())
-                    ->orWhere(function (Builder $sameDay) use ($day, $dayEnds): void {
-                        $sameDay->whereDate('period_start', '>=', $day->toDateString())
-                            ->where('started_at', '>=', $dayEnds->toDateTimeString());
-                    });
-            })
+            ->where(self::sawWholeDay($day))
             ->exists();
+    }
+
+    /**
+     * The most recent run of $key that could have seen all of $day, whatever
+     * its status — the diagnostic companion to
+     * {@see hasSucceededRunAfterDay()}.
+     *
+     * When that gate says no, the operator's next question is always "why" and
+     * the answer is on the run itself: a `repurchase.evaluate` run that threw
+     * on two distributors names them in its summary, and that is the difference
+     * between a five-minute fix and a platform-wide cut-off stalled overnight.
+     */
+    public function latestRunAfterDay(string $key, Carbon $day): ?EngineRun
+    {
+        return EngineRun::query()
+            ->where('engine_key', $key)
+            ->where(self::sawWholeDay($day))
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * A run for a LATER date, or a run dated $day that started after $day had
+     * ended — the two shapes that prove the whole day was visible to it.
+     */
+    private static function sawWholeDay(Carbon $day): \Closure
+    {
+        $dayEnds = $day->copy()->startOfDay()->addDay();
+
+        return function (Builder $query) use ($day, $dayEnds): void {
+            $query->whereDate('period_start', '>', $day->toDateString())
+                ->orWhere(function (Builder $sameDay) use ($day, $dayEnds): void {
+                    $sameDay->whereDate('period_start', '>=', $day->toDateString())
+                        ->where('started_at', '>=', $dayEnds->toDateTimeString());
+                });
+        };
     }
 
     /**

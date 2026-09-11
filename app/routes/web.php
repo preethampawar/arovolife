@@ -90,6 +90,7 @@ use App\Modules\Identity\Http\Controllers\Admin\AdminDistributorRequestControlle
 use App\Modules\Identity\Http\Controllers\Auth\LoginController;
 use App\Modules\Identity\Http\Controllers\Auth\PasswordResetController;
 use App\Modules\Identity\Http\Controllers\Auth\SpouseActivationController;
+use App\Modules\Identity\Http\Controllers\BankDetailsController;
 use App\Modules\Identity\Http\Controllers\DashboardController;
 use App\Modules\Identity\Http\Controllers\DirectSellerApplicationController;
 use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
@@ -1100,6 +1101,13 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::post('/profile/arete-centre', [ProfileController::class, 'initiateAreteCentreChange'])->middleware('throttle:6,10')->name('profile.arete.initiate');
     Route::post('/profile/arete-centre/confirm', [ProfileController::class, 'confirmAreteCentreOtp'])->middleware('throttle:10,10')->name('profile.arete.confirm');
     Route::post('/profile/arete-centre/resend', [ProfileController::class, 'resendAreteCentreOtp'])->middleware('throttle:6,10')->name('profile.arete.resend');
+    // Self-service bank details (QA F70). OTP-gated like the contact change:
+    // update() issues + emails a code, confirm() verifies it and only then
+    // writes the account. Throttled so a code cannot be email-spammed.
+    Route::get('/profile/bank', [BankDetailsController::class, 'show'])->name('profile.bank.show');
+    Route::post('/profile/bank', [BankDetailsController::class, 'update'])->middleware('throttle:6,10')->name('profile.bank.update');
+    Route::post('/profile/bank/otp', [BankDetailsController::class, 'confirmOtp'])->middleware('throttle:10,10')->name('profile.bank.otp.confirm');
+    Route::post('/profile/bank/otp/resend', [BankDetailsController::class, 'resendOtp'])->middleware('throttle:6,10')->name('profile.bank.otp.resend');
     Route::get('/profile/password', [ProfileController::class, 'showPasswordForm'])->name('profile.password.show');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 

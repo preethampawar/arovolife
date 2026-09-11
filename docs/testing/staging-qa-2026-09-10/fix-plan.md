@@ -100,10 +100,10 @@ Files: `database/seeders/{ContentPageSeeder,RolesAndPermissionsSeeder}.php`, `Sh
 
 ### B8 — Repurchase (Opus)
 Files: `2026_09_06_100003_backfill_verdicts…` migration, new migration, `RepurchaseEvaluateCommand` + service.
-- [ ] F21 Add the missing `due_date < today` guard to the backfill migration (prod has not run it); staging rows are cleaned by F10.
-- [ ] F22 New migration re-dates OPEN cycles from `start+29` to `start+30`.
-- [ ] F23 `repurchase:evaluate` isolates per-distributor exceptions (continue, collect), exits non-zero with a `failed_partial` summary listing the ADNs; `gsb:daily-cutoff` gate reads that summary and refuses only when the failure count is non-zero — document the choice.
-- [ ] F24 `repurchase:evaluate` writes a run summary (evaluated / fulfilled / failed / forfeited counts).
+- [x] F21 Add the missing `due_date < today` guard to the backfill migration (prod has not run it); staging rows are cleaned by F10.
+- [x] F22 New migration re-dates OPEN cycles from `start+29` to `start+30`.
+- [x] F23 `repurchase:evaluate` isolates per-distributor exceptions (continue, collect), exits non-zero with a `failed_partial` summary listing the ADNs; `gsb:daily-cutoff` gate reads that summary and refuses only when the failure count is non-zero — document the choice.
+- [x] F24 `repurchase:evaluate` writes a run summary (evaluated / fulfilled / failed / forfeited counts).
 
 ### B10 — Self-service bank details (Opus)
 Files: new `BankDetailsController` + `BankDetailsRequest` + `BankDetailsUpdatedNotification`, `profile/bank.blade.php`, migration `2026_09_11_120000_add_bank_beneficiary_name_to_distributors`, `routes/web.php`, `profile/show.blade.php`, `income/wallet.blade.php`, help docs.
