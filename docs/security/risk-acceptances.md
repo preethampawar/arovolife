@@ -17,9 +17,17 @@
 During registration, the **full** PAN and **full** Aadhaar number are stored in
 `distributors.pan_encrypted` / `aadhaar_encrypted` (migration
 `2026_05_12_000001`). On KYC approval, `ApproveKycSubmission` **nulls both
-columns and purges the uploaded document images**, leaving only `pan_last4` /
-`aadhaar_last4`. The full values exist at rest only for the window between
-submission and admin approval.
+columns**, leaving only `pan_last4` / `aadhaar_last4`. The full values exist at
+rest only for the window between submission and admin approval.
+
+*Amended 2026-09-11 (client decision, QA fix run Q10/Q22; R-31):* the uploaded
+scans — PAN, Aadhaar front and back, cancelled cheque, address proof, photo —
+are **kept after approval**. They are written as `PiiCrypter` ciphertext by
+`KycDocumentVault`, served only through the audited admin route, and erased by
+`kyc:purge-expired-documents` once the admin-owned setting
+`kyc.document_retention_days` (default eight years, the published period) has
+run. An Aadhaar image carries the Aadhaar number, so this acceptance now covers
+the retained scans as well as the number columns.
 
 ### Why this is a risk
 Hard rule #8 (CLAUDE.md; T&C §15; DPDP 2023) states raw Aadhaar is **never**
@@ -35,9 +43,9 @@ verification before an AUA/KUA integration is live. _(PO to confirm/expand.)_
 - Encrypted with `PiiEncrypted` cast → `PiiCrypter` (AES-256-CBC) on the
   **dedicated** `PII_ENCRYPTION_KEY` (ADR-0008), isolated from the rotated `APP_KEY`.
 - Columns are `$hidden`; only masked last-4 accessors are ever exposed.
-- Values nulled + document images purged on KYC approval.
+- Number columns nulled on KYC approval; scans retained encrypted (see amendment above) and deleted by the nightly retention sweep, each deletion audit-logged.
 - All admin KYC actions are audit-logged with before/after.
-- Document images stored on the private `kyc` disk, served via signed URLs.
+- Document images stored on the private `kyc` disk as ciphertext on the PII key; served only through `admin.kyc.document`, which logs every view — no signed URLs (F106).
 
 ### Residual risk & conditions of acceptance
 - A data breach during the pre-approval window would expose full PAN/Aadhaar of

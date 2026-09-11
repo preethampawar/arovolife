@@ -38,7 +38,7 @@ exists. Phase 12 production hardening (MFA, observability, Redis) is deferred.
 5. **30-day cooling-off** with one-click cancellation and full refund. SMS/email reminders at D-7 / D-1. (T&C §4.)
 6. **One PAN = one ADN.** Couple registrations use a single ADN with a primary/secondary flag. (T&C §1.4, §7.)
 7. **No e-commerce listings, no offline retail.** Direct Sellers may only sell to end-consumers directly. (T&C §9.)
-8. **PII is encrypted at rest.** PAN stored as hash + last-4. Raw Aadhaar is NEVER stored — only a reference returned by the UIDAI-approved AUA/KUA partner plus last-4. (T&C §15; DPDP Act 2023.)
+8. **PII is encrypted at rest.** PAN stored as hash + last-4. Raw Aadhaar is NEVER stored — only a reference returned by the UIDAI-approved AUA/KUA partner plus last-4. (T&C §15; DPDP Act 2023.) *Amended 2026-09-11 (client decision, R-31):* the uploaded KYC scans — Aadhaar front/back included — are **retained after approval**, but only as `KycDocumentVault` ciphertext on the PII key, served solely through the audited admin route, and erased by `kyc:purge-expired-documents` once the admin-owned `kyc.document_retention_days` period (default eight years) has run. The full Aadhaar/PAN number columns are still nulled at approval; nothing else about this rule is relaxed.
 
 If a user request would break one of these rules, stop and reply with:
 

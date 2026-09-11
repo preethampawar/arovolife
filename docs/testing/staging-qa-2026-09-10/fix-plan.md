@@ -158,7 +158,7 @@ Files: new `Compliance/Support/AuditDigests.php`; ~105 `AuditLog::create` sites 
 | 7 | F55 | YES — members pay the distributor price | B6 |
 | 8 | F115 | NO — several live announcements; pin limit 3 stays. Closed by design | — |
 | 9 | F71/F72 | YES both — missing consent row = live consent for the withdrawal flow; backfill `agreements`; "My consents & agreements" page | B12 |
-| 10 | F107 | CLIENT: keep ALL KYC images (incl. PAN + Aadhaar front) and fix R-31 wording. **Compliance stop on the Aadhaar images (hard rule 8)** — compliant alternative offered 2026-09-11; awaiting answer | [?] |
+| 10 | F107 | CLIENT (Q10 + Q22, 2026-09-11): keep ALL KYC images including Aadhaar, encrypted, with audited access and a retention period set in Settings. Done: `KycDocumentVault` (PiiCrypter ciphertext on every upload path; `kyc:encrypt-documents` converts existing objects), approval no longer deletes scans, setting `kyc.document_retention_days` (default 2,920 days), nightly `kyc:purge-expired-documents` with audit rows, R-31 + CLAUDE.md rule 8 amended, help guide updated. Deviation from hard rule 8 recorded for RA-01 sign-off | [x] |
 | 11 | F77 | YES — 10:00–18:00 Mon–Sat; footer + Grievance Redressal Policy to match | B12 |
 | 12 | F36 | keep guest browsing. Closed by design | — |
 | 13 | F65 | keep ADN list; strip email/phone from `/tree/suggest` | B5a |
@@ -167,7 +167,7 @@ Files: new `Compliance/Support/AuditDigests.php`; ~105 `AuditLog::create` sites 
 | 16 | F108 | YES — before/after digests on every admin/KYC/settings mutation | B13 (last) |
 | 17 | F114 | YES — seeder run on staging 2026-09-11 12:50 IST: permissions 12→13, `messaging.moderate` on admin/admin-operations/admin-compliance/developer. Re-run after deploy for `content.publish`/`finance.approve` | done |
 | 18 | F82 | YES — gate stays open on staging; red banner on Engine Runs while open | B11 |
-| 19 | F11 | YES — file is root-owned (`/etc/supervisor/conf.d/ahdhesuhty_3.conf`); user edits the compensation worker in the Cloudways panel: `--timeout=7200` | user |
+| 19 | F11 | Cloudways caps the Supervisor `--timeout` at 999 s (user, 2026-09-11) — panel change impossible. No action needed: a job's own `$timeout` overrides the worker flag (`RecomputeAllJob` 7200, `RunEngineChainJob` 3600); `PropagateGroupBvJob` / `ReverseGroupBvJob` are per-order and finish in seconds. Recompute runs from the CLI, not the queue. ADR-0011's 7200 stays as the job-level figure | [x] |
 | 20 | F74 | CLIENT: disable ClamAV on staging and prod, never block uploads → `CLAMAV_ENABLED=false` switch, fail-open only when explicitly disabled, warning log per unscanned upload, risk-register entry. `.env` change on staging at deploy time | B12 + ops |
 | 21 | F04 | YES — digest arrived. Closed | — |
 

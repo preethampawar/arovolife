@@ -11,7 +11,7 @@ Every step below is in order. Steps marked **(go-ahead)** are run only after the
 ## 1. Deploy (go-ahead)
 - [ ] Push `main`; Cloudways `git_pull` recipe (memory: cloudways_staging_deploy).
 - [ ] rsync `public/build` to the server.
-- [ ] `php artisan migrate --force` — 6+ forward-only migrations (mentorship deduction columns, UTR unique index, rank pools backfill, repurchase re-date, payout `created_by`, bank beneficiary name) + any from B13.
+- [ ] `php artisan migrate --force` — 7+ forward-only migrations (mentorship deduction columns, UTR unique index, rank pools backfill, repurchase re-date, payout `created_by`, bank beneficiary name, `kyc_documents.encrypted_at`) + any from B13.
 - [ ] `php artisan config:clear && php artisan route:clear && php artisan view:clear`; restart queue workers + scheduler (memory: engine_runs_admin_page).
 
 ## 2. Post-deploy on staging (go-ahead each)
@@ -19,7 +19,8 @@ Every step below is in order. Steps marked **(go-ahead)** are run only after the
 - [ ] `php artisan db:seed --class=RolesAndPermissionsSeeder --force` — adds `content.publish` and `finance.approve` (additive; without it **no payout batch can be approved**).
 - [ ] `php artisan consent:backfill-agreements --dry-run`, then without `--dry-run`.
 - [ ] `php artisan content:publish returns` — ONLY after the DSA §5.4 / §10 contradiction is reconciled (B6 note); until then the page stays a draft.
-- [ ] Cloudways panel → Application → Supervisor → `compensation` worker `--timeout=7200` **(user)**.
+- [ ] `php artisan kyc:encrypt-documents` — converts the KYC scans already in the bucket to vault ciphertext (idempotent; F107/Q22).
+- ~~Cloudways panel → Supervisor `--timeout=7200`~~ — Cloudways caps it at 999 s; not needed, job-level `$timeout` overrides the flag (F11 closed).
 - [ ] Verify: Engine Runs page shows the red gate banner; `/admin/messaging/reports` opens for admin-operations; payout batch page shows Created by / Approved by.
 
 ## 3. Staging data cleanup (go-ahead each; the 5-point warning applies to F10)
