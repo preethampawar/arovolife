@@ -89,7 +89,7 @@ async function placeOrderViaStub(page) {
     await page.fill('input[name="ship_pincode"]', '500001');
     await page.check('input[name="accept_terms"]');
 
-    await page.getByRole('button', { name: 'Place Order' }).click();
+    await submitAndConfirm(page, page.getByRole('button', { name: 'Place Order' }));
     await page.waitForURL('**/shop/confirmation/**', { timeout: 15_000 });
 
     const orderNoText = await page.locator('text=/Order\\s+ORD/i, text=/[A-Z]{2,}-?\\d{4,}/').first().textContent().catch(() => null);
