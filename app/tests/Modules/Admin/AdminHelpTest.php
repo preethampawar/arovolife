@@ -61,6 +61,14 @@ it('AH-06: every registered reference doc renders as HTML', function (string $sl
     // was reachable only as a 404 until the allow-list caught up.
     'compensation' => ['compensation', 'Repurchase'],
     'status' => ['status-reference', 'Blocked'],
+    // The inventory / warehouse / order / reports / action-center pages: added
+    // with those modules, and enumerated here so a missing markdown file or a
+    // renamed heading fails the suite rather than the ops team's afternoon.
+    'inventory' => ['inventory-management', 'batch'],
+    'warehouse' => ['warehouse-management', 'Goods Receipts'],
+    'orders' => ['order-management', 'cooling-off'],
+    'stock-reports' => ['stock-reports', 'warehouse'],
+    'action-center' => ['action-center', 'snooze'],
 ]);
 
 it('AH-02: an admin can read the rendered status-reference doc (markdown → HTML)', function (): void {

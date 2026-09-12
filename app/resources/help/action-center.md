@@ -1,6 +1,6 @@
 # Action Center
 
-**Admin → Action Center** (top of the Overview group, with a badge counting
+**Admin → Action Center** (the first item in the sidebar, with a badge counting
 your critical items). One screen that answers "what needs a human right
 now" — it aggregates signals that already exist across the platform and
 ranks them, rather than being its own source of truth.

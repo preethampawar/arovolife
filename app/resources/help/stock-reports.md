@@ -1,6 +1,6 @@
 # Stock & Inventory Reports
 
-**Admin → Insights → Reports** (linked from Admin → Inventory → Reports).
+**Admin → Inventory → Reports.**
 Ten reports over the same stock ledger described in
 [Inventory Management](inventory-management) — each answers a different
 operational question, all filterable by warehouse and, where relevant, by
