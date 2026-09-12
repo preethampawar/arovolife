@@ -72,6 +72,31 @@ final class ActionCenterService
     }
 
     /**
+     * The `$limit` oldest critical items across every group this user may
+     * see (plan §7, dashboard card). Never cached, like `items()` — a
+     * dashboard is asking what is true now, and this is a small, bounded
+     * fan-out (one `items()` call per visible provider, itself already
+     * capped).
+     *
+     * @return Collection<int, ActionItem>
+     */
+    public function oldestCriticalItems(User $user, int $limit = 5): Collection
+    {
+        $items = Collection::make();
+
+        foreach ($this->registry->for($user) as $provider) {
+            $items = $items->concat(
+                $provider->items($limit)->filter(fn (ActionItem $item): bool => $item->severity === Severity::CRITICAL)
+            );
+        }
+
+        return $items
+            ->sortBy(fn (ActionItem $item): int => $item->occurredAt->getTimestamp())
+            ->take($limit)
+            ->values();
+    }
+
+    /**
      * Defer one subject of one action type.
      *
      * Statutory types refuse (plan §5) and the window is capped by

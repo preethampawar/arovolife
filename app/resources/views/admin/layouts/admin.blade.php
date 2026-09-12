@@ -192,8 +192,21 @@
                     )
                     : 0;
 
+                // Action Center critical count for the sidebar badge. Reads the
+                // same 60s summary cache the screen itself uses (plan §6), so
+                // this adds no extra query beyond what `ActionCenterService`
+                // already computes. Zero renders no badge, not a grey zero
+                // (plan §7, §10.5).
+                $actionCenterOn = auth()->user()?->can('action.center.view') ?? false;
+                $actionCenterCriticalCount = $actionCenterOn
+                    ? app(\App\Modules\ActionCenter\Services\ActionCenterService::class)->criticalCount(auth()->user())
+                    : 0;
+
                 $navItems = [
                     ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => 'layout-dashboard'],
+                    ...($actionCenterOn
+                        ? [['route' => 'admin.action-center.index', 'label' => 'Action Center', 'icon' => 'siren', 'prefix' => 'admin.action-center', 'badge' => $actionCenterCriticalCount]]
+                        : []),
                     ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => 'users'],
                     // Staff register is super-staff only (route enforces role:admin|developer).
                     ...(auth()->user()?->isSuperStaff()

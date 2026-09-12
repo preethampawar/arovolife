@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\ActionCenter\Http\Controllers\Admin\AdminActionCenterController;
 use App\Modules\Admin\Http\Controllers\AdminAuditLogController;
 use App\Modules\Admin\Http\Controllers\AdminContactController;
 use App\Modules\Admin\Http\Controllers\AdminDashboardController;
@@ -265,6 +266,17 @@ Route::middleware([])->group(function (): void {
 // Gate::before bypass cannot open, so `admin` is genuinely excluded there.
 Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|admin-compliance'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // Action Center (plan §7). `action.center.view` opens the two read
+    // screens; the snooze/unsnooze writes gate on the provider's own
+    // permission instead, enforced inside the controller via
+    // `ActionCenterRegistry::findFor()` (plan §5, §10.2).
+    Route::prefix('action-center')->name('action-center.')->middleware('can:action.center.view')->group(function (): void {
+        Route::get('/', [AdminActionCenterController::class, 'index'])->name('index');
+        Route::get('/{key}', [AdminActionCenterController::class, 'show'])->name('show');
+        Route::post('/{key}/snooze', [AdminActionCenterController::class, 'snooze'])->name('snooze');
+        Route::delete('/{key}/snooze', [AdminActionCenterController::class, 'unsnooze'])->name('unsnooze');
+    });
 
     Route::get('/distributors', [AdminDistributorController::class, 'index'])->name('distributors.index');
 
