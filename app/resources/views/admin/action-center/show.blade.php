@@ -85,7 +85,6 @@
                                 data-confirm-title="Confirm snooze"
                                 data-confirm-impact="Hides this item from the queue until the snooze expires. It reappears automatically — nothing sweeps it early.">
                                 @csrf
-                                <input type="hidden" name="subject_type" value="{{ $item->subjectType }}">
                                 <input type="hidden" name="subject_id" value="{{ $item->subjectId }}">
                                 <label class="block text-xs font-medium text-gray-700 mb-1">Days (1–{{ $maxSnoozeDays }})</label>
                                 <input type="number" name="days" min="1" max="{{ $maxSnoozeDays }}" value="1" required

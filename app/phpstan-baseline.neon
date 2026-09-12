@@ -1558,13 +1558,13 @@ parameters:
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
 			identifier: property.notFound
-			count: 10
+			count: 12
 			path: tests/Feature/ActionCenter/SnoozeUiTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 12
 			path: tests/Feature/ActionCenter/SnoozeUiTest.php
 
 		-

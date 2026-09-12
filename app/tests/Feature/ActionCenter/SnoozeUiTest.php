@@ -124,3 +124,24 @@ it('unsnoozes and shows the row again', function (): void {
         ->assertOk()
         ->assertSee($order->order_no);
 });
+
+it('keys the snooze on the provider own subject type, never the posted one', function (): void {
+    $order = Helpers::paidOrder(now()->subDays(3));
+
+    $this->actingAs($this->operations)->post(route('admin.action-center.snooze', 'orders.paid_not_packed'), [
+        'subject_type' => 'spoofed',
+        'subject_id' => $order->id,
+        'days' => 3,
+        'reason' => 'Courier pickup booked for Monday.',
+    ])->assertRedirect();
+
+    expect(ActionCenterSnooze::query()
+        ->where('action_key', 'orders.paid_not_packed')
+        ->where('subject_id', $order->id)
+        ->value('subject_type'))->not->toBe('spoofed');
+
+    $this->actingAs($this->operations)
+        ->get(route('admin.action-center.show', 'orders.paid_not_packed'))
+        ->assertOk()
+        ->assertDontSee($order->order_no);
+});

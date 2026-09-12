@@ -46,6 +46,9 @@ interface ActionProvider
     public function enabled(): bool;
 
     /** Cheap COUNT over the same condition as items(). */
+    /** Short, stable subject name stored on snooze rows (e.g. 'order'). */
+    public function subjectType(): string;
+
     public function count(): int;
 
     /**

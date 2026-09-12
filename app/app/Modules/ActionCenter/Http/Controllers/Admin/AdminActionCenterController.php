@@ -114,12 +114,11 @@ final class AdminActionCenterController extends Controller
     {
         // Only a viewer who holds THIS provider's own permission may snooze
         // one of its rows — never the blanket `action.center.view` (plan §5).
-        $this->findOrAbort($registry, $request->user(), $key);
+        $provider = $this->findOrAbort($registry, $request->user(), $key);
 
         $max = app(ActionCenterSettings::class)->maxSnoozeDays();
 
         $validated = $request->validate([
-            'subject_type' => ['required', 'string', 'max:64'],
             'subject_id' => ['required', 'integer', 'min:1'],
             'days' => ['required', 'integer', 'min:1', 'max:'.$max],
             'reason' => ['required', 'string', 'min:10', 'max:1000'],
@@ -129,7 +128,9 @@ final class AdminActionCenterController extends Controller
             $service->snooze(
                 $request->user(),
                 $key,
-                $validated['subject_type'],
+                // The subject type is the provider's own, never the posted
+                // value: a snooze row must key on what the provider queries.
+                $provider->subjectType(),
                 (int) $validated['subject_id'],
                 (int) $validated['days'],
                 $validated['reason'],
@@ -143,15 +144,14 @@ final class AdminActionCenterController extends Controller
 
     public function unsnooze(Request $request, string $key, ActionCenterRegistry $registry, ActionCenterService $service): RedirectResponse
     {
-        $this->findOrAbort($registry, $request->user(), $key);
+        $provider = $this->findOrAbort($registry, $request->user(), $key);
 
         $validated = $request->validate([
-            'subject_type' => ['required', 'string', 'max:64'],
             'subject_id' => ['required', 'integer', 'min:1'],
         ]);
 
         try {
-            $service->unsnooze($request->user(), $key, $validated['subject_type'], (int) $validated['subject_id']);
+            $service->unsnooze($request->user(), $key, $provider->subjectType(), (int) $validated['subject_id']);
         } catch (ActionCenterException $e) {
             abort($e->status(), $e->getMessage());
         }
