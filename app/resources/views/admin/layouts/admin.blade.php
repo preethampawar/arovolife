@@ -249,16 +249,19 @@
                 @endphp
                 <div data-nav-group="{{ $group['key'] }}" @if($groupActive) data-nav-group-active="1" @endif>
                 @if($group['label'] !== null)
+                    {{-- text-left overrides the browser's default `button { text-align: center }`
+                         — without it, a label long enough to wrap (e.g. "Support &
+                         Compliance") centers its second line instead of staying flush left. --}}
                     <button type="button" data-nav-group-toggle
                             aria-expanded="true"
                             aria-controls="nav-group-{{ $group['key'] }}"
-                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 px-4 pt-4 pb-1 hover:text-slate-300 transition-colors">
-                        <span>{{ $group['label'] }}</span>
+                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400/80 px-4 pt-5 pb-1.5 mt-1 border-t border-slate-800/80 first:mt-0 first:border-t-0 hover:text-slate-300 transition-colors">
+                        <span class="text-left">{{ $group['label'] }}</span>
                         <span data-nav-group-chevron="down">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
                         <span data-nav-group-chevron="right" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
                     </button>
                 @endif
-                    <div id="nav-group-{{ $group['key'] }}" class="admin-nav-group-list space-y-1">
+                    <div id="nav-group-{{ $group['key'] }}" class="admin-nav-group-list space-y-1 pt-0.5">
             @foreach($group['items'] as $item)
                 @php
                     $active = request()->routeIs($item['route'])
