@@ -61,6 +61,19 @@ final class PurchaseDataResetAction
         'cart_items',
         'carts',
         'shared_carts',
+        // Inventory (plan §6 H15): every purchase-derived stock table. Children
+        // before parents — stock_movements/stock_adjustments/transfer items
+        // reference stock_batches; invoice/order/transfer items reference their
+        // headers. `warehouses` and `suppliers` are master data, kept.
+        'stock_movements',
+        'stock_adjustments',
+        'stock_transfer_items',
+        'stock_transfers',
+        'purchase_invoice_items',
+        'purchase_invoices',
+        'purchase_order_items',
+        'purchase_orders',
+        'stock_batches',
     ];
 
     public function __construct(private readonly DatabaseManager $db) {}
@@ -190,6 +203,13 @@ final class PurchaseDataResetAction
         $this->db->table('inventory_levels')
             ->where('reserved', '>', 0)
             ->update(['reserved' => 0]);
+
+        // The stock ledger itself is truncated above, so on_hand must be
+        // zeroed with it — leaving it non-zero would break invariant 1
+        // (on_hand == Σ stock_movements) the moment `inventory:verify` runs.
+        $this->db->table('inventory_levels')
+            ->where('on_hand', '>', 0)
+            ->update(['on_hand' => 0, 'low_stock_alerted_at' => null]);
     }
 
     /**

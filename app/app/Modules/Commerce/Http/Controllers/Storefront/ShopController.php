@@ -9,10 +9,13 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\ShippingService;
+use App\Modules\Inventory\Services\StockLedger;
+use App\Modules\Shared\Features\InventoryFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class ShopController extends Controller
@@ -20,6 +23,7 @@ final class ShopController extends Controller
     public function __construct(
         private readonly CartService $cartService,
         private readonly ShippingService $shipping,
+        private readonly StockLedger $stock,
     ) {}
 
     public function index(Request $request): View
@@ -110,9 +114,24 @@ final class ShopController extends Controller
             throw new NotFoundHttpException;
         }
 
+        // Plan §7.3: a tracked variant with nothing available shows a plain
+        // "Out of stock" and disables Add to Cart — no scarcity copy, no
+        // quantity. Gated behind InventoryFeature so a module deploy does not
+        // start hiding buy buttons before the ledger has real numbers.
+        $outOfStock = [];
+
+        if (Feature::for(null)->active(InventoryFeature::class)) {
+            foreach ($product->variants as $variant) {
+                if ($variant->inventory_policy === 'track' && $this->stock->available($variant->id) <= 0) {
+                    $outOfStock[$variant->id] = true;
+                }
+            }
+        }
+
         return view('shop.product', [
             'product' => $product,
             'cart' => $this->cartService->currentCart($request),
+            'outOfStock' => $outOfStock,
         ]);
     }
 

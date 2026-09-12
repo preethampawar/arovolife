@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonInterface|null $expiry_date
  * @property int $unit_cost_paise
  * @property int $qty_on_hand
+ * @property CarbonInterface|null $expiry_alerted_at
  */
 final class StockBatch extends Model
 {

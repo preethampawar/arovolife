@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Inventory;
 
 use App\Modules\Inventory\Console\Commands\BackfillOpeningStockCommand;
+use App\Modules\Inventory\Console\Commands\InventoryAlertsCommand;
 use App\Modules\Inventory\Console\Commands\VerifyStockLedgerCommand;
+use App\Modules\Inventory\Services\InventoryAlertService;
 use App\Modules\Inventory\Services\InventoryNumbering;
 use App\Modules\Inventory\Services\InventorySettings;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
@@ -26,6 +28,7 @@ final class InventoryServiceProvider extends ServiceProvider
         $this->app->singleton(SupplierService::class);
         $this->app->singleton(PurchaseOrderService::class);
         $this->app->singleton(PurchaseInvoiceService::class);
+        $this->app->singleton(InventoryAlertService::class);
     }
 
     public function boot(): void
@@ -36,6 +39,7 @@ final class InventoryServiceProvider extends ServiceProvider
             $this->commands([
                 BackfillOpeningStockCommand::class,
                 VerifyStockLedgerCommand::class,
+                InventoryAlertsCommand::class,
             ]);
         }
     }

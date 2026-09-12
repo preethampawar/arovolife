@@ -100,6 +100,18 @@
     @endforeach
 </div>
 
+@if($inventoryCard)
+<a href="{{ route('admin.inventory.reports.index') }}"
+   class="group block bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all mb-8">
+    <div class="flex items-center justify-between">
+        <p class="text-sm font-semibold text-gray-800">
+            Inventory — {{ $inventoryCard['low_stock'] }} low stock · {{ $inventoryCard['expiring'] }} expiring ≤ {{ $inventoryCard['expiry_days'] }} d · {{ $inventoryCard['expired'] }} expired
+        </p>
+        <span class="text-gray-600 group-hover:text-brand-800 transition-colors text-lg leading-none" aria-hidden="true">→</span>
+    </div>
+</a>
+@endif
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     {{-- Recent Distributors --}}

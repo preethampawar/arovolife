@@ -106,6 +106,7 @@ use App\Modules\Identity\Http\Controllers\ProfileStatsController;
 use App\Modules\Identity\Http\Controllers\Registration\RegistrationWizardController;
 use App\Modules\Identity\Http\Controllers\TaxStatementsController;
 use App\Modules\Identity\Http\Controllers\TeamRosterController;
+use App\Modules\Inventory\Http\Controllers\Admin\AdminInventoryReportController;
 use App\Modules\Inventory\Http\Controllers\Admin\AdminPurchaseInvoiceController;
 use App\Modules\Inventory\Http\Controllers\Admin\AdminPurchaseOrderController;
 use App\Modules\Inventory\Http\Controllers\Admin\AdminStockAdjustmentController;
@@ -403,6 +404,20 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // (admin-operations and admin-finance, R-17); it moves nothing on its own.
     Route::prefix('inventory')->name('inventory.')->middleware('can:inventory.view')->group(function (): void {
         Route::get('/stock', [AdminStockController::class, 'index'])->name('stock.index');
+
+        Route::prefix('reports')->name('reports.')->group(function (): void {
+            Route::get('/', [AdminInventoryReportController::class, 'index'])->name('index');
+            Route::get('/stock-on-hand', [AdminInventoryReportController::class, 'stockOnHand'])->name('stock-on-hand');
+            Route::get('/movements', [AdminInventoryReportController::class, 'movements'])->name('movements');
+            Route::get('/batch-expiry', [AdminInventoryReportController::class, 'batchExpiry'])->name('batch-expiry');
+            Route::get('/low-stock', [AdminInventoryReportController::class, 'lowStock'])->name('low-stock');
+            Route::get('/valuation', [AdminInventoryReportController::class, 'valuation'])->name('valuation');
+            Route::get('/purchase-register', [AdminInventoryReportController::class, 'purchaseRegister'])->name('purchase-register');
+            Route::get('/transfer-register', [AdminInventoryReportController::class, 'transferRegister'])->name('transfer-register');
+            Route::get('/order-fulfilment', [AdminInventoryReportController::class, 'orderFulfilment'])->name('order-fulfilment');
+            Route::get('/returns-restock', [AdminInventoryReportController::class, 'returnsRestock'])->name('returns-restock');
+            Route::get('/stock-in-out', [AdminInventoryReportController::class, 'stockInOut'])->name('stock-in-out');
+        });
     });
 
     // Inventory — suppliers, purchase orders, goods receipts (GRNs), warehouses,

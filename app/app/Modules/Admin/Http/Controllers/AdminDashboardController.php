@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compliance\Services\AuditLogPresenter;
+use App\Modules\Inventory\Services\InventoryAlertService;
+use App\Modules\Inventory\Services\InventorySettings;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +14,7 @@ use Illuminate\View\View;
 
 final class AdminDashboardController extends Controller
 {
-    public function index(Request $request, AuditLogPresenter $presenter): View
+    public function index(Request $request, AuditLogPresenter $presenter, InventoryAlertService $inventoryAlerts, InventorySettings $inventorySettings): View
     {
         // Each stat below is JOINed against distributors where the
         // dashboard tile claims to be about distributors. A previous
@@ -78,6 +80,17 @@ final class AdminDashboardController extends Controller
             ->limit(8)
             ->get();
 
-        return view('admin.dashboard', compact('stats', 'recentAudit', 'recentDistributors'));
+        $inventoryCard = null;
+
+        if ($request->user()?->can('inventory.view')) {
+            $inventoryCard = [
+                'low_stock' => $inventoryAlerts->lowStock()->count(),
+                'expiring' => $inventoryAlerts->expiring($inventorySettings->expiryAlertDays())->count(),
+                'expired' => $inventoryAlerts->expired()->count(),
+                'expiry_days' => $inventorySettings->expiryAlertDays(),
+            ];
+        }
+
+        return view('admin.dashboard', compact('stats', 'recentAudit', 'recentDistributors', 'inventoryCard'));
     }
 }

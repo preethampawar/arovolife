@@ -9,6 +9,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
+use App\Modules\Inventory\Console\Commands\InventoryAlertsCommand;
 use App\Modules\Kyc\Console\Commands\PurgeExpiredDocumentsCommand;
 use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
@@ -180,6 +181,16 @@ Schedule::command(ExpireUnpaidOrdersCommand::class)
 // Daily 03:15 IST: drop gateway payloads older than the dispute window.
 Schedule::command(PaymentsRedactEventsCommand::class)
     ->dailyAt('03:15')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// ── Inventory ────────────────────────────────────────────────────────────────
+// Daily low-stock / expiry alert email (plan §7.3). Guarded inside the command
+// by InventoryFeature, the same killswitch as checkout enforcement — off means
+// nothing is sent, whatever the schedule says.
+Schedule::command(InventoryAlertsCommand::class)
+    ->dailyAt('08:30')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

@@ -109,12 +109,6 @@ parameters:
 			path: app/Modules/Catalog/Http/Requests/ProductRequest.php
 
 		-
-			message: '#^Method App\\Modules\\Catalog\\Models\\InventoryLevel\:\:variant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Catalog/Models/InventoryLevel.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\Product\:\:\$status\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1316,12 +1310,6 @@ parameters:
 			path: app/Modules/Returns/Models/ReturnRequest.php
 
 		-
-			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:inspection\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Returns/Models/ReturnRequest.php
-
-		-
 			message: '#^Method App\\Modules\\Returns\\Models\\ReturnRequest\:\:openedByCustomer\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1334,12 +1322,6 @@ parameters:
 			path: app/Modules/Returns/Models/ReturnRequest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$condition\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Returns/Services/InspectReturn.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$net_refund_paise\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1347,12 +1329,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Returns/Services/OpenReturn.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Order\:\:\$delivered_at\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Returns/Services/OpenReturn.php
@@ -1458,6 +1434,42 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Feature/Commerce/AdminOrderTransitionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Inventory/ReportsRenderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Inventory/ReportsRenderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/StockInOutSummaryReconcilesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/StockInOutSummaryReconcilesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Inventory/AlertsCommandTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/AlertsCommandTest.php
 
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$appResult\.$#'

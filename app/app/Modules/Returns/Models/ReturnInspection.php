@@ -7,6 +7,11 @@ namespace App\Modules\Returns\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $return_request_id
+ * @property string $condition
+ */
 final class ReturnInspection extends Model
 {
     protected $table = 'return_inspections';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Inventory\Models;
 
 use App\Modules\Identity\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $from_warehouse_code
  * @property string $to_warehouse_code
  * @property string $status
+ * @property CarbonInterface|null $dispatched_at
+ * @property CarbonInterface|null $received_at
+ * @property int|null $items_sum_qty set only after ->withSum('items', 'qty')
  */
 final class StockTransfer extends Model
 {

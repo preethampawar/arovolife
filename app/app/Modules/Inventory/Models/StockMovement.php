@@ -8,6 +8,7 @@ use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One append-only line of the stock ledger. Written by `StockLedger::post()`
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $reference_type
  * @property int|null $reference_id
  * @property string|null $reason
+ * @property int|null $actor_user_id
+ * @property Carbon $occurred_at
  */
 final class StockMovement extends Model
 {

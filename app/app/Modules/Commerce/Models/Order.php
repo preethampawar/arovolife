@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $payment_method
  * @property Carbon|null $paid_at
  * @property Carbon|null $placed_at
+ * @property Carbon|null $shipped_at
+ * @property Carbon|null $delivered_at
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $refunded_at
  * @property Carbon|null $refund_approved_at

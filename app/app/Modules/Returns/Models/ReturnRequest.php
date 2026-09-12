@@ -106,6 +106,7 @@ final class ReturnRequest extends Model
         return $this->belongsTo(Customer::class, 'opened_by_customer_id');
     }
 
+    /** @return HasOne<ReturnInspection, $this> */
     public function inspection(): HasOne
     {
         return $this->hasOne(ReturnInspection::class);

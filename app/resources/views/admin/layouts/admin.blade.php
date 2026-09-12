@@ -238,7 +238,11 @@
                     // (also open to admin-finance); everything else moves stock
                     // or commits spend and stays behind `inventory.manage`.
                     ...(auth()->user()?->can('inventory.view')
-                        ? [['route' => 'admin.inventory.stock.index', 'label' => 'Stock', 'icon' => 'boxes', 'prefix' => 'admin.inventory.stock']]
+                        ? [
+                            ['route' => 'admin.inventory.stock.index', 'label' => 'Stock', 'icon' => 'boxes', 'prefix' => 'admin.inventory.stock'],
+                            ['route' => 'admin.inventory.reports.index', 'label' => 'Reports', 'icon' => 'file-bar-chart', 'prefix' => 'admin.inventory.reports',
+                                'badge' => \Illuminate\Support\Facades\Cache::remember('admin.inventory.alert_count', 60, fn () => app(\App\Modules\Inventory\Services\InventoryAlertService::class)->lowStock()->count() + app(\App\Modules\Inventory\Services\InventoryAlertService::class)->expired()->count())],
+                        ]
                         : []),
                     ...(auth()->user()?->can('inventory.manage')
                         ? [
