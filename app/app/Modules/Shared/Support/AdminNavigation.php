@@ -32,6 +32,7 @@ use Laravel\Pennant\Feature;
  *     prefix?: string,
  *     params?: array<string, mixed>,
  *     badge?: int,
+ *     children?: list<array{prefix: string, label: string, route: string}>,
  * }
  * @phpstan-type NavGroup array{
  *     key: string,
@@ -75,6 +76,67 @@ final class AdminNavigation
         ];
 
         return array_values(array_filter($groups, fn (array $group): bool => $group['items'] !== []));
+    }
+
+    /**
+     * Resolve a route name to its place in the sidebar, for breadcrumbs.
+     *
+     * Matching is longest-prefix over every *visible* item's `prefix` (or
+     * `route`, when it declares none) and over the `children` each item
+     * declares. That covers all named admin routes without a single per-view
+     * edit: a compensation report nobody mapped simply resolves to the
+     * Compensation item, which is the correct ancestry.
+     *
+     * Returns `null` for the dashboard (which is the breadcrumb root itself,
+     * so it gets no trail) and for anything that matches nothing.
+     *
+     * @return array{group: array{key: string, label: string|null, icon: string|null}, item: NavItem, child: array{prefix: string, label: string, route: string}|null}|null
+     */
+    public static function resolve(?string $routeName, ?User $user): ?array
+    {
+        if ($routeName === null || $routeName === '' || $routeName === 'admin.dashboard') {
+            return null;
+        }
+
+        $best = null;
+        $bestLength = -1;
+
+        foreach (self::groups($user) as $group) {
+            $groupHeader = ['key' => $group['key'], 'label' => $group['label'], 'icon' => $group['icon']];
+
+            foreach ($group['items'] as $item) {
+                // An item with no explicit prefix still owns its siblings:
+                // `admin.distributors.index` must claim `admin.distributors.show`.
+                $itemPrefix = $item['prefix']
+                    ?? (str_ends_with($item['route'], '.index')
+                        ? substr($item['route'], 0, -6)
+                        : $item['route']);
+
+                if (self::matches($routeName, $itemPrefix) && strlen($itemPrefix) > $bestLength) {
+                    $best = ['group' => $groupHeader, 'item' => $item, 'child' => null];
+                    $bestLength = strlen($itemPrefix);
+                }
+
+                foreach ($item['children'] ?? [] as $child) {
+                    if (self::matches($routeName, $child['prefix']) && strlen($child['prefix']) > $bestLength) {
+                        $best = ['group' => $groupHeader, 'item' => $item, 'child' => $child];
+                        $bestLength = strlen($child['prefix']);
+                    }
+                }
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * A prefix matches a route name when it *is* the route name or is one of
+     * its dot-separated ancestors — never a bare string prefix, so
+     * `admin.returns` does not swallow `admin.returns-policy.*`.
+     */
+    private static function matches(string $routeName, string $prefix): bool
+    {
+        return $routeName === $prefix || str_starts_with($routeName, $prefix.'.');
     }
 
     /**
@@ -123,7 +185,9 @@ final class AdminNavigation
             // Arete Development Centres are entities in their own right
             // (Step 11, profile, member directory); the ADC bonus is a
             // layer on top and lives under Compensation.
-            ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => 'landmark', 'prefix' => 'admin.arete-centres', 'badge' => $badges['adc-applications'] ?? 0],
+            ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => 'landmark', 'prefix' => 'admin.arete-centres', 'badge' => $badges['adc-applications'] ?? 0, 'children' => [
+                ['prefix' => 'admin.arete-centres.applications', 'label' => 'Applications', 'route' => 'admin.arete-centres.applications.index'],
+            ]],
         ];
     }
 
@@ -134,7 +198,9 @@ final class AdminNavigation
     private static function commerceItems(?User $user, array $badges): array
     {
         return [
-            ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders'],
+            ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders', 'children' => [
+                ['prefix' => 'admin.returns', 'label' => 'Returns', 'route' => 'admin.returns.index'],
+            ]],
             // Payments and the unsettled-refunds worklist. Monitoring
             // (`audit.read`), so every scoped role sees it; the badge
             // is refunds needing a human — failed, or held past the
@@ -195,7 +261,14 @@ final class AdminNavigation
         $failedEngineRunCount = $badges['engine-failures'] ?? 0;
 
         return [
-            ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => 'banknote', 'prefix' => 'admin.compensation'],
+            ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => 'banknote', 'prefix' => 'admin.compensation', 'children' => [
+                ['prefix' => 'admin.compensation.engine-runs', 'label' => 'Engine Runs', 'route' => 'admin.compensation.engine-runs.index'],
+                ['prefix' => 'admin.compensation.plan-settings', 'label' => 'Plan Settings', 'route' => 'admin.compensation.plan-settings.index'],
+                ['prefix' => 'admin.compensation.payout-settings', 'label' => 'Payout Settings', 'route' => 'admin.compensation.payout-settings.index'],
+                ['prefix' => 'admin.compensation.weekly-payouts', 'label' => 'Weekly Payouts', 'route' => 'admin.compensation.weekly-payouts.index'],
+                ['prefix' => 'admin.compensation.monthly-payouts', 'label' => 'Monthly Payouts', 'route' => 'admin.compensation.monthly-payouts.index'],
+                ['prefix' => 'admin.lifetime-awards', 'label' => 'Lifetime Awards', 'route' => 'admin.lifetime-awards.index'],
+            ]],
             // Only rendered while something is actually broken, so a
             // healthy console carries no extra item.
             ...($failedEngineRunCount > 0

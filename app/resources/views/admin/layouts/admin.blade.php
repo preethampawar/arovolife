@@ -339,6 +339,8 @@
             </div>
         </header>
 
+        @include('admin.layouts._breadcrumbs')
+
         @includeWhen(
             request()->routeIs('admin.compensation.*') || request()->routeIs('admin.lifetime-awards.*'),
             'admin.compensation._nav'
