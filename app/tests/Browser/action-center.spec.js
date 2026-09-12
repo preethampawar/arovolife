@@ -43,12 +43,15 @@ const STATUTORY_LABEL = 'Paid orders missing an invoice';
 test.describe('Action Center: sidebar and dashboard', () => {
     test('sidebar shows an Action Center link for the admin', async ({ adminPage: page }) => {
         await page.goto('/admin');
-        await expect(page.getByRole('link', { name: 'Action Center', exact: true })).toBeVisible();
+        // The badge (when non-zero) is nested inside the link and concatenates
+        // into its accessible name ("Action Center 319"), so match by prefix
+        // rather than `exact: true`.
+        await expect(page.getByRole('link', { name: /^Action Center/ })).toBeVisible();
     });
 
     test('sidebar badge shows only when the viewer has a critical count', async ({ adminPage: page }) => {
         await page.goto('/admin');
-        const link = page.getByRole('link', { name: 'Action Center', exact: true });
+        const link = page.getByRole('link', { name: /^Action Center/ });
         await expect(link).toBeVisible();
         const badge = link.locator('.admin-nav-badge');
         const badgeCount = await badge.count();
@@ -74,8 +77,11 @@ test.describe('Action Center: sidebar and dashboard', () => {
         }
 
         await expect(heading).toBeVisible();
-        const card = page.locator('div').filter({ has: heading }).first();
-        const viewAll = card.getByRole('link', { name: 'View all →' });
+        // `div.filter({ has: heading })` also matches every ancestor div up to
+        // the page wrapper, not just this card, so `.first()` grabs the wrong
+        // (outermost) one and its "View all" turns up 3x. The card's "View
+        // all" link is the heading's own sibling in the markup.
+        const viewAll = heading.locator('xpath=following-sibling::a[1]');
         await expect(viewAll).toBeVisible();
         await viewAll.click();
         await page.waitForURL('**/admin/action-center');
@@ -181,9 +187,13 @@ test.describe('Action Center: type page', () => {
 
         const countBefore = await page.locator('tbody tr').count();
         const firstRow = page.locator('tbody tr').first();
-        const subtitle = (await firstRow.locator('td').nth(1).locator('p').last().textContent())?.trim() ?? '';
+        // The title (e.g. an order number) is unique per row; the subtitle is
+        // a shared description and can repeat across many rows on a full page.
+        const title = (await firstRow.locator('td').nth(1).locator('p').first().textContent())?.trim() ?? '';
 
-        const snoozeToggle = firstRow.getByText('Snooze', { exact: true });
+        // Both the <summary> toggle and the submit button read "Snooze" —
+        // scope to the <summary> element specifically to avoid ambiguity.
+        const snoozeToggle = firstRow.locator('summary').filter({ hasText: 'Snooze' });
         test.skip((await snoozeToggle.count()) === 0, 'The first row has no Snooze control — it may be a statutory type row (unexpected here) or already snoozed.');
 
         await snoozeToggle.click();
@@ -201,9 +211,14 @@ test.describe('Action Center: type page', () => {
         if (afterIsEmpty) {
             expect(countBefore).toBe(1);
         } else {
-            expect(countAfter).toBeLessThan(countBefore);
-            if (subtitle) {
-                await expect(page.locator('tbody')).not.toContainText(subtitle);
+            // A full page (PER_PAGE = 50) backfills from the next item when one
+            // row is removed, so the visible count only drops below a full
+            // page — the reliable signal is that the snoozed row is gone.
+            if (countBefore < 50) {
+                expect(countAfter).toBeLessThan(countBefore);
+            }
+            if (title) {
+                await expect(page.locator('tbody')).not.toContainText(title);
             }
         }
     });
