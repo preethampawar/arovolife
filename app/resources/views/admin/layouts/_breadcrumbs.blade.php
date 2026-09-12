@@ -26,6 +26,16 @@
         // no crumb either.
         $crumbLinks = array_values(array_filter($crumbLinks, fn (array $crumb): bool => filled($crumb['label'])));
 
+        // A group whose only item carries the group's own name (Compensation)
+        // would otherwise read "Compensation › Compensation". Collapse any
+        // two consecutive crumbs with the same text, keeping the later one
+        // because it is the linked entry.
+        $crumbLinks = array_values(array_filter(
+            $crumbLinks,
+            fn (array $crumb, int $i): bool => $i === 0 || $crumb['label'] !== $crumbLinks[$i - 1]['label'],
+            ARRAY_FILTER_USE_BOTH,
+        ));
+
         // The current page is whatever heading the view set. Index pages
         // normally repeat their own nav label, so drop the duplicate rather
         // than render "Warehouses › Warehouses".
@@ -36,7 +46,23 @@
             $crumbLeaf = $crumbLast['label'];
         }
 
-        if ($crumbLeaf === $crumbLast['label']) {
+        // Drop the leaf when it only restates its parent — either exactly
+        // ("Warehouses › Warehouses") or as a qualified form of it
+        // ("Engine Runs › Compensation — Engine Runs"). Compared on
+        // letters and digits alone so punctuation and an em-dash prefix do
+        // not defeat it.
+        $crumbNormalise = static fn (string $text): string => mb_strtolower(
+            (string) preg_replace(
+                '/[^\p{L}\p{N}]+/u',
+                '',
+                html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            ),
+        );
+
+        $crumbLeafKey = $crumbNormalise($crumbLeaf);
+        $crumbLastKey = $crumbNormalise($crumbLast['label']);
+
+        if ($crumbLeafKey === $crumbLastKey || ($crumbLastKey !== '' && str_ends_with($crumbLeafKey, $crumbLastKey))) {
             array_pop($crumbLinks);
         }
 
@@ -61,7 +87,14 @@
 
                     <li class="{{ $crumbHidden }} items-center">
                         @if (! empty($crumb['current']))
-                            <span aria-current="page" class="font-medium text-gray-900">{{ $crumb['label'] }}</span>
+                            {{-- The leaf is the view's `heading` section. Blade's
+                                 `@section('x', $value)` already runs `e()` over
+                                 that value, so it is echoed raw here exactly as
+                                 the layout header echoes it — `{{ }}` would
+                                 double-escape and render "Returns &amp;amp;
+                                 Refunds". Nav labels are literals in
+                                 AdminNavigation. --}}
+                            <span aria-current="page" class="font-medium text-gray-900">{!! $crumb['label'] !!}</span>
                         @elseif ($crumb['url'])
                             <a href="{{ $crumb['url'] }}" class="text-gray-500 hover:text-gray-900 hover:underline">{{ $crumb['label'] }}</a>
                         @else
