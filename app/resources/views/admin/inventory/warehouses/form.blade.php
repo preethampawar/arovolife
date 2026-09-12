@@ -95,7 +95,7 @@
         </button>
         <a href="{{ route('admin.inventory.warehouses.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit && ! $isDefault && $warehouse->status === 'active')
-        <form method="POST" action="{{ route('admin.inventory.warehouses.archive', $warehouse) }}" class="ml-auto" data-confirm-impact="Archive this warehouse?">
+        <form method="POST" action="{{ route('admin.inventory.warehouses.archive', $warehouse) }}" class="ml-auto" data-confirm="Archive this warehouse?" data-confirm-title="Confirm archive" data-confirm-impact="Archive this warehouse?">
             @csrf
             <button type="submit" class="text-sm text-red-600 hover:text-red-700 font-medium">Archive</button>
         </form>

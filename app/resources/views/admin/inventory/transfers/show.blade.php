@@ -50,7 +50,7 @@
 
 <div class="flex items-center gap-3">
     @if($transfer->status === 'draft')
-        <form method="POST" action="{{ route('admin.inventory.transfers.dispatch', $transfer) }}" data-confirm-impact="Dispatch this transfer? Stock will leave {{ $transfer->from_warehouse_code }} immediately.">
+        <form method="POST" action="{{ route('admin.inventory.transfers.dispatch', $transfer) }}" data-confirm="Dispatch this transfer?" data-confirm-title="Confirm dispatch" data-confirm-impact="Dispatch this transfer? Stock will leave {{ $transfer->from_warehouse_code }} immediately.">
             @csrf
             <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Dispatch</button>
         </form>
@@ -59,7 +59,7 @@
             <button type="submit" class="text-sm text-red-600 hover:text-red-700 font-medium">Cancel</button>
         </form>
     @elseif($transfer->status === 'dispatched')
-        <form method="POST" action="{{ route('admin.inventory.transfers.receive', $transfer) }}" id="receiveForm" data-confirm-impact="Receive this transfer at {{ $transfer->to_warehouse_code }}? A shortfall below the dispatched quantity is written off.">
+        <form method="POST" action="{{ route('admin.inventory.transfers.receive', $transfer) }}" id="receiveForm" data-confirm="Receive this transfer?" data-confirm-title="Confirm receipt" data-confirm-impact="Receive this transfer at {{ $transfer->to_warehouse_code }}? A shortfall below the dispatched quantity is written off.">
             @csrf
             <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Receive</button>
         </form>

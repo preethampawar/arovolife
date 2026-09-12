@@ -83,7 +83,7 @@
         </button>
         <a href="{{ route('admin.inventory.suppliers.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit && $supplier->status === 'active')
-        <form method="POST" action="{{ route('admin.inventory.suppliers.archive', $supplier) }}" class="ml-auto" data-confirm-impact="Archive this supplier?">
+        <form method="POST" action="{{ route('admin.inventory.suppliers.archive', $supplier) }}" class="ml-auto" data-confirm="Archive this supplier?" data-confirm-title="Confirm archive" data-confirm-impact="Archive this supplier?">
             @csrf
             <button type="submit" class="text-sm text-red-600 hover:text-red-700 font-medium">Archive</button>
         </form>

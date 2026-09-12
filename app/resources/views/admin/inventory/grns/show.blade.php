@@ -15,13 +15,13 @@
     <div class="flex items-center gap-3">
         @if($invoice->isEditable())
             <a href="{{ route('admin.inventory.grns.edit', $invoice) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Edit</a>
-            <form method="POST" action="{{ route('admin.inventory.grns.post', $invoice) }}" data-confirm-impact="Post this GRN? This brings the stock on hand and cannot be undone by editing — only by cancelling.">
+            <form method="POST" action="{{ route('admin.inventory.grns.post', $invoice) }}" data-confirm="Post this goods receipt?" data-confirm-title="Confirm GRN posting" data-confirm-impact="Post this GRN? This brings the stock on hand and cannot be undone by editing — only by cancelling.">
                 @csrf
                 <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Post GRN</button>
             </form>
         @endif
         @if($invoice->isPosted())
-            <form method="POST" action="{{ route('admin.inventory.grns.cancel', $invoice) }}" class="flex items-center gap-2" data-confirm-impact="Cancel this posted GRN? This reverses the stock it brought in — only possible while every unit received is still on hand.">
+            <form method="POST" action="{{ route('admin.inventory.grns.cancel', $invoice) }}" class="flex items-center gap-2" data-confirm="Cancel this posted GRN?" data-confirm-title="Confirm GRN cancellation" data-confirm-impact="Cancel this posted GRN? This reverses the stock it brought in — only possible while every unit received is still on hand.">
                 @csrf
                 <input type="text" name="reason" placeholder="Reason (required)" required class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <button type="submit" class="text-sm text-red-600 hover:text-red-700 font-medium">Cancel GRN</button>

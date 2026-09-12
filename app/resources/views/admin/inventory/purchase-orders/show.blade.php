@@ -15,7 +15,7 @@
     <div class="flex items-center gap-3">
         @if($purchaseOrder->isEditable())
             <a href="{{ route('admin.inventory.purchase-orders.edit', $purchaseOrder) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Edit</a>
-            <form method="POST" action="{{ route('admin.inventory.purchase-orders.send', $purchaseOrder) }}" data-confirm-impact="Send this purchase order to the supplier?">
+            <form method="POST" action="{{ route('admin.inventory.purchase-orders.send', $purchaseOrder) }}" data-confirm="Send this purchase order?" data-confirm-title="Confirm send" data-confirm-impact="Send this purchase order to the supplier?">
                 @csrf
                 <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Send to supplier</button>
             </form>
@@ -24,7 +24,7 @@
             <a href="{{ route('admin.inventory.grns.create', ['purchase_order_id' => $purchaseOrder->id]) }}" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Create GRN from this PO</a>
         @endif
         @if(! in_array($purchaseOrder->status, ['received', 'cancelled']))
-            <form method="POST" action="{{ route('admin.inventory.purchase-orders.cancel', $purchaseOrder) }}" data-confirm-impact="Cancel this purchase order?">
+            <form method="POST" action="{{ route('admin.inventory.purchase-orders.cancel', $purchaseOrder) }}" data-confirm="Cancel this purchase order?" data-confirm-title="Confirm cancellation" data-confirm-impact="Cancel this purchase order?">
                 @csrf
                 <button type="submit" class="text-sm text-red-600 hover:text-red-700 font-medium">Cancel</button>
             </form>
