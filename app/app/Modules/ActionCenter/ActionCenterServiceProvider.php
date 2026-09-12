@@ -5,6 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\ActionCenter;
 
 use App\Modules\ActionCenter\Contracts\ActionProvider;
+use App\Modules\ActionCenter\Providers\Money\PaymentsUnreconciledProvider;
+use App\Modules\ActionCenter\Providers\Money\PayoutBatchAwaitingApprovalProvider;
+use App\Modules\ActionCenter\Providers\Money\PayoutBatchPartiallyFailedProvider;
+use App\Modules\ActionCenter\Providers\Money\PayoutsBankDetailsMissingProvider;
+use App\Modules\ActionCenter\Providers\Money\RefundsFailedProvider;
+use App\Modules\ActionCenter\Providers\Money\RefundsManualOwedProvider;
+use App\Modules\ActionCenter\Providers\Money\RefundsPastPromiseProvider;
 use App\Modules\ActionCenter\Providers\Orders\InvoiceMissingProvider;
 use App\Modules\ActionCenter\Providers\Orders\PackedNotShippedProvider;
 use App\Modules\ActionCenter\Providers\Orders\PaidNotPackedProvider;
@@ -53,6 +60,13 @@ final class ActionCenterServiceProvider extends ServiceProvider
         TransferInTransitProvider::class,
         GrnDraftStaleProvider::class,
         PoOverdueProvider::class,
+        RefundsFailedProvider::class,
+        RefundsManualOwedProvider::class,
+        RefundsPastPromiseProvider::class,
+        PayoutBatchAwaitingApprovalProvider::class,
+        PayoutBatchPartiallyFailedProvider::class,
+        PayoutsBankDetailsMissingProvider::class,
+        PaymentsUnreconciledProvider::class,
     ];
 
     public function register(): void

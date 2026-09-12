@@ -4634,3 +4634,45 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaymentsUnreconciledProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutBatchAwaitingApprovalProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutBatchPartiallyFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutsBankDetailsMissingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsManualOwedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsPastPromiseProviderTest.php

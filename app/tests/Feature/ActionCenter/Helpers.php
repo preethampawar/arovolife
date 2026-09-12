@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\ActionCenter;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Inventory\Models\PurchaseInvoice;
 use App\Modules\Inventory\Models\PurchaseOrder;
 use App\Modules\Inventory\Models\StockBatch;
 use App\Modules\Inventory\Models\StockMovement;
 use App\Modules\Inventory\Models\StockTransfer;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
+use App\Modules\Payments\Models\PaymentIntent;
+use App\Modules\Payments\Models\RefundIntent;
 use App\Modules\Returns\Models\ReturnRequest;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -175,6 +180,90 @@ final class Helpers
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /** @param array<string, mixed> $overrides */
+    public static function refundIntent(int $orderId, array $overrides = []): RefundIntent
+    {
+        $n = random_int(100000, 999999);
+        $createdAt = $overrides['created_at'] ?? null;
+        unset($overrides['created_at']);
+
+        $refund = RefundIntent::create(array_merge([
+            'order_id' => $orderId,
+            'gateway' => 'razorpay',
+            'amount_paise' => 100000,
+            'status' => RefundIntent::STATUS_CREATED,
+            'reason_code' => 'customer_request',
+            'idempotency_key' => "refund-ac-{$n}-".uniqid(),
+        ], $overrides));
+
+        if ($createdAt !== null) {
+            $refund->forceFill(['created_at' => $createdAt])->saveQuietly();
+        }
+
+        return $refund->fresh();
+    }
+
+    /** @param array<string, mixed> $overrides */
+    public static function paymentIntent(int $orderId, array $overrides = []): PaymentIntent
+    {
+        $n = random_int(100000, 999999);
+
+        return PaymentIntent::create(array_merge([
+            'order_id' => $orderId,
+            'gateway' => 'razorpay',
+            'amount_paise' => 100000,
+            'status' => PaymentIntent::STATUS_CAPTURED,
+            'idempotency_key' => "payment-ac-{$n}-".uniqid(),
+        ], $overrides));
+    }
+
+    /** @param array<string, mixed> $overrides */
+    public static function payoutBatch(string $status, array $overrides = []): PayoutBatch
+    {
+        return PayoutBatch::create(array_merge([
+            'batch_type' => PayoutBatch::TYPE_WEEKLY,
+            'batch_date' => now()->subDays(random_int(0, 3650))->toDateString(),
+            'status' => $status,
+            'total_gross_paise' => 0,
+            'total_deductions_paise' => 0,
+            'total_net_paise' => 0,
+            'distributor_count' => 0,
+        ], $overrides));
+    }
+
+    /** A distributor with no usable bank record (the factory default 'stub'). */
+    public static function distributorWithoutBank(): Distributor
+    {
+        return Distributor::factory()->create();
+    }
+
+    /** @param array<string, mixed> $overrides */
+    public static function payoutLineItem(int $distributorId, string $status, array $overrides = []): PayoutLineItem
+    {
+        $batch = self::payoutBatch(PayoutBatch::STATUS_COMPLETED);
+        $createdAt = $overrides['created_at'] ?? null;
+        unset($overrides['created_at']);
+
+        $line = PayoutLineItem::create(array_merge([
+            'payout_batch_id' => $batch->id,
+            'distributor_id' => $distributorId,
+            'gross_paise' => 50000,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'wallet_balance_paise' => 0,
+            'repurchase_deduction_paise' => 0,
+            'net_transferred_paise' => 0,
+            'status' => $status,
+            'retry_count' => 0,
+        ], $overrides));
+
+        if ($createdAt !== null) {
+            $line->forceFill(['created_at' => $createdAt])->saveQuietly();
+        }
+
+        return $line->fresh();
     }
 
     public static function purchaseOrder(string $status, ?CarbonInterface $sentAt = null, ?string $expectedAt = null): PurchaseOrder
