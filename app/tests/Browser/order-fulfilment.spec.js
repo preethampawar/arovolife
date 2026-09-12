@@ -46,9 +46,12 @@ async function addFirstProductToCart(page) {
         return null; // out of stock / not purchasable
     }
 
-    const skuText = await page.locator('text=/SKU\\s+/i').first().textContent().catch(() => null);
     await addToCartForm.getByRole('button', { name: /Add to Cart/i }).click();
     await page.waitForURL('**/shop/cart**');
+    // The PDP never shows the SKU text — read it off the freshly-added cart
+    // line instead (resources/views/shop/cart.blade.php marks it with
+    // data-cart-added and prints "SKU <variant_sku>" in a font-mono <p>).
+    const skuText = await page.locator('[data-cart-added] p.font-mono').first().textContent().catch(() => null);
     return skuText?.replace(/SKU\s*/i, '').trim() ?? null;
 }
 
@@ -225,7 +228,11 @@ test.describe('Order lifecycle: cancel after packing returns stock', () => {
         test.skip((await cancelButton.count()) === 0, 'Order is not in a cancellable state (placed/paid/ready_to_ship).');
 
         await submitAndConfirm(page, cancelButton);
-        await expect(page.locator('span, p').filter({ hasText: /^Cancelled$/i })).toBeVisible();
+        // The "Cancelled" text lives in the Status card's <div> (with the
+        // timestamp appended), not a bare span/p — same shape as the
+        // "Delivered" assertion above, and the timeline also renders a
+        // "Cancelled" step, so pick the later match (the Status card).
+        await expect(page.locator('div').filter({ hasText: /^Cancelled/ }).last()).toBeVisible();
 
         const stockAfterCancel = await readStockOnHand(page, sku, warehouseCode);
         expect(stockAfterCancel).not.toBeNull();
@@ -258,7 +265,9 @@ test.describe('Returns: saleable inspection restocks and settles a refund', () =
         const count = await rows.count().catch(() => 0);
         test.skip(count === 0, 'No return requests exist in this dev database to inspect. Open one from the storefront (Orders → Return this order) with a delivered order first, then re-run.');
 
-        await rows.first().locator('a').first().click();
+        // The row's first <a> is the order-number link (admin.commerce.orders.show),
+        // not the return itself — the return's own show page is the "Review →" link.
+        await rows.first().getByRole('link', { name: 'Review →' }).click();
         await page.waitForURL('**/admin/returns/**');
 
         const inspectForm = page.locator('form').filter({ has: page.locator('select[name="condition"]') });
