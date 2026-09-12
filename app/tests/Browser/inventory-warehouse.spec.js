@@ -107,7 +107,7 @@ test.describe('Inventory: Purchase order', () => {
         await expect(page.getByRole('heading', { name: 'New purchase order' })).toBeVisible();
 
         await page.selectOption('select[name="supplier_id"]', { label: supplierName });
-        await page.selectOption('select[name="warehouse_code"]', { label: new RegExp(`\\(${warehouseCode}\\)`) });
+        await page.selectOption('select[name="warehouse_code"]', warehouseCode);
 
         // The first line row is auto-added by the page's own JS on load.
         const variantSelect = page.locator('#poLinesBody select.po-variant').first();
@@ -166,7 +166,9 @@ test.describe('Inventory: Goods receipt (GRN)', () => {
 
         await page.goto('/admin/inventory/purchase-orders');
         const row = page.locator('tbody tr').filter({ hasText: warehouseCode }).first();
-        await row.getByRole('link', { name: 'Create GRN from this PO' }).click();
+        await row.getByRole('link', { name: 'View' }).click();
+        await page.waitForURL('**/admin/inventory/purchase-orders/**');
+        await page.getByRole('link', { name: 'Create GRN from this PO' }).click();
 
         await page.waitForURL('**/admin/inventory/grns/create**');
         await expect(page.getByRole('heading', { name: 'New goods receipt (GRN)' })).toBeVisible();
@@ -211,7 +213,7 @@ test.describe('Inventory: Goods receipt (GRN)', () => {
         await expect(postButton).toBeVisible();
         await submitAndConfirm(page, postButton);
 
-        await expect(page.locator('span').filter({ hasText: 'Posted' })).toBeVisible();
+        await expect(page.locator('span').filter({ hasText: 'Posted', hasNotText: 'by' })).toBeVisible();
 
         // The stock screen must now show the received quantity for this
         // variant/warehouse — the core assertion for this slice.
@@ -235,8 +237,8 @@ test.describe('Inventory: Stock on hand', () => {
     test('filters by warehouse and shows on-hand / reserved / available columns', async ({ adminPage: page }) => {
         await page.goto(`/admin/inventory/stock?warehouse_code=${warehouseCode}`);
         await expect(page.getByRole('heading', { name: 'Stock on hand' })).toBeVisible();
-        await expect(page.locator('th').filter({ hasText: 'On hand' })).toBeVisible();
-        await expect(page.locator('th').filter({ hasText: 'Available' })).toBeVisible();
+        await expect(page.getByRole('columnheader', { name: 'On hand', exact: true })).toBeVisible();
+        await expect(page.getByRole('columnheader', { name: 'Available', exact: true })).toBeVisible();
     });
 });
 
@@ -261,7 +263,7 @@ test.describe('Inventory: Stock transfer', () => {
         test.skip(!state.variantSku, 'No stock to transfer — GRN post step did not run.');
 
         await page.goto('/admin/inventory/transfers/create');
-        await page.selectOption('#fromWarehouse', { label: new RegExp(`\\(${warehouseCode}\\)`) });
+        await page.selectOption('#fromWarehouse', warehouseCode);
 
         const batchSelect = page.locator('.transfer-batch').first();
         await expect(batchSelect).toBeVisible();
@@ -269,7 +271,7 @@ test.describe('Inventory: Stock transfer', () => {
         const batchOption = options.find((o) => o.includes(batchNo));
         test.skip(!batchOption, 'The posted batch does not appear in the transfer batch dropdown — check stock is not fully reserved.');
         await batchSelect.selectOption({ label: batchOption });
-        await page.selectOption('select[name="to_warehouse_code"]', { label: new RegExp(`\\(${secondWarehouseCode}\\)`) });
+        await page.selectOption('select[name="to_warehouse_code"]', secondWarehouseCode);
         await page.locator('.transfer-qty').first().fill('5');
 
         await page.getByRole('button', { name: 'Create transfer' }).click();
@@ -326,7 +328,7 @@ test.describe('Inventory: Stock adjustment', () => {
         })();
 
         await page.goto('/admin/inventory/adjustments/create');
-        await page.selectOption('#adjWarehouse', { label: new RegExp(`\\(${warehouseCode}\\)`) });
+        await page.selectOption('#adjWarehouse', warehouseCode);
         const batchSelect = page.locator('#adjBatch');
         const options = await batchSelect.locator('option').allTextContents();
         const batchOption = options.find((o) => o.includes(batchNo));
@@ -334,7 +336,7 @@ test.describe('Inventory: Stock adjustment', () => {
         await batchSelect.selectOption({ label: batchOption });
 
         await page.fill('input[name="qty_delta"]', '-2');
-        await page.selectOption('select[name="reason"]', 'damage');
+        await page.selectOption('select[name="reason"]', 'damaged');
         await page.fill('textarea[name="notes"]', 'Playwright UI test: two units damaged in handling.');
 
         await page.getByRole('button', { name: 'Record adjustment' }).click();
