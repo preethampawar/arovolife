@@ -63,6 +63,7 @@ it('serves the summary from cache for 60 seconds and refreshes after', function 
 
 it('caches per user and drops the viewer cache on a snooze', function (): void {
     $order = Helpers::paidOrder(now()->subDays(4));
+    Helpers::invoiceFor($order); // isolate this to the paid_not_packed condition
 
     $this->service->summary($this->operations);
     expect(Cache::has(ActionCenterService::cacheKey($this->operations)))->toBeTrue();
@@ -74,7 +75,8 @@ it('caches per user and drops the viewer cache on a snooze', function (): void {
 });
 
 it('shows nothing to a viewer who holds no provider permission', function (): void {
-    Helpers::paidOrder(now()->subDays(4));
+    $order = Helpers::paidOrder(now()->subDays(4));
+    Helpers::invoiceFor($order); // isolate this to the paid_not_packed condition
 
     $finance = User::factory()->create(['status' => 'active']);
     $finance->assignRole('admin-finance');

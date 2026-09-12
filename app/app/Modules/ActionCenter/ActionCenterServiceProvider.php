@@ -5,7 +5,21 @@ declare(strict_types=1);
 namespace App\Modules\ActionCenter;
 
 use App\Modules\ActionCenter\Contracts\ActionProvider;
+use App\Modules\ActionCenter\Providers\Orders\InvoiceMissingProvider;
+use App\Modules\ActionCenter\Providers\Orders\PackedNotShippedProvider;
 use App\Modules\ActionCenter\Providers\Orders\PaidNotPackedProvider;
+use App\Modules\ActionCenter\Providers\Orders\RestockNotReconciledProvider;
+use App\Modules\ActionCenter\Providers\Orders\ShippedNotDeliveredProvider;
+use App\Modules\ActionCenter\Providers\Orders\UnpaidExpiringProvider;
+use App\Modules\ActionCenter\Providers\Returns\AwaitingInspectionProvider;
+use App\Modules\ActionCenter\Providers\Returns\AwaitingReceiptProvider;
+use App\Modules\ActionCenter\Providers\Stock\ExpiredOnHandProvider;
+use App\Modules\ActionCenter\Providers\Stock\ExpiringProvider;
+use App\Modules\ActionCenter\Providers\Stock\GrnDraftStaleProvider;
+use App\Modules\ActionCenter\Providers\Stock\LedgerDriftProvider;
+use App\Modules\ActionCenter\Providers\Stock\LowStockProvider;
+use App\Modules\ActionCenter\Providers\Stock\PoOverdueProvider;
+use App\Modules\ActionCenter\Providers\Stock\TransferInTransitProvider;
 use App\Modules\ActionCenter\Services\ActionCenterRegistry;
 use App\Modules\ActionCenter\Services\ActionCenterService;
 use App\Modules\ActionCenter\Services\ActionCenterSettings;
@@ -25,6 +39,20 @@ final class ActionCenterServiceProvider extends ServiceProvider
      */
     private const PROVIDERS = [
         PaidNotPackedProvider::class,
+        PackedNotShippedProvider::class,
+        ShippedNotDeliveredProvider::class,
+        UnpaidExpiringProvider::class,
+        RestockNotReconciledProvider::class,
+        AwaitingInspectionProvider::class,
+        AwaitingReceiptProvider::class,
+        InvoiceMissingProvider::class,
+        LowStockProvider::class,
+        ExpiringProvider::class,
+        ExpiredOnHandProvider::class,
+        LedgerDriftProvider::class,
+        TransferInTransitProvider::class,
+        GrnDraftStaleProvider::class,
+        PoOverdueProvider::class,
     ];
 
     public function register(): void

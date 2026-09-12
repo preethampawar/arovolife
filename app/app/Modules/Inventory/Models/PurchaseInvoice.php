@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $gst_paise
  * @property int $total_paise
  * @property CarbonInterface|null $posted_at
+ * @property CarbonInterface $created_at
  */
 final class PurchaseInvoice extends Model
 {
